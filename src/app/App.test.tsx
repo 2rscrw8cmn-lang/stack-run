@@ -1,21 +1,24 @@
 import { render, screen } from "@testing-library/react";
-import userEventModule from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 describe("App", () => {
-  it("shows the Today placeholder by default", () => {
+  it("shows the real Today screen, seeded from the training plan, by default", () => {
     render(<App />);
-    expect(
-      screen.getByRole("heading", { name: "Today" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Today" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("OUC Half Marathon")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("switches to the Build and Plan placeholders on tap", async () => {
-    const user = userEventModule.setup();
+    const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Build" }));

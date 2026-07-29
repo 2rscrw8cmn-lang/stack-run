@@ -252,3 +252,125 @@
     animation: none;
   }
 }
+
+/* Today screen */
+
+.today-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.race-summary-card__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.race-summary-card__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.race-summary-card__race-name {
+  margin: 0 0 var(--space-3);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.race-summary-card__race-date {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.race-summary-card__countdown {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.race-summary-card__days {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.race-summary-card__days-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-subtle);
+}
+
+.today-workout-card__eyebrow {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.today-workout-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.workout-color-block {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+}
+
+.today-workout-card__distance {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 650;
+}
+
+.today-workout-card__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.today-workout-card__details {
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+}
+
+.completed-run-summary__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.completed-run-summary__stats dt {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-subtle);
+}
+
+.completed-run-summary__stats dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}

@@ -2,7 +2,7 @@
 
 ## Current state
 
-**Phase 0 (Repository foundation) and UI-1 (App shell and design system) implemented.** Today, Build, and Plan are placeholder tabs only.
+**Phase 0 (Repository foundation), UI-1 (App shell and design system), and UI-2 (Today screen) implemented.** Today is fully read-only and real; Build and Plan remain placeholder tabs.
 
 ## Implemented
 
@@ -28,17 +28,26 @@
   - `IconButton.tsx` — icon-only control with a required accessible label and a 44×44px minimum target.
   - `Card.tsx` — the one neutral surface used by placeholder panels.
   - `ProgressBar.tsx` — `value`/`max`/accessible label, exposed via `role="progressbar"`.
-  - `Sheet.tsx` — mobile bottom sheet / wider-screen dialog built on the native `<dialog>` element (built-in focus trapping and Escape handling), with an optional `guardClose` hook for unsaved-changes confirmation. Not yet wired into any feature flow.
+  - `Sheet.tsx` — mobile bottom sheet / wider-screen dialog built on the native `<dialog>` element (built-in focus trapping and Escape handling), with an optional `guardClose` hook for unsaved-changes confirmation. Used by `TodayScreen` as a placeholder ("Mark Complete"/"Edit Run") since UI-2 explicitly does not build the real form yet.
   - `FormField.tsx` — label/input id relationship, hint, error (`role="alert"`), and required state via `aria-describedby`/`aria-invalid`.
 - Button/icon-button press-scale motion (0.98) and Sheet slide/fade-in motion, both disabled under `prefers-reduced-motion` (`src/styles/base.css`, `components.css`).
 
+- Real Today screen (`src/features/today/`):
+  - `TodayScreen.tsx` — loads the plan/run logs passed down from `App`, selects the local date (overridable via a `today` prop for tests, default `todayLocalDate()`), and renders one of five states via `src/domain/workout.ts`'s `selectTodayViewModel`: before-plan, after-race, rest, run, or completed.
+  - `RaceSummaryCard.tsx` — race name, race date, and days remaining (clamped to 0, never negative).
+  - `TodayWorkoutCard.tsx` — handles both the rest state (message + "View Plan") and the run state (workout color block, distance, title, details, "Mark Complete"). Skips the title line when it's textually identical to the distance headline (true for most easy-day entries in the seed plan) to avoid showing "2 Miles" twice.
+  - `CompletedRunSummary.tsx` — actual distance/duration/effort from the matching `RunLog`, plus "Edit Run".
+  - "Mark Complete" and "Edit Run" both open the same placeholder `Sheet` ("Run entry arrives in a later phase.") — no data is saved yet, per UI-2 scope.
+  - "View Plan" (before-plan and rest states) switches the active tab to Plan via the existing `onTabChange` wiring — no new navigation mechanism.
+- `App.tsx` now loads `AppState` once via `loadAppState()` (falling back to `createInitialAppState()` if storage is corrupt) and passes `plan`/`runLogs` down through `AppShell` to `TodayScreen`. Still no reducer — nothing writes state yet, so `useState` remains sufficient.
+- `domain/workout.ts` — `selectTodayViewModel`, `findWorkoutForDate`, `findRunLogForWorkout`, with unit tests including the seed-plan boundary case where the day after race day is "after-race" despite the seed scheduling a recovery rest day there.
+
 ## Not implemented
 
-- Real Today, Build, and Plan screens.
-- Complete Run flow (Sheet/FormField primitives exist but are not yet used by a form).
-- Build and Plan screens.
+- Build and Plan screens (still placeholders).
+- Complete Run flow — saving a run (Sheet/FormField primitives exist but aren't wired to persistence yet).
 - Plan editing.
-- Reducer-driven app state / persistence wiring beyond the repository module itself (no screen reads or writes `AppState` yet).
+- Reducer-driven state writes (`LOG_RUN`, etc.) — state is currently read-only after initial load.
 - Deployment.
 
 ## Known limitations / intentional differences from docs
