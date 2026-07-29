@@ -1,0 +1,2307 @@
+{
+  "schemaVersion": 1,
+  "id": "stack-ouc-half-2026",
+  "name": "OUC Half Marathon 2026",
+  "race": {
+    "name": "OUC Half Marathon",
+    "date": "2026-12-05",
+    "startTime": "07:15",
+    "location": "Lake Eola, Orlando, Florida",
+    "distanceMiles": 13.1
+  },
+  "startDate": "2026-08-03",
+  "endDate": "2026-12-06",
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "phase": "Foundation",
+      "startDate": "2026-08-03",
+      "endDate": "2026-08-09",
+      "workouts": [
+        {
+          "id": "workout-001",
+          "date": "2026-08-03",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 1,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-002",
+          "date": "2026-08-04",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2 Miles",
+          "targetDistanceMiles": "2",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 1,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-003",
+          "date": "2026-08-05",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 1,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-004",
+          "date": "2026-08-06",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2 Miles",
+          "targetDistanceMiles": "2",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 1,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-005",
+          "date": "2026-08-07",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 1,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-006",
+          "date": "2026-08-08",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2 Miles",
+          "targetDistanceMiles": "2",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 1,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-007",
+          "date": "2026-08-09",
+          "weekNumber": 1,
+          "phase": "Foundation",
+          "type": "long",
+          "title": "Long Run: 4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Easy effort. Finish feeling controlled.",
+          "build": {
+            "renders": true,
+            "weekRow": 1,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 2,
+      "phase": "Foundation",
+      "startDate": "2026-08-10",
+      "endDate": "2026-08-16",
+      "workouts": [
+        {
+          "id": "workout-008",
+          "date": "2026-08-10",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 2,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-009",
+          "date": "2026-08-11",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 2,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-010",
+          "date": "2026-08-12",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 2,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-011",
+          "date": "2026-08-13",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 2,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-012",
+          "date": "2026-08-14",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 2,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-013",
+          "date": "2026-08-15",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2 Miles",
+          "targetDistanceMiles": "2",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 2,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-014",
+          "date": "2026-08-16",
+          "weekNumber": 2,
+          "phase": "Foundation",
+          "type": "long",
+          "title": "Long Run: 4-5 Miles",
+          "targetDistanceMiles": "4-5",
+          "details": "Easy effort. Walk breaks are acceptable.",
+          "build": {
+            "renders": true,
+            "weekRow": 2,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 3,
+      "phase": "Foundation",
+      "startDate": "2026-08-17",
+      "endDate": "2026-08-23",
+      "workouts": [
+        {
+          "id": "workout-015",
+          "date": "2026-08-17",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 3,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-016",
+          "date": "2026-08-18",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 3,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-017",
+          "date": "2026-08-19",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 3,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-018",
+          "date": "2026-08-20",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 3,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-019",
+          "date": "2026-08-21",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 3,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-020",
+          "date": "2026-08-22",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 3,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-021",
+          "date": "2026-08-23",
+          "weekNumber": 3,
+          "phase": "Foundation",
+          "type": "long",
+          "title": "Long Run: 5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Easy, steady effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 3,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 4,
+      "phase": "Foundation Cutback",
+      "startDate": "2026-08-24",
+      "endDate": "2026-08-30",
+      "workouts": [
+        {
+          "id": "workout-022",
+          "date": "2026-08-24",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 4,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-023",
+          "date": "2026-08-25",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 4,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-024",
+          "date": "2026-08-26",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 4,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-025",
+          "date": "2026-08-27",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 4,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-026",
+          "date": "2026-08-28",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 4,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-027",
+          "date": "2026-08-29",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "easy",
+          "title": "2 Miles",
+          "targetDistanceMiles": "2",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 4,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-028",
+          "date": "2026-08-30",
+          "weekNumber": 4,
+          "phase": "Foundation Cutback",
+          "type": "long",
+          "title": "Long Run: 4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Cutback week. Keep every run relaxed.",
+          "build": {
+            "renders": true,
+            "weekRow": 4,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 5,
+      "phase": "Foundation",
+      "startDate": "2026-08-31",
+      "endDate": "2026-09-06",
+      "workouts": [
+        {
+          "id": "workout-029",
+          "date": "2026-08-31",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 5,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-030",
+          "date": "2026-09-01",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 5,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-031",
+          "date": "2026-09-02",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 5,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-032",
+          "date": "2026-09-03",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 5,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-033",
+          "date": "2026-09-04",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 5,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-034",
+          "date": "2026-09-05",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 5,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-035",
+          "date": "2026-09-06",
+          "weekNumber": 5,
+          "phase": "Foundation",
+          "type": "long",
+          "title": "Long Run: 5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Easy, steady effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 5,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 6,
+      "phase": "Foundation",
+      "startDate": "2026-09-07",
+      "endDate": "2026-09-13",
+      "workouts": [
+        {
+          "id": "workout-036",
+          "date": "2026-09-07",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 6,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-037",
+          "date": "2026-09-08",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 6,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-038",
+          "date": "2026-09-09",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 6,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-039",
+          "date": "2026-09-10",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 6,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-040",
+          "date": "2026-09-11",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 6,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-041",
+          "date": "2026-09-12",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 6,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-042",
+          "date": "2026-09-13",
+          "weekNumber": 6,
+          "phase": "Foundation",
+          "type": "long",
+          "title": "Long Run: 5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Bridge week before the supplied plan begins.",
+          "build": {
+            "renders": true,
+            "weekRow": 6,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 7,
+      "phase": "Prep",
+      "startDate": "2026-09-14",
+      "endDate": "2026-09-20",
+      "workouts": [
+        {
+          "id": "workout-043",
+          "date": "2026-09-14",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 7,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-044",
+          "date": "2026-09-15",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 7,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-045",
+          "date": "2026-09-16",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 7,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-046",
+          "date": "2026-09-17",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 7,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-047",
+          "date": "2026-09-18",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 7,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-048",
+          "date": "2026-09-19",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "easy",
+          "title": "2-3 Miles",
+          "targetDistanceMiles": "2-3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 7,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-049",
+          "date": "2026-09-20",
+          "weekNumber": 7,
+          "phase": "Prep",
+          "type": "long",
+          "title": "Long Run: 5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Easy long run.",
+          "build": {
+            "renders": true,
+            "weekRow": 7,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 8,
+      "phase": "Prep",
+      "startDate": "2026-09-21",
+      "endDate": "2026-09-27",
+      "workouts": [
+        {
+          "id": "workout-050",
+          "date": "2026-09-21",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 8,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-051",
+          "date": "2026-09-22",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 8,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-052",
+          "date": "2026-09-23",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 8,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-053",
+          "date": "2026-09-24",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 8,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-054",
+          "date": "2026-09-25",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 8,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-055",
+          "date": "2026-09-26",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 8,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-056",
+          "date": "2026-09-27",
+          "weekNumber": 8,
+          "phase": "Prep",
+          "type": "long",
+          "title": "Long Run: 5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Easy long run.",
+          "build": {
+            "renders": true,
+            "weekRow": 8,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 9,
+      "phase": "Main",
+      "startDate": "2026-09-28",
+      "endDate": "2026-10-04",
+      "workouts": [
+        {
+          "id": "workout-057",
+          "date": "2026-09-28",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 9,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-058",
+          "date": "2026-09-29",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "easy",
+          "title": "4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 9,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-059",
+          "date": "2026-09-30",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 9,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-060",
+          "date": "2026-10-01",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Run 5 miles. Rest 3-4 minutes. Then 4 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 9,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-061",
+          "date": "2026-10-02",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 9,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-062",
+          "date": "2026-10-03",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 9,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-063",
+          "date": "2026-10-04",
+          "weekNumber": 9,
+          "phase": "Main",
+          "type": "long",
+          "title": "Long Run: 6-7 Miles",
+          "targetDistanceMiles": "6-7",
+          "details": "Rolling hill course.",
+          "build": {
+            "renders": true,
+            "weekRow": 9,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 10,
+      "phase": "Main",
+      "startDate": "2026-10-05",
+      "endDate": "2026-10-11",
+      "workouts": [
+        {
+          "id": "workout-064",
+          "date": "2026-10-05",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 10,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-065",
+          "date": "2026-10-06",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Run 5 miles. Rest 3-4 minutes. Then 4 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 10,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-066",
+          "date": "2026-10-07",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 10,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-067",
+          "date": "2026-10-08",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5 Miles",
+          "targetDistanceMiles": "5",
+          "details": "Run 5 miles. Rest 3-4 minutes. Then 3 \u00d7 45 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 10,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-068",
+          "date": "2026-10-09",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 10,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-069",
+          "date": "2026-10-10",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "simulation",
+          "title": "Half Marathon Simulation",
+          "targetDistanceMiles": "7",
+          "details": "2 miles easy, 3 miles at goal pace, 2 miles easy.",
+          "build": {
+            "renders": true,
+            "weekRow": 10,
+            "orderInWeek": 3,
+            "span": 2,
+            "colorKey": "simulation"
+          }
+        },
+        {
+          "id": "workout-070",
+          "date": "2026-10-11",
+          "weekNumber": 10,
+          "phase": "Main",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 10,
+            "orderInWeek": 4,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 11,
+      "phase": "Main",
+      "startDate": "2026-10-12",
+      "endDate": "2026-10-18",
+      "workouts": [
+        {
+          "id": "workout-071",
+          "date": "2026-10-12",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 11,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-072",
+          "date": "2026-10-13",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "4-5 Miles",
+          "targetDistanceMiles": "4-5",
+          "details": "Run 4-5 miles. Rest 3-4 minutes. Then 4-5 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 11,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-073",
+          "date": "2026-10-14",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 11,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-074",
+          "date": "2026-10-15",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Run 5-6 miles. Rest 3-4 minutes. Then 4 \u00d7 45 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 11,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-075",
+          "date": "2026-10-16",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 11,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-076",
+          "date": "2026-10-17",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "easy",
+          "title": "4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 11,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-077",
+          "date": "2026-10-18",
+          "weekNumber": 11,
+          "phase": "Main",
+          "type": "long",
+          "title": "Long Run: 7-8 Miles",
+          "targetDistanceMiles": "7-8",
+          "details": "Rolling hill course.",
+          "build": {
+            "renders": true,
+            "weekRow": 11,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 12,
+      "phase": "Main",
+      "startDate": "2026-10-19",
+      "endDate": "2026-10-25",
+      "workouts": [
+        {
+          "id": "workout-078",
+          "date": "2026-10-19",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 12,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-079",
+          "date": "2026-10-20",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "4-5 Miles",
+          "targetDistanceMiles": "4-5",
+          "details": "Run 4-5 miles. Rest 3-4 minutes. Then 4-5 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 12,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-080",
+          "date": "2026-10-21",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 12,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-081",
+          "date": "2026-10-22",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Run 5-6 miles. Rest 3-4 minutes. Then 3 \u00d7 60 seconds hard with 90 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 12,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-082",
+          "date": "2026-10-23",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 12,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-083",
+          "date": "2026-10-24",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "simulation",
+          "title": "Half Marathon Simulation",
+          "targetDistanceMiles": "7-8",
+          "details": "2-3 miles easy, 3 miles at goal pace, 2 miles easy.",
+          "build": {
+            "renders": true,
+            "weekRow": 12,
+            "orderInWeek": 3,
+            "span": 2,
+            "colorKey": "simulation"
+          }
+        },
+        {
+          "id": "workout-084",
+          "date": "2026-10-25",
+          "weekNumber": 12,
+          "phase": "Main",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 12,
+            "orderInWeek": 4,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 13,
+      "phase": "Main",
+      "startDate": "2026-10-26",
+      "endDate": "2026-11-01",
+      "workouts": [
+        {
+          "id": "workout-085",
+          "date": "2026-10-26",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 13,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-086",
+          "date": "2026-10-27",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "4-5 Miles",
+          "targetDistanceMiles": "4-5",
+          "details": "Run 4-5 miles. Rest 3-4 minutes. Then 4-5 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 13,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-087",
+          "date": "2026-10-28",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 13,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-088",
+          "date": "2026-10-29",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Run 5-6 miles. Rest 3-4 minutes. Then 4 \u00d7 45 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 13,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-089",
+          "date": "2026-10-30",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 13,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-090",
+          "date": "2026-10-31",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "easy",
+          "title": "4-5 Miles",
+          "targetDistanceMiles": "4-5",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 13,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-091",
+          "date": "2026-11-01",
+          "weekNumber": 13,
+          "phase": "Main",
+          "type": "long",
+          "title": "Long Run: 8-9 Miles",
+          "targetDistanceMiles": "8-9",
+          "details": "Steady effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 13,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 14,
+      "phase": "Main",
+      "startDate": "2026-11-02",
+      "endDate": "2026-11-08",
+      "workouts": [
+        {
+          "id": "workout-092",
+          "date": "2026-11-02",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 14,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-093",
+          "date": "2026-11-03",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "4-5 Miles",
+          "targetDistanceMiles": "4-5",
+          "details": "Run 4-5 miles. Rest 3-4 minutes. Then 4 \u00d7 60 seconds hard with 90 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 14,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-094",
+          "date": "2026-11-04",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 14,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-095",
+          "date": "2026-11-05",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "easy",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 14,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-096",
+          "date": "2026-11-06",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 14,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-097",
+          "date": "2026-11-07",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "simulation",
+          "title": "Half Marathon Simulation",
+          "targetDistanceMiles": "8-9",
+          "details": "2-3 miles easy, 4 miles at goal pace, 2 miles easy on rolling hills.",
+          "build": {
+            "renders": true,
+            "weekRow": 14,
+            "orderInWeek": 3,
+            "span": 2,
+            "colorKey": "simulation"
+          }
+        },
+        {
+          "id": "workout-098",
+          "date": "2026-11-08",
+          "weekNumber": 14,
+          "phase": "Main",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 14,
+            "orderInWeek": 4,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 15,
+      "phase": "Main",
+      "startDate": "2026-11-09",
+      "endDate": "2026-11-15",
+      "workouts": [
+        {
+          "id": "workout-099",
+          "date": "2026-11-09",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 15,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-100",
+          "date": "2026-11-10",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Run 5-6 miles. Rest 3-4 minutes. Then 4-5 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 15,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-101",
+          "date": "2026-11-11",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 15,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-102",
+          "date": "2026-11-12",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Run 5-6 miles. Rest 3-4 minutes. Then 4 \u00d7 50 seconds hard with 75 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 15,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-103",
+          "date": "2026-11-13",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 15,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-104",
+          "date": "2026-11-14",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "easy",
+          "title": "4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 15,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-105",
+          "date": "2026-11-15",
+          "weekNumber": 15,
+          "phase": "Main",
+          "type": "long",
+          "title": "Long Run: 9-10 Miles",
+          "targetDistanceMiles": "9-10",
+          "details": "Steady effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 15,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 16,
+      "phase": "Main",
+      "startDate": "2026-11-16",
+      "endDate": "2026-11-22",
+      "workouts": [
+        {
+          "id": "workout-106",
+          "date": "2026-11-16",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 16,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-107",
+          "date": "2026-11-17",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "intervals",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Run 5-6 miles. Rest 3-4 minutes. Then 4-5 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 16,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-108",
+          "date": "2026-11-18",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 16,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-109",
+          "date": "2026-11-19",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "easy",
+          "title": "5-6 Miles",
+          "targetDistanceMiles": "5-6",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 16,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-110",
+          "date": "2026-11-20",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 16,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-111",
+          "date": "2026-11-21",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "simulation",
+          "title": "Half Marathon Simulation",
+          "targetDistanceMiles": "10",
+          "details": "4 miles easy, 4 miles at goal pace, 2 miles easy on rolling hills.",
+          "build": {
+            "renders": true,
+            "weekRow": 16,
+            "orderInWeek": 3,
+            "span": 2,
+            "colorKey": "simulation"
+          }
+        },
+        {
+          "id": "workout-112",
+          "date": "2026-11-22",
+          "weekNumber": 16,
+          "phase": "Main",
+          "type": "easy",
+          "title": "3-4 Miles",
+          "targetDistanceMiles": "3-4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 16,
+            "orderInWeek": 4,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 17,
+      "phase": "Main Cutback",
+      "startDate": "2026-11-23",
+      "endDate": "2026-11-29",
+      "workouts": [
+        {
+          "id": "workout-113",
+          "date": "2026-11-23",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 17,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-114",
+          "date": "2026-11-24",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "intervals",
+          "title": "4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Run 4 miles. Rest 3-4 minutes. Then 4-5 \u00d7 30 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 17,
+            "orderInWeek": 1,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-115",
+          "date": "2026-11-25",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 17,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-116",
+          "date": "2026-11-26",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "intervals",
+          "title": "4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Run 4 miles. Rest 3-4 minutes. Then 4 \u00d7 45 seconds hard with 60 seconds rest.",
+          "build": {
+            "renders": true,
+            "weekRow": 17,
+            "orderInWeek": 2,
+            "span": 2,
+            "colorKey": "intervals"
+          }
+        },
+        {
+          "id": "workout-117",
+          "date": "2026-11-27",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 17,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-118",
+          "date": "2026-11-28",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 17,
+            "orderInWeek": 3,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-119",
+          "date": "2026-11-29",
+          "weekNumber": 17,
+          "phase": "Main Cutback",
+          "type": "long",
+          "title": "Long Run: 6 Miles",
+          "targetDistanceMiles": "6",
+          "details": "Easy effort on a flat course.",
+          "build": {
+            "renders": true,
+            "weekRow": 17,
+            "orderInWeek": 4,
+            "span": 3,
+            "colorKey": "long"
+          }
+        }
+      ]
+    },
+    {
+      "weekNumber": 18,
+      "phase": "Taper / Race",
+      "startDate": "2026-11-30",
+      "endDate": "2026-12-06",
+      "workouts": [
+        {
+          "id": "workout-120",
+          "date": "2026-11-30",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 18,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-121",
+          "date": "2026-12-01",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "easy",
+          "title": "4 Miles",
+          "targetDistanceMiles": "4",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 18,
+            "orderInWeek": 1,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-122",
+          "date": "2026-12-02",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 18,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-123",
+          "date": "2026-12-03",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "easy",
+          "title": "3 Miles",
+          "targetDistanceMiles": "3",
+          "details": "Easy conversational effort.",
+          "build": {
+            "renders": true,
+            "weekRow": 18,
+            "orderInWeek": 2,
+            "span": 1,
+            "colorKey": "easy"
+          }
+        },
+        {
+          "id": "workout-124",
+          "date": "2026-12-04",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "rest",
+          "title": "Rest",
+          "targetDistanceMiles": null,
+          "details": "No scheduled run.",
+          "build": {
+            "renders": false,
+            "weekRow": 18,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        },
+        {
+          "id": "workout-125",
+          "date": "2026-12-05",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "race",
+          "title": "OUC Half Marathon",
+          "targetDistanceMiles": "13.1",
+          "details": "Race day. Start time 7:15 AM. Lake Eola, Orlando.",
+          "build": {
+            "renders": true,
+            "weekRow": 18,
+            "orderInWeek": 3,
+            "span": 4,
+            "colorKey": "race"
+          }
+        },
+        {
+          "id": "workout-126",
+          "date": "2026-12-06",
+          "weekNumber": 18,
+          "phase": "Taper / Race",
+          "type": "rest",
+          "title": "Recovery",
+          "targetDistanceMiles": null,
+          "details": "Rest, walk, hydrate, and recover.",
+          "build": {
+            "renders": false,
+            "weekRow": 18,
+            "orderInWeek": null,
+            "span": 0,
+            "colorKey": "neutral"
+          }
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Weeks 1-6 are a conservative foundation phase added before the supplied 12-week plan.",
+    "Race day was moved from Sunday in the supplied template to Saturday, December 5, 2026.",
+    "The plan is editable and is not an adaptive coaching engine."
+  ]
+}
