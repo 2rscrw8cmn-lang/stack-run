@@ -2,7 +2,7 @@
 
 ## Current state
 
-**Phase 0 (Repository foundation) implemented.** Today, Build, and Plan are placeholder tabs only.
+**Phase 0 (Repository foundation) and UI-1 (App shell and design system) implemented.** Today, Build, and Plan are placeholder tabs only.
 
 ## Implemented
 
@@ -23,19 +23,29 @@
 - CSS tokens and base files from `docs/DESIGN_SYSTEM.md`: `src/styles/tokens.css`, `base.css`, `layout.css`, `components.css`.
 - Minimal app shell (`src/app/App.tsx`, `src/app/AppShell.tsx`) with a three-item bottom navigation (`src/components/shared/BottomNav.tsx`) switching between placeholder Today, Build, and Plan panels. Uses `House`, `Layers3`, `ListChecks` from `lucide-react`.
 - Component test for tab navigation (`src/app/App.test.tsx`).
+- Shared UI primitives in `src/components/ui/`, each with tests:
+  - `Button.tsx` — primary/secondary/ghost/danger variants, `isLoading`, optional leading icon.
+  - `IconButton.tsx` — icon-only control with a required accessible label and a 44×44px minimum target.
+  - `Card.tsx` — the one neutral surface used by placeholder panels.
+  - `ProgressBar.tsx` — `value`/`max`/accessible label, exposed via `role="progressbar"`.
+  - `Sheet.tsx` — mobile bottom sheet / wider-screen dialog built on the native `<dialog>` element (built-in focus trapping and Escape handling), with an optional `guardClose` hook for unsaved-changes confirmation. Not yet wired into any feature flow.
+  - `FormField.tsx` — label/input id relationship, hint, error (`role="alert"`), and required state via `aria-describedby`/`aria-invalid`.
+- Button/icon-button press-scale motion (0.98) and Sheet slide/fade-in motion, both disabled under `prefers-reduced-motion` (`src/styles/base.css`, `components.css`).
 
 ## Not implemented
 
 - Real Today, Build, and Plan screens.
-- Complete Run flow.
+- Complete Run flow (Sheet/FormField primitives exist but are not yet used by a form).
+- Build and Plan screens.
 - Plan editing.
 - Reducer-driven app state / persistence wiring beyond the repository module itself (no screen reads or writes `AppState` yet).
 - Deployment.
 
 ## Known limitations / intentional differences from docs
 
-- `docs/ARCHITECTURE.md` sketches `src/app/appReducer.ts` and a full feature/component tree. Phase 0 intentionally omits these until the phase that needs them (UI-1 onward), per the instruction not to generate empty files without immediate purpose. The current shell uses local `useState` for the active tab only.
+- `docs/ARCHITECTURE.md` sketches `src/app/appReducer.ts` and a full feature/component tree. This is still deferred until the phase that needs it, per the instruction not to generate empty files without immediate purpose. The current shell uses local `useState` for the active tab only.
 - The repository's documentation packet originally had every file saved with a stray `" (1)"` suffix (e.g. `docs/PRODUCT_AND_SCOPE (1).md`) and a stub `README.md` shadowed by `README (1).md`. These were renamed to match the paths referenced throughout `AGENTS.md`/`START_HERE.md` (`docs/PRODUCT_AND_SCOPE.md`, `README.md`, etc.) before any code was written.
+- jsdom does not implement `HTMLDialogElement.showModal`/`close`/Escape-to-cancel, so `src/test/setup.ts` polyfills just enough of that behavior (open-attribute toggling, a `close` event, and a document-level Escape listener that mirrors the native cancel-then-close sequence) for the Sheet tests to exercise real component logic rather than mocks.
 
 ## Update rule
 
