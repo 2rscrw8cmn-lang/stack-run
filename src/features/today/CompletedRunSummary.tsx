@@ -21,7 +21,7 @@ export function CompletedRunSummary({
   onEditRun,
 }: CompletedRunSummaryProps) {
   return (
-    <Card className="today-workout-card">
+    <Card className="today-workout-card completed-run-summary">
       <p className="today-workout-card__eyebrow" aria-live="polite">
         Completed
       </p>

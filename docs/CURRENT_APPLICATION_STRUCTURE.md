@@ -2,9 +2,16 @@
 
 ## Current state
 
-**Phase 0 (Repository foundation), UI-1 (App shell and design system), and UI-2 (Today screen) implemented.** Today is fully read-only and real; Build and Plan remain placeholder tabs.
+**Phase 0, UI-1, UI-2, and UI-3 (Complete Run) implemented.** Today now supports manual run logging and editing with local persistence; Build and Plan remain placeholder tabs.
 
 ## Implemented
+
+- UI-3 Complete Run vertical slice:
+  - `src/features/run-entry/CompleteRunSheet.tsx` provides controlled distance, duration, effort, and notes entry, edit prefilling, a 120-character counter, accessible validation, and guarded dismissal.
+  - `src/features/run-entry/runValidation.ts` enforces the documented distance, duration, effort, precision, and notes rules.
+  - `saveRunLog` in `src/storage/appStateRepository.ts` creates or replaces the one log for a workout and persists the complete versioned `AppState`.
+  - `App` updates in-memory state after persistence, so Today immediately renders its completed state; refresh reloads that same state.
+  - Component, validation, and repository upsert tests cover the functional slice.
 
 - Vite + React + TypeScript scaffold at the repository root.
 - Strict TypeScript project (`tsconfig.json` referencing `tsconfig.app.json` / `tsconfig.node.json`).
@@ -45,7 +52,7 @@
 ## Not implemented
 
 - Build and Plan screens (still placeholders).
-- Complete Run flow — saving a run (Sheet/FormField primitives exist but aren't wired to persistence yet).
+- Timer, pace, GPS, integrations, and other explicitly out-of-scope run capture features.
 - Plan editing.
 - Reducer-driven state writes (`LOG_RUN`, etc.) — state is currently read-only after initial load.
 - Deployment.

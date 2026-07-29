@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AppState } from "../domain/types";
-import { loadAppState, StorageLoadError } from "../storage/appStateRepository";
+import { loadAppState, saveRunLog, StorageLoadError } from "../storage/appStateRepository";
+import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
 import { AppShell } from "./AppShell";
 
@@ -19,7 +20,7 @@ function loadInitialAppState(): AppState {
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>("today");
-  const [appState] = useState<AppState>(loadInitialAppState);
+  const [appState, setAppState] = useState<AppState>(loadInitialAppState);
 
   return (
     <AppShell
@@ -27,6 +28,9 @@ export function App() {
       onTabChange={setActiveTab}
       plan={appState.plan}
       runLogs={appState.runLogs}
+      onSaveRun={(workout, values: ValidRunEntry) => setAppState(saveRunLog(appState, {
+        workoutId: workout.id, completedDate: workout.date, ...values,
+      }))}
     />
   );
 }
