@@ -1,0 +1,65 @@
+const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function parseLocalDate(dateString: string): Date {
+  const match = LOCAL_DATE_PATTERN.exec(dateString);
+  if (!match) {
+    throw new Error(`Invalid local date string: ${dateString}`);
+  }
+  const [, year, month, day] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
+export function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function todayLocalDate(): string {
+  return formatLocalDate(new Date());
+}
+
+export function compareLocalDates(a: string, b: string): number {
+  return parseLocalDate(a).getTime() - parseLocalDate(b).getTime();
+}
+
+export function isBeforeLocalDate(a: string, b: string): boolean {
+  return compareLocalDates(a, b) < 0;
+}
+
+export function isAfterLocalDate(a: string, b: string): boolean {
+  return compareLocalDates(a, b) > 0;
+}
+
+export function isSameLocalDate(a: string, b: string): boolean {
+  return compareLocalDates(a, b) === 0;
+}
+
+export function addDaysToLocalDate(dateString: string, days: number): string {
+  const date = parseLocalDate(dateString);
+  date.setDate(date.getDate() + days);
+  return formatLocalDate(date);
+}
+
+export function daysBetweenLocalDates(from: string, to: string): number {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  return Math.round(
+    (parseLocalDate(to).getTime() - parseLocalDate(from).getTime()) /
+      millisecondsPerDay,
+  );
+}
+
+export function formatDateLabel(
+  dateString: string,
+  options: Intl.DateTimeFormatOptions = {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  },
+  locale = "en-US",
+): string {
+  return new Intl.DateTimeFormat(locale, options).format(
+    parseLocalDate(dateString),
+  );
+}
