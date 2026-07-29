@@ -3,7 +3,7 @@
 | Phase | Name | Status | Branch / PR | Notes |
 |---:|---|---|---|---|
 | 0 | Repository foundation | Ready for review | `feature/phase-0-foundation` | `npm run check` passes (lint, 36 tests, build). Manually verified at 320px, 390px, and 1280px. |
-| 1 | App shell | Not started |  |  |
+| 1 | App shell | Ready for review | `feature/ui-1-shell` | `npm run check` passes (lint, 54 tests, build). Manually verified at 320px, 390px, 768px, and 1280px. |
 | 2 | Today | Not started |  |  |
 | 3 | Complete Run | Not started |  |  |
 | 4 | Build | Not started |  |  |

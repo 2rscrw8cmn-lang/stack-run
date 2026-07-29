@@ -1,4 +1,5 @@
 import { BottomNav } from "../components/shared/BottomNav";
+import { Card } from "../components/ui/Card";
 import type { TabId } from "./App";
 
 const TAB_LABELS: Record<TabId, string> = {
@@ -27,10 +28,10 @@ export function AppShell({ activeTab, onTabChange }: AppShellProps) {
         <p className="tagline">Build your race.</p>
       </header>
       <main className="app-shell__main">
-        <div className="card">
+        <Card>
           <h1>{TAB_LABELS[activeTab]}</h1>
           <p>{TAB_PLACEHOLDER_TEXT[activeTab]}</p>
-        </div>
+        </Card>
       </main>
       <nav className="app-shell__nav" aria-label="Primary">
         <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
