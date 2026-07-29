@@ -178,8 +178,11 @@
   justify-content: flex-end;
   width: 100%;
   max-width: none;
+  /* Sheet.tsx overrides these while open so the on-screen keyboard can't cover
+     the panel; the fallbacks cover browsers without a visual viewport. */
   height: 100vh;
-  height: 100dvh;
+  height: var(--sheet-height, 100dvh);
+  transform: translateY(var(--sheet-top, 0px));
   max-height: none;
   margin: 0;
   padding: 0;

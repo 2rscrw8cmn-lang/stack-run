@@ -17,6 +17,22 @@ export interface ValidRunEntry {
 
 export type RunEntryErrors = Partial<Record<keyof RunEntryValues, string>>;
 
+const DURATION_SHAPE = /^(?:(\d{1,2}):)?(\d{1,3}):(\d{1,3})$/;
+
+/** Explains why a duration the parser rejected is unusable. */
+function describeDurationError(input: string): string {
+  const match = DURATION_SHAPE.exec(input.trim());
+  if (!match) {
+    return "Enter a duration like 31:42.";
+  }
+
+  const [, hours, minutes, seconds] = match;
+  if (Number(seconds) > 59 || (hours !== undefined && Number(minutes) > 59)) {
+    return "Minutes and seconds must be under 60.";
+  }
+  return "Duration must be between 0:01 and 24:00:00.";
+}
+
 export function validateRunEntry(values: RunEntryValues):
   | { valid: true; value: ValidRunEntry }
   | { valid: false; errors: RunEntryErrors } {
@@ -33,7 +49,7 @@ export function validateRunEntry(values: RunEntryValues):
 
   if (!values.duration.trim()) errors.duration = "Enter your duration.";
   else if (duration === null)
-    errors.duration = "Use MM:SS or H:MM:SS, from 0:01 through 24:00:00.";
+    errors.duration = describeDurationError(values.duration);
   if (!values.effort) errors.effort = "Choose how the run felt.";
   if (notes.length > 120) errors.notes = "Notes must be 120 characters or fewer.";
 

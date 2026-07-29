@@ -8,7 +8,8 @@
 
 - UI-3 Complete Run vertical slice:
   - `src/features/run-entry/CompleteRunSheet.tsx` provides controlled distance, duration, effort, and notes entry, edit prefilling, a 120-character counter, accessible validation, and guarded dismissal.
-  - `src/features/run-entry/runValidation.ts` enforces the documented distance, duration, effort, precision, and notes rules.
+  - `src/features/run-entry/runValidation.ts` enforces the documented distance, duration, effort, precision, and notes rules, and explains a rejected duration specifically (bad shape, minutes/seconds over 59, or out of the 0:01–24:00:00 range).
+  - `src/features/run-entry/durationMask.ts` formats keystrokes into `MM:SS` / `H:MM:SS` as the user types, because the mobile numeric keypad has no colon key: digits fill from the seconds up, so "3142" becomes "31:42" and "10530" becomes "1:05:30". Editing any field also clears that field's error.
   - `saveRunLog` in `src/storage/appStateRepository.ts` creates or replaces the one log for a workout and persists the complete versioned `AppState`.
   - `App` updates in-memory state after persistence, so Today immediately renders its completed state; refresh reloads that same state.
   - Before the plan begins, Today exposes `Log First Run` so the functional slice is discoverable and usable instead of hiding run entry behind the future start date.
@@ -36,7 +37,7 @@
   - `IconButton.tsx` — icon-only control with a required accessible label and a 44×44px minimum target.
   - `Card.tsx` — the one neutral surface used by placeholder panels.
   - `ProgressBar.tsx` — `value`/`max`/accessible label, exposed via `role="progressbar"`.
-  - `Sheet.tsx` — mobile bottom sheet / wider-screen dialog built on the native `<dialog>` element (built-in focus trapping and Escape handling), with an optional `guardClose` hook for unsaved-changes confirmation. The `<dialog>` fills the viewport and lays the panel out inside itself, so `.sheet__panel`'s `max-height` resolves against a definite height; only `.sheet__body` scrolls, keeping the header and a sticky primary action reachable.
+  - `Sheet.tsx` — mobile bottom sheet / wider-screen dialog built on the native `<dialog>` element (built-in focus trapping and Escape handling), with an optional `guardClose` hook for unsaved-changes confirmation. The `<dialog>` fills the viewport and lays the panel out inside itself, so `.sheet__panel`'s `max-height` resolves against a definite height; only `.sheet__body` scrolls, keeping the header and a sticky primary action reachable. While open it also tracks `window.visualViewport` (via the `--sheet-height` / `--sheet-top` custom properties) so the iOS on-screen keyboard cannot cover the bottom of the sheet.
   - `FormField.tsx` — label/input id relationship, hint, error (`role="alert"`), and required state via `aria-describedby`/`aria-invalid`.
 - Button/icon-button press-scale motion (0.98) and Sheet slide/fade-in motion, both disabled under `prefers-reduced-motion` (`src/styles/base.css`, `components.css`).
 

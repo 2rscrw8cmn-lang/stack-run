@@ -5,6 +5,7 @@ import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { Effort, RunLog, Workout } from "../../domain/types";
+import { maskDurationInput } from "./durationMask";
 import {
   validateRunEntry,
   type RunEntryErrors,
@@ -60,6 +61,17 @@ export function CompleteRunSheet({
     return !isDirty || window.confirm("Discard your unsaved run entry?");
   }
 
+  /** Editing a field also clears its error, so stale messages don't linger. */
+  function updateValue<Key extends keyof RunEntryValues>(
+    key: Key,
+    value: RunEntryValues[Key],
+  ) {
+    setValues((current) => ({ ...current, [key]: value }));
+    setErrors((current) =>
+      current[key] ? { ...current, [key]: undefined } : current,
+    );
+  }
+
   function handleSubmit() {
     const result = validateRunEntry(values);
     if (!result.valid) {
@@ -91,16 +103,14 @@ export function CompleteRunSheet({
             autoComplete="off"
             placeholder="3.2"
             value={values.distance}
-            onChange={(event) =>
-              setValues({ ...values, distance: event.target.value })
-            }
+            onChange={(event) => updateValue("distance", event.target.value)}
           />
         </FormField>
 
         <FormField
           label="Duration"
           required
-          hint="MM:SS or H:MM:SS"
+          hint="Type digits only — 3142 becomes 31:42"
           error={errors.duration}
         >
           <input
@@ -110,7 +120,7 @@ export function CompleteRunSheet({
             placeholder="31:42"
             value={values.duration}
             onChange={(event) =>
-              setValues({ ...values, duration: event.target.value })
+              updateValue("duration", maskDurationInput(event.target.value))
             }
           />
         </FormField>
@@ -129,7 +139,7 @@ export function CompleteRunSheet({
                 type="button"
                 className="effort-picker__option"
                 aria-pressed={values.effort === value}
-                onClick={() => setValues({ ...values, effort: value })}
+                onClick={() => updateValue("effort", value)}
               >
                 <Icon size={28} strokeWidth={1.8} aria-hidden="true" />
                 <span>{label}</span>
@@ -154,9 +164,7 @@ export function CompleteRunSheet({
             rows={3}
             placeholder="How did it feel?"
             value={values.notes}
-            onChange={(event) =>
-              setValues({ ...values, notes: event.target.value })
-            }
+            onChange={(event) => updateValue("notes", event.target.value)}
           />
           <span className="notes-field__counter">
             {values.notes.length}/{NOTES_MAX_LENGTH}

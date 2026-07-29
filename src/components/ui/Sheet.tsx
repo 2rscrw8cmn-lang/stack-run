@@ -29,6 +29,35 @@ export function Sheet({ title, isOpen, onClose, guardClose, children }: SheetPro
     }
   }, [isOpen]);
 
+  /**
+   * iOS Safari keeps fixed elements sized to the layout viewport when the
+   * on-screen keyboard opens, which hides the bottom of the sheet — including
+   * its primary action — behind the keyboard. Follow the visual viewport
+   * instead so the sheet always occupies the part of the screen the user
+   * can actually see.
+   */
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const viewport = window.visualViewport;
+    if (!isOpen || !dialog || !viewport) return;
+
+    const syncToVisualViewport = () => {
+      dialog.style.setProperty("--sheet-height", `${viewport.height}px`);
+      dialog.style.setProperty("--sheet-top", `${viewport.offsetTop}px`);
+    };
+
+    syncToVisualViewport();
+    viewport.addEventListener("resize", syncToVisualViewport);
+    viewport.addEventListener("scroll", syncToVisualViewport);
+
+    return () => {
+      viewport.removeEventListener("resize", syncToVisualViewport);
+      viewport.removeEventListener("scroll", syncToVisualViewport);
+      dialog.style.removeProperty("--sheet-height");
+      dialog.style.removeProperty("--sheet-top");
+    };
+  }, [isOpen]);
+
   function requestClose() {
     if (guardClose && !guardClose()) {
       return;

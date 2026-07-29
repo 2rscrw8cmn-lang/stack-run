@@ -40,10 +40,13 @@ describe("CompleteRunSheet", () => {
 
     await user.click(screen.getByRole("button", { name: "Save Run" }));
     expect(screen.getByText("Enter your distance.")).toBeInTheDocument();
+    expect(screen.getByText("Enter your duration.")).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText(/Distance/), "3.2");
-    await user.type(screen.getByLabelText(/Duration/), "31:42");
+    // Digits only: the on-screen numeric keypad has no colon key.
+    await user.type(screen.getByLabelText(/Duration/), "3142");
+    expect(screen.getByLabelText(/Duration/)).toHaveValue("31:42");
     await user.click(screen.getByRole("button", { name: "Great" }));
     await user.type(screen.getByLabelText(/Notes/), "Felt good");
     expect(screen.getByText("9/120")).toBeInTheDocument();
@@ -55,6 +58,25 @@ describe("CompleteRunSheet", () => {
       effort: "great",
       notes: "Felt good",
     });
+  });
+
+  it("clears a field error as soon as that field is edited", async () => {
+    const user = userEvent.setup();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={workout}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+    expect(screen.getByText("Enter your duration.")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/Duration/), "3");
+    expect(screen.queryByText("Enter your duration.")).not.toBeInTheDocument();
+    expect(screen.getByText("Enter your distance.")).toBeInTheDocument();
   });
 
   it("prefills the existing log when editing a run", () => {

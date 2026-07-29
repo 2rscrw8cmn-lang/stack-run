@@ -149,7 +149,7 @@ describe("TodayScreen", () => {
 
     await user.click(screen.getByRole("button", { name: "Mark Complete" }));
     await user.type(screen.getByLabelText(/Distance/), "2.1");
-    await user.type(screen.getByLabelText(/Duration/), "20:30");
+    await user.type(screen.getByLabelText(/Duration/), "2030");
     await user.click(screen.getByRole("button", { name: "Solid" }));
     await user.click(screen.getByRole("button", { name: "Save Run" }));
 
