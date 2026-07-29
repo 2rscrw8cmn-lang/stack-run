@@ -1,17 +1,24 @@
-import { Frown, Meh, Save, Smile, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { Frown, Meh, Smile, type LucideIcon } from "lucide-react";
+import { useId, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { Effort, RunLog, Workout } from "../../domain/types";
-import { validateRunEntry, type RunEntryErrors, type RunEntryValues, type ValidRunEntry } from "./runValidation";
+import {
+  validateRunEntry,
+  type RunEntryErrors,
+  type RunEntryValues,
+  type ValidRunEntry,
+} from "./runValidation";
 
 const EFFORTS: Array<{ value: Effort; label: string; Icon: LucideIcon }> = [
   { value: "rough", label: "Rough", Icon: Frown },
   { value: "solid", label: "Solid", Icon: Meh },
   { value: "great", label: "Great", Icon: Smile },
 ];
+
+const NOTES_MAX_LENGTH = 120;
 
 interface CompleteRunSheetProps {
   isOpen: boolean;
@@ -22,48 +29,143 @@ interface CompleteRunSheetProps {
 }
 
 function initialValues(runLog?: RunLog): RunEntryValues {
-  return runLog
-    ? { distance: String(runLog.distanceMiles), duration: formatDurationSeconds(runLog.durationSeconds), effort: runLog.effort, notes: runLog.notes }
-    : { distance: "", duration: "", effort: null, notes: "" };
+  if (!runLog) {
+    return { distance: "", duration: "", effort: null, notes: "" };
+  }
+  return {
+    distance: String(runLog.distanceMiles),
+    duration: formatDurationSeconds(runLog.durationSeconds),
+    effort: runLog.effort,
+    notes: runLog.notes,
+  };
 }
 
-export function CompleteRunSheet({ isOpen, workout, runLog, onClose, onSave }: CompleteRunSheetProps) {
+export function CompleteRunSheet({
+  isOpen,
+  workout,
+  runLog,
+  onClose,
+  onSave,
+}: CompleteRunSheetProps) {
   const [values, setValues] = useState<RunEntryValues>(() => initialValues(runLog));
   const [errors, setErrors] = useState<RunEntryErrors>({});
-  const baseline = initialValues(runLog);
-  const dirty = JSON.stringify(values) !== JSON.stringify(baseline);
+  const fieldId = useId();
+  const effortErrorId = `${fieldId}-effort-error`;
+  const notesId = `${fieldId}-notes`;
+
+  const isDirty =
+    JSON.stringify(values) !== JSON.stringify(initialValues(runLog));
 
   function guardClose() {
-    return !dirty || window.confirm("Discard your unsaved run entry?");
+    return !isDirty || window.confirm("Discard your unsaved run entry?");
+  }
+
+  function handleSubmit() {
+    const result = validateRunEntry(values);
+    if (!result.valid) {
+      setErrors(result.errors);
+      return;
+    }
+    onSave(workout, result.value);
   }
 
   return (
-    <Sheet title={runLog ? "Edit Run" : "Complete Run"} isOpen={isOpen} onClose={onClose} guardClose={guardClose}>
-      <form className="complete-run-form" noValidate onSubmit={(event) => {
-        event.preventDefault();
-        const result = validateRunEntry(values);
-        if (!result.valid) { setErrors(result.errors); return; }
-        onSave(workout, result.value);
-      }}>
+    <Sheet
+      title={runLog ? "Edit Run" : "Complete Run"}
+      isOpen={isOpen}
+      onClose={onClose}
+      guardClose={guardClose}
+    >
+      <form
+        className="complete-run-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
         <FormField label="Distance (miles)" required error={errors.distance}>
-          <input className="run-input" inputMode="decimal" autoComplete="off" value={values.distance} onChange={(e) => setValues({ ...values, distance: e.target.value })} />
+          <input
+            className="run-input"
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="3.2"
+            value={values.distance}
+            onChange={(event) =>
+              setValues({ ...values, distance: event.target.value })
+            }
+          />
         </FormField>
-        <FormField label="Duration" required hint="MM:SS or H:MM:SS" error={errors.duration}>
-          <input className="run-input" inputMode="numeric" autoComplete="off" placeholder="31:42" value={values.duration} onChange={(e) => setValues({ ...values, duration: e.target.value })} />
+
+        <FormField
+          label="Duration"
+          required
+          hint="MM:SS or H:MM:SS"
+          error={errors.duration}
+        >
+          <input
+            className="run-input"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="31:42"
+            value={values.duration}
+            onChange={(event) =>
+              setValues({ ...values, duration: event.target.value })
+            }
+          />
         </FormField>
-        <fieldset className="effort-picker" aria-describedby={errors.effort ? "effort-error" : undefined}>
-          <legend>Effort <span aria-hidden="true">*</span></legend>
+
+        <fieldset
+          className="effort-picker"
+          aria-describedby={errors.effort ? effortErrorId : undefined}
+        >
+          <legend className="effort-picker__legend">
+            Effort <span aria-hidden="true">*</span>
+          </legend>
           <div className="effort-picker__options">
-            {EFFORTS.map(({ value, label, Icon }) => <button key={value} type="button" className="effort-picker__option" aria-pressed={values.effort === value} onClick={() => setValues({ ...values, effort: value })}><Icon size={28} strokeWidth={1.8} aria-hidden="true" /><span>{label}</span></button>)}
+            {EFFORTS.map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                className="effort-picker__option"
+                aria-pressed={values.effort === value}
+                onClick={() => setValues({ ...values, effort: value })}
+              >
+                <Icon size={28} strokeWidth={1.8} aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
-          {errors.effort && <p id="effort-error" className="form-field__error" role="alert">{errors.effort}</p>}
+          {errors.effort && (
+            <p id={effortErrorId} className="form-field__error" role="alert">
+              {errors.effort}
+            </p>
+          )}
         </fieldset>
+
         <div className="notes-field">
-          <label htmlFor="run-notes">Notes <span>(optional)</span></label>
-          <textarea id="run-notes" className="run-input" maxLength={120} rows={3} value={values.notes} onChange={(e) => setValues({ ...values, notes: e.target.value })} />
-          <span className="notes-field__counter">{values.notes.length}/120</span>
+          <label className="notes-field__label" htmlFor={notesId}>
+            Notes <span>(optional)</span>
+          </label>
+          <textarea
+            id={notesId}
+            className="run-input"
+            maxLength={NOTES_MAX_LENGTH}
+            rows={3}
+            placeholder="How did it feel?"
+            value={values.notes}
+            onChange={(event) =>
+              setValues({ ...values, notes: event.target.value })
+            }
+          />
+          <span className="notes-field__counter">
+            {values.notes.length}/{NOTES_MAX_LENGTH}
+          </span>
         </div>
-        <Button type="submit" icon={<Save size={20} strokeWidth={1.8} />}>Save Run</Button>
+
+        <div className="complete-run-form__actions">
+          <Button type="submit">Save Run</Button>
+        </div>
       </form>
     </Sheet>
   );

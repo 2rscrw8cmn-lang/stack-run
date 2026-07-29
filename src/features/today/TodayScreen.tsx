@@ -59,10 +59,12 @@ export function TodayScreen({
               year: "numeric",
             })}
           </p>
-          <Button onClick={() => setSheetOpen(true)}>
-            Log First Run
-          </Button>
-          <Button variant="ghost" onClick={onViewPlan}>View Plan</Button>
+          <div className="today-workout-card__actions">
+            <Button onClick={() => setSheetOpen(true)}>Log First Run</Button>
+            <Button variant="secondary" onClick={onViewPlan}>
+              View Plan
+            </Button>
+          </div>
         </Card>
       )}
 
@@ -96,8 +98,24 @@ export function TodayScreen({
         />
       )}
 
-      <p className="visually-hidden" aria-live="polite">{saveAnnouncement}</p>
-      {editable && <CompleteRunSheet key={editable.runLog?.updatedAt ?? "new"} isOpen={isSheetOpen} workout={editable.workout} runLog={editable.runLog} onClose={() => setSheetOpen(false)} onSave={(_workout, values) => { onSaveRun(editable.workout, values); setSaveAnnouncement("Run saved successfully."); setSheetOpen(false); }} />}
+      <p className="visually-hidden" aria-live="polite">
+        {saveAnnouncement}
+      </p>
+
+      {editable && (
+        <CompleteRunSheet
+          key={editable.runLog?.updatedAt ?? "new"}
+          isOpen={isSheetOpen}
+          workout={editable.workout}
+          runLog={editable.runLog}
+          onClose={() => setSheetOpen(false)}
+          onSave={(workout, values) => {
+            onSaveRun(workout, values);
+            setSaveAnnouncement("Run saved successfully.");
+            setSheetOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

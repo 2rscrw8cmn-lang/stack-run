@@ -44,13 +44,33 @@ export function saveAppState(state: AppState): void {
 }
 
 /** Creates or updates the single log belonging to a scheduled workout. */
-export function saveRunLog(state: AppState, input: Omit<RunLog, "id" | "createdAt" | "updatedAt">): AppState {
+export function saveRunLog(
+  state: AppState,
+  input: Omit<RunLog, "id" | "createdAt" | "updatedAt">,
+): AppState {
   const now = new Date().toISOString();
-  const existing = state.runLogs.find((log) => log.workoutId === input.workoutId);
+  const existing = state.runLogs.find(
+    (log) => log.workoutId === input.workoutId,
+  );
+
   const runLog: RunLog = existing
     ? { ...existing, ...input, updatedAt: now }
-    : { ...input, id: `run-${input.workoutId}`, createdAt: now, updatedAt: now };
-  const next = { ...state, runLogs: [...state.runLogs.filter((log) => log.workoutId !== input.workoutId), runLog] };
+    : {
+        ...input,
+        id: `run-${input.workoutId}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+  const next: AppState = {
+    ...state,
+    runLogs: existing
+      ? state.runLogs.map((log) =>
+          log.workoutId === input.workoutId ? runLog : log,
+        )
+      : [...state.runLogs, runLog],
+  };
+
   saveAppState(next);
   return next;
 }

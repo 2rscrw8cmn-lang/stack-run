@@ -29,9 +29,15 @@ export function App() {
       onTabChange={setActiveTab}
       plan={appState.plan}
       runLogs={appState.runLogs}
-      onSaveRun={(workout, values: ValidRunEntry) => setAppState(saveRunLog(appState, {
-        workoutId: workout.id, completedDate: todayLocalDate(), ...values,
-      }))}
+      onSaveRun={(workout, values: ValidRunEntry) =>
+        setAppState((current) =>
+          saveRunLog(current, {
+            workoutId: workout.id,
+            completedDate: todayLocalDate(),
+            ...values,
+          }),
+        )
+      }
     />
   );
 }
