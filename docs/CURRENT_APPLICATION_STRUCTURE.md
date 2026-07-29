@@ -2,9 +2,24 @@
 
 ## Current state
 
-**Phase 0, UI-1, UI-2, and UI-3 (Complete Run) implemented.** Today now supports manual run logging and editing with local persistence; Build and Plan remain placeholder tabs.
+**Phase 0, UI-1, UI-2, UI-3 (Complete Run), and UI-4 (Build) implemented.** Today supports manual run logging and editing with local persistence, Build renders the full 18-week structure from the plan and logs, and Plan remains a placeholder tab.
 
 ## Implemented
+
+- UI-4 Build screen:
+  - `src/domain/build.ts` derives everything the screen shows from the plan, the run logs, and today's local date — nothing new is persisted.
+    - `BLOCK_SPAN_BY_TYPE` is the documented span map (easy 1, intervals 2, simulation 2, long 3, race 4; rest 0 and therefore no block). Span is derived from the workout type rather than read from `build.span`, so a workout retyped in a later phase keeps a width that matches the map; a unit test asserts the seed plan's `build.span`, `build.renders`, and `build.colorKey` agree with the type for all 126 workouts.
+    - `selectBuildViewModel` returns the three summary metrics plus 18 week rows of blocks. A block is `completed` when a run log references its workout, `missed` when its date is before today with no log, and `planned` otherwise (including an unfinished run scheduled for today).
+    - `currentRunStreak` implements the streak rule in `docs/DATA_AND_STORAGE.md` literally: scheduled runs only, ignoring workouts after today, counting backward from the most recent one until a run has no log. Rest days sit outside the sequence, so they neither break nor extend a streak.
+    - `findNewestCompletedWorkoutId` picks the most recently logged run (latest `updatedAt`, ties broken by the later workout date). It is the only block allowed to glow.
+  - `src/features/build/BuildScreen.tsx` composes `BuildMetrics`, `BuildStructure` (→ `BuildWeekRow` → `StackBlock`), `BuildLegend`, and the detail sheet, and owns the selected-workout state. `today` defaults to the real local date and is overridable so tests do not need fake timers.
+  - `StackBlock` renders a plain `<button>` wrapper around one `<span>` piece. No canvas, SVG scene, WebGL, 3D, drag/drop, collision detection, game loop, physics, or animation library is involved. The button carries `data-state`, `data-span`, `data-newest`, and the `--piece-color` / `--piece-span` custom properties; its accessible name is the full sentence, e.g. "Week 6 Thursday, Intervals, 5 to 6 miles, Completed", so state never depends on colour.
+  - Rows are centred and sized from one CSS variable: `--stack-unit: min(40px, calc((100% - 3 * var(--stack-gap)) / 8))`. The widest training week is four blocks spanning eight units, so every row fits at any width without a media query — a span-1 piece measures about 27px at 320px and is capped at 40px on desktop. The button wrapper keeps a 44px minimum height; on narrow screens the visible piece is narrower than the wrapper, as the UX spec allows.
+  - Completed blocks are filled with the design-system gradient and depth shadows, planned blocks are low-contrast outlines, and past incomplete blocks are outlined with a dashed edge. Each rule declares a plain fallback before its `color-mix()` value.
+  - The newest completed block reveals itself with a 320ms opacity + 10px downward-to-rest translation and keeps one restrained glow. Under `prefers-reduced-motion: reduce` both the motion and the glow are removed and a static ring marks the same block instead.
+  - `src/features/workout-detail/WorkoutDetailSheet.tsx` is a read-only detail sheet (date, type, target, full instructions, status, and the actual result when completed) built on the existing `Sheet` primitive. It lives outside `features/build/` because the Plan screen shows the same sheet; logging and editing actions arrive with UI-5/UI-6.
+  - `BuildLegend` lists the five block types (never Rest) plus the three fill treatments, so a sighted user can read a dashed edge without opening a block.
+  - Tests: `src/domain/build.test.ts` covers the span map, block counts, states, metrics, and streak rules; `src/features/build/BuildScreen.test.tsx` covers 18 rows, 71 blocks, no rest blocks, per-type spans, the three states, the single glow, the metrics strip, the legend, and opening the detail sheet by click and by keyboard.
 
 - UI-3 Complete Run vertical slice:
   - `src/features/run-entry/CompleteRunSheet.tsx` provides controlled distance, duration, effort, and notes entry, edit prefilling, a 120-character counter, accessible validation, and guarded dismissal.
@@ -54,9 +69,9 @@
 
 ## Not implemented
 
-- Build and Plan screens (still placeholders).
+- Plan screen (still a placeholder).
 - Timer, pace, GPS, integrations, and other explicitly out-of-scope run capture features.
-- Plan editing.
+- Plan editing, and the log/edit actions inside the workout detail sheet (UI-5/UI-6).
 - Reducer-driven state writes (`LOG_RUN`, etc.) — run logging is the only write, applied directly through `saveRunLog`.
 - Deployment.
 
@@ -65,6 +80,10 @@
 - `docs/ARCHITECTURE.md` sketches `src/app/appReducer.ts` and a full feature/component tree. This is still deferred until the phase that needs it, per the instruction not to generate empty files without immediate purpose. The current shell uses local `useState` for the active tab only.
 - The repository's documentation packet originally had every file saved with a stray `" (1)"` suffix (e.g. `docs/PRODUCT_AND_SCOPE (1).md`) and a stub `README.md` shadowed by `README (1).md`. These were renamed to match the paths referenced throughout `AGENTS.md`/`START_HERE.md` (`docs/PRODUCT_AND_SCOPE.md`, `README.md`, etc.) before any code was written.
 - jsdom does not implement `HTMLDialogElement.showModal`/`close`/Escape-to-cancel, so `src/test/setup.ts` polyfills just enough of that behavior (open-attribute toggling, a `close` event, and a document-level Escape listener that mirrors the native cancel-then-close sequence) for the Sheet tests to exercise real component logic rather than mocks.
+- The Build structure reads chronologically from the top: week 1 is the first row and week 18 the last. The reference mockup's artwork grows upward from the bottom, but all 18 rows are always present (planned weeks render as outlines), so nothing actually "grows"; a top-down order keeps DOM order, visual order, and reading order identical. `docs/REFERENCE_MOCKUP.md` explicitly does not treat the artwork's layout as controlling.
+- Block width is derived from the workout type, while block colour still comes from `workout.build.colorKey` (matching `TodayWorkoutCard`). A domain test asserts the seed plan keeps the two in agreement for every workout.
+- The run streak follows `docs/DATA_AND_STORAGE.md` exactly, which means the streak reads 0 for any day that schedules a run the user has not logged yet — including the current day, before that run happens. This is the documented rule, not a defect, but it is worth a product decision before release.
+- Blocks are keyboard reachable in plan order: one tab stop per scheduled run, 71 in total. No roving tabindex or arrow-key grid navigation was added, because nothing in the phase documents asks for one.
 
 ## Update rule
 

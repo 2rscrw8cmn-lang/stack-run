@@ -1,18 +1,18 @@
 import { BottomNav } from "../components/shared/BottomNav";
 import { Card } from "../components/ui/Card";
 import type { RunLog, TrainingPlan, Workout } from "../domain/types";
+import { BuildScreen } from "../features/build/BuildScreen";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
 
-const TAB_LABELS: Record<Exclude<TabId, "today">, string> = {
-  build: "Build",
+type PlaceholderTabId = Exclude<TabId, "today" | "build">;
+
+const TAB_LABELS: Record<PlaceholderTabId, string> = {
   plan: "Plan",
 };
 
-const TAB_PLACEHOLDER_TEXT: Record<Exclude<TabId, "today">, string> = {
-  build:
-    "The Build screen will show your growing stack of completed workouts here.",
+const TAB_PLACEHOLDER_TEXT: Record<PlaceholderTabId, string> = {
   plan: "The Plan screen will show your full 18-week schedule here.",
 };
 
@@ -38,14 +38,18 @@ export function AppShell({
         <p className="tagline">Build your race.</p>
       </header>
       <main className="app-shell__main">
-        {activeTab === "today" ? (
+        {activeTab === "today" && (
           <TodayScreen
             plan={plan}
             runLogs={runLogs}
             onViewPlan={() => onTabChange("plan")}
             onSaveRun={onSaveRun}
           />
-        ) : (
+        )}
+        {activeTab === "build" && (
+          <BuildScreen plan={plan} runLogs={runLogs} />
+        )}
+        {activeTab === "plan" && (
           <Card>
             <h1>{TAB_LABELS[activeTab]}</h1>
             <p>{TAB_PLACEHOLDER_TEXT[activeTab]}</p>

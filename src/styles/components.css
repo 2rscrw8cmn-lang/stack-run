@@ -552,3 +552,349 @@ textarea.run-input {
 .complete-run-form__actions .button {
   width: 100%;
 }
+
+/* Build screen */
+
+.build-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.screen-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* Summary metrics */
+
+.build-metrics {
+  padding: var(--space-4);
+}
+
+.build-metrics__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+/* Reversed so the value reads above its label while `dt` stays first in the DOM. */
+.build-metrics__metric {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.build-metrics__metric dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.build-metrics__metric dd {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.build-metrics__of {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Structure */
+
+/*
+ * The widest training week is four blocks spanning eight units, so the unit
+ * is derived from the row width instead of being fixed: every row fits at any
+ * viewport width, and the 40px cap keeps blocks from ballooning on desktop.
+ * The percentage resolves where the variable is used — the block width — so it
+ * measures the centred block area, not the card.
+ */
+.build-structure {
+  --stack-gap: 4px;
+  --stack-unit: min(40px, calc((100% - 3 * var(--stack-gap)) / 8));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: var(--space-4) var(--space-2);
+  list-style: none;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.build-week-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+}
+
+.build-week-row__number {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: right;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.build-week-row__blocks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--stack-gap);
+  min-width: 0;
+}
+
+/*
+ * The button is the tappable wrapper and keeps a 44px minimum height. Its
+ * width is exactly `span` units, so the visible piece inside stays in
+ * proportion; on a 320px screen that piece is narrower than 44px.
+ */
+.stack-block {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  width: calc(var(--piece-span) * var(--stack-unit));
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+}
+
+.stack-block__piece {
+  width: 100%;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: transform 120ms ease;
+}
+
+.stack-block:active .stack-block__piece {
+  transform: scale(0.98);
+}
+
+/* Completed: filled, lightly dimensional. */
+.stack-block[data-state="completed"] .stack-block__piece {
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 3px 0 rgba(0, 0, 0, 0.4),
+    0 7px 12px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 3px 0 color-mix(in srgb, var(--piece-color) 62%, black),
+    0 7px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Planned: low-contrast outline. */
+.stack-block[data-state="planned"] .stack-block__piece {
+  background: transparent;
+  border-color: var(--border-strong);
+  border-color: color-mix(in srgb, var(--piece-color) 42%, transparent);
+}
+
+/* Past incomplete: outlined with a dashed edge. */
+.stack-block[data-state="missed"] .stack-block__piece {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--text-subtle);
+  border-color: color-mix(in srgb, var(--piece-color) 60%, transparent);
+}
+
+/* The newest completed block reveals itself and carries the only glow. */
+.stack-block[data-newest="true"] .stack-block__piece {
+  animation: stack-block-reveal 320ms ease-out;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 3px 0 rgba(0, 0, 0, 0.4),
+    0 0 14px rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 3px 0 color-mix(in srgb, var(--piece-color) 62%, black),
+    0 0 14px color-mix(in srgb, var(--piece-color) 55%, transparent);
+}
+
+@keyframes stack-block-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reduced motion: no translation and no glow — a static ring marks the newest block. */
+@media (prefers-reduced-motion: reduce) {
+  .stack-block[data-newest="true"] .stack-block__piece {
+    animation: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      0 3px 0 rgba(0, 0, 0, 0.4);
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+
+  .stack-block__piece {
+    transition: none;
+  }
+}
+
+/* Legend */
+
+.build-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.build-legend__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.build-legend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.build-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.build-legend__swatch {
+  --piece-color: var(--text-muted);
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+}
+
+.build-legend__swatch[data-state="planned"] {
+  background: transparent;
+  border-color: var(--border-strong);
+}
+
+.build-legend__swatch[data-state="missed"] {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--text-subtle);
+}
+
+/* Workout detail */
+
+.workout-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.workout-detail__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.workout-detail__status[data-state="completed"] {
+  color: var(--accent);
+}
+
+.workout-detail__status[data-state="missed"] {
+  color: var(--long);
+}
+
+.workout-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.workout-detail__facts dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.workout-detail__facts dd {
+  margin: var(--space-1) 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workout-detail__instructions {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.workout-detail__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.workout-detail__result-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workout-detail__notes {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}

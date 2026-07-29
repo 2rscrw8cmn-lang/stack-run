@@ -1,13 +1,8 @@
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { formatDurationSeconds } from "../../domain/duration";
-import type { Effort, RunLog, Workout } from "../../domain/types";
-
-const EFFORT_LABEL: Record<Effort, string> = {
-  rough: "Rough",
-  solid: "Solid",
-  great: "Great",
-};
+import type { RunLog, Workout } from "../../domain/types";
+import { EFFORT_LABEL } from "../../domain/workout";
 
 interface CompletedRunSummaryProps {
   workout: Workout;

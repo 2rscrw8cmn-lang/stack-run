@@ -1,5 +1,11 @@
 import { isAfterLocalDate, isBeforeLocalDate } from "./dates";
-import type { RunLog, TrainingPlan, Workout } from "./types";
+import type { Effort, RunLog, TrainingPlan, Workout } from "./types";
+
+export const EFFORT_LABEL: Record<Effort, string> = {
+  rough: "Rough",
+  solid: "Solid",
+  great: "Great",
+};
 
 export type TodayViewModel =
   | { kind: "before-plan"; planStartDate: string }

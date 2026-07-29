@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
@@ -17,7 +17,7 @@ describe("App", () => {
     );
   });
 
-  it("switches to the Build and Plan placeholders on tap", async () => {
+  it("switches to the Build structure and the Plan placeholder on tap", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -27,6 +27,11 @@ describe("App", () => {
       "aria-current",
       "page",
     );
+    expect(
+      within(screen.getByRole("list", { name: "Training weeks" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(18);
 
     await user.click(screen.getByRole("button", { name: "Plan" }));
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
