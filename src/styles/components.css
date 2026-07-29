@@ -374,3 +374,16 @@
   font-size: 16px;
   font-weight: 600;
 }
+
+/* Complete Run */
+.complete-run-form { display: flex; flex-direction: column; gap: var(--space-5); }
+.run-input { width: 100%; min-height: 48px; padding: var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-soft); }
+textarea.run-input { resize: vertical; }
+.effort-picker { margin: 0; padding: 0; border: 0; }
+.effort-picker legend, .notes-field label { margin-bottom: var(--space-2); color: var(--text-muted); font-size: 14px; font-weight: 600; }
+.effort-picker__options { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.effort-picker__option { display: flex; min-height: 70px; align-items: center; justify-content: center; flex-direction: column; gap: var(--space-1); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-soft); color: var(--text-muted); cursor: pointer; }
+.effort-picker__option[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-soft)); }
+.notes-field { position: relative; display: flex; flex-direction: column; gap: var(--space-2); }
+.notes-field label span { color: var(--text-subtle); font-weight: 400; }
+.notes-field__counter { align-self: flex-end; color: var(--text-subtle); font-size: 12px; }

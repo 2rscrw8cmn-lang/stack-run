@@ -1,9 +1,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { loadAppState, resetAppState, saveAppState, StorageLoadError } from "./appStateRepository";
+import { loadAppState, resetAppState, saveAppState, saveRunLog, StorageLoadError } from "./appStateRepository";
 import { APP_STATE_STORAGE_KEY } from "./storageKeys";
 
 beforeEach(() => {
   localStorage.clear();
+});
+
+describe("saveRunLog", () => {
+  it("updates the one existing log for a workout and persists it", () => {
+    let state = loadAppState();
+    const base = { workoutId: "workout-002", completedDate: "2026-08-04", distanceMiles: 2, durationSeconds: 1200, effort: "solid" as const, notes: "" };
+    state = saveRunLog(state, base);
+    state = saveRunLog(state, { ...base, distanceMiles: 2.25, notes: "Updated" });
+    expect(state.runLogs).toHaveLength(1);
+    expect(loadAppState().runLogs[0]).toMatchObject({ distanceMiles: 2.25, notes: "Updated" });
+  });
 });
 
 describe("loadAppState", () => {
