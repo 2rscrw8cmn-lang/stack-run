@@ -8,7 +8,12 @@ interface BuildWeekRowProps {
 
 export function BuildWeekRow({ week, onSelectWorkout }: BuildWeekRowProps) {
   return (
-    <li className="build-week-row" aria-label={`Week ${week.weekNumber}`}>
+    <li
+      className="build-week-row"
+      // Alternating bond course; CSS shifts the two by a quarter unit each way.
+      data-bond={week.weekNumber % 2 === 0 ? "b" : "a"}
+      aria-label={`Week ${week.weekNumber}`}
+    >
       <span className="build-week-row__number" aria-hidden="true">
         {week.weekNumber}
       </span>

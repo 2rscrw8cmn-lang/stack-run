@@ -3,7 +3,7 @@
 ## Global acceptance
 
 - No horizontal overflow at 320 px.
-- All touch targets are at least 44 px.
+- All touch targets are at least 44 px, except Build structure blocks. Those are approximately 38 px tall and as narrow as 26 px at 320 px, because a tight, stacked structure and 44 px rows cannot both fit at that width. The exception is limited to Build blocks: they are non-destructive, they open a read-only sheet, and every workout they reach is also reachable from the Plan screen.
 - Bottom navigation remains reachable.
 - Text is readable without zoom.
 - Keyboard focus is visible.
@@ -40,6 +40,8 @@
 - Rest days create no blocks.
 - Every scheduled run creates exactly one block.
 - Block width matches workout type.
+- Week 1 is the bottom row and race week is the top row.
+- Alternating rows are offset, so block seams do not line up down the structure.
 - Completed block fills.
 - Future block outlines.
 - Past incomplete block is visually distinct.

@@ -38,6 +38,27 @@ describe("BuildScreen", () => {
     expect(blocks()).toHaveLength(71);
   });
 
+  it("builds upward, so race week is the first row and week 1 the last", () => {
+    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
+
+    const rows = within(structure()).getAllByRole("listitem");
+    expect(rows[0]).toHaveAccessibleName("Week 18");
+    expect(rows[17]).toHaveAccessibleName("Week 1");
+    expect(
+      within(rows[0]).getByRole("button", { name: /Race/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("alternates the bond course so block seams do not line up", () => {
+    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
+
+    const rows = within(structure()).getAllByRole("listitem");
+    // Rows render newest first, so this reads week 18, 17, 16 …
+    expect(rows.map((row) => row.getAttribute("data-bond")).slice(0, 4)).toEqual(
+      ["b", "a", "b", "a"],
+    );
+  });
+
   it("creates no block for a rest day", () => {
     render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
 

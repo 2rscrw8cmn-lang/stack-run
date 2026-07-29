@@ -149,19 +149,22 @@ Run streak means consecutive scheduled run workouts completed through the most r
 - One row represents one training week.
 - Each scheduled run renders one block.
 - Rest days render no block.
-- Rows are centered.
+- The structure builds upward from a ground line: week 1 is the bottom row and race week is the top row.
+- Rows are centered, with alternating courses offset a quarter unit in opposite directions, so the seams between blocks never line up for more than one row.
 - Block width uses a small span map:
   - Easy: 1
   - Intervals: 2
   - Simulation: 2
   - Long: 3
   - Race: 4
+- Block height also rises with span and is bottom-aligned within the row, so the silhouette varies week to week. The race block is the tallest — it reads as the capstone.
 - Each block retains a minimum tappable wrapper while the visible piece may be narrower.
 - Completed blocks are filled.
-- Future/planned blocks are low-contrast outlines.
+- Future/planned blocks are low-contrast outlines, quiet enough to read as a blueprint of the finished structure rather than as competing content.
 - Past incomplete blocks remain outlined with a dashed edge.
 - The active or most recently completed block may have one restrained glow.
 - Tapping a block opens a workout detail sheet.
+- The layout stays deterministic. There is no falling, rotating, interlocking, or player-placed piece.
 
 ### Legend
 

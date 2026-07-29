@@ -63,3 +63,13 @@
 ## D-012 — Deployment
 
 **Decision:** Static Vercel deployment from GitHub.
+
+## D-013 — Build structure reads as a built structure
+
+**Decision:** The Build screen stacks upward from a ground line toward the race, uses a brick-bond offset between alternating week rows, varies block height with span, and renders future weeks as a faint blueprint.
+
+**Reason:** Evenly spaced, uniformly centered rows read as a list of runs rather than as something being built. Density, an offset bond, a varied silhouette, and a quiet future are what make accumulated work legible at a glance.
+
+**Consequences:** Amends "Rows are centered" in `UX_PRODUCT_SPEC.md`, and adds a Build-only exception to the 44 px touch-target rule in `QA_ACCEPTANCE.md`.
+
+**Unchanged:** D-005 still stands. No falling pieces, no rotation, no collision, no interlocking tetromino shapes, no physics, no player-placed blocks. The layout remains deterministic CSS.

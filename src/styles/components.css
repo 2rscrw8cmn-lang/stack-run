@@ -615,38 +615,55 @@ textarea.run-input {
 /* Structure */
 
 /*
- * The widest training week is four blocks spanning eight units, so the unit
- * is derived from the row width instead of being fixed: every row fits at any
+ * The widest training week is four blocks spanning eight units, so the unit is
+ * derived from the row width instead of being fixed: every row fits at any
  * viewport width, and the 40px cap keeps blocks from ballooning on desktop.
  * The percentage resolves where the variable is used — the block width — so it
- * measures the centred block area, not the card.
+ * measures the centred block area, not the card. Dividing by 8.5 rather than 8
+ * leaves half a unit of slack for the bond offset below.
  */
 .build-structure {
-  --stack-gap: 4px;
-  --stack-unit: min(40px, calc((100% - 3 * var(--stack-gap)) / 8));
+  --stack-gap: 3px;
+  --stack-unit: min(40px, calc((100% - 3 * var(--stack-gap)) / 8.5));
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin: 0;
-  padding: var(--space-4) var(--space-2);
+  padding: var(--space-5) var(--space-2) var(--space-3);
   list-style: none;
   background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
+/* The ground the structure is built up from. */
+.build-structure::after {
+  content: "";
+  display: block;
+  height: 4px;
+  margin: var(--space-3) var(--space-4) 0;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border-strong) 18%,
+    var(--border-strong) 82%,
+    transparent
+  );
+}
+
 .build-week-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 18px;
-  align-items: center;
+  grid-template-columns: 16px minmax(0, 1fr) 16px;
+  align-items: end;
   gap: var(--space-1);
-  min-height: 44px;
 }
 
 .build-week-row__number {
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
+  padding-bottom: var(--space-2);
   text-align: right;
   color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
@@ -654,23 +671,37 @@ textarea.run-input {
 
 .build-week-row__blocks {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   gap: var(--stack-gap);
   min-width: 0;
 }
 
 /*
- * The button is the tappable wrapper and keeps a 44px minimum height. Its
- * width is exactly `span` units, so the visible piece inside stays in
- * proportion; on a 320px screen that piece is narrower than 44px.
+ * Brick bond: neighbouring weeks shift a quarter unit in opposite directions,
+ * so the vertical seams between blocks never line up for more than one row.
+ * The relative half-unit step is what stops the grid from reading as a grid.
+ */
+.build-week-row[data-bond="a"] .build-week-row__blocks {
+  transform: translateX(calc(var(--stack-unit) / -4));
+}
+
+.build-week-row[data-bond="b"] .build-week-row__blocks {
+  transform: translateX(calc(var(--stack-unit) / 4));
+}
+
+/*
+ * The button is the tappable wrapper. Its width is exactly `span` units, so
+ * the visible piece inside stays in proportion; on a 320px screen that piece
+ * is narrower than the wrapper. Rows are deliberately tight — see
+ * docs/QA_ACCEPTANCE.md for the touch-target exception this carries.
  */
 .stack-block {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex: 0 1 auto;
   width: calc(var(--piece-span) * var(--stack-unit));
-  min-height: 44px;
+  min-height: 38px;
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
@@ -678,12 +709,30 @@ textarea.run-input {
   cursor: pointer;
 }
 
+/*
+ * Piece height rises with span, so a week of easy runs and a week built around
+ * a long run have different silhouettes. Bottom-aligned, so every row still
+ * sits on one line.
+ */
 .stack-block__piece {
   width: 100%;
   height: 24px;
   border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   transition: transform 120ms ease;
+}
+
+.stack-block[data-span="2"] .stack-block__piece {
+  height: 30px;
+}
+
+.stack-block[data-span="3"] .stack-block__piece {
+  height: 34px;
+}
+
+/* The race is the capstone the whole structure is built toward. */
+.stack-block[data-span="4"] .stack-block__piece {
+  height: 44px;
 }
 
 .stack-block:active .stack-block__piece {
@@ -708,19 +757,22 @@ textarea.run-input {
     0 7px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Planned: low-contrast outline. */
+/*
+ * Planned: a faint blueprint of the finished structure, quiet enough that the
+ * completed mass reads as the thing that has actually been built.
+ */
 .stack-block[data-state="planned"] .stack-block__piece {
   background: transparent;
-  border-color: var(--border-strong);
-  border-color: color-mix(in srgb, var(--piece-color) 42%, transparent);
+  border-color: var(--border);
+  border-color: color-mix(in srgb, var(--piece-color) 22%, transparent);
 }
 
-/* Past incomplete: outlined with a dashed edge. */
+/* Past incomplete: outlined with a dashed edge, louder than the blueprint. */
 .stack-block[data-state="missed"] .stack-block__piece {
   background: transparent;
   border-style: dashed;
   border-color: var(--text-subtle);
-  border-color: color-mix(in srgb, var(--piece-color) 60%, transparent);
+  border-color: color-mix(in srgb, var(--piece-color) 55%, transparent);
 }
 
 /* The newest completed block reveals itself and carries the only glow. */
