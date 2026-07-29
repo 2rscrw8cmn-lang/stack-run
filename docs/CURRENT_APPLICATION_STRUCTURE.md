@@ -11,6 +11,7 @@
   - `src/features/run-entry/runValidation.ts` enforces the documented distance, duration, effort, precision, and notes rules.
   - `saveRunLog` in `src/storage/appStateRepository.ts` creates or replaces the one log for a workout and persists the complete versioned `AppState`.
   - `App` updates in-memory state after persistence, so Today immediately renders its completed state; refresh reloads that same state.
+  - Before the plan begins, Today exposes `Log First Run` so the functional slice is discoverable and usable instead of hiding run entry behind the future start date.
   - Component, validation, and repository upsert tests cover the functional slice.
 
 - Vite + React + TypeScript scaffold at the repository root.

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AppState } from "../domain/types";
+import { todayLocalDate } from "../domain/dates";
 import { loadAppState, saveRunLog, StorageLoadError } from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
@@ -29,7 +30,7 @@ export function App() {
       plan={appState.plan}
       runLogs={appState.runLogs}
       onSaveRun={(workout, values: ValidRunEntry) => setAppState(saveRunLog(appState, {
-        workoutId: workout.id, completedDate: workout.date, ...values,
+        workoutId: workout.id, completedDate: todayLocalDate(), ...values,
       }))}
     />
   );

@@ -36,6 +36,15 @@ describe("TodayScreen", () => {
     expect(
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log First Run" })).toBeInTheDocument();
+  });
+
+  it("opens run entry from the before-plan state", async () => {
+    const user = userEvent.setup();
+    render(<TodayScreen plan={plan} runLogs={[]} onViewPlan={vi.fn()} today="2026-07-29" />);
+    await user.click(screen.getByRole("button", { name: "Log First Run" }));
+    expect(screen.getByRole("heading", { name: "Complete Run" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Distance/)).toBeInTheDocument();
   });
 
   it("shows the rest-day state with a View Plan action and no completion requirement", async () => {

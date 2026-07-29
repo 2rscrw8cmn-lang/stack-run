@@ -31,13 +31,24 @@ export function TodayScreen({
 
   const viewModel = selectTodayViewModel(plan, runLogs, today);
   const daysRemaining = daysBetweenLocalDates(today, plan.race.date);
-  const editable = viewModel.kind === "run" || viewModel.kind === "completed" ? viewModel : null;
+  const firstRun = plan.weeks
+    .flatMap((week) => week.workouts)
+    .find((workout) => workout.type !== "rest");
+  const firstRunLog = firstRun
+    ? runLogs.find((runLog) => runLog.workoutId === firstRun.id)
+    : undefined;
+  const editable =
+    viewModel.kind === "run" || viewModel.kind === "completed"
+      ? { workout: viewModel.workout, runLog: viewModel.kind === "completed" ? viewModel.runLog : undefined }
+      : viewModel.kind === "before-plan" && firstRun
+        ? { workout: firstRun, runLog: firstRunLog }
+        : null;
 
   return (
     <div className="today-screen">
       <RaceSummaryCard race={plan.race} daysRemaining={daysRemaining} />
 
-      {viewModel.kind === "before-plan" && (
+      {viewModel.kind === "before-plan" && !firstRunLog && (
         <Card className="today-workout-card">
           <p className="today-workout-card__eyebrow">Plan starts soon</p>
           <p className="today-workout-card__title">
@@ -48,10 +59,15 @@ export function TodayScreen({
               year: "numeric",
             })}
           </p>
-          <Button variant="secondary" onClick={onViewPlan}>
-            View Plan
+          <Button onClick={() => setSheetOpen(true)}>
+            Log First Run
           </Button>
+          <Button variant="ghost" onClick={onViewPlan}>View Plan</Button>
         </Card>
+      )}
+
+      {viewModel.kind === "before-plan" && firstRun && firstRunLog && (
+        <CompletedRunSummary workout={firstRun} runLog={firstRunLog} onEditRun={() => setSheetOpen(true)} />
       )}
 
       {viewModel.kind === "after-race" && (
@@ -81,7 +97,7 @@ export function TodayScreen({
       )}
 
       <p className="visually-hidden" aria-live="polite">{saveAnnouncement}</p>
-      {editable && <CompleteRunSheet key={editable.kind === "completed" ? editable.runLog.updatedAt : "new"} isOpen={isSheetOpen} workout={editable.workout} runLog={editable.kind === "completed" ? editable.runLog : undefined} onClose={() => setSheetOpen(false)} onSave={(_workout, values) => { onSaveRun(editable.workout, values); setSaveAnnouncement("Run saved successfully."); setSheetOpen(false); }} />}
+      {editable && <CompleteRunSheet key={editable.runLog?.updatedAt ?? "new"} isOpen={isSheetOpen} workout={editable.workout} runLog={editable.runLog} onClose={() => setSheetOpen(false)} onSave={(_workout, values) => { onSaveRun(editable.workout, values); setSaveAnnouncement("Run saved successfully."); setSheetOpen(false); }} />}
     </div>
   );
 }
