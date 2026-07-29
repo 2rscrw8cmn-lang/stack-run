@@ -40,9 +40,11 @@ export function CompletedRunSummary({
           <dd>{EFFORT_LABEL[runLog.effort]}</dd>
         </div>
       </dl>
-      <Button variant="secondary" onClick={onEditRun}>
-        Edit Run
-      </Button>
+      <div className="today-workout-card__actions">
+        <Button variant="secondary" onClick={onEditRun}>
+          Edit Run
+        </Button>
+      </div>
     </Card>
   );
 }

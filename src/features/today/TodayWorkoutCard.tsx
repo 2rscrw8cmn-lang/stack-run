@@ -19,9 +19,11 @@ export function TodayWorkoutCard({
       <Card className="today-workout-card">
         <p className="today-workout-card__eyebrow">Rest Day</p>
         <p className="today-workout-card__details">{workout.details}</p>
-        <Button variant="secondary" onClick={onViewPlan}>
-          View Plan
-        </Button>
+        <div className="today-workout-card__actions">
+          <Button variant="secondary" onClick={onViewPlan}>
+            View Plan
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -50,7 +52,9 @@ export function TodayWorkoutCard({
         </div>
       </div>
       <p className="today-workout-card__details">{workout.details}</p>
-      <Button onClick={onMarkComplete}>Mark Complete</Button>
+      <div className="today-workout-card__actions">
+        <Button onClick={onMarkComplete}>Mark Complete</Button>
+      </div>
     </Card>
   );
 }

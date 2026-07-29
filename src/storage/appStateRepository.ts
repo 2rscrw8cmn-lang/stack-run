@@ -1,4 +1,4 @@
-import type { AppState } from "../domain/types";
+import type { AppState, RunLog } from "../domain/types";
 import { createInitialAppState, migrateAppState } from "./migrations";
 import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
 
@@ -41,6 +41,38 @@ export function loadAppState(): AppState {
 
 export function saveAppState(state: AppState): void {
   localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(state));
+}
+
+/** Creates or updates the single log belonging to a scheduled workout. */
+export function saveRunLog(
+  state: AppState,
+  input: Omit<RunLog, "id" | "createdAt" | "updatedAt">,
+): AppState {
+  const now = new Date().toISOString();
+  const existing = state.runLogs.find(
+    (log) => log.workoutId === input.workoutId,
+  );
+
+  const runLog: RunLog = existing
+    ? { ...existing, ...input, updatedAt: now }
+    : {
+        ...input,
+        id: `run-${input.workoutId}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+  const next: AppState = {
+    ...state,
+    runLogs: existing
+      ? state.runLogs.map((log) =>
+          log.workoutId === input.workoutId ? runLog : log,
+        )
+      : [...state.runLogs, runLog],
+  };
+
+  saveAppState(next);
+  return next;
 }
 
 /** Discards all plan edits and run logs and restores the original seed plan. */

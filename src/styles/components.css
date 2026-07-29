@@ -165,15 +165,36 @@
 
 /* Sheet */
 
+/*
+ * The dialog fills the viewport and positions the panel inside itself, so the
+ * panel's `max-height: 100%` resolves against a definite height. Sizing the
+ * dialog to its own content instead leaves that percentage undefined, which is
+ * what left the sheet collapsed to a sliver above the bottom of the screen.
+ */
 .sheet {
-  border: none;
-  margin: auto;
+  position: fixed;
+  inset: 0;
+  display: none;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: none;
+  /* Sheet.tsx overrides these while open so the on-screen keyboard can't cover
+     the panel; the fallbacks cover browsers without a visual viewport. */
+  height: 100vh;
+  height: var(--sheet-height, 100dvh);
+  transform: translateY(var(--sheet-top, 0px));
+  max-height: none;
+  margin: 0;
   padding: 0;
+  border: none;
+  overflow: hidden;
   background: transparent;
   color: var(--text);
-  width: 100%;
-  max-width: 480px;
-  max-height: 100dvh;
+}
+
+.sheet[open] {
+  display: flex;
+  flex-direction: column;
 }
 
 .sheet::backdrop {
@@ -181,14 +202,18 @@
 }
 
 .sheet__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  max-height: 100%;
-  overflow-y: auto;
   padding: var(--space-5);
 }
 
 .sheet__header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -202,27 +227,40 @@
   font-weight: 600;
 }
 
+/* Only the body scrolls, so the header and a sticky action stay reachable. */
+.sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 @media (max-width: 767px) {
   .sheet {
-    position: fixed;
-    inset: auto 0 0 0;
-    margin: 0;
-    max-width: none;
+    /* Leave a tappable strip of backdrop above the panel. */
+    padding-top: max(var(--space-8), env(safe-area-inset-top));
   }
 
   .sheet__panel {
+    border-bottom: none;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
     animation: sheet-slide-up 250ms ease-out;
   }
 }
 
 @media (min-width: 768px) {
   .sheet {
-    border-radius: var(--radius-lg);
+    justify-content: center;
+    align-items: center;
+    padding: var(--space-6);
   }
 
   .sheet__panel {
+    max-width: 480px;
     border-radius: var(--radius-lg);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
     animation: sheet-fade-in 200ms ease-out;
   }
 }
@@ -308,8 +346,15 @@
   color: var(--text-subtle);
 }
 
+/* One vertical rhythm for every Today card, so no child needs ad-hoc margins. */
+.today-workout-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .today-workout-card__eyebrow {
-  margin: 0 0 var(--space-2);
+  margin: 0;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -321,7 +366,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin: 0;
 }
 
 .workout-color-block {
@@ -351,26 +396,159 @@
 }
 
 .today-workout-card__details {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   color: var(--text-muted);
+}
+
+/* Actions sit one step further from the content they act on. */
+.today-workout-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.today-workout-card__actions .button {
+  width: 100%;
 }
 
 .completed-run-summary__stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-  margin: var(--space-3) 0 var(--space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+  margin: 0;
+}
+
+.completed-run-summary__stats > div {
+  min-width: 0;
 }
 
 .completed-run-summary__stats dt {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--text-subtle);
 }
 
 .completed-run-summary__stats dd {
-  margin: 0;
+  margin: var(--space-1) 0 0;
   font-size: 16px;
   font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 359px) {
+  .completed-run-summary__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Complete Run */
+
+.complete-run-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.complete-run-form .form-field__label,
+.effort-picker__legend,
+.notes-field__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.run-input {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.run-input::placeholder {
+  color: var(--text-subtle);
+}
+
+textarea.run-input {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.effort-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.effort-picker__legend {
+  padding: 0;
+}
+
+.effort-picker__options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.effort-picker__option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 70px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.effort-picker__option[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-soft));
+}
+
+.notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.notes-field__label span {
+  color: var(--text-subtle);
+  font-weight: 400;
+}
+
+.notes-field__counter {
+  align-self: flex-end;
+  color: var(--text-subtle);
+  font-size: 12px;
+}
+
+/*
+ * Keeps Save Run in reach on a short viewport instead of stranding it below the
+ * fold of the sheet body.
+ */
+.complete-run-form__actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--space-3);
+  background: var(--surface);
+}
+
+.complete-run-form__actions .button {
+  width: 100%;
 }

@@ -36,6 +36,27 @@ describe("TodayScreen", () => {
     expect(
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Log First Run" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens run entry from the before-plan state", async () => {
+    const user = userEvent.setup();
+    render(
+      <TodayScreen
+        plan={plan}
+        runLogs={[]}
+        onViewPlan={vi.fn()}
+        today="2026-07-15"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Log First Run" }));
+    expect(
+      screen.getByRole("heading", { name: "Complete Run" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Distance/)).toBeInTheDocument();
   });
 
   it("shows the rest-day state with a View Plan action and no completion requirement", async () => {
@@ -102,14 +123,46 @@ describe("TodayScreen", () => {
     );
 
     expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getByText("2.1 mi")).toBeInTheDocument();
-    expect(screen.getByText("20:30")).toBeInTheDocument();
-    expect(screen.getByText("Solid")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("definition").map((stat) => stat.textContent),
+    ).toEqual(["2.1 mi", "20:30", "Solid"]);
 
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     expect(
-      screen.getByRole("heading", { name: "Complete Run" }),
+      screen.getByRole("heading", { name: "Edit Run" }),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
+  });
+
+  it("saves an entered run and announces the save", async () => {
+    const user = userEvent.setup();
+    const onSaveRun = vi.fn();
+    render(
+      <TodayScreen
+        plan={plan}
+        runLogs={[]}
+        onViewPlan={vi.fn()}
+        onSaveRun={onSaveRun}
+        today="2026-08-04"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark Complete" }));
+    await user.type(screen.getByLabelText(/Distance/), "2.1");
+    await user.type(screen.getByLabelText(/Duration/), "2030");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(onSaveRun).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "workout-002" }),
+      {
+        distanceMiles: 2.1,
+        durationSeconds: 1230,
+        effort: "solid",
+        notes: "",
+      },
+    );
+    expect(screen.getByText("Run saved successfully.")).toBeInTheDocument();
   });
 
   it("shows the after-race state once race day has passed", () => {

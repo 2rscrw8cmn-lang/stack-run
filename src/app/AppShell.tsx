@@ -1,6 +1,7 @@
 import { BottomNav } from "../components/shared/BottomNav";
 import { Card } from "../components/ui/Card";
-import type { RunLog, TrainingPlan } from "../domain/types";
+import type { RunLog, TrainingPlan, Workout } from "../domain/types";
+import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
 
@@ -20,6 +21,7 @@ interface AppShellProps {
   onTabChange: (tab: TabId) => void;
   plan: TrainingPlan;
   runLogs: RunLog[];
+  onSaveRun: (workout: Workout, values: ValidRunEntry) => void;
 }
 
 export function AppShell({
@@ -27,6 +29,7 @@ export function AppShell({
   onTabChange,
   plan,
   runLogs,
+  onSaveRun,
 }: AppShellProps) {
   return (
     <div className="app-shell">
@@ -40,6 +43,7 @@ export function AppShell({
             plan={plan}
             runLogs={runLogs}
             onViewPlan={() => onTabChange("plan")}
+            onSaveRun={onSaveRun}
           />
         ) : (
           <Card>
