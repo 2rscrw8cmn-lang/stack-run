@@ -72,9 +72,24 @@ export interface AppSettings {
   theme: "dark";
 }
 
+/**
+ * Where the user placed the block earned by a completed run. A run log records
+ * that the run happened; a placement records where its block was built into
+ * the structure. The two are deliberately separate states.
+ */
+export interface BlockPlacement {
+  workoutId: string;
+  weekNumber: number;
+  /** 1-based, inclusive. The block occupies `span` columns from here. */
+  columnStart: number;
+  span: 1 | 2 | 3 | 4;
+  placedAt: string;
+}
+
 export interface AppState {
-  schemaVersion: 1;
+  schemaVersion: 2;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
+  blockPlacements: BlockPlacement[];
 }

@@ -1,4 +1,9 @@
-import type { AppState, RunLog } from "../domain/types";
+import { BLOCK_SPAN_BY_TYPE } from "../domain/build";
+import {
+  assertPlacementFits,
+  InvalidPlacementError,
+} from "../domain/placement";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import { createInitialAppState, migrateAppState } from "./migrations";
 import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
 
@@ -36,7 +41,18 @@ export function loadAppState(): AppState {
     );
   }
 
-  return migrateAppState(parsed);
+  const state = migrateAppState(parsed);
+
+  // Write an upgraded state straight back, so storage stops holding a shape
+  // this build no longer writes. Nothing is lost: the migration only ever
+  // adds to what was there.
+  const storedVersion = (parsed as { schemaVersion?: unknown } | null)
+    ?.schemaVersion;
+  if (storedVersion !== state.schemaVersion) {
+    saveAppState(state);
+  }
+
+  return state;
 }
 
 export function saveAppState(state: AppState): void {
@@ -75,7 +91,63 @@ export function saveRunLog(
   return next;
 }
 
-/** Discards all plan edits and run logs and restores the original seed plan. */
+/**
+ * Creates or moves the single placement belonging to a workout's earned block.
+ * The span is checked against the workout type, and the position against the
+ * eight columns and the blocks already built into that week, so an invalid
+ * placement can never reach storage.
+ */
+export function placeBlock(
+  state: AppState,
+  input: Pick<BlockPlacement, "workoutId" | "weekNumber" | "columnStart" | "span">,
+): AppState {
+  const workout = state.plan.weeks
+    .flatMap((week) => week.workouts)
+    .find((candidate) => candidate.id === input.workoutId);
+
+  if (!workout) {
+    throw new InvalidPlacementError(`Unknown workout: ${input.workoutId}`);
+  }
+  if (BLOCK_SPAN_BY_TYPE[workout.type] !== input.span) {
+    throw new InvalidPlacementError(
+      `A ${workout.type} workout earns a span-${BLOCK_SPAN_BY_TYPE[workout.type]} block, not span-${input.span}.`,
+    );
+  }
+  if (workout.weekNumber !== input.weekNumber) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} belongs to week ${workout.weekNumber}, not week ${input.weekNumber}.`,
+    );
+  }
+  if (!state.runLogs.some((runLog) => runLog.workoutId === input.workoutId)) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} has no run log, so it has not earned a block.`,
+    );
+  }
+
+  assertPlacementFits(input, state.blockPlacements);
+
+  const placement: BlockPlacement = {
+    ...input,
+    placedAt: new Date().toISOString(),
+  };
+  const existing = state.blockPlacements.some(
+    (candidate) => candidate.workoutId === input.workoutId,
+  );
+
+  const next: AppState = {
+    ...state,
+    blockPlacements: existing
+      ? state.blockPlacements.map((candidate) =>
+          candidate.workoutId === input.workoutId ? placement : candidate,
+        )
+      : [...state.blockPlacements, placement],
+  };
+
+  saveAppState(next);
+  return next;
+}
+
+/** Discards all plan edits, run logs, and placements and restores the seed plan. */
 export function resetAppState(): AppState {
   const fresh = createInitialAppState();
   saveAppState(fresh);

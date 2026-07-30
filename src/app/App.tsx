@@ -1,7 +1,12 @@
 import { useState } from "react";
 import type { AppState } from "../domain/types";
 import { todayLocalDate } from "../domain/dates";
-import { loadAppState, saveRunLog, StorageLoadError } from "../storage/appStateRepository";
+import {
+  loadAppState,
+  placeBlock,
+  saveRunLog,
+  StorageLoadError,
+} from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
 import { AppShell } from "./AppShell";
@@ -29,6 +34,7 @@ export function App() {
       onTabChange={setActiveTab}
       plan={appState.plan}
       runLogs={appState.runLogs}
+      blockPlacements={appState.blockPlacements}
       onSaveRun={(workout, values: ValidRunEntry) =>
         setAppState((current) =>
           saveRunLog(current, {
@@ -37,6 +43,9 @@ export function App() {
             ...values,
           }),
         )
+      }
+      onPlaceBlock={(request) =>
+        setAppState((current) => placeBlock(current, request))
       }
     />
   );

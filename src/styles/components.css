@@ -354,6 +354,9 @@
 }
 
 .today-workout-card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-size: 12px;
   font-weight: 600;
@@ -612,54 +615,80 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
-/* Structure */
+/* Built structure */
 
-/*
- * The widest training week is four blocks spanning eight units, so the unit is
- * derived from the row width instead of being fixed: every row fits at any
- * viewport width, and the 40px cap keeps blocks from ballooning on desktop.
- * The percentage resolves where the variable is used — the block width — so it
- * measures the centred block area, not the card. Dividing by 8.5 rather than 8
- * leaves half a unit of slack for the bond offset below.
- */
-.build-structure {
-  --stack-gap: 3px;
-  --stack-unit: min(40px, calc((100% - 3 * var(--stack-gap)) / 8.5));
+.built-structure {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: var(--space-5) var(--space-2) var(--space-3);
-  list-style: none;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-3);
   background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
-/* The ground the structure is built up from. */
-.build-structure::after {
-  content: "";
-  display: block;
+.built-structure__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+/* The dashed hint of the course that comes next, above what is built. */
+.built-structure__next {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.built-structure__next-ghost {
+  flex: 1 1 auto;
+  height: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+}
+
+.built-structure__courses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.built-structure__ground {
   height: 4px;
-  margin: var(--space-3) var(--space-4) 0;
+  margin: var(--space-2) 0 0;
   border-radius: 2px;
   background: linear-gradient(
     90deg,
     transparent,
-    var(--border-strong) 18%,
-    var(--border-strong) 82%,
+    var(--border-strong) 12%,
+    var(--border-strong) 88%,
     transparent
   );
 }
 
-.build-week-row {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 16px;
-  align-items: end;
-  gap: var(--space-1);
+.built-structure__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-subtle);
 }
 
-.build-week-row__number {
+.built-week-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.built-week-row__number {
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
@@ -669,39 +698,35 @@ textarea.run-input {
   font-variant-numeric: tabular-nums;
 }
 
-.build-week-row__blocks {
+.built-week-row[data-active="true"] .built-week-row__number {
+  color: var(--accent);
+}
+
+/* One course: eight equal columns, blocks pinned to the columns they occupy. */
+.built-week-row__course {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+  min-height: 40px;
+}
+
+.built-week-row__course > * {
+  grid-row: 1;
+}
+
+/* Only the active week shows where there is still room to build. */
+.built-week-row__guide {
+  height: 28px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.placed-block {
   display: flex;
   align-items: flex-end;
-  justify-content: center;
-  gap: var(--stack-gap);
   min-width: 0;
-}
-
-/*
- * Brick bond: neighbouring weeks shift a quarter unit in opposite directions,
- * so the vertical seams between blocks never line up for more than one row.
- * The relative half-unit step is what stops the grid from reading as a grid.
- */
-.build-week-row[data-bond="a"] .build-week-row__blocks {
-  transform: translateX(calc(var(--stack-unit) / -4));
-}
-
-.build-week-row[data-bond="b"] .build-week-row__blocks {
-  transform: translateX(calc(var(--stack-unit) / 4));
-}
-
-/*
- * The button is the tappable wrapper. Its width is exactly `span` units, so
- * the visible piece inside stays in proportion; on a 320px screen that piece
- * is narrower than the wrapper. Rows are deliberately tight — see
- * docs/QA_ACCEPTANCE.md for the touch-target exception this carries.
- */
-.stack-block {
-  display: flex;
-  align-items: flex-end;
-  flex: 0 1 auto;
-  width: calc(var(--piece-span) * var(--stack-unit));
-  min-height: 38px;
+  min-height: 40px;
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
@@ -709,38 +734,11 @@ textarea.run-input {
   cursor: pointer;
 }
 
-/*
- * Piece height rises with span, so a week of easy runs and a week built around
- * a long run have different silhouettes. Bottom-aligned, so every row still
- * sits on one line.
- */
-.stack-block__piece {
+.placed-block__piece {
   width: 100%;
-  height: 24px;
+  height: 28px;
   border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  transition: transform 120ms ease;
-}
-
-.stack-block[data-span="2"] .stack-block__piece {
-  height: 30px;
-}
-
-.stack-block[data-span="3"] .stack-block__piece {
-  height: 34px;
-}
-
-/* The race is the capstone the whole structure is built toward. */
-.stack-block[data-span="4"] .stack-block__piece {
-  height: 44px;
-}
-
-.stack-block:active .stack-block__piece {
-  transform: scale(0.98);
-}
-
-/* Completed: filled, lightly dimensional. */
-.stack-block[data-state="completed"] .stack-block__piece {
   background: var(--piece-color);
   background: linear-gradient(
     180deg,
@@ -755,29 +753,16 @@ textarea.run-input {
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
     0 3px 0 color-mix(in srgb, var(--piece-color) 62%, black),
     0 7px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 120ms ease;
 }
 
-/*
- * Planned: a faint blueprint of the finished structure, quiet enough that the
- * completed mass reads as the thing that has actually been built.
- */
-.stack-block[data-state="planned"] .stack-block__piece {
-  background: transparent;
-  border-color: var(--border);
-  border-color: color-mix(in srgb, var(--piece-color) 22%, transparent);
+.placed-block:active .placed-block__piece {
+  transform: scale(0.98);
 }
 
-/* Past incomplete: outlined with a dashed edge, louder than the blueprint. */
-.stack-block[data-state="missed"] .stack-block__piece {
-  background: transparent;
-  border-style: dashed;
-  border-color: var(--text-subtle);
-  border-color: color-mix(in srgb, var(--piece-color) 55%, transparent);
-}
-
-/* The newest completed block reveals itself and carries the only glow. */
-.stack-block[data-newest="true"] .stack-block__piece {
-  animation: stack-block-reveal 320ms ease-out;
+/* The block just placed snaps into its course and carries the only glow. */
+.placed-block[data-newest="true"] .placed-block__piece {
+  animation: placed-block-snap 260ms ease-out;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
     0 3px 0 rgba(0, 0, 0, 0.4),
@@ -788,7 +773,7 @@ textarea.run-input {
     0 0 14px color-mix(in srgb, var(--piece-color) 55%, transparent);
 }
 
-@keyframes stack-block-reveal {
+@keyframes placed-block-snap {
   from {
     opacity: 0;
     transform: translateY(-10px);
@@ -799,9 +784,9 @@ textarea.run-input {
   }
 }
 
-/* Reduced motion: no translation and no glow — a static ring marks the newest block. */
+/* Reduced motion: no snap and no glow — a static ring marks the newest block. */
 @media (prefers-reduced-motion: reduce) {
-  .stack-block[data-newest="true"] .stack-block__piece {
+  .placed-block[data-newest="true"] .placed-block__piece {
     animation: none;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.24),
@@ -810,9 +795,272 @@ textarea.run-input {
     outline-offset: 2px;
   }
 
-  .stack-block__piece {
+  .placed-block__piece {
     transition: none;
   }
+}
+
+/* Blocks Ready tray */
+
+.pending-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.pending-tray__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.pending-tray__count {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+/* A long backlog scrolls inside the card instead of pushing the build away. */
+.pending-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 45vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.pending-tray__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.pending-tray__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pending-tray__type {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pending-tray__meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pending-tray__item .button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-size: 14px;
+}
+
+/* Shared block chip: width follows the span, so the reward is legible. */
+.pending-tray__chip,
+.place-block__chip,
+.earned-block__chip {
+  flex-shrink: 0;
+  height: 20px;
+  width: calc(10px + var(--piece-span) * 10px);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Today: the block a completed run just earned */
+
+.earned-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.earned-block__chip {
+  height: 26px;
+  width: calc(12px + var(--piece-span) * 12px);
+}
+
+.earned-block__text {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* Place Block */
+
+.place-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.place-block__lede {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.place-block__week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.place-block__week-label,
+.place-block__staging-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.place-block__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.place-block__staging {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.place-block__staging-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.place-block__chip {
+  height: 26px;
+  width: calc(12px + var(--piece-span) * 12px);
+}
+
+.place-block__chip-type {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.place-block__chip-detail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.place-block__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.place-block__actions .button {
+  width: 100%;
+}
+
+.place-block__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/*
+ * The placement grid draws one training week: eight columns, every child in
+ * the same row so the cells, the blocks already built, the preview, and the
+ * choices all line up on top of each other.
+ */
+.placement-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+
+.placement-grid > * {
+  grid-row: 1;
+}
+
+.placement-grid__cell {
+  height: 48px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+}
+
+.placement-grid__placed {
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Shows the full width of the block the focused choice would place. */
+.placement-grid__preview {
+  height: 34px;
+  border-radius: 7px;
+  border: 2px solid var(--piece-color);
+  background: color-mix(in srgb, var(--piece-color) 22%, transparent);
+}
+
+/*
+ * Valid choices are marked by a dashed border and a plus, not by colour
+ * alone. Positions that are not valid are not rendered as buttons at all,
+ * so the tab order only ever walks the real choices.
+ */
+.placement-grid__option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.placement-grid__option:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 /* Legend */
@@ -863,17 +1111,6 @@ textarea.run-input {
     color-mix(in srgb, var(--piece-color) 86%, white),
     var(--piece-color)
   );
-}
-
-.build-legend__swatch[data-state="planned"] {
-  background: transparent;
-  border-color: var(--border-strong);
-}
-
-.build-legend__swatch[data-state="missed"] {
-  background: transparent;
-  border-style: dashed;
-  border-color: var(--text-subtle);
 }
 
 /* Workout detail */

@@ -1,0 +1,63 @@
+import type { CSSProperties } from "react";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
+import { formatDateLabel } from "../../domain/dates";
+
+interface PendingBlocksTrayProps {
+  blocks: EarnedBlock[];
+  onPlaceBlock: (workoutId: string) => void;
+}
+
+/**
+ * Blocks that have been earned but not built in yet, oldest first, so placing
+ * them from the top of the list builds the structure from the ground up.
+ */
+export function PendingBlocksTray({
+  blocks,
+  onPlaceBlock,
+}: PendingBlocksTrayProps) {
+  if (blocks.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="pending-tray">
+      <p className="pending-tray__title">
+        Blocks Ready <span className="pending-tray__count">{blocks.length}</span>
+      </p>
+      <ul className="pending-tray__list" aria-label="Blocks ready to place">
+        {blocks.map((block) => (
+          <li key={block.workout.id} className="pending-tray__item">
+            <span
+              className="pending-tray__chip"
+              style={
+                {
+                  "--piece-color": `var(--${block.workout.build.colorKey})`,
+                  "--piece-span": block.span,
+                } as CSSProperties
+              }
+              aria-hidden="true"
+            />
+            <div className="pending-tray__detail">
+              <p className="pending-tray__type">
+                {WORKOUT_TYPE_LABEL[block.workout.type]}
+              </p>
+              <p className="pending-tray__meta">
+                {formatDateLabel(block.workout.date)} ·{" "}
+                {block.runLog.distanceMiles} mi
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              aria-label={`Place ${WORKOUT_TYPE_LABEL[block.workout.type]} block from ${formatDateLabel(block.workout.date)}`}
+              onClick={() => onPlaceBlock(block.workout.id)}
+            >
+              Place
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}

@@ -7,6 +7,18 @@ import { TodayScreen } from "./TodayScreen";
 
 const plan = loadSeedPlan();
 
+const completedEasyRun: RunLog = {
+  id: "log-1",
+  workoutId: "workout-002",
+  completedDate: "2026-08-04",
+  distanceMiles: 2.1,
+  durationSeconds: 1230,
+  effort: "solid",
+  notes: "",
+  createdAt: "2026-08-04T12:00:00.000Z",
+  updatedAt: "2026-08-04T12:00:00.000Z",
+};
+
 describe("TodayScreen", () => {
   it("shows the race summary card regardless of state", () => {
     render(
@@ -122,7 +134,7 @@ describe("TodayScreen", () => {
       />,
     );
 
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText(/Run complete/)).toBeInTheDocument();
     expect(
       screen.getAllByRole("definition").map((stat) => stat.textContent),
     ).toEqual(["2.1 mi", "20:30", "Solid"]);
@@ -162,7 +174,9 @@ describe("TodayScreen", () => {
         notes: "",
       },
     );
-    expect(screen.getByText("Run saved successfully.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Run saved. You earned an Easy block."),
+    ).toBeInTheDocument();
   });
 
   it("shows the after-race state once race day has passed", () => {
@@ -180,4 +194,62 @@ describe("TodayScreen", () => {
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
   });
+
+  it("shows the earned block and offers Place Block once a run is logged", async () => {
+    const user = userEvent.setup();
+    const onPlaceBlock = vi.fn();
+    render(
+      <TodayScreen
+        plan={plan}
+        runLogs={[completedEasyRun]}
+        onViewPlan={vi.fn()}
+        onPlaceBlock={onPlaceBlock}
+        today="2026-08-04"
+      />,
+    );
+
+    expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    expect(
+      screen.getByRole("heading", { name: "Place Block" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Auto Place" }));
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      workoutId: "workout-002",
+      weekNumber: 1,
+      // Week 1 is the ground course, so Auto Place centres a span-1 block.
+      columnStart: 4,
+      span: 1,
+    });
+  });
+
+  it("reports a placed block instead of offering to place it again", () => {
+    render(
+      <TodayScreen
+        plan={plan}
+        runLogs={[completedEasyRun]}
+        blockPlacements={[
+          {
+            workoutId: "workout-002",
+            weekNumber: 1,
+            columnStart: 4,
+            span: 1,
+            placedAt: "2026-08-04T13:00:00.000Z",
+          },
+        ]}
+        onViewPlan={vi.fn()}
+        today="2026-08-04"
+      />,
+    );
+
+    expect(
+      screen.getByText("Your Easy block is built into week 1."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Place Block" }),
+    ).not.toBeInTheDocument();
+  });
+
 });

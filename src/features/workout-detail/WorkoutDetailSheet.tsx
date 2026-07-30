@@ -1,4 +1,5 @@
 import { Circle, CircleCheck } from "lucide-react";
+import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
 import {
   BLOCK_STATE_LABEL,
@@ -7,13 +8,16 @@ import {
 } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatDurationSeconds } from "../../domain/duration";
-import type { RunLog, Workout } from "../../domain/types";
+import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
 
 interface WorkoutDetailSheetProps {
   workout: Workout;
   state: BlockState;
   runLog?: RunLog | null;
+  placement?: BlockPlacement | null;
+  /** Provided only while the block's training week is still active. */
+  onMoveBlock?: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -23,6 +27,8 @@ export function WorkoutDetailSheet({
   workout,
   state,
   runLog,
+  placement,
+  onMoveBlock,
   isOpen,
   onClose,
 }: WorkoutDetailSheetProps) {
@@ -83,6 +89,28 @@ export function WorkoutDetailSheet({
             </dl>
             {runLog.notes && (
               <p className="workout-detail__notes">{runLog.notes}</p>
+            )}
+          </div>
+        )}
+
+        {placement && (
+          <div className="workout-detail__result">
+            <h3 className="workout-detail__result-title">Block</h3>
+            <p className="workout-detail__instructions">
+              {`Placed in week ${placement.weekNumber}, ${
+                placement.span === 1
+                  ? `column ${placement.columnStart}`
+                  : `columns ${placement.columnStart} through ${placement.columnStart + placement.span - 1}`
+              }.`}
+            </p>
+            {onMoveBlock ? (
+              <Button variant="secondary" onClick={onMoveBlock}>
+                Move Block
+              </Button>
+            ) : (
+              <p className="workout-detail__notes">
+                This week is finished, so its course is locked.
+              </p>
             )}
           </div>
         )}

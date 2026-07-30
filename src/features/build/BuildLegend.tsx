@@ -1,17 +1,11 @@
 import type { CSSProperties } from "react";
 import { Card } from "../../components/ui/Card";
-import {
-  BLOCK_STATE_LABEL,
-  LEGEND_TYPES,
-  WORKOUT_TYPE_LABEL,
-  type BlockState,
-} from "../../domain/build";
-
-const LEGEND_STATES: BlockState[] = ["completed", "planned", "missed"];
+import { LEGEND_TYPES, WORKOUT_TYPE_LABEL } from "../../domain/build";
 
 /**
- * Colour key for the five block types, plus the fill treatments, so block
- * state never depends on colour alone. Rest days have no block and no entry.
+ * Colour key for the five block types. Rest earns no block, so it has no
+ * entry. There are no state entries either: every block in the structure has
+ * been earned and placed.
  */
 export function BuildLegend() {
   return (
@@ -26,18 +20,6 @@ export function BuildLegend() {
               aria-hidden="true"
             />
             {WORKOUT_TYPE_LABEL[type]}
-          </li>
-        ))}
-      </ul>
-      <ul className="build-legend__items" aria-label="Block states">
-        {LEGEND_STATES.map((state) => (
-          <li key={state} className="build-legend__item">
-            <span
-              className="build-legend__swatch"
-              data-state={state}
-              aria-hidden="true"
-            />
-            {BLOCK_STATE_LABEL[state]}
           </li>
         ))}
       </ul>

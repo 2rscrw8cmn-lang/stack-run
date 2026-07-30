@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import type { RunLog } from "../../domain/types";
+import { describe, expect, it, vi } from "vitest";
+import type { BlockPlacement, RunLog } from "../../domain/types";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { BuildScreen } from "./BuildScreen";
 
@@ -22,147 +22,51 @@ function runLogFor(workoutId: string, overrides: Partial<RunLog> = {}): RunLog {
   };
 }
 
-function structure() {
-  return screen.getByRole("list", { name: "Training weeks" });
+function placementFor(
+  workoutId: string,
+  weekNumber: number,
+  columnStart: number,
+  span: 1 | 2 | 3 | 4,
+): BlockPlacement {
+  return {
+    workoutId,
+    weekNumber,
+    columnStart,
+    span,
+    placedAt: "2026-08-04T13:00:00.000Z",
+  };
 }
 
-function blocks() {
-  return within(structure()).getAllByRole("button");
+function renderBuild(
+  props: Partial<Parameters<typeof BuildScreen>[0]> = {},
+) {
+  const onPlaceBlock = vi.fn();
+  render(
+    <BuildScreen
+      plan={plan}
+      runLogs={[]}
+      blockPlacements={[]}
+      onPlaceBlock={onPlaceBlock}
+      today="2026-08-05"
+      {...props}
+    />,
+  );
+  return { onPlaceBlock };
+}
+
+function courses() {
+  return screen.getByRole("list", { name: "Built courses" });
 }
 
 describe("BuildScreen", () => {
-  it("renders one row per training week and one block per scheduled run", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    expect(within(structure()).getAllByRole("listitem")).toHaveLength(18);
-    expect(blocks()).toHaveLength(71);
-  });
-
-  it("builds upward, so race week is the first row and week 1 the last", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    const rows = within(structure()).getAllByRole("listitem");
-    expect(rows[0]).toHaveAccessibleName("Week 18");
-    expect(rows[17]).toHaveAccessibleName("Week 1");
-    expect(
-      within(rows[0]).getByRole("button", { name: /Race/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("alternates the bond course so block seams do not line up", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    const rows = within(structure()).getAllByRole("listitem");
-    // Rows render newest first, so this reads week 18, 17, 16 …
-    expect(rows.map((row) => row.getAttribute("data-bond")).slice(0, 4)).toEqual(
-      ["b", "a", "b", "a"],
-    );
-  });
-
-  it("creates no block for a rest day", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    // Week 1 schedules four runs across seven days; the three rest days
-    // contribute nothing.
-    const weekOne = within(structure()).getByRole("listitem", {
-      name: "Week 1",
-    });
-    expect(within(weekOne).getAllByRole("button")).toHaveLength(4);
-    expect(
-      within(weekOne).queryByRole("button", { name: /Rest/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("maps block width to the documented span for each workout type", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    // Each block is named "Week N Weekday, Type, target, State".
-    const spansByType = new Map<string, Set<string>>();
-    for (const block of blocks()) {
-      const type = (block.textContent ?? "").split(", ")[1];
-      const spans = spansByType.get(type) ?? new Set<string>();
-      spans.add(block.getAttribute("data-span") ?? "");
-      spansByType.set(type, spans);
-    }
-
-    expect(
-      Object.fromEntries(
-        [...spansByType].map(([type, spans]) => [type, [...spans]]),
-      ),
-    ).toEqual({
-      Easy: ["1"],
-      Intervals: ["2"],
-      Simulation: ["2"],
-      "Long Run": ["3"],
-      Race: ["4"],
-    });
-  });
-
-  it("also exposes the span to CSS as a custom property", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    const raceBlock = screen.getByRole("button", { name: /Race/ });
-    expect(raceBlock.style.getPropertyValue("--piece-span")).toBe("4");
-    expect(raceBlock.style.getPropertyValue("--piece-color")).toBe(
-      "var(--race)",
-    );
-  });
-
-  it("fills completed blocks, outlines future blocks, and marks past incomplete blocks", async () => {
-    render(
-      <BuildScreen
-        plan={plan}
-        runLogs={[runLogFor("workout-002")]}
-        today="2026-08-07"
-      />,
-    );
-
-    const stateOf = (name: RegExp) =>
-      screen.getByRole("button", { name }).getAttribute("data-state");
-
-    expect(stateOf(/Week 1 Tuesday/)).toBe("completed");
-    expect(stateOf(/Week 1 Thursday/)).toBe("missed");
-    expect(stateOf(/Week 1 Saturday/)).toBe("planned");
-
-    // State is never colour-only: it is part of each block's accessible name.
-    expect(
-      screen.getByRole("button", { name: /Week 1 Tuesday, Easy, 2 miles, Completed/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Week 1 Thursday, Easy, 2 miles, Missed/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("glows only the most recently logged block", () => {
-    render(
-      <BuildScreen
-        plan={plan}
-        runLogs={[
-          runLogFor("workout-002", { updatedAt: "2026-08-04T12:00:00.000Z" }),
-          runLogFor("workout-004", { updatedAt: "2026-08-06T12:00:00.000Z" }),
-        ]}
-        today="2026-08-07"
-      />,
-    );
-
-    const newest = blocks().filter(
-      (block) => block.getAttribute("data-newest") === "true",
-    );
-    expect(newest).toHaveLength(1);
-    expect(newest[0]).toHaveAccessibleName(/Week 1 Thursday/);
-  });
-
   it("shows the summary metrics", () => {
-    render(
-      <BuildScreen
-        plan={plan}
-        runLogs={[
-          runLogFor("workout-002", { distanceMiles: 2.1 }),
-          runLogFor("workout-004", { distanceMiles: 2.4 }),
-        ]}
-        today="2026-08-06"
-      />,
-    );
+    renderBuild({
+      runLogs: [
+        runLogFor("workout-002", { distanceMiles: 2.1 }),
+        runLogFor("workout-004", { distanceMiles: 2.4 }),
+      ],
+      today: "2026-08-06",
+    });
 
     expect(screen.getByText("Runs Complete").parentElement).toHaveTextContent(
       "2 / 71",
@@ -173,8 +77,232 @@ describe("BuildScreen", () => {
     expect(screen.getByText("Run Streak").parentElement).toHaveTextContent("2");
   });
 
-  it("shows a compact legend of block types and states without Rest", () => {
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
+  it("does not render a full 18-week blueprint of future workouts", () => {
+    renderBuild();
+
+    // Only the active week's course exists on the first week of the plan.
+    expect(within(courses()).getAllByRole("listitem")).toHaveLength(1);
+    expect(
+      within(courses()).getByRole("listitem", { name: "Week 1" }),
+    ).toBeInTheDocument();
+    expect(within(courses()).queryAllByRole("button")).toHaveLength(0);
+    expect(
+      screen.getByText("Nothing built yet. Complete a run to earn your first block."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders one course per week up to the active week, newest on top", () => {
+    renderBuild({ today: "2026-10-15" });
+
+    const rows = within(courses()).getAllByRole("listitem");
+    expect(rows).toHaveLength(11);
+    expect(rows[0]).toHaveAccessibleName("Week 11");
+    expect(rows[10]).toHaveAccessibleName("Week 1");
+    expect(screen.getByText("Week 12 next")).toBeInTheDocument();
+  });
+
+  it("shows only placed blocks in the structure", () => {
+    renderBuild({
+      runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
+      blockPlacements: [placementFor("workout-002", 1, 4, 1)],
+      today: "2026-08-07",
+    });
+
+    const blocks = within(courses()).getAllByRole("button");
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toHaveAccessibleName(
+      "Week 1 Tuesday, Easy, 2 miles, column 4",
+    );
+  });
+
+  it("lists earned but unplaced blocks in the staging tray", async () => {
+    const user = userEvent.setup();
+    renderBuild({
+      runLogs: [runLogFor("workout-002"), runLogFor("workout-007")],
+      blockPlacements: [placementFor("workout-002", 1, 4, 1)],
+      today: "2026-08-10",
+    });
+
+    const tray = screen.getByRole("list", { name: "Blocks ready to place" });
+    const items = within(tray).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Long Run");
+    expect(items[0]).toHaveTextContent("Sun, Aug 9");
+
+    await user.click(
+      within(tray).getByRole("button", { name: /Place Long Run block/ }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Place Block" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the staging tray when every earned block is placed", () => {
+    renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      blockPlacements: [placementFor("workout-002", 1, 4, 1)],
+    });
+
+    expect(
+      screen.queryByRole("list", { name: "Blocks ready to place" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers only valid positions, and places the block on tap", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
+      blockPlacements: [placementFor("workout-004", 1, 4, 2)],
+      today: "2026-08-10",
+    });
+
+    await user.click(screen.getByRole("button", { name: /Place Easy block/ }));
+
+    const grid = screen.getByRole("group", { name: "Week 1 course" });
+    const options = within(grid).getAllByRole("button");
+    // Columns 4 and 5 are already built, so six single columns remain.
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Place Easy block in Week 1, column 1",
+      "Place Easy block in Week 1, column 2",
+      "Place Easy block in Week 1, column 3",
+      "Place Easy block in Week 1, column 6",
+      "Place Easy block in Week 1, column 7",
+      "Place Easy block in Week 1, column 8",
+    ]);
+
+    await user.click(
+      within(grid).getByRole("button", {
+        name: "Place Easy block in Week 1, column 6",
+      }),
+    );
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      workoutId: "workout-002",
+      weekNumber: 1,
+      columnStart: 6,
+      span: 1,
+    });
+  });
+
+  it("places a block from the keyboard", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      today: "2026-08-10",
+    });
+
+    await user.click(screen.getByRole("button", { name: /Place Easy block/ }));
+
+    const option = screen.getByRole("button", {
+      name: "Place Easy block in Week 1, column 3",
+    });
+    option.focus();
+    expect(option).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      workoutId: "workout-002",
+      weekNumber: 1,
+      columnStart: 3,
+      span: 1,
+    });
+  });
+
+  it("auto places into a deterministic position", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-007")],
+      today: "2026-08-10",
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: /Place Long Run block/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Auto Place" }));
+
+    // Week 1 is the ground course, so a span-3 block is centred.
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      workoutId: "workout-007",
+      weekNumber: 1,
+      columnStart: 3,
+      span: 3,
+    });
+  });
+
+  it("announces a placement politely", async () => {
+    const user = userEvent.setup();
+    renderBuild({ runLogs: [runLogFor("workout-002")], today: "2026-08-10" });
+
+    await user.click(screen.getByRole("button", { name: /Place Easy block/ }));
+    await user.click(screen.getByRole("button", { name: "Auto Place" }));
+
+    expect(
+      screen.getByText("Block placed in week 1, column 4."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the workout detail sheet from a placed block", async () => {
+    const user = userEvent.setup();
+    renderBuild({
+      runLogs: [runLogFor("workout-007", { distanceMiles: 4.2 })],
+      blockPlacements: [placementFor("workout-007", 1, 3, 3)],
+      today: "2026-08-10",
+    });
+
+    await user.click(within(courses()).getByRole("button"));
+
+    const sheet = screen.getByRole("dialog");
+    expect(
+      within(sheet).getByRole("heading", { name: "Long Run: 4 Miles" }),
+    ).toBeInTheDocument();
+    expect(
+      within(sheet).getByText("Placed in week 1, columns 3 through 5."),
+    ).toBeInTheDocument();
+    expect(within(sheet).getByText("4.2 mi")).toBeInTheDocument();
+  });
+
+  it("offers Move Block while the block's week is still active", async () => {
+    const user = userEvent.setup();
+    renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      blockPlacements: [placementFor("workout-002", 1, 4, 1)],
+      today: "2026-08-07",
+    });
+
+    await user.click(within(courses()).getByRole("button"));
+    await user.click(screen.getByRole("button", { name: "Move Block" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Move Block" }),
+    ).toBeInTheDocument();
+    // The block being moved does not block its own position.
+    expect(
+      screen.getByRole("button", {
+        name: "Place Easy block in Week 1, column 4",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("locks a past week's course", async () => {
+    const user = userEvent.setup();
+    renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      blockPlacements: [placementFor("workout-002", 1, 4, 1)],
+      today: "2026-08-20",
+    });
+
+    await user.click(within(courses()).getAllByRole("button")[0]);
+
+    const sheet = screen.getByRole("dialog");
+    expect(
+      within(sheet).queryByRole("button", { name: "Move Block" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(sheet).getByText("This week is finished, so its course is locked."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a compact legend of block types without Rest", () => {
+    renderBuild();
 
     const types = screen.getByRole("list", { name: "Workout types" });
     expect(
@@ -182,77 +310,5 @@ describe("BuildScreen", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual(["Easy", "Intervals", "Simulation", "Long Run", "Race"]);
-
-    const states = screen.getByRole("list", { name: "Block states" });
-    expect(
-      within(states)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent),
-    ).toEqual(["Completed", "Planned", "Missed"]);
-  });
-
-  it("opens the workout detail sheet on click", async () => {
-    const user = userEvent.setup();
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    await user.click(screen.getByRole("button", { name: /Week 1 Sunday/ }));
-
-    const sheet = screen.getByRole("dialog");
-    expect(
-      within(sheet).getByRole("heading", { name: "Long Run: 4 Miles" }),
-    ).toBeInTheDocument();
-    expect(within(sheet).getByText("Planned")).toBeInTheDocument();
-    expect(within(sheet).getByText(/Sunday, August 9, 2026/)).toBeInTheDocument();
-    expect(within(sheet).getByText("4 miles")).toBeInTheDocument();
-    expect(
-      within(sheet).getByText("Easy effort. Finish feeling controlled."),
-    ).toBeInTheDocument();
-  });
-
-  it("opens the workout detail sheet from the keyboard", async () => {
-    const user = userEvent.setup();
-    render(<BuildScreen plan={plan} runLogs={[]} today="2026-08-05" />);
-
-    const block = screen.getByRole("button", { name: /Week 1 Tuesday/ });
-    block.focus();
-    expect(block).toHaveFocus();
-
-    await user.keyboard("{Enter}");
-
-    expect(
-      within(screen.getByRole("dialog")).getByRole("heading", {
-        name: "2 Miles",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the actual result for a completed workout and closes again", async () => {
-    const user = userEvent.setup();
-    render(
-      <BuildScreen
-        plan={plan}
-        runLogs={[
-          runLogFor("workout-002", {
-            distanceMiles: 2.1,
-            durationSeconds: 1230,
-            effort: "great",
-            notes: "Felt easy.",
-          }),
-        ]}
-        today="2026-08-05"
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /Week 1 Tuesday/ }));
-
-    const sheet = screen.getByRole("dialog");
-    expect(within(sheet).getByText("Actual result")).toBeInTheDocument();
-    expect(within(sheet).getByText("2.1 mi")).toBeInTheDocument();
-    expect(within(sheet).getByText("20:30")).toBeInTheDocument();
-    expect(within(sheet).getByText("Great")).toBeInTheDocument();
-    expect(within(sheet).getByText("Felt easy.")).toBeInTheDocument();
-
-    await user.click(within(sheet).getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

@@ -1,15 +1,23 @@
 import { useState } from "react";
-import { selectBuildViewModel } from "../../domain/build";
+import {
+  earnedBlocks,
+  findPlacementForWorkout,
+  selectBuildViewModel,
+} from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
-import type { RunLog, TrainingPlan } from "../../domain/types";
+import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
 import { BuildLegend } from "./BuildLegend";
 import { BuildMetrics } from "./BuildMetrics";
-import { BuildStructure } from "./BuildStructure";
+import { BuiltStructure } from "./BuiltStructure";
+import { PendingBlocksTray } from "./PendingBlocksTray";
+import { PlaceBlockSheet, type PlacementRequest } from "./PlaceBlockSheet";
 
 interface BuildScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
+  blockPlacements: BlockPlacement[];
+  onPlaceBlock: (request: PlacementRequest) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
 }
@@ -17,34 +25,96 @@ interface BuildScreenProps {
 export function BuildScreen({
   plan,
   runLogs,
+  blockPlacements,
+  onPlaceBlock,
   today = todayLocalDate(),
 }: BuildScreenProps) {
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(
-    null,
+  const [placingWorkoutId, setPlacingWorkoutId] = useState<string | null>(null);
+  const [detailWorkoutId, setDetailWorkoutId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+
+  const viewModel = selectBuildViewModel(plan, runLogs, blockPlacements, today);
+  const allEarned = earnedBlocks(plan, runLogs);
+
+  const placingBlock =
+    allEarned.find((block) => block.workout.id === placingWorkoutId) ?? null;
+  const detailBlock =
+    viewModel.builtWeeks
+      .flatMap((week) => week.blocks)
+      .find((block) => block.workout.id === detailWorkoutId) ?? null;
+  const detailRunLog = detailBlock
+    ? (runLogs.find((runLog) => runLog.workoutId === detailBlock.workout.id) ??
+      null)
+    : null;
+  // Repositioning is only offered while the block's own week is still running.
+  const canMoveDetailBlock =
+    detailBlock !== null &&
+    detailBlock.workout.weekNumber === viewModel.activeWeekNumber;
+
+  const hasPlacedBlocks = viewModel.builtWeeks.some(
+    (week) => week.blocks.length > 0,
   );
 
-  const viewModel = selectBuildViewModel(plan, runLogs, today);
-  const selectedBlock =
-    viewModel.weeks
-      .flatMap((week) => week.blocks)
-      .find((block) => block.workout.id === selectedWorkoutId) ?? null;
+  function handlePlace(request: PlacementRequest) {
+    onPlaceBlock(request);
+    setPlacingWorkoutId(null);
+    setDetailWorkoutId(null);
+    setAnnouncement(
+      `Block placed in week ${request.weekNumber}, column ${request.columnStart}.`,
+    );
+  }
 
   return (
     <div className="build-screen">
       <h1 className="screen-title">Build</h1>
       <BuildMetrics metrics={viewModel.metrics} />
-      <BuildStructure
-        weeks={viewModel.weeks}
-        onSelectWorkout={setSelectedWorkoutId}
+      <PendingBlocksTray
+        blocks={viewModel.pendingBlocks}
+        onPlaceBlock={setPlacingWorkoutId}
+      />
+      <BuiltStructure
+        weeks={viewModel.builtWeeks}
+        nextCourseWeekNumber={viewModel.nextCourseWeekNumber}
+        hasPlacedBlocks={hasPlacedBlocks}
+        onSelectWorkout={setDetailWorkoutId}
       />
       <BuildLegend />
-      {selectedBlock && (
+
+      <p className="visually-hidden" aria-live="polite">
+        {announcement}
+      </p>
+
+      {detailBlock && (
         <WorkoutDetailSheet
-          workout={selectedBlock.workout}
-          state={selectedBlock.state}
-          runLog={selectedBlock.runLog}
+          workout={detailBlock.workout}
+          state="completed"
+          runLog={detailRunLog}
+          placement={detailBlock.placement}
+          onMoveBlock={
+            canMoveDetailBlock
+              ? () => {
+                  setDetailWorkoutId(null);
+                  setPlacingWorkoutId(detailBlock.workout.id);
+                }
+              : undefined
+          }
           isOpen
-          onClose={() => setSelectedWorkoutId(null)}
+          onClose={() => setDetailWorkoutId(null)}
+        />
+      )}
+
+      {placingBlock && (
+        <PlaceBlockSheet
+          block={placingBlock}
+          plan={plan}
+          placements={blockPlacements}
+          isMove={
+            findPlacementForWorkout(blockPlacements, placingBlock.workout.id) !==
+            undefined
+          }
+          isOpen
+          onClose={() => setPlacingWorkoutId(null)}
+          onPlace={handlePlace}
         />
       )}
     </div>

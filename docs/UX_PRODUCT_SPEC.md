@@ -8,15 +8,19 @@ The Today screen answers one question: **What is my run today?**
 
 ### 2. Completion is the reward
 
-The strongest visual moment is saving a run and filling its block.
+Finishing a run earns a block. The strongest moment is placing that block into
+the structure and seeing the build grow.
 
 ### 3. Depth without 3D
 
 Use subtle gradients, top highlights, borders, and short shadows. Never use perspective, rotating models, canvas rendering, or simulated physics.
 
-### 4. Planned structure, not a game
+### 4. Built structure, not a game
 
-The user does not place blocks. The layout is deterministic. Completing a run reveals its assigned block.
+The user earns a block by running and then places it on a fixed eight-column
+grid inside its own training week. Placement is a simple, bounded choice: no
+falling pieces, no rotation, no physics, no drag and drop, no score. Every
+position the user can choose is deterministic and valid.
 
 ### 5. Quiet interface
 
@@ -85,7 +89,13 @@ For a completed run, show:
 - Actual distance
 - Actual duration
 - Effort label
+- The block the run earned, in its workout colour and width
+- Primary action: `Place Block`, until the block has been placed
+- Once placed, say where it was built and offer `View Build`
 - Secondary action: `Edit Run`
+
+Leaving without placing is fine. The earned block waits in Build's
+`Blocks Ready` tray.
 
 ### Empty/future handling
 
@@ -96,7 +106,7 @@ If the current date is before the plan:
 
 If the current date is after race day:
 
-- Show the completed structure and race summary.
+- Show the structure that was built and the race summary.
 - Do not invent a new training plan.
 
 ## Screen 2 — Complete Run sheet
@@ -127,9 +137,10 @@ Rules:
 - Duration must be greater than 0 and no more than 24 hours.
 - Notes counter displays `0/120`.
 - Saving creates or updates one log for the scheduled workout.
-- Successful save closes the sheet and fills the assigned block.
+- Successful save closes the sheet and earns the block.
+- Placement is never required to save a run.
 - No confetti.
-- Use a brief 250-400 ms block reveal animation.
+- Use a brief 250-400 ms block reveal animation when the block is placed.
 - Respect reduced motion by removing translation and glow.
 
 ## Screen 3 — Build
@@ -146,25 +157,63 @@ Run streak means consecutive scheduled run workouts completed through the most r
 
 ### Structure
 
-- One row represents one training week.
-- Each scheduled run renders one block.
-- Rest days render no block.
-- The structure builds upward from a ground line: week 1 is the bottom row and race week is the top row.
-- Rows are centered, with alternating courses offset a quarter unit in opposite directions, so the seams between blocks never line up for more than one row.
+Build shows what has actually been built, not the whole plan. The Plan screen
+remains the complete schedule.
+
+- Completing a run earns one block. Placing that block is a separate step.
+- One course represents one training week, eight grid columns wide.
+- Each placed block occupies contiguous columns equal to its span.
+- Rest days earn no block. A missed run simply leaves a gap in its course.
+- Only placed blocks are drawn. Future workouts are never drawn as an outline,
+  and the eighteen-week blueprint is not rendered.
+- Courses run from week 1 on the ground up to the active training week, plus a
+  small dashed indication of the course above.
 - Block width uses a small span map:
   - Easy: 1
   - Intervals: 2
   - Simulation: 2
   - Long: 3
   - Race: 4
-- Block height also rises with span and is bottom-aligned within the row, so the silhouette varies week to week. The race block is the tallest — it reads as the capstone.
-- Each block retains a minimum tappable wrapper while the visible piece may be narrower.
-- Completed blocks are filled.
-- Future/planned blocks are low-contrast outlines, quiet enough to read as a blueprint of the finished structure rather than as competing content.
-- Past incomplete blocks remain outlined with a dashed edge.
-- The active or most recently completed block may have one restrained glow.
-- Tapping a block opens a workout detail sheet.
-- The layout stays deterministic. There is no falling, rotating, interlocking, or player-placed piece.
+- Placed blocks are filled and lightly dimensional: soft vertical gradient,
+  top-edge highlight, short lower shadow.
+- The most recently placed block carries the only glow.
+- Tapping a placed block opens the workout detail sheet.
+- A placed block may be repositioned only while its training week is active.
+  Past weeks are locked, and a block never moves to another week.
+- When blocks have been earned but not placed, a compact `Blocks Ready` tray
+  lists them with type, date, actual miles, and a place action.
+- The layout stays deterministic. There is no falling, rotation, collision
+  simulation, or player-invented position outside the eight columns.
+
+### Place Block
+
+Opening from Today or from the `Blocks Ready` tray shows a focused sheet:
+
+- Header `Place Block`, or `Move Block` when repositioning
+- Supporting text `Choose where to place your block.`
+- The block's own training week, with the blocks already built into it
+- Every valid start position, and only valid positions
+- The earned block in a small staging tray
+- An `Auto Place` action
+
+Rules:
+
+- Tap to place. Drag and drop is not used.
+- Each valid position is a button with an accessible name such as
+  `Place Intervals block in Week 6, columns 3 through 4`.
+- Valid positions are marked by border and icon, never by colour alone.
+- Invalid positions are not interactive and are not in the tab order.
+- Focusing or hovering a position previews the full width of the block.
+- `Auto Place` is deterministic: prefer a position supported by the course
+  below, then the position nearest the centre, then the leftmost. On the ground
+  course every position is supported, so the block is centred.
+- A support rule keeps the structure plausible without physics: a position
+  counts as supported when at least half its cells sit on a block in the course
+  below.
+- The user can never become stuck. `Auto Place` always works when any position
+  is open.
+- Placing snaps the block into position with one 200-400 ms animation, saves,
+  and announces success with `aria-live`.
 
 ### Legend
 

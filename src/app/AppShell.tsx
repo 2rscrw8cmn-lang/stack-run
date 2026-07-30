@@ -1,27 +1,20 @@
 import { BottomNav } from "../components/shared/BottomNav";
 import { Card } from "../components/ui/Card";
-import type { RunLog, TrainingPlan, Workout } from "../domain/types";
+import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
+import type { PlacementRequest } from "../features/build/PlaceBlockSheet";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
-
-type PlaceholderTabId = Exclude<TabId, "today" | "build">;
-
-const TAB_LABELS: Record<PlaceholderTabId, string> = {
-  plan: "Plan",
-};
-
-const TAB_PLACEHOLDER_TEXT: Record<PlaceholderTabId, string> = {
-  plan: "The Plan screen will show your full 18-week schedule here.",
-};
 
 interface AppShellProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   plan: TrainingPlan;
   runLogs: RunLog[];
+  blockPlacements: BlockPlacement[];
   onSaveRun: (workout: Workout, values: ValidRunEntry) => void;
+  onPlaceBlock: (request: PlacementRequest) => void;
 }
 
 export function AppShell({
@@ -29,7 +22,9 @@ export function AppShell({
   onTabChange,
   plan,
   runLogs,
+  blockPlacements,
   onSaveRun,
+  onPlaceBlock,
 }: AppShellProps) {
   return (
     <div className="app-shell">
@@ -42,17 +37,25 @@ export function AppShell({
           <TodayScreen
             plan={plan}
             runLogs={runLogs}
+            blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
+            onViewBuild={() => onTabChange("build")}
             onSaveRun={onSaveRun}
+            onPlaceBlock={onPlaceBlock}
           />
         )}
         {activeTab === "build" && (
-          <BuildScreen plan={plan} runLogs={runLogs} />
+          <BuildScreen
+            plan={plan}
+            runLogs={runLogs}
+            blockPlacements={blockPlacements}
+            onPlaceBlock={onPlaceBlock}
+          />
         )}
         {activeTab === "plan" && (
           <Card>
-            <h1>{TAB_LABELS[activeTab]}</h1>
-            <p>{TAB_PLACEHOLDER_TEXT[activeTab]}</p>
+            <h1>Plan</h1>
+            <p>The Plan screen will show your full 18-week schedule here.</p>
           </Card>
         )}
       </main>

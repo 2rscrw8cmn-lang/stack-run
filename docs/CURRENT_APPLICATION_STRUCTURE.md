@@ -2,29 +2,32 @@
 
 ## Current state
 
-**Phase 0, UI-1, UI-2, UI-3 (Complete Run), and UI-4 (Build) implemented.** Today supports manual run logging and editing with local persistence, Build renders the full 18-week structure from the plan and logs, and Plan remains a placeholder tab.
+**Phase 0, UI-1, UI-2, UI-3 (Complete Run), and UI-4 (Build) implemented.** Completing a run earns a block, the user places it into the structure, and Build shows what has actually been built. Plan remains a placeholder tab.
 
 ## Implemented
 
-- UI-4 Build screen:
-  - `src/domain/build.ts` derives everything the screen shows from the plan, the run logs, and today's local date — nothing new is persisted.
-    - `BLOCK_SPAN_BY_TYPE` is the documented span map (easy 1, intervals 2, simulation 2, long 3, race 4; rest 0 and therefore no block). Span is derived from the workout type rather than read from `build.span`, so a workout retyped in a later phase keeps a width that matches the map; a unit test asserts the seed plan's `build.span`, `build.renders`, and `build.colorKey` agree with the type for all 126 workouts.
-    - `selectBuildViewModel` returns the three summary metrics plus 18 week rows of blocks. A block is `completed` when a run log references its workout, `missed` when its date is before today with no log, and `planned` otherwise (including an unfinished run scheduled for today).
-    - `currentRunStreak` implements the streak rule in `docs/DATA_AND_STORAGE.md` literally: scheduled runs only, ignoring workouts after today, counting backward from the most recent one until a run has no log. Rest days sit outside the sequence, so they neither break nor extend a streak.
-    - `findNewestCompletedWorkoutId` picks the most recently logged run (latest `updatedAt`, ties broken by the later workout date). It is the only block allowed to glow.
-  - `src/features/build/BuildScreen.tsx` composes `BuildMetrics`, `BuildStructure` (→ `BuildWeekRow` → `StackBlock`), `BuildLegend`, and the detail sheet, and owns the selected-workout state. `today` defaults to the real local date and is overridable so tests do not need fake timers.
-  - `StackBlock` renders a plain `<button>` wrapper around one `<span>` piece. No canvas, SVG scene, WebGL, 3D, drag/drop, collision detection, game loop, physics, or animation library is involved. The button carries `data-state`, `data-span`, `data-newest`, and the `--piece-color` / `--piece-span` custom properties; its accessible name is the full sentence, e.g. "Week 6 Thursday, Intervals, 5 to 6 miles, Completed", so state never depends on colour.
-  - Rows are centred and sized from one CSS variable: `--stack-unit: min(40px, calc((100% - 3 * var(--stack-gap)) / 8.5))`. The widest training week is four blocks spanning eight units, so every row fits at any width without a media query — a span-1 piece measures 26px at 320px and is capped at 40px on desktop. The extra half unit in the divisor is the slack the bond offset shifts into.
-  - Per D-013 the structure reads as something built rather than as a list of runs:
-    - `BuildStructure` renders the weeks in reverse, so week 1 is the bottom row and race week the top row and the structure grows toward the race. The reversal happens in the DOM rather than with `column-reverse`, so DOM order, reading order, and focus order all match the screen.
-    - `BuildWeekRow` carries `data-bond="a" | "b"` from `weekNumber % 2`; CSS shifts the two courses a quarter unit in opposite directions, giving a half-unit step between neighbours so block seams never line up for more than one row.
-    - Piece height rises with span (24/30/34/44px), bottom-aligned within each row, so a week of easy runs and a week built around a long run have different silhouettes. The span-4 race block is the tallest — the capstone.
-    - `.build-structure::after` draws the ground line the first week sits on.
-  - Completed blocks are filled with the design-system gradient and depth shadows, planned blocks are a faint blueprint (22% of the piece colour), and past incomplete blocks are outlined with a dashed edge at 55%, louder than the blueprint but quieter than a fill. Each rule declares a plain fallback before its `color-mix()` value.
-  - The newest completed block reveals itself with a 320ms opacity + 10px downward-to-rest translation and keeps one restrained glow. Under `prefers-reduced-motion: reduce` both the motion and the glow are removed and a static ring marks the same block instead.
-  - `src/features/workout-detail/WorkoutDetailSheet.tsx` is a read-only detail sheet (date, type, target, full instructions, status, and the actual result when completed) built on the existing `Sheet` primitive. It lives outside `features/build/` because the Plan screen shows the same sheet; logging and editing actions arrive with UI-5/UI-6.
-  - `BuildLegend` lists the five block types (never Rest) plus the three fill treatments, so a sighted user can read a dashed edge without opening a block.
-  - Tests: `src/domain/build.test.ts` covers the span map, block counts, states, metrics, and streak rules; `src/features/build/BuildScreen.test.tsx` covers 18 rows, 71 blocks, no rest blocks, per-type spans, the three states, the single glow, the metrics strip, the legend, and opening the detail sheet by click and by keyboard.
+- UI-4 Build screen — earned blocks and placement (D-014):
+  - `src/domain/placement.ts` owns the grid rules and nothing else: eight columns per training week, `placementOptions` for the start columns a span could occupy without overlapping or running off the row, `autoPlaceOption` for the deterministic Auto Place rule, and `assertPlacementFits` as the guard the repository calls before anything is written. The support rule is one line of arithmetic — at least half a block's cells resting on the course below — not a physics model. The module has no dependency on `build.ts`, so the two never form a cycle.
+  - `src/domain/build.ts` derives everything on screen from the plan, the run logs, the placements, and today's local date:
+    - `BLOCK_SPAN_BY_TYPE` is still the documented span map (easy 1, intervals 2, simulation 2, long 3, race 4; rest 0 and therefore no block). A unit test asserts the seed plan's `build.span`, `build.renders`, and `build.colorKey` agree with the type for all 126 workouts.
+    - `earnedBlocks` turns every completed run into a block. `selectBuildViewModel` splits those into placed and pending, and returns courses from week 1 up to the active week (or the highest built week, whichever is further along) — never the full eighteen.
+    - `currentRunStreak` and `totalActualMiles` are unchanged and still derive from run logs, not placements, so metrics never depend on whether a block has been built in.
+    - `findNewestPlacedWorkoutId` is the adapted newest-block calculation: it now keys on `placedAt` rather than the run log's `updatedAt`, because the glow marks the block you just placed.
+    - `activeWeekNumber` clamps to week 1 before the plan and week 18 after it.
+  - `src/features/build/` holds the screen: `BuildScreen`, `BuildMetrics` (unchanged), `PendingBlocksTray`, `BuiltStructure` → `BuiltWeekRow` → `PlacedBlock`, `PlaceBlockSheet` → `PlacementGrid`, and `BuildLegend`.
+  - Placement is tap-to-place. `PlacementGrid` renders one course as an eight-column CSS grid with every child in the same row: background cells, the blocks already built, a preview of the block being placed, and one button per valid start column. Only valid positions are buttons, so the tab order walks exactly the real choices; each is named `Place Intervals block in Week 6, columns 3 through 4`. Focus or hover previews the block's full width, because the button is one column wide while the block may be four.
+  - `Auto Place` is a `Button` wired to `autoPlaceOption`, so the user can never be stuck hunting for a position.
+  - The built structure draws placed blocks only. A missed run or an unplaced block leaves a gap in its course. The active week shows faint column guides so there is somewhere visible to build to, and a dashed hint names the course above.
+  - `PlacedBlock` and the placement grid are plain buttons and spans. No canvas, SVG scene, WebGL, 3D, drag/drop, collision detection, game loop, physics, or animation library is involved.
+  - The newest placed block snaps in over 260 ms (opacity plus a 10px settle) and carries the only glow. Under `prefers-reduced-motion: reduce` both are removed and a static ring marks the same block.
+  - Today's completed state (`CompletedRunSummary`) now shows the block the run earned, in its colour and width, with `Place Block` as the primary action until it is placed. Placing from Today switches to Build so the payoff is visible. Leaving without placing is fine — the block waits in the tray.
+  - `WorkoutDetailSheet` is preserved and gains the placement facts plus a `Move Block` action, offered only while the block's own training week is active.
+  - Tests: `src/domain/placement.test.ts` covers span fit, overlap rejection, valid positions, the support rule, and deterministic Auto Place; `src/domain/build.test.ts` covers earned blocks, placed versus pending, the absence of a future blueprint, metrics, and the streak rules; `src/storage/migrations.test.ts` covers the version 1 upgrade; `src/storage/appStateRepository.test.ts` covers placement persistence, one placement per workout, and every rejection path; `src/features/build/BuildScreen.test.tsx` covers the tray, valid-position selection, keyboard placement, Auto Place, the detail sheet, active-week repositioning, and past-week locking; `src/app/App.test.tsx` drives the whole loop against real storage — log a run, see it pending, place it, and find it still placed after a reload.
+
+- UI-4 persistence:
+  - `AppState.schemaVersion` is 2 and carries `blockPlacements: BlockPlacement[]`. The storage key is unchanged (`stack.app-state.v1`): it names the slot, while `schemaVersion` inside the payload is the real version, so upgrading migrates the existing value in place instead of orphaning it.
+  - `migrateAppState` upgrades a version 1 state by adding an empty placements array. Run logs, plan, and settings carry across untouched, and nothing is auto-placed — every previously logged run becomes a pending block the user can still place.
+  - `placeBlock` in `src/storage/appStateRepository.ts` validates the workout exists, that the span matches the workout type, that the block stays in its own week, that the run was actually logged, and that the position fits and does not overlap — then upserts one placement per workout and persists the whole state. UI components still never touch `localStorage`.
 
 - UI-3 Complete Run vertical slice:
   - `src/features/run-entry/CompleteRunSheet.tsx` provides controlled distance, duration, effort, and notes entry, edit prefilling, a 120-character counter, accessible validation, and guarded dismissal.
@@ -46,8 +49,8 @@
 - Seed loader in `src/seed/loadSeedPlan.ts`, loading `seed/stack-training-plan-2026.json`, with tests.
 - Storage repository skeleton:
   - `src/storage/storageKeys.ts` — the `stack.app-state.v1` key and backup-key naming.
-  - `src/storage/migrations.ts` — `migrateAppState`, `createInitialAppState`, `UnsupportedSchemaVersionError`.
-  - `src/storage/appStateRepository.ts` — `loadAppState`, `saveAppState`, `resetAppState`, `StorageLoadError`. Corrupted (non-JSON) storage is preserved under a timestamped `stack.app-state.backup.<timestamp>` key rather than discarded.
+  - `src/storage/migrations.ts` — `migrateAppState`, `createInitialAppState`, `CURRENT_SCHEMA_VERSION`, `UnsupportedSchemaVersionError`, and the version 1 → 2 upgrade.
+  - `src/storage/appStateRepository.ts` — `loadAppState`, `saveAppState`, `saveRunLog`, `placeBlock`, `resetAppState`, `StorageLoadError`. Corrupted (non-JSON) storage is preserved under a timestamped `stack.app-state.backup.<timestamp>` key rather than discarded.
   - All covered by tests, including corrupted-storage recovery and round-trip persistence.
 - CSS tokens and base files from `docs/DESIGN_SYSTEM.md`: `src/styles/tokens.css`, `base.css`, `layout.css`, `components.css`.
 - Minimal app shell (`src/app/App.tsx`, `src/app/AppShell.tsx`) with a three-item bottom navigation (`src/components/shared/BottomNav.tsx`) switching between placeholder Today, Build, and Plan panels. Uses `House`, `Layers3`, `ListChecks` from `lucide-react`.
@@ -74,9 +77,10 @@
 
 ## Not implemented
 
-- Plan screen (still a placeholder).
+- Plan screen (still a placeholder). Build deliberately does not duplicate the schedule.
 - Timer, pace, GPS, integrations, and other explicitly out-of-scope run capture features.
 - Plan editing, and the log/edit actions inside the workout detail sheet (UI-5/UI-6).
+- Removing a placement. A block is either placed or still pending; there is no delete.
 - Reducer-driven state writes (`LOG_RUN`, etc.) — run logging is the only write, applied directly through `saveRunLog`.
 - Deployment.
 
@@ -85,11 +89,12 @@
 - `docs/ARCHITECTURE.md` sketches `src/app/appReducer.ts` and a full feature/component tree. This is still deferred until the phase that needs it, per the instruction not to generate empty files without immediate purpose. The current shell uses local `useState` for the active tab only.
 - The repository's documentation packet originally had every file saved with a stray `" (1)"` suffix (e.g. `docs/PRODUCT_AND_SCOPE (1).md`) and a stub `README.md` shadowed by `README (1).md`. These were renamed to match the paths referenced throughout `AGENTS.md`/`START_HERE.md` (`docs/PRODUCT_AND_SCOPE.md`, `README.md`, etc.) before any code was written.
 - jsdom does not implement `HTMLDialogElement.showModal`/`close`/Escape-to-cancel, so `src/test/setup.ts` polyfills just enough of that behavior (open-attribute toggling, a `close` event, and a document-level Escape listener that mirrors the native cancel-then-close sequence) for the Sheet tests to exercise real component logic rather than mocks.
-- The Build structure reads reverse-chronologically from the top (week 18 first in the DOM) because it is built upward off a ground line. Rows still carry their week number and an explicit `Week N` accessible name, so the order is never ambiguous.
-- Build blocks are about 38px tall and, at 320px, 26px wide for a span-1 workout, below the global 44px touch-target rule. This is the documented D-013 exception recorded in `docs/QA_ACCEPTANCE.md`: a tight structure and 44px rows cannot both fit at 320px, and the blocks are non-destructive controls onto a read-only sheet.
-- Block width and height are derived from the workout type, while block colour still comes from `workout.build.colorKey` (matching `TodayWorkoutCard`). A domain test asserts the seed plan keeps the two in agreement for every workout.
+- The built structure reads reverse-chronologically from the top (the active week first in the DOM) because it is built upward off a ground line. Rows still carry their week number and an explicit `Week N` accessible name, so the order is never ambiguous.
+- Build blocks are 40px tall and, at 320px, 26px wide for a span-1 workout; placement cells are 48px tall and about the same width. Both are below the global 44px touch-target rule, which is the documented D-014 exception recorded in `docs/QA_ACCEPTANCE.md`: eight columns and 44px squares cannot both fit at 320px. Neither control is destructive, and `Auto Place` reaches any position without touching a cell.
+- Block width is derived from the workout type, while block colour still comes from `workout.build.colorKey` (matching `TodayWorkoutCard`). A domain test asserts the seed plan keeps the two in agreement for every workout.
+- `blockStateFor` (completed / planned / missed) is kept and still tested. Build no longer renders planned or missed blocks, but the workout detail sheet reports status and the Plan screen will need all three.
 - The run streak follows `docs/DATA_AND_STORAGE.md` exactly, which means the streak reads 0 for any day that schedules a run the user has not logged yet — including the current day, before that run happens. This is the documented rule, not a defect, but it is worth a product decision before release.
-- Blocks are keyboard reachable in plan order: one tab stop per scheduled run, 71 in total. No roving tabindex or arrow-key grid navigation was added, because nothing in the phase documents asks for one.
+- Blocks are keyboard reachable in plan order: one tab stop per placed block, and inside the placement sheet one tab stop per valid position. No roving tabindex or arrow-key grid navigation was added, because nothing in the phase documents asks for one.
 
 ## Update rule
 
