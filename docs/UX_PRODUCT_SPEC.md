@@ -11,13 +11,16 @@ The Today screen answers one question: **What is my run today?**
 Finishing a run earns a block. The strongest moment is placing that block into
 the structure and seeing the build grow.
 
-### 3. Depth without 3D
+### 3. Depth without a 3D engine
 
-Use subtle gradients, top highlights, borders, and short shadows. Never use perspective, rotating models, canvas rendering, or simulated physics.
+The Build tower is drawn in isometric projection with CSS 3D transforms, so you
+can see the tops and sides of the bricks you placed (D-015). Everything else
+uses subtle gradients, top highlights, borders, and short shadows. Never use
+canvas rendering, WebGL, a 3D engine, rotating models, or simulated physics.
 
 ### 4. Built structure, not a game
 
-The user earns a block by running and then places it on a fixed eight-column
+The user earns a block by running and then places it on a fixed five-column
 grid inside its own training week. Placement is a simple, bounded choice: no
 falling pieces, no rotation, no physics, no drag and drop, no score. Every
 position the user can choose is deterministic and valid.
@@ -161,13 +164,15 @@ Build shows what has actually been built, not the whole plan. The Plan screen
 remains the complete schedule.
 
 - Completing a run earns one block. Placing that block is a separate step.
-- One course represents one training week, eight grid columns wide.
+- Courses are five grid columns wide. A training week fills as many courses as its blocks need, so the structure grows upward rather than sideways.
 - Each placed block occupies contiguous columns equal to its span.
 - Rest days earn no block. A missed run simply leaves a gap in its course.
 - Only placed blocks are drawn. Future workouts are never drawn as an outline,
   and the eighteen-week blueprint is not rendered.
-- Courses run from week 1 on the ground up to the active training week, plus a
+- Courses run from the ground up through everything that has been built, plus a
   small dashed indication of the course above.
+- The tower is drawn in isometric projection: each brick shows its top face
+  where nothing rests on it and its right face where nothing abuts it.
 - Block width uses a small span map:
   - Easy: 1
   - Intervals: 2
@@ -183,7 +188,7 @@ remains the complete schedule.
 - When blocks have been earned but not placed, a compact `Blocks Ready` tray
   lists them with type, date, actual miles, and a place action.
 - The layout stays deterministic. There is no falling, rotation, collision
-  simulation, or player-invented position outside the eight columns.
+  simulation, or player-invented position outside the five columns.
 
 ### Place Block
 
@@ -191,7 +196,7 @@ Opening from Today or from the `Blocks Ready` tray shows a focused sheet:
 
 - Header `Place Block`, or `Move Block` when repositioning
 - Supporting text `Choose where to place your block.`
-- The block's own training week, with the blocks already built into it
+- The block's own training week: its band of courses, ground course at the bottom
 - Every valid start position, and only valid positions
 - The earned block in a small staging tray
 - An `Auto Place` action
@@ -199,14 +204,17 @@ Opening from Today or from the `Blocks Ready` tray shows a focused sheet:
 Rules:
 
 - Tap to place. Drag and drop is not used.
+- The grid stays front on, even though the tower is isometric: it is the
+  precision interaction and an angled grid is harder to aim at.
 - Each valid position is a button with an accessible name such as
-  `Place Intervals block in Week 6, columns 3 through 4`.
+  `Place Intervals block in Week 6, course 2, columns 3 through 4`.
 - Valid positions are marked by border and icon, never by colour alone.
 - Invalid positions are not interactive and are not in the tab order.
 - Focusing or hovering a position previews the full width of the block.
-- `Auto Place` is deterministic: prefer a position supported by the course
-  below, then the position nearest the centre, then the leftmost. On the ground
-  course every position is supported, so the block is centred.
+- `Auto Place` is deterministic: finish the lowest open course before starting a
+  new one, then prefer a position supported by the course below, then the
+  position nearest the centre, then the leftmost. On the ground course every
+  position is supported, so the block is centred.
 - A support rule keeps the structure plausible without physics: a position
   counts as supported when at least half its cells sit on a block in the course
   below.

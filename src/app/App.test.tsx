@@ -103,7 +103,7 @@ describe("App", () => {
     ).getAllByRole("button");
     expect(placed).toHaveLength(1);
     expect(placed[0]).toHaveAccessibleName(
-      "Week 1 Tuesday, Easy, 2 miles, column 4",
+      "Week 1 Tuesday, Easy, 2 miles, course 1, column 3",
     );
     expect(
       screen.queryByRole("list", { name: "Blocks ready to place" }),

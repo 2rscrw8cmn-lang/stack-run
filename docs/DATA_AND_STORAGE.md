@@ -102,13 +102,14 @@ export interface AppSettings {
 export interface BlockPlacement {
   workoutId: string;
   weekNumber: number;
+  row: number;
   columnStart: number;
   span: 1 | 2 | 3 | 4;
   placedAt: string;
 }
 
 export interface AppState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
@@ -126,8 +127,11 @@ blocked on a placement.
 - `workoutId` is the permanent identity of the placement.
 - `span` must equal the span the workout type earns.
 - A block stays inside its own training week.
-- `columnStart` and `span` must fit inside columns 1 through 8.
-- A placement must not overlap another placement in the same week.
+- `row` is the 0-based course within that week. A week fills as many courses as
+  its blocks need, and rows stay contiguous from 0, so a week never leaves a
+  floating course.
+- `columnStart` and `span` must fit inside columns 1 through 5.
+- A placement must not overlap another placement in the same course.
 - A block may be repositioned only while its training week is active.
 - Deleting is not offered. A block is placed, or it is still pending.
 
@@ -212,16 +216,22 @@ Implement:
 migrateAppState(input: unknown): AppState
 ```
 
-Current version: 2.
+Current version: 3.
 
-- Accept a valid schema version 2 state.
+- Accept a valid schema version 3 state.
 - Upgrade a schema version 1 state by adding an empty `blockPlacements` array.
   Every run log, plan edit, and setting is carried across untouched.
 - Runs logged before the upgrade are deliberately left unplaced. They become
   pending earned blocks the user can place whenever they like; nothing is
   auto-placed on their behalf.
+- Upgrade a schema version 2 state by re-laying its placements into the narrower
+  courses, in the order they were built. Which blocks are placed survives; where
+  they sit does not, because an eight-column position has nowhere to go in a
+  five-column course. Run logs are untouched.
 - Reject unknown future versions with a recoverable error.
 - When no data exists, create state from the seed plan.
+- An upgraded state is written straight back, so storage stops holding a shape
+  this build no longer writes.
 
 Never silently discard user data.
 

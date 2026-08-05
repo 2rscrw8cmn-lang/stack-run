@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { earnedBlocks, scheduledRuns, spanForWorkout } from "../domain/build";
-import {
-  autoPlaceOption,
-  placementOptions,
-  placementsForWeek,
-} from "../domain/placement";
+import { autoPlaceOption, placementOptions } from "../domain/placement";
 import type { AppState } from "../domain/types";
 import {
   placeBlock,
@@ -68,12 +64,7 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
       const span = spanForWorkout(block.workout);
       const weekNumber = block.workout.weekNumber;
       const option = autoPlaceOption(
-        placementOptions(
-          span,
-          placementsForWeek(next.blockPlacements, weekNumber),
-          placementsForWeek(next.blockPlacements, weekNumber - 1),
-          weekNumber === next.plan.weeks[0].weekNumber,
-        ),
+        placementOptions(span, weekNumber, next.blockPlacements),
       );
       if (!option) {
         continue;
@@ -81,6 +72,7 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
       next = placeBlock(next, {
         workoutId: block.workout.id,
         weekNumber,
+        row: option.row,
         columnStart: option.columnStart,
         span,
       });

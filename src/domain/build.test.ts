@@ -38,8 +38,9 @@ function placementFor(
   columnStart: number,
   span: 1 | 2 | 3 | 4,
   placedAt = "2026-08-04T13:00:00.000Z",
+  row = 0,
 ): BlockPlacement {
-  return { workoutId, weekNumber, columnStart, span, placedAt };
+  return { workoutId, weekNumber, row, columnStart, span, placedAt };
 }
 
 describe("BLOCK_SPAN_BY_TYPE", () => {
@@ -128,33 +129,37 @@ describe("earnedBlocks", () => {
 });
 
 describe("selectBuildViewModel", () => {
-  it("shows no future blueprint: only courses up to the active week exist", () => {
+  it("shows no future blueprint: nothing is built until a block is placed", () => {
     const viewModel = selectBuildViewModel(plan, [], [], "2026-08-05");
 
     expect(viewModel.activeWeekNumber).toBe(1);
-    expect(viewModel.builtWeeks.map((week) => week.weekNumber)).toEqual([1]);
-    expect(viewModel.nextCourseWeekNumber).toBe(2);
-    expect(viewModel.builtWeeks[0].blocks).toEqual([]);
+    expect(viewModel.courses).toEqual([]);
+    expect(viewModel.nextCourseWeekNumber).toBe(1);
   });
 
-  it("renders courses from week 1 up to the active week", () => {
-    const viewModel = selectBuildViewModel(plan, [], [], "2026-10-15");
+  it("renders a course only once something is built into it", () => {
+    const viewModel = selectBuildViewModel(
+      plan,
+      [runLogFor("workout-002"), runLogFor("workout-007")],
+      [
+        placementFor("workout-002", 1, 3, 1),
+        placementFor("workout-007", 1, 1, 3, "2026-08-09T13:00:00.000Z", 1),
+      ],
+      "2026-10-15",
+    );
 
     expect(viewModel.activeWeekNumber).toBe(11);
-    expect(viewModel.builtWeeks).toHaveLength(11);
-    expect(viewModel.builtWeeks[10].isActive).toBe(true);
-    expect(viewModel.builtWeeks[0].isActive).toBe(false);
-  });
-
-  it("stops offering a next course once the last week is on screen", () => {
-    const viewModel = selectBuildViewModel(plan, [], [], "2026-12-05");
-    expect(viewModel.builtWeeks).toHaveLength(18);
-    expect(viewModel.nextCourseWeekNumber).toBeNull();
+    expect(viewModel.courses.map((course) => [course.weekNumber, course.row])).toEqual([
+      [1, 0],
+      [1, 1],
+    ]);
+    expect(viewModel.courses[0].startsWeek).toBe(true);
+    expect(viewModel.courses[1].startsWeek).toBe(false);
   });
 
   it("renders only placed blocks, not completed runs", () => {
     const runLogs = [runLogFor("workout-002"), runLogFor("workout-004")];
-    const placements = [placementFor("workout-002", 1, 4, 1)];
+    const placements = [placementFor("workout-002", 1, 3, 1)];
 
     const viewModel = selectBuildViewModel(
       plan,
@@ -163,14 +168,38 @@ describe("selectBuildViewModel", () => {
       "2026-08-07",
     );
 
-    const blocks = viewModel.builtWeeks.flatMap((week) => week.blocks);
+    const blocks = viewModel.courses.flatMap((course) => course.blocks);
     expect(blocks.map((block) => block.workout.id)).toEqual(["workout-002"]);
-    expect(blocks[0].placement.columnStart).toBe(4);
+    expect(blocks[0].placement.columnStart).toBe(3);
+  });
+
+  it("hides the faces a neighbouring block would cover", () => {
+    const viewModel = selectBuildViewModel(
+      plan,
+      [runLogFor("workout-002"), runLogFor("workout-004"), runLogFor("workout-006")],
+      [
+        placementFor("workout-002", 1, 1, 1),
+        placementFor("workout-004", 1, 2, 1),
+        placementFor("workout-006", 1, 1, 1, "2026-08-08T13:00:00.000Z", 1),
+      ],
+      "2026-08-09",
+    );
+
+    const [ground, above] = viewModel.courses;
+    const [first, second] = ground.blocks;
+
+    // Another block abuts the first on its right, and one rests on top of it.
+    expect(first.showRightFace).toBe(false);
+    expect(first.showTopFace).toBe(false);
+    // The second has open air to its right and above.
+    expect(second.showRightFace).toBe(true);
+    expect(second.showTopFace).toBe(true);
+    expect(above.blocks[0].showTopFace).toBe(true);
   });
 
   it("lists completed but unplaced runs as pending blocks, oldest first", () => {
     const runLogs = [runLogFor("workout-004"), runLogFor("workout-002")];
-    const placements = [placementFor("workout-002", 1, 4, 1)];
+    const placements = [placementFor("workout-002", 1, 3, 1)];
 
     const viewModel = selectBuildViewModel(
       plan,
@@ -188,12 +217,13 @@ describe("selectBuildViewModel", () => {
     const viewModel = selectBuildViewModel(
       plan,
       [runLogFor("workout-002")],
-      [placementFor("workout-002", 1, 4, 1)],
+      [placementFor("workout-002", 1, 3, 1)],
       "2026-08-20",
     );
 
     expect(viewModel.activeWeekNumber).toBe(3);
-    expect(viewModel.builtWeeks[0].blocks).toHaveLength(1);
+    expect(viewModel.courses[0].blocks).toHaveLength(1);
+    expect(viewModel.courses[0].isActiveWeek).toBe(false);
   });
 
   it("summarises completed runs, total miles, and the current streak", () => {
@@ -216,7 +246,7 @@ describe("selectBuildViewModel", () => {
     const placed = selectBuildViewModel(
       plan,
       runLogs,
-      [placementFor("workout-002", 1, 4, 1)],
+      [placementFor("workout-002", 1, 3, 1)],
       "2026-08-05",
     );
 
@@ -231,7 +261,7 @@ describe("selectBuildViewModel", () => {
     ];
 
     const newest = selectBuildViewModel(plan, runLogs, placements, "2026-08-07")
-      .builtWeeks.flatMap((week) => week.blocks)
+      .courses.flatMap((course) => course.blocks)
       .filter((block) => block.isNewest);
 
     expect(newest).toHaveLength(1);

@@ -8,13 +8,19 @@ import {
   autoPlaceOption,
   placementOptions,
   placementsForWeek,
+  type PlacementOption,
 } from "../../domain/placement";
 import type { BlockPlacement, TrainingPlan } from "../../domain/types";
-import { PlacementGrid, type ExistingBlock } from "./PlacementGrid";
+import {
+  PlacementGrid,
+  type ExistingBlock,
+  type PreviewPosition,
+} from "./PlacementGrid";
 
 export interface PlacementRequest {
   workoutId: string;
   weekNumber: number;
+  row: number;
   columnStart: number;
   span: 1 | 2 | 3 | 4;
 }
@@ -39,7 +45,7 @@ export function PlaceBlockSheet({
   onClose,
   onPlace,
 }: PlaceBlockSheetProps) {
-  const [previewColumn, setPreviewColumn] = useState<number | null>(null);
+  const [preview, setPreview] = useState<PreviewPosition | null>(null);
 
   const weekNumber = block.workout.weekNumber;
   const workoutsById = new Map(
@@ -47,26 +53,22 @@ export function PlaceBlockSheet({
   );
 
   // The block being moved does not block its own new position.
-  const weekPlacements = placementsForWeek(placements, weekNumber).filter(
+  const others = placements.filter(
     (placement) => placement.workoutId !== block.workout.id,
   );
-  const belowPlacements = placementsForWeek(placements, weekNumber - 1);
-  const options = placementOptions(
-    block.span,
-    weekPlacements,
-    belowPlacements,
-    weekNumber === plan.weeks[0].weekNumber,
-  );
+  const options = placementOptions(block.span, weekNumber, others);
   const automatic = autoPlaceOption(options);
-
-  const existing: ExistingBlock[] = weekPlacements.flatMap((placement) => {
+  const existing: ExistingBlock[] = placementsForWeek(
+    others,
+    weekNumber,
+  ).flatMap((placement) => {
     const workout = workoutsById.get(placement.workoutId);
     return workout
       ? [
           {
             workoutId: placement.workoutId,
-            label: WORKOUT_TYPE_LABEL[workout.type],
             colorKey: workout.build.colorKey,
+            row: placement.row,
             columnStart: placement.columnStart,
             span: placement.span,
           },
@@ -74,12 +76,13 @@ export function PlaceBlockSheet({
       : [];
   });
 
-  function place(columnStart: number) {
-    setPreviewColumn(null);
+  function place(option: PlacementOption) {
+    setPreview(null);
     onPlace({
       workoutId: block.workout.id,
       weekNumber,
-      columnStart,
+      row: option.row,
+      columnStart: option.columnStart,
       span: block.span,
     });
   }
@@ -98,8 +101,8 @@ export function PlaceBlockSheet({
             blockColorKey={block.workout.build.colorKey}
             existing={existing}
             options={options}
-            previewColumn={previewColumn}
-            onPreviewChange={setPreviewColumn}
+            preview={preview}
+            onPreviewChange={setPreview}
             onSelect={place}
           />
           {options.length === 0 && (
@@ -136,7 +139,7 @@ export function PlaceBlockSheet({
 
         <div className="place-block__actions">
           <Button
-            onClick={() => automatic && place(automatic.columnStart)}
+            onClick={() => automatic && place(automatic)}
             disabled={automatic === null}
           >
             Auto Place

@@ -64,6 +64,48 @@ describe("migrateAppState", () => {
     expect(migrateAppState(withoutPlacements).blockPlacements).toEqual([]);
   });
 
+  it("upgrades a version 2 state, re-laying its wide courses into the narrow grid", () => {
+    const version2 = {
+      schemaVersion: 2,
+      settings: { units: "miles", theme: "dark" },
+      plan: loadSeedPlan(),
+      runLogs: [version1RunLog],
+      blockPlacements: [
+        // Week 1 as version 2 laid it out: one eight-column course.
+        { workoutId: "w-a", weekNumber: 1, columnStart: 1, span: 1, placedAt: "t1" },
+        { workoutId: "w-b", weekNumber: 1, columnStart: 2, span: 1, placedAt: "t2" },
+        { workoutId: "w-c", weekNumber: 1, columnStart: 3, span: 1, placedAt: "t3" },
+        { workoutId: "w-d", weekNumber: 1, columnStart: 4, span: 3, placedAt: "t4" },
+      ],
+    };
+
+    const migrated = migrateAppState(version2);
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.runLogs).toEqual([version1RunLog]);
+    // Every block is still placed, and none runs past the narrower course.
+    expect(migrated.blockPlacements.map((p) => p.workoutId)).toEqual([
+      "w-a",
+      "w-b",
+      "w-c",
+      "w-d",
+    ]);
+    expect(
+      migrated.blockPlacements.map((p) => [p.row, p.columnStart]),
+    ).toEqual([
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [1, 1],
+    ]);
+    expect(migrated.blockPlacements.map((p) => p.placedAt)).toEqual([
+      "t1",
+      "t2",
+      "t3",
+      "t4",
+    ]);
+  });
+
   it("rejects an unknown future schema version", () => {
     expect(() =>
       migrateAppState({ schemaVersion: CURRENT_SCHEMA_VERSION + 1 }),

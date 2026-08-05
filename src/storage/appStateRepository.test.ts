@@ -143,7 +143,8 @@ describe("placeBlock", () => {
     const state = placeBlock(stateWithLoggedRun(), {
       workoutId: "workout-002",
       weekNumber: 1,
-      columnStart: 4,
+      row: 0,
+      columnStart: 3,
       span: 1,
     });
 
@@ -151,7 +152,8 @@ describe("placeBlock", () => {
     expect(loadAppState().blockPlacements[0]).toMatchObject({
       workoutId: "workout-002",
       weekNumber: 1,
-      columnStart: 4,
+      row: 0,
+      columnStart: 3,
       span: 1,
     });
     expect(loadAppState().blockPlacements[0].placedAt).toEqual(
@@ -163,18 +165,20 @@ describe("placeBlock", () => {
     let state = placeBlock(stateWithLoggedRun(), {
       workoutId: "workout-002",
       weekNumber: 1,
-      columnStart: 4,
+      row: 0,
+      columnStart: 3,
       span: 1,
     });
     state = placeBlock(state, {
       workoutId: "workout-002",
       weekNumber: 1,
-      columnStart: 6,
+      row: 0,
+      columnStart: 5,
       span: 1,
     });
 
     expect(state.blockPlacements).toHaveLength(1);
-    expect(loadAppState().blockPlacements[0].columnStart).toBe(6);
+    expect(loadAppState().blockPlacements[0].columnStart).toBe(5);
   });
 
   it("rejects a span that does not match the workout type", () => {
@@ -182,6 +186,7 @@ describe("placeBlock", () => {
       placeBlock(stateWithLoggedRun(), {
         workoutId: "workout-002",
         weekNumber: 1,
+        row: 0,
         columnStart: 1,
         span: 3,
       }),
@@ -194,7 +199,8 @@ describe("placeBlock", () => {
     state = placeBlock(state, {
       workoutId: "workout-002",
       weekNumber: 1,
-      columnStart: 4,
+      row: 0,
+      columnStart: 3,
       span: 1,
     });
 
@@ -202,7 +208,8 @@ describe("placeBlock", () => {
       placeBlock(state, {
         workoutId: "workout-004",
         weekNumber: 1,
-        columnStart: 4,
+        row: 0,
+        columnStart: 3,
         span: 1,
       }),
     ).toThrow(InvalidPlacementError);
@@ -218,7 +225,8 @@ describe("placeBlock", () => {
       placeBlock(state, {
         workoutId: "workout-007",
         weekNumber: 1,
-        columnStart: 7,
+        row: 0,
+        columnStart: 4,
         span: 3,
       }),
     ).toThrow(InvalidPlacementError);
@@ -229,6 +237,7 @@ describe("placeBlock", () => {
       placeBlock(loadAppState(), {
         workoutId: "workout-002",
         weekNumber: 1,
+        row: 0,
         columnStart: 1,
         span: 1,
       }),
@@ -240,6 +249,7 @@ describe("placeBlock", () => {
       placeBlock(stateWithLoggedRun(), {
         workoutId: "workout-002",
         weekNumber: 2,
+        row: 0,
         columnStart: 1,
         span: 1,
       }),
@@ -251,7 +261,8 @@ describe("placeBlock", () => {
     const after = placeBlock(before, {
       workoutId: "workout-002",
       weekNumber: 1,
-      columnStart: 4,
+      row: 0,
+      columnStart: 3,
       span: 1,
     });
 

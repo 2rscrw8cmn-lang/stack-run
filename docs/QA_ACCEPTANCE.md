@@ -45,7 +45,9 @@
 - Placing a block puts it in the structure and removes it from the tray.
 - A placement survives a reload.
 - Build renders no future workouts and no eighteen-week outline.
-- Week 1 is the bottom course and the active week is on top.
+- Week 1 is the bottom course and the newest work is on top.
+- A week with more blocks than fit one course spills into the course above it.
+- A brick shows a top face only where nothing rests on it.
 - A missed run leaves a gap in its course rather than a dashed block.
 - Newest placed block gets the only glow.
 - Clicking and keyboard activation open details.
@@ -55,11 +57,12 @@
 
 - Only valid positions are offered, and only they are in the tab order.
 - A position that would overlap a placed block is not offered.
-- A position that would run past column 8 is not offered.
+- A position that would run past column 5 is not offered.
+- A position in a course that would float above a gap is not offered.
 - Valid positions are distinguishable without colour.
 - Focus or hover previews the full width of the block.
 - Enter or Space places the focused position.
-- `Auto Place` centres on the ground course and prefers supported positions above it.
+- `Auto Place` centres on the ground course, finishes the lowest open course before starting a new one, and prefers supported positions above it.
 - `Auto Place` is deterministic for the same inputs.
 - Placement is announced with `aria-live`.
 - A block can be moved while its week is active.
@@ -95,6 +98,7 @@ Test with:
 - Invalid JSON
 - Wrong schema shape
 - Schema version 1 with existing run logs
+- Schema version 2 with existing placements
 - Future schema version
 
 Invalid data must not cause a blank screen.

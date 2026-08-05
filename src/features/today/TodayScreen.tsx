@@ -159,7 +159,7 @@ export function TodayScreen({
             onPlaceBlock(request);
             setPlacingBlock(false);
             setSaveAnnouncement(
-              `Block placed in week ${request.weekNumber}, column ${request.columnStart}.`,
+              `Block placed in week ${request.weekNumber}, course ${request.row + 1}, column ${request.columnStart}.`,
             );
             onViewBuild();
           }}

@@ -1,5 +1,10 @@
 import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates";
-import { placementsForWeek, type BlockSpan } from "./placement";
+import {
+  courseKeys,
+  occupiedColumns,
+  placementsForCourse,
+  type BlockSpan,
+} from "./placement";
 import type {
   BlockPlacement,
   RunLog,
@@ -70,12 +75,18 @@ export interface PlacedBlock {
   placement: BlockPlacement;
   /** The one most recently placed block, which carries the only glow. */
   isNewest: boolean;
+  /** Faces you could actually see: hidden where another block abuts. */
+  showTopFace: boolean;
+  showRightFace: boolean;
 }
 
-export interface BuiltWeek {
+/** One course of the tower. A training week fills as many as it needs. */
+export interface BuiltCourse {
   weekNumber: number;
-  phase: string;
-  isActive: boolean;
+  row: number;
+  /** True on the first course of its training week, which carries the label. */
+  startsWeek: boolean;
+  isActiveWeek: boolean;
   blocks: PlacedBlock[];
 }
 
@@ -90,8 +101,8 @@ export interface BuildViewModel {
   metrics: BuildSummaryMetrics;
   /** Earned but unplaced blocks, oldest first, so the user builds upward. */
   pendingBlocks: EarnedBlock[];
-  /** Courses that exist today: week 1 through the active or highest built week. */
-  builtWeeks: BuiltWeek[];
+  /** Every course that has been built, ground first. */
+  courses: BuiltCourse[];
   activeWeekNumber: number;
   /** The course above the structure, or null once week 18 is rendered. */
   nextCourseWeekNumber: number | null;
@@ -244,8 +255,13 @@ export function findNewestPlacedWorkoutId(
 
 /**
  * What the Build screen shows: the metrics, the blocks waiting to be placed,
- * and the courses that actually exist today. Future weeks are not included —
- * Build shows what has been built, and Plan remains the full schedule.
+ * and the courses that have actually been built. Future weeks are not
+ * included — Build shows the tower, and Plan remains the full schedule.
+ *
+ * Each block also reports which of its faces are visible, so the isometric
+ * render only draws a top face when nothing rests on it and a right face when
+ * nothing abuts it. Without that every brick shows its top and the tower reads
+ * as a stack of cards.
  */
 export function selectBuildViewModel(
   plan: TrainingPlan,
@@ -262,37 +278,47 @@ export function selectBuildViewModel(
   const newestPlacedWorkoutId = findNewestPlacedWorkoutId(plan, placements);
   const active = activeWeekNumber(plan, today);
 
-  const highestPlacedWeek = placements.reduce(
-    (highest, placement) => Math.max(highest, placement.weekNumber),
-    0,
+  const keys = courseKeys(placements);
+  const occupiedByCourse = keys.map((key) =>
+    occupiedColumns(placementsForCourse(placements, key)),
   );
-  const topWeek = Math.max(active, highestPlacedWeek);
 
-  const builtWeeks: BuiltWeek[] = plan.weeks
-    .filter((week) => week.weekNumber <= topWeek)
-    .map((week) => ({
-      weekNumber: week.weekNumber,
-      phase: week.phase,
-      isActive: week.weekNumber === active,
-      blocks: placementsForWeek(placements, week.weekNumber).flatMap(
-        (placement) => {
-          const workout = workoutsById.get(placement.workoutId);
-          return workout
-            ? [
-                {
-                  workout,
-                  placement,
-                  isNewest: placement.workoutId === newestPlacedWorkoutId,
-                },
-              ]
-            : [];
-        },
-      ),
-    }));
+  const courses: BuiltCourse[] = keys.map((key, index) => {
+    const above = occupiedByCourse[index + 1] ?? new Set<number>();
+    const own = occupiedByCourse[index];
+    const previous = keys[index - 1];
+
+    return {
+      weekNumber: key.weekNumber,
+      row: key.row,
+      startsWeek: previous === undefined || previous.weekNumber !== key.weekNumber,
+      isActiveWeek: key.weekNumber === active,
+      blocks: placementsForCourse(placements, key).flatMap((placement) => {
+        const workout = workoutsById.get(placement.workoutId);
+        if (!workout) {
+          return [];
+        }
+        const cells = Array.from(
+          { length: placement.span },
+          (_, offset) => placement.columnStart + offset,
+        );
+        return [
+          {
+            workout,
+            placement,
+            isNewest: placement.workoutId === newestPlacedWorkoutId,
+            showTopFace: !cells.every((column) => above.has(column)),
+            showRightFace: !own.has(placement.columnStart + placement.span),
+          },
+        ];
+      }),
+    };
+  });
 
   const plannedRuns = scheduledRuns(plan);
   const completedRuns = earnedBlocks(plan, runLogs);
   const lastWeekNumber = plan.weeks[plan.weeks.length - 1].weekNumber;
+  const topCourse = keys[keys.length - 1];
 
   return {
     metrics: {
@@ -304,8 +330,20 @@ export function selectBuildViewModel(
     pendingBlocks: completedRuns.filter(
       (earned) => !placedWorkoutIds.has(earned.workout.id),
     ),
-    builtWeeks,
+    courses,
     activeWeekNumber: active,
-    nextCourseWeekNumber: topWeek < lastWeekNumber ? topWeek + 1 : null,
+    nextCourseWeekNumber:
+      topCourse === undefined
+        ? active
+        : topCourse.weekNumber < lastWeekNumber
+          ? topCourse.weekNumber + 1
+          : null,
   };
+}
+
+/** The phase label for a week, used by the tower's week markers. */
+export function weekPhase(plan: TrainingPlan, weekNumber: number): string {
+  return (
+    plan.weeks.find((week) => week.weekNumber === weekNumber)?.phase ?? ""
+  );
 }

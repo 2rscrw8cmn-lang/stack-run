@@ -25,7 +25,7 @@ Read in this order:
 - Three primary tabs only: Today, Build, Plan
 - Manual logging only
 - No account, auth, backend, API, GPS, Strava, HealthKit, timer, social features, or AI coaching
-- No Tailwind, UI framework, state library, router, chart library, canvas, WebGL, 3D engine, or physics library
+- No Tailwind, UI framework, state library, router, chart library, canvas, WebGL, 3D engine, or physics library (CSS 3D transforms are not a 3D engine; see D-015)
 - Use React, TypeScript, Vite, plain CSS, and Lucide React
 - Store all user state locally through the versioned storage repository
 - Rest days do not create build blocks
@@ -49,7 +49,7 @@ Do not add screens, tabs, settings pages, onboarding tours, analytics, or featur
 - Preserve generous spacing and restrained card count.
 - The interface must remain usable at 320 CSS pixels wide.
 - Use CSS gradients, borders, and small shadows to give blocks depth.
-- Do not create fake 3D perspective.
+- The Build tower is drawn in isometric projection with CSS 3D transforms, per D-015. Everything else stays flat, including the Place Block grid.
 - Do not use emojis as interface icons.
 - Use Lucide icons listed in `docs/LUCIDE_AND_COMPONENT_MAP.md`.
 - Every interactive element must have an accessible label and visible focus state.

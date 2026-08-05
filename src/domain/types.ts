@@ -80,6 +80,8 @@ export interface AppSettings {
 export interface BlockPlacement {
   workoutId: string;
   weekNumber: number;
+  /** 0-based course within this week's band. A week fills as many as it needs. */
+  row: number;
   /** 1-based, inclusive. The block occupies `span` columns from here. */
   columnStart: number;
   span: 1 | 2 | 3 | 4;
@@ -87,7 +89,7 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];

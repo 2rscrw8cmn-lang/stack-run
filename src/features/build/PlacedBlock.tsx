@@ -7,7 +7,7 @@ interface PlacedBlockProps {
   onSelect: (workoutId: string) => void;
 }
 
-/** e.g. "Week 6 Thursday, Intervals, 5 to 6 miles, columns 3 through 4". */
+/** e.g. "Week 6 Thursday, Intervals, 5 to 6 miles, course 2, columns 3 through 4". */
 function blockLabel(block: PlacedBlockData): string {
   const { workout, placement } = block;
   const day = formatDateLabel(workout.date, { weekday: "long" });
@@ -23,12 +23,18 @@ function blockLabel(block: PlacedBlockData): string {
     `Week ${workout.weekNumber} ${day}`,
     WORKOUT_TYPE_LABEL[workout.type],
     target,
+    `course ${placement.row + 1}`,
     columns,
   ].join(", ");
 }
 
+/**
+ * One brick in the tower. The front face always draws; the top and right faces
+ * only draw where nothing abuts, which is what makes the structure read as a
+ * solid mass rather than a stack of separate cards.
+ */
 export function PlacedBlock({ block, onSelect }: PlacedBlockProps) {
-  const { workout, placement, isNewest } = block;
+  const { workout, placement, isNewest, showTopFace, showRightFace } = block;
 
   return (
     <button
@@ -44,7 +50,15 @@ export function PlacedBlock({ block, onSelect }: PlacedBlockProps) {
       onClick={() => onSelect(workout.id)}
     >
       <span className="visually-hidden">{blockLabel(block)}</span>
-      <span className="placed-block__piece" aria-hidden="true" />
+      <span className="placed-block__brick" aria-hidden="true">
+        <span className="placed-block__face placed-block__face--front" />
+        {showTopFace && (
+          <span className="placed-block__face placed-block__face--top" />
+        )}
+        {showRightFace && (
+          <span className="placed-block__face placed-block__face--right" />
+        )}
+      </span>
     </button>
   );
 }

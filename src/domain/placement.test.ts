@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   assertPlacementFits,
   autoPlaceOption,
+  courseBelow,
+  courseKeys,
   fitsInRow,
   InvalidPlacementError,
   occupiedColumns,
   placementOptions,
   placementsForWeek,
+  repackPlacements,
+  topRowOfWeek,
   WEEK_COLUMNS,
 } from "./placement";
 import type { BlockPlacement } from "./types";
@@ -14,28 +18,30 @@ import type { BlockPlacement } from "./types";
 function placement(
   workoutId: string,
   weekNumber: number,
+  row: number,
   columnStart: number,
   span: 1 | 2 | 3 | 4,
 ): BlockPlacement {
   return {
     workoutId,
     weekNumber,
+    row,
     columnStart,
     span,
     placedAt: "2026-08-04T12:00:00.000Z",
   };
 }
 
-const starts = (options: ReturnType<typeof placementOptions>) =>
-  options.map((option) => option.columnStart);
+const at = (options: ReturnType<typeof placementOptions>) =>
+  options.map((option) => `${option.row}:${option.columnStart}`);
 
 describe("fitsInRow", () => {
-  it("keeps every block inside the eight columns", () => {
-    expect(WEEK_COLUMNS).toBe(8);
+  it("keeps every block inside the five columns of a course", () => {
+    expect(WEEK_COLUMNS).toBe(5);
     expect(fitsInRow(1, 4)).toBe(true);
-    expect(fitsInRow(5, 4)).toBe(true);
-    expect(fitsInRow(6, 4)).toBe(false);
-    expect(fitsInRow(8, 1)).toBe(true);
+    expect(fitsInRow(2, 4)).toBe(true);
+    expect(fitsInRow(3, 4)).toBe(false);
+    expect(fitsInRow(5, 1)).toBe(true);
     expect(fitsInRow(0, 1)).toBe(false);
   });
 });
@@ -43,110 +49,167 @@ describe("fitsInRow", () => {
 describe("occupiedColumns", () => {
   it("expands each placement across the columns it covers", () => {
     expect([
-      ...occupiedColumns([placement("a", 1, 2, 3), placement("b", 1, 7, 2)]),
-    ]).toEqual([2, 3, 4, 7, 8]);
+      ...occupiedColumns([
+        placement("a", 1, 0, 2, 3),
+        placement("b", 1, 0, 5, 1),
+      ]),
+    ]).toEqual([2, 3, 4, 5]);
   });
 });
 
 describe("placementsForWeek", () => {
-  it("selects one week and orders it left to right", () => {
+  it("selects one week and orders it course by course, left to right", () => {
     const all = [
-      placement("c", 2, 1, 1),
-      placement("b", 1, 5, 2),
-      placement("a", 1, 1, 1),
+      placement("c", 2, 0, 1, 1),
+      placement("b", 1, 1, 1, 2),
+      placement("a", 1, 0, 3, 1),
     ];
-    expect(placementsForWeek(all, 1).map((p) => p.workoutId)).toEqual(["a", "b"]);
+    expect(placementsForWeek(all, 1).map((p) => p.workoutId)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+});
+
+describe("courseKeys and courseBelow", () => {
+  const placements = [
+    placement("a", 1, 0, 1, 2),
+    placement("b", 1, 1, 1, 3),
+    placement("c", 2, 0, 2, 2),
+  ];
+
+  it("lists every built course from the ground up", () => {
+    expect(courseKeys(placements)).toEqual([
+      { weekNumber: 1, row: 0 },
+      { weekNumber: 1, row: 1 },
+      { weekNumber: 2, row: 0 },
+    ]);
+  });
+
+  it("finds the course directly beneath, across a week boundary", () => {
+    expect(
+      courseBelow(placements, { weekNumber: 2, row: 0 }).map((p) => p.workoutId),
+    ).toEqual(["b"]);
+    expect(
+      courseBelow(placements, { weekNumber: 1, row: 1 }).map((p) => p.workoutId),
+    ).toEqual(["a"]);
+  });
+
+  it("reports nothing beneath the ground course", () => {
+    expect(courseBelow(placements, { weekNumber: 1, row: 0 })).toEqual([]);
+  });
+});
+
+describe("topRowOfWeek", () => {
+  it("is -1 for a week nothing has been built into", () => {
+    expect(topRowOfWeek([], 4)).toBe(-1);
+    expect(topRowOfWeek([placement("a", 1, 2, 1, 1)], 1)).toBe(2);
   });
 });
 
 describe("placementOptions", () => {
-  it("offers every column a block fits in when the week is empty", () => {
-    expect(starts(placementOptions(1, [], [], true))).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8,
+  it("offers every column of the ground course when the week is empty", () => {
+    expect(at(placementOptions(1, 1, []))).toEqual([
+      "0:1",
+      "0:2",
+      "0:3",
+      "0:4",
+      "0:5",
     ]);
-    expect(starts(placementOptions(3, [], [], true))).toEqual([
-      1, 2, 3, 4, 5, 6,
-    ]);
-    expect(starts(placementOptions(4, [], [], true))).toEqual([1, 2, 3, 4, 5]);
+    expect(at(placementOptions(3, 1, []))).toEqual(["0:1", "0:2", "0:3"]);
+    expect(at(placementOptions(4, 1, []))).toEqual(["0:1", "0:2"]);
   });
 
-  it("rejects positions that would overlap a block already placed", () => {
-    const existing = [placement("a", 2, 4, 2)];
-    // Columns 4 and 5 are taken, so a span-2 block cannot start at 3, 4, or 5.
-    expect(starts(placementOptions(2, existing, [], false))).toEqual([
-      1, 2, 6, 7,
+  it("offers the next course up once the current one is started", () => {
+    const existing = [placement("a", 1, 0, 1, 3)];
+    // Columns 1-3 of course 0 are taken; course 1 is open across the board.
+    expect(at(placementOptions(2, 1, existing))).toEqual([
+      "0:4",
+      "1:1",
+      "1:2",
+      "1:3",
+      "1:4",
     ]);
   });
 
-  it("reports no options when the course is full", () => {
-    const full = [
-      placement("a", 2, 1, 4),
-      placement("b", 2, 5, 4),
-    ];
-    expect(placementOptions(1, full, [], false)).toEqual([]);
+  it("never offers a course that would float above a gap", () => {
+    const existing = [placement("a", 1, 0, 1, 1)];
+    const rows = new Set(placementOptions(1, 1, existing).map((o) => o.row));
+    expect([...rows]).toEqual([0, 1]);
   });
 
   it("marks a position supported when at least half its cells rest on the course below", () => {
-    const below = [placement("a", 1, 3, 2)];
-    const options = placementOptions(2, [], below, false);
-
-    const supported = options
-      .filter((option) => option.isSupported)
+    const existing = [placement("a", 1, 0, 2, 2)];
+    const supported = placementOptions(2, 1, existing)
+      .filter((option) => option.row === 1 && option.isSupported)
       .map((option) => option.columnStart);
-    // Columns 3 and 4 are built below, so starts 2, 3, and 4 each cover one
-    // supported cell out of two.
-    expect(supported).toEqual([2, 3, 4]);
+
+    // Columns 2 and 3 are built below, so starts 1, 2, and 3 each cover at
+    // least one supported cell out of two.
+    expect(supported).toEqual([1, 2, 3]);
   });
 
   it("treats every position on the ground course as supported", () => {
-    const options = placementOptions(2, [], [], true);
-    expect(options.every((option) => option.isSupported)).toBe(true);
+    expect(placementOptions(2, 1, []).every((o) => o.isSupported)).toBe(true);
+  });
+
+  it("supports a week's first course from the top course of the week below", () => {
+    const existing = [placement("a", 1, 0, 1, 3)];
+    const supported = placementOptions(2, 2, existing)
+      .filter((option) => option.isSupported)
+      .map((option) => option.columnStart);
+
+    expect(supported).toEqual([1, 2, 3]);
   });
 });
 
 describe("autoPlaceOption", () => {
   it("centres the block on the ground course", () => {
-    expect(autoPlaceOption(placementOptions(1, [], [], true))?.columnStart).toBe(
-      4,
-    );
-    expect(autoPlaceOption(placementOptions(2, [], [], true))?.columnStart).toBe(
-      4,
-    );
-    expect(autoPlaceOption(placementOptions(4, [], [], true))?.columnStart).toBe(
-      3,
-    );
+    expect(autoPlaceOption(placementOptions(1, 1, []))).toMatchObject({
+      row: 0,
+      columnStart: 3,
+    });
+    expect(autoPlaceOption(placementOptions(2, 1, []))).toMatchObject({
+      row: 0,
+      columnStart: 2,
+    });
+    expect(autoPlaceOption(placementOptions(4, 1, []))).toMatchObject({
+      row: 0,
+      columnStart: 1,
+    });
+  });
+
+  it("finishes the lowest open course before starting a new one", () => {
+    const existing = [placement("a", 1, 0, 1, 3)];
+    expect(autoPlaceOption(placementOptions(2, 1, existing))).toMatchObject({
+      row: 0,
+      columnStart: 4,
+    });
+  });
+
+  it("starts a new course when the current one has no room", () => {
+    const existing = [
+      placement("a", 1, 0, 1, 3),
+      placement("b", 1, 0, 4, 2),
+    ];
+    expect(autoPlaceOption(placementOptions(2, 1, existing))?.row).toBe(1);
   });
 
   it("prefers a supported position over a more central unsupported one", () => {
-    const below = [placement("a", 1, 1, 2)];
-    const chosen = autoPlaceOption(placementOptions(2, [], below, false));
-
-    // Centre would be column 4, but only starts 1 and 2 rest on the course
-    // below; start 2 is the nearer of those to the centre.
-    expect(chosen?.columnStart).toBe(2);
-    expect(chosen?.isSupported).toBe(true);
-  });
-
-  it("falls back to any open position when nothing is supported", () => {
-    const below = [placement("a", 1, 1, 1)];
-    // A span-3 block can never get half its cells onto a single supported
-    // column, so no option is supported and the centre rule applies.
-    const chosen = autoPlaceOption(placementOptions(3, [], below, false));
-    expect(chosen?.isSupported).toBe(false);
-    expect(chosen?.columnStart).toBe(3);
-  });
-
-  it("breaks a tie by choosing the leftmost position", () => {
-    // Starts 4 and 5 are equally far from the centre for a span-1 block.
-    expect(autoPlaceOption(placementOptions(1, [], [], true))?.columnStart).toBe(
-      4,
+    const existing = [placement("a", 1, 0, 1, 2)];
+    const chosen = autoPlaceOption(
+      placementOptions(2, 1, existing).filter((option) => option.row === 1),
     );
+
+    // Start 2 covers columns 2-3: nearest the centre of the course, and column
+    // 2 rests on the block below, so it is supported as well.
+    expect(chosen).toMatchObject({ columnStart: 2, isSupported: true });
   });
 
   it("is deterministic regardless of option order", () => {
-    const options = placementOptions(2, [], [], true);
-    expect(autoPlaceOption([...options].reverse())?.columnStart).toBe(
-      autoPlaceOption(options)?.columnStart,
+    const options = placementOptions(2, 1, [placement("a", 1, 0, 1, 2)]);
+    expect(autoPlaceOption([...options].reverse())).toEqual(
+      autoPlaceOption(options),
     );
   });
 
@@ -159,26 +222,44 @@ describe("assertPlacementFits", () => {
   it("accepts a placement in free columns", () => {
     expect(() =>
       assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, columnStart: 1, span: 2 },
-        [placement("a", 1, 5, 2)],
+        { workoutId: "b", weekNumber: 1, row: 0, columnStart: 1, span: 2 },
+        [placement("a", 1, 0, 4, 2)],
       ),
     ).not.toThrow();
   });
 
-  it("rejects a block that would run past column 8", () => {
+  it("rejects a block that would run past the last column", () => {
     expect(() =>
       assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, columnStart: 7, span: 3 },
+        { workoutId: "b", weekNumber: 1, row: 0, columnStart: 4, span: 3 },
         [],
       ),
     ).toThrow(InvalidPlacementError);
   });
 
-  it("rejects a block that would overlap another in the same week", () => {
+  it("rejects a block that would overlap another in the same course", () => {
     expect(() =>
       assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, columnStart: 4, span: 2 },
-        [placement("a", 1, 5, 2)],
+        { workoutId: "b", weekNumber: 1, row: 0, columnStart: 3, span: 2 },
+        [placement("a", 1, 0, 4, 2)],
+      ),
+    ).toThrow(InvalidPlacementError);
+  });
+
+  it("allows the same columns in a different course of the same week", () => {
+    expect(() =>
+      assertPlacementFits(
+        { workoutId: "b", weekNumber: 1, row: 1, columnStart: 4, span: 2 },
+        [placement("a", 1, 0, 4, 2)],
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects a course that would float above a gap", () => {
+    expect(() =>
+      assertPlacementFits(
+        { workoutId: "b", weekNumber: 1, row: 3, columnStart: 1, span: 1 },
+        [placement("a", 1, 0, 1, 1)],
       ),
     ).toThrow(InvalidPlacementError);
   });
@@ -186,8 +267,8 @@ describe("assertPlacementFits", () => {
   it("ignores placements in other weeks", () => {
     expect(() =>
       assertPlacementFits(
-        { workoutId: "b", weekNumber: 2, columnStart: 5, span: 2 },
-        [placement("a", 1, 5, 2)],
+        { workoutId: "b", weekNumber: 2, row: 0, columnStart: 4, span: 2 },
+        [placement("a", 1, 0, 4, 2)],
       ),
     ).not.toThrow();
   });
@@ -195,9 +276,44 @@ describe("assertPlacementFits", () => {
   it("does not treat a block as colliding with itself when it moves", () => {
     expect(() =>
       assertPlacementFits(
-        { workoutId: "a", weekNumber: 1, columnStart: 4, span: 2 },
-        [placement("a", 1, 5, 2)],
+        { workoutId: "a", weekNumber: 1, row: 0, columnStart: 3, span: 2 },
+        [placement("a", 1, 0, 4, 2)],
       ),
     ).not.toThrow();
+  });
+});
+
+describe("repackPlacements", () => {
+  it("re-lays a week that no longer fits one course, keeping its order", () => {
+    // What an eight-column week looked like before the grid narrowed.
+    const wide = [
+      placement("a", 1, 0, 1, 1),
+      placement("b", 1, 0, 2, 1),
+      placement("c", 1, 0, 3, 1),
+      placement("d", 1, 0, 4, 3),
+    ];
+
+    expect(
+      repackPlacements(wide).map((p) => [p.workoutId, p.row, p.columnStart]),
+    ).toEqual([
+      ["a", 0, 1],
+      ["b", 0, 2],
+      ["c", 0, 3],
+      ["d", 1, 1],
+    ]);
+  });
+
+  it("keeps every placement and never exceeds the course width", () => {
+    const wide = [
+      placement("a", 2, 0, 1, 4),
+      placement("b", 2, 0, 5, 4),
+      placement("c", 3, 0, 1, 2),
+    ];
+    const repacked = repackPlacements(wide);
+
+    expect(repacked).toHaveLength(3);
+    for (const p of repacked) {
+      expect(p.columnStart + p.span - 1).toBeLessThanOrEqual(WEEK_COLUMNS);
+    }
   });
 });

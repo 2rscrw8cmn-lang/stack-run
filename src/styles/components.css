@@ -615,12 +615,12 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
-/* Built structure — a tower, not a chart */
+/* Built structure — an isometric tower */
 
 .built-structure {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .built-structure__heading {
@@ -646,60 +646,62 @@ textarea.run-input {
   font-variant-numeric: tabular-nums;
 }
 
-/*
- * The tower is a fixed, centred mass rather than a full-width band. Letting it
- * stretch edge to edge is most of what made the old structure read as a chart.
- */
-.built-structure__tower {
-  width: min(100%, 320px);
-  margin-inline: auto;
-  padding-bottom: var(--space-2);
-}
-
-/* The dashed hint of the course that comes next, above what is built. */
 .built-structure__next {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0 0 var(--space-3) 20px;
+  margin: 0;
   font-size: 12px;
   color: var(--text-subtle);
 }
 
 .built-structure__next-ghost {
   flex: 1 1 auto;
-  height: 16px;
+  height: 14px;
   border: 1px dashed var(--border-strong);
   border-radius: 4px;
 }
 
 /*
- * Courses touch. The 4px gap is exactly the depth of each brick's bottom
- * extrusion, so what shows between courses is brick, not background.
+ * The tower is viewed from slightly above and to the right. Every ancestor of
+ * a brick face keeps `preserve-3d`, so the faces share one 3D space and the
+ * browser depth-sorts them; adding `overflow` anywhere in this chain would
+ * flatten it.
  */
+.built-structure__stage {
+  display: flex;
+  justify-content: center;
+  perspective: 1600px;
+  perspective-origin: 50% 55%;
+  padding: var(--space-5) 0 var(--space-6);
+}
+
+.built-structure__tower {
+  --brick-unit: clamp(26px, 8.5vw, 38px);
+  --brick-height: 26px;
+  --brick-depth: 12px;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(8deg) rotateY(-16deg);
+}
+
 .built-structure__courses {
   display: flex;
   flex-direction: column;
-  gap: 5px;
   margin: 0;
   padding: 0;
   list-style: none;
+  transform-style: preserve-3d;
 }
 
-/* Foundation slab, wider than the tower, with the ground shadow it casts. */
+/* Foundation slab, laid flat under the tower. */
 .built-structure__base {
   height: 12px;
-  margin: 6px -6px 0 14px;
-  border-radius: 3px;
-  background: linear-gradient(
-    180deg,
-    var(--surface-strong),
-    var(--surface-soft)
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 4px 0 rgba(0, 0, 0, 0.5),
-    0 12px 18px rgba(0, 0, 0, 0.55);
+  margin-left: 18px;
+  transform-origin: top;
+  transform: rotateX(90deg);
+  background: linear-gradient(180deg, var(--surface-strong), var(--surface-soft));
+  box-shadow: 0 18px 28px rgba(0, 0, 0, 0.7);
 }
 
 .built-structure__empty {
@@ -709,123 +711,118 @@ textarea.run-input {
   color: var(--text-subtle);
 }
 
-.built-week-row {
+.built-course {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 18px repeat(5, var(--brick-unit));
   align-items: end;
-  gap: var(--space-1);
+  transform-style: preserve-3d;
 }
 
-.built-week-row__number {
+/* Only the first course of a training week is numbered. */
+.built-course__number {
+  grid-column: 1;
+  padding-right: var(--space-1);
   font-size: 10px;
   font-weight: 600;
-  line-height: 1;
-  padding-bottom: 12px;
+  line-height: var(--brick-height);
   text-align: right;
   color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
 }
 
-.built-week-row[data-active="true"] .built-week-row__number {
+.built-course[data-active="true"] .built-course__number {
   color: var(--accent);
 }
 
-/*
- * One course: eight equal columns with a 2px mortar joint, blocks pinned to
- * the columns they occupy.
- */
-.built-week-row__course {
+.built-course__blocks {
+  grid-column: 2 / -1;
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 1px;
-  align-items: end;
-  min-height: 37px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  height: var(--brick-height);
+  transform-style: preserve-3d;
 }
 
-.built-week-row__course > * {
+.built-course__blocks > * {
   grid-row: 1;
 }
 
-/* Only the active week shows where there is still room to build. */
-.built-week-row__guide {
-  height: 32px;
-  border: 1px dashed var(--border);
-  border-radius: 4px;
-}
-
 .placed-block {
-  display: flex;
-  align-items: flex-end;
+  height: var(--brick-height);
   min-width: 0;
   padding: 0;
   border: none;
-  border-radius: 5px;
   background: none;
   cursor: pointer;
+  transform-style: preserve-3d;
 }
 
-/*
- * A brick, seen straight on: a bright top face, a front face shading down,
- * a dark extrusion below it, and a contact shadow. No perspective, no
- * isometric projection, no 3D transform — just stacked gradients.
- */
-.placed-block__piece {
+.placed-block__brick {
   position: relative;
+  display: block;
   width: 100%;
-  height: 32px;
-  border-radius: 4px;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.placed-block__face {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+}
+
+.placed-block__face--front {
   background: var(--piece-color);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--piece-color) 45%, white) 0,
-    color-mix(in srgb, var(--piece-color) 48%, white) 6px,
-    color-mix(in srgb, var(--piece-color) 88%, white) 7px,
+    color-mix(in srgb, var(--piece-color) 92%, white),
     var(--piece-color) 55%,
-    color-mix(in srgb, var(--piece-color) 74%, black) 100%
+    color-mix(in srgb, var(--piece-color) 80%, black)
   );
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 5px 0 rgba(0, 0, 0, 0.5),
-    0 7px 6px rgba(0, 0, 0, 0.5);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 5px 0 color-mix(in srgb, var(--piece-color) 38%, black),
-    0 7px 6px rgba(0, 0, 0, 0.5);
-  transition: transform 120ms ease;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 
-.placed-block:active .placed-block__piece {
-  transform: translateY(1px);
+/* Drawn only where nothing rests on the brick. */
+.placed-block__face--top {
+  bottom: auto;
+  height: var(--brick-depth);
+  transform-origin: top;
+  transform: rotateX(90deg);
+  background: color-mix(in srgb, var(--piece-color) 62%, white);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-/* Dust kicked up where the block lands. */
-.placed-block__piece::after {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: -8px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  opacity: 0;
+/* Drawn only where nothing abuts the brick. */
+.placed-block__face--right {
+  left: auto;
+  right: 0;
+  width: var(--brick-depth);
+  transform-origin: right;
+  transform: rotateY(90deg);
+  background: color-mix(in srgb, var(--piece-color) 58%, black);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.placed-block:focus-visible {
+  outline: none;
+}
+
+.placed-block:focus-visible .placed-block__brick {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /* The block just placed drops into its course and carries the only glow. */
-.placed-block[data-newest="true"] .placed-block__piece {
+.placed-block[data-newest="true"] .placed-block__brick {
   animation: placed-block-drop 280ms cubic-bezier(0.3, 0.9, 0.4, 1);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
-    0 5px 0 rgba(0, 0, 0, 0.5),
-    0 0 16px rgba(255, 255, 255, 0.4);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 5px 0 color-mix(in srgb, var(--piece-color) 38%, black),
-    0 0 16px color-mix(in srgb, var(--piece-color) 65%, transparent);
 }
 
-.placed-block[data-newest="true"] .placed-block__piece::after {
-  animation: placed-block-dust 320ms ease-out;
+.placed-block[data-newest="true"] .placed-block__face--front {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 16px color-mix(in srgb, var(--piece-color) 70%, transparent);
 }
 
 @keyframes placed-block-drop {
@@ -845,37 +842,16 @@ textarea.run-input {
   }
 }
 
-@keyframes placed-block-dust {
-  0% {
-    opacity: 0;
-    transform: scaleX(0.3);
-  }
-  35% {
-    opacity: 0.45;
-  }
-  100% {
-    opacity: 0;
-    transform: scaleX(1.7);
-  }
-}
-
-/* Reduced motion: no drop, no dust, no glow — a static ring marks the newest. */
+/* Reduced motion: no drop and no glow — a static ring marks the newest brick. */
 @media (prefers-reduced-motion: reduce) {
-  .placed-block[data-newest="true"] .placed-block__piece {
+  .placed-block[data-newest="true"] .placed-block__brick {
     animation: none;
-    box-shadow:
-      inset 0 0 0 1px rgba(0, 0, 0, 0.5),
-      0 5px 0 rgba(0, 0, 0, 0.5);
     outline: 2px solid var(--text);
     outline-offset: 2px;
   }
 
-  .placed-block[data-newest="true"] .placed-block__piece::after {
-    animation: none;
-  }
-
-  .placed-block__piece {
-    transition: none;
+  .placed-block[data-newest="true"] .placed-block__face--front {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -1078,18 +1054,24 @@ textarea.run-input {
 }
 
 /*
- * The placement grid draws one training week: eight columns, every child in
- * the same row so the cells, the blocks already built, the preview, and the
- * choices all line up on top of each other.
+ * The placement grid draws one training week's band of courses, five columns
+ * wide, ground course at the bottom. It stays front on: this is the precision
+ * interaction, and skewing it would only make it harder to aim at.
  */
 .placement-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.placement-grid__course {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
   align-items: center;
 }
 
-.placement-grid > * {
+.placement-grid__course > * {
   grid-row: 1;
 }
 
@@ -1101,21 +1083,21 @@ textarea.run-input {
 
 .placement-grid__placed {
   height: 30px;
-  border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
   background: var(--piece-color);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--piece-color) 86%, white),
-    var(--piece-color)
+    color-mix(in srgb, var(--piece-color) 90%, white),
+    var(--piece-color) 55%,
+    color-mix(in srgb, var(--piece-color) 80%, black)
   );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
 /* Shows the full width of the block the focused choice would place. */
 .placement-grid__preview {
   height: 34px;
-  border-radius: 7px;
+  border-radius: 6px;
   border: 2px solid var(--piece-color);
   background: color-mix(in srgb, var(--piece-color) 22%, transparent);
 }
@@ -1140,6 +1122,80 @@ textarea.run-input {
 
 .placement-grid__option:hover {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Dev-only data panel (never present in a production build) */
+
+.dev-panel__toggle {
+  position: fixed;
+  top: max(var(--space-3), env(safe-area-inset-top));
+  right: var(--space-3);
+  z-index: 10;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-strong));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.dev-panel {
+  position: fixed;
+  top: max(var(--space-2), env(safe-area-inset-top));
+  right: var(--space-2);
+  z-index: 10;
+  width: min(260px, calc(100vw - 2 * var(--space-2)));
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-size: 12px;
+}
+
+.dev-panel__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+  color: var(--text-subtle);
+}
+
+.dev-panel__header button {
+  border: none;
+  background: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+
+.dev-panel__status {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+.dev-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.dev-panel__actions button {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dev-panel__header button {
+  min-height: 32px;
+  padding: 0 var(--space-2);
 }
 
 /* Legend */
@@ -1265,78 +1321,4 @@ textarea.run-input {
   margin: 0;
   font-size: 14px;
   color: var(--text-muted);
-}
-
-/* Dev-only data panel (never present in a production build) */
-
-.dev-panel__toggle {
-  position: fixed;
-  top: max(var(--space-3), env(safe-area-inset-top));
-  right: var(--space-3);
-  z-index: 10;
-  min-width: 56px;
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface-strong));
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-
-.dev-panel {
-  position: fixed;
-  top: max(var(--space-2), env(safe-area-inset-top));
-  right: var(--space-2);
-  z-index: 10;
-  width: min(260px, calc(100vw - 2 * var(--space-2)));
-  padding: var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  font-size: 12px;
-}
-
-.dev-panel__header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: var(--space-2);
-  color: var(--text-subtle);
-}
-
-.dev-panel__header button {
-  border: none;
-  background: none;
-  color: var(--text-subtle);
-  cursor: pointer;
-}
-
-.dev-panel__status {
-  margin: 0 0 var(--space-2);
-  color: var(--text-muted);
-}
-
-.dev-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-.dev-panel__actions button {
-  min-height: 36px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.dev-panel__header button {
-  min-height: 32px;
-  padding: 0 var(--space-2);
 }

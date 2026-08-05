@@ -1,27 +1,30 @@
-import type { BuiltWeek } from "../../domain/build";
-import { BuiltWeekRow } from "./BuiltWeekRow";
+import type { BuiltCourse } from "../../domain/build";
+import { BuiltCourseRow } from "./BuiltCourseRow";
 
 interface BuiltStructureProps {
-  weeks: BuiltWeek[];
+  courses: BuiltCourse[];
   nextCourseWeekNumber: number | null;
   onSelectWorkout: (workoutId: string) => void;
 }
 
 /**
- * What has actually been built: week 1 on the foundation, the active week on
- * top, and a dashed hint of the course above it. Future weeks are not drawn —
- * the Plan screen is the schedule; this is the structure.
+ * The tower: every course that has actually been built, ground first in the
+ * DOM and bottom-first on screen. A training week fills as many courses as its
+ * blocks need, so the structure grows upward instead of sideways. Future weeks
+ * are never drawn — the Plan screen is the schedule; this is what exists.
  *
- * Courses are reversed in the DOM rather than with `column-reverse`, so DOM
- * order, reading order, and focus order all match what is on screen.
+ * Courses are reversed here rather than with `column-reverse`, so DOM order,
+ * reading order, and focus order all match what is on screen.
  */
 export function BuiltStructure({
-  weeks,
+  courses,
   nextCourseWeekNumber,
   onSelectWorkout,
 }: BuiltStructureProps) {
-  const blockCount = weeks.reduce((total, week) => total + week.blocks.length, 0);
-  const courseCount = weeks.filter((week) => week.blocks.length > 0).length;
+  const blockCount = courses.reduce(
+    (total, course) => total + course.blocks.length,
+    0,
+  );
 
   return (
     <section className="built-structure" aria-label="Your build">
@@ -29,31 +32,32 @@ export function BuiltStructure({
         <h2 className="built-structure__title">Your build</h2>
         {blockCount > 0 && (
           <p className="built-structure__scale">
-            {courseCount} {courseCount === 1 ? "course" : "courses"} ·{" "}
+            {courses.length} {courses.length === 1 ? "course" : "courses"} ·{" "}
             {blockCount} {blockCount === 1 ? "block" : "blocks"}
           </p>
         )}
       </div>
 
-      <div className="built-structure__tower">
-        {nextCourseWeekNumber !== null && (
-          <p className="built-structure__next">
-            <span className="built-structure__next-ghost" aria-hidden="true" />
-            Week {nextCourseWeekNumber} next
-          </p>
-        )}
+      {nextCourseWeekNumber !== null && (
+        <p className="built-structure__next">
+          <span className="built-structure__next-ghost" aria-hidden="true" />
+          Week {nextCourseWeekNumber} next
+        </p>
+      )}
 
-        <ol className="built-structure__courses" aria-label="Built courses">
-          {[...weeks].reverse().map((week) => (
-            <BuiltWeekRow
-              key={week.weekNumber}
-              week={week}
-              onSelectWorkout={onSelectWorkout}
-            />
-          ))}
-        </ol>
-
-        <div className="built-structure__base" aria-hidden="true" />
+      <div className="built-structure__stage">
+        <div className="built-structure__tower">
+          <ol className="built-structure__courses" aria-label="Built courses">
+            {[...courses].reverse().map((course) => (
+              <BuiltCourseRow
+                key={`${course.weekNumber}-${course.row}`}
+                course={course}
+                onSelectWorkout={onSelectWorkout}
+              />
+            ))}
+          </ol>
+          <div className="built-structure__base" aria-hidden="true" />
+        </div>
       </div>
 
       {blockCount === 0 && (

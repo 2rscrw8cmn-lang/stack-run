@@ -95,4 +95,31 @@
 - The Build-only touch-target exception in `QA_ACCEPTANCE.md` now also covers placement-grid cells.
 - Plan remains the complete schedule. Build does not duplicate it.
 
-**Unchanged:** D-005 and D-010 still stand. Blocks are deterministic 2D HTML and CSS. No falling pieces, no rotation, no collision library, no physics, no game loop, no drag and drop, no canvas, no WebGL, no 3D. Rest days earn no block.
+**Unchanged:** D-010 still stands. No falling pieces, no rotation, no collision library, no physics, no game loop, no drag and drop, no canvas, no WebGL. Rest days earn no block. The isometric part of D-005 is revised by D-015.
+
+## D-015 — The tower is drawn isometrically
+
+**Decision:** The built structure is rendered in isometric projection using CSS 3D transforms: each brick draws a front face, plus a top face where nothing rests on it and a right face where nothing abuts it.
+
+**Reason:** Straight-on gradients and shadows get part of the way, but the thing that reads as "a tower you built" rather than "tiles you arranged" is seeing the tops and sides of the bricks. Front-on rendering cannot produce that at any level of polish.
+
+**Revises D-005**, which rejected isometric perspective, and the matching lines in `AGENTS.md` and `DESIGN_SYSTEM.md`.
+
+**Scope of the exception:** the tower only. The Place Block grid stays front on, because it is the precision interaction and skewing it would make aiming harder at 320px.
+
+**Still rejected:** canvas, WebGL, any 3D engine or library, physics, falling pieces, rotation, drag and drop, and a game loop. This is CSS transforms on plain elements, computed from the same deterministic placement data.
+
+## D-016 — A training week fills as many courses as it needs
+
+**Decision:** Courses are five columns wide, and a training week occupies a band of as many courses as its blocks require rather than exactly one row.
+
+**Reason:** One week per eight-column row fixes the structure at 18 rows of 8 — a slab, whatever the visual treatment. Narrow courses plus multi-course weeks turn the same 71 blocks into a 36-course tower that grows upward as the plan progresses, and a span-4 race block sits at the top of it.
+
+**Consequences:**
+
+- `BlockPlacement` gains `row`, the 0-based course within its week. `AppState.schemaVersion` becomes 3.
+- Version 2 placements are re-laid into the narrower grid in the order they were built. Which blocks are placed survives; where they sit does not. Run logs are untouched.
+- Rows stay contiguous from 0, so a week can never leave a floating course.
+- Auto Place finishes the lowest open course before starting a new one, then prefers a supported position, then the centre, then the leftmost.
+
+**Unchanged:** the span map, one block per completed run, one placement per workout, tap to place, valid positions only, and the support rule.

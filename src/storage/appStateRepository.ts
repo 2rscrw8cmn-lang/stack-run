@@ -2,6 +2,7 @@ import { BLOCK_SPAN_BY_TYPE } from "../domain/build";
 import {
   assertPlacementFits,
   InvalidPlacementError,
+  type PlacementCandidate,
 } from "../domain/placement";
 import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import { createInitialAppState, migrateAppState } from "./migrations";
@@ -99,7 +100,7 @@ export function saveRunLog(
  */
 export function placeBlock(
   state: AppState,
-  input: Pick<BlockPlacement, "workoutId" | "weekNumber" | "columnStart" | "span">,
+  input: PlacementCandidate,
 ): AppState {
   const workout = state.plan.weeks
     .flatMap((week) => week.workouts)

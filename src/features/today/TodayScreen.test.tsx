@@ -219,8 +219,9 @@ describe("TodayScreen", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       workoutId: "workout-002",
       weekNumber: 1,
-      // Week 1 is the ground course, so Auto Place centres a span-1 block.
-      columnStart: 4,
+      row: 0,
+      // The ground course is empty, so Auto Place centres a span-1 block.
+      columnStart: 3,
       span: 1,
     });
   });
@@ -234,7 +235,8 @@ describe("TodayScreen", () => {
           {
             workoutId: "workout-002",
             weekNumber: 1,
-            columnStart: 4,
+            row: 0,
+            columnStart: 3,
             span: 1,
             placedAt: "2026-08-04T13:00:00.000Z",
           },

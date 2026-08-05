@@ -39,8 +39,8 @@ export function BuildScreen({
   const placingBlock =
     allEarned.find((block) => block.workout.id === placingWorkoutId) ?? null;
   const detailBlock =
-    viewModel.builtWeeks
-      .flatMap((week) => week.blocks)
+    viewModel.courses
+      .flatMap((course) => course.blocks)
       .find((block) => block.workout.id === detailWorkoutId) ?? null;
   const detailRunLog = detailBlock
     ? (runLogs.find((runLog) => runLog.workoutId === detailBlock.workout.id) ??
@@ -56,7 +56,7 @@ export function BuildScreen({
     setPlacingWorkoutId(null);
     setDetailWorkoutId(null);
     setAnnouncement(
-      `Block placed in week ${request.weekNumber}, column ${request.columnStart}.`,
+      `Block placed in week ${request.weekNumber}, course ${request.row + 1}, column ${request.columnStart}.`,
     );
   }
 
@@ -69,7 +69,7 @@ export function BuildScreen({
         onPlaceBlock={setPlacingWorkoutId}
       />
       <BuiltStructure
-        weeks={viewModel.builtWeeks}
+        courses={viewModel.courses}
         nextCourseWeekNumber={viewModel.nextCourseWeekNumber}
         onSelectWorkout={setDetailWorkoutId}
       />

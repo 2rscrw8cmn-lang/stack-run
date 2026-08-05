@@ -111,10 +111,15 @@ Do not import a custom font in v1.
 
 ## Block piece styling
 
-Blocks are plain HTML elements. Depth comes from stacked gradients and
-shadows seen straight on: a bright top face, a front face shading downward, a
-darker extrusion below, and a contact shadow. There is no perspective, no
-isometric projection, and no 3D transform.
+Blocks are plain HTML elements.
+
+In the Build tower they are drawn isometrically (D-015): one CSS 3D transform on
+the tower, and each brick drawing a front face, a top face where nothing rests
+on it, and a right face where nothing abuts it. Never a canvas, a WebGL context,
+a 3D engine, or simulated physics.
+
+Everywhere else — the Place Block grid, the staging chips, the legend — blocks
+stay flat and front on.
 
 ```css
 .stack-block {
