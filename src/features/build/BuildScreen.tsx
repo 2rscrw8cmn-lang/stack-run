@@ -51,10 +51,6 @@ export function BuildScreen({
     detailBlock !== null &&
     detailBlock.workout.weekNumber === viewModel.activeWeekNumber;
 
-  const hasPlacedBlocks = viewModel.builtWeeks.some(
-    (week) => week.blocks.length > 0,
-  );
-
   function handlePlace(request: PlacementRequest) {
     onPlaceBlock(request);
     setPlacingWorkoutId(null);
@@ -75,7 +71,6 @@ export function BuildScreen({
       <BuiltStructure
         weeks={viewModel.builtWeeks}
         nextCourseWeekNumber={viewModel.nextCourseWeekNumber}
-        hasPlacedBlocks={hasPlacedBlocks}
         onSelectWorkout={setDetailWorkoutId}
       />
       <BuildLegend />

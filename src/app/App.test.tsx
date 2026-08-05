@@ -1,14 +1,27 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
+// App reads the real local date, and the plan only offers a run to log on days
+// that schedule one. Pin the clock to a week 1 run day so these tests do not
+// depend on when they happen to run.
 beforeEach(() => {
   localStorage.clear();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date("2026-08-04T09:00:00"));
 });
 
-async function logTheFirstRun(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Log First Run" }));
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+function setupUser() {
+  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+}
+
+async function logTodaysRun(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Mark Complete" }));
   await user.type(screen.getByLabelText(/Distance/), "2.1");
   await user.type(screen.getByLabelText(/Duration/), "2030");
   await user.click(screen.getByRole("button", { name: "Solid" }));
@@ -26,7 +39,7 @@ describe("App", () => {
   });
 
   it("switches to the Build structure and the Plan placeholder on tap", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Build" }));
@@ -44,10 +57,10 @@ describe("App", () => {
   });
 
   it("earns a block on save and keeps it pending until it is placed", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { unmount } = render(<App />);
 
-    await logTheFirstRun(user);
+    await logTodaysRun(user);
     expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
 
     // The block is waiting in Build's staging tray, not in the structure.
@@ -73,10 +86,10 @@ describe("App", () => {
   });
 
   it("places an earned block, shows it in the structure, and keeps it after a reload", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { unmount } = render(<App />);
 
-    await logTheFirstRun(user);
+    await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     await user.click(screen.getByRole("button", { name: "Auto Place" }));
 

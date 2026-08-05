@@ -9,6 +9,7 @@ import {
 } from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
+import { DevDataPanel } from "../dev/DevDataPanel";
 import { AppShell } from "./AppShell";
 
 export type TabId = "today" | "build" | "plan";
@@ -29,6 +30,7 @@ export function App() {
   const [appState, setAppState] = useState<AppState>(loadInitialAppState);
 
   return (
+    <>
     <AppShell
       activeTab={activeTab}
       onTabChange={setActiveTab}
@@ -48,5 +50,10 @@ export function App() {
         setAppState((current) => placeBlock(current, request))
       }
     />
+    {/* Dev-server only: Vite drops this from a production build. */}
+    {import.meta.env.DEV && import.meta.env.MODE !== "test" && (
+      <DevDataPanel state={appState} onChange={setAppState} />
+    )}
+    </>
   );
 }

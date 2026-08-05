@@ -111,7 +111,10 @@ Do not import a custom font in v1.
 
 ## Block piece styling
 
-Blocks are plain HTML elements.
+Blocks are plain HTML elements. Depth comes from stacked gradients and
+shadows seen straight on: a bright top face, a front face shading downward, a
+darker extrusion below, and a contact shadow. There is no perspective, no
+isometric projection, and no 3D transform.
 
 ```css
 .stack-block {
@@ -143,6 +146,10 @@ Allowed:
 - Sheet slide or fade
 - Button press scale of 0.98
 - Block reveal: opacity plus 8-12 px downward-to-rest translation
+- Block placement drop: the block the user just placed falls about 34 px into
+  its course, settles with a 2 px overshoot, and kicks up one brief dust puff.
+  This is a single keyframe on one element, not a simulation, and it plays only
+  for the block that was just placed.
 - Very brief glow on the newest block
 
 Not allowed:
