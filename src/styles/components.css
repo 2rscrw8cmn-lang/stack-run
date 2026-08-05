@@ -1271,7 +1271,7 @@ textarea.run-input {
 
 .dev-panel__toggle {
   position: fixed;
-  top: var(--space-3);
+  top: max(var(--space-3), env(safe-area-inset-top));
   right: var(--space-3);
   z-index: 10;
   min-width: 56px;
@@ -1289,10 +1289,10 @@ textarea.run-input {
 
 .dev-panel {
   position: fixed;
-  top: var(--space-2);
+  top: max(var(--space-2), env(safe-area-inset-top));
   right: var(--space-2);
   z-index: 10;
-  width: 200px;
+  width: min(260px, calc(100vw - 2 * var(--space-2)));
   padding: var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -1326,11 +1326,17 @@ textarea.run-input {
 }
 
 .dev-panel__actions button {
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   background: var(--surface);
   color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
+}
+
+.dev-panel__header button {
+  min-height: 32px;
+  padding: 0 var(--space-2);
 }

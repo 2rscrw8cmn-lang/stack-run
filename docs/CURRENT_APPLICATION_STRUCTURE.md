@@ -26,10 +26,11 @@
   - `WorkoutDetailSheet` is preserved and gains the placement facts plus a `Move Block` action, offered only while the block's own training week is active.
   - Tests: `src/domain/placement.test.ts` covers span fit, overlap rejection, valid positions, the support rule, and deterministic Auto Place; `src/domain/build.test.ts` covers earned blocks, placed versus pending, the absence of a future blueprint, metrics, and the streak rules; `src/storage/migrations.test.ts` covers the version 1 upgrade; `src/storage/appStateRepository.test.ts` covers placement persistence, one placement per workout, and every rejection path; `src/features/build/BuildScreen.test.tsx` covers the tray, valid-position selection, keyboard placement, Auto Place, the detail sheet, active-week repositioning, and past-week locking; `src/app/App.test.tsx` drives the whole loop against real storage — log a run, see it pending, place it, and find it still placed after a reload.
 
-- Development-only data panel (`src/dev/DevDataPanel.tsx`):
-  - Today can only log the run scheduled for the current date, so on a rest day — or before the plan starts — there is no way to get blocks on screen by hand. Logging past and future runs is the Plan screen's job in UI-5; until then this panel stands in for it.
-  - It offers: log the next 1, 5, or 20 scheduled runs, auto-place everything pending, and reset. Every action goes through the normal repository functions, so it exercises the same validation and persistence the real UI does.
-  - It is mounted only when `import.meta.env.DEV` is set and the mode is not `test`, so it is absent from production builds and from the test DOM.
+- Temporary data panel (`src/dev/DevDataPanel.tsx`):
+  - Today can only log the run scheduled for the current date, so on a rest day — or before the plan starts — there is no way to get blocks on screen at all. Logging past and future runs is the Plan screen's job in UI-5; until then this panel stands in for it.
+  - It offers: log the next 1, 5, or 20 scheduled runs, auto-place everything pending, and reset. Every action goes through the normal repository functions, so it exercises the same validation and persistence the real UI does, and everything it writes survives a reload.
+  - It ships in deployed builds as well as the dev server, because the whole point is being able to exercise the build on a phone against a real deployment. It is excluded from the test DOM only (`import.meta.env.MODE !== "test"`).
+  - **This is scaffolding, not product.** It is listed for removal in UI-7 and becomes unnecessary once the Plan screen can log a past run.
 
 - UI-4 persistence:
   - `AppState.schemaVersion` is 2 and carries `blockPlacements: BlockPlacement[]`. The storage key is unchanged (`stack.app-state.v1`): it names the slot, while `schemaVersion` inside the payload is the real version, so upgrading migrates the existing value in place instead of orphaning it.
@@ -88,6 +89,7 @@
 - Timer, pace, GPS, integrations, and other explicitly out-of-scope run capture features.
 - Plan editing, and the log/edit actions inside the workout detail sheet (UI-5/UI-6).
 - Removing a placement. A block is either placed or still pending; there is no delete.
+- Logging a run that is not scheduled for today, other than through the temporary data panel. That is the Plan screen's job in UI-5.
 - Reducer-driven state writes (`LOG_RUN`, etc.) — run logging is the only write, applied directly through `saveRunLog`.
 - Deployment.
 

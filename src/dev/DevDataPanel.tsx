@@ -18,15 +18,17 @@ interface DevDataPanelProps {
 }
 
 /**
- * Development-only shortcuts for exercising the build. Today can only log the
+ * Temporary shortcuts for exercising the build by hand. Today can only log the
  * run scheduled for the current date, so on a rest day — or before the plan
- * starts — there is no way to put blocks on the screen by hand. Logging past
- * and future runs is the Plan screen's job in UI-5; until then this panel
- * stands in for it.
+ * starts — there is no way to put blocks on the screen at all. Logging past and
+ * future runs is the Plan screen's job in UI-5; until then this panel stands in
+ * for it, on a phone against a deployed build as much as on a dev server.
  *
  * Everything here goes through the normal repository functions, so it
- * exercises the same validation and persistence the real UI does. It is
- * mounted only in a dev server build.
+ * exercises the same validation and persistence the real UI does.
+ *
+ * This is scaffolding, not product. It ships until the Plan screen makes it
+ * unnecessary, and UI-7 removes it before release.
  */
 export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   const [isOpen, setOpen] = useState(false);

@@ -50,8 +50,12 @@ export function App() {
         setAppState((current) => placeBlock(current, request))
       }
     />
-    {/* Dev-server only: Vite drops this from a production build. */}
-    {import.meta.env.DEV && import.meta.env.MODE !== "test" && (
+    {/*
+      Temporary scaffolding, present in deployed builds too: there is no other
+      way to log a run that is not scheduled for today until the Plan screen
+      lands in UI-5. Excluded from the test DOM only. Remove in UI-7.
+    */}
+    {import.meta.env.MODE !== "test" && (
       <DevDataPanel state={appState} onChange={setAppState} />
     )}
     </>

@@ -130,6 +130,7 @@ Exit gate:
 
 Deliver:
 
+- Removal of the temporary data panel (`src/dev/DevDataPanel.tsx`)
 - App metadata
 - Web app manifest
 - App icons
@@ -145,6 +146,7 @@ A service worker is optional. Do not add one unless offline behavior is explicit
 Exit gate:
 
 - `npm run check` passes.
+- No temporary data panel remains in the shipped build.
 - Fresh install works.
 - Existing data survives deployment updates.
 - Production URL works on iPhone Safari and desktop browser.
