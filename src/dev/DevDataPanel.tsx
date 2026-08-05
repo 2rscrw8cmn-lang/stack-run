@@ -93,7 +93,7 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
         className="dev-panel__toggle"
         onClick={() => setOpen(true)}
       >
-        dev
+        DEV
       </button>
     );
   }
