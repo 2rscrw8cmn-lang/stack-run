@@ -3,12 +3,14 @@ import {
   courseKeys,
   occupiedColumns,
   placementsForCourse,
+  WEEK_COLUMNS,
   type BlockSpan,
 } from "./placement";
 import type {
   BlockPlacement,
   RunLog,
   TrainingPlan,
+  TrainingWeek,
   Workout,
   WorkoutType,
 } from "./types";
@@ -97,6 +99,13 @@ export interface BuildSummaryMetrics {
   currentStreak: number;
 }
 
+/** A run of consecutive weeks in the same training phase, for the height gauge. */
+export interface PhaseBand {
+  label: string;
+  /** Projected courses this phase contributes to the finished tower. */
+  courses: number;
+}
+
 export interface BuildViewModel {
   metrics: BuildSummaryMetrics;
   /** Earned but unplaced blocks, oldest first, so the user builds upward. */
@@ -106,6 +115,10 @@ export interface BuildViewModel {
   activeWeekNumber: number;
   /** The course above the structure, or null once week 18 is rendered. */
   nextCourseWeekNumber: number | null;
+  /** How tall the finished tower is projected to be, in courses. */
+  projectedCourses: number;
+  /** Phase bands from the ground up, for the height gauge. */
+  phaseBands: PhaseBand[];
 }
 
 function isScheduledRun(workout: Workout): boolean {
@@ -338,12 +351,66 @@ export function selectBuildViewModel(
         : topCourse.weekNumber < lastWeekNumber
           ? topCourse.weekNumber + 1
           : null,
+    projectedCourses: projectedCourses(plan),
+    phaseBands: projectedPhaseBands(plan),
   };
 }
 
-/** The phase label for a week, used by the tower's week markers. */
-export function weekPhase(plan: TrainingPlan, weekNumber: number): string {
-  return (
-    plan.weeks.find((week) => week.weekNumber === weekNumber)?.phase ?? ""
+/**
+ * How many courses a week's blocks fill when packed left to right — the same
+ * first-fit Auto Place uses. This is what the finished tower is projected
+ * against; leaving gaps makes a real tower taller than its projection.
+ */
+export function projectedCoursesForWeek(week: TrainingWeek): number {
+  const runs = week.workouts.filter(isScheduledRun);
+  if (runs.length === 0) {
+    return 0;
+  }
+
+  let used = 0;
+  let courses = 1;
+  for (const workout of runs) {
+    const span = BLOCK_SPAN_BY_TYPE[workout.type];
+    if (used + span > WEEK_COLUMNS) {
+      courses += 1;
+      used = 0;
+    }
+    used += span;
+  }
+  return courses;
+}
+
+export function projectedCourses(plan: TrainingPlan): number {
+  return plan.weeks.reduce(
+    (total, week) => total + projectedCoursesForWeek(week),
+    0,
   );
+}
+
+/** Cutback weeks belong to the phase they cut back from. */
+function phaseGroup(phase: string): string {
+  return phase.replace(/\s+Cutback$/i, "");
+}
+
+/**
+ * The training phases as bands of projected courses, ground first. This is the
+ * height gauge beside the tower: it shows how far there is to climb and which
+ * part of the plan each stretch belongs to, without listing a single workout.
+ */
+export function projectedPhaseBands(plan: TrainingPlan): PhaseBand[] {
+  const bands: PhaseBand[] = [];
+  for (const week of plan.weeks) {
+    const label = phaseGroup(week.phase);
+    const courses = projectedCoursesForWeek(week);
+    if (courses === 0) {
+      continue;
+    }
+    const last = bands[bands.length - 1];
+    if (last && last.label === label) {
+      last.courses += courses;
+    } else {
+      bands.push({ label, courses });
+    }
+  }
+  return bands;
 }

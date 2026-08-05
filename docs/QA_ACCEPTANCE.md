@@ -45,6 +45,9 @@
 - Placing a block puts it in the structure and removes it from the tray.
 - A placement survives a reload.
 - Build renders no future workouts and no eighteen-week outline.
+- The shaft above the tower shows remaining height only: no future block is drawn or labelled.
+- The tower stands on a visible ground plane, with sky above it.
+- Build opens framed on the top of the tower, not the foundation.
 - Week 1 is the bottom course and the newest work is on top.
 - A week with more blocks than fit one course spills into the course above it.
 - A brick shows a top face only where nothing rests on it.

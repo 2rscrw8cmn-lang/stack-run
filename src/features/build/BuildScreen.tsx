@@ -71,6 +71,8 @@ export function BuildScreen({
       <BuiltStructure
         courses={viewModel.courses}
         nextCourseWeekNumber={viewModel.nextCourseWeekNumber}
+        projectedCourses={viewModel.projectedCourses}
+        phaseBands={viewModel.phaseBands}
         onSelectWorkout={setDetailWorkoutId}
       />
       <BuildLegend />

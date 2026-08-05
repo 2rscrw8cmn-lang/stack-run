@@ -89,6 +89,30 @@ describe("BuildScreen", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows how tall the finished tower will be without listing a workout", () => {
+    renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      blockPlacements: [placementFor("workout-002", 1, 3, 1)],
+      today: "2026-08-10",
+    });
+
+    // A height and a destination, never a block-by-block outline.
+    expect(screen.getByText("1 of about 36 courses · 1 block")).toBeInTheDocument();
+    expect(screen.getByText("36 courses to the race")).toBeInTheDocument();
+    expect(within(courses()).getAllByRole("button")).toHaveLength(1);
+  });
+
+  it("shows the training phases as a height gauge", () => {
+    renderBuild();
+
+    const gauge = screen.getByRole("list", { name: "Training phases" });
+    expect(
+      within(gauge)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Taper / Race", "Main", "Prep", "Foundation"]);
+  });
+
   it("builds a week into as many courses as it needs, newest on top", () => {
     renderBuild({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-007")],
@@ -103,7 +127,7 @@ describe("BuildScreen", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveAccessibleName("Week 1, course 2");
     expect(rows[1]).toHaveAccessibleName("Week 1, course 1");
-    expect(screen.getByText("Week 2 next")).toBeInTheDocument();
+    expect(screen.getByText("Week 2 builds next.")).toBeInTheDocument();
   });
 
   it("shows only placed blocks in the structure", () => {

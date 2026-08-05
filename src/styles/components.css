@@ -615,22 +615,25 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
-/* Built structure — an isometric tower */
+/* The build site: ground, sky, tower, and the height still to climb */
 
-.built-structure {
+.build-site {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  --course-height: 28px;
+  --brick-unit: clamp(26px, 8.5vw, 38px);
+  --brick-depth: 12px;
 }
 
-.built-structure__heading {
+.build-site__heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.built-structure__title {
+.build-site__title {
   margin: 0;
   font-size: 11px;
   font-weight: 600;
@@ -639,81 +642,180 @@ textarea.run-input {
   color: var(--text-subtle);
 }
 
-.built-structure__scale {
+.build-site__scale {
   margin: 0;
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.built-structure__next {
+/*
+ * The stage is the site. Sky washes down from the top, the ground plane sits
+ * at the bottom, and the tower stands between them, so even a six-block tower
+ * is somewhere rather than nowhere.
+ */
+.build-site__stage {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-2);
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-subtle);
+  padding: var(--space-5) var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(
+      120% 55% at 50% 100%,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #0d1a26 0%, #0a1420 55%, var(--bg) 100%);
+  overflow: hidden;
 }
 
-.built-structure__next-ghost {
+/* Height gauge: which stretch of the plan each part of the tower belongs to. */
+.build-site__gauge {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 58px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-right: 1px solid var(--border);
+}
+
+.build-site__phase {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: var(--phase-courses) 1 0;
+  min-height: 0;
+  padding-right: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.build-site__phase:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.build-site__phase-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-align: right;
+  color: var(--text-subtle);
+  hyphens: none;
+}
+
+.build-site__tower {
   flex: 1 1 auto;
-  height: 14px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  perspective: 1600px;
+  perspective-origin: 50% 60%;
 }
 
 /*
- * The tower is viewed from slightly above and to the right. Every ancestor of
- * a brick face keeps `preserve-3d`, so the faces share one 3D space and the
- * browser depth-sorts them; adding `overflow` anywhere in this chain would
- * flatten it.
+ * The sky is the height left to climb. It is a shaft and a capstone, never a
+ * block-by-block outline: it says how tall this gets and that the race tops
+ * it, and nothing about which run goes where.
  */
-.built-structure__stage {
-  display: flex;
-  justify-content: center;
-  perspective: 1600px;
-  perspective-origin: 50% 55%;
-  padding: var(--space-5) 0 var(--space-6);
-}
-
-.built-structure__tower {
-  --brick-unit: clamp(26px, 8.5vw, 38px);
-  --brick-height: 26px;
-  --brick-depth: 12px;
+.build-site__sky {
   position: relative;
-  transform-style: preserve-3d;
-  transform: rotateX(8deg) rotateY(-16deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  height: min(
+    calc(var(--remaining-courses) * var(--course-height)),
+    42vh
+  );
+  min-height: 96px;
+  padding-top: var(--space-3);
+  /* Fades out at the top: the shaft suggests the climb, the readout above the
+     stage gives the exact number of courses. */
+  mask-image: linear-gradient(180deg, transparent, #000 34%);
 }
 
-.built-structure__courses {
+.build-site__summit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+}
+
+/* A faint race block at the top of the shaft: the thing being built toward. */
+.build-site__capstone {
+  width: calc(4 * var(--brick-unit));
+  max-width: 100%;
+  height: 14px;
+  border: 1px dashed color-mix(in srgb, var(--race) 45%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--race) 7%, transparent);
+}
+
+.build-site__shaft {
+  flex: 1 1 auto;
+  width: calc(5 * var(--brick-unit));
+  max-width: 100%;
+  min-height: 0;
+  margin-top: var(--space-2);
+  border-left: 1px dashed var(--border);
+  border-right: 1px dashed var(--border);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--text) 4%, transparent)
+  );
+}
+
+/* Scroll anchor: Build opens framed here, on the top of what is built. */
+.build-site__skyline {
+  height: 1px;
+  scroll-margin-block: 45vh;
+}
+
+.build-site__courses {
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
   transform-style: preserve-3d;
+  transform: rotateX(8deg) rotateY(-16deg);
 }
 
-/* Foundation slab, laid flat under the tower. */
-.built-structure__base {
-  height: 12px;
-  margin-left: 18px;
+/* The ground the tower stands on, laid flat in the same 3D space. */
+.build-site__ground {
+  height: 16px;
+  margin: 0 calc(-1 * var(--space-4));
   transform-origin: top;
-  transform: rotateX(90deg);
-  background: linear-gradient(180deg, var(--surface-strong), var(--surface-soft));
-  box-shadow: 0 18px 28px rgba(0, 0, 0, 0.7);
+  transform: rotateX(74deg);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-strong) 90%, black),
+    var(--bg)
+  );
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.05), 0 20px 34px rgba(0, 0, 0, 0.8);
 }
 
-.built-structure__empty {
+.build-site__caption {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   text-align: center;
   color: var(--text-subtle);
 }
 
 .built-course {
   display: grid;
-  grid-template-columns: 18px repeat(5, var(--brick-unit));
+  grid-template-columns: 16px repeat(5, var(--brick-unit));
   align-items: end;
   transform-style: preserve-3d;
 }
@@ -724,7 +826,7 @@ textarea.run-input {
   padding-right: var(--space-1);
   font-size: 10px;
   font-weight: 600;
-  line-height: var(--brick-height);
+  line-height: var(--course-height);
   text-align: right;
   color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
@@ -738,7 +840,7 @@ textarea.run-input {
   grid-column: 2 / -1;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  height: var(--brick-height);
+  height: var(--course-height);
   transform-style: preserve-3d;
 }
 
@@ -747,7 +849,7 @@ textarea.run-input {
 }
 
 .placed-block {
-  height: var(--brick-height);
+  height: var(--course-height);
   min-width: 0;
   padding: 0;
   border: none;
@@ -1128,8 +1230,8 @@ textarea.run-input {
 
 .dev-panel__toggle {
   position: fixed;
-  top: max(var(--space-3), env(safe-area-inset-top));
-  right: var(--space-3);
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: var(--space-3);
   z-index: 10;
   min-width: 56px;
   min-height: 44px;
@@ -1146,8 +1248,8 @@ textarea.run-input {
 
 .dev-panel {
   position: fixed;
-  top: max(var(--space-2), env(safe-area-inset-top));
-  right: var(--space-2);
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: var(--space-2);
   z-index: 10;
   width: min(260px, calc(100vw - 2 * var(--space-2)));
   padding: var(--space-3);

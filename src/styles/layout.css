@@ -13,7 +13,9 @@
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: 0 var(--space-4) var(--space-8);
+  /* The temporary dev toggle is fixed above the nav; keep content clear of it.
+     Remove with the panel in UI-7. */
+  padding: 0 var(--space-4) 72px;
 }
 
 .app-shell__nav {
