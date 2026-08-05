@@ -957,6 +957,176 @@ textarea.run-input {
   }
 }
 
+/* Placing a block on the tower */
+
+/* Room for the fixed placement bar while it is up. */
+.build-screen[data-placing="true"] {
+  padding-bottom: 180px;
+}
+
+/* A landing slot: where the block would go if you chose this position. */
+.built-course__slot {
+  grid-row: 1;
+  height: var(--course-height);
+  min-width: 0;
+  padding: 0;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  cursor: pointer;
+}
+
+.built-course__slot:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.built-course__slot[data-chosen="true"] {
+  border-style: solid;
+  background: transparent;
+}
+
+.built-course__slot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/*
+ * The block itself, hovering over the course it would land in. It sits above
+ * the course with a shadow beneath, so it reads as held rather than placed.
+ */
+.built-course__hover {
+  grid-row: 1;
+  height: var(--course-height);
+  border-radius: 2px;
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 92%, white),
+    var(--piece-color) 55%,
+    color-mix(in srgb, var(--piece-color) 80%, black)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 14px 18px rgba(0, 0, 0, 0.6);
+  transform: translateY(-22px);
+  animation: block-hover 1.6s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes block-hover {
+  from {
+    transform: translateY(-22px);
+  }
+  to {
+    transform: translateY(-16px);
+  }
+}
+
+.built-course[data-targeted="true"] .built-course__slot[data-chosen="true"] {
+  border-color: color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+/* The controls for the block in hand. */
+.placement-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-strong);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.placement-bar__block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.placement-bar__chip {
+  flex-shrink: 0;
+  height: 22px;
+  width: calc(10px + var(--piece-span) * 12px);
+  border-radius: 4px;
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 90%, white),
+    var(--piece-color)
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.placement-bar__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.placement-bar__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.placement-bar__position {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.placement-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.placement-bar__controls .icon-button {
+  flex-shrink: 0;
+  min-width: 52px;
+  min-height: 52px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+}
+
+.placement-bar__controls .icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.placement-bar__controls .button {
+  flex: 1 1 auto;
+}
+
+.placement-bar__auto {
+  /* Right-aligned so the temporary dev toggle cannot sit on top of it. */
+  align-self: flex-end;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .built-course__hover {
+    animation: none;
+    transform: translateY(-20px);
+  }
+}
+
 /* Blocks Ready tray */
 
 .pending-tray {

@@ -90,14 +90,14 @@ describe("App", () => {
     const { unmount } = render(<App />);
 
     await logTodaysRun(user);
+    // Place Block hands off to Build, where the block hovers over the tower.
     await user.click(screen.getByRole("button", { name: "Place Block" }));
-    await user.click(screen.getByRole("button", { name: "Auto Place" }));
-
-    // Placing from Today lands on Build so the payoff is visible.
     expect(screen.getByRole("button", { name: "Build" })).toHaveAttribute(
       "aria-current",
       "page",
     );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Drop" }));
     const placed = within(
       screen.getByRole("list", { name: "Built courses" }),
     ).getAllByRole("button");

@@ -43,17 +43,19 @@ function renderBuild(
   props: Partial<Parameters<typeof BuildScreen>[0]> = {},
 ) {
   const onPlaceBlock = vi.fn();
-  render(
+  const onPlacingChange = vi.fn();
+  const utils = render(
     <BuildScreen
       plan={plan}
       runLogs={[]}
       blockPlacements={[]}
       onPlaceBlock={onPlaceBlock}
+      onPlacingChange={onPlacingChange}
       today="2026-08-05"
       {...props}
     />,
   );
-  return { onPlaceBlock };
+  return { onPlaceBlock, onPlacingChange, ...utils };
 }
 
 function courses() {
@@ -144,8 +146,7 @@ describe("BuildScreen", () => {
     );
   });
 
-  it("lists earned but unplaced blocks in the staging tray", async () => {
-    const user = userEvent.setup();
+  it("lists earned but unplaced blocks in the staging tray", () => {
     renderBuild({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-007")],
       blockPlacements: [placementFor("workout-002", 1, 3, 1)],
@@ -158,12 +159,6 @@ describe("BuildScreen", () => {
     expect(items[0]).toHaveTextContent("Long Run");
     expect(items[0]).toHaveTextContent("Sun, Aug 9");
 
-    await user.click(
-      within(tray).getByRole("button", { name: /Place Long Run block/ }),
-    );
-    expect(
-      screen.getByRole("heading", { name: "Place Block" }),
-    ).toBeInTheDocument();
   });
 
   it("hides the staging tray when every earned block is placed", () => {
@@ -177,36 +172,40 @@ describe("BuildScreen", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("offers only valid positions, and places the block on tap", async () => {
+  it("hovers the block over the tower and drops it where you choose", async () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
       blockPlacements: [placementFor("workout-004", 1, 3, 2)],
+      placingWorkoutId: "workout-002",
       today: "2026-08-10",
     });
 
-    await user.click(screen.getByRole("button", { name: /Place Easy block/ }));
-
-    const grid = screen.getByRole("group", { name: "Week 1 courses" });
-    const options = within(grid).getAllByRole("button");
+    // No sheet covers the tower: the landing slots are on the structure.
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const slots = within(courses()).getAllByRole("button", { name: /^Move Easy/ });
     // Columns 3 and 4 of the ground course are built, so 1, 2 and 5 remain
     // there, and the whole of the course above is open.
-    expect(options.map((option) => option.textContent)).toEqual([
-      "Place Easy block in Week 1, course 2, column 1",
-      "Place Easy block in Week 1, course 2, column 2",
-      "Place Easy block in Week 1, course 2, column 3",
-      "Place Easy block in Week 1, course 2, column 4",
-      "Place Easy block in Week 1, course 2, column 5",
-      "Place Easy block in Week 1, course 1, column 1",
-      "Place Easy block in Week 1, course 1, column 2",
-      "Place Easy block in Week 1, course 1, column 5",
+    expect(slots.map((slot) => slot.textContent)).toEqual([
+      "Move Easy block to week 1, course 2, column 1",
+      "Move Easy block to week 1, course 2, column 2",
+      "Move Easy block to week 1, course 2, column 3",
+      "Move Easy block to week 1, course 2, column 4",
+      "Move Easy block to week 1, course 2, column 5",
+      "Move Easy block to week 1, course 1, column 1",
+      "Move Easy block to week 1, course 1, column 2",
+      "Move Easy block to week 1, course 1, column 5",
     ]);
 
     await user.click(
-      within(grid).getByRole("button", {
-        name: "Place Easy block in Week 1, course 1, column 5",
+      screen.getByRole("button", {
+        name: "Move Easy block to week 1, course 1, column 5",
       }),
     );
+    // Choosing does not commit; the block is hovering there.
+    expect(onPlaceBlock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(onPlaceBlock).toHaveBeenCalledWith({
       workoutId: "workout-002",
       weekNumber: 1,
@@ -216,20 +215,50 @@ describe("BuildScreen", () => {
     });
   });
 
-  it("places a block from the keyboard", async () => {
+  it("slides the hovering block with the left and right controls", async () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-002")],
+      placingWorkoutId: "workout-002",
       today: "2026-08-10",
     });
 
-    await user.click(screen.getByRole("button", { name: /Place Easy block/ }));
+    // Auto Place centres a span-1 block on the empty ground course.
+    expect(screen.getByText("Week 1 · course 1 · col 3")).toBeInTheDocument();
 
-    const option = screen.getByRole("button", {
-      name: "Place Easy block in Week 1, course 1, column 2",
+    await user.click(screen.getByRole("button", { name: "Move block left" }));
+    expect(screen.getByText("Week 1 · course 1 · col 2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    expect(screen.getByText("Week 1 · course 1 · col 4")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      workoutId: "workout-002",
+      weekNumber: 1,
+      row: 0,
+      columnStart: 4,
+      span: 1,
     });
-    option.focus();
-    expect(option).toHaveFocus();
+  });
+
+  it("drops from the keyboard", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      placingWorkoutId: "workout-002",
+      today: "2026-08-10",
+    });
+
+    const slot = screen.getByRole("button", {
+      name: "Move Easy block to week 1, course 1, column 2",
+    });
+    slot.focus();
+    await user.keyboard("{Enter}");
+
+    const drop = screen.getByRole("button", { name: "Drop" });
+    drop.focus();
     await user.keyboard("{Enter}");
 
     expect(onPlaceBlock).toHaveBeenCalledWith({
@@ -241,17 +270,30 @@ describe("BuildScreen", () => {
     });
   });
 
+  it("announces where the hovering block would land", () => {
+    renderBuild({
+      runLogs: [runLogFor("workout-007")],
+      placingWorkoutId: "workout-007",
+      today: "2026-08-10",
+    });
+
+    expect(
+      screen.getByText(
+        "Long Run block over week 1, course 1, columns 2 to 4, resting on the course below.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("auto places into a deterministic position", async () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-007")],
+      placingWorkoutId: "workout-007",
       today: "2026-08-10",
     });
 
-    await user.click(
-      screen.getByRole("button", { name: /Place Long Run block/ }),
-    );
     await user.click(screen.getByRole("button", { name: "Auto Place" }));
+    await user.click(screen.getByRole("button", { name: "Drop" }));
 
     // The ground course is empty, so a span-3 block is centred in it.
     expect(onPlaceBlock).toHaveBeenCalledWith({
@@ -263,16 +305,30 @@ describe("BuildScreen", () => {
     });
   });
 
-  it("announces a placement politely", async () => {
+  it("cancels placing without building anything", async () => {
     const user = userEvent.setup();
-    renderBuild({ runLogs: [runLogFor("workout-002")], today: "2026-08-10" });
+    const { onPlaceBlock, onPlacingChange } = renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      placingWorkoutId: "workout-002",
+      today: "2026-08-10",
+    });
 
-    await user.click(screen.getByRole("button", { name: /Place Easy block/ }));
-    await user.click(screen.getByRole("button", { name: "Auto Place" }));
+    await user.click(screen.getByRole("button", { name: "Cancel placing" }));
+    expect(onPlacingChange).toHaveBeenCalledWith(null);
+    expect(onPlaceBlock).not.toHaveBeenCalled();
+  });
 
-    expect(
-      screen.getByText("Block placed in week 1, course 1, column 3."),
-    ).toBeInTheDocument();
+  it("starts placing from the staging tray", async () => {
+    const user = userEvent.setup();
+    const { onPlacingChange } = renderBuild({
+      runLogs: [runLogFor("workout-007")],
+      today: "2026-08-10",
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: /Place Long Run block/ }),
+    );
+    expect(onPlacingChange).toHaveBeenCalledWith("workout-007");
   });
 
   it("opens the workout detail sheet from a placed block", async () => {
@@ -297,7 +353,7 @@ describe("BuildScreen", () => {
 
   it("offers Move Block while the block's week is still active", async () => {
     const user = userEvent.setup();
-    renderBuild({
+    const { onPlacingChange } = renderBuild({
       runLogs: [runLogFor("workout-002")],
       blockPlacements: [placementFor("workout-002", 1, 3, 1)],
       today: "2026-08-07",
@@ -306,15 +362,7 @@ describe("BuildScreen", () => {
     await user.click(within(courses()).getByRole("button"));
     await user.click(screen.getByRole("button", { name: "Move Block" }));
 
-    expect(
-      screen.getByRole("heading", { name: "Move Block" }),
-    ).toBeInTheDocument();
-    // The block being moved does not block its own position.
-    expect(
-      screen.getByRole("button", {
-        name: "Place Easy block in Week 1, course 1, column 3",
-      }),
-    ).toBeInTheDocument();
+    expect(onPlacingChange).toHaveBeenCalledWith("workout-002");
   });
 
   it("locks a past week's course", async () => {

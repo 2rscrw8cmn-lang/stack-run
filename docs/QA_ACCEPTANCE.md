@@ -3,7 +3,7 @@
 ## Global acceptance
 
 - No horizontal overflow at 320 px.
-- All touch targets are at least 44 px, except blocks inside the Build structure and the cells of the placement grid. Those are 40 px and 48 px tall respectively, and as narrow as 26 px at 320 px, because eight columns and 44 px squares cannot both fit at that width. Both are non-destructive: a structure block opens a read-only sheet, and a placement cell can be reached instead through `Auto Place`.
+- All touch targets are at least 44 px, except blocks and landing slots on the Build tower. Those are one course tall and as narrow as 26 px at 320 px, because five columns and 44 px squares cannot both fit at that width. Neither is destructive: a block opens a read-only sheet, and every landing slot is also reachable through the left/right controls and `Auto Place`, which are full-size.
 - Bottom navigation remains reachable.
 - Text is readable without zoom.
 - Keyboard focus is visible.
@@ -58,13 +58,18 @@
 
 ## Place Block
 
+- Placing happens on the tower; no sheet covers the structure.
+- The block hovers over the course it would land in before it is dropped.
+- Choosing a slot moves the block without committing it.
+- `Drop` commits, and cancelling builds nothing.
+- Left and right controls step through the valid positions in order.
+- The live region says where the block is and whether it is supported.
 - Only valid positions are offered, and only they are in the tab order.
 - A position that would overlap a placed block is not offered.
 - A position that would run past column 5 is not offered.
 - A position in a course that would float above a gap is not offered.
 - Valid positions are distinguishable without colour.
-- Focus or hover previews the full width of the block.
-- Enter or Space places the focused position.
+- Enter or Space on a slot moves the block there; Enter on `Drop` commits it.
 - `Auto Place` centres on the ground course, finishes the lowest open course before starting a new one, and prefers supported positions above it.
 - `Auto Place` is deterministic for the same inputs.
 - Placement is announced with `aria-live`.

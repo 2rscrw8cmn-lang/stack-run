@@ -1,8 +1,9 @@
 import { Flag } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
-import type { BuiltCourse, PhaseBand } from "../../domain/build";
-import { BuiltCourseRow } from "./BuiltCourseRow";
+import type { BuiltCourse, EarnedBlock, PhaseBand } from "../../domain/build";
+import { compareCourses, type PlacementOption } from "../../domain/placement";
+import { BuiltCourseRow, type CoursePlacing } from "./BuiltCourseRow";
 
 interface BuiltStructureProps {
   courses: BuiltCourse[];
@@ -10,6 +11,48 @@ interface BuiltStructureProps {
   projectedCourses: number;
   phaseBands: PhaseBand[];
   onSelectWorkout: (workoutId: string) => void;
+  /** Set while a block is hovering over the tower, waiting to be dropped. */
+  placing?: {
+    block: EarnedBlock;
+    options: PlacementOption[];
+    candidate: PlacementOption | null;
+    onChoose: (option: PlacementOption) => void;
+  };
+}
+
+/**
+ * The courses to draw: everything built, plus any course a block could land in
+ * that does not exist yet. Without this, the first block of a new course would
+ * have nowhere to hover.
+ */
+function coursesWithLandingRows(
+  courses: BuiltCourse[],
+  placing: BuiltStructureProps["placing"],
+): BuiltCourse[] {
+  if (!placing) {
+    return courses;
+  }
+
+  const existing = new Set(
+    courses.map((course) => `${course.weekNumber}:${course.row}`),
+  );
+  const added: BuiltCourse[] = [];
+  for (const option of placing.options) {
+    const key = `${option.weekNumber}:${option.row}`;
+    if (existing.has(key)) {
+      continue;
+    }
+    existing.add(key);
+    added.push({
+      weekNumber: option.weekNumber,
+      row: option.row,
+      startsWeek: option.row === 0,
+      isActiveWeek: false,
+      blocks: [],
+    });
+  }
+
+  return [...courses, ...added].sort(compareCourses);
 }
 
 /**
@@ -29,8 +72,10 @@ export function BuiltStructure({
   projectedCourses,
   phaseBands,
   onSelectWorkout,
+  placing,
 }: BuiltStructureProps) {
   const skylineRef = useRef<HTMLDivElement>(null);
+  const rendered = coursesWithLandingRows(courses, placing);
   const blockCount = courses.reduce(
     (total, course) => total + course.blocks.length,
     0,
@@ -39,10 +84,14 @@ export function BuiltStructure({
   const remainingCourses = Math.max(0, projectedCourses - courses.length);
   const totalCourses = Math.max(projectedCourses, courses.length);
 
-  // Open framed on the top of what has been built, not the foundation.
+  // Open framed on the top of what has been built, not the foundation, and
+  // keep the landing course in view while a block is being placed.
+  const candidateKey = placing
+    ? `${placing.candidate?.weekNumber}:${placing.candidate?.row}`
+    : "";
   useEffect(() => {
     skylineRef.current?.scrollIntoView({ block: "center" });
-  }, []);
+  }, [candidateKey]);
 
   return (
     <section className="build-site" aria-label="Your build">
@@ -86,13 +135,29 @@ export function BuiltStructure({
           <div ref={skylineRef} className="build-site__skyline" aria-hidden="true" />
 
           <ol className="build-site__courses" aria-label="Built courses">
-            {[...courses].reverse().map((course) => (
-              <BuiltCourseRow
-                key={`${course.weekNumber}-${course.row}`}
-                course={course}
-                onSelectWorkout={onSelectWorkout}
-              />
-            ))}
+            {[...rendered].reverse().map((course) => {
+              const coursePlacing: CoursePlacing | undefined = placing
+                ? {
+                    block: placing.block,
+                    options: placing.options.filter(
+                      (option) =>
+                        option.weekNumber === course.weekNumber &&
+                        option.row === course.row,
+                    ),
+                    candidate: placing.candidate,
+                    onChoose: placing.onChoose,
+                  }
+                : undefined;
+
+              return (
+                <BuiltCourseRow
+                  key={`${course.weekNumber}-${course.row}`}
+                  course={course}
+                  onSelectWorkout={onSelectWorkout}
+                  placing={coursePlacing}
+                />
+              );
+            })}
           </ol>
 
           <div className="build-site__ground" aria-hidden="true" />

@@ -27,6 +27,7 @@ function loadInitialAppState(): AppState {
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>("today");
+  const [placingWorkoutId, setPlacingWorkoutId] = useState<string | null>(null);
   const [appState, setAppState] = useState<AppState>(loadInitialAppState);
 
   return (
@@ -49,6 +50,8 @@ export function App() {
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))
       }
+      placingWorkoutId={placingWorkoutId}
+      onPlacingChange={setPlacingWorkoutId}
     />
     {/*
       Temporary scaffolding, present in deployed builds too: there is no other

@@ -2,7 +2,7 @@ import { BottomNav } from "../components/shared/BottomNav";
 import { Card } from "../components/ui/Card";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
-import type { PlacementRequest } from "../features/build/PlaceBlockSheet";
+import type { PlacementRequest } from "../features/build/BuildScreen";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
@@ -15,6 +15,8 @@ interface AppShellProps {
   blockPlacements: BlockPlacement[];
   onSaveRun: (workout: Workout, values: ValidRunEntry) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
+  placingWorkoutId: string | null;
+  onPlacingChange: (workoutId: string | null) => void;
 }
 
 export function AppShell({
@@ -25,6 +27,8 @@ export function AppShell({
   blockPlacements,
   onSaveRun,
   onPlaceBlock,
+  placingWorkoutId,
+  onPlacingChange,
 }: AppShellProps) {
   return (
     <div className="app-shell">
@@ -40,8 +44,11 @@ export function AppShell({
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
             onViewBuild={() => onTabChange("build")}
+            onStartPlacing={(workoutId) => {
+              onPlacingChange(workoutId);
+              onTabChange("build");
+            }}
             onSaveRun={onSaveRun}
-            onPlaceBlock={onPlaceBlock}
           />
         )}
         {activeTab === "build" && (
@@ -50,6 +57,8 @@ export function AppShell({
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onPlaceBlock={onPlaceBlock}
+            placingWorkoutId={placingWorkoutId}
+            onPlacingChange={onPlacingChange}
           />
         )}
         {activeTab === "plan" && (

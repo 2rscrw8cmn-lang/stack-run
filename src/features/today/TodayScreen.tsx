@@ -1,14 +1,9 @@
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import {
-  earnedBlockPhrase,
-  earnedBlocks,
-  findPlacementForWorkout,
-} from "../../domain/build";
+import { earnedBlockPhrase, findPlacementForWorkout } from "../../domain/build";
 import { daysBetweenLocalDates, formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../../domain/types";
-import { PlaceBlockSheet, type PlacementRequest } from "../build/PlaceBlockSheet";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { selectTodayViewModel } from "../../domain/workout";
@@ -22,10 +17,11 @@ interface TodayScreenProps {
   blockPlacements?: BlockPlacement[];
   onViewPlan: () => void;
   onViewBuild?: () => void;
+  /** Hands the earned block to Build, which is where placing happens. */
+  onStartPlacing?: (workoutId: string) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (workout: Workout, values: ValidRunEntry) => void;
-  onPlaceBlock?: (request: PlacementRequest) => void;
 }
 
 export function TodayScreen({
@@ -35,11 +31,10 @@ export function TodayScreen({
   onViewPlan,
   onViewBuild = () => undefined,
   today = todayLocalDate(),
+  onStartPlacing = () => undefined,
   onSaveRun = () => undefined,
-  onPlaceBlock = () => undefined,
 }: TodayScreenProps) {
   const [isSheetOpen, setSheetOpen] = useState(false);
-  const [isPlacingBlock, setPlacingBlock] = useState(false);
   const [saveAnnouncement, setSaveAnnouncement] = useState("");
 
   const viewModel = selectTodayViewModel(plan, runLogs, today);
@@ -67,12 +62,6 @@ export function TodayScreen({
   const completedPlacement = completed
     ? (findPlacementForWorkout(blockPlacements, completed.workout.id) ?? null)
     : null;
-  const earnedBlock = completed
-    ? (earnedBlocks(plan, runLogs).find(
-        (block) => block.workout.id === completed.workout.id,
-      ) ?? null)
-    : null;
-
   return (
     <div className="today-screen">
       <RaceSummaryCard race={plan.race} daysRemaining={daysRemaining} />
@@ -121,7 +110,7 @@ export function TodayScreen({
           runLog={completed.runLog}
           placement={completedPlacement}
           onEditRun={() => setSheetOpen(true)}
-          onPlaceBlock={() => setPlacingBlock(true)}
+          onPlaceBlock={() => onStartPlacing(completed.workout.id)}
           onViewBuild={onViewBuild}
         />
       )}
@@ -147,24 +136,6 @@ export function TodayScreen({
         />
       )}
 
-      {earnedBlock && isPlacingBlock && (
-        <PlaceBlockSheet
-          block={earnedBlock}
-          plan={plan}
-          placements={blockPlacements}
-          isMove={completedPlacement !== null}
-          isOpen
-          onClose={() => setPlacingBlock(false)}
-          onPlace={(request) => {
-            onPlaceBlock(request);
-            setPlacingBlock(false);
-            setSaveAnnouncement(
-              `Block placed in week ${request.weekNumber}, course ${request.row + 1}, column ${request.columnStart}.`,
-            );
-            onViewBuild();
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -195,35 +195,25 @@ describe("TodayScreen", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the earned block and offers Place Block once a run is logged", async () => {
+  it("shows the earned block and hands it to Build to be placed", async () => {
     const user = userEvent.setup();
-    const onPlaceBlock = vi.fn();
+    const onStartPlacing = vi.fn();
     render(
       <TodayScreen
         plan={plan}
         runLogs={[completedEasyRun]}
         onViewPlan={vi.fn()}
-        onPlaceBlock={onPlaceBlock}
+        onStartPlacing={onStartPlacing}
         today="2026-08-04"
       />,
     );
 
     expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
 
+    // Placing happens on the tower, not in a sheet over it.
     await user.click(screen.getByRole("button", { name: "Place Block" }));
-    expect(
-      screen.getByRole("heading", { name: "Place Block" }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Auto Place" }));
-    expect(onPlaceBlock).toHaveBeenCalledWith({
-      workoutId: "workout-002",
-      weekNumber: 1,
-      row: 0,
-      // The ground course is empty, so Auto Place centres a span-1 block.
-      columnStart: 3,
-      span: 1,
-    });
+    expect(onStartPlacing).toHaveBeenCalledWith("workout-002");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("reports a placed block instead of offering to place it again", () => {

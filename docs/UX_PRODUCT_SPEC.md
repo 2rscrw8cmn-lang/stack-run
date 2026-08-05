@@ -192,36 +192,37 @@ remains the complete schedule.
 
 ### Place Block
 
-Opening from Today or from the `Blocks Ready` tray shows a focused sheet:
+Placing happens on the tower, not in a sheet over it. The block is in your
+hands until you drop it.
 
-- Header `Place Block`, or `Move Block` when repositioning
-- Supporting text `Choose where to place your block.`
-- The block's own training week: its band of courses, ground course at the bottom
-- Every valid start position, and only valid positions
-- The earned block in a small staging tray
-- An `Auto Place` action
+- Starting from Today's `Place Block` or the `Blocks Ready` tray puts the earned
+  block in hand and shows Build.
+- The block hovers above the course it would land in, on the structure itself.
+- Every valid landing position in that training week is drawn as a slot on the
+  tower. Choosing one moves the block; it does not commit.
+- A control bar carries the block, its position, left and right steps, `Drop`,
+  `Auto Place`, and a cancel.
+- `Drop` commits. The block falls into place with one 200-400 ms animation, the
+  tower keeps it, and success is announced with `aria-live`.
 
 Rules:
 
-- Tap to place. Drag and drop is not used.
-- The grid stays front on, even though the tower is isometric: it is the
-  precision interaction and an angled grid is harder to aim at.
-- Each valid position is a button with an accessible name such as
-  `Place Intervals block in Week 6, course 2, columns 3 through 4`.
-- Valid positions are marked by border and icon, never by colour alone.
-- Invalid positions are not interactive and are not in the tab order.
-- Focusing or hovering a position previews the full width of the block.
-- `Auto Place` is deterministic: finish the lowest open course before starting a
-  new one, then prefer a position supported by the course below, then the
-  position nearest the centre, then the leftmost. On the ground course every
-  position is supported, so the block is centred.
+- Tap to move, drop to commit. Drag and drop is not used.
+- Each slot is a button with an accessible name such as
+  `Move Intervals block to week 6, course 2, columns 3 through 4`, so the tab
+  order walks exactly the valid choices.
+- Left and right controls step through the same positions in order.
+- A live region describes the hovering block continuously, including whether it
+  is resting on the course below or overhanging.
+- Invalid positions are never drawn and are never in the tab order.
+- `Auto Place` moves the block to the deterministic position: finish the lowest
+  open course before starting a new one, then prefer a position supported by
+  the course below, then the position nearest the centre, then the leftmost.
 - A support rule keeps the structure plausible without physics: a position
   counts as supported when at least half its cells sit on a block in the course
   below.
 - The user can never become stuck. `Auto Place` always works when any position
-  is open.
-- Placing snaps the block into position with one 200-400 ms animation, saves,
-  and announces success with `aria-live`.
+  is open, and cancelling never builds anything.
 
 ### Legend
 
