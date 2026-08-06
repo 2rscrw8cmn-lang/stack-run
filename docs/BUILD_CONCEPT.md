@@ -354,6 +354,32 @@ is chosen.
 Effort is wired up as surface finish rather than size, per §4, so that idea can
 be judged at the same time.
 
+### 7.7 The skyline can diverge into spires
+
+Visible immediately on a phone, and measurable. Continuous stacking does not
+keep the tower's top level: with the wrong cap, part of the grid runs away
+while the rest stalls, and the result reads as two towers with a chasm between
+them rather than one structure.
+
+Final skyline per column, `fine` rule, height from type:
+
+| Columns | Cap | Skyline | Tallest − shortest |
+|---:|---:|---|---:|
+| 9 | 3 | 28 28 31 31 31 26 28 28 28 | 5 |
+| 9 | 4 | 17 17 41 41 41 41 26 26 26 | **24** |
+| 9 | 5 | 12 41 41 41 41 41 31 31 30 | **29** |
+| 12 | 5 | 25 25 25 25 29 29 29 29 29 25 25 24 | 5 |
+
+It is not monotonic in the cap, and that is the tell: it depends on whether
+the brick widths in play can actually *bridge* the stacks they create. Once a
+gap is narrower than every available brick, nothing can ever fill it and the
+two sides grow independently for the rest of the plan.
+
+Auto Place cannot be the only answer here, because on the real screen the user
+chooses. But it means the landing rule needs a levelling term — something that
+prefers the low side of the tower — or the plan needs a guaranteed supply of
+narrow bricks. Neither is in §2.
+
 ### 7.6 The preview is scaffolding
 
 `src/dev/` is throwaway. If the proposal is rejected, deleting that directory

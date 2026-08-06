@@ -212,7 +212,7 @@ export function FootprintPreview({ state, onClose }: FootprintPreviewProps) {
                 {
                   gridColumn: `${brick.x + 1} / span ${brick.width}`,
                   gridRow: `${stats.courses - brick.y - brick.height + 1} / span ${brick.height}`,
-                  zIndex: stats.courses - brick.y,
+                  zIndex: brick.depth,
                   "--piece-color": `var(--${brick.workout.build.colorKey})`,
                 } as CSSProperties
               }

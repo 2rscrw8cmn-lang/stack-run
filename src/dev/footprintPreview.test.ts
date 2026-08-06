@@ -227,6 +227,24 @@ describe("buildPreviewTower", () => {
     expect(fastest?.height).toBeGreaterThan(median?.height ?? 0);
   });
 
+  it("paints every brick over the ones it rests on", () => {
+    // The oblique has no depth buffer: a brick's top and right faces project
+    // into the space above it, so any brick lower in the tower must paint
+    // first. Getting this backwards makes low bricks bleed over high ones.
+    const tower = buildPreviewTower(loadSeedPlan(), [], baseOptions);
+
+    for (const brick of tower.bricks) {
+      for (const other of tower.bricks) {
+        const overlapsColumns =
+          brick.x < other.x + other.width && other.x < brick.x + brick.width;
+        const restsOn = overlapsColumns && other.y + other.height <= brick.y;
+        if (restsOn) {
+          expect(brick.depth).toBeGreaterThan(other.depth);
+        }
+      }
+    }
+  });
+
   it("draws a top face only where nothing rests on the brick", () => {
     const tower = buildPreviewTower(
       planOf([

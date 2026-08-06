@@ -33,6 +33,14 @@ export interface PreviewBrick {
   height: number;
   showTopFace: boolean;
   showRightFace: boolean;
+  /**
+   * Paint order. An oblique projection has no depth buffer, and a brick's top
+   * and right faces project up and to the right — into the space the bricks
+   * above it occupy — so a brick must paint over everything lower than it.
+   * Ordering by the brick's top edge rather than its base keeps tall bricks
+   * from painting over the course that rests on them.
+   */
+  depth: number;
 }
 
 export interface PreviewMortar {
@@ -258,6 +266,7 @@ export function buildPreviewTower(
       height,
       showTopFace: true,
       showRightFace: true,
+      depth: y + height,
     });
   }
 
