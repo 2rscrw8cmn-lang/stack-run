@@ -135,7 +135,7 @@ export function BuiltStructure({
           <div ref={skylineRef} className="build-site__skyline" aria-hidden="true" />
 
           <ol className="build-site__courses" aria-label="Built courses">
-            {[...rendered].reverse().map((course) => {
+            {[...rendered].reverse().map((course, index) => {
               const coursePlacing: CoursePlacing | undefined = placing
                 ? {
                     block: placing.block,
@@ -154,6 +154,7 @@ export function BuiltStructure({
                   key={`${course.weekNumber}-${course.row}`}
                   course={course}
                   onSelectWorkout={onSelectWorkout}
+                  depth={rendered.length - index}
                   placing={coursePlacing}
                 />
               );

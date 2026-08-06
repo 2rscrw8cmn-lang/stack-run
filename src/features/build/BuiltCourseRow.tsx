@@ -17,6 +17,11 @@ export interface CoursePlacing {
 interface BuiltCourseRowProps {
   course: BuiltCourse;
   onSelectWorkout: (workoutId: string) => void;
+  /**
+   * Paint order for the oblique projection. A brick's top face recedes behind
+   * the front plane, so every course above must paint over the course below.
+   */
+  depth: number;
   /** Set only while a block is hovering over this course. */
   placing?: CoursePlacing;
 }
@@ -38,6 +43,7 @@ function columnPhrase(option: PlacementOption): string {
 export function BuiltCourseRow({
   course,
   onSelectWorkout,
+  depth,
   placing,
 }: BuiltCourseRowProps) {
   const candidate = placing?.candidate ?? null;
@@ -49,6 +55,7 @@ export function BuiltCourseRow({
   return (
     <li
       className="built-course"
+      style={{ zIndex: depth }}
       data-active={course.isActiveWeek ? "true" : undefined}
       data-targeted={isTarget ? "true" : undefined}
       aria-label={`Week ${course.weekNumber}, course ${course.row + 1}`}
