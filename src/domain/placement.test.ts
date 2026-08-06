@@ -1,0 +1,249 @@
+import { describe, expect, it } from "vitest";
+import {
+  assertPlacementFits,
+  autoPlaceOption,
+  canMove,
+  fitsInGrid,
+  GRID_COLUMNS,
+  InvalidPlacementError,
+  landingRow,
+  lastColumnOf,
+  newestPlacement,
+  placementOptions,
+  repackPlacements,
+  skylineOf,
+  topOf,
+} from "./placement";
+import type { BlockPlacement } from "./types";
+
+function placement(
+  workoutId: string,
+  row: number,
+  columnStart: number,
+  width: 1 | 2 | 3 | 4,
+  height: 1 | 2 | 3 | 4 = 1,
+  placedAt = "2026-08-04T12:00:00.000Z",
+): BlockPlacement {
+  return { workoutId, row, columnStart, width, height, placedAt };
+}
+
+const columns = (options: ReturnType<typeof placementOptions>) =>
+  options.map((option) => `${option.columnStart}@${option.row}`);
+
+describe("skylineOf", () => {
+  it("is flat ground when nothing is placed", () => {
+    expect(skylineOf([])).toEqual(new Array(GRID_COLUMNS).fill(0));
+  });
+
+  it("takes the top of each block across the columns it spans", () => {
+    const skyline = skylineOf([placement("a", 0, 2, 3, 2)]);
+    expect(skyline).toEqual([0, 2, 2, 2, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it("takes the highest block when two share a column", () => {
+    const skyline = skylineOf([
+      placement("a", 0, 1, 2, 1),
+      placement("b", 1, 1, 1, 3),
+    ]);
+    expect(skyline[0]).toBe(4);
+    expect(skyline[1]).toBe(1);
+  });
+});
+
+describe("fitsInGrid", () => {
+  it("keeps every block inside the ten columns", () => {
+    expect(GRID_COLUMNS).toBe(10);
+    expect(fitsInGrid(1, 4)).toBe(true);
+    expect(fitsInGrid(7, 4)).toBe(true);
+    expect(fitsInGrid(8, 4)).toBe(false);
+    expect(fitsInGrid(0, 1)).toBe(false);
+  });
+});
+
+describe("landingRow", () => {
+  it("rests on the highest column the block spans", () => {
+    const skyline = [0, 3, 1, 0, 0, 0, 0, 0, 0, 0];
+    expect(landingRow(skyline, 1, 3)).toBe(3);
+    expect(landingRow(skyline, 3, 2)).toBe(1);
+    expect(landingRow(skyline, 4, 2)).toBe(0);
+  });
+});
+
+describe("placementOptions", () => {
+  it("offers one landing per column, never a floating row", () => {
+    const options = placementOptions(2, 1, []);
+    expect(columns(options)).toEqual([
+      "1@0",
+      "2@0",
+      "3@0",
+      "4@0",
+      "5@0",
+      "6@0",
+      "7@0",
+      "8@0",
+      "9@0",
+    ]);
+  });
+
+  it("drops the block onto whatever is already built", () => {
+    const options = placementOptions(2, 1, [placement("a", 0, 1, 2, 2)]);
+    expect(options[0].row).toBe(2);
+    expect(options[2].row).toBe(0);
+  });
+
+  it("reports the dead space a landing seals underneath", () => {
+    // A 3-wide block bridging a column-1 tower and empty ground arches over it.
+    const options = placementOptions(3, 1, [placement("a", 0, 1, 1, 2)]);
+    expect(options[0].row).toBe(2);
+    expect(options[0].opened).toBe(4);
+  });
+
+  it("counts a landing as flush against the grid edge", () => {
+    const options = placementOptions(2, 1, []);
+    expect(options[0].flush).toBeGreaterThan(options[3].flush);
+  });
+});
+
+describe("autoPlaceOption", () => {
+  it("returns null only when the block cannot fit at all", () => {
+    expect(autoPlaceOption([])).toBeNull();
+  });
+
+  it("lands lowest before anything else", () => {
+    const placements = [placement("a", 0, 1, 4, 3)];
+    const chosen = autoPlaceOption(placementOptions(2, 1, placements));
+    expect(chosen?.row).toBe(0);
+  });
+
+  it("prefers the landing that seals least dead space", () => {
+    // Columns 1-2 stand at 2; the rest is ground. A 4-wide block landing at
+    // column 1 would arch over four cells, so it goes to open ground instead.
+    const placements = [placement("a", 0, 1, 2, 2)];
+    const chosen = autoPlaceOption(placementOptions(4, 1, placements));
+    expect(chosen?.opened).toBe(0);
+    expect(chosen?.row).toBe(0);
+  });
+
+  it("prefers a landing flush against a wall over a free-standing one", () => {
+    const chosen = autoPlaceOption(placementOptions(3, 1, []));
+    // Ground is level everywhere, so flushness decides: hard against an edge.
+    expect(chosen?.flush).toBeGreaterThan(0);
+  });
+
+  it("is independent of the order the options arrive in", () => {
+    const placements = [placement("a", 0, 4, 2, 1)];
+    const options = placementOptions(2, 1, placements);
+    const forward = autoPlaceOption(options);
+    const backward = autoPlaceOption([...options].reverse());
+    expect(backward?.columnStart).toBe(forward?.columnStart);
+    expect(backward?.row).toBe(forward?.row);
+  });
+});
+
+describe("newestPlacement and canMove", () => {
+  const older = placement("a", 0, 1, 1, 1, "2026-08-04T10:00:00.000Z");
+  const newer = placement("b", 0, 2, 1, 1, "2026-08-04T11:00:00.000Z");
+
+  it("finds the most recently placed block regardless of array order", () => {
+    expect(newestPlacement([older, newer])?.workoutId).toBe("b");
+    expect(newestPlacement([newer, older])?.workoutId).toBe("b");
+  });
+
+  it("only lets the newest block move, because nothing rests on it", () => {
+    expect(canMove([older, newer], "b")).toBe(true);
+    expect(canMove([older, newer], "a")).toBe(false);
+  });
+
+  it("has nothing to move in an empty tower", () => {
+    expect(newestPlacement([])).toBeNull();
+    expect(canMove([], "a")).toBe(false);
+  });
+});
+
+describe("assertPlacementFits", () => {
+  const candidate = {
+    workoutId: "w",
+    row: 0,
+    columnStart: 1,
+    width: 2 as const,
+    height: 1 as const,
+  };
+
+  it("accepts a block exactly where gravity would drop it", () => {
+    expect(() => assertPlacementFits(candidate, [])).not.toThrow();
+  });
+
+  it("rejects a block that runs off the right edge", () => {
+    expect(() =>
+      assertPlacementFits({ ...candidate, columnStart: 10, width: 2 }, []),
+    ).toThrow(InvalidPlacementError);
+  });
+
+  it("rejects a row gravity would not produce", () => {
+    expect(() => assertPlacementFits({ ...candidate, row: 4 }, [])).toThrow(
+      InvalidPlacementError,
+    );
+  });
+
+  it("rejects a block that would float above what is built", () => {
+    const existing = [placement("a", 0, 1, 2, 1)];
+    // Gravity puts it on course 1; claiming course 0 would overlap.
+    expect(() => assertPlacementFits(candidate, existing)).toThrow(
+      InvalidPlacementError,
+    );
+    expect(() =>
+      assertPlacementFits({ ...candidate, row: 1 }, existing),
+    ).not.toThrow();
+  });
+
+  it("does not collide a block with its own former position", () => {
+    const existing = [placement("w", 0, 1, 2, 1)];
+    expect(() => assertPlacementFits(candidate, existing)).not.toThrow();
+  });
+});
+
+describe("repackPlacements", () => {
+  it("keeps every block and stacks them all from the ground up", () => {
+    const repacked = repackPlacements([
+      placement("a", 9, 1, 4, 1, "2026-08-04T10:00:00.000Z"),
+      placement("b", 4, 1, 4, 1, "2026-08-04T11:00:00.000Z"),
+      placement("c", 7, 1, 4, 1, "2026-08-04T12:00:00.000Z"),
+    ]);
+
+    expect(repacked.map((item) => item.workoutId)).toEqual(["a", "b", "c"]);
+    expect(repacked.every((item) => item.row >= 0)).toBe(true);
+    // Three 4-wide blocks fit two to a course in a ten-column grid.
+    expect(Math.max(...repacked.map(topOf))).toBe(2);
+  });
+
+  it("never overlaps two blocks", () => {
+    const repacked = repackPlacements(
+      Array.from({ length: 20 }, (_, index) =>
+        placement(
+          `w${index}`,
+          0,
+          1,
+          ((index % 4) + 1) as 1 | 2 | 3 | 4,
+          ((index % 2) + 1) as 1 | 2,
+          `2026-08-${String(4 + index).padStart(2, "0")}T10:00:00.000Z`,
+        ),
+      ),
+    );
+
+    const seen = new Set<string>();
+    for (const item of repacked) {
+      for (let column = item.columnStart; column <= lastColumnOf(item); column += 1) {
+        for (let row = item.row; row < topOf(item); row += 1) {
+          expect(seen.has(`${column}:${row}`)).toBe(false);
+          seen.add(`${column}:${row}`);
+        }
+      }
+    }
+  });
+
+  it("replays in the order the blocks were built, not array order", () => {
+    const first = placement("first", 0, 1, 4, 1, "2026-08-01T10:00:00.000Z");
+    const second = placement("second", 0, 1, 4, 1, "2026-08-02T10:00:00.000Z");
+    expect(repackPlacements([second, first])[0].workoutId).toBe("first");
+  });
+});

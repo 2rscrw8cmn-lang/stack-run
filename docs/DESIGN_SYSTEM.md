@@ -113,6 +113,14 @@ Do not import a custom font in v1.
 
 Blocks are plain HTML elements.
 
+In the Build tower they are drawn isometrically (D-015): one CSS 3D transform on
+the tower, and each brick drawing a front face, a top face where nothing rests
+on it, and a right face where nothing abuts it. Never a canvas, a WebGL context,
+a 3D engine, or simulated physics.
+
+Everywhere else — the Place Block grid, the staging chips, the legend — blocks
+stay flat and front on.
+
 ```css
 .stack-block {
   border-radius: 7px;
@@ -143,6 +151,10 @@ Allowed:
 - Sheet slide or fade
 - Button press scale of 0.98
 - Block reveal: opacity plus 8-12 px downward-to-rest translation
+- Block placement drop: the block the user just placed falls about 34 px into
+  its course, settles with a 2 px overshoot, and kicks up one brief dust puff.
+  This is a single keyframe on one element, not a simulation, and it plays only
+  for the block that was just placed.
 - Very brief glow on the newest block
 
 Not allowed:

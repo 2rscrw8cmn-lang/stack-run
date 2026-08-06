@@ -10,6 +10,10 @@ Key:
 stack.app-state.v1
 ```
 
+The key names the storage slot and does not change with the schema. The
+`schemaVersion` inside the stored object is the real version, so an upgrade
+migrates the existing value in place instead of orphaning it under a new key.
+
 The UI must not read or write `localStorage` directly.
 
 ## Type model
@@ -95,13 +99,41 @@ export interface AppSettings {
   theme: "dark";
 }
 
+export interface BlockPlacement {
+  workoutId: string;
+  weekNumber: number;
+  row: number;
+  columnStart: number;
+  span: 1 | 2 | 3 | 4;
+  placedAt: string;
+}
+
 export interface AppState {
-  schemaVersion: 1;
+  schemaVersion: 3;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
+  blockPlacements: BlockPlacement[];
 }
 ```
+
+## Block placement rules
+
+A completed run earns a block. A placement records where that block was built
+into the structure. The two are separate states, and a run log is never
+blocked on a placement.
+
+- One placement at most per workout. Saving again moves the existing block.
+- `workoutId` is the permanent identity of the placement.
+- `span` must equal the span the workout type earns.
+- A block stays inside its own training week.
+- `row` is the 0-based course within that week. A week fills as many courses as
+  its blocks need, and rows stay contiguous from 0, so a week never leaves a
+  floating course.
+- `columnStart` and `span` must fit inside columns 1 through 5.
+- A placement must not overlap another placement in the same course.
+- A block may be repositioned only while its training week is active.
+- Deleting is not offered. A block is placed, or it is still pending.
 
 ## Derived state
 
@@ -114,7 +146,9 @@ Do not persist:
 - Week progress
 - Current streak
 - Days until race
-- Build block state
+- Which earned blocks are still pending
+- Valid placement positions
+- The rendered structure
 
 Derive these from the plan, logs, and today's local date.
 
@@ -142,7 +176,7 @@ Saving an existing workout replaces editable values and updates `updatedAt`.
 - Race workout ID remains stable.
 - Moving a workout is limited to a date within its existing seven-day training week.
 - Plan edits are stored in the active local state.
-- Reset restores the original seed and deletes all run logs.
+- Reset restores the original seed and deletes all run logs and placements.
 
 ## Validation
 
@@ -182,11 +216,22 @@ Implement:
 migrateAppState(input: unknown): AppState
 ```
 
-For v1:
+Current version: 3.
 
-- Accept valid schema version 1.
+- Accept a valid schema version 3 state.
+- Upgrade a schema version 1 state by adding an empty `blockPlacements` array.
+  Every run log, plan edit, and setting is carried across untouched.
+- Runs logged before the upgrade are deliberately left unplaced. They become
+  pending earned blocks the user can place whenever they like; nothing is
+  auto-placed on their behalf.
+- Upgrade a schema version 2 state by re-laying its placements into the narrower
+  courses, in the order they were built. Which blocks are placed survives; where
+  they sit does not, because an eight-column position has nowhere to go in a
+  five-column course. Run logs are untouched.
 - Reject unknown future versions with a recoverable error.
 - When no data exists, create state from the seed plan.
+- An upgraded state is written straight back, so storage stops holding a shape
+  this build no longer writes.
 
 Never silently discard user data.
 

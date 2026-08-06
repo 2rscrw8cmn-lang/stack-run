@@ -66,23 +66,31 @@ Exit gate:
 Deliver:
 
 - Summary metrics
-- 18 week rows
-- Blocks for run workouts only
-- Width spans by workout type
-- Completed, planned, and missed states
+- Earned blocks: one per completed run, by workout type
+- `Blocks Ready` staging tray for earned but unplaced blocks
+- Place Block sheet: eight-column week grid, valid positions only, tap to place
+- Deterministic `Auto Place`
+- Placement persistence and the schema version 2 migration
+- The built structure: placed blocks only, up to the active week
+- Repositioning a block while its week is active
 - Legend
 - Workout detail sheet
-- Newest-block reveal motion
+- Newest-block snap motion
 
 Exit gate:
 
 - No canvas, 3D, physics, drag, or collision code.
-- Block state derives from plan and logs.
-- Keyboard access works.
+- The structure derives from placements; metrics derive from run logs.
+- Build renders no future blueprint.
+- Placement survives a reload.
+- Existing run logs survive the migration and become pending blocks.
+- Keyboard placement works.
 - Reduced-motion behavior works.
 - Structure remains legible at 320 px.
 
 ## UI-5 — Plan screen
+
+Plan is the complete schedule tracker. Build does not duplicate it.
 
 Deliver:
 
@@ -122,6 +130,7 @@ Exit gate:
 
 Deliver:
 
+- Removal of the temporary data panel (`src/dev/DevDataPanel.tsx`)
 - App metadata
 - Web app manifest
 - App icons
@@ -137,6 +146,7 @@ A service worker is optional. Do not add one unless offline behavior is explicit
 Exit gate:
 
 - `npm run check` passes.
+- No temporary data panel remains in the shipped build.
 - Fresh install works.
 - Existing data survives deployment updates.
 - Production URL works on iPhone Safari and desktop browser.

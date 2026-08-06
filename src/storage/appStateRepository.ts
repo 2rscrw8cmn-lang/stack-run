@@ -1,4 +1,11 @@
-import type { AppState, RunLog } from "../domain/types";
+import { earnsBlock, footprintForRun } from "../domain/build";
+import {
+  assertPlacementFits,
+  canMove,
+  InvalidPlacementError,
+  type PlacementCandidate,
+} from "../domain/placement";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import { createInitialAppState, migrateAppState } from "./migrations";
 import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
 
@@ -36,7 +43,18 @@ export function loadAppState(): AppState {
     );
   }
 
-  return migrateAppState(parsed);
+  const state = migrateAppState(parsed);
+
+  // Write an upgraded state straight back, so storage stops holding a shape
+  // this build no longer writes. Nothing is lost: the migration only ever
+  // adds to what was there.
+  const storedVersion = (parsed as { schemaVersion?: unknown } | null)
+    ?.schemaVersion;
+  if (storedVersion !== state.schemaVersion) {
+    saveAppState(state);
+  }
+
+  return state;
 }
 
 export function saveAppState(state: AppState): void {
@@ -75,7 +93,89 @@ export function saveRunLog(
   return next;
 }
 
-/** Discards all plan edits and run logs and restores the original seed plan. */
+/**
+ * Creates or moves the single placement belonging to a workout's earned block.
+ *
+ * The footprint is recomputed here from the run and compared, so a caller
+ * cannot store a block of its own choosing, and the position is checked
+ * against where gravity would actually drop it. An invalid placement can never
+ * reach storage.
+ *
+ * Only the most recently placed block can be moved: with continuous stacking
+ * anything older has blocks resting on it, and pulling it out from under them
+ * is not a coherent action.
+ */
+export function placeBlock(
+  state: AppState,
+  input: PlacementCandidate,
+): AppState {
+  const workout = state.plan.weeks
+    .flatMap((week) => week.workouts)
+    .find((candidate) => candidate.id === input.workoutId);
+
+  if (!workout) {
+    throw new InvalidPlacementError(`Unknown workout: ${input.workoutId}`);
+  }
+  if (!earnsBlock(workout.type)) {
+    throw new InvalidPlacementError(
+      `A ${workout.type} workout earns no block.`,
+    );
+  }
+
+  const runLog = state.runLogs.find(
+    (candidate) => candidate.workoutId === input.workoutId,
+  );
+  if (!runLog) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} has no run log, so it has not earned a block.`,
+    );
+  }
+
+  const footprint = footprintForRun(
+    state.plan,
+    state.runLogs,
+    workout,
+    runLog,
+  );
+  if (
+    footprint.width !== input.width ||
+    footprint.height !== input.height
+  ) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} earns a ${footprint.width}x${footprint.height} block, not ${input.width}x${input.height}.`,
+    );
+  }
+
+  const existing = state.blockPlacements.some(
+    (candidate) => candidate.workoutId === input.workoutId,
+  );
+  if (existing && !canMove(state.blockPlacements, input.workoutId)) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} has blocks resting on it and can no longer be moved.`,
+    );
+  }
+
+  assertPlacementFits(input, state.blockPlacements);
+
+  const placement: BlockPlacement = {
+    ...input,
+    placedAt: new Date().toISOString(),
+  };
+
+  const next: AppState = {
+    ...state,
+    blockPlacements: existing
+      ? state.blockPlacements.map((candidate) =>
+          candidate.workoutId === input.workoutId ? placement : candidate,
+        )
+      : [...state.blockPlacements, placement],
+  };
+
+  saveAppState(next);
+  return next;
+}
+
+/** Discards all plan edits, run logs, and placements and restores the seed plan. */
 export function resetAppState(): AppState {
   const fresh = createInitialAppState();
   saveAppState(fresh);

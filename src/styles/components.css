@@ -354,6 +354,9 @@
 }
 
 .today-workout-card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-size: 12px;
   font-weight: 600;
@@ -551,4 +554,1031 @@ textarea.run-input {
 
 .complete-run-form__actions .button {
   width: 100%;
+}
+
+/* Build screen */
+
+.build-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.screen-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* Summary metrics */
+
+.build-metrics {
+  padding: var(--space-4);
+}
+
+.build-metrics__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+/* Reversed so the value reads above its label while `dt` stays first in the DOM. */
+.build-metrics__metric {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.build-metrics__metric dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.build-metrics__metric dd {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.build-metrics__of {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* The build site: ground, sky, tower, and the height still to climb */
+
+.build-site {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Ten columns across whatever the tower is given, so a course is short. */
+  --course-height: 20px;
+  /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
+  --iso-run: 16px;
+  --iso-rise: 8px;
+}
+
+.build-site__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.build-site__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.build-site__scale {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The stage is the site. Sky washes down from the top, the ground plane sits
+ * at the bottom, and the tower stands between them, so even a six-block tower
+ * is somewhere rather than nowhere.
+ */
+.build-site__stage {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(
+      120% 55% at 50% 100%,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #0d1a26 0%, #0a1420 55%, var(--bg) 100%);
+  overflow: hidden;
+}
+
+/* Height gauge: which stretch of the plan each part of the tower belongs to. */
+.build-site__gauge {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 58px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-right: 1px solid var(--border);
+}
+
+.build-site__phase {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: var(--phase-courses) 1 0;
+  min-height: 0;
+  padding-right: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.build-site__phase:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.build-site__phase-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-align: right;
+  color: var(--text-subtle);
+  hyphens: none;
+}
+
+.build-site__tower {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/*
+ * The sky is the height left to climb. It is a shaft and a capstone, never a
+ * block-by-block outline: it says how tall this gets and that the race tops
+ * it, and nothing about which run goes where.
+ */
+.build-site__sky {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  height: min(
+    calc(var(--remaining-courses) * var(--course-height)),
+    42vh
+  );
+  min-height: 96px;
+  padding-top: var(--space-3);
+  /* Fades out at the top: the shaft suggests the climb, the readout above the
+     stage gives the exact number of courses. */
+  mask-image: linear-gradient(180deg, transparent, #000 34%);
+}
+
+.build-site__summit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+}
+
+/* A faint race block at the top of the shaft: the thing being built toward. */
+.build-site__capstone {
+  width: 40%;
+  max-width: 100%;
+  height: 14px;
+  border: 1px dashed color-mix(in srgb, var(--race) 45%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--race) 7%, transparent);
+}
+
+.build-site__shaft {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  margin-top: var(--space-2);
+  border-left: 1px dashed var(--border);
+  border-right: 1px dashed var(--border);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--text) 4%, transparent)
+  );
+}
+
+/* Scroll anchor: Build opens framed here, on the top of what is built. */
+.build-site__skyline {
+  height: 1px;
+  scroll-margin-block: 45vh;
+}
+
+/*
+ * The tower is one grid, not a stack of course rows: blocks are two
+ * dimensional now, and a two-course block belongs to no single row.
+ */
+.built-tower {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--grid-courses), var(--course-height));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Room for the depth offset of the topmost and rightmost bricks. */
+  padding-top: var(--iso-rise);
+  padding-right: var(--iso-run);
+}
+
+/* The ground, receding along the same depth axis as the bricks. */
+.build-site__ground {
+  height: var(--iso-rise);
+  margin-right: calc(-1 * var(--iso-run));
+  transform-origin: bottom left;
+  transform: skewX(-63.435deg);
+  background: linear-gradient(
+    180deg,
+    var(--bg),
+    color-mix(in srgb, var(--surface-strong) 80%, black)
+  );
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.8);
+}
+
+.build-site__caption {
+  margin: 0;
+  font-size: 12px;
+  text-align: center;
+  color: var(--text-subtle);
+}
+
+.placed-block {
+  position: relative;
+  min-width: 0;
+}
+
+.placed-block__button {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.placed-block__brick {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.placed-block__face {
+  position: absolute;
+  inset: 0;
+}
+
+.placed-block__face--front {
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 92%, white),
+    var(--piece-color) 55%,
+    color-mix(in srgb, var(--piece-color) 80%, black)
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * The top face: a parallelogram sheared along the depth axis. skewX at
+ * atan(2) = 63.435deg moves the far edge exactly --iso-run to the right while
+ * the near edge stays put, so the run:rise stays 2:1. Drawn only where
+ * nothing rests on the brick.
+ */
+.placed-block__face--top {
+  top: calc(-1 * var(--iso-rise));
+  bottom: auto;
+  height: var(--iso-rise);
+  transform-origin: bottom left;
+  transform: skewX(-63.435deg);
+  background: color-mix(in srgb, var(--piece-color) 62%, white);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/*
+ * The right face, sheared along the same axis: skewY at atan(0.5) = 26.565deg
+ * lifts the far edge --iso-rise over a run of --iso-run. Drawn only where
+ * nothing abuts the brick.
+ */
+.placed-block__face--right {
+  left: 100%;
+  right: auto;
+  width: var(--iso-run);
+  transform-origin: 0 0;
+  transform: skewY(-26.565deg);
+  background: color-mix(in srgb, var(--piece-color) 58%, black);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.placed-block__button:focus-visible {
+  outline: none;
+}
+
+.placed-block__button:focus-visible .placed-block__brick {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The block just placed drops into the tower and carries the only glow. */
+.placed-block[data-newest="true"] .placed-block__brick {
+  animation: placed-block-drop 280ms cubic-bezier(0.3, 0.9, 0.4, 1);
+}
+
+.placed-block[data-newest="true"] .placed-block__face--front {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 16px color-mix(in srgb, var(--piece-color) 70%, transparent);
+}
+
+@keyframes placed-block-drop {
+  from {
+    transform: translateY(-18px);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .placed-block[data-newest="true"] .placed-block__brick {
+    animation: none;
+  }
+
+  .placed-block[data-newest="true"] .placed-block__face--front {
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 2px var(--accent);
+  }
+}
+
+/*
+ * A landing slot: one per column, at the height gravity would drop the block
+ * to. The chosen one shows the block's real shape so the user commits to what
+ * they can already see.
+ */
+.built-tower__slot {
+  position: relative;
+  min-width: 0;
+}
+
+.built-tower__slot-button {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px dashed color-mix(in srgb, var(--text) 22%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  cursor: pointer;
+}
+
+.built-tower__slot-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.built-tower__slot-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.built-tower__slot[data-chosen="true"] .built-tower__slot-button {
+  border: 1px solid color-mix(in srgb, var(--piece-color) 80%, white);
+  background: color-mix(in srgb, var(--piece-color) 55%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--piece-color) 45%, transparent);
+  animation: landing-slot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes landing-slot-pulse {
+  50% {
+    box-shadow: 0 0 22px color-mix(in srgb, var(--piece-color) 70%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .built-tower__slot[data-chosen="true"] .built-tower__slot-button {
+    animation: none;
+  }
+}
+
+/*
+ * A week's mortar line. Weeks no longer reserve space in the tower, so this is
+ * an annotation drawn across a continuous structure rather than a boundary.
+ */
+.built-tower__mortar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--mortar-row) * var(--course-height));
+  height: 0;
+  z-index: 60;
+  border-top: 1px dashed color-mix(in srgb, var(--text) 26%, transparent);
+  pointer-events: none;
+}
+
+.built-tower__mortar[data-active="true"] {
+  border-top-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.built-tower__mortar-label {
+  position: absolute;
+  top: -6px;
+  left: -14px;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.built-tower__mortar[data-active="true"] .built-tower__mortar-label {
+  color: var(--accent);
+}
+
+/* The controls for the block in hand. */
+.placement-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-strong);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.placement-bar__block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.placement-bar__chip {
+  flex-shrink: 0;
+  height: 22px;
+  width: calc(10px + var(--piece-span) * 12px);
+  border-radius: 4px;
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 90%, white),
+    var(--piece-color)
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.placement-bar__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.placement-bar__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.placement-bar__position {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.placement-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.placement-bar__controls .icon-button {
+  flex-shrink: 0;
+  min-width: 52px;
+  min-height: 52px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+}
+
+.placement-bar__controls .icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.placement-bar__controls .button {
+  flex: 1 1 auto;
+}
+
+.placement-bar__auto {
+  /* Right-aligned so the temporary dev toggle cannot sit on top of it. */
+  align-self: flex-end;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .built-course__hover {
+    animation: none;
+    transform: translateY(-20px);
+  }
+}
+
+/* Blocks Ready tray */
+
+.pending-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.pending-tray__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.pending-tray__count {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+/* A long backlog scrolls inside the card instead of pushing the build away. */
+.pending-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 45vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.pending-tray__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.pending-tray__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pending-tray__type {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pending-tray__meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pending-tray__item .button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-size: 14px;
+}
+
+/* Shared block chip: width follows the span, so the reward is legible. */
+.pending-tray__chip,
+.place-block__chip,
+.earned-block__chip {
+  flex-shrink: 0;
+  height: 20px;
+  width: calc(10px + var(--piece-span) * 10px);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Today: the block a completed run just earned */
+
+.earned-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.earned-block__chip {
+  height: 26px;
+  width: calc(12px + var(--piece-span) * 12px);
+}
+
+.earned-block__text {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* Place Block */
+
+.place-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.place-block__lede {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.place-block__week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.place-block__week-label,
+.place-block__staging-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.place-block__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.place-block__staging {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.place-block__staging-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.place-block__chip {
+  height: 26px;
+  width: calc(12px + var(--piece-span) * 12px);
+}
+
+.place-block__chip-type {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.place-block__chip-detail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.place-block__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.place-block__actions .button {
+  width: 100%;
+}
+
+.place-block__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/*
+ * The placement grid draws one training week's band of courses, five columns
+ * wide, ground course at the bottom. It stays front on: this is the precision
+ * interaction, and skewing it would only make it harder to aim at.
+ */
+.placement-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.placement-grid__course {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+
+.placement-grid__course > * {
+  grid-row: 1;
+}
+
+.placement-grid__cell {
+  height: 48px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+}
+
+.placement-grid__placed {
+  height: 30px;
+  border-radius: 4px;
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 90%, white),
+    var(--piece-color) 55%,
+    color-mix(in srgb, var(--piece-color) 80%, black)
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+/* Shows the full width of the block the focused choice would place. */
+.placement-grid__preview {
+  height: 34px;
+  border-radius: 6px;
+  border: 2px solid var(--piece-color);
+  background: color-mix(in srgb, var(--piece-color) 22%, transparent);
+}
+
+/*
+ * Valid choices are marked by a dashed border and a plus, not by colour
+ * alone. Positions that are not valid are not rendered as buttons at all,
+ * so the tab order only ever walks the real choices.
+ */
+.placement-grid__option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.placement-grid__option:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Dev-only data panel (never present in a production build) */
+
+.dev-panel__toggle {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: var(--space-3);
+  z-index: 10;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-strong));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.dev-panel {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: var(--space-2);
+  z-index: 10;
+  width: min(260px, calc(100vw - 2 * var(--space-2)));
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-size: 12px;
+}
+
+.dev-panel__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+  color: var(--text-subtle);
+}
+
+.dev-panel__header button {
+  border: none;
+  background: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+
+.dev-panel__status {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+.dev-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.dev-panel__actions button {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dev-panel__header button {
+  min-height: 32px;
+  padding: 0 var(--space-2);
+}
+
+/* Legend */
+
+.build-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.build-legend__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.build-legend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.build-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.build-legend__swatch {
+  --piece-color: var(--text-muted);
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--piece-color);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
+}
+
+/* Workout detail */
+
+.workout-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.workout-detail__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.workout-detail__status[data-state="completed"] {
+  color: var(--accent);
+}
+
+.workout-detail__status[data-state="missed"] {
+  color: var(--long);
+}
+
+.workout-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.workout-detail__facts dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.workout-detail__facts dd {
+  margin: var(--space-1) 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workout-detail__instructions {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.workout-detail__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.workout-detail__result-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workout-detail__notes {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
 }

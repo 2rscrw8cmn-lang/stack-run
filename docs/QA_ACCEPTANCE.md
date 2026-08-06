@@ -3,7 +3,7 @@
 ## Global acceptance
 
 - No horizontal overflow at 320 px.
-- All touch targets are at least 44 px.
+- All touch targets are at least 44 px, except blocks and landing slots on the Build tower. Those are one course tall and as narrow as 26 px at 320 px, because five columns and 44 px squares cannot both fit at that width. Neither is destructive: a block opens a read-only sheet, and every landing slot is also reachable through the left/right controls and `Auto Place`, which are full-size.
 - Bottom navigation remains reachable.
 - Text is readable without zoom.
 - Keyboard focus is visible.
@@ -37,15 +37,44 @@
 
 ## Build
 
-- Rest days create no blocks.
-- Every scheduled run creates exactly one block.
+- Rest days earn no blocks.
+- Every completed run earns exactly one block.
 - Block width matches workout type.
-- Completed block fills.
-- Future block outlines.
-- Past incomplete block is visually distinct.
-- Newest completed block gets the only glow.
+- Completing a run does not place its block.
+- An unplaced block appears in `Blocks Ready` and survives a reload.
+- Placing a block puts it in the structure and removes it from the tray.
+- A placement survives a reload.
+- Build renders no future workouts and no eighteen-week outline.
+- The shaft above the tower shows remaining height only: no future block is drawn or labelled.
+- The tower stands on a visible ground plane, with sky above it.
+- Build opens framed on the top of the tower, not the foundation.
+- Week 1 is the bottom course and the newest work is on top.
+- A week with more blocks than fit one course spills into the course above it.
+- A brick shows a top face only where nothing rests on it.
+- A missed run leaves a gap in its course rather than a dashed block.
+- Newest placed block gets the only glow.
 - Clicking and keyboard activation open details.
-- Reduced motion removes translation/glow animation.
+- Reduced motion removes the snap translation and the glow.
+
+## Place Block
+
+- Placing happens on the tower; no sheet covers the structure.
+- The block hovers over the course it would land in before it is dropped.
+- Choosing a slot moves the block without committing it.
+- `Drop` commits, and cancelling builds nothing.
+- Left and right controls step through the valid positions in order.
+- The live region says where the block is and whether it is supported.
+- Only valid positions are offered, and only they are in the tab order.
+- A position that would overlap a placed block is not offered.
+- A position that would run past column 5 is not offered.
+- A position in a course that would float above a gap is not offered.
+- Valid positions are distinguishable without colour.
+- Enter or Space on a slot moves the block there; Enter on `Drop` commits it.
+- `Auto Place` centres on the ground course, finishes the lowest open course before starting a new one, and prefers supported positions above it.
+- `Auto Place` is deterministic for the same inputs.
+- Placement is announced with `aria-live`.
+- A block can be moved while its week is active.
+- A past week's course is locked.
 
 ## Plan
 
@@ -76,6 +105,8 @@ Test with:
 - Valid key
 - Invalid JSON
 - Wrong schema shape
+- Schema version 1 with existing run logs
+- Schema version 2 with existing placements
 - Future schema version
 
 Invalid data must not cause a blank screen.
@@ -89,7 +120,7 @@ Invalid data must not cause a blank screen.
 5. Close the app.
 6. Reopen.
 7. Confirm run remains.
-8. Open Build and confirm block is filled.
+8. Open Build, place the earned block, and confirm it appears in the structure.
 9. Open Plan and confirm completed status.
 10. Edit the run.
 11. Confirm update everywhere.

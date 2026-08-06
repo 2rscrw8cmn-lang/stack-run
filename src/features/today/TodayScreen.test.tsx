@@ -7,6 +7,18 @@ import { TodayScreen } from "./TodayScreen";
 
 const plan = loadSeedPlan();
 
+const completedEasyRun: RunLog = {
+  id: "log-1",
+  workoutId: "workout-002",
+  completedDate: "2026-08-04",
+  distanceMiles: 2.1,
+  durationSeconds: 1230,
+  effort: "solid",
+  notes: "",
+  createdAt: "2026-08-04T12:00:00.000Z",
+  updatedAt: "2026-08-04T12:00:00.000Z",
+};
+
 describe("TodayScreen", () => {
   it("shows the race summary card regardless of state", () => {
     render(
@@ -122,7 +134,7 @@ describe("TodayScreen", () => {
       />,
     );
 
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText(/Run complete/)).toBeInTheDocument();
     expect(
       screen.getAllByRole("definition").map((stat) => stat.textContent),
     ).toEqual(["2.1 mi", "20:30", "Solid"]);
@@ -162,7 +174,9 @@ describe("TodayScreen", () => {
         notes: "",
       },
     );
-    expect(screen.getByText("Run saved successfully.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Run saved. You earned an Easy block."),
+    ).toBeInTheDocument();
   });
 
   it("shows the after-race state once race day has passed", () => {
@@ -180,4 +194,54 @@ describe("TodayScreen", () => {
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
   });
+
+  it("shows the earned block and hands it to Build to be placed", async () => {
+    const user = userEvent.setup();
+    const onStartPlacing = vi.fn();
+    render(
+      <TodayScreen
+        plan={plan}
+        runLogs={[completedEasyRun]}
+        onViewPlan={vi.fn()}
+        onStartPlacing={onStartPlacing}
+        today="2026-08-04"
+      />,
+    );
+
+    expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
+
+    // Placing happens on the tower, not in a sheet over it.
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    expect(onStartPlacing).toHaveBeenCalledWith("workout-002");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("reports a placed block instead of offering to place it again", () => {
+    render(
+      <TodayScreen
+        plan={plan}
+        runLogs={[completedEasyRun]}
+        blockPlacements={[
+          {
+            workoutId: "workout-002",
+            row: 0,
+            columnStart: 3,
+            width: 1,
+            height: 1,
+            placedAt: "2026-08-04T13:00:00.000Z",
+          },
+        ]}
+        onViewPlan={vi.fn()}
+        today="2026-08-04"
+      />,
+    );
+
+    expect(
+      screen.getByText("Your Easy block is built into course 0 of the tower."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Place Block" }),
+    ).not.toBeInTheDocument();
+  });
+
 });
