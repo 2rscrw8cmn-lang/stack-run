@@ -1,16 +1,67 @@
 import { useState } from "react";
 import { earnedBlocks, scheduledRuns, spanForWorkout } from "../domain/build";
 import { autoPlaceOption, placementOptions } from "../domain/placement";
-import type { AppState } from "../domain/types";
+import type { AppState, Effort, Workout } from "../domain/types";
 import {
   placeBlock,
   resetAppState,
   saveRunLog,
 } from "../storage/appStateRepository";
+import { FootprintPreview } from "./FootprintPreview";
+import { targetMiles } from "./footprintPreview";
 
 interface DevDataPanelProps {
   state: AppState;
   onChange: (next: AppState) => void;
+}
+
+/** Stable per-workout jitter in [0, 1), so the same plan always fakes alike. */
+function seeded(id: string, salt: number): number {
+  let hash = salt * 2654435761;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash ^ id.charCodeAt(index)) * 16777619;
+    hash >>>= 0;
+  }
+  return (hash % 1000) / 1000;
+}
+
+/** Median minutes per mile by type, before jitter. */
+const BASE_PACE: Record<string, number> = {
+  easy: 10.5,
+  long: 10,
+  intervals: 8,
+  simulation: 9,
+  race: 8.5,
+};
+
+/**
+ * A plausible run rather than a placeholder one. The old version logged the
+ * low end of every target range at a flat 9 min/mi with effort "solid", which
+ * made every generated run identical — no way to see distance, pace, or effort
+ * do anything, which is precisely what needs looking at.
+ */
+function syntheticRun(workout: Workout): {
+  workoutId: string;
+  completedDate: string;
+  distanceMiles: number;
+  durationSeconds: number;
+  effort: Effort;
+} {
+  const target = targetMiles(workout);
+  // Most runs land near target; a few over- or undershoot.
+  const distanceMiles =
+    Math.round((target * (0.9 + seeded(workout.id, 1) * 0.3)) * 10) / 10;
+  const pace = (BASE_PACE[workout.type] ?? 10) * (0.9 + seeded(workout.id, 2) * 0.2);
+  const roll = seeded(workout.id, 3);
+  const effort: Effort = roll < 0.2 ? "rough" : roll < 0.75 ? "solid" : "great";
+
+  return {
+    workoutId: workout.id,
+    completedDate: workout.date,
+    distanceMiles: Math.max(0.1, distanceMiles),
+    durationSeconds: Math.round(distanceMiles * pace * 60),
+    effort,
+  };
 }
 
 /**
@@ -28,6 +79,7 @@ interface DevDataPanelProps {
  */
 export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   const [isOpen, setOpen] = useState(false);
+  const [isPreviewing, setPreviewing] = useState(false);
 
   const loggedWorkoutIds = new Set(
     state.runLogs.map((runLog) => runLog.workoutId),
@@ -45,15 +97,7 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   function logRuns(count: number) {
     let next = state;
     for (const workout of nextUnlogged.slice(0, count)) {
-      const target = Number.parseFloat(workout.targetDistanceMiles ?? "3");
-      next = saveRunLog(next, {
-        workoutId: workout.id,
-        completedDate: workout.date,
-        distanceMiles: Number.isFinite(target) ? target : 3,
-        durationSeconds: Math.round((Number.isFinite(target) ? target : 3) * 9 * 60),
-        effort: "solid",
-        notes: "",
-      });
+      next = saveRunLog(next, { ...syntheticRun(workout), notes: "" });
     }
     onChange(next);
   }
@@ -78,6 +122,12 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
       });
     }
     onChange(next);
+  }
+
+  if (isPreviewing) {
+    return (
+      <FootprintPreview state={state} onClose={() => setPreviewing(false)} />
+    );
   }
 
   if (!isOpen) {
@@ -116,6 +166,9 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
         </button>
         <button type="button" onClick={placeAllPending}>
           Auto place all
+        </button>
+        <button type="button" onClick={() => setPreviewing(true)}>
+          Footprint preview
         </button>
         <button type="button" onClick={() => onChange(resetAppState())}>
           Reset data

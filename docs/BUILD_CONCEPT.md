@@ -5,6 +5,12 @@ exists to be argued with before any of it reaches the data model, because the
 central change here is a fourth one-way migration and those are expensive to
 take back.
 
+A working preview of the proposal ships behind the DEV panel
+(`src/dev/FootprintPreview.tsx`, "Footprint preview"). It computes a whole
+tower from the plan and the run logs with no schema change and no stored
+placement, so §2 can be judged by eye. §7 records what it showed — including
+two things that were wrong in §2 as first written.
+
 The shipped Build screen is described in `UX_PRODUCT_SPEC.md` and governed by
 decisions D-014, D-015, and D-016. This document proposes revising D-016 and
 extending D-014.
@@ -103,7 +109,15 @@ The exact constants are the least settled part of this document and should be
 tuned against the rendered tower, not chosen on paper. What matters is the
 shape of the rule: two axes, both earned.
 
+> **Superseded by §7.2.** Measured, this candidate packs badly — a cap of 6 is
+> too wide for any grid the phone can show. The recommendation is now the
+> `bands` rule capped at 4: fewer footprints (8, not 11) but a tower that
+> stands up.
+
 ### 2.2 The grid widens to eight columns, derived not guessed
+
+> **Superseded by §7.3.** The method below is right and the arithmetic is
+> pessimistic. Measured on the rendered tower the answer is **nine** columns.
 
 More footprint variety needs more room to express it, but the 320px exit
 criterion is the binding constraint. Measured against the current production
@@ -229,19 +243,125 @@ every boundary in D-010 and D-015 — no canvas, no WebGL, no physics, no fallin
 pieces, no rotation, no drag and drop, no game loop.
 
 ---
-
 ## 6. Open questions
 
 1. **Width constants.** `round(miles / 1.5)` capped at 6 is one candidate among
    several. Worth tuning against the rendered tower rather than the table.
+   *Partly answered — see §7.2.*
 2. **Height from type, or from logged effort?** Type is deterministic and
    predictable — you know what you are earning before you run. Effort would let
    a brutal easy run earn a taller block, which is more expressive but makes
    the reward harder to anticipate. I lean type; effort is better spent on
-   finish (§4).
-3. **Does the eight-column grid survive at 320px in practice?** The 24px figure
-   is derived from a real measurement but sits exactly on the WCAG floor. If it
-   feels cramped in the hand, seven columns is the fallback and costs about
-   four extra courses of height.
-4. **Do mortar lines read as informative or as noise** at 29 courses? If noisy,
-   label only phase transitions and put week numbers in the gauge instead.
+   finish (§4). **Still open**, and §7.5 adds a third candidate.
+3. **Does the eight-column grid survive at 320px in practice?**
+   *Answered: eight works, but nine is better — see §7.3.*
+4. **Do mortar lines read as informative or as noise** at 29 courses?
+   *Answered, and worse than expected — see §7.4.*
+
+---
+
+## 7. What the preview showed
+
+Everything below is measured by `buildPreviewTower` against the real 2026
+plan. Two of these contradict §2 as first written.
+
+### 7.1 How bricks land matters more than how they are sized
+
+The obvious packing rule — drop each brick to the lowest position it fits, the
+rule Auto Place uses today — degenerates badly once bricks vary in width. A
+wide brick rests on the *highest* column it spans, so on uneven ground it opens
+a void underneath every time, and those compound:
+
+| Landing rule | Courses | Voids |
+|---|---:|---:|
+| Lowest landing (today's rule) | 58 | 161 |
+| Lowest, ties broken by flattest | **34** | **24** |
+| Flattest, ties broken by lowest | 75 | 236 |
+
+Scoring flatness *first* is the worst of the three: it prefers a flat plateau
+high up to an uneven notch near the ground, and the tower runs away. Height has
+to dominate, and flatness only break ties.
+
+This was not in §2 at all, and it is the single biggest lever in the proposal.
+It also means the migration is not the only place Auto Place has to change.
+
+### 7.2 The widest-brick cap dominates the width rule
+
+Sweeping all three width rules against column counts 7–12 and caps 3–6, the cap
+is by far the stronger variable. At 8 columns, moving the cap from 3 to 6 takes
+the tower from 37 courses and 8 voids to 58 courses and 160 voids — while
+changing the width *rule* barely moves either number.
+
+The interesting reading: a brick wider than about **half the grid** is not a
+brick, it is a slab, and it wrecks the packing. That is a constraint on the
+width rule, not a free parameter.
+
+Best measured combination — `bands`, cap 4, height from type:
+
+| Columns | Courses | Footprints | Commonest | Voids |
+|---:|---:|---:|---|---:|
+| 8 | 33 | 8 | 2×1 at 34% | 19 |
+| **9** | **29** | **8** | **2×1 at 34%** | **24** |
+| 10 | 26 | 8 | 2×1 at 34% | 19 |
+
+Against today's tower: **8 footprints instead of 4, commonest shape 34%
+instead of 54%, and 29 courses instead of 36.**
+
+### 7.3 Nine columns, not eight — and §2.2 got this wrong
+
+§2.2 derived eight columns from a 320px measurement. The method was right but
+the arithmetic was pessimistic. Rendered at 320px with the phase gauge
+reserved, the narrowest brick actually measures:
+
+| Columns | Narrowest brick at 320px |
+|---:|---|
+| 8 | 37px |
+| **9** | **25px** |
+| 10 | 23px — **under** the 24px floor |
+
+So the floor bites between 9 and 10, not between 8 and 10. Nine columns clears
+WCAG 2.2 SC 2.5.8 with a pixel to spare and buys four courses of height over
+eight. **Nine is the recommendation.**
+
+### 7.4 Mortar lines do not stay in order
+
+The finding that most threatens §2.3. Under continuous stacking a week's blocks
+land wherever they fit, so a later week can top out *below* an earlier one —
+week 17 finishes at course 25 while week 16 finishes at course 26. One
+inversion in 16 steps on the real plan, and it renders as a tower labelled
+…15, 17, 16, 18 going up, which just looks like a bug.
+
+Weeks are also not evenly spaced: week 1 tops out at course 1, week 13 at
+course 18, week 18 at course 29. That part is honest and good — it shows
+training load rising.
+
+This does not sink the ledger idea, but a mortar line cannot be "where week N
+ended" if the labels are to stay ordered. Options: label only the four phase
+transitions, which cannot invert because phases are contiguous runs of weeks;
+or place week N's line at the lowest course none of its blocks sit below, and
+accept that the line is approximate.
+
+### 7.5 Duration is usable, and §2 left it out
+
+§2 derived width from distance and height from workout type, and used
+`RunLog.durationSeconds` for nothing — a real omission, since duration plus
+distance gives pace, the only objective difficulty signal the app holds. The
+preview adds a third height source: pace measured against *this runner's own
+median for that workout type*, so beating your usual easy pace earns a taller
+block than grinding one out. It wants looking at beside `type` before either
+is chosen.
+
+Effort is wired up as surface finish rather than size, per §4, so that idea can
+be judged at the same time.
+
+### 7.6 The preview is scaffolding
+
+`src/dev/` is throwaway. If the proposal is rejected, deleting that directory
+removes the preview, its styles, and its tests, and nothing else in the app
+refers to it. If it is accepted, the packing rules in `footprintPreview.ts` are
+a specification to port into `placement.ts`, not code to keep.
+
+While it was open, `DevDataPanel` was also fixed to generate plausible runs —
+varied distance, pace, and effort — instead of logging every run at the low end
+of its target range at a flat 9 min/mile with effort "solid". Nothing that
+reads distance, duration, or effort could be tested against the old data.
