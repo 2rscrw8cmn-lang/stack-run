@@ -409,3 +409,78 @@ While it was open, `DevDataPanel` was also fixed to generate plausible runs —
 varied distance, pace, and effort — instead of logging every run at the low end
 of its target range at a flat 9 min/mile with effort "solid". Nothing that
 reads distance, duration, or effort could be tested against the old data.
+
+---
+
+## 8. Chosen configuration
+
+Settled by eye against the preview:
+
+| | |
+|---|---|
+| Columns | **10** |
+| Widest brick | **4** |
+| Width from miles | **bands** (<3 → 1, <5 → 2, <8 → 3, <12 → 4, else 5) |
+| Height from | **pace vs the runner's own median for that workout type** |
+
+On the real 2026 plan that is **25 courses, 9 footprints, commonest shape 2×1
+at 32%, 12 voids** — against today's 36 courses, 4 footprints and 54%.
+
+Two consequences follow from these two choices specifically, and neither is
+resolved.
+
+### 8.1 Ten columns misses the touch-target floor at 320px
+
+Measured on the rendered tower, narrowest brick:
+
+| Viewport | 320 | 360 | 375 | 393 |
+|---|---|---|---|---|
+| Narrowest brick | **23px** | 27px | 28px | 30px |
+
+WCAG 2.2 SC 2.5.8 wants 24px. Ten columns clears it on every current phone and
+misses by a single pixel at 320.
+
+**The column count cannot be responsive.** `columnStart` is stored, so the grid
+width is part of the data model — one number for every viewport, forever. This
+has to be decided once.
+
+Options, in order of preference:
+
+1. **Keep 10 and extend the documented exception.** `QA_ACCEPTANCE.md` already
+   carries a Build-only touch-target exception from D-014, on the same
+   reasoning: the controls are non-destructive and Auto Place reaches every
+   position without touching a brick. 320px is an iPhone SE 1 / iPhone 5 width;
+   no phone still sold is narrower than 360.
+2. **Drop to 9 columns.** Clears 320px at 25px, costs about three courses of
+   extra height (28 rather than 25). Strictly safer, slightly less compact.
+
+### 8.2 Pace-derived height cannot be recomputed, so it must be frozen
+
+The larger of the two, and it is a direct consequence of choosing `pace`.
+
+The preview recomputes every brick from the whole run history each render, so
+the median moves as runs accumulate and the tower reshapes itself. **Production
+cannot do that.** A block's height decides how it packs, and it is placed into a
+structure that other blocks already rest on. If a height changed later, the
+tower would have to re-pack itself and every block above would move.
+
+So height must be **frozen at earn time**, computed against the median as it
+stood the moment the run was logged. That is the only workable version, and it
+carries a real cost: the same run earns a different block depending on when in
+the plan you did it, and the first run of each type is its own median by
+definition, so it always lands on the base height.
+
+Worth deciding before this is built:
+
+- **Freeze and accept it.** Simplest. Early-plan blocks are noisier, and the
+  tower is a record of what you knew at the time rather than a re-judgement.
+- **Warm-up period.** The first few runs of a type use type-derived height;
+  pace takes over once there is a sample worth comparing against. Removes the
+  worst of the noise, adds a rule the user has to be told about.
+- **Fixed baseline instead of a rolling median.** Compare against the plan's
+  own target pace rather than the runner's history. Stable and predictable from
+  day one, but it stops being *your* median, which was the appeal.
+
+`type` has none of this problem: it is knowable before the run and never moves.
+That is the trade being made.
+
