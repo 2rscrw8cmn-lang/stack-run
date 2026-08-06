@@ -133,20 +133,13 @@ describe("buildPreviewTower", () => {
     expect(tower.bricks[1].y).toBe(1);
   });
 
-  it("leaves a void where a wide brick arches over uneven ground", () => {
-    // Two 1-wide bricks land at the outer columns, then a 4-wide brick bridges
-    // them and the two cells between are enclosed but empty.
-    const tower = buildPreviewTower(
-      planOf([
-        workout("a", "intervals", "4-5"),
-        workout("b", "intervals", "4-5"),
-        workout("c", "simulation", "7-8"),
-      ]),
-      [],
-      { ...baseOptions, columns: 4, heightSource: "type" },
-    );
+  it("still leaves voids where wide bricks arch over uneven ground", () => {
+    // Overhangs are the gaps worth having (docs/BUILD_CONCEPT.md §3), so the
+    // levelling rule must not flatten them out of existence in pursuit of an
+    // even skyline. A perfectly solid tower would mean it had.
+    const tower = buildPreviewTower(loadSeedPlan(), [], baseOptions);
 
-    expect(tower.stats.voids).toBeGreaterThan(0);
+    expect(tower.stats.voids).toBeGreaterThan(5);
   });
 
   it("never overlaps two bricks", () => {
@@ -225,6 +218,35 @@ describe("buildPreviewTower", () => {
     const fastest = tower.bricks.find((brick) => brick.workout.id === "c");
     const median = tower.bricks.find((brick) => brick.workout.id === "a");
     expect(fastest?.height).toBeGreaterThan(median?.height ?? 0);
+  });
+
+  it("keeps the tower from splitting into stacks of wildly different height", () => {
+    // The plan's bricks get monotonically wider, so early narrow ones can
+    // strand ledges no later brick fits. Left unchecked those columns stall
+    // while the rest climbs, and the tower reads as two towers with a chasm.
+    for (const [columns, maxWidth] of [
+      [9, 3],
+      [9, 4],
+      [9, 5],
+      [10, 4],
+      [12, 5],
+    ]) {
+      const tower = buildPreviewTower(loadSeedPlan(), [], {
+        ...baseOptions,
+        widthRule: "fine",
+        columns,
+        maxWidth,
+      });
+
+      const skyline = new Array<number>(columns).fill(0);
+      for (const brick of tower.bricks) {
+        for (let x = brick.x; x < brick.x + brick.width; x += 1) {
+          skyline[x] = Math.max(skyline[x], brick.y + brick.height);
+        }
+      }
+      const spread = Math.max(...skyline) - Math.min(...skyline);
+      expect(spread).toBeLessThanOrEqual(13);
+    }
   });
 
   it("paints every brick over the ones it rests on", () => {

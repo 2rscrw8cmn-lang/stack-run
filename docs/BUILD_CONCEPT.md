@@ -354,31 +354,49 @@ is chosen.
 Effort is wired up as surface finish rather than size, per §4, so that idea can
 be judged at the same time.
 
-### 7.7 The skyline can diverge into spires
+### 7.7 The skyline diverges into spires — and why, and the fix
 
-Visible immediately on a phone, and measurable. Continuous stacking does not
-keep the tower's top level: with the wrong cap, part of the grid runs away
-while the rest stalls, and the result reads as two towers with a chasm between
-them rather than one structure.
+Visible immediately on a phone: the tower splits into two stacks with a chasm
+between them rather than reading as one structure.
 
-Final skyline per column, `fine` rule, height from type:
+**Cause.** Not the scoring. The plan's bricks get monotonically wider — over
+the 71 runs in order, the first third are mostly 1 and 2 columns
+(`{1: 5, 2: 13, 3: 5}`) and the last third mostly 3 and 4
+(`{2: 5, 3: 7, 4: 12}`). Early narrow bricks strand ledges two columns wide,
+and once the plan stops producing anything that narrow those columns can never
+be built on again. They stall while the rest of the tower climbs.
 
-| Columns | Cap | Skyline | Tallest − shortest |
-|---:|---:|---|---:|
-| 9 | 3 | 28 28 31 31 31 26 28 28 28 | 5 |
-| 9 | 4 | 17 17 41 41 41 41 26 26 26 | **24** |
-| 9 | 5 | 12 41 41 41 41 41 31 31 30 | **29** |
-| 12 | 5 | 25 25 25 25 29 29 29 29 29 25 25 24 | 5 |
+That is a lookahead problem, so no amount of tuning the existing height and
+flatness terms sees it.
 
-It is not monotonic in the cap, and that is the tell: it depends on whether
-the brick widths in play can actually *bridge* the stacks they create. Once a
-gap is narrower than every available brick, nothing can ever fill it and the
-two sides grow independently for the rest of the plan.
+**Fix.** A third term: prefer landings walled in on their sides, by the grid
+edge or by a neighbour at least as tall as the brick's own top. It never lets
+the narrow ledges form in the first place, and needs no lookahead. Measured
+against the alternatives (`fine` rule, courses / voids / spread):
 
-Auto Place cannot be the only answer here, because on the real screen the user
-chooses. But it means the landing rule needs a levelling term — something that
-prefers the low side of the tower — or the plan needs a guaranteed supply of
-narrow bricks. Neither is in §2.
+| Grid | Lowest + flattest | + flushness | Stranded-first |
+|---|---|---|---|
+| 9 cols, cap 4 | 41 / 5 / **24** | 38 / 18 / 13 | 35 / 35 / 3 |
+| 9 cols, cap 5 | 41 / 24 / **29** | 39 / 58 / **2** | 37 / 42 / 3 |
+| 10 cols, cap 4 | 39 / 27 / **17** | 33 / 40 / **4** | 32 / 38 / 3 |
+| 12 cols, cap 5 | 29 / 34 / 5 | 28 / 28 / 5 | 28 / 33 / 3 |
+
+Flushness wins on courses and spread nearly everywhere without the blowups the
+alternatives bring — scoring stranded columns first flattens the skyline hardest
+but at a heavy void cost, and in one configuration it produced 148 voids.
+
+On the recommended grid (`bands`, 9 columns, cap 4) it improves all three at
+once: **28 courses, 17 voids, spread 3**, against 29 / 21 / 4.
+
+**It does not flatten the good gaps.** Overhang voids are the gaps §3 argues
+for, so the risk was that levelling would pack them out of existence. It does
+not — the real plan still arches, and a test pins that so a future tweak
+towards an even skyline cannot quietly remove them.
+
+**This changes §2, not just the preview.** The landing rule is Auto Place, and
+Auto Place is product. The three terms — lowest, then flattest, then most flush
+— are a specification to port into `placement.ts`, and the current one-line
+support rule is not enough to carry them.
 
 ### 7.6 The preview is scaffolding
 

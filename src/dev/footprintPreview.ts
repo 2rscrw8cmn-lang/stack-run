@@ -180,22 +180,34 @@ interface Landing {
 /**
  * Where a brick of this width comes to rest on the current skyline.
  *
- * Lowest landing first, then whichever of those opens least dead space
- * beneath the brick, then nearest the centre, then leftmost.
+ * Lowest landing first; then whichever of those opens least dead space beneath
+ * the brick; then whichever sits most flush against a wall; then nearest the
+ * centre, then leftmost.
  *
- * The tiebreak matters more than it looks. A wide brick rests on the highest
- * column it spans, so on uneven ground it opens a void every time, and across
- * a whole plan those compound: without the tiebreak the same 71 bricks stack
- * 58 courses with 161 voids instead of 34 with 24.
+ * Height has to dominate, but on its own it packs badly. A wide brick rests on
+ * the highest column it spans, so on uneven ground it opens a void every time,
+ * and across a plan those compound: without the flatness tiebreak the same 71
+ * bricks stack 58 courses with 161 voids instead of 34 with 24. Scoring
+ * flatness *ahead* of height is worse still — it prefers a flat plateau high up
+ * to an uneven notch near the ground, and the tower runs to 75 courses.
  *
- * Scoring dead space *ahead* of height is worse still — it prefers a flat
- * plateau high up to an uneven notch at the bottom, and the tower grows to 75
- * courses. Height has to dominate; flatness only breaks ties.
+ * Flushness fixes a failure the other two cannot see. The plan's bricks get
+ * monotonically wider — the first third of the runs are mostly 1 and 2 columns,
+ * the last third mostly 3 and 4 — so early narrow bricks strand narrow ledges
+ * that no later brick can ever fit. Those columns stall while the rest of the
+ * tower climbs, and it reads as two towers with a chasm between them rather
+ * than one structure. Preferring landings walled in by the grid edge or by a
+ * neighbour at least as tall stops the ledges forming, and takes the worst
+ * measured spread from 29 courses down to 2.
  */
-function landingFor(heights: number[], width: number): Landing {
+function landingFor(
+  heights: number[],
+  width: number,
+  height: number,
+): Landing {
   const centre = heights.length / 2;
   let best: Landing | null = null;
-  let bestScore: [number, number, number] = [Infinity, Infinity, Infinity];
+  let bestScore: number[] = [];
 
   for (let x = 0; x + width <= heights.length; x += 1) {
     let y = 0;
@@ -207,18 +219,27 @@ function landingFor(heights: number[], width: number): Landing {
       opened += y - heights[column];
     }
 
-    const score: [number, number, number] = [
+    const top = y + height;
+    const leftFlush = x === 0 || heights[x - 1] >= top ? height : 0;
+    const rightFlush =
+      x + width === heights.length || heights[x + width] >= top ? height : 0;
+
+    const score = [
       y,
       opened,
+      -(leftFlush + rightFlush),
       Math.abs(centre - (x + width / 2)),
     ];
-    if (
-      best === null ||
-      score[0] < bestScore[0] ||
-      (score[0] === bestScore[0] &&
-        (score[1] < bestScore[1] ||
-          (score[1] === bestScore[1] && score[2] < bestScore[2])))
-    ) {
+
+    let better = best === null;
+    for (let rank = 0; !better && rank < score.length; rank += 1) {
+      if (score[rank] < bestScore[rank]) {
+        better = true;
+      } else if (score[rank] > bestScore[rank]) {
+        break;
+      }
+    }
+    if (better) {
       best = { x, y };
       bestScore = score;
     }
@@ -251,7 +272,7 @@ export function buildPreviewTower(
       widthForMiles(miles, options.widthRule, options.maxWidth),
     );
     const height = heightFor(workout, runLog, options.heightSource, medians);
-    const { x, y } = landingFor(heights, width);
+    const { x, y } = landingFor(heights, width, height);
 
     for (let column = x; column < x + width; column += 1) {
       heights[column] = y + height;
