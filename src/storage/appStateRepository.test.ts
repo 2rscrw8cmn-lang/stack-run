@@ -142,19 +142,19 @@ describe("placeBlock", () => {
   it("persists a placement and reloads it", () => {
     const state = placeBlock(stateWithLoggedRun(), {
       workoutId: "workout-002",
-      weekNumber: 1,
       row: 0,
       columnStart: 3,
-      span: 1,
+      width: 1,
+      height: 1,
     });
 
     expect(state.blockPlacements).toHaveLength(1);
     expect(loadAppState().blockPlacements[0]).toMatchObject({
       workoutId: "workout-002",
-      weekNumber: 1,
       row: 0,
       columnStart: 3,
-      span: 1,
+      width: 1,
+      height: 1,
     });
     expect(loadAppState().blockPlacements[0].placedAt).toEqual(
       expect.any(String),
@@ -164,70 +164,95 @@ describe("placeBlock", () => {
   it("keeps one placement per workout when a block is moved", () => {
     let state = placeBlock(stateWithLoggedRun(), {
       workoutId: "workout-002",
-      weekNumber: 1,
       row: 0,
       columnStart: 3,
-      span: 1,
+      width: 1,
+      height: 1,
     });
     state = placeBlock(state, {
       workoutId: "workout-002",
-      weekNumber: 1,
       row: 0,
       columnStart: 5,
-      span: 1,
+      width: 1,
+      height: 1,
     });
 
     expect(state.blockPlacements).toHaveLength(1);
     expect(loadAppState().blockPlacements[0].columnStart).toBe(5);
   });
 
-  it("rejects a span that does not match the workout type", () => {
+  it("rejects a footprint the run did not earn", () => {
+    // A 2 mile run earns a 1-wide block; the caller cannot ask for a bigger one.
     expect(() =>
       placeBlock(stateWithLoggedRun(), {
         workoutId: "workout-002",
-        weekNumber: 1,
         row: 0,
         columnStart: 1,
-        span: 3,
+        width: 3,
+        height: 1,
       }),
     ).toThrow(InvalidPlacementError);
   });
 
-  it("rejects a placement that would overlap another block in the week", () => {
+  it("rejects a row that is not where the block would fall", () => {
+    expect(() =>
+      placeBlock(stateWithLoggedRun(), {
+        workoutId: "workout-002",
+        row: 4,
+        columnStart: 1,
+        width: 1,
+        height: 1,
+      }),
+    ).toThrow(InvalidPlacementError);
+  });
+
+  it("stacks a second block on the first rather than overlapping it", () => {
     let state = saveRunLog(loadAppState(), easyRun);
     state = saveRunLog(state, { ...easyRun, workoutId: "workout-004" });
     state = placeBlock(state, {
       workoutId: "workout-002",
-      weekNumber: 1,
       row: 0,
       columnStart: 3,
-      span: 1,
+      width: 1,
+      height: 1,
     });
+
+    // Claiming the occupied cell is refused; the course above is accepted.
+    expect(() =>
+      placeBlock(state, {
+        workoutId: "workout-004",
+        row: 0,
+        columnStart: 3,
+        width: 1,
+        height: 1,
+      }),
+    ).toThrow(InvalidPlacementError);
 
     expect(() =>
       placeBlock(state, {
         workoutId: "workout-004",
-        weekNumber: 1,
-        row: 0,
+        row: 1,
         columnStart: 3,
-        span: 1,
+        width: 1,
+        height: 1,
       }),
-    ).toThrow(InvalidPlacementError);
+    ).not.toThrow();
   });
 
-  it("rejects a block that would run past the eighth column", () => {
+  it("rejects a block that would run past the last column", () => {
     const state = saveRunLog(loadAppState(), {
       ...easyRun,
       workoutId: "workout-007",
+      distanceMiles: 9,
     });
 
     expect(() =>
       placeBlock(state, {
         workoutId: "workout-007",
-        weekNumber: 1,
         row: 0,
-        columnStart: 4,
-        span: 3,
+        columnStart: 9,
+        width: 4,
+        height: 1,
       }),
     ).toThrow(InvalidPlacementError);
   });
@@ -236,22 +261,40 @@ describe("placeBlock", () => {
     expect(() =>
       placeBlock(loadAppState(), {
         workoutId: "workout-002",
-        weekNumber: 1,
         row: 0,
         columnStart: 1,
-        span: 1,
+        width: 1,
+        height: 1,
       }),
     ).toThrow(InvalidPlacementError);
   });
 
-  it("refuses to move a block into a different training week", () => {
+  it("refuses to move a block that has another resting on it", () => {
+    let state = saveRunLog(loadAppState(), easyRun);
+    state = saveRunLog(state, { ...easyRun, workoutId: "workout-004" });
+    state = placeBlock(state, {
+      workoutId: "workout-002",
+      row: 0,
+      columnStart: 3,
+      width: 1,
+      height: 1,
+    });
+    state = placeBlock(state, {
+      workoutId: "workout-004",
+      row: 0,
+      columnStart: 5,
+      width: 1,
+      height: 1,
+    });
+
+    // workout-004 was placed last, so only it can still be moved.
     expect(() =>
-      placeBlock(stateWithLoggedRun(), {
+      placeBlock(state, {
         workoutId: "workout-002",
-        weekNumber: 2,
         row: 0,
         columnStart: 1,
-        span: 1,
+        width: 1,
+        height: 1,
       }),
     ).toThrow(InvalidPlacementError);
   });
@@ -260,10 +303,10 @@ describe("placeBlock", () => {
     const before = stateWithLoggedRun();
     const after = placeBlock(before, {
       workoutId: "workout-002",
-      weekNumber: 1,
       row: 0,
       columnStart: 3,
-      span: 1,
+      width: 1,
+      height: 1,
     });
 
     expect(after.runLogs).toEqual(before.runLogs);

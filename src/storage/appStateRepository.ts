@@ -1,6 +1,7 @@
-import { BLOCK_SPAN_BY_TYPE } from "../domain/build";
+import { earnsBlock, footprintForRun } from "../domain/build";
 import {
   assertPlacementFits,
+  canMove,
   InvalidPlacementError,
   type PlacementCandidate,
 } from "../domain/placement";
@@ -94,9 +95,15 @@ export function saveRunLog(
 
 /**
  * Creates or moves the single placement belonging to a workout's earned block.
- * The span is checked against the workout type, and the position against the
- * eight columns and the blocks already built into that week, so an invalid
- * placement can never reach storage.
+ *
+ * The footprint is recomputed here from the run and compared, so a caller
+ * cannot store a block of its own choosing, and the position is checked
+ * against where gravity would actually drop it. An invalid placement can never
+ * reach storage.
+ *
+ * Only the most recently placed block can be moved: with continuous stacking
+ * anything older has blocks resting on it, and pulling it out from under them
+ * is not a coherent action.
  */
 export function placeBlock(
   state: AppState,
@@ -109,19 +116,42 @@ export function placeBlock(
   if (!workout) {
     throw new InvalidPlacementError(`Unknown workout: ${input.workoutId}`);
   }
-  if (BLOCK_SPAN_BY_TYPE[workout.type] !== input.span) {
+  if (!earnsBlock(workout.type)) {
     throw new InvalidPlacementError(
-      `A ${workout.type} workout earns a span-${BLOCK_SPAN_BY_TYPE[workout.type]} block, not span-${input.span}.`,
+      `A ${workout.type} workout earns no block.`,
     );
   }
-  if (workout.weekNumber !== input.weekNumber) {
-    throw new InvalidPlacementError(
-      `${input.workoutId} belongs to week ${workout.weekNumber}, not week ${input.weekNumber}.`,
-    );
-  }
-  if (!state.runLogs.some((runLog) => runLog.workoutId === input.workoutId)) {
+
+  const runLog = state.runLogs.find(
+    (candidate) => candidate.workoutId === input.workoutId,
+  );
+  if (!runLog) {
     throw new InvalidPlacementError(
       `${input.workoutId} has no run log, so it has not earned a block.`,
+    );
+  }
+
+  const footprint = footprintForRun(
+    state.plan,
+    state.runLogs,
+    workout,
+    runLog,
+  );
+  if (
+    footprint.width !== input.width ||
+    footprint.height !== input.height
+  ) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} earns a ${footprint.width}x${footprint.height} block, not ${input.width}x${input.height}.`,
+    );
+  }
+
+  const existing = state.blockPlacements.some(
+    (candidate) => candidate.workoutId === input.workoutId,
+  );
+  if (existing && !canMove(state.blockPlacements, input.workoutId)) {
+    throw new InvalidPlacementError(
+      `${input.workoutId} has blocks resting on it and can no longer be moved.`,
     );
   }
 
@@ -131,9 +161,6 @@ export function placeBlock(
     ...input,
     placedAt: new Date().toISOString(),
   };
-  const existing = state.blockPlacements.some(
-    (candidate) => candidate.workoutId === input.workoutId,
-  );
 
   const next: AppState = {
     ...state,

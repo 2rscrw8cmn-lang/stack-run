@@ -1,37 +1,37 @@
 import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates";
 import {
-  courseKeys,
-  occupiedColumns,
-  placementsForCourse,
-  WEEK_COLUMNS,
-  type BlockSpan,
+  footprintFor,
+  paceSecondsPerMile,
+  projectedFootprint,
+  type BlockHeight,
+  type BlockWidth,
+  type Footprint,
+} from "./footprint";
+import {
+  autoPlaceOption,
+  GRID_COLUMNS,
+  lastColumnOf,
+  placementOptions,
+  newestPlacement,
+  skylineOf,
+  topOf,
 } from "./placement";
 import type {
   BlockPlacement,
   RunLog,
   TrainingPlan,
-  TrainingWeek,
   Workout,
   WorkoutType,
 } from "./types";
 
-export type { BlockSpan };
+export type { BlockWidth, BlockHeight, Footprint };
 
 export type BlockState = "completed" | "planned" | "missed";
 
-/**
- * The span map from docs/UX_PRODUCT_SPEC.md. Rest is 0 because rest days
- * earn no block; every other completed run earns exactly one block that is
- * `span` grid columns wide.
- */
-export const BLOCK_SPAN_BY_TYPE: Record<WorkoutType, 0 | BlockSpan> = {
-  rest: 0,
-  easy: 1,
-  intervals: 2,
-  simulation: 2,
-  long: 3,
-  race: 4,
-};
+/** Rest days earn no block; every other completed run earns exactly one. */
+export function earnsBlock(type: WorkoutType): boolean {
+  return type !== "rest";
+}
 
 export const WORKOUT_TYPE_LABEL: Record<WorkoutType, string> = {
   rest: "Rest",
@@ -68,7 +68,7 @@ export const LEGEND_TYPES: WorkoutType[] = [
 export interface EarnedBlock {
   workout: Workout;
   runLog: RunLog;
-  span: BlockSpan;
+  footprint: Footprint;
 }
 
 /** A block the user has built into the structure. */
@@ -77,19 +77,29 @@ export interface PlacedBlock {
   placement: BlockPlacement;
   /** The one most recently placed block, which carries the only glow. */
   isNewest: boolean;
+  /** True while this block is still the one that can be moved. */
+  canMove: boolean;
   /** Faces you could actually see: hidden where another block abuts. */
   showTopFace: boolean;
   showRightFace: boolean;
+  /**
+   * Paint order. The oblique projection has no depth buffer and a block's top
+   * and right faces project up and to the right, into the space above it, so
+   * every block must paint over the ones it rests on.
+   */
+  depth: number;
 }
 
-/** One course of the tower. A training week fills as many as it needs. */
-export interface BuiltCourse {
+/**
+ * Where a training week finished, drawn across the tower as a mortar line.
+ * Weeks no longer reserve space, so this is an annotation on a continuous
+ * structure rather than a container.
+ */
+export interface MortarLine {
   weekNumber: number;
+  /** The course this week topped out at, counted up from the ground. */
   row: number;
-  /** True on the first course of its training week, which carries the label. */
-  startsWeek: boolean;
   isActiveWeek: boolean;
-  blocks: PlacedBlock[];
 }
 
 export interface BuildSummaryMetrics {
@@ -110,11 +120,13 @@ export interface BuildViewModel {
   metrics: BuildSummaryMetrics;
   /** Earned but unplaced blocks, oldest first, so the user builds upward. */
   pendingBlocks: EarnedBlock[];
-  /** Every course that has been built, ground first. */
-  courses: BuiltCourse[];
+  /** Every block built into the tower, ground first. */
+  blocks: PlacedBlock[];
+  /** How many courses the tower currently stands. */
+  courses: number;
+  /** Week markers up the tower, lowest first. */
+  mortar: MortarLine[];
   activeWeekNumber: number;
-  /** The course above the structure, or null once week 18 is rendered. */
-  nextCourseWeekNumber: number | null;
   /** How tall the finished tower is projected to be, in courses. */
   projectedCourses: number;
   /** Phase bands from the ground up, for the height gauge. */
@@ -122,15 +134,45 @@ export interface BuildViewModel {
 }
 
 function isScheduledRun(workout: Workout): boolean {
-  return BLOCK_SPAN_BY_TYPE[workout.type] > 0;
+  return earnsBlock(workout.type);
 }
 
-export function spanForWorkout(workout: Workout): BlockSpan {
-  const span = BLOCK_SPAN_BY_TYPE[workout.type];
-  if (span === 0) {
-    throw new Error(`A ${workout.type} workout earns no block.`);
-  }
-  return span;
+/**
+ * The paces of every same-type run logged up to and including this one, which
+ * is the sample the block's height is frozen against. Ordered by the date the
+ * run was completed, so the sample is exactly what the app knew at the moment
+ * the block was earned — placing an old block today must not size it using
+ * runs from after it.
+ */
+export function paceSampleFor(
+  plan: TrainingPlan,
+  runLogs: RunLog[],
+  workout: Workout,
+): number[] {
+  const typeByWorkoutId = new Map(
+    scheduledRuns(plan).map((item) => [item.id, item.type]),
+  );
+
+  return runLogs
+    .filter(
+      (runLog) =>
+        typeByWorkoutId.get(runLog.workoutId) === workout.type &&
+        !isAfterLocalDate(runLog.completedDate, workout.date),
+    )
+    .flatMap((runLog) => {
+      const pace = paceSecondsPerMile(runLog);
+      return pace === null ? [] : [pace];
+    });
+}
+
+/** The block a completed run earns, sized from the run and frozen at that. */
+export function footprintForRun(
+  plan: TrainingPlan,
+  runLogs: RunLog[],
+  workout: Workout,
+  runLog: RunLog,
+): Footprint {
+  return footprintFor(workout, runLog, paceSampleFor(plan, runLogs, workout));
 }
 
 /** Every non-rest workout in the plan, ordered by date. */
@@ -217,7 +259,13 @@ export function earnedBlocks(
   return scheduledRuns(plan).flatMap((workout) => {
     const runLog = runLogsByWorkoutId.get(workout.id);
     return runLog
-      ? [{ workout, runLog, span: spanForWorkout(workout) }]
+      ? [
+          {
+            workout,
+            runLog,
+            footprint: footprintForRun(plan, runLogs, workout, runLog),
+          },
+        ]
       : [];
   });
 }
@@ -291,47 +339,94 @@ export function selectBuildViewModel(
   const newestPlacedWorkoutId = findNewestPlacedWorkoutId(plan, placements);
   const active = activeWeekNumber(plan, today);
 
-  const keys = courseKeys(placements);
-  const occupiedByCourse = keys.map((key) =>
-    occupiedColumns(placementsForCourse(placements, key)),
+  // Cell occupancy for the whole tower, so face culling and paint order can
+  // both be answered without scanning every other block.
+  const filled = new Set<string>();
+  for (const placement of placements) {
+    for (
+      let column = placement.columnStart;
+      column <= lastColumnOf(placement);
+      column += 1
+    ) {
+      for (let row = placement.row; row < topOf(placement); row += 1) {
+        filled.add(`${column}:${row}`);
+      }
+    }
+  }
+
+  const movableWorkoutId = newestPlacement(placements)?.workoutId ?? null;
+
+  const blocks: PlacedBlock[] = [...placements]
+    .sort((a, b) => a.row - b.row || a.columnStart - b.columnStart)
+    .flatMap((placement) => {
+      const workout = workoutsById.get(placement.workoutId);
+      if (!workout) {
+        return [];
+      }
+
+      let covered = true;
+      for (
+        let column = placement.columnStart;
+        covered && column <= lastColumnOf(placement);
+        column += 1
+      ) {
+        covered = filled.has(`${column}:${topOf(placement)}`);
+      }
+
+      const rightColumn = lastColumnOf(placement) + 1;
+      let abutted = rightColumn <= GRID_COLUMNS;
+      for (
+        let row = placement.row;
+        abutted && row < topOf(placement);
+        row += 1
+      ) {
+        abutted = filled.has(`${rightColumn}:${row}`);
+      }
+
+      return [
+        {
+          workout,
+          placement,
+          isNewest: placement.workoutId === newestPlacedWorkoutId,
+          canMove: placement.workoutId === movableWorkoutId,
+          showTopFace: !covered,
+          showRightFace: !abutted,
+          depth: topOf(placement),
+        },
+      ];
+    });
+
+  const courses = skylineOf(placements).reduce(
+    (highest, column) => Math.max(highest, column),
+    0,
   );
 
-  const courses: BuiltCourse[] = keys.map((key, index) => {
-    const above = occupiedByCourse[index + 1] ?? new Set<number>();
-    const own = occupiedByCourse[index];
-    const previous = keys[index - 1];
-
-    return {
-      weekNumber: key.weekNumber,
-      row: key.row,
-      startsWeek: previous === undefined || previous.weekNumber !== key.weekNumber,
-      isActiveWeek: key.weekNumber === active,
-      blocks: placementsForCourse(placements, key).flatMap((placement) => {
-        const workout = workoutsById.get(placement.workoutId);
-        if (!workout) {
-          return [];
-        }
-        const cells = Array.from(
-          { length: placement.span },
-          (_, offset) => placement.columnStart + offset,
-        );
-        return [
-          {
-            workout,
-            placement,
-            isNewest: placement.workoutId === newestPlacedWorkoutId,
-            showTopFace: !cells.every((column) => above.has(column)),
-            showRightFace: !own.has(placement.columnStart + placement.span),
-          },
-        ];
-      }),
-    };
-  });
+  // A week's mortar line sits where its last block topped out. Two weeks can
+  // finish on the same course, in which case the higher number wins: it is the
+  // one whose blocks actually reach it.
+  const topByWeek = new Map<number, number>();
+  for (const placement of placements) {
+    const workout = workoutsById.get(placement.workoutId);
+    if (!workout) {
+      continue;
+    }
+    const current = topByWeek.get(workout.weekNumber) ?? 0;
+    topByWeek.set(workout.weekNumber, Math.max(current, topOf(placement)));
+  }
+  const weekByRow = new Map<number, number>();
+  for (const [weekNumber, row] of topByWeek) {
+    weekByRow.set(row, Math.max(weekByRow.get(row) ?? 0, weekNumber));
+  }
+  const mortar: MortarLine[] = [...weekByRow.entries()]
+    .map(([row, weekNumber]) => ({
+      weekNumber,
+      row,
+      isActiveWeek: weekNumber === active,
+    }))
+    .sort((a, b) => a.row - b.row);
 
   const plannedRuns = scheduledRuns(plan);
   const completedRuns = earnedBlocks(plan, runLogs);
-  const lastWeekNumber = plan.weeks[plan.weeks.length - 1].weekNumber;
-  const topCourse = keys[keys.length - 1];
 
   return {
     metrics: {
@@ -343,14 +438,10 @@ export function selectBuildViewModel(
     pendingBlocks: completedRuns.filter(
       (earned) => !placedWorkoutIds.has(earned.workout.id),
     ),
+    blocks,
     courses,
+    mortar,
     activeWeekNumber: active,
-    nextCourseWeekNumber:
-      topCourse === undefined
-        ? active
-        : topCourse.weekNumber < lastWeekNumber
-          ? topCourse.weekNumber + 1
-          : null,
     projectedCourses: projectedCourses(plan),
     phaseBands: projectedPhaseBands(plan),
   };
@@ -361,30 +452,55 @@ export function selectBuildViewModel(
  * first-fit Auto Place uses. This is what the finished tower is projected
  * against; leaving gaps makes a real tower taller than its projection.
  */
-export function projectedCoursesForWeek(week: TrainingWeek): number {
-  const runs = week.workouts.filter(isScheduledRun);
-  if (runs.length === 0) {
-    return 0;
+/**
+ * Packs the whole plan through the real placer to work out how tall the
+ * finished tower will stand, and where each week's blocks would top out.
+ *
+ * This has to run the actual packer rather than divide cells by columns: the
+ * landing rule leaves arches, so a real tower is always somewhat taller than
+ * its raw area suggests, and a projection that ignored that would promise a
+ * shorter climb than the user ever gets.
+ */
+function projectTower(plan: TrainingPlan): {
+  courses: number;
+  topByWeek: Map<number, number>;
+} {
+  const placements: BlockPlacement[] = [];
+  const topByWeek = new Map<number, number>();
+
+  for (const workout of scheduledRuns(plan)) {
+    const { width, height } = projectedFootprint(workout);
+    const option = autoPlaceOption(
+      placementOptions(width, height, placements),
+    );
+    if (!option) {
+      continue;
+    }
+    placements.push({
+      workoutId: workout.id,
+      row: option.row,
+      columnStart: option.columnStart,
+      width,
+      height,
+      placedAt: workout.date,
+    });
+    topByWeek.set(
+      workout.weekNumber,
+      Math.max(topByWeek.get(workout.weekNumber) ?? 0, option.row + height),
+    );
   }
 
-  let used = 0;
-  let courses = 1;
-  for (const workout of runs) {
-    const span = BLOCK_SPAN_BY_TYPE[workout.type];
-    if (used + span > WEEK_COLUMNS) {
-      courses += 1;
-      used = 0;
-    }
-    used += span;
-  }
-  return courses;
+  return {
+    courses: skylineOf(placements).reduce(
+      (highest, column) => Math.max(highest, column),
+      0,
+    ),
+    topByWeek,
+  };
 }
 
 export function projectedCourses(plan: TrainingPlan): number {
-  return plan.weeks.reduce(
-    (total, week) => total + projectedCoursesForWeek(week),
-    0,
-  );
+  return projectTower(plan).courses;
 }
 
 /** Cutback weeks belong to the phase they cut back from. */
@@ -398,13 +514,19 @@ function phaseGroup(phase: string): string {
  * part of the plan each stretch belongs to, without listing a single workout.
  */
 export function projectedPhaseBands(plan: TrainingPlan): PhaseBand[] {
+  const { topByWeek } = projectTower(plan);
   const bands: PhaseBand[] = [];
+  let below = 0;
+
   for (const week of plan.weeks) {
     const label = phaseGroup(week.phase);
-    const courses = projectedCoursesForWeek(week);
+    const top = topByWeek.get(week.weekNumber) ?? below;
+    const courses = Math.max(0, top - below);
+    below = Math.max(below, top);
     if (courses === 0) {
       continue;
     }
+
     const last = bands[bands.length - 1];
     if (last && last.label === label) {
       last.courses += courses;

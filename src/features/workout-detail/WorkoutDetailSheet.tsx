@@ -97,10 +97,10 @@ export function WorkoutDetailSheet({
           <div className="workout-detail__result">
             <h3 className="workout-detail__result-title">Block</h3>
             <p className="workout-detail__instructions">
-              {`Placed in week ${placement.weekNumber}, course ${placement.row + 1}, ${
-                placement.span === 1
+              {`Placed on course ${placement.row}, ${
+                placement.width === 1
                   ? `column ${placement.columnStart}`
-                  : `columns ${placement.columnStart} through ${placement.columnStart + placement.span - 1}`
+                  : `columns ${placement.columnStart} through ${placement.columnStart + placement.width - 1}`
               }.`}
             </p>
             {onMoveBlock ? (

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GRID_COLUMNS } from "../domain/placement";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 import {
   createInitialAppState,
@@ -26,6 +27,19 @@ function version1State() {
     plan: loadSeedPlan(),
     runLogs: [version1RunLog],
   };
+}
+
+/** Distinct grid cells the placements occupy, which also proves no overlap. */
+function occupiedCells(placements: { row: number; columnStart: number; width: number; height: number }[]): number {
+  const cells = new Set<string>();
+  for (const placement of placements) {
+    for (let x = placement.columnStart; x < placement.columnStart + placement.width; x += 1) {
+      for (let y = placement.row; y < placement.row + placement.height; y += 1) {
+        cells.add(`${x}:${y}`);
+      }
+    }
+  }
+  return cells.size;
 }
 
 describe("migrateAppState", () => {
@@ -64,7 +78,7 @@ describe("migrateAppState", () => {
     expect(migrateAppState(withoutPlacements).blockPlacements).toEqual([]);
   });
 
-  it("upgrades a version 2 state, re-laying its wide courses into the narrow grid", () => {
+  it("upgrades a version 2 state, repacking its blocks into the new grid", () => {
     const version2 = {
       schemaVersion: 2,
       settings: { units: "miles", theme: "dark" },
@@ -83,20 +97,12 @@ describe("migrateAppState", () => {
 
     expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(migrated.runLogs).toEqual([version1RunLog]);
-    // Every block is still placed, and none runs past the narrower course.
+    // Which blocks are placed survives, in the order they were built.
     expect(migrated.blockPlacements.map((p) => p.workoutId)).toEqual([
       "w-a",
       "w-b",
       "w-c",
       "w-d",
-    ]);
-    expect(
-      migrated.blockPlacements.map((p) => [p.row, p.columnStart]),
-    ).toEqual([
-      [0, 1],
-      [0, 2],
-      [0, 3],
-      [1, 1],
     ]);
     expect(migrated.blockPlacements.map((p) => p.placedAt)).toEqual([
       "t1",
@@ -104,6 +110,48 @@ describe("migrateAppState", () => {
       "t3",
       "t4",
     ]);
+
+    // Where they sit does not: the grid width and the meaning of `row` both
+    // changed, so positions are recomputed rather than reinterpreted.
+    for (const placement of migrated.blockPlacements) {
+      expect(placement.columnStart).toBeGreaterThanOrEqual(1);
+      expect(placement.columnStart + placement.width - 1).toBeLessThanOrEqual(
+        GRID_COLUMNS,
+      );
+      // Version 3 had no height to recover, so nothing inflates retroactively.
+      expect(placement.height).toBe(1);
+    }
+    expect(occupiedCells(migrated.blockPlacements)).toBe(
+      1 + 1 + 1 + 3,
+    );
+  });
+
+  it("upgrades a version 3 state the same way, discarding its week bands", () => {
+    const version3 = {
+      schemaVersion: 3,
+      settings: { units: "miles", theme: "dark" },
+      plan: loadSeedPlan(),
+      runLogs: [version1RunLog],
+      blockPlacements: [
+        { workoutId: "w-a", weekNumber: 1, row: 0, columnStart: 1, span: 2, placedAt: "t1" },
+        { workoutId: "w-b", weekNumber: 1, row: 1, columnStart: 1, span: 3, placedAt: "t2" },
+        // Week 2 started its own band at row 0, which no longer means anything.
+        { workoutId: "w-c", weekNumber: 2, row: 0, columnStart: 1, span: 1, placedAt: "t3" },
+      ],
+    };
+
+    const migrated = migrateAppState(version3);
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.runLogs).toEqual([version1RunLog]);
+    expect(migrated.blockPlacements.map((p) => p.workoutId)).toEqual([
+      "w-a",
+      "w-b",
+      "w-c",
+    ]);
+    // One continuous tower: three small blocks all reach the ground course.
+    expect(migrated.blockPlacements.every((p) => p.row === 0)).toBe(true);
+    expect(occupiedCells(migrated.blockPlacements)).toBe(2 + 3 + 1);
   });
 
   it("rejects an unknown future schema version", () => {

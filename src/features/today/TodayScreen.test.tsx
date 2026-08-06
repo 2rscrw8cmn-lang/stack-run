@@ -224,10 +224,10 @@ describe("TodayScreen", () => {
         blockPlacements={[
           {
             workoutId: "workout-002",
-            weekNumber: 1,
             row: 0,
             columnStart: 3,
-            span: 1,
+            width: 1,
+            height: 1,
             placedAt: "2026-08-04T13:00:00.000Z",
           },
         ]}
@@ -237,7 +237,7 @@ describe("TodayScreen", () => {
     );
 
     expect(
-      screen.getByText("Your Easy block is built into week 1."),
+      screen.getByText("Your Easy block is built into course 0 of the tower."),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Place Block" }),

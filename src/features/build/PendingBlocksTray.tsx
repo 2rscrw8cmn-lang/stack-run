@@ -34,7 +34,8 @@ export function PendingBlocksTray({
               style={
                 {
                   "--piece-color": `var(--${block.workout.build.colorKey})`,
-                  "--piece-span": block.span,
+                  "--piece-span": block.footprint.width,
+                  "--piece-height": block.footprint.height,
                 } as CSSProperties
               }
               aria-hidden="true"

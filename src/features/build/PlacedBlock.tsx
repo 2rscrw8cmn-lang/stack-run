@@ -4,26 +4,24 @@ import { formatDateLabel } from "../../domain/dates";
 
 interface PlacedBlockProps {
   block: PlacedBlockData;
+  /** Courses drawn in the grid, needed to flip row into a grid line. */
+  courses: number;
   onSelect: (workoutId: string) => void;
 }
 
-/** e.g. "Week 6 Thursday, Intervals, 5 to 6 miles, course 2, columns 3 through 4". */
+/** e.g. "Week 6 Thursday, Intervals, 5.4 miles, course 12, columns 3 through 5". */
 function blockLabel(block: PlacedBlockData): string {
   const { workout, placement } = block;
   const day = formatDateLabel(workout.date, { weekday: "long" });
-  const target = workout.targetDistanceMiles
-    ? `${workout.targetDistanceMiles.replace("-", " to ")} miles`
-    : "no target distance";
   const columns =
-    placement.span === 1
+    placement.width === 1
       ? `column ${placement.columnStart}`
-      : `columns ${placement.columnStart} through ${placement.columnStart + placement.span - 1}`;
+      : `columns ${placement.columnStart} through ${placement.columnStart + placement.width - 1}`;
 
   return [
     `Week ${workout.weekNumber} ${day}`,
     WORKOUT_TYPE_LABEL[workout.type],
-    target,
-    `course ${placement.row + 1}`,
+    `course ${placement.row}`,
     columns,
   ].join(", ");
 }
@@ -33,32 +31,39 @@ function blockLabel(block: PlacedBlockData): string {
  * only draw where nothing abuts, which is what makes the structure read as a
  * solid mass rather than a stack of separate cards.
  */
-export function PlacedBlock({ block, onSelect }: PlacedBlockProps) {
-  const { workout, placement, isNewest, showTopFace, showRightFace } = block;
+export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
+  const { workout, placement, isNewest, showTopFace, showRightFace, depth } =
+    block;
 
   return (
-    <button
-      type="button"
+    <li
       className="placed-block"
       data-newest={isNewest ? "true" : undefined}
       style={
         {
-          gridColumn: `${placement.columnStart} / span ${placement.span}`,
+          gridColumn: `${placement.columnStart} / span ${placement.width}`,
+          gridRow: `${courses - placement.row - placement.height + 1} / span ${placement.height}`,
+          zIndex: depth,
           "--piece-color": `var(--${workout.build.colorKey})`,
         } as CSSProperties
       }
-      onClick={() => onSelect(workout.id)}
     >
-      <span className="visually-hidden">{blockLabel(block)}</span>
-      <span className="placed-block__brick" aria-hidden="true">
-        <span className="placed-block__face placed-block__face--front" />
-        {showTopFace && (
-          <span className="placed-block__face placed-block__face--top" />
-        )}
-        {showRightFace && (
-          <span className="placed-block__face placed-block__face--right" />
-        )}
-      </span>
-    </button>
+      <button
+        type="button"
+        className="placed-block__button"
+        onClick={() => onSelect(workout.id)}
+      >
+        <span className="visually-hidden">{blockLabel(block)}</span>
+        <span className="placed-block__brick" aria-hidden="true">
+          <span className="placed-block__face placed-block__face--front" />
+          {showTopFace && (
+            <span className="placed-block__face placed-block__face--top" />
+          )}
+          {showRightFace && (
+            <span className="placed-block__face placed-block__face--right" />
+          )}
+        </span>
+      </button>
+    </li>
   );
 }

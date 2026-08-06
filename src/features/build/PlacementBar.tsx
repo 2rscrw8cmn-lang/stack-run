@@ -41,7 +41,8 @@ export function PlacementBar({
           style={
             {
               "--piece-color": `var(--${block.workout.build.colorKey})`,
-              "--piece-span": block.span,
+              "--piece-span": block.footprint.width,
+              "--piece-height": block.footprint.height,
             } as CSSProperties
           }
           aria-hidden="true"
@@ -53,8 +54,8 @@ export function PlacementBar({
           </p>
           <p className="placement-bar__position">
             {candidate
-              ? `Week ${candidate.weekNumber} · course ${candidate.row + 1} · col ${candidate.columnStart}`
-              : "No room left in this week"}
+              ? `Column ${candidate.columnStart} · lands on course ${candidate.row}`
+              : "No room left in the tower"}
           </p>
         </div>
         <IconButton

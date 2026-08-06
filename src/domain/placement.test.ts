@@ -2,318 +2,248 @@ import { describe, expect, it } from "vitest";
 import {
   assertPlacementFits,
   autoPlaceOption,
-  courseBelow,
-  courseKeys,
-  fitsInRow,
+  canMove,
+  fitsInGrid,
+  GRID_COLUMNS,
   InvalidPlacementError,
-  occupiedColumns,
+  landingRow,
+  lastColumnOf,
+  newestPlacement,
   placementOptions,
-  placementsForWeek,
   repackPlacements,
-  topRowOfWeek,
-  WEEK_COLUMNS,
+  skylineOf,
+  topOf,
 } from "./placement";
 import type { BlockPlacement } from "./types";
 
 function placement(
   workoutId: string,
-  weekNumber: number,
   row: number,
   columnStart: number,
-  span: 1 | 2 | 3 | 4,
+  width: 1 | 2 | 3 | 4,
+  height: 1 | 2 | 3 | 4 = 1,
+  placedAt = "2026-08-04T12:00:00.000Z",
 ): BlockPlacement {
-  return {
-    workoutId,
-    weekNumber,
-    row,
-    columnStart,
-    span,
-    placedAt: "2026-08-04T12:00:00.000Z",
-  };
+  return { workoutId, row, columnStart, width, height, placedAt };
 }
 
-const at = (options: ReturnType<typeof placementOptions>) =>
-  options.map((option) => `${option.row}:${option.columnStart}`);
+const columns = (options: ReturnType<typeof placementOptions>) =>
+  options.map((option) => `${option.columnStart}@${option.row}`);
 
-describe("fitsInRow", () => {
-  it("keeps every block inside the five columns of a course", () => {
-    expect(WEEK_COLUMNS).toBe(5);
-    expect(fitsInRow(1, 4)).toBe(true);
-    expect(fitsInRow(2, 4)).toBe(true);
-    expect(fitsInRow(3, 4)).toBe(false);
-    expect(fitsInRow(5, 1)).toBe(true);
-    expect(fitsInRow(0, 1)).toBe(false);
+describe("skylineOf", () => {
+  it("is flat ground when nothing is placed", () => {
+    expect(skylineOf([])).toEqual(new Array(GRID_COLUMNS).fill(0));
   });
-});
 
-describe("occupiedColumns", () => {
-  it("expands each placement across the columns it covers", () => {
-    expect([
-      ...occupiedColumns([
-        placement("a", 1, 0, 2, 3),
-        placement("b", 1, 0, 5, 1),
-      ]),
-    ]).toEqual([2, 3, 4, 5]);
+  it("takes the top of each block across the columns it spans", () => {
+    const skyline = skylineOf([placement("a", 0, 2, 3, 2)]);
+    expect(skyline).toEqual([0, 2, 2, 2, 0, 0, 0, 0, 0, 0]);
   });
-});
 
-describe("placementsForWeek", () => {
-  it("selects one week and orders it course by course, left to right", () => {
-    const all = [
-      placement("c", 2, 0, 1, 1),
-      placement("b", 1, 1, 1, 2),
-      placement("a", 1, 0, 3, 1),
-    ];
-    expect(placementsForWeek(all, 1).map((p) => p.workoutId)).toEqual([
-      "a",
-      "b",
+  it("takes the highest block when two share a column", () => {
+    const skyline = skylineOf([
+      placement("a", 0, 1, 2, 1),
+      placement("b", 1, 1, 1, 3),
     ]);
+    expect(skyline[0]).toBe(4);
+    expect(skyline[1]).toBe(1);
   });
 });
 
-describe("courseKeys and courseBelow", () => {
-  const placements = [
-    placement("a", 1, 0, 1, 2),
-    placement("b", 1, 1, 1, 3),
-    placement("c", 2, 0, 2, 2),
-  ];
-
-  it("lists every built course from the ground up", () => {
-    expect(courseKeys(placements)).toEqual([
-      { weekNumber: 1, row: 0 },
-      { weekNumber: 1, row: 1 },
-      { weekNumber: 2, row: 0 },
-    ]);
-  });
-
-  it("finds the course directly beneath, across a week boundary", () => {
-    expect(
-      courseBelow(placements, { weekNumber: 2, row: 0 }).map((p) => p.workoutId),
-    ).toEqual(["b"]);
-    expect(
-      courseBelow(placements, { weekNumber: 1, row: 1 }).map((p) => p.workoutId),
-    ).toEqual(["a"]);
-  });
-
-  it("reports nothing beneath the ground course", () => {
-    expect(courseBelow(placements, { weekNumber: 1, row: 0 })).toEqual([]);
+describe("fitsInGrid", () => {
+  it("keeps every block inside the ten columns", () => {
+    expect(GRID_COLUMNS).toBe(10);
+    expect(fitsInGrid(1, 4)).toBe(true);
+    expect(fitsInGrid(7, 4)).toBe(true);
+    expect(fitsInGrid(8, 4)).toBe(false);
+    expect(fitsInGrid(0, 1)).toBe(false);
   });
 });
 
-describe("topRowOfWeek", () => {
-  it("is -1 for a week nothing has been built into", () => {
-    expect(topRowOfWeek([], 4)).toBe(-1);
-    expect(topRowOfWeek([placement("a", 1, 2, 1, 1)], 1)).toBe(2);
+describe("landingRow", () => {
+  it("rests on the highest column the block spans", () => {
+    const skyline = [0, 3, 1, 0, 0, 0, 0, 0, 0, 0];
+    expect(landingRow(skyline, 1, 3)).toBe(3);
+    expect(landingRow(skyline, 3, 2)).toBe(1);
+    expect(landingRow(skyline, 4, 2)).toBe(0);
   });
 });
 
 describe("placementOptions", () => {
-  it("offers every column of the ground course when the week is empty", () => {
-    expect(at(placementOptions(1, 1, []))).toEqual([
-      "0:1",
-      "0:2",
-      "0:3",
-      "0:4",
-      "0:5",
-    ]);
-    expect(at(placementOptions(3, 1, []))).toEqual(["0:1", "0:2", "0:3"]);
-    expect(at(placementOptions(4, 1, []))).toEqual(["0:1", "0:2"]);
-  });
-
-  it("offers the next course up once the current one is started", () => {
-    const existing = [placement("a", 1, 0, 1, 3)];
-    // Columns 1-3 of course 0 are taken; course 1 is open across the board.
-    expect(at(placementOptions(2, 1, existing))).toEqual([
-      "0:4",
-      "1:1",
-      "1:2",
-      "1:3",
-      "1:4",
+  it("offers one landing per column, never a floating row", () => {
+    const options = placementOptions(2, 1, []);
+    expect(columns(options)).toEqual([
+      "1@0",
+      "2@0",
+      "3@0",
+      "4@0",
+      "5@0",
+      "6@0",
+      "7@0",
+      "8@0",
+      "9@0",
     ]);
   });
 
-  it("never offers a course that would float above a gap", () => {
-    const existing = [placement("a", 1, 0, 1, 1)];
-    const rows = new Set(placementOptions(1, 1, existing).map((o) => o.row));
-    expect([...rows]).toEqual([0, 1]);
+  it("drops the block onto whatever is already built", () => {
+    const options = placementOptions(2, 1, [placement("a", 0, 1, 2, 2)]);
+    expect(options[0].row).toBe(2);
+    expect(options[2].row).toBe(0);
   });
 
-  it("marks a position supported when at least half its cells rest on the course below", () => {
-    const existing = [placement("a", 1, 0, 2, 2)];
-    const supported = placementOptions(2, 1, existing)
-      .filter((option) => option.row === 1 && option.isSupported)
-      .map((option) => option.columnStart);
-
-    // Columns 2 and 3 are built below, so starts 1, 2, and 3 each cover at
-    // least one supported cell out of two.
-    expect(supported).toEqual([1, 2, 3]);
+  it("reports the dead space a landing seals underneath", () => {
+    // A 3-wide block bridging a column-1 tower and empty ground arches over it.
+    const options = placementOptions(3, 1, [placement("a", 0, 1, 1, 2)]);
+    expect(options[0].row).toBe(2);
+    expect(options[0].opened).toBe(4);
   });
 
-  it("treats every position on the ground course as supported", () => {
-    expect(placementOptions(2, 1, []).every((o) => o.isSupported)).toBe(true);
-  });
-
-  it("supports a week's first course from the top course of the week below", () => {
-    const existing = [placement("a", 1, 0, 1, 3)];
-    const supported = placementOptions(2, 2, existing)
-      .filter((option) => option.isSupported)
-      .map((option) => option.columnStart);
-
-    expect(supported).toEqual([1, 2, 3]);
+  it("counts a landing as flush against the grid edge", () => {
+    const options = placementOptions(2, 1, []);
+    expect(options[0].flush).toBeGreaterThan(options[3].flush);
   });
 });
 
 describe("autoPlaceOption", () => {
-  it("centres the block on the ground course", () => {
-    expect(autoPlaceOption(placementOptions(1, 1, []))).toMatchObject({
-      row: 0,
-      columnStart: 3,
-    });
-    expect(autoPlaceOption(placementOptions(2, 1, []))).toMatchObject({
-      row: 0,
-      columnStart: 2,
-    });
-    expect(autoPlaceOption(placementOptions(4, 1, []))).toMatchObject({
-      row: 0,
-      columnStart: 1,
-    });
-  });
-
-  it("finishes the lowest open course before starting a new one", () => {
-    const existing = [placement("a", 1, 0, 1, 3)];
-    expect(autoPlaceOption(placementOptions(2, 1, existing))).toMatchObject({
-      row: 0,
-      columnStart: 4,
-    });
-  });
-
-  it("starts a new course when the current one has no room", () => {
-    const existing = [
-      placement("a", 1, 0, 1, 3),
-      placement("b", 1, 0, 4, 2),
-    ];
-    expect(autoPlaceOption(placementOptions(2, 1, existing))?.row).toBe(1);
-  });
-
-  it("prefers a supported position over a more central unsupported one", () => {
-    const existing = [placement("a", 1, 0, 1, 2)];
-    const chosen = autoPlaceOption(
-      placementOptions(2, 1, existing).filter((option) => option.row === 1),
-    );
-
-    // Start 2 covers columns 2-3: nearest the centre of the course, and column
-    // 2 rests on the block below, so it is supported as well.
-    expect(chosen).toMatchObject({ columnStart: 2, isSupported: true });
-  });
-
-  it("is deterministic regardless of option order", () => {
-    const options = placementOptions(2, 1, [placement("a", 1, 0, 1, 2)]);
-    expect(autoPlaceOption([...options].reverse())).toEqual(
-      autoPlaceOption(options),
-    );
-  });
-
-  it("returns null when there is no room", () => {
+  it("returns null only when the block cannot fit at all", () => {
     expect(autoPlaceOption([])).toBeNull();
+  });
+
+  it("lands lowest before anything else", () => {
+    const placements = [placement("a", 0, 1, 4, 3)];
+    const chosen = autoPlaceOption(placementOptions(2, 1, placements));
+    expect(chosen?.row).toBe(0);
+  });
+
+  it("prefers the landing that seals least dead space", () => {
+    // Columns 1-2 stand at 2; the rest is ground. A 4-wide block landing at
+    // column 1 would arch over four cells, so it goes to open ground instead.
+    const placements = [placement("a", 0, 1, 2, 2)];
+    const chosen = autoPlaceOption(placementOptions(4, 1, placements));
+    expect(chosen?.opened).toBe(0);
+    expect(chosen?.row).toBe(0);
+  });
+
+  it("prefers a landing flush against a wall over a free-standing one", () => {
+    const chosen = autoPlaceOption(placementOptions(3, 1, []));
+    // Ground is level everywhere, so flushness decides: hard against an edge.
+    expect(chosen?.flush).toBeGreaterThan(0);
+  });
+
+  it("is independent of the order the options arrive in", () => {
+    const placements = [placement("a", 0, 4, 2, 1)];
+    const options = placementOptions(2, 1, placements);
+    const forward = autoPlaceOption(options);
+    const backward = autoPlaceOption([...options].reverse());
+    expect(backward?.columnStart).toBe(forward?.columnStart);
+    expect(backward?.row).toBe(forward?.row);
+  });
+});
+
+describe("newestPlacement and canMove", () => {
+  const older = placement("a", 0, 1, 1, 1, "2026-08-04T10:00:00.000Z");
+  const newer = placement("b", 0, 2, 1, 1, "2026-08-04T11:00:00.000Z");
+
+  it("finds the most recently placed block regardless of array order", () => {
+    expect(newestPlacement([older, newer])?.workoutId).toBe("b");
+    expect(newestPlacement([newer, older])?.workoutId).toBe("b");
+  });
+
+  it("only lets the newest block move, because nothing rests on it", () => {
+    expect(canMove([older, newer], "b")).toBe(true);
+    expect(canMove([older, newer], "a")).toBe(false);
+  });
+
+  it("has nothing to move in an empty tower", () => {
+    expect(newestPlacement([])).toBeNull();
+    expect(canMove([], "a")).toBe(false);
   });
 });
 
 describe("assertPlacementFits", () => {
-  it("accepts a placement in free columns", () => {
-    expect(() =>
-      assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, row: 0, columnStart: 1, span: 2 },
-        [placement("a", 1, 0, 4, 2)],
-      ),
-    ).not.toThrow();
+  const candidate = {
+    workoutId: "w",
+    row: 0,
+    columnStart: 1,
+    width: 2 as const,
+    height: 1 as const,
+  };
+
+  it("accepts a block exactly where gravity would drop it", () => {
+    expect(() => assertPlacementFits(candidate, [])).not.toThrow();
   });
 
-  it("rejects a block that would run past the last column", () => {
+  it("rejects a block that runs off the right edge", () => {
     expect(() =>
-      assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, row: 0, columnStart: 4, span: 3 },
-        [],
-      ),
+      assertPlacementFits({ ...candidate, columnStart: 10, width: 2 }, []),
     ).toThrow(InvalidPlacementError);
   });
 
-  it("rejects a block that would overlap another in the same course", () => {
-    expect(() =>
-      assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, row: 0, columnStart: 3, span: 2 },
-        [placement("a", 1, 0, 4, 2)],
-      ),
-    ).toThrow(InvalidPlacementError);
+  it("rejects a row gravity would not produce", () => {
+    expect(() => assertPlacementFits({ ...candidate, row: 4 }, [])).toThrow(
+      InvalidPlacementError,
+    );
   });
 
-  it("allows the same columns in a different course of the same week", () => {
+  it("rejects a block that would float above what is built", () => {
+    const existing = [placement("a", 0, 1, 2, 1)];
+    // Gravity puts it on course 1; claiming course 0 would overlap.
+    expect(() => assertPlacementFits(candidate, existing)).toThrow(
+      InvalidPlacementError,
+    );
     expect(() =>
-      assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, row: 1, columnStart: 4, span: 2 },
-        [placement("a", 1, 0, 4, 2)],
-      ),
+      assertPlacementFits({ ...candidate, row: 1 }, existing),
     ).not.toThrow();
   });
 
-  it("rejects a course that would float above a gap", () => {
-    expect(() =>
-      assertPlacementFits(
-        { workoutId: "b", weekNumber: 1, row: 3, columnStart: 1, span: 1 },
-        [placement("a", 1, 0, 1, 1)],
-      ),
-    ).toThrow(InvalidPlacementError);
-  });
-
-  it("ignores placements in other weeks", () => {
-    expect(() =>
-      assertPlacementFits(
-        { workoutId: "b", weekNumber: 2, row: 0, columnStart: 4, span: 2 },
-        [placement("a", 1, 0, 4, 2)],
-      ),
-    ).not.toThrow();
-  });
-
-  it("does not treat a block as colliding with itself when it moves", () => {
-    expect(() =>
-      assertPlacementFits(
-        { workoutId: "a", weekNumber: 1, row: 0, columnStart: 3, span: 2 },
-        [placement("a", 1, 0, 4, 2)],
-      ),
-    ).not.toThrow();
+  it("does not collide a block with its own former position", () => {
+    const existing = [placement("w", 0, 1, 2, 1)];
+    expect(() => assertPlacementFits(candidate, existing)).not.toThrow();
   });
 });
 
 describe("repackPlacements", () => {
-  it("re-lays a week that no longer fits one course, keeping its order", () => {
-    // What an eight-column week looked like before the grid narrowed.
-    const wide = [
-      placement("a", 1, 0, 1, 1),
-      placement("b", 1, 0, 2, 1),
-      placement("c", 1, 0, 3, 1),
-      placement("d", 1, 0, 4, 3),
-    ];
-
-    expect(
-      repackPlacements(wide).map((p) => [p.workoutId, p.row, p.columnStart]),
-    ).toEqual([
-      ["a", 0, 1],
-      ["b", 0, 2],
-      ["c", 0, 3],
-      ["d", 1, 1],
+  it("keeps every block and stacks them all from the ground up", () => {
+    const repacked = repackPlacements([
+      placement("a", 9, 1, 4, 1, "2026-08-04T10:00:00.000Z"),
+      placement("b", 4, 1, 4, 1, "2026-08-04T11:00:00.000Z"),
+      placement("c", 7, 1, 4, 1, "2026-08-04T12:00:00.000Z"),
     ]);
+
+    expect(repacked.map((item) => item.workoutId)).toEqual(["a", "b", "c"]);
+    expect(repacked.every((item) => item.row >= 0)).toBe(true);
+    // Three 4-wide blocks fit two to a course in a ten-column grid.
+    expect(Math.max(...repacked.map(topOf))).toBe(2);
   });
 
-  it("keeps every placement and never exceeds the course width", () => {
-    const wide = [
-      placement("a", 2, 0, 1, 4),
-      placement("b", 2, 0, 5, 4),
-      placement("c", 3, 0, 1, 2),
-    ];
-    const repacked = repackPlacements(wide);
+  it("never overlaps two blocks", () => {
+    const repacked = repackPlacements(
+      Array.from({ length: 20 }, (_, index) =>
+        placement(
+          `w${index}`,
+          0,
+          1,
+          ((index % 4) + 1) as 1 | 2 | 3 | 4,
+          ((index % 2) + 1) as 1 | 2,
+          `2026-08-${String(4 + index).padStart(2, "0")}T10:00:00.000Z`,
+        ),
+      ),
+    );
 
-    expect(repacked).toHaveLength(3);
-    for (const p of repacked) {
-      expect(p.columnStart + p.span - 1).toBeLessThanOrEqual(WEEK_COLUMNS);
+    const seen = new Set<string>();
+    for (const item of repacked) {
+      for (let column = item.columnStart; column <= lastColumnOf(item); column += 1) {
+        for (let row = item.row; row < topOf(item); row += 1) {
+          expect(seen.has(`${column}:${row}`)).toBe(false);
+          seen.add(`${column}:${row}`);
+        }
+      }
     }
+  });
+
+  it("replays in the order the blocks were built, not array order", () => {
+    const first = placement("first", 0, 1, 4, 1, "2026-08-01T10:00:00.000Z");
+    const second = placement("second", 0, 1, 4, 1, "2026-08-02T10:00:00.000Z");
+    expect(repackPlacements([second, first])[0].workoutId).toBe("first");
   });
 });

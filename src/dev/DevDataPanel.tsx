@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { earnedBlocks, scheduledRuns, spanForWorkout } from "../domain/build";
+import { earnedBlocks, scheduledRuns } from "../domain/build";
 import { autoPlaceOption, placementOptions } from "../domain/placement";
 import type { AppState, Effort, Workout } from "../domain/types";
 import {
@@ -7,12 +7,21 @@ import {
   resetAppState,
   saveRunLog,
 } from "../storage/appStateRepository";
-import { FootprintPreview } from "./FootprintPreview";
-import { targetMiles } from "./footprintPreview";
 
 interface DevDataPanelProps {
   state: AppState;
   onChange: (next: AppState) => void;
+}
+
+/** Midpoint of a target like "4-5". */
+function targetMilesOf(workout: Workout): number {
+  const parts = (workout.targetDistanceMiles ?? "")
+    .split("-")
+    .map((part) => Number.parseFloat(part))
+    .filter((value) => Number.isFinite(value));
+  return parts.length === 0
+    ? 3
+    : parts.reduce((sum, value) => sum + value, 0) / parts.length;
 }
 
 /** Stable per-workout jitter in [0, 1), so the same plan always fakes alike. */
@@ -47,7 +56,7 @@ function syntheticRun(workout: Workout): {
   durationSeconds: number;
   effort: Effort;
 } {
-  const target = targetMiles(workout);
+  const target = targetMilesOf(workout);
   // Most runs land near target; a few over- or undershoot.
   const distanceMiles =
     Math.round((target * (0.9 + seeded(workout.id, 1) * 0.3)) * 10) / 10;
@@ -79,7 +88,6 @@ function syntheticRun(workout: Workout): {
  */
 export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   const [isOpen, setOpen] = useState(false);
-  const [isPreviewing, setPreviewing] = useState(false);
 
   const loggedWorkoutIds = new Set(
     state.runLogs.map((runLog) => runLog.workoutId),
@@ -105,29 +113,22 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   function placeAllPending() {
     let next = state;
     for (const block of pending) {
-      const span = spanForWorkout(block.workout);
-      const weekNumber = block.workout.weekNumber;
+      const { width, height } = block.footprint;
       const option = autoPlaceOption(
-        placementOptions(span, weekNumber, next.blockPlacements),
+        placementOptions(width, height, next.blockPlacements),
       );
       if (!option) {
         continue;
       }
       next = placeBlock(next, {
         workoutId: block.workout.id,
-        weekNumber,
         row: option.row,
         columnStart: option.columnStart,
-        span,
+        width,
+        height,
       });
     }
     onChange(next);
-  }
-
-  if (isPreviewing) {
-    return (
-      <FootprintPreview state={state} onClose={() => setPreviewing(false)} />
-    );
   }
 
   if (!isOpen) {
@@ -166,9 +167,6 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
         </button>
         <button type="button" onClick={placeAllPending}>
           Auto place all
-        </button>
-        <button type="button" onClick={() => setPreviewing(true)}>
-          Footprint preview
         </button>
         <button type="button" onClick={() => onChange(resetAppState())}>
           Reset data

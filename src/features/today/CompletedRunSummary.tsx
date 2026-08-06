@@ -4,9 +4,9 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import {
   earnedBlockPhrase,
-  spanForWorkout,
   WORKOUT_TYPE_LABEL,
 } from "../../domain/build";
+import { widthForMiles } from "../../domain/footprint";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
@@ -34,7 +34,7 @@ export function CompletedRunSummary({
   onViewBuild,
 }: CompletedRunSummaryProps) {
   const typeLabel = WORKOUT_TYPE_LABEL[workout.type];
-  const span = spanForWorkout(workout);
+  const width = runLog ? widthForMiles(runLog.distanceMiles) : 1;
 
   return (
     <Card className="today-workout-card">
@@ -64,14 +64,14 @@ export function CompletedRunSummary({
           style={
             {
               "--piece-color": `var(--${workout.build.colorKey})`,
-              "--piece-span": span,
+              "--piece-span": width,
             } as CSSProperties
           }
           aria-hidden="true"
         />
         <p className="earned-block__text">
           {placement
-            ? `Your ${typeLabel} block is built into week ${placement.weekNumber}.`
+            ? `Your ${typeLabel} block is built into course ${placement.row} of the tower.`
             : `You earned ${earnedBlockPhrase(workout.type)}.`}
         </p>
       </div>

@@ -1,15 +1,14 @@
 # Build Concept — proposal
 
-**Status: proposed, not decided.** Nothing in this document is implemented. It
-exists to be argued with before any of it reaches the data model, because the
-central change here is a fourth one-way migration and those are expensive to
-take back.
+**Status: implemented, as D-017.** This document is now the record of how the
+Build tower was arrived at rather than a proposal. It is kept because most of
+its numbers were measured, and the measurements are the reasoning behind
+constants that would otherwise look arbitrary.
 
-A working preview of the proposal ships behind the DEV panel
-(`src/dev/FootprintPreview.tsx`, "Footprint preview"). It computes a whole
-tower from the plan and the run logs with no schema change and no stored
-placement, so §2 can be judged by eye. §7 records what it showed — including
-two things that were wrong in §2 as first written.
+The throwaway preview described in §7 has been deleted: it existed to settle
+§6's open questions before the data model was touched, and it did. §7.6
+describes what happened to it. §9 records what the finished implementation
+changed from the plan.
 
 The shipped Build screen is described in `UX_PRODUCT_SPEC.md` and governed by
 decisions D-014, D-015, and D-016. This document proposes revising D-016 and
@@ -484,3 +483,53 @@ Worth deciding before this is built:
 `type` has none of this problem: it is knowable before the run and never moves.
 That is the trade being made.
 
+---
+
+## 9. What the implementation changed
+
+Three things that only became visible once the real thing existed.
+
+### 9.1 The support rule is gone, not adapted
+
+§3 assumed the user would choose a position and a support rule would decide
+whether it was legal. The implementation instead has the user **choose a
+column**, and the block falls. Gravity answers the row.
+
+That removes a whole class of problem rather than solving it: a block can never
+float, the support rule has nothing left to enforce, and the placement bar's
+arrows walk exactly ten options instead of a two-dimensional field. It also
+makes validation total — a stored row that disagrees with the skyline is
+corrupt, not merely unusual.
+
+The cost: a void under an arch can never be filled, because nothing can be
+dropped into it. §3 claimed placement gaps "heal if you plan for them". They do
+not. They are permanent, which makes them architecture rather than debt.
+
+### 9.2 Only the newest block can be moved
+
+Not anticipated at all. With per-week bands, any block in the active week could
+be repositioned. With continuous stacking, every block that is not the most
+recent has something resting on it, and pulling it out from under the tower is
+not a coherent action. So the rule is simply: the last block placed is the only
+one that can move.
+
+### 9.3 The projection has to run the real packer
+
+`projectedCourses` used to divide a week's blocks by the columns available.
+That undercounts badly now, because the landing rule leaves arches: the real
+tower stands 27 courses where raw area predicts 25. Projecting by area would
+promise a shorter climb than the user ever gets, so the projection packs the
+whole plan through the same `autoPlaceOption` the tower uses.
+
+### 9.4 Ten columns costs more than §8.1 measured
+
+§8.1 put the narrowest block at 23px on a 320px viewport, measured against the
+preview. On the finished screen it is **19px**, because the preview did not
+account for the tower's own depth-offset padding or the stage's gap.
+
+19px against a 24px floor is a wider miss than the one that decision was taken
+on. It is carried as an open question in `PHASE_STATUS.md` rather than quietly
+accepted. The options are unchanged from §8.1 — extend the documented
+exception, or drop columns — but the arithmetic is worse than it looked, and
+dropping to 8 columns still only reaches 23px, so the honest fix is narrowing
+the phase gauge at small widths rather than changing the grid.

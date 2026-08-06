@@ -123,3 +123,27 @@
 - Auto Place finishes the lowest open course before starting a new one, then prefers a supported position, then the centre, then the leftmost.
 
 **Unchanged:** the span map, one block per completed run, one placement per workout, tap to place, valid positions only, and the support rule.
+
+## D-017 — A block is two-dimensional and earned from the run
+
+**Decision:** A block carries a `width` and a `height` instead of a single `span`. Width comes from the distance actually run; height from the workout type, adjusted by pace against the runner's own median for that type. Blocks stack continuously in one ten-column grid, and a training week no longer reserves space in it.
+
+**Reason:** Measured against the real plan, the span map produced four block sizes with 54% of them the identical 1×1, and per-week bands left all 18 weeks ending on a partial course — 61 of 180 cells, a third of the tower, that no block could ever occupy. Both are structural, so no visual treatment fixes either. The same 71 runs now build a 27-course tower from 9 footprints with the commonest shape at 32%.
+
+The block was also derived from the workout *type* alone, so distance, duration, and effort were all recorded and then discarded. The tower now records what the run actually was.
+
+**Revises D-016** entirely, and the span map in D-014.
+
+**Consequences:**
+
+- `AppState.schemaVersion` becomes 4. `BlockPlacement` loses `weekNumber` and `span`, and gains `width`, `height`, and an absolute `row`.
+- Versions 2 and 3 are replayed through the packer: which blocks are placed survives, where they sit does not, because the column count and the meaning of `row` both changed. Version 3 had no height, so migrated blocks are one course tall.
+- **Height is frozen when the block is earned** and stored rather than derived. A block's height decides how it packs and other blocks come to rest on it, so recomputing it later would re-pack the tower. A run therefore earns a different block depending on when in the plan it happened.
+- Pace only moves height once `PACE_SAMPLE_MINIMUM` runs of that type are logged. Below that there is no median worth comparing against — with a sample of one the run *is* its own median.
+- **The user chooses a column, not a position.** The block falls to where it lands, so nothing can float and the support rule is gone entirely.
+- **Only the most recently placed block can be moved.** Anything older has blocks resting on it, and pulling it out is not a coherent action.
+- Auto Place is now three terms, all measured rather than guessed: land lowest, then seal least dead space, then sit most flush against a wall. Lowest alone builds 58 courses with 161 voids instead of 34 with 24; without flushness the tower splits into stacks 24 to 29 courses apart.
+- Weeks become mortar lines drawn across the tower rather than bands within it.
+
+**Unchanged:** one block per completed run, one placement per workout, rest days earn nothing, tap to place, valid positions only, deterministic Auto Place, and every boundary in D-010 and D-015 — no canvas, no WebGL, no physics, no falling pieces, no rotation, no drag and drop, no game loop.
+

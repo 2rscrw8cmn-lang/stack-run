@@ -21,10 +21,10 @@ import { PlacementBar } from "./PlacementBar";
 
 export interface PlacementRequest {
   workoutId: string;
-  weekNumber: number;
   row: number;
   columnStart: number;
-  span: 1 | 2 | 3 | 4;
+  width: 1 | 2 | 3 | 4;
+  height: 1 | 2 | 3 | 4;
 }
 
 interface BuildScreenProps {
@@ -65,40 +65,40 @@ export function BuildScreen({
       )
     : blockPlacements;
   const options = placingBlock
-    ? placementOptions(placingBlock.span, placingBlock.workout.weekNumber, others)
+    ? placementOptions(
+        placingBlock.footprint.width,
+        placingBlock.footprint.height,
+        others,
+      )
     : [];
 
   // The chosen position is held as a key, so it survives the list of options
   // being recomputed on every render.
   const candidate =
     options.find(
-      (option) => `${option.row}:${option.columnStart}` === candidateColumn,
+      (option) => String(option.columnStart) === candidateColumn,
     ) ??
     autoPlaceOption(options) ??
     null;
   const candidateIndex = candidate
     ? options.findIndex(
-        (option) =>
-          option.row === candidate.row &&
-          option.columnStart === candidate.columnStart,
+        (option) => option.columnStart === candidate.columnStart,
       )
     : -1;
 
   const detailBlock =
-    viewModel.courses
-      .flatMap((course) => course.blocks)
-      .find((block) => block.workout.id === detailWorkoutId) ?? null;
+    viewModel.blocks.find((block) => block.workout.id === detailWorkoutId) ??
+    null;
   const detailRunLog = detailBlock
     ? (runLogs.find((runLog) => runLog.workoutId === detailBlock.workout.id) ??
       null)
     : null;
-  // Repositioning is only offered while the block's own week is still running.
-  const canMoveDetailBlock =
-    detailBlock !== null &&
-    detailBlock.workout.weekNumber === viewModel.activeWeekNumber;
+  // Only the most recently placed block can still be moved: with continuous
+  // stacking, anything older has blocks resting on it.
+  const canMoveDetailBlock = detailBlock?.canMove ?? false;
 
   function choose(option: PlacementOption) {
-    setCandidateColumn(`${option.row}:${option.columnStart}`);
+    setCandidateColumn(String(option.columnStart));
   }
 
   function step(direction: -1 | 1) {
@@ -114,13 +114,13 @@ export function BuildScreen({
     }
     onPlaceBlock({
       workoutId: placingBlock.workout.id,
-      weekNumber: candidate.weekNumber,
       row: candidate.row,
       columnStart: candidate.columnStart,
-      span: placingBlock.span,
+      width: placingBlock.footprint.width,
+      height: placingBlock.footprint.height,
     });
     setAnnouncement(
-      `Block dropped into week ${candidate.weekNumber}, course ${candidate.row + 1}, column ${candidate.columnStart}.`,
+      `Block dropped down column ${candidate.columnStart}, landing on course ${candidate.row}.`,
     );
     stopPlacing();
   }
@@ -147,8 +147,9 @@ export function BuildScreen({
         />
       )}
       <BuiltStructure
+        blocks={viewModel.blocks}
         courses={viewModel.courses}
-        nextCourseWeekNumber={viewModel.nextCourseWeekNumber}
+        mortar={viewModel.mortar}
         projectedCourses={viewModel.projectedCourses}
         phaseBands={viewModel.phaseBands}
         onSelectWorkout={setDetailWorkoutId}

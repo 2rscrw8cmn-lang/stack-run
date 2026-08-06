@@ -621,8 +621,8 @@ textarea.run-input {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  --course-height: 28px;
-  --brick-unit: clamp(26px, 8.5vw, 38px);
+  /* Ten columns across whatever the tower is given, so a course is short. */
+  --course-height: 20px;
   /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
   --iso-run: 16px;
   --iso-rise: 8px;
@@ -753,7 +753,7 @@ textarea.run-input {
 
 /* A faint race block at the top of the shaft: the thing being built toward. */
 .build-site__capstone {
-  width: calc(4 * var(--brick-unit));
+  width: 40%;
   max-width: 100%;
   height: 14px;
   border: 1px dashed color-mix(in srgb, var(--race) 45%, transparent);
@@ -763,7 +763,7 @@ textarea.run-input {
 
 .build-site__shaft {
   flex: 1 1 auto;
-  width: calc(5 * var(--brick-unit));
+  width: 100%;
   max-width: 100%;
   min-height: 0;
   margin-top: var(--space-2);
@@ -782,13 +782,19 @@ textarea.run-input {
   scroll-margin-block: 45vh;
 }
 
-.build-site__courses {
-  display: flex;
-  flex-direction: column;
+/*
+ * The tower is one grid, not a stack of course rows: blocks are two
+ * dimensional now, and a two-course block belongs to no single row.
+ */
+.built-tower {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--grid-courses), var(--course-height));
   margin: 0;
   padding: 0;
   list-style: none;
-  /* Leave room for the depth offset of the topmost and rightmost bricks. */
+  /* Room for the depth offset of the topmost and rightmost bricks. */
   padding-top: var(--iso-rise);
   padding-right: var(--iso-run);
 }
@@ -814,43 +820,15 @@ textarea.run-input {
   color: var(--text-subtle);
 }
 
-.built-course {
-  display: grid;
-  grid-template-columns: 16px repeat(5, var(--brick-unit));
-  align-items: end;
-  position: relative;
-}
-
-/* Only the first course of a training week is numbered. */
-.built-course__number {
-  grid-column: 1;
-  padding-right: var(--space-1);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: var(--course-height);
-  text-align: right;
-  color: var(--text-subtle);
-  font-variant-numeric: tabular-nums;
-}
-
-.built-course[data-active="true"] .built-course__number {
-  color: var(--accent);
-}
-
-.built-course__blocks {
-  grid-column: 2 / -1;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  height: var(--course-height);
-}
-
-.built-course__blocks > * {
-  grid-row: 1;
-}
-
 .placed-block {
-  height: var(--course-height);
+  position: relative;
   min-width: 0;
+}
+
+.placed-block__button {
+  display: block;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: none;
   background: none;
@@ -911,16 +889,16 @@ textarea.run-input {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
-.placed-block:focus-visible {
+.placed-block__button:focus-visible {
   outline: none;
 }
 
-.placed-block:focus-visible .placed-block__brick {
+.placed-block__button:focus-visible .placed-block__brick {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-/* The block just placed drops into its course and carries the only glow. */
+/* The block just placed drops into the tower and carries the only glow. */
 .placed-block[data-newest="true"] .placed-block__brick {
   animation: placed-block-drop 280ms cubic-bezier(0.3, 0.9, 0.4, 1);
 }
@@ -928,109 +906,112 @@ textarea.run-input {
 .placed-block[data-newest="true"] .placed-block__face--front {
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.45),
-    0 0 16px rgba(255, 255, 255, 0.45);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
     0 0 16px color-mix(in srgb, var(--piece-color) 70%, transparent);
 }
 
 @keyframes placed-block-drop {
-  0% {
-    opacity: 0;
-    transform: translateY(-34px);
+  from {
+    transform: translateY(-18px);
+    opacity: 0.4;
   }
-  70% {
-    opacity: 1;
-    transform: translateY(2px);
-  }
-  85% {
-    transform: translateY(-1px);
-  }
-  100% {
+  to {
     transform: translateY(0);
+    opacity: 1;
   }
 }
 
-/* Reduced motion: no drop and no glow — a static ring marks the newest brick. */
 @media (prefers-reduced-motion: reduce) {
   .placed-block[data-newest="true"] .placed-block__brick {
     animation: none;
-    outline: 2px solid var(--text);
-    outline-offset: 2px;
   }
 
   .placed-block[data-newest="true"] .placed-block__face--front {
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 2px var(--accent);
   }
 }
 
-/* Placing a block on the tower */
-
-/* Room for the fixed placement bar while it is up. */
-.build-screen[data-placing="true"] {
-  padding-bottom: 180px;
+/*
+ * A landing slot: one per column, at the height gravity would drop the block
+ * to. The chosen one shows the block's real shape so the user commits to what
+ * they can already see.
+ */
+.built-tower__slot {
+  position: relative;
+  min-width: 0;
 }
 
-/* A landing slot: where the block would go if you chose this position. */
-.built-course__slot {
-  grid-row: 1;
-  height: var(--course-height);
-  min-width: 0;
+.built-tower__slot-button {
+  display: block;
+  width: 100%;
+  height: 100%;
   padding: 0;
-  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--text) 22%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
   cursor: pointer;
 }
 
-.built-course__slot:hover {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+.built-tower__slot-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-.built-course__slot[data-chosen="true"] {
-  border-style: solid;
-  background: transparent;
-}
-
-.built-course__slot:focus-visible {
+.built-tower__slot-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
+.built-tower__slot[data-chosen="true"] .built-tower__slot-button {
+  border: 1px solid color-mix(in srgb, var(--piece-color) 80%, white);
+  background: color-mix(in srgb, var(--piece-color) 55%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--piece-color) 45%, transparent);
+  animation: landing-slot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes landing-slot-pulse {
+  50% {
+    box-shadow: 0 0 22px color-mix(in srgb, var(--piece-color) 70%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .built-tower__slot[data-chosen="true"] .built-tower__slot-button {
+    animation: none;
+  }
+}
+
 /*
- * The block itself, hovering over the course it would land in. It sits above
- * the course with a shadow beneath, so it reads as held rather than placed.
+ * A week's mortar line. Weeks no longer reserve space in the tower, so this is
+ * an annotation drawn across a continuous structure rather than a boundary.
  */
-.built-course__hover {
-  grid-row: 1;
-  height: var(--course-height);
-  border-radius: 2px;
-  background: var(--piece-color);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--piece-color) 92%, white),
-    var(--piece-color) 55%,
-    color-mix(in srgb, var(--piece-color) 80%, black)
-  );
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
-    0 14px 18px rgba(0, 0, 0, 0.6);
-  transform: translateY(-22px);
-  animation: block-hover 1.6s ease-in-out infinite alternate;
+.built-tower__mortar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--mortar-row) * var(--course-height));
+  height: 0;
+  z-index: 60;
+  border-top: 1px dashed color-mix(in srgb, var(--text) 26%, transparent);
   pointer-events: none;
 }
 
-@keyframes block-hover {
-  from {
-    transform: translateY(-22px);
-  }
-  to {
-    transform: translateY(-16px);
-  }
+.built-tower__mortar[data-active="true"] {
+  border-top-color: color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
-.built-course[data-targeted="true"] .built-course__slot[data-chosen="true"] {
-  border-color: color-mix(in srgb, var(--accent) 80%, transparent);
+.built-tower__mortar-label {
+  position: absolute;
+  top: -6px;
+  left: -14px;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.built-tower__mortar[data-active="true"] .built-tower__mortar-label {
+  color: var(--accent);
 }
 
 /* The controls for the block in hand. */

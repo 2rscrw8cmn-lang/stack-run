@@ -49,7 +49,7 @@ describe("App", () => {
       "page",
     );
     expect(
-      screen.getByRole("list", { name: "Built courses" }),
+      screen.getByRole("list", { name: "Built blocks" }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Plan" }));
@@ -71,7 +71,7 @@ describe("App", () => {
       ),
     ).toHaveLength(1);
     expect(
-      within(screen.getByRole("list", { name: "Built courses" })).queryAllByRole(
+      within(screen.getByRole("list", { name: "Built blocks" })).queryAllByRole(
         "button",
       ),
     ).toHaveLength(0);
@@ -99,11 +99,11 @@ describe("App", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
     const placed = within(
-      screen.getByRole("list", { name: "Built courses" }),
+      screen.getByRole("list", { name: "Built blocks" }),
     ).getAllByRole("button");
     expect(placed).toHaveLength(1);
     expect(placed[0]).toHaveAccessibleName(
-      "Week 1 Tuesday, Easy, 2 miles, course 1, column 3",
+      "Week 1 Tuesday, Easy, course 0, column 1",
     );
     expect(
       screen.queryByRole("list", { name: "Blocks ready to place" }),
@@ -113,7 +113,7 @@ describe("App", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Build" }));
     expect(
-      within(screen.getByRole("list", { name: "Built courses" })).getAllByRole(
+      within(screen.getByRole("list", { name: "Built blocks" })).getAllByRole(
         "button",
       ),
     ).toHaveLength(1);

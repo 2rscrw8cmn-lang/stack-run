@@ -1,58 +1,32 @@
 import { Flag } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
-import type { BuiltCourse, EarnedBlock, PhaseBand } from "../../domain/build";
-import { compareCourses, type PlacementOption } from "../../domain/placement";
-import { BuiltCourseRow, type CoursePlacing } from "./BuiltCourseRow";
+import type {
+  EarnedBlock,
+  MortarLine,
+  PhaseBand,
+  PlacedBlock as PlacedBlockData,
+} from "../../domain/build";
+import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
+import { PlacedBlock } from "./PlacedBlock";
+import { LandingSlot } from "./LandingSlot";
+
+export interface StructurePlacing {
+  block: EarnedBlock;
+  options: PlacementOption[];
+  candidate: PlacementOption | null;
+  onChoose: (option: PlacementOption) => void;
+}
 
 interface BuiltStructureProps {
-  courses: BuiltCourse[];
-  nextCourseWeekNumber: number | null;
+  blocks: PlacedBlockData[];
+  courses: number;
+  mortar: MortarLine[];
   projectedCourses: number;
   phaseBands: PhaseBand[];
   onSelectWorkout: (workoutId: string) => void;
   /** Set while a block is hovering over the tower, waiting to be dropped. */
-  placing?: {
-    block: EarnedBlock;
-    options: PlacementOption[];
-    candidate: PlacementOption | null;
-    onChoose: (option: PlacementOption) => void;
-  };
-}
-
-/**
- * The courses to draw: everything built, plus any course a block could land in
- * that does not exist yet. Without this, the first block of a new course would
- * have nowhere to hover.
- */
-function coursesWithLandingRows(
-  courses: BuiltCourse[],
-  placing: BuiltStructureProps["placing"],
-): BuiltCourse[] {
-  if (!placing) {
-    return courses;
-  }
-
-  const existing = new Set(
-    courses.map((course) => `${course.weekNumber}:${course.row}`),
-  );
-  const added: BuiltCourse[] = [];
-  for (const option of placing.options) {
-    const key = `${option.weekNumber}:${option.row}`;
-    if (existing.has(key)) {
-      continue;
-    }
-    existing.add(key);
-    added.push({
-      weekNumber: option.weekNumber,
-      row: option.row,
-      startsWeek: option.row === 0,
-      isActiveWeek: false,
-      blocks: [],
-    });
-  }
-
-  return [...courses, ...added].sort(compareCourses);
+  placing?: StructurePlacing;
 }
 
 /**
@@ -63,31 +37,37 @@ function coursesWithLandingRows(
  * this tall and the race caps it; it never says which block goes where. The
  * eighteen-week blueprint stays deleted.
  *
- * Courses are reversed here rather than with `column-reverse`, so DOM order,
- * reading order, and focus order all match what is on screen.
+ * The tower is one grid rather than a list of course rows, because blocks are
+ * now two-dimensional and a two-course block belongs to no single row. Blocks
+ * are listed ground first, so reading order matches the order they were built
+ * in, and paint order comes from each block's own top edge.
  */
 export function BuiltStructure({
+  blocks,
   courses,
-  nextCourseWeekNumber,
+  mortar,
   projectedCourses,
   phaseBands,
   onSelectWorkout,
   placing,
 }: BuiltStructureProps) {
   const skylineRef = useRef<HTMLDivElement>(null);
-  const rendered = coursesWithLandingRows(courses, placing);
-  const blockCount = courses.reduce(
-    (total, course) => total + course.blocks.length,
-    0,
+
+  // A tower with arches in it can outgrow its projection; never go negative.
+  const remainingCourses = Math.max(0, projectedCourses - courses);
+  const totalCourses = Math.max(projectedCourses, courses);
+  // While placing, the grid has to be tall enough to show the hovering block.
+  const candidate = placing?.candidate ?? null;
+  const drawnCourses = Math.max(
+    1,
+    courses,
+    candidate ? candidate.row + placing!.block.footprint.height : 0,
   );
-  // A tower with gaps in it can outgrow its projection; never go negative.
-  const remainingCourses = Math.max(0, projectedCourses - courses.length);
-  const totalCourses = Math.max(projectedCourses, courses.length);
 
   // Open framed on the top of what has been built, not the foundation, and
-  // keep the landing course in view while a block is being placed.
-  const candidateKey = placing
-    ? `${placing.candidate?.weekNumber}:${placing.candidate?.row}`
+  // keep the landing in view while a block is being placed.
+  const candidateKey = candidate
+    ? `${candidate.columnStart}:${candidate.row}`
     : "";
   useEffect(() => {
     skylineRef.current?.scrollIntoView({ block: "center" });
@@ -98,8 +78,8 @@ export function BuiltStructure({
       <div className="build-site__heading">
         <h2 className="build-site__title">Your build</h2>
         <p className="build-site__scale">
-          {courses.length} of about {projectedCourses} courses ·{" "}
-          {blockCount} {blockCount === 1 ? "block" : "blocks"}
+          {courses} of about {projectedCourses} courses · {blocks.length}{" "}
+          {blocks.length === 1 ? "block" : "blocks"}
         </p>
       </div>
 
@@ -134,43 +114,61 @@ export function BuiltStructure({
 
           <div ref={skylineRef} className="build-site__skyline" aria-hidden="true" />
 
-          <ol className="build-site__courses" aria-label="Built courses">
-            {[...rendered].reverse().map((course, index) => {
-              const coursePlacing: CoursePlacing | undefined = placing
-                ? {
-                    block: placing.block,
-                    options: placing.options.filter(
-                      (option) =>
-                        option.weekNumber === course.weekNumber &&
-                        option.row === course.row,
-                    ),
-                    candidate: placing.candidate,
-                    onChoose: placing.onChoose,
-                  }
-                : undefined;
+          <ul
+            className="built-tower"
+            aria-label="Built blocks"
+            style={
+              {
+                "--grid-columns": GRID_COLUMNS,
+                "--grid-courses": drawnCourses,
+              } as CSSProperties
+            }
+          >
+            {blocks.map((block) => (
+              <PlacedBlock
+                key={block.workout.id}
+                block={block}
+                courses={drawnCourses}
+                onSelect={onSelectWorkout}
+              />
+            ))}
 
-              return (
-                <BuiltCourseRow
-                  key={`${course.weekNumber}-${course.row}`}
-                  course={course}
-                  onSelectWorkout={onSelectWorkout}
-                  depth={rendered.length - index}
-                  placing={coursePlacing}
-                />
-              );
-            })}
-          </ol>
+            {placing?.options.map((option) => (
+              <LandingSlot
+                key={option.columnStart}
+                option={option}
+                block={placing.block}
+                courses={drawnCourses}
+                isChosen={option.columnStart === candidate?.columnStart}
+                onChoose={placing.onChoose}
+              />
+            ))}
+
+            {mortar.map((line) => (
+              <li
+                key={line.weekNumber}
+                className="built-tower__mortar"
+                data-active={line.isActiveWeek ? "true" : undefined}
+                style={{ "--mortar-row": line.row } as CSSProperties}
+              >
+                <span className="built-tower__mortar-label" aria-hidden="true">
+                  {line.weekNumber}
+                </span>
+                <span className="visually-hidden">
+                  {`Week ${line.weekNumber} tops out at course ${line.row}`}
+                </span>
+              </li>
+            ))}
+          </ul>
 
           <div className="build-site__ground" aria-hidden="true" />
         </div>
       </div>
 
       <p className="build-site__caption">
-        {blockCount === 0
+        {blocks.length === 0
           ? "Nothing built yet. Complete a run to earn your first block."
-          : nextCourseWeekNumber !== null
-            ? `Week ${nextCourseWeekNumber} builds next.`
-            : "The tower is topped out."}
+          : `${courses} ${courses === 1 ? "course" : "courses"} standing.`}
       </p>
     </section>
   );
