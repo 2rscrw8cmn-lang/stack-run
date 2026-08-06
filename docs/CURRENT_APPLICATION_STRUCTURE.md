@@ -2,9 +2,24 @@
 
 ## Current state
 
-**Phase 0, UI-1, UI-2, UI-3 (Complete Run), and UI-4 (Build) implemented.** Completing a run earns a block, the user places it into the structure, and Build shows what has actually been built. Plan remains a placeholder tab.
+**Phase 0, UI-1, UI-2, UI-3 (Complete Run), UI-4 (Build), and UI-5 (Plan) implemented.** Completing a run earns a block, the user places it into the structure, Build shows what has actually been built, and Plan is the complete dated schedule: one training week at a time, opening on the current week, with logging and editing for the runs it lists. Plan editing itself (UI-6) is not implemented.
 
 ## Implemented
+
+- UI-5 Plan screen — the dated schedule review:
+  - `src/domain/plan.ts` derives one training week at a time from the plan, the run logs, and today's local date. `selectPlanWeekViewModel` returns the header facts (week number, phase, start/end dates, `dateRangeLabel`), the seven day rows in date order, the week's completion, and the two navigation flags. Nothing about the week is stored: the count of completed runs is derived from run logs exactly as Build's metrics are, so Plan and Build can never disagree about what has been done.
+  - `PlanDayStatus` is `rest | completed | planned | missed`. Rest is its own status rather than a completion state, because a rest day is never owed and therefore can be neither completed nor missed. The three run statuses come straight from `blockStateFor` in `src/domain/build.ts`, which UI-4 already had and tested.
+  - `currentWeekNumber` reuses `activeWeekNumber`, so Plan opens on the week containing today and clamps to week 1 before the plan starts and week 18 after the race. `clampWeekNumber` keeps stepping inside the plan, so the ends are walls rather than gaps. `planWeekBounds` reads the first and last week from the plan rather than assuming 1 and 18.
+  - `src/features/plan/` holds the screen: `PlanScreen`, `WeekNavigator`, `WeekHeader`, and `WorkoutRow`.
+  - `WeekNavigator` carries previous/next `IconButton`s (`ChevronLeft` / `ChevronRight`, disabled at the boundaries), the `Week N of 18` position, and a `Current Week` shortcut that exists only while it would do something.
+  - `WeekHeader` shows the week number, a `This week` marker, the phase, the date range, `N of M runs complete`, and the thin `ProgressBar`.
+  - `WorkoutRow` renders all seven days. A run row is a button — date and weekday, the workout's colour block, title, type and target, and its completion status as an icon plus a word — with an accessible name like `Tuesday, August 4, 2 Miles, Easy, 2 mi, Completed`. A rest row is a plain list item: dashed neutral surface, `MinusCircle`, `Rest`, no status colour, and no tab stop, because there is nothing to open. Today's row carries an accent border.
+  - Status is never colour alone: every row states `Completed`, `Planned`, `Missed`, or `Rest` in text beside the icon.
+  - `WorkoutDetailSheet` is shared with Build and now takes optional `onLogRun` and `onEditRun` actions. Build passes neither and stays read-only plus `Move Block`; Plan passes `Log Run` for a run whose day has arrived and that has no log yet, and `Edit Run` for a completed one. Opening run entry closes the detail sheet first, so only one sheet is ever open. Each sheet keeps its workout and its open state as separate values: clearing the workout alone would tear an open `<dialog>` out of the DOM and the browser would drop focus to the body, while closing through the dialog returns focus to the row the user came from. Run entry is keyed by a visit counter rather than by the log's `updatedAt`, so saving does not remount the sheet mid-close, and reopening after a discarded draft still starts from the saved log.
+  - Logging and editing reuse `CompleteRunSheet` unchanged and save through the same `onSaveRun` path Today uses, so validation, the one-log upsert, and persistence are identical wherever the run is entered from.
+  - `App` now dates a log by the workout it belongs to (`completedDate: workout.date`) rather than by when the form was submitted. Today is unaffected — its workout is today — but a run logged from an earlier week would otherwise claim it happened today.
+  - A future run is read-only in Plan. Changing what the plan asks for is UI-6; a future workout is edited, not logged.
+  - Tests: `src/domain/plan.test.ts` covers week bounds and clamping, current-week selection including before-plan and after-race, the date-range label across a month boundary, seven days in date order for all 18 weeks, rest days never reading as missed, completed/planned/missed against today, which runs offer logging, completion counts, and the navigation boundary flags. `src/features/plan/PlanScreen.test.tsx` covers the default week, stepping, the disabled boundaries, walking all 18 weeks, the current-week shortcut, the row treatments, the completion states, the detail sheet, logging a missed run, logging today's run, editing a completed one, and starting fresh after a discarded draft. `src/app/App.test.tsx` drives it against real storage: log a week 1 run from week 2, see the log dated by its workout, and find the week still showing it after a reload.
 
 - UI-4 Build screen — earned blocks and placement (D-014):
   - `src/domain/placement.ts` owns the grid rules and nothing else: five columns per course, `placementOptions` for the positions a span could occupy across the week's band, `autoPlaceOption` for the deterministic Auto Place rule, `assertPlacementFits` as the guard the repository calls before anything is written, and `repackPlacements` for the schema migration. Per D-016 a training week fills as many courses as its blocks need, so a placement carries a `row` as well as a `columnStart`; rows stay contiguous from 0, so a week never leaves a floating course. `courseBelow` walks across week boundaries, so support is computed from whatever course is actually beneath — which is what the tower renders. The support rule is one line of arithmetic — at least half a block's cells resting on the course below — not a physics model. The module has no dependency on `build.ts`, so the two never form a cycle.
@@ -35,10 +50,10 @@
   - Tests: `src/domain/placement.test.ts` covers span fit, overlap rejection, valid positions across a week's band, floating-course rejection, the support rule across week boundaries, deterministic Auto Place, and the migration repack; `src/domain/build.test.ts` covers earned blocks, placed versus pending, the absence of a future blueprint, metrics, and the streak rules; `src/storage/migrations.test.ts` covers the version 1 and version 2 upgrades; `src/storage/appStateRepository.test.ts` covers placement persistence, one placement per workout, and every rejection path; `src/features/build/BuildScreen.test.tsx` covers the tray, valid-position selection, keyboard placement, Auto Place, the detail sheet, active-week repositioning, and past-week locking; `src/app/App.test.tsx` drives the whole loop against real storage — log a run, see it pending, place it, and find it still placed after a reload.
 
 - Temporary data panel (`src/dev/DevDataPanel.tsx`):
-  - Today can only log the run scheduled for the current date, so on a rest day — or before the plan starts — there is no way to get blocks on screen at all. Logging past and future runs is the Plan screen's job in UI-5; until then this panel stands in for it.
+  - Today can only log the run scheduled for the current date. UI-5 gives Plan the missing route — any past run can now be logged from its week — so this panel is no longer the only way to get blocks on screen; what remains is bulk seeding, which is still useful for looking at a tall tower without logging twenty runs by hand.
   - It offers: log the next 1, 5, or 20 scheduled runs, auto-place everything pending, and reset. Every action goes through the normal repository functions, so it exercises the same validation and persistence the real UI does, and everything it writes survives a reload.
   - It ships in deployed builds as well as the dev server, because the whole point is being able to exercise the build on a phone against a real deployment. It is excluded from the test DOM only (`import.meta.env.MODE !== "test"`).
-  - **This is scaffolding, not product.** It is listed for removal in UI-7 and becomes unnecessary once the Plan screen can log a past run.
+  - **This is scaffolding, not product.** UI-7 owns its removal, and UI-5 deliberately did not remove it early: taking it out is a phase deliverable, not a side effect of another phase.
 
 - UI-4 persistence:
   - `AppState.schemaVersion` is 3 and carries `blockPlacements: BlockPlacement[]`, each with a `row`. The storage key is unchanged (`stack.app-state.v1`): it names the slot, while `schemaVersion` inside the payload is the real version, so upgrading migrates the existing value in place instead of orphaning it.
@@ -94,11 +109,11 @@
 
 ## Not implemented
 
-- Plan screen (still a placeholder). Build deliberately does not duplicate the schedule.
 - Timer, pace, GPS, integrations, and other explicitly out-of-scope run capture features.
-- Plan editing, and the log/edit actions inside the workout detail sheet (UI-5/UI-6).
+- Plan editing: editing a scheduled workout, moving it, the conflict confirmation, and the reset-plan dialog are all UI-6. Plan reviews and logs; it does not yet change what the plan asks for.
+- The calendar month view, drag and drop, and a dense desktop table. None are documented, and UI-5 deliberately did not add them.
 - Removing a placement. A block is either placed or still pending; there is no delete.
-- Logging a run that is not scheduled for today, other than through the temporary data panel. That is the Plan screen's job in UI-5.
+- Placing a block from Plan. Plan logs the run, which earns the block; placing it stays a separate step on Build, reached from Today or the `Blocks Ready` tray.
 - Reducer-driven state writes (`LOG_RUN`, etc.) — run logging is the only write, applied directly through `saveRunLog`.
 - Deployment.
 
@@ -113,6 +128,10 @@
 - `blockStateFor` (completed / planned / missed) is kept and still tested. Build no longer renders planned or missed blocks, but the workout detail sheet reports status and the Plan screen will need all three.
 - The run streak follows `docs/DATA_AND_STORAGE.md` exactly, which means the streak reads 0 for any day that schedules a run the user has not logged yet — including the current day, before that run happens. This is the documented rule, not a defect, but it is worth a product decision before release.
 - Blocks are keyboard reachable in plan order: one tab stop per placed block, and inside the placement sheet one tab stop per valid position. No roving tabindex or arrow-key grid navigation was added, because nothing in the phase documents asks for one.
+- Plan lets today's scheduled run be logged as well as a past one. `docs/UX_PRODUCT_SPEC.md` lists `Log run` only under past incomplete workouts, but a run scheduled for today is neither past nor future, and offering nothing on it would make today's row the one dead end in the week. The rule implemented is: a run can be logged from Plan once its day has arrived. A future run stays read-only.
+- Plan changes what `completedDate` means for a log entered outside Today. It is now the scheduled workout's date rather than the date of entry, matching what the temporary data panel already wrote. Existing logs are untouched — no migration was needed, because the two rules agree for every run logged from Today.
+- Plan holds the selected week in local `useState`, so switching to Build and back reopens the current week. Nothing in the phase documents asks Plan to remember where you were browsing, and the `Current Week` shortcut exists precisely because moving away from it is expected to be temporary.
+- The workout detail sheet is now shared by two screens with different action sets, driven by optional callbacks rather than a mode prop. If UI-6 adds edit and move actions with their own rules, that is the moment to reconsider whether it should take a single explicit intent instead.
 
 ## Update rule
 

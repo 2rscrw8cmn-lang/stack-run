@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { AppState } from "../domain/types";
-import { todayLocalDate } from "../domain/dates";
 import {
   loadAppState,
   placeBlock,
@@ -42,7 +41,11 @@ export function App() {
         setAppState((current) =>
           saveRunLog(current, {
             workoutId: workout.id,
-            completedDate: todayLocalDate(),
+            // A log belongs to a scheduled workout, so it is dated by that
+            // workout, not by when it was entered. Today's log is unaffected;
+            // Plan can now log a run from an earlier week, and dating that one
+            // "today" would misreport when it happened.
+            completedDate: workout.date,
             ...values,
           }),
         )
@@ -54,9 +57,9 @@ export function App() {
       onPlacingChange={setPlacingWorkoutId}
     />
     {/*
-      Temporary scaffolding, present in deployed builds too: there is no other
-      way to log a run that is not scheduled for today until the Plan screen
-      lands in UI-5. Excluded from the test DOM only. Remove in UI-7.
+      Temporary scaffolding, present in deployed builds too. Plan now logs a
+      past run one at a time, so this only remains for bulk-seeding a tower by
+      hand. Excluded from the test DOM only. Removed in UI-7, which owns it.
     */}
     {import.meta.env.MODE !== "test" && (
       <DevDataPanel state={appState} onChange={setAppState} />

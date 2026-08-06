@@ -18,17 +18,27 @@ interface WorkoutDetailSheetProps {
   placement?: BlockPlacement | null;
   /** Provided only while the block's training week is still active. */
   onMoveBlock?: () => void;
+  /** Provided by Plan for a run whose day has arrived and that has no log yet. */
+  onLogRun?: () => void;
+  /** Provided by Plan for a completed run. */
+  onEditRun?: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
-/** Read-only workout details. Editing and logging arrive with the Plan screen. */
+/**
+ * Workout details, plus whatever the caller can actually do about them. Build
+ * passes the placement and its move action; Plan passes logging and editing.
+ * Editing the scheduled workout itself belongs to UI-6.
+ */
 export function WorkoutDetailSheet({
   workout,
   state,
   runLog,
   placement,
   onMoveBlock,
+  onLogRun,
+  onEditRun,
   isOpen,
   onClose,
 }: WorkoutDetailSheetProps) {
@@ -111,6 +121,17 @@ export function WorkoutDetailSheet({
               <p className="workout-detail__notes">
                 This week is finished, so its course is locked.
               </p>
+            )}
+          </div>
+        )}
+
+        {(onLogRun || onEditRun) && (
+          <div className="workout-detail__actions">
+            {onLogRun && <Button onClick={onLogRun}>Log Run</Button>}
+            {onEditRun && (
+              <Button variant="secondary" onClick={onEditRun}>
+                Edit Run
+              </Button>
             )}
           </div>
         )}

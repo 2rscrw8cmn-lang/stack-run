@@ -38,7 +38,7 @@ describe("App", () => {
     );
   });
 
-  it("switches to the Build structure and the Plan placeholder on tap", async () => {
+  it("switches to the Build structure and the Plan schedule on tap", async () => {
     const user = setupUser();
     render(<App />);
 
@@ -54,6 +54,52 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Plan" }));
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
+    // Plan opens on the week containing the pinned date.
+    expect(screen.getByText("Week 1 of 18")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Week 1 workouts" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(7);
+  });
+
+  it("logs a past run from Plan, dates it by the workout, and keeps it after a reload", async () => {
+    const user = setupUser();
+    // Wednesday of week 2, so every week 1 run is genuinely in the past.
+    vi.setSystemTime(new Date("2026-08-12T09:00:00"));
+    const { unmount } = render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    expect(screen.getByText("Week 2 of 18")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Missed",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Log Run" }));
+    await user.type(screen.getByLabelText(/Distance/), "2.1");
+    await user.type(screen.getByLabelText(/Duration/), "2030");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(
+      screen.getByRole("button", {
+        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Completed",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+
+    // The log is dated by the workout it belongs to, not by the entry time.
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.runLogs).toHaveLength(1);
+    expect(stored.runLogs[0].completedDate).toBe("2026-08-04");
+
+    unmount();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
   });
 
   it("earns a block on save and keeps it pending until it is placed", async () => {
