@@ -11,7 +11,7 @@
 
 ## D-003 — Data entry
 
-**Decision:** All runs are entered manually.
+**Decision:** Run data is entered manually.
 
 **Reason:** The completion ritual is part of the product and removes integration complexity.
 
@@ -19,32 +19,27 @@
 
 **Decision:** No Strava or Apple Health integration in v1.
 
-**Reason:** STACK does not need activity-import infrastructure to fulfill its primary job.
-
 ## D-005 — Rendering
 
-**Decision:** Deterministic 2D HTML/CSS blocks.
+**Decision:** Build uses deterministic HTML/CSS elements.
 
-**Rejected:** 3D models, isometric perspective, canvas, WebGL, physics, drag/drop, Tetris gameplay.
+**Rejected:** canvas, WebGL, a 3D engine, physics engine, freeform Tetris gameplay.
 
 ## D-006 — Persistence
 
-**Decision:** Versioned local browser storage.
+**Decision:** Versioned browser-local storage.
 
-**Rejected:** Auth, cloud database, sync, multi-user.
+**Rejected:** auth, cloud database, sync, multi-user.
 
 ## D-007 — Plan
 
-**Decision:** Add six foundation weeks ahead of the supplied 12-week plan.
+**Decision:** The seed plan is the 18-week OUC Half Marathon plan beginning August 3, 2026 and ending December 6, 2026.
 
-**Plan dates:** August 3 through December 6, 2026.  
 **Race:** Saturday, December 5, 2026.
 
 ## D-008 — Technology
 
 **Decision:** React, TypeScript, Vite, plain CSS, Lucide React.
-
-**Rejected:** Tailwind and component frameworks.
 
 ## D-009 — Theme
 
@@ -52,13 +47,13 @@
 
 ## D-010 — Rest days
 
-**Decision:** Rest days appear in Plan but do not create Build blocks.
+**Decision:** Rest days appear in Plan but do not earn Build blocks.
 
 ## D-011 — Workout adjustment
 
-**Decision:** User may edit future workouts and move them within the same training week.
+**Revised by D-021.**
 
-**Rejected:** Automatic adaptive coaching.
+Original decision limited moves to the same training week. The product now needs broader manual plan flexibility.
 
 ## D-012 — Deployment
 
@@ -68,82 +63,159 @@
 
 **Superseded by D-014.**
 
-**Decision:** The Build screen stacks upward from a ground line toward the race, uses a brick-bond offset between alternating week rows, varies block height with span, and renders future weeks as a faint blueprint.
+The original full-plan blueprint still felt like a tracker even after visual polish.
 
-**Reason:** Evenly spaced, uniformly centered rows read as a list of runs rather than as something being built.
+## D-014 — Build is an earned-block placement experience
 
-**Why it was superseded:** Making the blueprint prettier did not change what it was. Every week and every future block still appeared on day one, so completing a run only recoloured an outline that was already on screen. The user never earned or handled anything.
+**Decision:** Completing a run earns a block. Run logging and block placement are separate states. Build shows placed work, not the full future schedule.
 
-## D-014 — Build is an earned-block placement experience, not a full-plan visualization
+**Still active.** Placement remains a real user action and future workouts are never rendered as a full blueprint.
 
-**Decision:** Completing a run earns one block. The user places that block into an eight-column course for its own training week. Build shows only what has been placed, plus the active week and a hint of the course above. Future workouts are not drawn.
+## D-015 — CSS dimensional tower
 
-**Reason:** The reward has to be something the user does, not something the app reveals. Earning a block and choosing where it goes turns each logged run into a small act of construction, and a structure that only contains real work is worth looking at.
+**Decision:** CSS transforms may provide an oblique/isometric tower treatment when it improves the sense of construction.
 
-**Mechanics:**
+**Scope:** tower only. No canvas, WebGL, rendering engine, or physics.
 
-- Run completion and block placement are separate states. A run log never waits on a placement.
-- Placement is tap-to-place on a fixed grid, with only valid positions offered.
-- `Auto Place` is deterministic: supported position, then nearest the centre, then leftmost.
-- A support rule — half a block's cells resting on the course below — keeps the structure plausible without physics.
-- A block may be repositioned only while its week is active, and never moves to another week.
+**Revised interpretation:** dimensional treatment serves the interaction; it is not a reason to add engineering UI or make precise manipulation harder.
 
-**Consequences:**
+## D-016 — Training-week geometry
 
-- `AppState.schemaVersion` becomes 2 and gains `blockPlacements`. Runs logged before the upgrade become pending blocks; nothing is auto-placed.
-- Replaces the Build structure rules and adds a Place Block section in `UX_PRODUCT_SPEC.md`.
-- The Build-only touch-target exception in `QA_ACCEPTANCE.md` now also covers placement-grid cells.
-- Plan remains the complete schedule. Build does not duplicate it.
+**Superseded by D-017.**
 
-**Unchanged:** D-010 still stands. No falling pieces, no rotation, no collision library, no physics, no game loop, no drag and drop, no canvas, no WebGL. Rest days earn no block. The isometric part of D-005 is revised by D-015.
+The per-week course/band model created unnecessary waste and visual structure that did not belong to the user's actual build.
 
-## D-015 — The tower is drawn isometrically
+## D-017 — Blocks become two-dimensional and the tower becomes continuous
 
-**Decision:** The built structure is rendered in isometric projection using CSS 3D transforms: each brick draws a front face, plus a top face where nothing rests on it and a right face where nothing abuts it.
+**Partially superseded by D-018.**
 
-**Reason:** Straight-on gradients and shadows get part of the way, but the thing that reads as "a tower you built" rather than "tiles you arranged" is seeing the tops and sides of the bricks. Front-on rendering cannot produce that at any level of polish.
+Still active:
 
-**Revises D-005**, which rejected isometric perspective, and the matching lines in `AGENTS.md` and `DESIGN_SYSTEM.md`.
+- One continuous tower rather than geometric week containers
+- One block per completed run
+- Blocks have width and height
+- User chooses a landing column and the app computes where the block rests
+- One placement per earned block
+- Only deterministic valid landing candidates
 
-**Scope of the exception:** the tower only. The Place Block grid stays front on, because it is the precision interaction and skewing it would make aiming harder at 320px.
+Superseded:
 
-**Still rejected:** canvas, WebGL, any 3D engine or library, physics, falling pieces, rotation, drag and drop, and a game loop. This is CSS transforms on plain elements, computed from the same deterministic placement data.
+- Ten-column grid
+- Pace-relative median logic changing block height
+- The current emphasis on projected courses, phase gauges, mortar lines, and packing efficiency
 
-## D-016 — A training week fills as many courses as it needs
+## D-018 — Build geometry is simple and visible
 
-**Decision:** Courses are five columns wide, and a training week occupies a band of as many courses as its blocks require rather than exactly one row.
+**Decision:** Build uses a continuous **8-column** tower. Block geometry must be explainable from the run without hidden statistical logic.
 
-**Reason:** One week per eight-column row fixes the structure at 18 rows of 8 — a slab, whatever the visual treatment. Narrow courses plus multi-course weeks turn the same 71 blocks into a 36-course tower that grows upward as the plan progresses, and a span-4 race block sits at the top of it.
+### Width from actual distance
 
-**Consequences:**
+- `< 3.0 mi` → width 1
+- `3.0–4.99 mi` → width 2
+- `5.0–7.99 mi` → width 3
+- `>= 8.0 mi` → width 4
 
-- `BlockPlacement` gains `row`, the 0-based course within its week. `AppState.schemaVersion` becomes 3.
-- Version 2 placements are re-laid into the narrower grid in the order they were built. Which blocks are placed survives; where they sit does not. Run logs are untouched.
-- Rows stay contiguous from 0, so a week can never leave a floating course.
-- Auto Place finishes the lowest open course before starting a new one, then prefers a supported position, then the centre, then the leftmost.
+### Height from activity type
 
-**Unchanged:** the span map, one block per completed run, one placement per workout, tap to place, valid positions only, and the support rule.
+- Easy → height 1
+- Long Run → height 1
+- Intervals → height 2
+- Simulation → height 2
+- Race → height 3
 
-## D-017 — A block is two-dimensional and earned from the run
+**Rejected for geometry:** pace versus historical median, sample thresholds, effort-based resizing.
 
-**Decision:** A block carries a `width` and a `height` instead of a single `span`. Width comes from the distance actually run; height from the workout type, adjusted by pace against the runner's own median for that type. Blocks stack continuously in one ten-column grid, and a training week no longer reserves space in it.
+**Reason:** The user should understand why a block looks the way it does immediately. Eight columns also produces larger, more tactile pieces on a phone.
 
-**Reason:** Measured against the real plan, the span map produced four block sizes with 54% of them the identical 1×1, and per-week bands left all 18 weeks ending on a partial course — 61 of 180 cells, a third of the tower, that no block could ever occupy. Both are structural, so no visual treatment fixes either. The same 71 runs now build a 27-course tower from 9 footprints with the commonest shape at 32%.
+## D-019 — Extra runs are first-class actual activities
 
-The block was also derived from the workout *type* alone, so distance, duration, and effort were all recorded and then discarded. The tower now records what the run actually was.
+**Decision:** An actual run may be linked to a scheduled workout or may be an extra run with no scheduled link.
 
-**Revises D-016** entirely, and the span map in D-014.
+Extra runs:
 
-**Consequences:**
+- Count toward actual miles
+- Earn Build blocks
+- Do not satisfy a planned workout
+- Do not change scheduled weekly completion
+- Do not change the scheduled-run streak
 
-- `AppState.schemaVersion` becomes 4. `BlockPlacement` loses `weekNumber` and `span`, and gains `width`, `height`, and an absolute `row`.
-- Versions 2 and 3 are replayed through the packer: which blocks are placed survives, where they sit does not, because the column count and the meaning of `row` both changed. Version 3 had no height, so migrated blocks are one course tall.
-- **Height is frozen when the block is earned** and stored rather than derived. A block's height decides how it packs and other blocks come to rest on it, so recomputing it later would re-pack the tower. A run therefore earns a different block depending on when in the plan it happened.
-- Pace only moves height once `PACE_SAMPLE_MINIMUM` runs of that type are logged. Below that there is no median worth comparing against — with a sample of one the run *is* its own median.
-- **The user chooses a column, not a position.** The block falls to where it lands, so nothing can float and the support rule is gone entirely.
-- **Only the most recently placed block can be moved.** Anything older has blocks resting on it, and pulling it out is not a coherent action.
-- Auto Place is now three terms, all measured rather than guessed: land lowest, then seal least dead space, then sit most flush against a wall. Lowest alone builds 58 courses with 161 voids instead of 34 with 24; without flushness the tower splits into stacks 24 to 29 courses apart.
-- Weeks become mortar lines drawn across the tower rather than bands within it.
+**Reason:** STACK should record what the runner actually did without forcing every run into the original plan.
 
-**Unchanged:** one block per completed run, one placement per workout, rest days earn nothing, tap to place, valid positions only, deterministic Auto Place, and every boundary in D-010 and D-015 — no canvas, no WebGL, no physics, no falling pieces, no rotation, no drag and drop, no game loop.
+**Consequence:** UI-5.5 introduces schema version 5. Placement identity moves from scheduled workout identity to actual run-log identity.
 
+## D-020 — Today is the daily dashboard
+
+**Decision:** Today must show more than a race countdown and one workout.
+
+Required hierarchy:
+
+1. Compact race context
+2. Today's scheduled workout
+3. This Week scheduled progress
+4. Next scheduled workout
+5. `+ Log Run`
+6. Small Build preview/link
+
+**Reason:** Today must remain useful on rest days and after the scheduled workout is complete.
+
+## D-021 — Plan is manually editable
+
+**Decision:** The fixed seed plan becomes a user-editable schedule without becoming adaptive coaching.
+
+Allowed:
+
+- Edit planned workout type, target, title, and instructions
+- Move a planned workout anywhere inside the plan date range
+- Move across week boundaries and update destination week/phase
+- Add a planned run to a Rest day
+- Change a future planned run to Rest
+- Confirm conflicts when a destination already has a planned run
+
+Race remains fixed through ordinary workout editing.
+
+Completed planned workouts require explicit confirmation before plan edits and retain their linked actual run.
+
+## D-022 — Actual run date belongs to the actual run
+
+**Decision:** The manual run form includes an editable Date field.
+
+Defaults:
+
+- Scheduled run → scheduled date
+- Extra run → today
+
+The saved activity date is the date the run actually happened and must not be overwritten automatically by the schedule.
+
+## D-023 — Streak does not fail before the day is over
+
+**Decision:** An unfinished scheduled workout dated today does not break an existing streak during that day.
+
+- Past incomplete scheduled workout → breaks streak
+- Today's incomplete scheduled workout → ignored until its date passes
+- Today's completed scheduled workout → may extend/start streak
+- Rest → no effect
+- Extra run → no effect
+
+**Reason:** Showing a zero streak before the runner has had a chance to complete today's run is demotivating and semantically wrong for this product.
+
+## D-024 — Placement should feel tactile without becoming a physics game
+
+**Decision:** Tap and keyboard remain complete placement methods. Pointer/touch dragging may be added as a horizontal direct-manipulation layer that snaps only between the same deterministic valid columns.
+
+`Drop` commits. `Auto Place` remains secondary.
+
+**Still rejected:** freeform coordinates, rotation, collision library, physics simulation, canvas, WebGL, game loop.
+
+## D-025 — Dev controls never ship in product-review builds
+
+**Decision:** `DevDataPanel` must not appear in production/deployed previews.
+
+If retained for local development, gate it with:
+
+```ts
+import.meta.env.DEV
+```
+
+## Active implementation order
+
+Implement D-018 through D-025 in **UI-5.5 — Core Loop Revision** before beginning UI-6 Plan Adjustment.
