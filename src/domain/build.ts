@@ -1,23 +1,20 @@
 import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates";
 import {
   footprintFor,
-  paceSecondsPerMile,
-  projectedFootprint,
   type BlockHeight,
   type BlockWidth,
   type Footprint,
 } from "./footprint";
 import {
-  autoPlaceOption,
   GRID_COLUMNS,
   lastColumnOf,
-  placementOptions,
   newestPlacement,
   skylineOf,
   topOf,
 } from "./placement";
 import type {
   BlockPlacement,
+  RunActivityType,
   RunLog,
   TrainingPlan,
   Workout,
@@ -48,15 +45,8 @@ export const BLOCK_STATE_LABEL: Record<BlockState, string> = {
   missed: "Missed",
 };
 
-/** e.g. "an Easy block", "a Long Run block" — used in prose and announcements. */
-export function earnedBlockPhrase(type: WorkoutType): string {
-  const label = WORKOUT_TYPE_LABEL[type];
-  const article = /^[aeiou]/i.test(label) ? "an" : "a";
-  return `${article} ${label} block`;
-}
-
-/** The five block types shown in the legend. Rest is deliberately excluded. */
-export const LEGEND_TYPES: WorkoutType[] = [
+/** The activity types a run can be. Rest is deliberately absent. */
+export const ACTIVITY_TYPES: RunActivityType[] = [
   "easy",
   "intervals",
   "simulation",
@@ -64,16 +54,28 @@ export const LEGEND_TYPES: WorkoutType[] = [
   "race",
 ];
 
-/** A completed run's block, before it has been placed. */
+/** The five block types shown in the legend. */
+export const LEGEND_TYPES: RunActivityType[] = ACTIVITY_TYPES;
+
+/** e.g. "an Easy block", "a Long Run block" — used in prose and announcements. */
+export function earnedBlockPhrase(type: RunActivityType): string {
+  const label = WORKOUT_TYPE_LABEL[type];
+  const article = /^[aeiou]/i.test(label) ? "an" : "a";
+  return `${article} ${label} block`;
+}
+
+/** An actual run's block, before it has been placed. */
 export interface EarnedBlock {
-  workout: Workout;
   runLog: RunLog;
+  /** The scheduled workout this run satisfied, or null for an extra run. */
+  workout: Workout | null;
   footprint: Footprint;
 }
 
 /** A block the user has built into the structure. */
 export interface PlacedBlock {
-  workout: Workout;
+  runLog: RunLog;
+  workout: Workout | null;
   placement: BlockPlacement;
   /** The one most recently placed block, which carries the only glow. */
   isNewest: boolean;
@@ -90,30 +92,13 @@ export interface PlacedBlock {
   depth: number;
 }
 
-/**
- * Where a training week finished, drawn across the tower as a mortar line.
- * Weeks no longer reserve space, so this is an annotation on a continuous
- * structure rather than a container.
- */
-export interface MortarLine {
-  weekNumber: number;
-  /** The course this week topped out at, counted up from the ground. */
-  row: number;
-  isActiveWeek: boolean;
-}
-
 export interface BuildSummaryMetrics {
+  /** Scheduled workouts satisfied. Extra runs are deliberately excluded. */
   completedRuns: number;
   plannedRuns: number;
+  /** Every mile actually run, extra runs included. */
   totalActualMiles: number;
   currentStreak: number;
-}
-
-/** A run of consecutive weeks in the same training phase, for the height gauge. */
-export interface PhaseBand {
-  label: string;
-  /** Projected courses this phase contributes to the finished tower. */
-  courses: number;
 }
 
 export interface BuildViewModel {
@@ -124,55 +109,11 @@ export interface BuildViewModel {
   blocks: PlacedBlock[];
   /** How many courses the tower currently stands. */
   courses: number;
-  /** Week markers up the tower, lowest first. */
-  mortar: MortarLine[];
   activeWeekNumber: number;
-  /** How tall the finished tower is projected to be, in courses. */
-  projectedCourses: number;
-  /** Phase bands from the ground up, for the height gauge. */
-  phaseBands: PhaseBand[];
 }
 
 function isScheduledRun(workout: Workout): boolean {
   return earnsBlock(workout.type);
-}
-
-/**
- * The paces of every same-type run logged up to and including this one, which
- * is the sample the block's height is frozen against. Ordered by the date the
- * run was completed, so the sample is exactly what the app knew at the moment
- * the block was earned — placing an old block today must not size it using
- * runs from after it.
- */
-export function paceSampleFor(
-  plan: TrainingPlan,
-  runLogs: RunLog[],
-  workout: Workout,
-): number[] {
-  const typeByWorkoutId = new Map(
-    scheduledRuns(plan).map((item) => [item.id, item.type]),
-  );
-
-  return runLogs
-    .filter(
-      (runLog) =>
-        typeByWorkoutId.get(runLog.workoutId) === workout.type &&
-        !isAfterLocalDate(runLog.completedDate, workout.date),
-    )
-    .flatMap((runLog) => {
-      const pace = paceSecondsPerMile(runLog);
-      return pace === null ? [] : [pace];
-    });
-}
-
-/** The block a completed run earns, sized from the run and frozen at that. */
-export function footprintForRun(
-  plan: TrainingPlan,
-  runLogs: RunLog[],
-  workout: Workout,
-  runLog: RunLog,
-): Footprint {
-  return footprintFor(workout, runLog, paceSampleFor(plan, runLogs, workout));
 }
 
 /** Every non-rest workout in the plan, ordered by date. */
@@ -183,6 +124,17 @@ export function scheduledRuns(plan: TrainingPlan): Workout[] {
     .sort((a, b) => compareLocalDates(a.date, b.date));
 }
 
+export function workoutsById(plan: TrainingPlan): Map<string, Workout> {
+  return new Map(
+    plan.weeks.flatMap((week) => week.workouts).map((workout) => [workout.id, workout]),
+  );
+}
+
+/** An extra run is an activity the plan never asked for. */
+export function isExtraRun(runLog: RunLog): boolean {
+  return runLog.workoutId === null;
+}
+
 export function totalActualMiles(runLogs: RunLog[]): number {
   const total = runLogs.reduce((sum, runLog) => sum + runLog.distanceMiles, 0);
   // Miles are summed from two-decimal inputs, so round away float drift.
@@ -190,25 +142,35 @@ export function totalActualMiles(runLogs: RunLog[]): number {
 }
 
 /**
- * Consecutive scheduled runs completed through the most recent scheduled run,
- * per docs/DATA_AND_STORAGE.md. Rest days are excluded from the sequence, so
- * they neither break nor extend the streak. Workouts after today are ignored,
- * which means an unlogged run scheduled for today ends the streak. Placement
- * is irrelevant here: the streak counts runs, not blocks.
+ * Consecutive scheduled runs completed, per D-023. Rest days are excluded from
+ * the sequence, so they neither break nor extend it, and extra runs are not in
+ * it at all: this counts the plan being followed, not activity.
+ *
+ * A run scheduled for today that has not been logged yet is ignored rather
+ * than counted as a miss. The day is not over — showing a zero streak at
+ * breakfast is both demotivating and untrue.
  */
 export function currentRunStreak(
   plan: TrainingPlan,
   runLogs: RunLog[],
   today: string,
 ): number {
-  const loggedWorkoutIds = new Set(runLogs.map((runLog) => runLog.workoutId));
-  const runsThroughToday = scheduledRuns(plan).filter(
-    (workout) => !isAfterLocalDate(workout.date, today),
+  const satisfiedWorkoutIds = new Set(
+    runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
   );
 
+  const considered = scheduledRuns(plan).filter((workout) => {
+    if (isAfterLocalDate(workout.date, today)) {
+      return false;
+    }
+    const isTodayAndUnfinished =
+      workout.date === today && !satisfiedWorkoutIds.has(workout.id);
+    return !isTodayAndUnfinished;
+  });
+
   let streak = 0;
-  for (let index = runsThroughToday.length - 1; index >= 0; index -= 1) {
-    if (!loggedWorkoutIds.has(runsThroughToday[index].id)) {
+  for (let index = considered.length - 1; index >= 0; index -= 1) {
+    if (!satisfiedWorkoutIds.has(considered[index].id)) {
       break;
     }
     streak += 1;
@@ -218,7 +180,7 @@ export function currentRunStreak(
 
 /**
  * Completed / planned / missed for one scheduled run. Build no longer renders
- * planned or missed blocks, but the workout detail sheet still reports status.
+ * planned or missed blocks, but Plan reports all three.
  */
 export function blockStateFor(
   workout: Workout,
@@ -247,71 +209,45 @@ export function activeWeekNumber(plan: TrainingPlan, today: string): number {
   return match?.weekNumber ?? last.weekNumber;
 }
 
-/** Every completed run's block, whether or not it has been placed. */
+/**
+ * Every logged run's block, scheduled or extra, oldest first. A block is
+ * earned by the activity, so this reads from the run logs rather than walking
+ * the plan — the plan cannot know about a run it never asked for.
+ */
 export function earnedBlocks(
   plan: TrainingPlan,
   runLogs: RunLog[],
 ): EarnedBlock[] {
-  const runLogsByWorkoutId = new Map(
-    runLogs.map((runLog) => [runLog.workoutId, runLog]),
-  );
+  const byId = workoutsById(plan);
 
-  return scheduledRuns(plan).flatMap((workout) => {
-    const runLog = runLogsByWorkoutId.get(workout.id);
-    return runLog
-      ? [
-          {
-            workout,
-            runLog,
-            footprint: footprintForRun(plan, runLogs, workout, runLog),
-          },
-        ]
-      : [];
-  });
+  return [...runLogs]
+    .sort(
+      (a, b) =>
+        compareLocalDates(a.completedDate, b.completedDate) ||
+        a.createdAt.localeCompare(b.createdAt),
+    )
+    .map((runLog) => ({
+      runLog,
+      workout: runLog.workoutId ? (byId.get(runLog.workoutId) ?? null) : null,
+      footprint: footprintFor(runLog),
+    }));
 }
 
-export function findPlacementForWorkout(
+export function findPlacementForRunLog(
   placements: BlockPlacement[],
-  workoutId: string,
+  runLogId: string,
 ): BlockPlacement | undefined {
-  return placements.find((placement) => placement.workoutId === workoutId);
+  return placements.find((placement) => placement.runLogId === runLogId);
 }
 
 /**
- * The most recently placed block. Ties on `placedAt` fall back to the later
- * workout date, so the result never depends on array order.
+ * The most recently placed block. Ties on `placedAt` fall back to the run log
+ * id, so the result never depends on array order.
  */
-export function findNewestPlacedWorkoutId(
-  plan: TrainingPlan,
+export function findNewestPlacedRunLogId(
   placements: BlockPlacement[],
 ): string | null {
-  const runsById = new Map(
-    scheduledRuns(plan).map((workout) => [workout.id, workout]),
-  );
-
-  let newest: BlockPlacement | null = null;
-  for (const placement of placements) {
-    const workout = runsById.get(placement.workoutId);
-    if (!workout) {
-      continue;
-    }
-    if (!newest) {
-      newest = placement;
-      continue;
-    }
-    const byPlacedAt = placement.placedAt.localeCompare(newest.placedAt);
-    const newestWorkout = runsById.get(newest.workoutId);
-    if (
-      byPlacedAt > 0 ||
-      (byPlacedAt === 0 &&
-        newestWorkout !== undefined &&
-        compareLocalDates(workout.date, newestWorkout.date) > 0)
-    ) {
-      newest = placement;
-    }
-  }
-
-  return newest?.workoutId ?? null;
+  return newestPlacement(placements)?.runLogId ?? null;
 }
 
 /**
@@ -330,14 +266,14 @@ export function selectBuildViewModel(
   placements: BlockPlacement[],
   today: string,
 ): BuildViewModel {
-  const workoutsById = new Map(
-    scheduledRuns(plan).map((workout) => [workout.id, workout]),
+  const earned = earnedBlocks(plan, runLogs);
+  const earnedByRunLogId = new Map(
+    earned.map((block) => [block.runLog.id, block]),
   );
-  const placedWorkoutIds = new Set(
-    placements.map((placement) => placement.workoutId),
+  const placedRunLogIds = new Set(
+    placements.map((placement) => placement.runLogId),
   );
-  const newestPlacedWorkoutId = findNewestPlacedWorkoutId(plan, placements);
-  const active = activeWeekNumber(plan, today);
+  const newestPlacedRunLogId = findNewestPlacedRunLogId(placements);
 
   // Cell occupancy for the whole tower, so face culling and paint order can
   // both be answered without scanning every other block.
@@ -354,13 +290,11 @@ export function selectBuildViewModel(
     }
   }
 
-  const movableWorkoutId = newestPlacement(placements)?.workoutId ?? null;
-
   const blocks: PlacedBlock[] = [...placements]
     .sort((a, b) => a.row - b.row || a.columnStart - b.columnStart)
     .flatMap((placement) => {
-      const workout = workoutsById.get(placement.workoutId);
-      if (!workout) {
+      const earnedBlock = earnedByRunLogId.get(placement.runLogId);
+      if (!earnedBlock) {
         return [];
       }
 
@@ -385,10 +319,11 @@ export function selectBuildViewModel(
 
       return [
         {
-          workout,
+          runLog: earnedBlock.runLog,
+          workout: earnedBlock.workout,
           placement,
-          isNewest: placement.workoutId === newestPlacedWorkoutId,
-          canMove: placement.workoutId === movableWorkoutId,
+          isNewest: placement.runLogId === newestPlacedRunLogId,
+          canMove: placement.runLogId === newestPlacedRunLogId,
           showTopFace: !covered,
           showRightFace: !abutted,
           depth: topOf(placement),
@@ -401,138 +336,25 @@ export function selectBuildViewModel(
     0,
   );
 
-  // A week's mortar line sits where its last block topped out. Two weeks can
-  // finish on the same course, in which case the higher number wins: it is the
-  // one whose blocks actually reach it.
-  const topByWeek = new Map<number, number>();
-  for (const placement of placements) {
-    const workout = workoutsById.get(placement.workoutId);
-    if (!workout) {
-      continue;
-    }
-    const current = topByWeek.get(workout.weekNumber) ?? 0;
-    topByWeek.set(workout.weekNumber, Math.max(current, topOf(placement)));
-  }
-  const weekByRow = new Map<number, number>();
-  for (const [weekNumber, row] of topByWeek) {
-    weekByRow.set(row, Math.max(weekByRow.get(row) ?? 0, weekNumber));
-  }
-  const mortar: MortarLine[] = [...weekByRow.entries()]
-    .map(([row, weekNumber]) => ({
-      weekNumber,
-      row,
-      isActiveWeek: weekNumber === active,
-    }))
-    .sort((a, b) => a.row - b.row);
-
   const plannedRuns = scheduledRuns(plan);
-  const completedRuns = earnedBlocks(plan, runLogs);
+  const satisfiedWorkoutIds = new Set(
+    runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
+  );
 
   return {
     metrics: {
-      completedRuns: completedRuns.length,
+      completedRuns: plannedRuns.filter((workout) =>
+        satisfiedWorkoutIds.has(workout.id),
+      ).length,
       plannedRuns: plannedRuns.length,
       totalActualMiles: totalActualMiles(runLogs),
       currentStreak: currentRunStreak(plan, runLogs, today),
     },
-    pendingBlocks: completedRuns.filter(
-      (earned) => !placedWorkoutIds.has(earned.workout.id),
+    pendingBlocks: earned.filter(
+      (block) => !placedRunLogIds.has(block.runLog.id),
     ),
     blocks,
     courses,
-    mortar,
-    activeWeekNumber: active,
-    projectedCourses: projectedCourses(plan),
-    phaseBands: projectedPhaseBands(plan),
+    activeWeekNumber: activeWeekNumber(plan, today),
   };
-}
-
-/**
- * How many courses a week's blocks fill when packed left to right — the same
- * first-fit Auto Place uses. This is what the finished tower is projected
- * against; leaving gaps makes a real tower taller than its projection.
- */
-/**
- * Packs the whole plan through the real placer to work out how tall the
- * finished tower will stand, and where each week's blocks would top out.
- *
- * This has to run the actual packer rather than divide cells by columns: the
- * landing rule leaves arches, so a real tower is always somewhat taller than
- * its raw area suggests, and a projection that ignored that would promise a
- * shorter climb than the user ever gets.
- */
-function projectTower(plan: TrainingPlan): {
-  courses: number;
-  topByWeek: Map<number, number>;
-} {
-  const placements: BlockPlacement[] = [];
-  const topByWeek = new Map<number, number>();
-
-  for (const workout of scheduledRuns(plan)) {
-    const { width, height } = projectedFootprint(workout);
-    const option = autoPlaceOption(
-      placementOptions(width, height, placements),
-    );
-    if (!option) {
-      continue;
-    }
-    placements.push({
-      workoutId: workout.id,
-      row: option.row,
-      columnStart: option.columnStart,
-      width,
-      height,
-      placedAt: workout.date,
-    });
-    topByWeek.set(
-      workout.weekNumber,
-      Math.max(topByWeek.get(workout.weekNumber) ?? 0, option.row + height),
-    );
-  }
-
-  return {
-    courses: skylineOf(placements).reduce(
-      (highest, column) => Math.max(highest, column),
-      0,
-    ),
-    topByWeek,
-  };
-}
-
-export function projectedCourses(plan: TrainingPlan): number {
-  return projectTower(plan).courses;
-}
-
-/** Cutback weeks belong to the phase they cut back from. */
-function phaseGroup(phase: string): string {
-  return phase.replace(/\s+Cutback$/i, "");
-}
-
-/**
- * The training phases as bands of projected courses, ground first. This is the
- * height gauge beside the tower: it shows how far there is to climb and which
- * part of the plan each stretch belongs to, without listing a single workout.
- */
-export function projectedPhaseBands(plan: TrainingPlan): PhaseBand[] {
-  const { topByWeek } = projectTower(plan);
-  const bands: PhaseBand[] = [];
-  let below = 0;
-
-  for (const week of plan.weeks) {
-    const label = phaseGroup(week.phase);
-    const top = topByWeek.get(week.weekNumber) ?? below;
-    const courses = Math.max(0, top - below);
-    below = Math.max(below, top);
-    if (courses === 0) {
-      continue;
-    }
-
-    const last = bands[bands.length - 1];
-    if (last && last.label === label) {
-      last.courses += courses;
-    } else {
-      bands.push({ label, courses });
-    }
-  }
-  return bands;
 }

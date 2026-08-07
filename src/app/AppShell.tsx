@@ -13,10 +13,15 @@ interface AppShellProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
-  onSaveRun: (workout: Workout, values: ValidRunEntry) => void;
+  onSaveRun: (
+    workout: Workout | null,
+    values: ValidRunEntry,
+    runLogId?: string,
+  ) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
-  placingWorkoutId: string | null;
-  onPlacingChange: (workoutId: string | null) => void;
+  /** The earned block Build is currently holding, identified by its run log. */
+  placingRunLogId: string | null;
+  onPlacingChange: (runLogId: string | null) => void;
 }
 
 export function AppShell({
@@ -27,7 +32,7 @@ export function AppShell({
   blockPlacements,
   onSaveRun,
   onPlaceBlock,
-  placingWorkoutId,
+  placingRunLogId,
   onPlacingChange,
 }: AppShellProps) {
   return (
@@ -44,8 +49,8 @@ export function AppShell({
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
             onViewBuild={() => onTabChange("build")}
-            onStartPlacing={(workoutId) => {
-              onPlacingChange(workoutId);
+            onStartPlacing={(runLogId) => {
+              onPlacingChange(runLogId);
               onTabChange("build");
             }}
             onSaveRun={onSaveRun}
@@ -57,7 +62,7 @@ export function AppShell({
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onPlaceBlock={onPlaceBlock}
-            placingWorkoutId={placingWorkoutId}
+            placingRunLogId={placingRunLogId}
             onPlacingChange={onPlacingChange}
           />
         )}

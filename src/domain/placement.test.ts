@@ -17,14 +17,14 @@ import {
 import type { BlockPlacement } from "./types";
 
 function placement(
-  workoutId: string,
+  runLogId: string,
   row: number,
   columnStart: number,
   width: 1 | 2 | 3 | 4,
-  height: 1 | 2 | 3 | 4 = 1,
+  height: 1 | 2 | 3 = 1,
   placedAt = "2026-08-04T12:00:00.000Z",
 ): BlockPlacement {
-  return { workoutId, row, columnStart, width, height, placedAt };
+  return { runLogId, row, columnStart, width, height, placedAt };
 }
 
 const columns = (options: ReturnType<typeof placementOptions>) =>
@@ -37,7 +37,7 @@ describe("skylineOf", () => {
 
   it("takes the top of each block across the columns it spans", () => {
     const skyline = skylineOf([placement("a", 0, 2, 3, 2)]);
-    expect(skyline).toEqual([0, 2, 2, 2, 0, 0, 0, 0, 0, 0]);
+    expect(skyline).toEqual([0, 2, 2, 2, 0, 0, 0, 0]);
   });
 
   it("takes the highest block when two share a column", () => {
@@ -51,11 +51,11 @@ describe("skylineOf", () => {
 });
 
 describe("fitsInGrid", () => {
-  it("keeps every block inside the ten columns", () => {
-    expect(GRID_COLUMNS).toBe(10);
+  it("keeps every block inside the eight columns", () => {
+    expect(GRID_COLUMNS).toBe(8);
     expect(fitsInGrid(1, 4)).toBe(true);
-    expect(fitsInGrid(7, 4)).toBe(true);
-    expect(fitsInGrid(8, 4)).toBe(false);
+    expect(fitsInGrid(5, 4)).toBe(true);
+    expect(fitsInGrid(6, 4)).toBe(false);
     expect(fitsInGrid(0, 1)).toBe(false);
   });
 });
@@ -80,8 +80,6 @@ describe("placementOptions", () => {
       "5@0",
       "6@0",
       "7@0",
-      "8@0",
-      "9@0",
     ]);
   });
 
@@ -145,8 +143,8 @@ describe("newestPlacement and canMove", () => {
   const newer = placement("b", 0, 2, 1, 1, "2026-08-04T11:00:00.000Z");
 
   it("finds the most recently placed block regardless of array order", () => {
-    expect(newestPlacement([older, newer])?.workoutId).toBe("b");
-    expect(newestPlacement([newer, older])?.workoutId).toBe("b");
+    expect(newestPlacement([older, newer])?.runLogId).toBe("b");
+    expect(newestPlacement([newer, older])?.runLogId).toBe("b");
   });
 
   it("only lets the newest block move, because nothing rests on it", () => {
@@ -162,7 +160,7 @@ describe("newestPlacement and canMove", () => {
 
 describe("assertPlacementFits", () => {
   const candidate = {
-    workoutId: "w",
+    runLogId: "w",
     row: 0,
     columnStart: 1,
     width: 2 as const,
@@ -175,7 +173,7 @@ describe("assertPlacementFits", () => {
 
   it("rejects a block that runs off the right edge", () => {
     expect(() =>
-      assertPlacementFits({ ...candidate, columnStart: 10, width: 2 }, []),
+      assertPlacementFits({ ...candidate, columnStart: 8, width: 2 }, []),
     ).toThrow(InvalidPlacementError);
   });
 
@@ -210,9 +208,9 @@ describe("repackPlacements", () => {
       placement("c", 7, 1, 4, 1, "2026-08-04T12:00:00.000Z"),
     ]);
 
-    expect(repacked.map((item) => item.workoutId)).toEqual(["a", "b", "c"]);
+    expect(repacked.map((item) => item.runLogId)).toEqual(["a", "b", "c"]);
     expect(repacked.every((item) => item.row >= 0)).toBe(true);
-    // Three 4-wide blocks fit two to a course in a ten-column grid.
+    // Three 4-wide blocks fit two to a course in an eight-column grid.
     expect(Math.max(...repacked.map(topOf))).toBe(2);
   });
 
@@ -244,6 +242,6 @@ describe("repackPlacements", () => {
   it("replays in the order the blocks were built, not array order", () => {
     const first = placement("first", 0, 1, 4, 1, "2026-08-01T10:00:00.000Z");
     const second = placement("second", 0, 1, 4, 1, "2026-08-02T10:00:00.000Z");
-    expect(repackPlacements([second, first])[0].workoutId).toBe("first");
+    expect(repackPlacements([second, first])[0].runLogId).toBe("first");
   });
 });

@@ -6,21 +6,25 @@ interface PlacedBlockProps {
   block: PlacedBlockData;
   /** Courses drawn in the grid, needed to flip row into a grid line. */
   courses: number;
-  onSelect: (workoutId: string) => void;
+  onSelect: (runLogId: string) => void;
 }
 
-/** e.g. "Week 6 Thursday, Intervals, 5.4 miles, course 12, columns 3 through 5". */
+/** e.g. "Tuesday, August 4, Intervals, 5.4 miles, course 12, columns 3 through 5". */
 function blockLabel(block: PlacedBlockData): string {
-  const { workout, placement } = block;
-  const day = formatDateLabel(workout.date, { weekday: "long" });
+  const { runLog, workout, placement } = block;
   const columns =
     placement.width === 1
       ? `column ${placement.columnStart}`
       : `columns ${placement.columnStart} through ${placement.columnStart + placement.width - 1}`;
 
   return [
-    `Week ${workout.weekNumber} ${day}`,
-    WORKOUT_TYPE_LABEL[workout.type],
+    formatDateLabel(runLog.completedDate, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }),
+    WORKOUT_TYPE_LABEL[runLog.activityType],
+    workout ? `week ${workout.weekNumber}` : "extra run",
     `course ${placement.row}`,
     columns,
   ].join(", ");
@@ -32,7 +36,7 @@ function blockLabel(block: PlacedBlockData): string {
  * solid mass rather than a stack of separate cards.
  */
 export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
-  const { workout, placement, isNewest, showTopFace, showRightFace, depth } =
+  const { runLog, placement, isNewest, showTopFace, showRightFace, depth } =
     block;
 
   return (
@@ -44,14 +48,14 @@ export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
           gridColumn: `${placement.columnStart} / span ${placement.width}`,
           gridRow: `${courses - placement.row - placement.height + 1} / span ${placement.height}`,
           zIndex: depth,
-          "--piece-color": `var(--${workout.build.colorKey})`,
+          "--piece-color": `var(--${runLog.activityType})`,
         } as CSSProperties
       }
     >
       <button
         type="button"
         className="placed-block__button"
-        onClick={() => onSelect(workout.id)}
+        onClick={() => onSelect(runLog.id)}
       >
         <span className="visually-hidden">{blockLabel(block)}</span>
         <span className="placed-block__brick" aria-hidden="true">

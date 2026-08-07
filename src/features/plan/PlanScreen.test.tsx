@@ -15,9 +15,10 @@ const longSunday = "Sunday, August 9, Long Run: 4 Miles, Long Run, 4 mi";
 
 function runLogFor(workoutId: string, overrides: Partial<RunLog> = {}): RunLog {
   return {
-    id: `log-${workoutId}`,
+    id: `run-${workoutId}`,
     workoutId,
     completedDate: "2026-08-04",
+    activityType: "easy",
     distanceMiles: 2.4,
     durationSeconds: 1530,
     effort: "solid",
@@ -247,6 +248,8 @@ describe("PlanScreen workout detail", () => {
     expect(workout.id).toBe("workout-002");
     expect(workout.date).toBe("2026-08-04");
     expect(values).toEqual({
+      completedDate: "2026-08-04",
+      activityType: "easy",
       distanceMiles: 2.1,
       durationSeconds: 1230,
       effort: "solid",

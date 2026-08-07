@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { BlockPlacement, RunLog } from "../../domain/types";
@@ -7,11 +7,19 @@ import { BuildScreen } from "./BuildScreen";
 
 const plan = loadSeedPlan();
 
+const typeByWorkoutId = new Map(
+  plan.weeks
+    .flatMap((week) => week.workouts)
+    .map((workout) => [workout.id, workout.type]),
+);
+
 function runLogFor(workoutId: string, overrides: Partial<RunLog> = {}): RunLog {
+  const type = typeByWorkoutId.get(workoutId);
   return {
-    id: `log-${workoutId}`,
+    id: `run-${workoutId}`,
     workoutId,
     completedDate: "2026-08-04",
+    activityType: type && type !== "rest" ? type : "easy",
     distanceMiles: 2.1,
     durationSeconds: 1230,
     effort: "solid",
@@ -22,15 +30,19 @@ function runLogFor(workoutId: string, overrides: Partial<RunLog> = {}): RunLog {
   };
 }
 
+function extraRun(id: string, overrides: Partial<RunLog> = {}): RunLog {
+  return { ...runLogFor("workout-002"), id, workoutId: null, ...overrides };
+}
+
 function placementFor(
-  workoutId: string,
+  runLogId: string,
   columnStart: number,
   width: 1 | 2 | 3 | 4,
   row = 0,
-  height: 1 | 2 | 3 | 4 = 1,
+  height: 1 | 2 | 3 = 1,
   placedAt = "2026-08-04T13:00:00.000Z",
 ): BlockPlacement {
-  return { workoutId, row, columnStart, width, height, placedAt };
+  return { runLogId, row, columnStart, width, height, placedAt };
 }
 
 function renderBuild(
@@ -81,68 +93,70 @@ describe("BuildScreen", () => {
     // Nothing is built until a block is placed, so the tower is empty.
     expect(within(tower()).queryAllByRole("listitem")).toHaveLength(0);
     expect(
-      screen.getByText("Nothing built yet. Complete a run to earn your first block."),
+      screen.getByText("Nothing built yet. Log a run to earn your first block."),
     ).toBeInTheDocument();
   });
 
-  it("shows how tall the finished tower will be without listing a workout", () => {
+  it("counts what has been built without a packing readout", () => {
     renderBuild({
       runLogs: [runLogFor("workout-002")],
-      blockPlacements: [placementFor("workout-002", 3, 1)],
+      blockPlacements: [placementFor("run-workout-002", 3, 1)],
       today: "2026-08-10",
     });
 
-    // A height and a destination, never a block-by-block outline.
-    expect(screen.getByText(/1 of about \d+ courses · 1 block/)).toBeInTheDocument();
-    expect(screen.getByText(/\d+ courses to the race/)).toBeInTheDocument();
+    expect(screen.getByText("1 block")).toBeInTheDocument();
     expect(within(tower()).getAllByRole("button")).toHaveLength(1);
   });
 
-  it("shows the training phases as a height gauge", () => {
-    renderBuild();
+  it("drops the projected height, phase gauge, and week mortar lines", () => {
+    renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      blockPlacements: [placementFor("run-workout-002", 3, 1)],
+      today: "2026-08-10",
+    });
 
-    const gauge = screen.getByRole("list", { name: "Training phases" });
     expect(
-      within(gauge)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent),
-    ).toEqual(["Taper / Race", "Main", "Prep", "Foundation"]);
+      screen.queryByRole("list", { name: "Training phases" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/courses to the race/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/of about/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/tops out at course/)).not.toBeInTheDocument();
   });
 
-  it("stacks blocks continuously and marks where each week topped out", () => {
+  it("stacks blocks continuously, whatever week earned them", () => {
     renderBuild({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-007")],
       blockPlacements: [
-        placementFor("workout-002", 3, 1),
-        placementFor("workout-007", 3, 1, 1),
+        placementFor("run-workout-002", 3, 1),
+        placementFor("run-workout-007", 3, 1, 1),
       ],
       today: "2026-08-10",
     });
 
     expect(within(tower()).getAllByRole("button")).toHaveLength(2);
-    // One week, one mortar line, wherever its last block came to rest.
-    expect(screen.getByText("Week 1 tops out at course 2")).toBeInTheDocument();
-    expect(screen.getByText("2 courses standing.")).toBeInTheDocument();
   });
 
   it("shows only placed blocks in the structure", () => {
     renderBuild({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
-      blockPlacements: [placementFor("workout-002", 3, 1)],
+      blockPlacements: [placementFor("run-workout-002", 3, 1)],
       today: "2026-08-07",
     });
 
     const blocks = within(tower()).getAllByRole("button");
     expect(blocks).toHaveLength(1);
     expect(blocks[0]).toHaveAccessibleName(
-      "Week 1 Tuesday, Easy, course 0, column 3",
+      "Tuesday, August 4, Easy, week 1, course 0, column 3",
     );
   });
 
   it("lists earned but unplaced blocks in the staging tray", () => {
     renderBuild({
-      runLogs: [runLogFor("workout-002"), runLogFor("workout-007")],
-      blockPlacements: [placementFor("workout-002", 3, 1)],
+      runLogs: [
+        runLogFor("workout-002"),
+        runLogFor("workout-007", { completedDate: "2026-08-09" }),
+      ],
+      blockPlacements: [placementFor("run-workout-002", 3, 1)],
       today: "2026-08-10",
     });
 
@@ -157,7 +171,7 @@ describe("BuildScreen", () => {
   it("hides the staging tray when every earned block is placed", () => {
     renderBuild({
       runLogs: [runLogFor("workout-002")],
-      blockPlacements: [placementFor("workout-002", 3, 1)],
+      blockPlacements: [placementFor("run-workout-002", 3, 1)],
     });
 
     expect(
@@ -169,8 +183,8 @@ describe("BuildScreen", () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
-      blockPlacements: [placementFor("workout-004", 3, 2)],
-      placingWorkoutId: "workout-002",
+      blockPlacements: [placementFor("run-workout-004", 3, 2)],
+      placingRunLogId: "run-workout-002",
       today: "2026-08-10",
     });
 
@@ -179,7 +193,7 @@ describe("BuildScreen", () => {
     const slots = within(tower()).getAllByRole("button", { name: /^Drop Easy/ });
     // One slot per column, and each says where gravity would put the block:
     // columns 3 and 4 are built on, so a block dropped there lands higher.
-    expect(slots).toHaveLength(10);
+    expect(slots).toHaveLength(8);
     expect(slots[0]).toHaveAccessibleName(
       "Drop Easy block down column 1, landing on course 0",
     );
@@ -197,7 +211,7 @@ describe("BuildScreen", () => {
 
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(onPlaceBlock).toHaveBeenCalledWith({
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 5,
       width: 1,
@@ -209,7 +223,7 @@ describe("BuildScreen", () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-002")],
-      placingWorkoutId: "workout-002",
+      placingRunLogId: "run-workout-002",
       today: "2026-08-10",
     });
 
@@ -226,7 +240,7 @@ describe("BuildScreen", () => {
 
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(onPlaceBlock).toHaveBeenCalledWith({
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 2,
       width: 1,
@@ -238,7 +252,7 @@ describe("BuildScreen", () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-002")],
-      placingWorkoutId: "workout-002",
+      placingRunLogId: "run-workout-002",
       today: "2026-08-10",
     });
 
@@ -253,7 +267,7 @@ describe("BuildScreen", () => {
     await user.keyboard("{Enter}");
 
     expect(onPlaceBlock).toHaveBeenCalledWith({
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 2,
       width: 1,
@@ -264,7 +278,7 @@ describe("BuildScreen", () => {
   it("announces where the hovering block would land", () => {
     renderBuild({
       runLogs: [runLogFor("workout-007", { distanceMiles: 9 })],
-      placingWorkoutId: "workout-007",
+      placingRunLogId: "run-workout-007",
       today: "2026-08-10",
     });
 
@@ -279,7 +293,7 @@ describe("BuildScreen", () => {
     const user = userEvent.setup();
     const { onPlaceBlock } = renderBuild({
       runLogs: [runLogFor("workout-007", { distanceMiles: 9 })],
-      placingWorkoutId: "workout-007",
+      placingRunLogId: "run-workout-007",
       today: "2026-08-10",
     });
 
@@ -289,10 +303,107 @@ describe("BuildScreen", () => {
     // Empty ground is level everywhere and seals nothing, so the tie falls to
     // the flush edge: hard against the left wall.
     expect(onPlaceBlock).toHaveBeenCalledWith({
-      workoutId: "workout-007",
+      runLogId: "run-workout-007",
       row: 0,
       columnStart: 1,
       width: 4,
+      height: 1,
+    });
+  });
+
+  it("drags the hovering block, snapping it between the same valid columns", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      placingRunLogId: "run-workout-002",
+      today: "2026-08-10",
+    });
+
+    // jsdom has no layout, so give the tower a width the drag can measure:
+    // 8 columns of 40px starting at x = 0.
+    vi.spyOn(tower(), "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 320,
+      bottom: 200,
+      width: 320,
+      height: 200,
+      toJSON: () => ({}),
+    });
+
+    const chosen = screen.getByRole("button", {
+      name: "Drop Easy block down column 1, landing on course 0",
+    });
+    fireEvent.pointerDown(chosen, { pointerId: 1, buttons: 1 });
+    // Drag right into the middle of column 5.
+    fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 1, clientX: 180 });
+
+    expect(screen.getByText("Column 5 · lands on course 0")).toBeInTheDocument();
+
+    // Drop commits what the drag chose, and nothing was placed until then.
+    expect(onPlaceBlock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 5,
+      width: 1,
+      height: 1,
+    });
+  });
+
+  it("ignores pointer movement that is not a drag", () => {
+    renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      placingRunLogId: "run-workout-002",
+      today: "2026-08-10",
+    });
+
+    vi.spyOn(tower(), "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 320,
+      bottom: 200,
+      width: 320,
+      height: 200,
+      toJSON: () => ({}),
+    });
+
+    const chosen = screen.getByRole("button", {
+      name: "Drop Easy block down column 1, landing on course 0",
+    });
+    // No button down: a hovering mouse must not move the block.
+    fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 0, clientX: 180 });
+
+    expect(screen.getByText("Column 1 · lands on course 0")).toBeInTheDocument();
+  });
+
+  it("keeps tap and keyboard placement working alongside the drag layer", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-002")],
+      placingRunLogId: "run-workout-002",
+      today: "2026-08-10",
+    });
+
+    // Tap a slot the drag never touched, then commit from the keyboard.
+    await user.click(
+      screen.getByRole("button", {
+        name: "Drop Easy block down column 7, landing on course 0",
+      }),
+    );
+    screen.getByRole("button", { name: "Drop" }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 7,
+      width: 1,
       height: 1,
     });
   });
@@ -301,7 +412,7 @@ describe("BuildScreen", () => {
     const user = userEvent.setup();
     const { onPlaceBlock, onPlacingChange } = renderBuild({
       runLogs: [runLogFor("workout-002")],
-      placingWorkoutId: "workout-002",
+      placingRunLogId: "run-workout-002",
       today: "2026-08-10",
     });
 
@@ -320,14 +431,20 @@ describe("BuildScreen", () => {
     await user.click(
       screen.getByRole("button", { name: /Place Long Run block/ }),
     );
-    expect(onPlacingChange).toHaveBeenCalledWith("workout-007");
+    expect(onPlacingChange).toHaveBeenCalledWith("run-workout-007");
   });
 
-  it("opens the workout detail sheet from a placed block", async () => {
+  it("opens the run behind a placed block", async () => {
     const user = userEvent.setup();
     renderBuild({
-      runLogs: [runLogFor("workout-007", { distanceMiles: 4.2 })],
-      blockPlacements: [placementFor("workout-007", 2, 3)],
+      runLogs: [
+        runLogFor("workout-007", {
+          distanceMiles: 4.2,
+          completedDate: "2026-08-09",
+          notes: "Steady",
+        }),
+      ],
+      blockPlacements: [placementFor("run-workout-007", 2, 2)],
       today: "2026-08-10",
     });
 
@@ -335,42 +452,75 @@ describe("BuildScreen", () => {
 
     const sheet = screen.getByRole("dialog");
     expect(
-      within(sheet).getByRole("heading", { name: "Long Run: 4 Miles" }),
+      within(sheet).getByRole("heading", { name: "Long Run" }),
     ).toBeInTheDocument();
-    expect(
-      within(sheet).getByText("Placed on course 0, columns 2 through 4."),
-    ).toBeInTheDocument();
+    expect(within(sheet).getByText("Sunday, August 9")).toBeInTheDocument();
     expect(within(sheet).getByText("4.2 mi")).toBeInTheDocument();
+    expect(within(sheet).getByText("Steady")).toBeInTheDocument();
+    // The schedule is context here, not the subject.
+    expect(
+      within(sheet).getByText(/Week 1 · Long Run: 4 Miles/),
+    ).toBeInTheDocument();
+  });
+
+  it("says an extra run was not on the plan", async () => {
+    const user = userEvent.setup();
+    renderBuild({
+      runLogs: [extraRun("run-extra-1", { completedDate: "2026-08-05" })],
+      blockPlacements: [placementFor("run-extra-1", 1, 1)],
+      today: "2026-08-10",
+    });
+
+    await user.click(within(tower()).getByRole("button"));
+
+    const sheet = screen.getByRole("dialog");
+    expect(within(sheet).getByText("Extra run")).toBeInTheDocument();
+    expect(
+      within(sheet).getByText(/not on the plan/),
+    ).toBeInTheDocument();
+  });
+
+  it("earns an extra run a place in the staging tray", () => {
+    renderBuild({
+      runLogs: [extraRun("run-extra-1", { completedDate: "2026-08-05" })],
+      today: "2026-08-10",
+    });
+
+    const tray = screen.getByRole("list", { name: "Blocks ready to place" });
+    expect(within(tray).getByText("Extra")).toBeInTheDocument();
   });
 
   it("offers Move Block on the most recently placed block", async () => {
     const user = userEvent.setup();
     const { onPlacingChange } = renderBuild({
       runLogs: [runLogFor("workout-002")],
-      blockPlacements: [placementFor("workout-002", 3, 1)],
+      blockPlacements: [placementFor("run-workout-002", 3, 1)],
       today: "2026-08-07",
     });
 
     await user.click(within(tower()).getByRole("button"));
     await user.click(screen.getByRole("button", { name: "Move Block" }));
 
-    expect(onPlacingChange).toHaveBeenCalledWith("workout-002");
+    expect(onPlacingChange).toHaveBeenCalledWith("run-workout-002");
   });
 
   it("locks a block that has another resting on it", async () => {
     const user = userEvent.setup();
     renderBuild({
-      runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
+      runLogs: [
+        runLogFor("workout-002"),
+        runLogFor("workout-004", { completedDate: "2026-08-06" }),
+      ],
       blockPlacements: [
-        placementFor("workout-002", 3, 1, 0, 1, "2026-08-04T13:00:00.000Z"),
-        placementFor("workout-004", 3, 1, 1, 1, "2026-08-06T13:00:00.000Z"),
+        placementFor("run-workout-002", 3, 1, 0, 1, "2026-08-04T13:00:00.000Z"),
+        placementFor("run-workout-004", 3, 1, 1, 1, "2026-08-06T13:00:00.000Z"),
       ],
       today: "2026-08-20",
     });
 
     // The lower block was placed first, so it can no longer be pulled out.
     await user.click(
-      within(tower()).getByRole("button", { name: /Tuesday/ }),
+      within(tower()).getByRole("button", { name: /Tuesday, August 4/ }),
     );
 
     const sheet = screen.getByRole("dialog");

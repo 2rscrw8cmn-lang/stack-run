@@ -26,7 +26,7 @@ function loadInitialAppState(): AppState {
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>("today");
-  const [placingWorkoutId, setPlacingWorkoutId] = useState<string | null>(null);
+  const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
   const [appState, setAppState] = useState<AppState>(loadInitialAppState);
 
   return (
@@ -37,15 +37,13 @@ export function App() {
       plan={appState.plan}
       runLogs={appState.runLogs}
       blockPlacements={appState.blockPlacements}
-      onSaveRun={(workout, values: ValidRunEntry) =>
+      onSaveRun={(workout, values: ValidRunEntry, runLogId?: string) =>
         setAppState((current) =>
           saveRunLog(current, {
-            workoutId: workout.id,
-            // A log belongs to a scheduled workout, so it is dated by that
-            // workout, not by when it was entered. Today's log is unaffected;
-            // Plan can now log a run from an earlier week, and dating that one
-            // "today" would misreport when it happened.
-            completedDate: workout.date,
+            // Editing an extra run needs its own id: it has no workout to be
+            // found by. A scheduled run is still found by its workout.
+            id: runLogId,
+            workoutId: workout?.id ?? null,
             ...values,
           }),
         )
@@ -53,15 +51,15 @@ export function App() {
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))
       }
-      placingWorkoutId={placingWorkoutId}
-      onPlacingChange={setPlacingWorkoutId}
+      placingRunLogId={placingRunLogId}
+      onPlacingChange={setPlacingRunLogId}
     />
     {/*
-      Temporary scaffolding, present in deployed builds too. Plan now logs a
-      past run one at a time, so this only remains for bulk-seeding a tower by
-      hand. Excluded from the test DOM only. Removed in UI-7, which owns it.
+      Local scaffolding for bulk-seeding a tower by hand. Per D-025 it is gated
+      on DEV, so it is absent from production bundles and from every deployed
+      preview the product is reviewed in — and from the test DOM with them.
     */}
-    {import.meta.env.MODE !== "test" && (
+    {import.meta.env.DEV && (
       <DevDataPanel state={appState} onChange={setAppState} />
     )}
     </>

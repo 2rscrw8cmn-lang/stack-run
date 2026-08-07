@@ -1,0 +1,84 @@
+import { Button } from "../../components/ui/Button";
+import { Sheet } from "../../components/ui/Sheet";
+import { WORKOUT_TYPE_LABEL, type PlacedBlock } from "../../domain/build";
+import { formatDateLabel } from "../../domain/dates";
+import { formatDurationSeconds } from "../../domain/duration";
+import { EFFORT_LABEL } from "../../domain/workout";
+
+interface BlockDetailSheetProps {
+  block: PlacedBlock;
+  /** Provided only while this block is still the one that can be moved. */
+  onMoveBlock?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+/**
+ * What a block in the tower is: the run that earned it. The schedule appears
+ * as context when the run satisfied a planned workout, and is simply absent
+ * for an extra run — the block is the activity's, not the plan's.
+ */
+export function BlockDetailSheet({
+  block,
+  onMoveBlock,
+  isOpen,
+  onClose,
+}: BlockDetailSheetProps) {
+  const { runLog, workout } = block;
+
+  return (
+    <Sheet
+      title={WORKOUT_TYPE_LABEL[runLog.activityType]}
+      isOpen={isOpen}
+      onClose={onClose}
+    >
+      <div className="workout-detail">
+        <p className="workout-detail__status" data-state="completed">
+          {formatDateLabel(runLog.completedDate, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+
+        <dl className="workout-detail__facts">
+          <div>
+            <dt>Distance</dt>
+            <dd>{runLog.distanceMiles} mi</dd>
+          </div>
+          <div>
+            <dt>Duration</dt>
+            <dd>{formatDurationSeconds(runLog.durationSeconds)}</dd>
+          </div>
+          <div>
+            <dt>Effort</dt>
+            <dd>{EFFORT_LABEL[runLog.effort]}</dd>
+          </div>
+        </dl>
+
+        {runLog.notes && (
+          <p className="workout-detail__notes">{runLog.notes}</p>
+        )}
+
+        <div className="workout-detail__result">
+          <h3 className="workout-detail__result-title">
+            {workout ? "Scheduled workout" : "Extra run"}
+          </h3>
+          <p className="workout-detail__instructions">
+            {workout
+              ? `Week ${workout.weekNumber} · ${workout.title}`
+              : "This run was not on the plan. It earned a block and counts toward your miles."}
+          </p>
+        </div>
+
+        {onMoveBlock && (
+          <div className="workout-detail__actions">
+            <Button variant="secondary" onClick={onMoveBlock}>
+              Move Block
+            </Button>
+          </div>
+        )}
+      </div>
+    </Sheet>
+  );
+}

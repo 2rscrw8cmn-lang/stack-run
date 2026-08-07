@@ -6,6 +6,9 @@ export type WorkoutType =
   | "long"
   | "race";
 
+/** Every workout type that produces an actual run. Rest is never an activity. */
+export type RunActivityType = Exclude<WorkoutType, "rest">;
+
 export type Effort = "rough" | "solid" | "great";
 
 export interface Race {
@@ -55,10 +58,19 @@ export interface TrainingPlan {
   notes: string[];
 }
 
+/**
+ * One actual run. It may satisfy a scheduled workout or stand on its own: an
+ * extra run is a real activity that the plan never asked for, so it earns a
+ * block and counts miles without completing anything on the schedule.
+ */
 export interface RunLog {
   id: string;
-  workoutId: string;
+  /** Null means this was an extra run, with no scheduled workout behind it. */
+  workoutId: string | null;
+  /** The local date the run actually happened, which the user may edit. */
   completedDate: string;
+  /** What the run was. Prefilled from the workout when there is one. */
+  activityType: RunActivityType;
   distanceMiles: number;
   durationSeconds: number;
   effort: Effort;
@@ -82,7 +94,8 @@ export interface AppSettings {
  * it is a property of the workout — it is just not a property of the geometry.
  */
 export interface BlockPlacement {
-  workoutId: string;
+  /** The activity that earned this block, scheduled or extra. */
+  runLogId: string;
   /** 0-based course counted up from the ground, across the whole tower. */
   row: number;
   /** 1-based, inclusive. The block occupies `width` columns from here. */
@@ -93,12 +106,12 @@ export interface BlockPlacement {
    * block is earned: it decides how the block packs, and blocks come to rest
    * on it, so recomputing it later would re-pack the tower.
    */
-  height: 1 | 2 | 3 | 4;
+  height: 1 | 2 | 3;
   placedAt: string;
 }
 
 export interface AppState {
-  schemaVersion: 4;
+  schemaVersion: 5;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];

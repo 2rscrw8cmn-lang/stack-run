@@ -1,4 +1,4 @@
-import { earnsBlock, footprintForRun } from "../domain/build";
+import { footprintFor } from "../domain/footprint";
 import {
   assertPlacementFits,
   canMove,
@@ -61,21 +61,69 @@ export function saveAppState(state: AppState): void {
   localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(state));
 }
 
-/** Creates or updates the single log belonging to a scheduled workout. */
-export function saveRunLog(
+export type RunLogInput = Omit<RunLog, "id" | "createdAt" | "updatedAt"> & {
+  /** Set when editing an existing run; otherwise a new activity is created. */
+  id?: string;
+};
+
+/**
+ * A scheduled run is identified by its workout, so saving twice updates the
+ * one log that workout may have. An extra run has no such handle: it is
+ * identified by its own id, and saving without one records a new activity.
+ */
+function findExistingRunLog(
   state: AppState,
-  input: Omit<RunLog, "id" | "createdAt" | "updatedAt">,
-): AppState {
+  input: RunLogInput,
+): RunLog | undefined {
+  if (input.id) {
+    return state.runLogs.find((runLog) => runLog.id === input.id);
+  }
+  if (input.workoutId === null) {
+    return undefined;
+  }
+  return state.runLogs.find((runLog) => runLog.workoutId === input.workoutId);
+}
+
+/** Unique without a clock or a crypto dependency: extend until it is free. */
+function nextExtraRunId(state: AppState, completedDate: string): string {
+  const taken = new Set(state.runLogs.map((runLog) => runLog.id));
+  const base = `run-extra-${completedDate}`;
+  let candidate = base;
+  let suffix = 2;
+  while (taken.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+/**
+ * Creates or updates one actual run. A scheduled workout can hold at most one
+ * run; extra runs are independent activities and are never merged together.
+ */
+export function saveRunLog(state: AppState, input: RunLogInput): AppState {
   const now = new Date().toISOString();
-  const existing = state.runLogs.find(
-    (log) => log.workoutId === input.workoutId,
-  );
+  const existing = findExistingRunLog(state, input);
+  // The incoming id only selects which activity to update; the stored id is
+  // the existing one, or a freshly minted one below.
+  const values: Omit<RunLog, "id" | "createdAt" | "updatedAt"> = {
+    workoutId: input.workoutId,
+    completedDate: input.completedDate,
+    activityType: input.activityType,
+    distanceMiles: input.distanceMiles,
+    durationSeconds: input.durationSeconds,
+    effort: input.effort,
+    notes: input.notes,
+  };
 
   const runLog: RunLog = existing
-    ? { ...existing, ...input, updatedAt: now }
+    ? { ...existing, ...values, updatedAt: now }
     : {
-        ...input,
-        id: `run-${input.workoutId}`,
+        ...values,
+        id:
+          values.workoutId === null
+            ? nextExtraRunId(state, values.completedDate)
+            : `run-${values.workoutId}`,
         createdAt: now,
         updatedAt: now,
       };
@@ -83,9 +131,7 @@ export function saveRunLog(
   const next: AppState = {
     ...state,
     runLogs: existing
-      ? state.runLogs.map((log) =>
-          log.workoutId === input.workoutId ? runLog : log,
-        )
+      ? state.runLogs.map((log) => (log.id === existing.id ? runLog : log))
       : [...state.runLogs, runLog],
   };
 
@@ -94,7 +140,7 @@ export function saveRunLog(
 }
 
 /**
- * Creates or moves the single placement belonging to a workout's earned block.
+ * Creates or moves the single placement belonging to an activity's block.
  *
  * The footprint is recomputed here from the run and compared, so a caller
  * cannot store a block of its own choosing, and the position is checked
@@ -109,49 +155,26 @@ export function placeBlock(
   state: AppState,
   input: PlacementCandidate,
 ): AppState {
-  const workout = state.plan.weeks
-    .flatMap((week) => week.workouts)
-    .find((candidate) => candidate.id === input.workoutId);
-
-  if (!workout) {
-    throw new InvalidPlacementError(`Unknown workout: ${input.workoutId}`);
-  }
-  if (!earnsBlock(workout.type)) {
-    throw new InvalidPlacementError(
-      `A ${workout.type} workout earns no block.`,
-    );
-  }
-
   const runLog = state.runLogs.find(
-    (candidate) => candidate.workoutId === input.workoutId,
+    (candidate) => candidate.id === input.runLogId,
   );
   if (!runLog) {
-    throw new InvalidPlacementError(
-      `${input.workoutId} has no run log, so it has not earned a block.`,
-    );
+    throw new InvalidPlacementError(`Unknown run log: ${input.runLogId}`);
   }
 
-  const footprint = footprintForRun(
-    state.plan,
-    state.runLogs,
-    workout,
-    runLog,
-  );
-  if (
-    footprint.width !== input.width ||
-    footprint.height !== input.height
-  ) {
+  const footprint = footprintFor(runLog);
+  if (footprint.width !== input.width || footprint.height !== input.height) {
     throw new InvalidPlacementError(
-      `${input.workoutId} earns a ${footprint.width}x${footprint.height} block, not ${input.width}x${input.height}.`,
+      `${input.runLogId} earns a ${footprint.width}x${footprint.height} block, not ${input.width}x${input.height}.`,
     );
   }
 
   const existing = state.blockPlacements.some(
-    (candidate) => candidate.workoutId === input.workoutId,
+    (candidate) => candidate.runLogId === input.runLogId,
   );
-  if (existing && !canMove(state.blockPlacements, input.workoutId)) {
+  if (existing && !canMove(state.blockPlacements, input.runLogId)) {
     throw new InvalidPlacementError(
-      `${input.workoutId} has blocks resting on it and can no longer be moved.`,
+      `${input.runLogId} has blocks resting on it and can no longer be moved.`,
     );
   }
 
@@ -166,7 +189,7 @@ export function placeBlock(
     ...state,
     blockPlacements: existing
       ? state.blockPlacements.map((candidate) =>
-          candidate.workoutId === input.workoutId ? placement : candidate,
+          candidate.runLogId === input.runLogId ? placement : candidate,
         )
       : [...state.blockPlacements, placement],
   };

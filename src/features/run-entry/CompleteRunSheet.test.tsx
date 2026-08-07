@@ -9,10 +9,13 @@ const workout = loadSeedPlan().weeks[0].workouts.find(
   (item) => item.type !== "rest",
 )!;
 
+const TODAY = "2026-08-06";
+
 const runLog: RunLog = {
   id: "log-1",
   workoutId: workout.id,
   completedDate: "2026-08-04",
+  activityType: "easy",
   distanceMiles: 2.1,
   durationSeconds: 1230,
   effort: "solid",
@@ -33,6 +36,7 @@ describe("CompleteRunSheet", () => {
       <CompleteRunSheet
         isOpen
         workout={workout}
+        today={TODAY}
         onClose={vi.fn()}
         onSave={onSave}
       />,
@@ -53,6 +57,8 @@ describe("CompleteRunSheet", () => {
 
     await user.click(screen.getByRole("button", { name: "Save Run" }));
     expect(onSave).toHaveBeenCalledWith(workout, {
+      completedDate: workout.date,
+      activityType: workout.type,
       distanceMiles: 3.2,
       durationSeconds: 1902,
       effort: "great",
@@ -66,6 +72,7 @@ describe("CompleteRunSheet", () => {
       <CompleteRunSheet
         isOpen
         workout={workout}
+        today={TODAY}
         onClose={vi.fn()}
         onSave={vi.fn()}
       />,
@@ -84,6 +91,7 @@ describe("CompleteRunSheet", () => {
       <CompleteRunSheet
         isOpen
         workout={workout}
+        today={TODAY}
         runLog={runLog}
         onClose={vi.fn()}
         onSave={vi.fn()}
@@ -93,6 +101,7 @@ describe("CompleteRunSheet", () => {
     expect(
       screen.getByRole("heading", { name: "Edit Run" }),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Date/)).toHaveValue("2026-08-04");
     expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
     expect(screen.getByLabelText(/Duration/)).toHaveValue("20:30");
     expect(screen.getByRole("button", { name: "Solid" })).toHaveAttribute(
@@ -100,6 +109,91 @@ describe("CompleteRunSheet", () => {
       "true",
     );
     expect(screen.getByLabelText(/Notes/)).toHaveValue("Legs felt heavy");
+  });
+
+  it("dates a scheduled run by its workout and an extra run by today", () => {
+    const { unmount } = render(
+      <CompleteRunSheet
+        isOpen
+        workout={workout}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText(/Date/)).toHaveValue(workout.date);
+    expect(screen.getByLabelText(/Activity/)).toHaveValue(workout.type);
+    unmount();
+
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={null}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Date/)).toHaveValue(TODAY);
+    expect(screen.getByLabelText(/Activity/)).toHaveValue("easy");
+  });
+
+  it("saves an extra run with its own date and activity type", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={null}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText(/Date/));
+    await user.type(screen.getByLabelText(/Date/), "2026-08-05");
+    await user.selectOptions(screen.getByLabelText(/Activity/), "intervals");
+    await user.type(screen.getByLabelText(/Distance/), "5");
+    await user.type(screen.getByLabelText(/Duration/), "4000");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(onSave).toHaveBeenCalledWith(null, {
+      completedDate: "2026-08-05",
+      activityType: "intervals",
+      distanceMiles: 5,
+      durationSeconds: 2400,
+      effort: "solid",
+      notes: "",
+    });
+  });
+
+  it("refuses a run dated after today", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={null}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText(/Date/));
+    await user.type(screen.getByLabelText(/Date/), "2026-08-09");
+    await user.type(screen.getByLabelText(/Distance/), "3");
+    await user.type(screen.getByLabelText(/Duration/), "3000");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(
+      screen.getByText("A run cannot be logged in the future."),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("confirms before discarding an edited entry", async () => {
@@ -110,6 +204,7 @@ describe("CompleteRunSheet", () => {
       <CompleteRunSheet
         isOpen
         workout={workout}
+        today={TODAY}
         onClose={onClose}
         onSave={vi.fn()}
       />,
@@ -133,6 +228,7 @@ describe("CompleteRunSheet", () => {
       <CompleteRunSheet
         isOpen
         workout={workout}
+        today={TODAY}
         onClose={onClose}
         onSave={vi.fn()}
       />,

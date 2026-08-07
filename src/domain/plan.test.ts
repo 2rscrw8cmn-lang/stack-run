@@ -16,6 +16,7 @@ function runLogFor(workoutId: string, completedDate: string): RunLog {
     id: `log-${workoutId}`,
     workoutId,
     completedDate,
+    activityType: "easy",
     distanceMiles: 2.1,
     durationSeconds: 1230,
     effort: "solid",

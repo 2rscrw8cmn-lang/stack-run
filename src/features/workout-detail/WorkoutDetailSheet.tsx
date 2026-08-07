@@ -8,16 +8,13 @@ import {
 } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatDurationSeconds } from "../../domain/duration";
-import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
+import type { RunLog, Workout } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
 
 interface WorkoutDetailSheetProps {
   workout: Workout;
   state: BlockState;
   runLog?: RunLog | null;
-  placement?: BlockPlacement | null;
-  /** Provided only while the block's training week is still active. */
-  onMoveBlock?: () => void;
   /** Provided by Plan for a run whose day has arrived and that has no log yet. */
   onLogRun?: () => void;
   /** Provided by Plan for a completed run. */
@@ -27,16 +24,15 @@ interface WorkoutDetailSheetProps {
 }
 
 /**
- * Workout details, plus whatever the caller can actually do about them. Build
- * passes the placement and its move action; Plan passes logging and editing.
- * Editing the scheduled workout itself belongs to UI-6.
+ * What the plan asked for on one day, and what actually happened on it. The
+ * block a run earned belongs to the tower, so Build has its own activity-first
+ * sheet; this one is the schedule's side. Editing the scheduled workout itself
+ * belongs to UI-6.
  */
 export function WorkoutDetailSheet({
   workout,
   state,
   runLog,
-  placement,
-  onMoveBlock,
   onLogRun,
   onEditRun,
   isOpen,
@@ -96,31 +92,13 @@ export function WorkoutDetailSheet({
                 <dt>Effort</dt>
                 <dd>{EFFORT_LABEL[runLog.effort]}</dd>
               </div>
+              <div>
+                <dt>Logged for</dt>
+                <dd>{formatDateLabel(runLog.completedDate)}</dd>
+              </div>
             </dl>
             {runLog.notes && (
               <p className="workout-detail__notes">{runLog.notes}</p>
-            )}
-          </div>
-        )}
-
-        {placement && (
-          <div className="workout-detail__result">
-            <h3 className="workout-detail__result-title">Block</h3>
-            <p className="workout-detail__instructions">
-              {`Placed on course ${placement.row}, ${
-                placement.width === 1
-                  ? `column ${placement.columnStart}`
-                  : `columns ${placement.columnStart} through ${placement.columnStart + placement.width - 1}`
-              }.`}
-            </p>
-            {onMoveBlock ? (
-              <Button variant="secondary" onClick={onMoveBlock}>
-                Move Block
-              </Button>
-            ) : (
-              <p className="workout-detail__notes">
-                This week is finished, so its course is locked.
-              </p>
             )}
           </div>
         )}

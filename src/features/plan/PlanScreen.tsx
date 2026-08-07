@@ -19,7 +19,11 @@ interface PlanScreenProps {
   runLogs: RunLog[];
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
-  onSaveRun?: (workout: Workout, values: ValidRunEntry) => void;
+  onSaveRun?: (
+    workout: Workout | null,
+    values: ValidRunEntry,
+    runLogId?: string,
+  ) => void;
 }
 
 /**
@@ -138,14 +142,15 @@ export function PlanScreen({
           isOpen={isEntryOpen}
           workout={entryDay.workout}
           runLog={entryDay.runLog ?? undefined}
+          today={today}
           onClose={() => {
             setEntryOpen(false);
             setEntryWorkoutId(null);
           }}
           onSave={(workout, values) => {
             const wasLogged = entryDay.runLog !== null;
-            onSaveRun(workout, values);
-            const dateLabel = formatDateLabel(workout.date, {
+            onSaveRun(workout, values, entryDay.runLog?.id);
+            const dateLabel = formatDateLabel(values.completedDate, {
               weekday: "long",
               month: "long",
               day: "numeric",
@@ -153,7 +158,7 @@ export function PlanScreen({
             setSaveAnnouncement(
               wasLogged
                 ? `Run updated for ${dateLabel}.`
-                : `Run saved for ${dateLabel}. You earned ${earnedBlockPhrase(workout.type)}.`,
+                : `Run saved for ${dateLabel}. You earned ${earnedBlockPhrase(values.activityType)}.`,
             );
             setEntryOpen(false);
           }}

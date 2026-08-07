@@ -6,7 +6,7 @@ import { formatDateLabel } from "../../domain/dates";
 
 interface PendingBlocksTrayProps {
   blocks: EarnedBlock[];
-  onPlaceBlock: (workoutId: string) => void;
+  onPlaceBlock: (runLogId: string) => void;
 }
 
 /**
@@ -28,12 +28,12 @@ export function PendingBlocksTray({
       </p>
       <ul className="pending-tray__list" aria-label="Blocks ready to place">
         {blocks.map((block) => (
-          <li key={block.workout.id} className="pending-tray__item">
+          <li key={block.runLog.id} className="pending-tray__item">
             <span
               className="pending-tray__chip"
               style={
                 {
-                  "--piece-color": `var(--${block.workout.build.colorKey})`,
+                  "--piece-color": `var(--${block.runLog.activityType})`,
                   "--piece-span": block.footprint.width,
                   "--piece-height": block.footprint.height,
                 } as CSSProperties
@@ -42,17 +42,20 @@ export function PendingBlocksTray({
             />
             <div className="pending-tray__detail">
               <p className="pending-tray__type">
-                {WORKOUT_TYPE_LABEL[block.workout.type]}
+                {WORKOUT_TYPE_LABEL[block.runLog.activityType]}
+                {!block.workout && (
+                  <span className="pending-tray__extra">Extra</span>
+                )}
               </p>
               <p className="pending-tray__meta">
-                {formatDateLabel(block.workout.date)} ·{" "}
+                {formatDateLabel(block.runLog.completedDate)} ·{" "}
                 {block.runLog.distanceMiles} mi
               </p>
             </div>
             <Button
               variant="secondary"
-              aria-label={`Place ${WORKOUT_TYPE_LABEL[block.workout.type]} block from ${formatDateLabel(block.workout.date)}`}
-              onClick={() => onPlaceBlock(block.workout.id)}
+              aria-label={`Place ${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block from ${formatDateLabel(block.runLog.completedDate)}`}
+              onClick={() => onPlaceBlock(block.runLog.id)}
             >
               Place
             </Button>

@@ -1,14 +1,36 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { earnedBlockPhrase, findPlacementForWorkout } from "../../domain/build";
-import { daysBetweenLocalDates, formatDateLabel, todayLocalDate } from "../../domain/dates";
-import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../../domain/types";
+import {
+  earnedBlockPhrase,
+  findPlacementForRunLog,
+  selectBuildViewModel,
+} from "../../domain/build";
+import {
+  daysBetweenLocalDates,
+  formatDateLabel,
+  todayLocalDate,
+} from "../../domain/dates";
+import {
+  currentWeekNumber,
+  nextScheduledWorkout,
+  selectPlanWeekViewModel,
+} from "../../domain/plan";
+import type {
+  BlockPlacement,
+  RunLog,
+  TrainingPlan,
+  Workout,
+} from "../../domain/types";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { selectTodayViewModel } from "../../domain/workout";
+import { BuildPreview } from "./BuildPreview";
 import { CompletedRunSummary } from "./CompletedRunSummary";
-import { RaceSummaryCard } from "./RaceSummaryCard";
+import { NextWorkoutCard } from "./NextWorkoutCard";
+import { RaceContext } from "./RaceContext";
+import { ThisWeekStrip } from "./ThisWeekStrip";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
 
 interface TodayScreenProps {
@@ -18,12 +40,26 @@ interface TodayScreenProps {
   onViewPlan: () => void;
   onViewBuild?: () => void;
   /** Hands the earned block to Build, which is where placing happens. */
-  onStartPlacing?: (workoutId: string) => void;
+  onStartPlacing?: (runLogId: string) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
-  onSaveRun?: (workout: Workout, values: ValidRunEntry) => void;
+  onSaveRun?: (
+    workout: Workout | null,
+    values: ValidRunEntry,
+    runLogId?: string,
+  ) => void;
 }
 
+/** Which run the entry sheet is open for, and what it is about to write. */
+type Entry =
+  | { kind: "scheduled"; workout: Workout; runLog?: RunLog }
+  | { kind: "extra"; runLog?: RunLog };
+
+/**
+ * The daily dashboard. It answers, in order: what do I do today, how is the
+ * week going, what is next, did I run something the plan never asked for, and
+ * what have I built.
+ */
 export function TodayScreen({
   plan,
   runLogs,
@@ -34,39 +70,42 @@ export function TodayScreen({
   onStartPlacing = () => undefined,
   onSaveRun = () => undefined,
 }: TodayScreenProps) {
-  const [isSheetOpen, setSheetOpen] = useState(false);
+  const [entry, setEntry] = useState<Entry | null>(null);
+  const [isEntryOpen, setEntryOpen] = useState(false);
+  const [entryVisit, setEntryVisit] = useState(0);
   const [saveAnnouncement, setSaveAnnouncement] = useState("");
 
   const viewModel = selectTodayViewModel(plan, runLogs, today);
   const daysRemaining = daysBetweenLocalDates(today, plan.race.date);
-  const firstRun = plan.weeks
-    .flatMap((week) => week.workouts)
-    .find((workout) => workout.type !== "rest");
-  const firstRunLog = firstRun
-    ? runLogs.find((runLog) => runLog.workoutId === firstRun.id)
-    : undefined;
-  const editable =
-    viewModel.kind === "run" || viewModel.kind === "completed"
-      ? { workout: viewModel.workout, runLog: viewModel.kind === "completed" ? viewModel.runLog : undefined }
-      : viewModel.kind === "before-plan" && firstRun
-        ? { workout: firstRun, runLog: firstRunLog }
-        : null;
+  const week = selectPlanWeekViewModel(
+    plan,
+    runLogs,
+    currentWeekNumber(plan, today),
+    today,
+  );
+  const next = nextScheduledWorkout(plan, today);
+  const build = selectBuildViewModel(plan, runLogs, blockPlacements, today);
 
-  // The completed run on screen, whichever state produced it.
+  // The completed run on screen, if today's scheduled workout has been logged.
   const completed =
     viewModel.kind === "completed"
       ? { workout: viewModel.workout, runLog: viewModel.runLog }
-      : viewModel.kind === "before-plan" && firstRun && firstRunLog
-        ? { workout: firstRun, runLog: firstRunLog }
-        : null;
+      : null;
   const completedPlacement = completed
-    ? (findPlacementForWorkout(blockPlacements, completed.workout.id) ?? null)
+    ? (findPlacementForRunLog(blockPlacements, completed.runLog.id) ?? null)
     : null;
+
+  function openEntry(next: Entry) {
+    setEntry(next);
+    setEntryVisit((visit) => visit + 1);
+    setEntryOpen(true);
+  }
+
   return (
     <div className="today-screen">
-      <RaceSummaryCard race={plan.race} daysRemaining={daysRemaining} />
+      <RaceContext race={plan.race} daysRemaining={daysRemaining} />
 
-      {viewModel.kind === "before-plan" && !firstRunLog && (
+      {viewModel.kind === "before-plan" && (
         <Card className="today-workout-card">
           <p className="today-workout-card__eyebrow">Plan starts soon</p>
           <p className="today-workout-card__title">
@@ -77,12 +116,10 @@ export function TodayScreen({
               year: "numeric",
             })}
           </p>
-          <div className="today-workout-card__actions">
-            <Button onClick={() => setSheetOpen(true)}>Log First Run</Button>
-            <Button variant="secondary" onClick={onViewPlan}>
-              View Plan
-            </Button>
-          </div>
+          <p className="today-workout-card__details">
+            Nothing is scheduled yet. Anything you run before then is an extra
+            run, and it still earns a block.
+          </p>
         </Card>
       )}
 
@@ -99,8 +136,9 @@ export function TodayScreen({
       {(viewModel.kind === "rest" || viewModel.kind === "run") && (
         <TodayWorkoutCard
           workout={viewModel.workout}
-          onMarkComplete={() => setSheetOpen(true)}
-          onViewPlan={onViewPlan}
+          onMarkComplete={() =>
+            openEntry({ kind: "scheduled", workout: viewModel.workout })
+          }
         />
       )}
 
@@ -109,33 +147,64 @@ export function TodayScreen({
           workout={completed.workout}
           runLog={completed.runLog}
           placement={completedPlacement}
-          onEditRun={() => setSheetOpen(true)}
-          onPlaceBlock={() => onStartPlacing(completed.workout.id)}
+          onEditRun={() =>
+            openEntry({
+              kind: "scheduled",
+              workout: completed.workout,
+              runLog: completed.runLog,
+            })
+          }
+          onPlaceBlock={() => onStartPlacing(completed.runLog.id)}
           onViewBuild={onViewBuild}
         />
       )}
+
+      <ThisWeekStrip week={week} onViewPlan={onViewPlan} />
+
+      {next && <NextWorkoutCard workout={next} />}
+
+      <Button
+        variant="secondary"
+        className="today-screen__log-extra"
+        icon={<Plus size={18} strokeWidth={2} />}
+        onClick={() => openEntry({ kind: "extra" })}
+      >
+        Log Run
+      </Button>
+
+      <BuildPreview
+        blocks={build.blocks}
+        pendingBlocks={build.pendingBlocks}
+        onViewBuild={onViewBuild}
+      />
 
       <p className="visually-hidden" aria-live="polite">
         {saveAnnouncement}
       </p>
 
-      {editable && (
+      {entry && (
         <CompleteRunSheet
-          key={editable.runLog?.updatedAt ?? "new"}
-          isOpen={isSheetOpen}
-          workout={editable.workout}
-          runLog={editable.runLog}
-          onClose={() => setSheetOpen(false)}
+          key={entryVisit}
+          isOpen={isEntryOpen}
+          workout={entry.kind === "scheduled" ? entry.workout : null}
+          runLog={entry.runLog}
+          today={today}
+          onClose={() => {
+            setEntryOpen(false);
+            setEntry(null);
+          }}
           onSave={(workout, values) => {
-            onSaveRun(workout, values);
+            const wasLogged = entry.runLog !== undefined;
+            onSaveRun(workout, values, entry.runLog?.id);
             setSaveAnnouncement(
-              `Run saved. You earned ${earnedBlockPhrase(workout.type)}.`,
+              wasLogged
+                ? "Run updated."
+                : `Run saved. You earned ${earnedBlockPhrase(values.activityType)}.`,
             );
-            setSheetOpen(false);
+            setEntryOpen(false);
           }}
         />
       )}
-
     </div>
   );
 }

@@ -6,7 +6,7 @@ import {
   earnedBlockPhrase,
   WORKOUT_TYPE_LABEL,
 } from "../../domain/build";
-import { widthForMiles } from "../../domain/footprint";
+import { footprintFor } from "../../domain/footprint";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
@@ -33,8 +33,8 @@ export function CompletedRunSummary({
   onPlaceBlock,
   onViewBuild,
 }: CompletedRunSummaryProps) {
-  const typeLabel = WORKOUT_TYPE_LABEL[workout.type];
-  const width = runLog ? widthForMiles(runLog.distanceMiles) : 1;
+  const typeLabel = WORKOUT_TYPE_LABEL[runLog.activityType];
+  const { width, height } = footprintFor(runLog);
 
   return (
     <Card className="today-workout-card">
@@ -63,16 +63,17 @@ export function CompletedRunSummary({
           className="earned-block__chip"
           style={
             {
-              "--piece-color": `var(--${workout.build.colorKey})`,
+              "--piece-color": `var(--${runLog.activityType})`,
               "--piece-span": width,
+              "--piece-height": height,
             } as CSSProperties
           }
           aria-hidden="true"
         />
         <p className="earned-block__text">
           {placement
-            ? `Your ${typeLabel} block is built into course ${placement.row} of the tower.`
-            : `You earned ${earnedBlockPhrase(workout.type)}.`}
+            ? `Your ${typeLabel} block is built into the tower.`
+            : `You earned ${earnedBlockPhrase(runLog.activityType)}.`}
         </p>
       </div>
 

@@ -1,5 +1,10 @@
-import { activeWeekNumber, blockStateFor, earnsBlock } from "./build";
-import { compareLocalDates, formatDateLabel } from "./dates";
+import { activeWeekNumber, blockStateFor, earnsBlock, scheduledRuns } from "./build";
+import {
+  compareLocalDates,
+  formatDateLabel,
+  isAfterLocalDate,
+  isBeforeLocalDate,
+} from "./dates";
 import type { RunLog, TrainingPlan, TrainingWeek, Workout } from "./types";
 
 /**
@@ -41,6 +46,8 @@ export interface PlanWeekViewModel {
   days: PlanDay[];
   completedRuns: number;
   scheduledRuns: number;
+  /** Runs the plan never asked for, logged inside this week's dates. */
+  extraRuns: number;
   isCurrentWeek: boolean;
   hasPreviousWeek: boolean;
   hasNextWeek: boolean;
@@ -74,6 +81,32 @@ export function findWeek(
  */
 export function currentWeekNumber(plan: TrainingPlan, today: string): number {
   return activeWeekNumber(plan, today);
+}
+
+/** The next scheduled run after today, or null once the race has passed. */
+export function nextScheduledWorkout(
+  plan: TrainingPlan,
+  today: string,
+): Workout | null {
+  return (
+    scheduledRuns(plan).find((workout) =>
+      isAfterLocalDate(workout.date, today),
+    ) ?? null
+  );
+}
+
+/** Extra runs dated inside a date range, inclusive of both ends. */
+export function extraRunsBetween(
+  runLogs: RunLog[],
+  startDate: string,
+  endDate: string,
+): RunLog[] {
+  return runLogs.filter(
+    (runLog) =>
+      runLog.workoutId === null &&
+      !isBeforeLocalDate(runLog.completedDate, startDate) &&
+      !isAfterLocalDate(runLog.completedDate, endDate),
+  );
 }
 
 export function formatWeekRange(startDate: string, endDate: string): string {
@@ -132,6 +165,7 @@ export function selectPlanWeekViewModel(
     days,
     completedRuns: runDays.filter((day) => day.status === "completed").length,
     scheduledRuns: runDays.length,
+    extraRuns: extraRunsBetween(runLogs, week.startDate, week.endDate).length,
     isCurrentWeek: week.weekNumber === currentWeekNumber(plan, today),
     hasPreviousWeek: week.weekNumber > first,
     hasNextWeek: week.weekNumber < last,

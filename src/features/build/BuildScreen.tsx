@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   earnedBlocks,
-  findPlacementForWorkout,
+  findPlacementForRunLog,
   selectBuildViewModel,
 } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
@@ -11,7 +11,7 @@ import {
   type PlacementOption,
 } from "../../domain/placement";
 import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
-import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
+import { BlockDetailSheet } from "./BlockDetailSheet";
 import { BuildLegend } from "./BuildLegend";
 import { BuildMetrics } from "./BuildMetrics";
 import { BuiltStructure } from "./BuiltStructure";
@@ -20,11 +20,11 @@ import { describeCandidate } from "./describeCandidate";
 import { PlacementBar } from "./PlacementBar";
 
 export interface PlacementRequest {
-  workoutId: string;
+  runLogId: string;
   row: number;
   columnStart: number;
   width: 1 | 2 | 3 | 4;
-  height: 1 | 2 | 3 | 4;
+  height: 1 | 2 | 3;
 }
 
 interface BuildScreenProps {
@@ -33,8 +33,8 @@ interface BuildScreenProps {
   blockPlacements: BlockPlacement[];
   onPlaceBlock: (request: PlacementRequest) => void;
   /** The block the user came here to place, if any. */
-  placingWorkoutId?: string | null;
-  onPlacingChange?: (workoutId: string | null) => void;
+  placingRunLogId?: string | null;
+  onPlacingChange?: (runLogId: string | null) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
 }
@@ -44,24 +44,25 @@ export function BuildScreen({
   runLogs,
   blockPlacements,
   onPlaceBlock,
-  placingWorkoutId = null,
+  placingRunLogId = null,
   onPlacingChange = () => undefined,
   today = todayLocalDate(),
 }: BuildScreenProps) {
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
-  const [detailWorkoutId, setDetailWorkoutId] = useState<string | null>(null);
+  const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
+  const [isDetailOpen, setDetailOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
   const viewModel = selectBuildViewModel(plan, runLogs, blockPlacements, today);
   const allEarned = earnedBlocks(plan, runLogs);
 
   const placingBlock =
-    allEarned.find((block) => block.workout.id === placingWorkoutId) ?? null;
+    allEarned.find((block) => block.runLog.id === placingRunLogId) ?? null;
 
   // A block being moved does not block its own new position.
   const others = placingBlock
     ? blockPlacements.filter(
-        (placement) => placement.workoutId !== placingBlock.workout.id,
+        (placement) => placement.runLogId !== placingBlock.runLog.id,
       )
     : blockPlacements;
   const options = placingBlock
@@ -87,15 +88,7 @@ export function BuildScreen({
     : -1;
 
   const detailBlock =
-    viewModel.blocks.find((block) => block.workout.id === detailWorkoutId) ??
-    null;
-  const detailRunLog = detailBlock
-    ? (runLogs.find((runLog) => runLog.workoutId === detailBlock.workout.id) ??
-      null)
-    : null;
-  // Only the most recently placed block can still be moved: with continuous
-  // stacking, anything older has blocks resting on it.
-  const canMoveDetailBlock = detailBlock?.canMove ?? false;
+    viewModel.blocks.find((block) => block.runLog.id === detailRunLogId) ?? null;
 
   function choose(option: PlacementOption) {
     setCandidateColumn(String(option.columnStart));
@@ -113,7 +106,7 @@ export function BuildScreen({
       return;
     }
     onPlaceBlock({
-      workoutId: placingBlock.workout.id,
+      runLogId: placingBlock.runLog.id,
       row: candidate.row,
       columnStart: candidate.columnStart,
       width: placingBlock.footprint.width,
@@ -125,10 +118,11 @@ export function BuildScreen({
     stopPlacing();
   }
 
-  function startPlacing(workoutId: string) {
+  function startPlacing(runLogId: string) {
     setCandidateColumn(null);
-    setDetailWorkoutId(null);
-    onPlacingChange(workoutId);
+    setDetailOpen(false);
+    setDetailRunLogId(null);
+    onPlacingChange(runLogId);
   }
 
   function stopPlacing() {
@@ -149,10 +143,10 @@ export function BuildScreen({
       <BuiltStructure
         blocks={viewModel.blocks}
         courses={viewModel.courses}
-        mortar={viewModel.mortar}
-        projectedCourses={viewModel.projectedCourses}
-        phaseBands={viewModel.phaseBands}
-        onSelectWorkout={setDetailWorkoutId}
+        onSelectBlock={(runLogId) => {
+          setDetailRunLogId(runLogId);
+          setDetailOpen(true);
+        }}
         placing={
           placingBlock
             ? { block: placingBlock, options, candidate, onChoose: choose }
@@ -169,7 +163,7 @@ export function BuildScreen({
         <PlacementBar
           block={placingBlock}
           isMove={
-            findPlacementForWorkout(blockPlacements, placingBlock.workout.id) !==
+            findPlacementForRunLog(blockPlacements, placingBlock.runLog.id) !==
             undefined
           }
           candidate={candidate}
@@ -190,18 +184,18 @@ export function BuildScreen({
       )}
 
       {detailBlock && (
-        <WorkoutDetailSheet
-          workout={detailBlock.workout}
-          state="completed"
-          runLog={detailRunLog}
-          placement={detailBlock.placement}
+        <BlockDetailSheet
+          block={detailBlock}
           onMoveBlock={
-            canMoveDetailBlock
-              ? () => startPlacing(detailBlock.workout.id)
+            detailBlock.canMove
+              ? () => startPlacing(detailBlock.runLog.id)
               : undefined
           }
-          isOpen
-          onClose={() => setDetailWorkoutId(null)}
+          isOpen={isDetailOpen}
+          onClose={() => {
+            setDetailOpen(false);
+            setDetailRunLogId(null);
+          }}
         />
       )}
     </div>
