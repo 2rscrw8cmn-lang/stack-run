@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InvalidPlacementError } from "../domain/placement";
+import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement";
 import {
+  deleteRunLog,
   loadAppState,
   placeBlock,
   resetAppState,
@@ -166,6 +167,83 @@ describe("loadAppState", () => {
     );
     expect(backupKeys).toHaveLength(1);
     expect(localStorage.getItem(backupKeys[0])).toBe("{not valid json");
+  });
+});
+
+describe("deleteRunLog", () => {
+  it("removes the run and persists the removal", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = deleteRunLog(state, "run-workout-002");
+
+    expect(state.runLogs).toEqual([]);
+    expect(loadAppState().runLogs).toEqual([]);
+  });
+
+  it("takes the block it earned out of the tower with it", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = placeBlock(state, {
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 3,
+      width: 1,
+      height: 1,
+    });
+
+    state = deleteRunLog(state, "run-workout-002");
+    expect(state.blockPlacements).toEqual([]);
+    expect(loadAppState().blockPlacements).toEqual([]);
+  });
+
+  it("re-settles the tower so nothing is left floating over the hole", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = saveRunLog(state, { ...scheduledRun, workoutId: "workout-004" });
+    state = saveRunLog(state, { ...scheduledRun, workoutId: "workout-006" });
+    state = placeBlock(state, {
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+    state = placeBlock(state, {
+      runLogId: "run-workout-004",
+      row: 1,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+    state = placeBlock(state, {
+      runLogId: "run-workout-006",
+      row: 2,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+
+    // Pull the bottom block out from under the other two.
+    state = deleteRunLog(state, "run-workout-002");
+
+    expect(state.blockPlacements).toHaveLength(2);
+    // Every remaining block still rests on something.
+    const ground = state.blockPlacements.filter((p) => p.row === 0);
+    expect(ground.length).toBeGreaterThan(0);
+    expect(Math.max(...state.blockPlacements.map(topOf))).toBe(
+      Math.max(...skylineOf(state.blockPlacements)),
+    );
+  });
+
+  it("leaves other runs and their blocks alone", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = saveRunLog(state, extraRun);
+    const extraId = state.runLogs[1].id;
+
+    state = deleteRunLog(state, "run-workout-002");
+    expect(state.runLogs.map((runLog) => runLog.id)).toEqual([extraId]);
+  });
+
+  it("ignores an id that is not there", () => {
+    const state = saveRunLog(loadAppState(), scheduledRun);
+    expect(deleteRunLog(state, "run-nothing")).toBe(state);
   });
 });
 

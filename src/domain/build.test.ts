@@ -233,12 +233,74 @@ describe("selectBuildViewModel", () => {
     );
 
     // Another block abuts the first on its right, and one rests on top of it.
-    expect(byId.get("run-workout-002")!.showRightFace).toBe(false);
-    expect(byId.get("run-workout-002")!.showTopFace).toBe(false);
+    expect(byId.get("run-workout-002")!.rightFace).toEqual([false]);
+    expect(byId.get("run-workout-002")!.topFace).toEqual([false]);
     // The second has open air to its right and above.
-    expect(byId.get("run-workout-004")!.showRightFace).toBe(true);
-    expect(byId.get("run-workout-004")!.showTopFace).toBe(true);
-    expect(byId.get("run-workout-006")!.showTopFace).toBe(true);
+    expect(byId.get("run-workout-004")!.rightFace).toEqual([true]);
+    expect(byId.get("run-workout-004")!.topFace).toEqual([true]);
+    expect(byId.get("run-workout-006")!.topFace).toEqual([true]);
+  });
+
+  it("cuts a face off where a neighbour covers only part of an edge", () => {
+    // A three-wide block with a one-wide block resting on its middle column,
+    // and a one-course block abutting the bottom half of its right side.
+    const viewModel = selectBuildViewModel(
+      plan,
+      [
+        runLogFor("workout-060", { distanceMiles: 5.4 }),
+        runLogFor("workout-002"),
+        runLogFor("workout-004"),
+      ],
+      [
+        placementFor("run-workout-060", 1, 3, "2026-08-04T13:00:00.000Z", 0, 2),
+        placementFor("run-workout-002", 2, 1, "2026-08-05T13:00:00.000Z", 2),
+        placementFor("run-workout-004", 4, 1, "2026-08-06T13:00:00.000Z"),
+      ],
+      "2026-08-09",
+    );
+
+    const wide = viewModel.blocks.find(
+      (block) => block.runLog.id === "run-workout-060",
+    )!;
+
+    // Covered over its middle column only, and abutted over its lower course
+    // only: an all-or-nothing face would draw a sliver out from under both.
+    expect(wide.topFace).toEqual([true, false, true]);
+    expect(wide.rightFace).toEqual([false, true]);
+  });
+
+  it("reports the openings the tower spans, so nothing reads as floating", () => {
+    // A wide block bridging two one-wide blocks leaves a cell under its middle.
+    const viewModel = selectBuildViewModel(
+      plan,
+      [
+        runLogFor("workout-002"),
+        runLogFor("workout-004"),
+        runLogFor("workout-007", { distanceMiles: 9 }),
+      ],
+      [
+        placementFor("run-workout-002", 1, 1),
+        placementFor("run-workout-004", 4, 1, "2026-08-05T13:00:00.000Z"),
+        placementFor("run-workout-007", 1, 4, "2026-08-06T13:00:00.000Z", 1),
+      ],
+      "2026-08-09",
+    );
+
+    expect(viewModel.voids).toEqual([
+      { row: 0, column: 2 },
+      { row: 0, column: 3 },
+    ]);
+  });
+
+  it("has no openings in a tower with nothing bridged", () => {
+    const viewModel = selectBuildViewModel(
+      plan,
+      [runLogFor("workout-002")],
+      [placementFor("run-workout-002", 1, 1)],
+      "2026-08-09",
+    );
+
+    expect(viewModel.voids).toEqual([]);
   });
 
   it("lists completed but unplaced runs as pending blocks, oldest first", () => {

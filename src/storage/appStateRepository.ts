@@ -3,6 +3,7 @@ import {
   assertPlacementFits,
   canMove,
   InvalidPlacementError,
+  repackPlacements,
   type PlacementCandidate,
 } from "../domain/placement";
 import type { AppState, BlockPlacement, RunLog } from "../domain/types";
@@ -192,6 +193,39 @@ export function placeBlock(
           candidate.runLogId === input.runLogId ? placement : candidate,
         )
       : [...state.blockPlacements, placement],
+  };
+
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Removes one recorded activity, and the block it earned with it.
+ *
+ * A run entered by mistake has to be removable, and a block whose run no
+ * longer exists cannot stand in the tower. Pulling a placement out from the
+ * middle would leave everything above it floating, so the remaining blocks are
+ * replayed through the packer in the order they were built: every block the
+ * user placed is still placed, and the tower settles into a valid shape.
+ */
+export function deleteRunLog(state: AppState, runLogId: string): AppState {
+  const runLogs = state.runLogs.filter((runLog) => runLog.id !== runLogId);
+  if (runLogs.length === state.runLogs.length) {
+    return state;
+  }
+
+  const wasPlaced = state.blockPlacements.some(
+    (placement) => placement.runLogId === runLogId,
+  );
+  const remaining = state.blockPlacements.filter(
+    (placement) => placement.runLogId !== runLogId,
+  );
+
+  const next: AppState = {
+    ...state,
+    runLogs,
+    // Only re-settle when a hole was actually made in the tower.
+    blockPlacements: wasPlaced ? repackPlacements(remaining) : remaining,
   };
 
   saveAppState(next);

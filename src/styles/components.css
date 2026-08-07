@@ -140,6 +140,7 @@
 /* FormField */
 
 .form-field {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -230,8 +231,11 @@
 /* Only the body scrolls, so the header and a sticky action stay reachable. */
 .sheet__body {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  /* Nothing in a form sheet is ever worth panning sideways for. */
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
@@ -638,6 +642,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
+}
+
+/* Native date pickers otherwise centre their text and size themselves. */
+.run-input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
+}
+
+.complete-run-form__lede {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .complete-run-form .form-field__label,
@@ -651,7 +669,12 @@
 }
 
 .run-input {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  /* Native date and select controls carry an intrinsic width wider than a
+     narrow panel; without this they push the sheet sideways on iOS. */
+  min-width: 0;
   min-height: 48px;
   padding: var(--space-3);
   border: 1px solid var(--border-strong);
@@ -729,11 +752,22 @@ textarea.run-input {
  * Keeps Save Run in reach on a short viewport instead of stranding it below the
  * fold of the sheet body.
  */
+/* The sticky action sits over the scrolling body, so the last field needs
+   room to clear it rather than ending underneath. */
 .complete-run-form__actions {
   position: sticky;
   bottom: 0;
-  padding-top: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-1);
+  border-top: 1px solid var(--border);
   background: var(--surface);
+}
+
+.complete-run-form__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .complete-run-form__actions .button {
@@ -806,7 +840,7 @@ textarea.run-input {
   flex-direction: column;
   gap: var(--space-2);
   /* Ten columns across whatever the tower is given, so a course is short. */
-  --course-height: 20px;
+  --course-height: 26px;
   /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
   --iso-run: 16px;
   --iso-rise: 8px;
@@ -874,6 +908,21 @@ textarea.run-input {
 .build-site__skyline {
   height: 1px;
   scroll-margin-block: 45vh;
+}
+
+/*
+ * An opening the tower spans. Drawn recessed, so the block above it reads as
+ * bridging a gap rather than floating over one.
+ */
+.built-tower__void {
+  z-index: 0;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.55),
+    rgba(0, 0, 0, 0.28)
+  );
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.55);
 }
 
 /*
@@ -962,6 +1011,10 @@ textarea.run-input {
   top: calc(-1 * var(--iso-rise));
   bottom: auto;
   height: var(--iso-rise);
+  /* One column of the brick's top, so the face ends where a neighbour rests. */
+  left: calc(var(--face-offset) / var(--face-cells) * 100%);
+  right: auto;
+  width: calc(100% / var(--face-cells));
   transform-origin: bottom left;
   transform: skewX(-63.435deg);
   background: color-mix(in srgb, var(--piece-color) 62%, white);
@@ -977,6 +1030,10 @@ textarea.run-input {
   left: 100%;
   right: auto;
   width: var(--iso-run);
+  /* One course of the brick's side, counted from the bottom up. */
+  top: auto;
+  bottom: calc(var(--face-offset) / var(--face-cells) * 100%);
+  height: calc(100% / var(--face-cells));
   transform-origin: 0 0;
   transform: skewY(-26.565deg);
   background: color-mix(in srgb, var(--piece-color) 58%, black);
@@ -1230,6 +1287,12 @@ textarea.run-input {
 .pending-tray__detail {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .pending-tray__type {
@@ -1462,54 +1525,6 @@ textarea.run-input {
 }
 
 /* Dev-only data panel (never present in a production build) */
-
-.build-legend {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.build-legend__title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
-.build-legend__items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.build-legend__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.build-legend__swatch {
-  --piece-color: var(--text-muted);
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: var(--piece-color);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--piece-color) 86%, white),
-    var(--piece-color)
-  );
-}
 
 /* Workout detail */
 

@@ -65,18 +65,39 @@ The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagr
 
 ## Build — the tower, and less of everything else
 
-`src/domain/placement.ts` keeps the skyline/gravity rules unchanged but now runs on **eight** columns and identifies a placement by `runLogId`. At 320px a width-1 landing slot measures 96×40 in the isometric grid, comfortably clear of the 24px target-size floor the ten-column grid missed.
+`src/domain/placement.ts` keeps the skyline/gravity rules unchanged but now runs on **eight** columns and identifies a placement by `runLogId`. At 320px a width-1 landing slot measures 96×52 in the isometric grid, comfortably clear of the 24px target-size floor the ten-column grid missed.
 
 `src/features/build/`:
 
-- `BuildMetrics`, `PendingBlocksTray`, `BuiltStructure`, `PlacedBlock`, `LandingSlot`, `PlacementBar`, `BuildLegend` are kept.
+- `BuildMetrics`, `PendingBlocksTray`, `BuiltStructure`, `PlacedBlock`, `LandingSlot`, and `PlacementBar` are kept. **The legend is deleted**: five colours are learnable from the blocks and their detail sheets, and the tower is what the screen is for.
 - The projected-height shaft, capstone, summit readout, phase gauge, week mortar lines, and the `N of about M courses` scale readout are removed. `BuiltStructure` now shows the tower, the ground, a plain sky, and a block count.
 - `BlockDetailSheet` replaces the workout-detail sheet on Build: it opens the **run** behind a block (date, distance, duration, effort, notes), shows the scheduled workout as context when there is one, says "Extra run" when there is not, and offers `Move Block` on the newest placement only.
 - The pending tray and the tower read type, colour, and date from the activity, so an extra run behaves exactly like a scheduled one and is tagged `Extra` in the tray.
 
+### Two rendering fixes the first pass got wrong
+
+- **Faces are culled per grid cell, not per block.** A three-wide brick with another resting on one of its columns used to draw its whole top face, so a sliver of it appeared from under its neighbour; the same happened along a side that was only partly abutted. `PlacedBlock.topFace` and `.rightFace` are now one flag per cell along each edge, and `PlacedBlock` renders a segment per flag. Each segment carries the same shear, so they tile seamlessly into the face they replace.
+- **Openings are drawn.** The landing rule lets a wide block bridge a dip in the skyline, which is deliberate — `docs/BUILD_CONCEPT.md` calls them arches — but nothing drew the gap, so the block read as floating in mid-air. `BuildViewModel.voids` lists every empty cell with tower above it, and `BuiltStructure` draws each as a recessed opening.
+- Courses are 26px rather than 20px, because eight columns made the bricks wide enough that 20px read as slabs.
+
 ### Placement is tactile without becoming a game
 
 Per D-024 the chosen landing slot is draggable: `BuiltStructure.dragToColumn` maps pointer x to a column against the tower's own bounding box and snaps to the nearest **valid** option, which is the same list tapping and the steppers walk. `LandingSlot` captures the pointer when the browser supports it and only tracks movement while a button or finger is down. `Drop` still commits, `Auto Place` is still the deterministic escape hatch, and tests cover drag, non-drag pointer movement, and tap plus keyboard placement side by side.
+
+## Deleting a run
+
+Added at the product owner's request during review; it is not in `CORE_LOOP_REVISION.md`.
+
+`deleteRunLog` in the repository removes one activity and the block it earned. Pulling a placement out of the middle of the tower would leave everything above it floating, so the remaining placements are replayed through the packer in the order they were built: every block the user placed is still placed, and the tower settles into a valid shape. Deleting a run that was never placed touches no placement at all.
+
+`Delete Run` lives in the run form beside the values it would discard, is offered only for a run that has been saved, and confirms first. Every recorded run is reachable from it:
+
+- today's scheduled run, from Today's `Edit Run`;
+- any scheduled run, from Plan's detail sheet;
+- any run behind a placed block, from Build's block detail (`Edit Run`);
+- any run still waiting in `Blocks Ready`, by tapping the row itself.
+
+The last two are how an **extra run** gets corrected or removed: Plan lists scheduled days and cannot show one.
 
 ## Plan — unchanged in behavior
 
@@ -110,15 +131,18 @@ Not implemented, and deferred to UI-6: editing a planned workout, moving one, ad
 - `src/features/today/TodayScreen.test.tsx` — the whole dashboard: race line, week strip, extra chip, Next, `+ Log Run`, and the build preview.
 - `src/features/build/BuildScreen.test.tsx` — eight-column slots, the removed engineering UI, the run-first detail sheet, extra runs in the tray, and the drag layer.
 - `src/app/App.test.tsx` — an extra run end to end through real storage, and a stored schema-4 state migrating without losing the run or its block.
+- `deleteRunLog` — removal, the block leaving the tower with it, the tower re-settling after a block is pulled from underneath, and a no-op for an unknown id. Today and Build cover the confirmation, the decline, and the absence of delete on an unsaved entry.
+- Per-cell face culling, including an edge covered over only part of its length, and the openings a bridging block spans.
 
 ## Known limitations
 
 1. Plan editing is still not implemented (UI-6).
 2. A block can only be moved while it is the newest placement; there is still no way to remove one.
 3. The activity type is editable for a scheduled run as well as an extra one. The UX spec says "prefilled from scheduled workout otherwise", and one editable field for both modes was the smaller implementation; a scheduled run that was actually intervals therefore earns an intervals block.
-4. `Log Run` from Today always creates a new activity. Editing an extra run is possible through the repository (`saveRunLog` with an id) but Today only surfaces editing for the scheduled run; extra runs have no list to edit them from yet.
+4. `Log Run` from Today always creates a new activity; extra runs are edited and deleted from Build, which is the only screen that lists them. There is still no chronological list of activities.
 5. The tower's stage keeps a fixed sky above the blocks, so a two-block tower sits under some empty space. That is scenery, not a projection.
 6. `DevDataPanel` remains in the repository as dev-only scaffolding; UI-7 owns deleting it.
+7. The run form's Date field is a native `input[type="date"]`. Its intrinsic width is wider than a 320px sheet on iOS, which used to push the sheet sideways; it is now pinned with `min-width: 0`, `max-width: 100%`, and `-webkit-appearance: none`, with `overflow-x: hidden` on the sheet body as a backstop. There is no iOS Safari in this environment, so that combination is reasoned rather than measured here — worth a look on the phone.
 
 ## Update rule
 

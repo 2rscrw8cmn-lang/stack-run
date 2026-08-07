@@ -18,6 +18,8 @@ interface AppShellProps {
     values: ValidRunEntry,
     runLogId?: string,
   ) => void;
+  /** Removes one recorded run, and the block it earned with it. */
+  onDeleteRun: (runLogId: string) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
   /** The earned block Build is currently holding, identified by its run log. */
   placingRunLogId: string | null;
@@ -31,6 +33,7 @@ export function AppShell({
   runLogs,
   blockPlacements,
   onSaveRun,
+  onDeleteRun,
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
@@ -54,6 +57,7 @@ export function AppShell({
               onTabChange("build");
             }}
             onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
           />
         )}
         {activeTab === "build" && (
@@ -61,13 +65,20 @@ export function AppShell({
             plan={plan}
             runLogs={runLogs}
             blockPlacements={blockPlacements}
+            onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
             onPlaceBlock={onPlaceBlock}
             placingRunLogId={placingRunLogId}
             onPlacingChange={onPlacingChange}
           />
         )}
         {activeTab === "plan" && (
-          <PlanScreen plan={plan} runLogs={runLogs} onSaveRun={onSaveRun} />
+          <PlanScreen
+            plan={plan}
+            runLogs={runLogs}
+            onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
+          />
         )}
       </main>
       <nav className="app-shell__nav" aria-label="Primary">

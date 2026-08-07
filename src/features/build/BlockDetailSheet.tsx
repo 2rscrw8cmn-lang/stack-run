@@ -9,6 +9,8 @@ interface BlockDetailSheetProps {
   block: PlacedBlock;
   /** Provided only while this block is still the one that can be moved. */
   onMoveBlock?: () => void;
+  /** Opens the run behind the block for correction or removal. */
+  onEditRun?: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -21,6 +23,7 @@ interface BlockDetailSheetProps {
 export function BlockDetailSheet({
   block,
   onMoveBlock,
+  onEditRun,
   isOpen,
   onClose,
 }: BlockDetailSheetProps) {
@@ -71,11 +74,18 @@ export function BlockDetailSheet({
           </p>
         </div>
 
-        {onMoveBlock && (
+        {(onMoveBlock || onEditRun) && (
           <div className="workout-detail__actions">
-            <Button variant="secondary" onClick={onMoveBlock}>
-              Move Block
-            </Button>
+            {onMoveBlock && (
+              <Button variant="secondary" onClick={onMoveBlock}>
+                Move Block
+              </Button>
+            )}
+            {onEditRun && (
+              <Button variant="secondary" onClick={onEditRun}>
+                Edit Run
+              </Button>
+            )}
           </div>
         )}
       </div>

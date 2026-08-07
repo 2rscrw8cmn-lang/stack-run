@@ -37,6 +37,8 @@ interface CompleteRunSheetProps {
   today?: string;
   onClose: () => void;
   onSave: (workout: Workout | null, values: ValidRunEntry) => void;
+  /** Provided when there is a saved run to remove. */
+  onDelete?: () => void;
 }
 
 /**
@@ -80,6 +82,7 @@ export function CompleteRunSheet({
   today = todayLocalDate(),
   onClose,
   onSave,
+  onDelete,
 }: CompleteRunSheetProps) {
   const [values, setValues] = useState<RunEntryValues>(() =>
     initialValues(workout, today, runLog),
@@ -244,6 +247,22 @@ export function CompleteRunSheet({
 
         <div className="complete-run-form__actions">
           <Button type="submit">Save Run</Button>
+          {onDelete && (
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Delete this run? Its block comes out of the tower too.",
+                  )
+                ) {
+                  onDelete();
+                }
+              }}
+            >
+              Delete Run
+            </Button>
+          )}
         </div>
       </form>
     </Sheet>

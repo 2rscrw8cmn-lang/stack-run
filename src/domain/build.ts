@@ -81,9 +81,14 @@ export interface PlacedBlock {
   isNewest: boolean;
   /** True while this block is still the one that can be moved. */
   canMove: boolean;
-  /** Faces you could actually see: hidden where another block abuts. */
-  showTopFace: boolean;
-  showRightFace: boolean;
+  /**
+   * Visible faces, one flag per grid cell along each edge rather than one per
+   * block. A three-wide brick can have another resting on two of its columns
+   * and open sky over the third, and an all-or-nothing top face draws a sliver
+   * of itself out from under its neighbour.
+   */
+  topFace: boolean[];
+  rightFace: boolean[];
   /**
    * Paint order. The oblique projection has no depth buffer and a block's top
    * and right faces project up and to the right, into the space above it, so
@@ -101,6 +106,12 @@ export interface BuildSummaryMetrics {
   currentStreak: number;
 }
 
+/** An empty cell with tower above it: an opening the structure bridges. */
+export interface TowerVoid {
+  row: number;
+  column: number;
+}
+
 export interface BuildViewModel {
   metrics: BuildSummaryMetrics;
   /** Earned but unplaced blocks, oldest first, so the user builds upward. */
@@ -109,6 +120,12 @@ export interface BuildViewModel {
   blocks: PlacedBlock[];
   /** How many courses the tower currently stands. */
   courses: number;
+  /**
+   * Cells nothing fills but something spans. A block that bridges one is not
+   * floating — it is resting on the columns either side of an opening — but
+   * without drawing the opening it reads as a mistake.
+   */
+  voids: TowerVoid[];
   activeWeekNumber: number;
 }
 
@@ -298,23 +315,24 @@ export function selectBuildViewModel(
         return [];
       }
 
-      let covered = true;
+      // The top face shows over each column nothing rests on.
+      const topFace: boolean[] = [];
       for (
         let column = placement.columnStart;
-        covered && column <= lastColumnOf(placement);
+        column <= lastColumnOf(placement);
         column += 1
       ) {
-        covered = filled.has(`${column}:${topOf(placement)}`);
+        topFace.push(!filled.has(`${column}:${topOf(placement)}`));
       }
 
+      // The right face shows over each course nothing abuts. Past the last
+      // column there is nothing to abut, so the whole face shows.
       const rightColumn = lastColumnOf(placement) + 1;
-      let abutted = rightColumn <= GRID_COLUMNS;
-      for (
-        let row = placement.row;
-        abutted && row < topOf(placement);
-        row += 1
-      ) {
-        abutted = filled.has(`${rightColumn}:${row}`);
+      const rightFace: boolean[] = [];
+      for (let row = placement.row; row < topOf(placement); row += 1) {
+        rightFace.push(
+          rightColumn > GRID_COLUMNS || !filled.has(`${rightColumn}:${row}`),
+        );
       }
 
       return [
@@ -324,17 +342,24 @@ export function selectBuildViewModel(
           placement,
           isNewest: placement.runLogId === newestPlacedRunLogId,
           canMove: placement.runLogId === newestPlacedRunLogId,
-          showTopFace: !covered,
-          showRightFace: !abutted,
+          topFace,
+          rightFace,
           depth: topOf(placement),
         },
       ];
     });
 
-  const courses = skylineOf(placements).reduce(
-    (highest, column) => Math.max(highest, column),
-    0,
-  );
+  const skyline = skylineOf(placements);
+  const courses = skyline.reduce((highest, column) => Math.max(highest, column), 0);
+
+  const voids: TowerVoid[] = [];
+  for (let column = 1; column <= GRID_COLUMNS; column += 1) {
+    for (let row = 0; row < skyline[column - 1]; row += 1) {
+      if (!filled.has(`${column}:${row}`)) {
+        voids.push({ row, column });
+      }
+    }
+  }
 
   const plannedRuns = scheduledRuns(plan);
   const satisfiedWorkoutIds = new Set(
@@ -355,6 +380,7 @@ export function selectBuildViewModel(
     ),
     blocks,
     courses,
+    voids,
     activeWeekNumber: activeWeekNumber(plan, today),
   };
 }

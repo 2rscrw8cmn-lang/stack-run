@@ -36,8 +36,7 @@ function blockLabel(block: PlacedBlockData): string {
  * solid mass rather than a stack of separate cards.
  */
 export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
-  const { runLog, placement, isNewest, showTopFace, showRightFace, depth } =
-    block;
+  const { runLog, placement, isNewest, topFace, rightFace, depth } = block;
 
   return (
     <li
@@ -60,11 +59,39 @@ export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
         <span className="visually-hidden">{blockLabel(block)}</span>
         <span className="placed-block__brick" aria-hidden="true">
           <span className="placed-block__face placed-block__face--front" />
-          {showTopFace && (
-            <span className="placed-block__face placed-block__face--top" />
+          {/*
+            One segment per grid cell along each edge, so a face stops exactly
+            where a neighbour begins instead of sliding out from under it.
+          */}
+          {topFace.map(
+            (visible, column) =>
+              visible && (
+                <span
+                  key={`top-${column}`}
+                  className="placed-block__face placed-block__face--top"
+                  style={
+                    {
+                      "--face-offset": column,
+                      "--face-cells": topFace.length,
+                    } as CSSProperties
+                  }
+                />
+              ),
           )}
-          {showRightFace && (
-            <span className="placed-block__face placed-block__face--right" />
+          {rightFace.map(
+            (visible, row) =>
+              visible && (
+                <span
+                  key={`right-${row}`}
+                  className="placed-block__face placed-block__face--right"
+                  style={
+                    {
+                      "--face-offset": row,
+                      "--face-cells": rightFace.length,
+                    } as CSSProperties
+                  }
+                />
+              ),
           )}
         </span>
       </button>

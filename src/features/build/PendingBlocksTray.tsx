@@ -7,6 +7,8 @@ import { formatDateLabel } from "../../domain/dates";
 interface PendingBlocksTrayProps {
   blocks: EarnedBlock[];
   onPlaceBlock: (runLogId: string) => void;
+  /** Opens the run behind a waiting block, so a mistake can be fixed. */
+  onEditRun?: (runLogId: string) => void;
 }
 
 /**
@@ -16,6 +18,7 @@ interface PendingBlocksTrayProps {
 export function PendingBlocksTray({
   blocks,
   onPlaceBlock,
+  onEditRun,
 }: PendingBlocksTrayProps) {
   if (blocks.length === 0) {
     return null;
@@ -40,7 +43,12 @@ export function PendingBlocksTray({
               }
               aria-hidden="true"
             />
-            <div className="pending-tray__detail">
+            <button
+              type="button"
+              className="pending-tray__detail"
+              aria-label={`Edit ${WORKOUT_TYPE_LABEL[block.runLog.activityType]} run from ${formatDateLabel(block.runLog.completedDate)}`}
+              onClick={() => onEditRun?.(block.runLog.id)}
+            >
               <p className="pending-tray__type">
                 {WORKOUT_TYPE_LABEL[block.runLog.activityType]}
                 {!block.workout && (
@@ -51,7 +59,7 @@ export function PendingBlocksTray({
                 {formatDateLabel(block.runLog.completedDate)} ·{" "}
                 {block.runLog.distanceMiles} mi
               </p>
-            </div>
+            </button>
             <Button
               variant="secondary"
               aria-label={`Place ${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block from ${formatDateLabel(block.runLog.completedDate)}`}

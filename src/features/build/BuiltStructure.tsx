@@ -1,6 +1,10 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
-import type { EarnedBlock, PlacedBlock as PlacedBlockData } from "../../domain/build";
+import type {
+  EarnedBlock,
+  PlacedBlock as PlacedBlockData,
+  TowerVoid,
+} from "../../domain/build";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
 import { PlacedBlock } from "./PlacedBlock";
 import { LandingSlot } from "./LandingSlot";
@@ -15,6 +19,8 @@ export interface StructurePlacing {
 interface BuiltStructureProps {
   blocks: PlacedBlockData[];
   courses: number;
+  /** Openings the tower spans, drawn so a bridging block is not left floating. */
+  voids?: TowerVoid[];
   onSelectBlock: (runLogId: string) => void;
   /** Set while a block is hovering over the tower, waiting to be dropped. */
   placing?: StructurePlacing;
@@ -36,6 +42,7 @@ interface BuiltStructureProps {
 export function BuiltStructure({
   blocks,
   courses,
+  voids = [],
   onSelectBlock,
   placing,
 }: BuiltStructureProps) {
@@ -119,6 +126,20 @@ export function BuiltStructure({
               } as CSSProperties
             }
           >
+            {voids.map((cell) => (
+              <li
+                key={`void-${cell.column}:${cell.row}`}
+                className="built-tower__void"
+                aria-hidden="true"
+                style={
+                  {
+                    gridColumn: cell.column,
+                    gridRow: courses === 0 ? 1 : drawnCourses - cell.row,
+                  } as CSSProperties
+                }
+              />
+            ))}
+
             {blocks.map((block) => (
               <PlacedBlock
                 key={block.placement.runLogId}

@@ -50,6 +50,8 @@ function renderBuild(
 ) {
   const onPlaceBlock = vi.fn();
   const onPlacingChange = vi.fn();
+  const onSaveRun = vi.fn();
+  const onDeleteRun = vi.fn();
   const utils = render(
     <BuildScreen
       plan={plan}
@@ -57,11 +59,13 @@ function renderBuild(
       blockPlacements={[]}
       onPlaceBlock={onPlaceBlock}
       onPlacingChange={onPlacingChange}
+      onSaveRun={onSaveRun}
+      onDeleteRun={onDeleteRun}
       today="2026-08-05"
       {...props}
     />,
   );
-  return { onPlaceBlock, onPlacingChange, ...utils };
+  return { onPlaceBlock, onPlacingChange, onSaveRun, onDeleteRun, ...utils };
 }
 
 function tower() {
@@ -529,14 +533,48 @@ describe("BuildScreen", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows a compact legend of block types without Rest", () => {
+  it("has no legend taking room from the tower", () => {
     renderBuild();
 
-    const types = screen.getByRole("list", { name: "Workout types" });
     expect(
-      within(types)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent),
-    ).toEqual(["Easy", "Intervals", "Simulation", "Long Run", "Race"]);
+      screen.queryByRole("list", { name: "Workout types" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Legend")).not.toBeInTheDocument();
+  });
+
+  it("edits the run behind a placed block, including an extra one", async () => {
+    const user = userEvent.setup();
+    const { onSaveRun } = renderBuild({
+      runLogs: [extraRun("run-extra-1", { completedDate: "2026-08-05" })],
+      blockPlacements: [placementFor("run-extra-1", 1, 1)],
+      today: "2026-08-10",
+    });
+
+    await user.click(within(tower()).getByRole("button"));
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+
+    expect(screen.getByRole("heading", { name: "Edit Run" })).toBeInTheDocument();
+    await user.clear(screen.getByLabelText(/Distance/));
+    await user.type(screen.getByLabelText(/Distance/), "4.4");
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(onSaveRun).toHaveBeenCalledTimes(1);
+    expect(onSaveRun.mock.calls[0][1]).toMatchObject({ distanceMiles: 4.4 });
+    expect(onSaveRun.mock.calls[0][2]).toBe("run-extra-1");
+  });
+
+  it("deletes the run behind a waiting block from the tray", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { onDeleteRun } = renderBuild({
+      runLogs: [extraRun("run-extra-1", { completedDate: "2026-08-05" })],
+      today: "2026-08-10",
+    });
+
+    await user.click(screen.getByRole("button", { name: /Edit Easy run/ }));
+    await user.click(screen.getByRole("button", { name: "Delete Run" }));
+
+    expect(onDeleteRun).toHaveBeenCalledWith("run-extra-1");
+    confirm.mockRestore();
   });
 });

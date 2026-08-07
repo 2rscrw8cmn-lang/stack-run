@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AppState } from "../domain/types";
 import {
+  deleteRunLog,
   loadAppState,
   placeBlock,
   saveRunLog,
@@ -47,6 +48,9 @@ export function App() {
             ...values,
           }),
         )
+      }
+      onDeleteRun={(runLogId) =>
+        setAppState((current) => deleteRunLog(current, runLogId))
       }
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))

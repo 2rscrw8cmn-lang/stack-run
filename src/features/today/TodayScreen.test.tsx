@@ -43,6 +43,7 @@ function placementFor(runLogId: string): BlockPlacement {
 
 function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
   const onSaveRun = vi.fn();
+  const onDeleteRun = vi.fn();
   const onViewPlan = vi.fn();
   const onViewBuild = vi.fn();
   const onStartPlacing = vi.fn();
@@ -56,10 +57,19 @@ function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
       onViewBuild={onViewBuild}
       onStartPlacing={onStartPlacing}
       onSaveRun={onSaveRun}
+      onDeleteRun={onDeleteRun}
       {...props}
     />,
   );
-  return { onSaveRun, onViewPlan, onViewBuild, onStartPlacing, user, ...utils };
+  return {
+    onSaveRun,
+    onDeleteRun,
+    onViewPlan,
+    onViewBuild,
+    onStartPlacing,
+    user,
+    ...utils,
+  };
 }
 
 describe("TodayScreen race context", () => {
@@ -252,6 +262,38 @@ describe("TodayScreen earned block", () => {
     expect(
       screen.getByText(/Your Easy block is built into the tower/),
     ).toBeInTheDocument();
+  });
+
+  it("deletes a logged run after confirming", async () => {
+    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Delete Run" }));
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onDeleteRun).toHaveBeenCalledWith("run-workout-002");
+    confirm.mockRestore();
+  });
+
+  it("keeps the run when the confirmation is declined", async () => {
+    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Delete Run" }));
+
+    expect(onDeleteRun).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("offers no delete on an entry that has not been saved yet", async () => {
+    const { user } = renderToday();
+
+    await user.click(screen.getByRole("button", { name: "Mark Complete" }));
+    expect(
+      screen.queryByRole("button", { name: "Delete Run" }),
+    ).not.toBeInTheDocument();
   });
 
   it("edits a completed run through the same form", async () => {

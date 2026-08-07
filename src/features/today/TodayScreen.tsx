@@ -48,6 +48,7 @@ interface TodayScreenProps {
     values: ValidRunEntry,
     runLogId?: string,
   ) => void;
+  onDeleteRun?: (runLogId: string) => void;
 }
 
 /** Which run the entry sheet is open for, and what it is about to write. */
@@ -69,6 +70,7 @@ export function TodayScreen({
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
   onSaveRun = () => undefined,
+  onDeleteRun = () => undefined,
 }: TodayScreenProps) {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [isEntryOpen, setEntryOpen] = useState(false);
@@ -193,6 +195,15 @@ export function TodayScreen({
             setEntryOpen(false);
             setEntry(null);
           }}
+          onDelete={
+            entry.runLog
+              ? () => {
+                  onDeleteRun(entry.runLog!.id);
+                  setSaveAnnouncement("Run deleted.");
+                  setEntryOpen(false);
+                }
+              : undefined
+          }
           onSave={(workout, values) => {
             const wasLogged = entry.runLog !== undefined;
             onSaveRun(workout, values, entry.runLog?.id);

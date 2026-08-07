@@ -24,6 +24,7 @@ interface PlanScreenProps {
     values: ValidRunEntry,
     runLogId?: string,
   ) => void;
+  onDeleteRun?: (runLogId: string) => void;
 }
 
 /**
@@ -36,6 +37,7 @@ export function PlanScreen({
   runLogs,
   today = todayLocalDate(),
   onSaveRun = () => undefined,
+  onDeleteRun = () => undefined,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     currentWeekNumber(plan, today),
@@ -147,6 +149,15 @@ export function PlanScreen({
             setEntryOpen(false);
             setEntryWorkoutId(null);
           }}
+          onDelete={
+            entryDay.runLog
+              ? () => {
+                  onDeleteRun(entryDay.runLog!.id);
+                  setSaveAnnouncement("Run deleted.");
+                  setEntryOpen(false);
+                }
+              : undefined
+          }
           onSave={(workout, values) => {
             const wasLogged = entryDay.runLog !== null;
             onSaveRun(workout, values, entryDay.runLog?.id);
