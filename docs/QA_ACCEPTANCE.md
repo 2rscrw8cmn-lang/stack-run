@@ -2,125 +2,156 @@
 
 ## Global acceptance
 
-- No horizontal overflow at 320 px.
-- All touch targets are at least 44 px, except blocks and landing slots on the Build tower. Those are one course tall and as narrow as 26 px at 320 px, because five columns and 44 px squares cannot both fit at that width. Neither is destructive: a block opens a read-only sheet, and every landing slot is also reachable through the left/right controls and `Auto Place`, which are full-size.
+- No horizontal page overflow at 320 px.
+- Primary touch controls are at least 44 px.
+- Build geometry is large enough to manipulate without precision tapping.
 - Bottom navigation remains reachable.
 - Text is readable without zoom.
 - Keyboard focus is visible.
 - Icon-only controls have labels.
 - No screen depends on color alone.
 - No console errors.
-- No failed network requests are required for core behavior.
+- No external API is required for core behavior.
 - Refresh preserves saved state.
+- Production builds contain no DevDataPanel or bulk-seed control.
 - `npm run check` passes.
 
 ## Today
 
-- Correct workout appears for today's local date.
+- Correct scheduled workout appears for today's local date.
 - Rest day state appears correctly.
 - Completed state shows actual values.
-- Days remaining is correct around midnight and race day.
+- Compact race context is correct around midnight and race day.
+- `This Week` shows scheduled completion only.
+- Extra runs do not increase scheduled-completion count.
+- `Next` identifies the next scheduled non-rest workout.
+- `+ Log Run` is always available.
+- Build preview/link reflects placed/pending state without duplicating the Build screen.
 - Before-plan and after-race states do not crash.
-- Mark Complete is absent when no run is scheduled.
 
-## Complete Run
+## Log Run
 
+- Date required.
+- Scheduled run defaults to scheduled date.
+- Extra run defaults to today.
+- Date is editable and persists exactly as saved.
+- Future completed dates are rejected.
 - Distance required.
 - Duration required.
 - Effort required.
+- Extra run requires activity type and never allows Rest.
 - Invalid values show field errors.
 - Notes stop at 120 characters.
 - Closing with unsaved values requires confirmation.
-- Saving once creates one log.
-- Saving again updates the same log.
+- Saving a scheduled run upserts one activity for that workout.
+- Saving an extra run creates an independent activity.
+- Extra run never completes a scheduled workout.
+- Both scheduled and extra runs earn one pending block.
 - Success returns focus appropriately.
+
+## Streak
+
+- Rest days do not affect streak.
+- Extra runs do not affect streak.
+- Future scheduled runs do not affect streak.
+- An incomplete workout scheduled for today does not break an existing streak during the day.
+- Once a scheduled workout's date is past and it remains incomplete, it breaks the streak.
+- Completing today's scheduled run can extend or start the streak.
 
 ## Build
 
 - Rest days earn no blocks.
-- Every completed run earns exactly one block.
-- Block width matches workout type.
-- Completing a run does not place its block.
-- An unplaced block appears in `Blocks Ready` and survives a reload.
-- Placing a block puts it in the structure and removes it from the tray.
-- A placement survives a reload.
-- Build renders no future workouts and no eighteen-week outline.
-- The shaft above the tower shows remaining height only: no future block is drawn or labelled.
-- The tower stands on a visible ground plane, with sky above it.
-- Build opens framed on the top of the tower, not the foundation.
-- Week 1 is the bottom course and the newest work is on top.
-- A week with more blocks than fit one course spills into the course above it.
-- A brick shows a top face only where nothing rests on it.
-- A missed run leaves a gap in its course rather than a dashed block.
+- Every saved run activity earns exactly one block.
+- Extra runs earn blocks.
+- Completing a run does not automatically place its block.
+- Unplaced blocks appear in `Blocks Ready` and survive reload.
+- Placing a block removes it from the pending tray.
+- Placements survive reload.
+- Build renders no future-workout blueprint.
+- Build uses an 8-column continuous tower.
+- Block width follows actual distance bands only.
+- Block height follows activity type only.
+- Pace history and effort never change block geometry.
+- The tower is visually dominant over projected-height, phase, mortar, or packing information.
 - Newest placed block gets the only glow.
-- Clicking and keyboard activation open details.
-- Reduced motion removes the snap translation and the glow.
+- Tapping a placed block opens run detail.
+- Reduced motion removes nonessential placement motion/glow.
 
 ## Place Block
 
-- Placing happens on the tower; no sheet covers the structure.
-- The block hovers over the course it would land in before it is dropped.
-- Choosing a slot moves the block without committing it.
-- `Drop` commits, and cancelling builds nothing.
-- Left and right controls step through the valid positions in order.
-- The live region says where the block is and whether it is supported.
-- Only valid positions are offered, and only they are in the tab order.
-- A position that would overlap a placed block is not offered.
-- A position that would run past column 5 is not offered.
-- A position in a course that would float above a gap is not offered.
-- Valid positions are distinguishable without colour.
-- Enter or Space on a slot moves the block there; Enter on `Drop` commits it.
-- `Auto Place` centres on the ground course, finishes the lowest open course before starting a new one, and prefers supported positions above it.
-- `Auto Place` is deterministic for the same inputs.
+- The block is visible with the tower before commit.
+- User chooses only deterministic valid landing columns.
+- Tapping a candidate selects it without committing.
+- Left/right controls step through the same candidates.
+- Optional pointer/touch drag snaps only between those same candidates.
+- Keyboard users can complete placement without dragging.
+- Screen-reader users can complete placement without dragging.
+- `Drop` commits.
+- Cancel leaves the block pending.
+- `Auto Place` is deterministic and secondary.
 - Placement is announced with `aria-live`.
-- A block can be moved while its week is active.
-- A past week's course is locked.
+- No canvas, WebGL, physics, rotation, or game loop is introduced.
 
-## Plan
+## Plan review
 
 - All seven days display.
 - Week dates are correct.
-- Previous and next week controls stop at boundaries.
-- Current week shortcut works.
-- Completion matches run logs.
-- Full interval instructions remain readable.
+- Previous and next controls stop at boundaries.
+- Current Week shortcut works.
+- Completion matches linked scheduled activities.
+- Extra activities do not appear as completed scheduled workouts.
+- Full instructions remain readable.
 - Mobile rows do not become cramped desktop tables.
 
 ## Plan adjustment
 
-- Editing future workout persists.
-- Moving future workout persists.
-- Date conflict asks for confirmation.
-- Workout ID remains unchanged.
-- A workout cannot be moved outside its existing training week.
-- Race workout remains fixed and cannot be deleted or moved.
+- A future planned workout can be edited.
+- A planned workout can move to another date inside the plan date range.
+- Cross-week moves update week/phase correctly.
+- Date conflict requires confirmation.
+- A Rest day can become a planned run.
+- A future planned run can be changed to Rest.
+- Completed planned workouts require explicit confirmation before plan edits.
+- Linked actual run remains intact after confirmed plan editing.
+- Race remains fixed and cannot be deleted through ordinary editing.
 - Reset requires two-step confirmation.
-- Reset restores seed and removes logs.
+- Reset restores seed and removes local activities/placements.
 
-## Storage recovery
+## Storage migration — schema 4 to 5
 
 Test with:
 
-- No key
-- Valid key
-- Invalid JSON
-- Wrong schema shape
-- Schema version 1 with existing run logs
-- Schema version 2 with existing placements
-- Future schema version
+- No storage key
+- Valid schema 4 with scheduled run logs
+- Schema 4 with placed blocks
+- Schema 4 with pending completed runs
+- Corrupted JSON
+- Unknown future schema
+
+Migration must:
+
+- Preserve every existing run's actual values.
+- Add activity type from linked workout.
+- Preserve scheduled workout links.
+- Convert placement identity from workout to run log.
+- Repack into 8 columns.
+- Remove pace-derived height by freezing height from activity type.
+- Leave unplaced completed runs pending.
+- Never invent extra runs.
 
 Invalid data must not cause a blank screen.
 
 ## Production smoke test
 
 1. Open production URL in iPhone Safari.
-2. Add to Home Screen after manifest is available.
-3. Open Today.
-4. Log a test run.
-5. Close the app.
-6. Reopen.
-7. Confirm run remains.
-8. Open Build, place the earned block, and confirm it appears in the structure.
-9. Open Plan and confirm completed status.
-10. Edit the run.
-11. Confirm update everywhere.
+2. Confirm no dev/bulk-seed panel is visible.
+3. Open Today and confirm Today's workout / This Week / Next.
+4. Log a scheduled run with an edited actual date.
+5. Confirm earned block is pending.
+6. Place the block and confirm it appears after reload.
+7. Log an extra run with `+ Log Run`.
+8. Confirm weekly scheduled completion does not change.
+9. Confirm total actual miles increases and another block is earned.
+10. Open Plan and confirm scheduled completion remains correct.
+11. Edit the actual run and confirm the update everywhere.
+12. Run `npm run check` before release.
