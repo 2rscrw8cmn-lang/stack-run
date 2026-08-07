@@ -10,66 +10,78 @@ Do not create the entire UI in one pull request.
 
 ## Phase 0 — Repository foundation
 
-Branch:
-
-```text
-feature/phase-0-foundation
-```
-
-Deliver:
-
-- Vite React TypeScript scaffold
-- Required dependencies only
-- Test and lint setup
-- Source folder skeleton
-- Seed loader
-- Domain types
-- Storage repository skeleton
-- CSS token files
-- `npm run check`
-- Update current structure document
-
-Exit gate:
-
-- App starts.
-- Tests run.
-- Build succeeds.
-- Seed JSON imports successfully.
-- No product screen is implemented beyond placeholders.
+Status: implemented.
 
 ## Phase 1 — UI-1 shell
 
-Deliver the app shell and shared primitives.
-
-Exit gate is defined in `UI_IMPLEMENTATION_PLAN.md`.
+Status: implemented.
 
 ## Phase 2 — UI-2 Today
 
-Deliver the read-only Today experience.
+Status: implemented; revised later by UI-5.5.
 
 ## Phase 3 — UI-3 run entry
 
-Deliver the first functional vertical slice:
+Status: implemented; revised later by UI-5.5.
+
+Original proof:
 
 > Load today's workout → enter actual run → save → refresh → see completion.
 
-This is the first proof that STACK works.
-
 ## Phase 4 — UI-4 Build
 
-Deliver the core differentiating visual.
+Status: implemented through D-017; product mechanic is revised by UI-5.5.
+
+Preserve the useful foundation: earned blocks, placements, valid landing columns, persistence, and tower rendering.
 
 ## Phase 5 — UI-5 Plan
 
-Deliver full-plan review.
+Status: implemented in PR #8.
+
+Deliver full-plan review and actual-run logging/editing from plan detail.
+
+## Phase 5.5 — Core Loop Revision
+
+**Next implementation phase. Do this before Phase 6.**
+
+Goal:
+
+> Make STACK useful every day and make the run → earn → place loop simple and fun before adding more plan-management surface area.
+
+Deliver:
+
+- Schema version 5 activity model
+- Scheduled and extra run support
+- Actual editable run date
+- Revised Today screen
+- Simplified 8-column Build geometry
+- Distance-only width and type-only height
+- Extra runs earning blocks
+- Tactile placement with tap/keyboard and optional snapped horizontal drag
+- Corrected streak semantics
+- Production removal of DevDataPanel
+- Documentation reconciliation
+
+Exit gate is defined in `docs/UI_IMPLEMENTATION_PLAN.md`.
 
 ## Phase 6 — UI-6 plan adjustment
 
-Deliver controlled manual flexibility.
+Start only after Phase 5.5 is complete.
+
+Deliver:
+
+- Edit planned workouts
+- Move planned workouts across weeks within the plan range
+- Add a planned run to a Rest day
+- Change a planned run to Rest
+- Conflict and completed-workout confirmation
+- Guarded reset
+
+No adaptive coaching or automatic redistribution.
 
 ## Phase 7 — UI-7 release
 
-Deliver installability, error recovery, final QA, and deployment.
+Deliver installability, error recovery, final QA, and deployment polish.
 
 ## Phase status rules
 
@@ -91,6 +103,8 @@ Version 1.0 is ready when:
 - All checks pass.
 - Production smoke test passes.
 - Today, Build, and Plan work on the user's phone.
-- Run logs persist across refresh.
+- Scheduled and extra runs persist across refresh.
+- Plan edits persist.
 - Reset and corrupted-storage recovery work.
+- Production contains no temporary dev panel.
 - No excluded integrations or features were introduced.
