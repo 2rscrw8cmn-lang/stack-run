@@ -2,11 +2,11 @@
 
 ## Product statement
 
-STACK helps one runner follow one half-marathon training plan by showing today's assignment, making completion easy to record, and turning each completed workout into a visible block in a growing structure.
+STACK helps one runner follow a half-marathon training plan, record what they actually ran, and turn every completed run into a block in a growing structure.
 
 ## Product promise
 
-Open the app, know what to do, log it in seconds, and see the build grow.
+Open the app, know what to do, log it in seconds, place the block, and see the build grow.
 
 ## Primary user
 
@@ -14,22 +14,23 @@ A single runner preparing for the OUC Half Marathon on December 5, 2026.
 
 ## Primary job to be done
 
-> When I am training for a race, show me the next run and make completion feel tangible so I am more likely to stay consistent.
+> When I am training for a race, show me what matters today, let me record what I actually did, and make consistency feel tangible enough that I want to come back tomorrow.
 
 ## First-release outcomes
 
 The user can:
 
-1. See today's workout.
-2. Mark a run complete manually.
-3. Enter actual distance and duration.
-4. Select one of three effort levels.
-5. Add a short optional note.
-6. See a 2D structure fill with completed workouts.
-7. Review the entire dated 18-week plan.
-8. Edit or move a future workout without an adaptive algorithm.
-9. Refresh or reopen the app without losing data.
-10. Reset to the original seed plan through a guarded action.
+1. See today's scheduled workout.
+2. See this week's scheduled progress and the next workout.
+3. Mark a scheduled run complete manually.
+4. Log an additional/extra run that was not on the plan.
+5. Record the actual run date, distance, duration, effort, type, and optional notes.
+6. See every completed run earn one Build block.
+7. Place earned blocks into a growing structure.
+8. Review the entire dated 18-week plan.
+9. Edit future planned workouts, add a planned run to a rest day, move a workout, or change a workout to Rest.
+10. Refresh or reopen the app without losing local data.
+11. Reset to the original seed plan through a guarded action.
 
 ## Success criteria
 
@@ -38,8 +39,10 @@ The first release is successful when:
 - Today's run can be understood in under five seconds.
 - A run can be logged in under fifteen seconds.
 - The complete-run flow works one-handed on a phone.
-- The Build screen clearly distinguishes completed and incomplete workouts.
-- The full plan is understandable without a dense spreadsheet.
+- Today is useful even after the day's workout is completed.
+- An extra run can be recorded without pretending it was part of the plan.
+- The Build interaction feels tactile and understandable, not like a schedule visualization or packing dashboard.
+- The full plan is understandable and editable without becoming a dense spreadsheet.
 - Core behavior has no account or external API dependency; the network is only needed to load the deployed app.
 - The implementation remains small enough for one coding agent to understand end-to-end.
 
@@ -57,20 +60,24 @@ The first release is successful when:
 | Theme | Dark only |
 | Navigation | Today, Build, Plan |
 | Data entry | Manual |
+| Run model | Scheduled and extra activities |
 | Persistence | Browser-local |
 | Sync | None |
 | Integrations | None |
-| Training logic | Fixed editable plan |
-| Visual reward | Deterministic 2D blocks |
+| Training logic | Fixed but manually editable plan |
+| Visual reward | One deterministic CSS block per completed run |
+| Build grid | Continuous 8-column tower |
 | Deployment | Static Vercel site |
 
-## Non-goals
+## Product boundaries
 
 STACK does not replace a running watch, Apple Fitness, Garmin, or Strava.
 
-It does not collect live workout data and does not attempt to provide a complete athletic record.
+It does not collect live workout data and does not attempt to provide a complete athletic analytics platform.
 
 It does not prescribe medically personalized training.
+
+The Build interaction is playful, but STACK is not a full Tetris/game implementation.
 
 ## Out of scope for v1
 
@@ -100,3 +107,10 @@ It does not prescribe medically personalized training.
 - Admin tools
 - Analytics dashboards
 - Light mode
+- Canvas or WebGL rendering
+- Physics engine
+- Rotation or freeform Tetris gameplay
+
+## Active revision
+
+`docs/CORE_LOOP_REVISION.md` is the approved next product revision and must be implemented before UI-6 Plan Adjustment.

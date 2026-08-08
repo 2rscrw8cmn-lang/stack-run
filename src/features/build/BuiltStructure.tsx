@@ -1,11 +1,9 @@
-import { Flag } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import type {
   EarnedBlock,
-  MortarLine,
-  PhaseBand,
   PlacedBlock as PlacedBlockData,
+  TowerVoid,
 } from "../../domain/build";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
 import { PlacedBlock } from "./PlacedBlock";
@@ -21,43 +19,38 @@ export interface StructurePlacing {
 interface BuiltStructureProps {
   blocks: PlacedBlockData[];
   courses: number;
-  mortar: MortarLine[];
-  projectedCourses: number;
-  phaseBands: PhaseBand[];
-  onSelectWorkout: (workoutId: string) => void;
+  /** Openings the tower spans, drawn so a bridging block is not left floating. */
+  voids?: TowerVoid[];
+  onSelectBlock: (runLogId: string) => void;
   /** Set while a block is hovering over the tower, waiting to be dropped. */
   placing?: StructurePlacing;
 }
 
 /**
- * The tower and the site it stands on: ground below, sky above, and a
- * translucent shaft showing how far there is left to climb.
+ * The tower and the ground it stands on.
  *
- * The shaft is a height, not a schedule. It says the finished tower is about
- * this tall and the race caps it; it never says which block goes where. The
- * eighteen-week blueprint stays deleted.
+ * What used to be here as well — a projected-height shaft, a phase gauge, week
+ * mortar lines, a course-count readout — described the packing model rather
+ * than the thing built. The tower reads as an object you made; the schedule
+ * lives on Plan and the week lives in block detail.
  *
  * The tower is one grid rather than a list of course rows, because blocks are
- * now two-dimensional and a two-course block belongs to no single row. Blocks
- * are listed ground first, so reading order matches the order they were built
- * in, and paint order comes from each block's own top edge.
+ * two-dimensional and a two-course block belongs to no single row. Blocks are
+ * listed ground first, so reading order matches the order they were built in,
+ * and paint order comes from each block's own top edge.
  */
 export function BuiltStructure({
   blocks,
   courses,
-  mortar,
-  projectedCourses,
-  phaseBands,
-  onSelectWorkout,
+  voids = [],
+  onSelectBlock,
   placing,
 }: BuiltStructureProps) {
   const skylineRef = useRef<HTMLDivElement>(null);
+  const towerRef = useRef<HTMLUListElement>(null);
 
-  // A tower with arches in it can outgrow its projection; never go negative.
-  const remainingCourses = Math.max(0, projectedCourses - courses);
-  const totalCourses = Math.max(projectedCourses, courses);
-  // While placing, the grid has to be tall enough to show the hovering block.
   const candidate = placing?.candidate ?? null;
+  // While placing, the grid has to be tall enough to show the hovering block.
   const drawnCourses = Math.max(
     1,
     courses,
@@ -73,48 +66,57 @@ export function BuiltStructure({
     skylineRef.current?.scrollIntoView({ block: "center" });
   }, [candidateKey]);
 
+  /**
+   * Dragging the hovering block, snapped to the same valid columns tapping
+   * offers. The pointer only picks a column: where the block lands is still
+   * gravity's answer, so a drag can never place a block somewhere the keyboard
+   * could not. Tap, the left/right steppers, and `Auto Place` all stay live —
+   * this is a layer over the choices, never the only way to make them.
+   */
+  function dragToColumn(clientX: number) {
+    const tower = towerRef.current;
+    if (!tower || !placing || placing.options.length === 0) {
+      return;
+    }
+    const bounds = tower.getBoundingClientRect();
+    const columnWidth = bounds.width / GRID_COLUMNS;
+    if (columnWidth <= 0) {
+      return;
+    }
+
+    const width = placing.block.footprint.width;
+    // Centre the block under the finger rather than pinning its left edge.
+    const wanted = Math.round(
+      (clientX - bounds.left) / columnWidth - width / 2 + 1,
+    );
+    const nearest = placing.options.reduce((best, option) =>
+      Math.abs(option.columnStart - wanted) <
+      Math.abs(best.columnStart - wanted)
+        ? option
+        : best,
+    );
+    if (nearest.columnStart !== placing.candidate?.columnStart) {
+      placing.onChoose(nearest);
+    }
+  }
+
   return (
     <section className="build-site" aria-label="Your build">
       <div className="build-site__heading">
         <h2 className="build-site__title">Your build</h2>
         <p className="build-site__scale">
-          {courses} of about {projectedCourses} courses · {blocks.length}{" "}
-          {blocks.length === 1 ? "block" : "blocks"}
+          {blocks.length} {blocks.length === 1 ? "block" : "blocks"}
         </p>
       </div>
 
       <div className="build-site__stage">
-        <ol className="build-site__gauge" aria-label="Training phases">
-          {[...phaseBands].reverse().map((band) => (
-            <li
-              key={band.label}
-              className="build-site__phase"
-              style={{ "--phase-courses": band.courses } as CSSProperties}
-            >
-              <span className="build-site__phase-label">{band.label}</span>
-            </li>
-          ))}
-        </ol>
-
         <div className="build-site__tower">
-          <div
-            className="build-site__sky"
-            style={
-              { "--remaining-courses": remainingCourses } as CSSProperties
-            }
-            aria-hidden="true"
-          >
-            <p className="build-site__summit">
-              <Flag size={14} strokeWidth={2} aria-hidden="true" />
-              {`${totalCourses} courses to the race`}
-            </p>
-            <span className="build-site__capstone" />
-            <span className="build-site__shaft" />
-          </div>
+          <div className="build-site__sky" aria-hidden="true" />
 
           <div ref={skylineRef} className="build-site__skyline" aria-hidden="true" />
 
           <ul
+            ref={towerRef}
             className="built-tower"
             aria-label="Built blocks"
             style={
@@ -124,12 +126,26 @@ export function BuiltStructure({
               } as CSSProperties
             }
           >
+            {voids.map((cell) => (
+              <li
+                key={`void-${cell.column}:${cell.row}`}
+                className="built-tower__void"
+                aria-hidden="true"
+                style={
+                  {
+                    gridColumn: cell.column,
+                    gridRow: courses === 0 ? 1 : drawnCourses - cell.row,
+                  } as CSSProperties
+                }
+              />
+            ))}
+
             {blocks.map((block) => (
               <PlacedBlock
-                key={block.workout.id}
+                key={block.placement.runLogId}
                 block={block}
                 courses={drawnCourses}
-                onSelect={onSelectWorkout}
+                onSelect={onSelectBlock}
               />
             ))}
 
@@ -141,23 +157,8 @@ export function BuiltStructure({
                 courses={drawnCourses}
                 isChosen={option.columnStart === candidate?.columnStart}
                 onChoose={placing.onChoose}
+                onDragTo={dragToColumn}
               />
-            ))}
-
-            {mortar.map((line) => (
-              <li
-                key={line.weekNumber}
-                className="built-tower__mortar"
-                data-active={line.isActiveWeek ? "true" : undefined}
-                style={{ "--mortar-row": line.row } as CSSProperties}
-              >
-                <span className="built-tower__mortar-label" aria-hidden="true">
-                  {line.weekNumber}
-                </span>
-                <span className="visually-hidden">
-                  {`Week ${line.weekNumber} tops out at course ${line.row}`}
-                </span>
-              </li>
             ))}
           </ul>
 
@@ -167,8 +168,10 @@ export function BuiltStructure({
 
       <p className="build-site__caption">
         {blocks.length === 0
-          ? "Nothing built yet. Complete a run to earn your first block."
-          : `${courses} ${courses === 1 ? "course" : "courses"} standing.`}
+          ? "Nothing built yet. Log a run to earn your first block."
+          : placing
+            ? "Drag or tap to choose a column, then Drop."
+            : "Tap a block to see the run behind it."}
       </p>
     </section>
   );

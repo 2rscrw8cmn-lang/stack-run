@@ -1,30 +1,44 @@
 import { describe, expect, it } from "vitest";
 import { validateRunEntry, type RunEntryValues } from "./runValidation";
 
+const TODAY = "2026-08-06";
+
 function errorsFor(values: Partial<RunEntryValues>) {
-  const result = validateRunEntry({
-    distance: "3.2",
-    duration: "31:42",
-    effort: "solid",
-    notes: "",
-    ...values,
-  });
+  const result = validateRunEntry(
+    {
+      date: TODAY,
+      activityType: "easy",
+      distance: "3.2",
+      duration: "31:42",
+      effort: "solid",
+      notes: "",
+      ...values,
+    },
+    TODAY,
+  );
   expect(result.valid).toBe(false);
   return result.valid ? {} : result.errors;
 }
 
 describe("validateRunEntry", () => {
   it("accepts and normalizes documented values", () => {
-    const result = validateRunEntry({
-      distance: "3.25",
-      duration: "31:42",
-      effort: "great",
-      notes: "  strong finish  ",
-    });
+    const result = validateRunEntry(
+      {
+        date: "2026-08-04",
+        activityType: "intervals",
+        distance: "3.25",
+        duration: "31:42",
+        effort: "great",
+        notes: "  strong finish  ",
+      },
+      TODAY,
+    );
 
     expect(result).toEqual({
       valid: true,
       value: {
+        completedDate: "2026-08-04",
+        activityType: "intervals",
         distanceMiles: 3.25,
         durationSeconds: 1902,
         effort: "great",
@@ -34,21 +48,53 @@ describe("validateRunEntry", () => {
   });
 
   it("requires every run value", () => {
-    const result = validateRunEntry({
-      distance: "",
-      duration: "",
-      effort: null,
-      notes: "",
-    });
+    const result = validateRunEntry(
+      {
+        date: "",
+        activityType: "easy",
+        distance: "",
+        duration: "",
+        effort: null,
+        notes: "",
+      },
+      TODAY,
+    );
 
     expect(result.valid).toBe(false);
     if (!result.valid) {
       expect(result.errors).toEqual({
+        date: "Enter the date you ran.",
         distance: "Enter your distance.",
         duration: "Enter your duration.",
         effort: "Choose how the run felt.",
       });
     }
+  });
+
+  it("accepts a run dated today or earlier", () => {
+    expect(validateRunEntry(
+      {
+        date: TODAY,
+        activityType: "easy",
+        distance: "3",
+        duration: "30:00",
+        effort: "solid",
+        notes: "",
+      },
+      TODAY,
+    ).valid).toBe(true);
+  });
+
+  it("refuses to log a run that has not happened yet", () => {
+    expect(errorsFor({ date: "2026-08-07" }).date).toBe(
+      "A run cannot be logged in the future.",
+    );
+  });
+
+  it("rejects a date that is not a local calendar date", () => {
+    expect(errorsFor({ date: "08/04/2026" }).date).toBe(
+      "Enter a date like 2026-08-04.",
+    );
   });
 
   it("bounds distance and its precision", () => {

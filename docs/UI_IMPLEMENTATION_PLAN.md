@@ -12,8 +12,6 @@ Deliver:
 - Reusable Button, Card, IconButton, ProgressBar, and Sheet primitives
 - Placeholder screens for Today, Build, and Plan
 
-Do not implement product data behavior.
-
 Exit gate:
 
 - Navigation works.
@@ -24,73 +22,48 @@ Exit gate:
 
 ## UI-2 — Today screen
 
-Deliver:
+Original deliverable:
 
-- Race summary card
-- Days remaining
-- Current-date workout selection
-- Run, rest, completed, before-plan, and after-race states
-- `Mark Complete` opens a placeholder sheet
+- Race summary
+- Current-date workout
+- Run/rest/completed states
+- Mark Complete entry point
 
-Do not save run data yet.
-
-Exit gate:
-
-- All Today states are tested.
-- Race countdown uses local dates.
-- Visual hierarchy matches the reference.
-- No extra dashboard metrics.
+This phase is implemented but will be revised by UI-5.5.
 
 ## UI-3 — Complete Run flow
 
-Deliver:
+Original deliverable:
 
-- Distance input
-- Duration input
-- Three-level effort picker
-- Optional notes with counter
+- Distance
+- Duration
+- Effort
+- Notes
 - Validation
-- Save/update behavior
+- Save/update
 - Local persistence
-- Completed Today state
 
-Exit gate:
-
-- A run can be logged in under fifteen seconds.
-- Refresh preserves the log.
-- Duplicate save updates the same workout.
-- Validation and storage tests pass.
+This phase is implemented but the form gains Date and extra-run Type in UI-5.5.
 
 ## UI-4 — Build screen
 
-Deliver:
+Original Build is implemented through D-017.
 
-- Summary metrics
-- Earned blocks: one per completed run, by workout type
-- `Blocks Ready` staging tray for earned but unplaced blocks
-- Place Block sheet: eight-column week grid, valid positions only, tap to place
-- Deterministic `Auto Place`
-- Placement persistence and the schema version 2 migration
-- The built structure: placed blocks only, up to the active week
-- Repositioning a block while its week is active
-- Legend
-- Workout detail sheet
-- Newest-block snap motion
+Useful infrastructure to preserve:
 
-Exit gate:
+- Earned versus placed blocks
+- Continuous stacking
+- Placement persistence
+- Valid landing-column calculation
+- Auto Place
+- Workout/block detail
+- CSS tower rendering
 
-- No canvas, 3D, physics, drag, or collision code.
-- The structure derives from placements; metrics derive from run logs.
-- Build renders no future blueprint.
-- Placement survives a reload.
-- Existing run logs survive the migration and become pending blocks.
-- Keyboard placement works.
-- Reduced-motion behavior works.
-- Structure remains legible at 320 px.
+The Build product behavior is revised by UI-5.5.
 
 ## UI-5 — Plan screen
 
-Plan is the complete schedule tracker. Build does not duplicate it.
+Implemented in PR #8.
 
 Deliver:
 
@@ -100,37 +73,128 @@ Deliver:
 - Seven-day list
 - Run and rest row states
 - Workout detail sheet
-- Log or edit completed run from detail
+- Log or edit actual runs from detail
 
 Exit gate:
 
 - All 18 weeks are reachable.
 - Current week opens by default.
-- Completed status matches logs.
+- Completed status matches run logs.
 - No horizontal table layout on mobile.
+
+## UI-5.5 — Core Loop Revision
+
+**Implement this phase before UI-6.**
+
+Source of truth:
+
+- `docs/CORE_LOOP_REVISION.md`
+- `docs/PRODUCT_AND_SCOPE.md`
+- `docs/UX_PRODUCT_SPEC.md`
+- `docs/DATA_AND_STORAGE.md`
+
+### Deliver — activity model
+
+- Schema version 5 migration
+- Scheduled and extra run support
+- Actual editable run date
+- Activity type for extra runs
+- Preserve existing run data
+- Placements identify actual runs rather than only scheduled workouts
+
+### Deliver — Today
+
+- Compact race context
+- Today's workout
+- This Week scheduled-progress strip
+- Next scheduled run
+- Persistent `+ Log Run`
+- Small Build preview/link
+- Completed state with earned block
+
+### Deliver — Build simplification
+
+- Continuous 8-column tower
+- Width from actual distance only
+- Height from activity type only
+- Remove pace/median geometry logic
+- Extra runs earn blocks
+- Remove/de-emphasize projected tower height, phase gauge, mortar/course engineering UI
+- Keep `Blocks Ready`
+- Keep deterministic valid landing columns
+- Keep tap/left/right placement controls
+- Allow optional pointer/touch horizontal drag that snaps to the same valid candidates
+- Keep `Drop` to commit and `Auto Place` as secondary
+- Preserve keyboard and reduced-motion alternatives
+
+### Deliver — streak correction
+
+- Today's unfinished workout does not break an existing streak until the date passes
+- Extra runs do not affect scheduled-run streak
+
+### Deliver — dev cleanup
+
+- Production/deployed previews contain no DevDataPanel
+- If the panel remains for local work, render it only under `import.meta.env.DEV`
+
+### Do not include
+
+- Full Plan editing from UI-6
+- Adaptive coaching
+- Automatic rescheduling
+- New navigation tabs
+- Backend or integrations
+- Canvas/WebGL/physics
+
+### Exit gate
+
+- Existing schema-4 data migrates without losing run data.
+- User can log an extra run from Today.
+- Extra run does not change scheduled weekly completion.
+- Extra run adds total miles and earns a block.
+- Run date is editable and persists.
+- Today communicates Today / This Week / Next without becoming a dashboard wall.
+- Build grid is 8 columns and block geometry is immediately explainable from distance/type.
+- Pace history no longer changes block size.
+- Placement works by tap and keyboard; optional drag snaps to identical candidates.
+- Today's uncompleted workout does not zero the streak prematurely.
+- DevDataPanel is absent from production builds.
+- Works at 320, 390, 768, and 1280 px.
+- `npm run check` passes.
 
 ## UI-6 — Plan adjustment
 
+Implement only after UI-5.5 is complete.
+
 Deliver:
 
-- Edit future workout
-- Move future workout
-- Conflict confirmation
+- Edit future planned workout type, target, title, and instructions
+- Move a planned workout anywhere inside the plan date range
+- Update destination week/phase when moving across week boundaries
+- Conflict confirmation when destination date already has a planned run
+- Convert a Rest day to `Add Planned Run`
+- Change a future planned run to Rest
+- Explicit confirmation before editing/moving a completed scheduled workout
+- Preserve linked actual run
+- Race remains fixed
 - Reset plan confirmation
 
 Exit gate:
 
-- Workout IDs stay stable.
-- Race workout cannot be deleted.
-- Same-week move restrictions are unit tested.
+- Workout IDs stay stable through ordinary edits.
+- Cross-week moves update the correct week/phase.
+- Conflicts require confirmation.
+- Race cannot be deleted or casually moved.
+- Adding a planned run to Rest persists.
+- Changing a planned run to Rest persists.
 - Reset restores seed exactly.
 - Accidental destructive actions require confirmation.
+- `npm run check` passes.
 
 ## UI-7 — Polish, installability, and release
 
 Deliver:
 
-- Removal of the temporary data panel (`src/dev/DevDataPanel.tsx`)
 - App metadata
 - Web app manifest
 - App icons
@@ -146,8 +210,8 @@ A service worker is optional. Do not add one unless offline behavior is explicit
 Exit gate:
 
 - `npm run check` passes.
-- No temporary data panel remains in the shipped build.
 - Fresh install works.
 - Existing data survives deployment updates.
 - Production URL works on iPhone Safari and desktop browser.
+- No temporary product-review tooling remains.
 - No known P0/P1 defects.

@@ -1,16 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { RunLog } from "../../domain/types";
+import type { BlockPlacement, RunLog } from "../../domain/types";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { TodayScreen } from "./TodayScreen";
 
 const plan = loadSeedPlan();
 
+// Week 1 is Aug 3-9 2026: rest, easy (002), rest, easy (004), rest, easy (006),
+// long (007). Aug 4 is a run day.
 const completedEasyRun: RunLog = {
-  id: "log-1",
+  id: "run-workout-002",
   workoutId: "workout-002",
   completedDate: "2026-08-04",
+  activityType: "easy",
   distanceMiles: 2.1,
   durationSeconds: 1230,
   effort: "solid",
@@ -19,145 +22,190 @@ const completedEasyRun: RunLog = {
   updatedAt: "2026-08-04T12:00:00.000Z",
 };
 
-describe("TodayScreen", () => {
-  it("shows the race summary card regardless of state", () => {
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={vi.fn()}
-        today="2026-07-15"
-      />,
-    );
+const extraRun: RunLog = {
+  ...completedEasyRun,
+  id: "run-extra-2026-08-05",
+  workoutId: null,
+  completedDate: "2026-08-05",
+  distanceMiles: 3.4,
+};
+
+function placementFor(runLogId: string): BlockPlacement {
+  return {
+    runLogId,
+    row: 0,
+    columnStart: 1,
+    width: 1,
+    height: 1,
+    placedAt: "2026-08-04T13:00:00.000Z",
+  };
+}
+
+function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
+  const onSaveRun = vi.fn();
+  const onDeleteRun = vi.fn();
+  const onViewPlan = vi.fn();
+  const onViewBuild = vi.fn();
+  const onStartPlacing = vi.fn();
+  const user = userEvent.setup();
+  const utils = render(
+    <TodayScreen
+      plan={plan}
+      runLogs={[]}
+      today="2026-08-04"
+      onViewPlan={onViewPlan}
+      onViewBuild={onViewBuild}
+      onStartPlacing={onStartPlacing}
+      onSaveRun={onSaveRun}
+      onDeleteRun={onDeleteRun}
+      {...props}
+    />,
+  );
+  return {
+    onSaveRun,
+    onDeleteRun,
+    onViewPlan,
+    onViewBuild,
+    onStartPlacing,
+    user,
+    ...utils,
+  };
+}
+
+describe("TodayScreen race context", () => {
+  it("shows the race as a compact line rather than a countdown hero", () => {
+    renderToday({ today: "2026-08-04" });
+
     expect(screen.getByText("OUC Half Marathon")).toBeInTheDocument();
+    // 2026-08-04 to race day on 2026-12-05.
+    expect(screen.getByText("123 days")).toBeInTheDocument();
   });
 
-  it("shows the before-plan state ahead of the plan start date", () => {
-    const onViewPlan = vi.fn();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={onViewPlan}
-        today="2026-07-15"
-      />,
-    );
-
-    expect(screen.getByText("Plan starts soon")).toBeInTheDocument();
-    expect(screen.getByText(/August 3, 2026/)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Mark Complete" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Log First Run" }),
-    ).toBeInTheDocument();
+  it("says race day rather than zero days", () => {
+    renderToday({ today: "2026-12-05" });
+    expect(screen.getByText("Race day")).toBeInTheDocument();
   });
+});
 
-  it("opens run entry from the before-plan state", async () => {
-    const user = userEvent.setup();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={vi.fn()}
-        today="2026-07-15"
-      />,
-    );
+describe("TodayScreen workout states", () => {
+  it("shows the run state with a Mark Complete action", async () => {
+    const { user } = renderToday();
 
-    await user.click(screen.getByRole("button", { name: "Log First Run" }));
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mark Complete" }));
     expect(
       screen.getByRole("heading", { name: "Complete Run" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Distance/)).toBeInTheDocument();
   });
 
-  it("shows the rest-day state with a View Plan action and no completion requirement", async () => {
-    const onViewPlan = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={onViewPlan}
-        today="2026-08-03"
-      />,
-    );
+  it("shows the rest-day state with no completion requirement", () => {
+    renderToday({ today: "2026-08-05" });
 
     expect(screen.getByText("Rest Day")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the completed state using the existing run log", () => {
+    renderToday({ runLogs: [completedEasyRun] });
+
+    expect(screen.getByText("2.1 mi")).toBeInTheDocument();
+    expect(screen.getByText("20:30")).toBeInTheDocument();
+    expect(screen.getByText("Solid")).toBeInTheDocument();
+    expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
+  });
+
+  it("shows the before-plan state without pretending a workout is due", () => {
+    renderToday({ today: "2026-07-15" });
+
+    expect(screen.getByText("Plan starts soon")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Mark Complete" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the after-race state once race day has passed", () => {
+    renderToday({ today: "2026-12-31" });
+    expect(screen.getByText("Race complete")).toBeInTheDocument();
+  });
+});
+
+describe("TodayScreen This Week", () => {
+  it("counts scheduled completion for the current week", () => {
+    renderToday({ runLogs: [completedEasyRun], today: "2026-08-06" });
+
+    // Week 1 schedules four runs; one of them is logged.
+    expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Week 1 days" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(7);
+  });
+
+  it("counts an extra run beside the scheduled progress, never inside it", () => {
+    renderToday({
+      runLogs: [completedEasyRun, extraRun],
+      today: "2026-08-06",
+    });
+
+    expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
+    expect(screen.getByText("+1 extra")).toBeInTheDocument();
+  });
+
+  it("links through to the full schedule", async () => {
+    const { user, onViewPlan } = renderToday();
 
     await user.click(screen.getByRole("button", { name: "View Plan" }));
-    expect(onViewPlan).toHaveBeenCalledTimes(1);
+    expect(onViewPlan).toHaveBeenCalled();
+  });
+});
+
+describe("TodayScreen Next", () => {
+  it("shows the next scheduled run after today", () => {
+    renderToday({ today: "2026-08-04" });
+
+    const next = screen.getByText("Next").closest(".next-workout") as HTMLElement;
+    // Aug 5 is a rest day, so the next run is Thursday Aug 6.
+    expect(within(next).getByText(/Thursday, Aug 6/)).toBeInTheDocument();
   });
 
-  it("shows the run state with a Mark Complete action that opens the placeholder sheet", async () => {
-    const user = userEvent.setup();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={vi.fn()}
-        today="2026-08-04"
-      />,
-    );
+  it("omits the section when no run remains before the race", () => {
+    renderToday({ today: "2026-12-05" });
+    expect(screen.queryByText("Next")).not.toBeInTheDocument();
+  });
+});
 
-    expect(screen.getByText("2 Miles")).toBeInTheDocument();
-    const markComplete = screen.getByRole("button", { name: "Mark Complete" });
+describe("TodayScreen extra runs", () => {
+  it("always offers Log Run, even on a rest day", async () => {
+    const { user } = renderToday({ today: "2026-08-05" });
 
-    await user.click(markComplete);
-    expect(
-      screen.getByRole("heading", { name: "Complete Run" }),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Log Run" }));
+    expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
   });
 
-  it("shows the completed state using the existing run log", async () => {
-    const runLog: RunLog = {
-      id: "log-1",
-      workoutId: "workout-002",
-      completedDate: "2026-08-04",
-      distanceMiles: 2.1,
-      durationSeconds: 1230,
-      effort: "solid",
-      notes: "",
-      createdAt: "2026-08-04T12:00:00.000Z",
-      updatedAt: "2026-08-04T12:00:00.000Z",
-    };
-    const user = userEvent.setup();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[runLog]}
-        onViewPlan={vi.fn()}
-        today="2026-08-04"
-      />,
-    );
+  it("saves an extra run with no scheduled workout behind it", async () => {
+    const { user, onSaveRun } = renderToday({ today: "2026-08-05" });
 
-    expect(screen.getByText(/Run complete/)).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("definition").map((stat) => stat.textContent),
-    ).toEqual(["2.1 mi", "20:30", "Solid"]);
+    await user.click(screen.getByRole("button", { name: "Log Run" }));
+    await user.type(screen.getByLabelText(/Distance/), "3.4");
+    await user.type(screen.getByLabelText(/Duration/), "3400");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
 
-    await user.click(screen.getByRole("button", { name: "Edit Run" }));
-    expect(
-      screen.getByRole("heading", { name: "Edit Run" }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
+    expect(onSaveRun).toHaveBeenCalledTimes(1);
+    const [workout, values] = onSaveRun.mock.calls[0];
+    expect(workout).toBeNull();
+    expect(values).toMatchObject({
+      completedDate: "2026-08-05",
+      activityType: "easy",
+      distanceMiles: 3.4,
+    });
   });
 
-  it("saves an entered run and announces the save", async () => {
-    const user = userEvent.setup();
-    const onSaveRun = vi.fn();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={vi.fn()}
-        onSaveRun={onSaveRun}
-        today="2026-08-04"
-      />,
-    );
+  it("saves today's scheduled run against its workout", async () => {
+    const { user, onSaveRun } = renderToday();
 
     await user.click(screen.getByRole("button", { name: "Mark Complete" }));
     await user.type(screen.getByLabelText(/Distance/), "2.1");
@@ -165,83 +213,101 @@ describe("TodayScreen", () => {
     await user.click(screen.getByRole("button", { name: "Solid" }));
     await user.click(screen.getByRole("button", { name: "Save Run" }));
 
-    expect(onSaveRun).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "workout-002" }),
-      {
-        distanceMiles: 2.1,
-        durationSeconds: 1230,
-        effort: "solid",
-        notes: "",
-      },
-    );
+    expect(onSaveRun.mock.calls[0][0].id).toBe("workout-002");
     expect(
       screen.getByText("Run saved. You earned an Easy block."),
     ).toBeInTheDocument();
   });
+});
 
-  it("shows the after-race state once race day has passed", () => {
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[]}
-        onViewPlan={vi.fn()}
-        today="2026-12-06"
-      />,
-    );
+describe("TodayScreen build preview", () => {
+  it("summarises what has been built and what is waiting", () => {
+    renderToday({
+      runLogs: [completedEasyRun, extraRun],
+      blockPlacements: [placementFor("run-workout-002")],
+      today: "2026-08-06",
+    });
 
-    expect(screen.getByText("Race complete")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Mark Complete" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("1 block built")).toBeInTheDocument();
+    expect(screen.getByText("1 ready to place")).toBeInTheDocument();
   });
 
-  it("shows the earned block and hands it to Build to be placed", async () => {
-    const user = userEvent.setup();
-    const onStartPlacing = vi.fn();
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[completedEasyRun]}
-        onViewPlan={vi.fn()}
-        onStartPlacing={onStartPlacing}
-        today="2026-08-04"
-      />,
-    );
+  it("links through to Build", async () => {
+    const { user, onViewBuild } = renderToday();
 
-    expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View Build" }));
+    expect(onViewBuild).toHaveBeenCalled();
+  });
+});
 
-    // Placing happens on the tower, not in a sheet over it.
+describe("TodayScreen earned block", () => {
+  it("hands an unplaced block to Build by its run log", async () => {
+    const { user, onStartPlacing } = renderToday({
+      runLogs: [completedEasyRun],
+    });
+
     await user.click(screen.getByRole("button", { name: "Place Block" }));
-    expect(onStartPlacing).toHaveBeenCalledWith("workout-002");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onStartPlacing).toHaveBeenCalledWith("run-workout-002");
   });
 
   it("reports a placed block instead of offering to place it again", () => {
-    render(
-      <TodayScreen
-        plan={plan}
-        runLogs={[completedEasyRun]}
-        blockPlacements={[
-          {
-            workoutId: "workout-002",
-            row: 0,
-            columnStart: 3,
-            width: 1,
-            height: 1,
-            placedAt: "2026-08-04T13:00:00.000Z",
-          },
-        ]}
-        onViewPlan={vi.fn()}
-        today="2026-08-04"
-      />,
-    );
+    renderToday({
+      runLogs: [completedEasyRun],
+      blockPlacements: [placementFor("run-workout-002")],
+    });
 
-    expect(
-      screen.getByText("Your Easy block is built into course 0 of the tower."),
-    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Place Block" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Your Easy block is built into the tower/),
+    ).toBeInTheDocument();
   });
 
+  it("deletes a logged run after confirming", async () => {
+    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Delete Run" }));
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onDeleteRun).toHaveBeenCalledWith("run-workout-002");
+    confirm.mockRestore();
+  });
+
+  it("keeps the run when the confirmation is declined", async () => {
+    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Delete Run" }));
+
+    expect(onDeleteRun).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("offers no delete on an entry that has not been saved yet", async () => {
+    const { user } = renderToday();
+
+    await user.click(screen.getByRole("button", { name: "Mark Complete" }));
+    expect(
+      screen.queryByRole("button", { name: "Delete Run" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("edits a completed run through the same form", async () => {
+    const { user, onSaveRun } = renderToday({ runLogs: [completedEasyRun] });
+
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
+
+    await user.clear(screen.getByLabelText(/Distance/));
+    await user.type(screen.getByLabelText(/Distance/), "2.6");
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(onSaveRun).toHaveBeenCalledTimes(1);
+    expect(onSaveRun.mock.calls[0][1]).toMatchObject({ distanceMiles: 2.6 });
+    expect(onSaveRun.mock.calls[0][2]).toBe("run-workout-002");
+  });
 });

@@ -3,8 +3,15 @@ import { useId, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
+import { ACTIVITY_TYPES, WORKOUT_TYPE_LABEL } from "../../domain/build";
+import { todayLocalDate } from "../../domain/dates";
 import { formatDurationSeconds } from "../../domain/duration";
-import type { Effort, RunLog, Workout } from "../../domain/types";
+import type {
+  Effort,
+  RunActivityType,
+  RunLog,
+  Workout,
+} from "../../domain/types";
 import { maskDurationInput } from "./durationMask";
 import {
   validateRunEntry,
@@ -23,17 +30,44 @@ const NOTES_MAX_LENGTH = 120;
 
 interface CompleteRunSheetProps {
   isOpen: boolean;
-  workout: Workout;
+  /** The scheduled workout being completed, or null for an extra run. */
+  workout: Workout | null;
   runLog?: RunLog;
+  /** Defaults to the real local date; overridable so tests don't need fake timers. */
+  today?: string;
   onClose: () => void;
-  onSave: (workout: Workout, values: ValidRunEntry) => void;
+  onSave: (workout: Workout | null, values: ValidRunEntry) => void;
+  /** Provided when there is a saved run to remove. */
+  onDelete?: () => void;
 }
 
-function initialValues(runLog?: RunLog): RunEntryValues {
+/**
+ * The activity type a new entry starts from: what the plan asked for when
+ * there is a workout, and Easy for an extra run.
+ */
+function defaultActivityType(workout: Workout | null): RunActivityType {
+  return workout && workout.type !== "rest" ? workout.type : "easy";
+}
+
+function initialValues(
+  workout: Workout | null,
+  today: string,
+  runLog?: RunLog,
+): RunEntryValues {
   if (!runLog) {
-    return { distance: "", duration: "", effort: null, notes: "" };
+    return {
+      // A scheduled run is dated by its workout; an extra run happened today.
+      date: workout ? workout.date : today,
+      activityType: defaultActivityType(workout),
+      distance: "",
+      duration: "",
+      effort: null,
+      notes: "",
+    };
   }
   return {
+    date: runLog.completedDate,
+    activityType: runLog.activityType,
     distance: String(runLog.distanceMiles),
     duration: formatDurationSeconds(runLog.durationSeconds),
     effort: runLog.effort,
@@ -45,17 +79,22 @@ export function CompleteRunSheet({
   isOpen,
   workout,
   runLog,
+  today = todayLocalDate(),
   onClose,
   onSave,
+  onDelete,
 }: CompleteRunSheetProps) {
-  const [values, setValues] = useState<RunEntryValues>(() => initialValues(runLog));
+  const [values, setValues] = useState<RunEntryValues>(() =>
+    initialValues(workout, today, runLog),
+  );
   const [errors, setErrors] = useState<RunEntryErrors>({});
   const fieldId = useId();
   const effortErrorId = `${fieldId}-effort-error`;
   const notesId = `${fieldId}-notes`;
 
   const isDirty =
-    JSON.stringify(values) !== JSON.stringify(initialValues(runLog));
+    JSON.stringify(values) !==
+    JSON.stringify(initialValues(workout, today, runLog));
 
   function guardClose() {
     return !isDirty || window.confirm("Discard your unsaved run entry?");
@@ -73,7 +112,7 @@ export function CompleteRunSheet({
   }
 
   function handleSubmit() {
-    const result = validateRunEntry(values);
+    const result = validateRunEntry(values, today);
     if (!result.valid) {
       setErrors(result.errors);
       return;
@@ -81,9 +120,11 @@ export function CompleteRunSheet({
     onSave(workout, result.value);
   }
 
+  const title = runLog ? "Edit Run" : workout ? "Complete Run" : "Log Run";
+
   return (
     <Sheet
-      title={runLog ? "Edit Run" : "Complete Run"}
+      title={title}
       isOpen={isOpen}
       onClose={onClose}
       guardClose={guardClose}
@@ -96,6 +137,39 @@ export function CompleteRunSheet({
           handleSubmit();
         }}
       >
+        {!workout && (
+          <p className="complete-run-form__lede">
+            An extra run counts your miles and earns a block. It does not
+            complete anything on the plan.
+          </p>
+        )}
+
+        <FormField label="Date" required error={errors.date}>
+          <input
+            className="run-input"
+            type="date"
+            max={today}
+            value={values.date}
+            onChange={(event) => updateValue("date", event.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Activity" required>
+          <select
+            className="run-input"
+            value={values.activityType}
+            onChange={(event) =>
+              updateValue("activityType", event.target.value as RunActivityType)
+            }
+          >
+            {ACTIVITY_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {WORKOUT_TYPE_LABEL[type]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
         <FormField label="Distance (miles)" required error={errors.distance}>
           <input
             className="run-input"
@@ -173,6 +247,22 @@ export function CompleteRunSheet({
 
         <div className="complete-run-form__actions">
           <Button type="submit">Save Run</Button>
+          {onDelete && (
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Delete this run? Its block comes out of the tower too.",
+                  )
+                ) {
+                  onDelete();
+                }
+              }}
+            >
+              Delete Run
+            </Button>
+          )}
         </div>
       </form>
     </Sheet>

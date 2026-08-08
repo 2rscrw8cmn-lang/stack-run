@@ -3,16 +3,16 @@ import type { BlockPlacement } from "./types";
 
 /**
  * The tower is one continuous grid this many columns wide. Blocks stack
- * wherever they fit, regardless of which training week earned them — a week no
- * longer reserves space, which is what used to waste a third of the structure.
+ * wherever they fit, regardless of which training week earned them — a week
+ * does not reserve space.
  *
- * Ten is the widest grid that keeps the narrowest block tappable on a real
- * phone. It misses the 24px target-size floor by one pixel at 320px, which is
- * carried as a documented exception in `QA_ACCEPTANCE.md`; see
- * docs/BUILD_CONCEPT.md §8.1. The count is stored in every placement's
+ * Eight per D-018: chunky targets beat packing efficiency. At 320px a
+ * width-1 block measures about 33px against ten columns' 19px, which clears
+ * the 24px target-size floor the old grid missed. The tower simply grows
+ * taller, and height is progress. The count is stored in every placement's
  * `columnStart`, so it can never be made responsive.
  */
-export const GRID_COLUMNS = 10;
+export const GRID_COLUMNS = 8;
 
 /**
  * Where a block would come to rest. The user chooses a column and the block
@@ -40,7 +40,7 @@ export class InvalidPlacementError extends Error {
 
 export type PlacementCandidate = Pick<
   BlockPlacement,
-  "workoutId" | "columnStart" | "row" | "width" | "height"
+  "runLogId" | "columnStart" | "row" | "width" | "height"
 >;
 
 export function lastColumnOf(placement: {
@@ -180,7 +180,7 @@ export function newestPlacement(
       newest === null ||
       placement.placedAt > newest.placedAt ||
       (placement.placedAt === newest.placedAt &&
-        placement.workoutId > newest.workoutId)
+        placement.runLogId > newest.runLogId)
     ) {
       newest = placement;
     }
@@ -190,9 +190,9 @@ export function newestPlacement(
 
 export function canMove(
   placements: BlockPlacement[],
-  workoutId: string,
+  runLogId: string,
 ): boolean {
-  return newestPlacement(placements)?.workoutId === workoutId;
+  return newestPlacement(placements)?.runLogId === runLogId;
 }
 
 /**
@@ -211,7 +211,7 @@ export function assertPlacementFits(
   }
 
   const others = existingPlacements.filter(
-    (placement) => placement.workoutId !== candidate.workoutId,
+    (placement) => placement.runLogId !== candidate.runLogId,
   );
   const expected = landingRow(
     skylineOf(others),
@@ -227,9 +227,9 @@ export function assertPlacementFits(
 
 /**
  * Replays placements through the packer in the order they were built. Used by
- * the schema migration that made blocks two-dimensional: which blocks are
- * placed is preserved, where they sit is not, because the column count and the
- * meaning of `row` both changed.
+ * every schema migration that changes the grid: which blocks are placed is
+ * preserved, where they sit is not, because a position in a ten-column grid
+ * has no meaning in an eight-column one.
  */
 export function repackPlacements(
   placements: BlockPlacement[],
@@ -237,7 +237,7 @@ export function repackPlacements(
   const ordered = [...placements].sort(
     (a, b) =>
       a.placedAt.localeCompare(b.placedAt) ||
-      a.workoutId.localeCompare(b.workoutId),
+      a.runLogId.localeCompare(b.runLogId),
   );
 
   const repacked: BlockPlacement[] = [];

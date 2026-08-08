@@ -1,12 +1,95 @@
 import { useState } from "react";
 import { earnedBlocks, scheduledRuns } from "../domain/build";
 import { autoPlaceOption, placementOptions } from "../domain/placement";
-import type { AppState, Effort, Workout } from "../domain/types";
+import type { AppState, Effort, RunActivityType, Workout } from "../domain/types";
 import {
   placeBlock,
   resetAppState,
   saveRunLog,
 } from "../storage/appStateRepository";
+
+/*
+ * The panel's own styles travel inside it rather than in the design system.
+ * A CSS import is an unconditional side effect, so stylesheet rules for a
+ * dev-only component would ship in the production bundle even once the
+ * component itself is gated out; carrying them here means D-025 removes the
+ * panel and its styling together.
+ */
+const PANEL_STYLES = `
+.dev-panel__toggle {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: var(--space-3);
+  z-index: 10;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-strong));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.dev-panel {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: var(--space-2);
+  z-index: 10;
+  width: min(260px, calc(100vw - 2 * var(--space-2)));
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-size: 12px;
+}
+
+.dev-panel__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+  color: var(--text-subtle);
+}
+
+.dev-panel__header button {
+  border: none;
+  background: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+
+.dev-panel__status {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+.dev-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.dev-panel__actions button {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dev-panel__header button {
+  min-height: 32px;
+  padding: 0 var(--space-2);
+}
+
+/* Legend */
+`;
 
 interface DevDataPanelProps {
   state: AppState;
@@ -52,6 +135,7 @@ const BASE_PACE: Record<string, number> = {
 function syntheticRun(workout: Workout): {
   workoutId: string;
   completedDate: string;
+  activityType: RunActivityType;
   distanceMiles: number;
   durationSeconds: number;
   effort: Effort;
@@ -67,6 +151,7 @@ function syntheticRun(workout: Workout): {
   return {
     workoutId: workout.id,
     completedDate: workout.date,
+    activityType: workout.type === "rest" ? "easy" : workout.type,
     distanceMiles: Math.max(0.1, distanceMiles),
     durationSeconds: Math.round(distanceMiles * pace * 60),
     effort,
@@ -74,17 +159,16 @@ function syntheticRun(workout: Workout): {
 }
 
 /**
- * Temporary shortcuts for exercising the build by hand. Today can only log the
- * run scheduled for the current date, so on a rest day — or before the plan
- * starts — there is no way to put blocks on the screen at all. Logging past and
- * future runs is the Plan screen's job in UI-5; until then this panel stands in
- * for it, on a phone against a deployed build as much as on a dev server.
+ * Bulk shortcuts for exercising the tower by hand: logging twenty runs one
+ * form at a time to see how a tall tower behaves is not a good use of anyone's
+ * afternoon.
  *
  * Everything here goes through the normal repository functions, so it
  * exercises the same validation and persistence the real UI does.
  *
- * This is scaffolding, not product. It ships until the Plan screen makes it
- * unnecessary, and UI-7 removes it before release.
+ * This is scaffolding, not product, and per D-025 it never reaches a build
+ * anyone reviews the product in: `App` renders it only under
+ * `import.meta.env.DEV`, so it is absent from every production bundle.
  */
 export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   const [isOpen, setOpen] = useState(false);
@@ -95,11 +179,11 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
   const nextUnlogged = scheduledRuns(state.plan).filter(
     (workout) => !loggedWorkoutIds.has(workout.id),
   );
-  const placedWorkoutIds = new Set(
-    state.blockPlacements.map((placement) => placement.workoutId),
+  const placedRunLogIds = new Set(
+    state.blockPlacements.map((placement) => placement.runLogId),
   );
   const pending = earnedBlocks(state.plan, state.runLogs).filter(
-    (block) => !placedWorkoutIds.has(block.workout.id),
+    (block) => !placedRunLogIds.has(block.runLog.id),
   );
 
   function logRuns(count: number) {
@@ -121,7 +205,7 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
         continue;
       }
       next = placeBlock(next, {
-        workoutId: block.workout.id,
+        runLogId: block.runLog.id,
         row: option.row,
         columnStart: option.columnStart,
         width,
@@ -133,18 +217,22 @@ export function DevDataPanel({ state, onChange }: DevDataPanelProps) {
 
   if (!isOpen) {
     return (
-      <button
-        type="button"
-        className="dev-panel__toggle"
-        onClick={() => setOpen(true)}
-      >
-        DEV
-      </button>
+      <>
+        <style>{PANEL_STYLES}</style>
+        <button
+          type="button"
+          className="dev-panel__toggle"
+          onClick={() => setOpen(true)}
+        >
+          DEV
+        </button>
+      </>
     );
   }
 
   return (
     <div className="dev-panel">
+      <style>{PANEL_STYLES}</style>
       <div className="dev-panel__header">
         <span>Dev data</span>
         <button type="button" onClick={() => setOpen(false)}>

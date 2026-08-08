@@ -2,28 +2,23 @@
 
 ## Experience principles
 
-### 1. One decision at a time
+### 1. One useful answer per screen
 
-The Today screen answers one question: **What is my run today?**
+- Today: what matters today and this week
+- Build: what the user has actually built
+- Plan: the editable dated schedule
 
-### 2. Completion is the reward
+### 2. Completion earns something
 
-Finishing a run earns a block. The strongest moment is placing that block into
-the structure and seeing the build grow.
+Finishing any run earns one block. The strongest moment is placing that block into the tower.
 
-### 3. Depth without a 3D engine
+### 3. Playful, not complicated
 
-The Build tower is drawn in isometric projection with CSS 3D transforms, so you
-can see the tops and sides of the bricks you placed (D-015). Everything else
-uses subtle gradients, top highlights, borders, and short shadows. Never use
-canvas rendering, WebGL, a 3D engine, rotating models, or simulated physics.
+Build should feel like a small digital construction toy. The user should not need to understand packing rules, projected tower math, or historical pace logic.
 
-### 4. Built structure, not a game
+### 4. Actual running matters more than the original plan
 
-The user earns a block by running and then places it on a fixed five-column
-grid inside its own training week. Placement is a simple, bounded choice: no
-falling pieces, no rotation, no physics, no drag and drop, no score. Every
-position the user can choose is deterministic and valid.
+The plan is guidance. The app must also represent extra runs and the actual date the user ran.
 
 ### 5. Quiet interface
 
@@ -31,248 +26,274 @@ Use few cards, few controls, and no decorative dashboard clutter.
 
 ## Information architecture
 
-The app has three persistent bottom-navigation destinations.
+The app has exactly three persistent bottom-navigation destinations:
 
-### Today
-
-Purpose: See and complete the current workout.
-
-### Build
-
-Purpose: See accumulated progress as a growing structure.
-
-### Plan
-
-Purpose: Review and adjust scheduled workouts.
+- Today
+- Build
+- Plan
 
 There is no Profile or Settings tab.
 
-Secondary actions appear in a small overflow menu or within the relevant screen.
-
 ## Screen 1 — Today
+
+Today is the primary daily dashboard.
 
 ### Header
 
-- STACK wordmark
-- Tagline: Build your race.
-- No hamburger menu
-- No notification icon
-
-### Race summary card
-
 Show:
 
-- Race name
-- Race date
-- Days remaining
+- STACK wordmark
+- `Build your race.`
+- Compact race context such as `OUC Half · 120 days`
 
-Do not show weather, finish prediction, pace goal, or extra metrics.
+Do not use a large race countdown card as the primary visual.
 
-### Today's workout card
+### Today's workout
 
-For a run day, show:
+For a scheduled run day, show:
 
-- Workout type color block
+- Workout type color
 - Target distance
-- Workout label
-- Short detail or interval summary
-- Estimated time only when provided by plan data
+- Workout title/type
+- Short instructions
 - Primary action: `Mark Complete`
 
 For a rest day, show:
 
 - `Rest Day`
 - Short recovery message
-- No completion requirement
-- Optional secondary action: `View Plan`
+- No fake completion action
 
-For a completed run, show:
+For a completed scheduled run, show:
 
-- Completed status
 - Actual distance
 - Actual duration
-- Effort label
-- The block the run earned, in its workout colour and width
-- Primary action: `Place Block`, until the block has been placed
-- Once placed, say where it was built and offer `View Build`
-- Secondary action: `Edit Run`
+- Effort
+- Earned block preview
+- `Place Block` while unplaced
+- `View Build` after placement
+- `Edit Run`
 
-Leaving without placing is fine. The earned block waits in Build's
-`Blocks Ready` tray.
+### This Week
 
-### Empty/future handling
+Directly under the Today card, show a compact weekly progress section:
 
-If the current date is before the plan:
+- Scheduled runs completed / scheduled runs this week
+- Seven-day strip or equally compact day treatment
+- Clear distinction between scheduled run, rest, complete, and upcoming
 
-- Show plan start date.
-- Offer `View Plan`.
+Extra runs may be indicated separately but never increase the scheduled-completion count.
 
-If the current date is after race day:
+### Next
 
-- Show the structure that was built and the race summary.
-- Do not invent a new training plan.
+Show the next scheduled non-rest workout after today:
 
-## Screen 2 — Complete Run sheet
+- Day/date
+- Target distance
+- Type
 
-Open as a bottom sheet on mobile and centered dialog on wider screens.
+If there is no next workout before the race, omit the section.
+
+### Extra run action
+
+Today always exposes a secondary action:
+
+`+ Log Run`
+
+This opens the same run-entry form in extra-run mode.
+
+### Build preview
+
+Show one small Build summary near the bottom:
+
+- Number of blocks built or a tiny tower crop
+- `View Build`
+
+Do not reproduce the full Build screen.
+
+## Screen 2 — Log Run sheet
+
+Use one form for scheduled and extra runs.
 
 Fields:
 
-1. Actual distance in miles — required
-2. Duration — required
-3. Effort — required; three choices
-4. Notes — optional; maximum 120 characters
+1. Date — required
+2. Activity type — required for extra runs; prefilled from scheduled workout otherwise
+3. Actual distance — required
+4. Duration — required
+5. Effort — required; Rough / Solid / Great
+6. Notes — optional; maximum 120 characters
 
-Effort choices:
+Defaults:
 
-- Rough
-- Solid
-- Great
-
-Controls:
-
-- Close
-- Save Run
+- Scheduled run date = scheduled workout date
+- Extra run date = today
+- Extra run type = Easy
 
 Rules:
 
-- Distance must be greater than 0 and no more than 100.
-- Duration must be greater than 0 and no more than 24 hours.
-- Notes counter displays `0/120`.
-- Saving creates or updates one log for the scheduled workout.
-- Successful save closes the sheet and earns the block.
+- Date remains editable.
+- A completed run cannot be dated in the future.
+- Saving a scheduled run satisfies that workout only.
+- Saving an extra run satisfies no planned workout.
+- Every saved run earns one block.
 - Placement is never required to save a run.
-- No confetti.
-- Use a brief 250-400 ms block reveal animation when the block is placed.
-- Respect reduced motion by removing translation and glow.
+- Editing a saved run preserves its identity.
+
+After save:
+
+- Close the form.
+- Announce success.
+- Show the earned block.
+- Make `Place Block` available.
 
 ## Screen 3 — Build
 
-### Summary strip
+Build shows what has actually been built. It is not a schedule visualization.
 
-Show three metrics:
+### Summary
 
-- Completed runs / planned runs
-- Total actual miles
-- Current run streak
+Keep only:
 
-Run streak means consecutive scheduled run workouts completed through the most recent scheduled run. Rest days do not break or extend the streak.
+- Scheduled runs completed / scheduled runs planned
+- Total actual miles, including extra runs
+- Current scheduled-run streak
 
-### Structure
+### Blocks Ready
 
-Build shows what has actually been built, not the whole plan. The Plan screen
-remains the complete schedule.
+When completed runs are unplaced, show a compact staging tray.
 
-- Completing a run earns one block. Placing that block is a separate step.
-- Courses are five grid columns wide. A training week fills as many courses as its blocks need, so the structure grows upward rather than sideways.
-- Each placed block occupies contiguous columns equal to its span.
-- Rest days earn no block. A missed run simply leaves a gap in its course.
-- Only placed blocks are drawn. Future workouts are never drawn as an outline,
-  and the eighteen-week blueprint is not rendered.
-- Courses run from the ground up through everything that has been built, plus a
-  small dashed indication of the course above.
-- The tower is drawn in isometric projection: each brick shows its top face
-  where nothing rests on it and its right face where nothing abuts it.
-- Block width uses a small span map:
-  - Easy: 1
-  - Intervals: 2
-  - Simulation: 2
-  - Long: 3
-  - Race: 4
-- Placed blocks are filled and lightly dimensional: soft vertical gradient,
-  top-edge highlight, short lower shadow.
-- The most recently placed block carries the only glow.
-- Tapping a placed block opens the workout detail sheet.
-- A placed block may be repositioned only while its training week is active.
-  Past weeks are locked, and a block never moves to another week.
-- When blocks have been earned but not placed, a compact `Blocks Ready` tray
-  lists them with type, date, actual miles, and a place action.
-- The layout stays deterministic. There is no falling, rotation, collision
-  simulation, or player-invented position outside the five columns.
+Each pending block shows:
 
-### Place Block
+- Activity type
+- Date
+- Actual miles
+- Block footprint
+- `Place`
 
-Placing happens on the tower, not in a sheet over it. The block is in your
-hands until you drop it.
+### Tower
 
-- Starting from Today's `Place Block` or the `Blocks Ready` tray puts the earned
-  block in hand and shows Build.
-- The block hovers above the course it would land in, on the structure itself.
-- Every valid landing position in that training week is drawn as a slot on the
-  tower. Choosing one moves the block; it does not commit.
-- A control bar carries the block, its position, left and right steps, `Drop`,
-  `Auto Place`, and a cancel.
-- `Drop` commits. The block falls into place with one 200-400 ms animation, the
-  tower keeps it, and success is announced with `aria-live`.
+Use a continuous 8-column tower.
 
-Rules:
+Only placed blocks are shown.
 
-- Tap to move, drop to commit. Drag and drop is not used.
-- Each slot is a button with an accessible name such as
-  `Move Intervals block to week 6, course 2, columns 3 through 4`, so the tab
-  order walks exactly the valid choices.
-- Left and right controls step through the same positions in order.
-- A live region describes the hovering block continuously, including whether it
-  is resting on the course below or overhanging.
-- Invalid positions are never drawn and are never in the tab order.
-- `Auto Place` moves the block to the deterministic position: finish the lowest
-  open course before starting a new one, then prefer a position supported by
-  the course below, then the position nearest the centre, then the leftmost.
-- A support rule keeps the structure plausible without physics: a position
-  counts as supported when at least half its cells sit on a block in the course
-  below.
-- The user can never become stuck. `Auto Place` always works when any position
-  is open, and cancelling never builds anything.
+Do not draw future workouts.
 
-### Legend
+Do not draw an 18-week blueprint.
 
-Use a compact legend for:
+Do not make projected tower height, phase gauges, mortar labels, or packing statistics a primary part of the screen.
 
-- Easy
-- Intervals
-- Simulation
-- Long Run
-- Race
+Week and phase information belong in block detail if useful.
 
-Do not show Rest in the legend.
+### Block geometry
+
+Width from actual distance:
+
+- under 3.0 mi → 1
+- 3.0–4.99 mi → 2
+- 5.0–7.99 mi → 3
+- 8.0+ mi → 4
+
+Height from activity type:
+
+- Easy → 1
+- Long Run → 1
+- Intervals → 2
+- Simulation → 2
+- Race → 3
+
+Extra runs use the type selected in the log form.
+
+Pace history and effort do not change geometry.
+
+### Visual treatment
+
+Blocks are CSS-rendered and lightly dimensional.
+
+Allowed:
+
+- CSS transforms
+- Subtle isometric/oblique treatment if it remains readable on phone
+- Soft gradient
+- Top-edge highlight
+- Short depth shadow
+- One restrained newest-block glow
+
+Not allowed:
+
+- Canvas
+- WebGL
+- 3D engine
+- Physics engine
+- Rotating pieces
+- Freeform falling simulation
+- Continuous game loop
+
+### Placement
+
+The user chooses a valid horizontal landing column. The app computes where the block rests.
+
+Primary experience:
+
+- Show the earned block over the tower.
+- Tapping a valid position selects it.
+- Pointer/touch drag may move horizontally and snap between the same valid candidates.
+- Left/right controls remain available.
+- `Drop` commits.
+- `Auto Place` is secondary.
+- Cancel leaves the block pending.
+
+Direct manipulation must never be the only interaction path.
+
+### Block detail
+
+Tapping a placed block opens:
+
+- Actual run date
+- Activity type
+- Distance
+- Duration
+- Effort
+- Scheduled-workout context when linked
+- Notes
+
+Only the newest placed block may be moved in v1.
 
 ## Screen 4 — Plan
 
-### Week header
+Plan is the complete editable schedule.
+
+### Week navigation
+
+Show:
 
 - Week number
 - Date range
 - Phase
-- Completed count for the week
-- Thin progress bar
-
-### Week navigation
-
+- Completed scheduled runs / scheduled runs
 - Previous week
 - Next week
-- Current week shortcut when not viewing the current week
+- Current Week shortcut when useful
 
 ### Workout list
 
 Show all seven days.
 
-Rest rows:
+Rest row:
 
-- Neutral
-- No checkbox
-- Minus-circle status
+- Neutral treatment
+- `Rest`
+- May be opened for `Add Planned Run`
 
-Run rows:
+Planned run row:
 
-- Date and day
-- Color block
-- Target distance
-- Type
+- Date
+- Color/type
+- Target
 - Completion status
+- Opens detail/actions
 
-Tap a run row to open details.
-
-### Workout detail
+### Planned workout detail
 
 Show:
 
@@ -280,67 +301,100 @@ Show:
 - Type
 - Target
 - Full instructions
-- Actual result when completed
+- Actual linked run when completed
 
-Future workout actions:
+Actions depend on state.
 
-- Edit workout
-- Move workout
+Future planned run:
 
-Completed workout actions:
+- Edit Workout
+- Move Workout
+- Change to Rest
 
-- Edit run
-- View plan details
+Past incomplete planned run:
 
-Past incomplete workout actions:
+- Log Run
+- Edit Plan details when needed
 
-- Log run
-- Move only when the user explicitly chooses to adjust the plan
+Completed planned run:
 
-## Edit workout
+- Edit Actual Run
+- Edit planned details only with explicit confirmation
 
-Allowed fields:
+### Add Planned Run
 
-- Date
-- Workout type
-- Display title
-- Target distance text
-- Instructions
+A Rest day may be converted into a planned run.
 
-Rules:
+Required fields:
 
-- Editing does not recalculate surrounding weeks.
-- Moving a workout changes only that workout date.
-- Warn when moving onto a date that already has a run.
-- Do not prevent the move; require confirmation.
-- Race workout cannot be deleted.
-- A workout may only move to another date inside its existing seven-day training week.
+- Type
+- Target distance
+- Title/instructions
+
+### Move Workout
+
+- May move anywhere inside the plan date range.
+- Moving across week boundaries is allowed.
+- Destination week and phase update to the new date.
+- If another planned run already occupies the destination date, require confirmation.
+- Do not silently merge workouts.
+
+### Race
+
+Race day is fixed in ordinary workout editing.
+
+Do not allow Race to be deleted or casually moved.
+
+## Scheduled completion versus extra activity
+
+These concepts must remain visually and mathematically separate.
+
+Example:
+
+- Tuesday scheduled run: complete
+- Wednesday extra run: logged
+- Thursday scheduled run: upcoming
+
+Weekly plan progress remains `1 of 2 scheduled runs complete`.
+
+Total miles includes both Tuesday and Wednesday.
+
+Both runs earn blocks.
+
+## Streak
+
+Streak means consecutive scheduled workouts completed.
+
+- Today's unfinished scheduled workout does not break the streak during the day.
+- It breaks the streak only after its date has passed incomplete.
+- Completing today's workout may extend or start the streak.
+- Rest days do not affect it.
+- Extra runs do not affect it.
 
 ## Reset plan
 
-Available from the Plan overflow menu.
+Available from Plan overflow or another low-priority Plan action.
 
-- Explain that all plan edits and run logs will be erased.
+- Explain that plan edits, actual runs, and placements will be erased.
 - Require a second confirmation.
-- Reload from `seed/stack-training-plan-2026.json`.
+- Restore the seed plan.
 
 ## Responsive behavior
 
-### 320-767 px
+### 320–767 px
 
-- Bottom nav fixed within the app shell
-- Single-column cards
-- Bottom sheets for forms/details
-- Minimum 44 px touch targets
-- No horizontal scroll
+- Bottom navigation remains fixed within the app shell.
+- Single-column content.
+- Bottom sheets/dialogs for forms and detail.
+- No horizontal page scroll.
+- Primary actions at least 44 px.
+- Build pieces should be large enough to manipulate without precision tapping; this is one reason for the 8-column grid.
 
 ### 768 px and wider
 
-- Center app content at a comfortable reading width
-- Bottom navigation remains acceptable for consistency
-- Dialogs may center
-- Build structure may use more vertical spacing
-- Do not convert the app into a desktop dashboard
+- Center content at a comfortable reading width.
+- Keep the same three-screen mental model.
+- Do not turn Plan into a dense admin table.
 
 ## Accessibility
 
@@ -348,9 +402,12 @@ Available from the Plan overflow menu.
 - Visible labels
 - Visible keyboard focus
 - Color is never the only status indicator
-- Minimum text contrast appropriate for dark mode
-- Status text accompanies icons
+- Direct manipulation has full non-drag alternatives
 - Sheet focus is trapped and returned on close
-- Error text is associated with fields
-- `aria-live` announces save success
+- Errors are associated with fields
+- `aria-live` announces run save and block placement
 - Reduced motion support is required
+
+## Active implementation order
+
+Implement `docs/CORE_LOOP_REVISION.md` as UI-5.5 before beginning UI-6 Plan Adjustment.

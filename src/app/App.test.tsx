@@ -38,7 +38,7 @@ describe("App", () => {
     );
   });
 
-  it("switches to the Build structure and the Plan placeholder on tap", async () => {
+  it("switches to the Build structure and the Plan schedule on tap", async () => {
     const user = setupUser();
     render(<App />);
 
@@ -54,6 +54,52 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Plan" }));
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
+    // Plan opens on the week containing the pinned date.
+    expect(screen.getByText("Week 1 of 18")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Week 1 workouts" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(7);
+  });
+
+  it("logs a past run from Plan, dates it by the workout, and keeps it after a reload", async () => {
+    const user = setupUser();
+    // Wednesday of week 2, so every week 1 run is genuinely in the past.
+    vi.setSystemTime(new Date("2026-08-12T09:00:00"));
+    const { unmount } = render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    expect(screen.getByText("Week 2 of 18")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Missed",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Log Run" }));
+    await user.type(screen.getByLabelText(/Distance/), "2.1");
+    await user.type(screen.getByLabelText(/Duration/), "2030");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(
+      screen.getByRole("button", {
+        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Completed",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+
+    // The log is dated by the workout it belongs to, not by the entry time.
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.runLogs).toHaveLength(1);
+    expect(stored.runLogs[0].completedDate).toBe("2026-08-04");
+
+    unmount();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
   });
 
   it("earns a block on save and keeps it pending until it is placed", async () => {
@@ -85,6 +131,110 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("logs an extra run that earns a block without completing anything scheduled", async () => {
+    const user = setupUser();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Log Run" }));
+    expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText(/Activity/), "intervals");
+    await user.type(screen.getByLabelText(/Distance/), "5");
+    await user.type(screen.getByLabelText(/Duration/), "4000");
+    await user.click(screen.getByRole("button", { name: "Great" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    // Today's scheduled easy run is still owed.
+    expect(
+      screen.getByRole("button", { name: "Mark Complete" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/0 of 4 runs/)).toBeInTheDocument();
+    expect(screen.getByText("+1 extra")).toBeInTheDocument();
+
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.schemaVersion).toBe(5);
+    expect(stored.runLogs).toHaveLength(1);
+    expect(stored.runLogs[0].workoutId).toBeNull();
+    expect(stored.runLogs[0].activityType).toBe("intervals");
+
+    // The block it earned is waiting in Build, and its miles are counted.
+    await user.click(screen.getByRole("button", { name: "Build" }));
+    expect(screen.getByText("Total Miles").parentElement).toHaveTextContent("5");
+    expect(screen.getByText("Runs Complete").parentElement).toHaveTextContent(
+      "0 / 71",
+    );
+    expect(
+      within(screen.getByRole("list", { name: "Blocks ready to place" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("migrates a stored schema 4 state without losing the run or the block", async () => {
+    const user = setupUser();
+    localStorage.setItem(
+      "stack.app-state.v1",
+      JSON.stringify({
+        schemaVersion: 4,
+        settings: { units: "miles", theme: "dark" },
+        plan: JSON.parse(
+          JSON.stringify(
+            (await import("../seed/loadSeedPlan")).loadSeedPlan(),
+          ),
+        ),
+        runLogs: [
+          {
+            id: "run-workout-002",
+            workoutId: "workout-002",
+            completedDate: "2026-08-04",
+            distanceMiles: 2.1,
+            durationSeconds: 1230,
+            effort: "solid",
+            notes: "Old run",
+            createdAt: "2026-08-04T12:00:00.000Z",
+            updatedAt: "2026-08-04T12:00:00.000Z",
+          },
+        ],
+        // A position in the old ten-column grid, which no longer exists.
+        blockPlacements: [
+          {
+            workoutId: "workout-002",
+            row: 0,
+            columnStart: 10,
+            width: 1,
+            height: 2,
+            placedAt: "2026-08-04T13:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    render(<App />);
+
+    // The run survived: Today shows it completed, with its own values, and
+    // its block is already built rather than waiting to be placed again.
+    expect(screen.getByText("2.1 mi")).toBeInTheDocument();
+    expect(screen.getByText("20:30")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Place Block" }),
+    ).not.toBeInTheDocument();
+
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.schemaVersion).toBe(5);
+    expect(stored.runLogs[0].activityType).toBe("easy");
+    expect(stored.blockPlacements[0].runLogId).toBe("run-workout-002");
+    expect(stored.blockPlacements[0].columnStart).toBeLessThanOrEqual(8);
+    // Height is the activity type's now, not the old pace-derived two.
+    expect(stored.blockPlacements[0].height).toBe(1);
+
+    // And the block is still in the tower rather than back in the tray.
+    await user.click(screen.getByRole("button", { name: "Build" }));
+    expect(
+      within(screen.getByRole("list", { name: "Built blocks" })).getAllByRole(
+        "button",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("places an earned block, shows it in the structure, and keeps it after a reload", async () => {
     const user = setupUser();
     const { unmount } = render(<App />);
@@ -103,7 +253,7 @@ describe("App", () => {
     ).getAllByRole("button");
     expect(placed).toHaveLength(1);
     expect(placed[0]).toHaveAccessibleName(
-      "Week 1 Tuesday, Easy, course 0, column 1",
+      "Tuesday, August 4, Easy, week 1, course 0, column 1",
     );
     expect(
       screen.queryByRole("list", { name: "Blocks ready to place" }),

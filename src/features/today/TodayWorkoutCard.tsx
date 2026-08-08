@@ -6,24 +6,17 @@ import type { Workout } from "../../domain/types";
 interface TodayWorkoutCardProps {
   workout: Workout;
   onMarkComplete: () => void;
-  onViewPlan: () => void;
 }
 
 export function TodayWorkoutCard({
   workout,
   onMarkComplete,
-  onViewPlan,
 }: TodayWorkoutCardProps) {
   if (workout.type === "rest") {
     return (
       <Card className="today-workout-card">
         <p className="today-workout-card__eyebrow">Rest Day</p>
         <p className="today-workout-card__details">{workout.details}</p>
-        <div className="today-workout-card__actions">
-          <Button variant="secondary" onClick={onViewPlan}>
-            View Plan
-          </Button>
-        </div>
       </Card>
     );
   }

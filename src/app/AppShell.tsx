@@ -1,8 +1,8 @@
 import { BottomNav } from "../components/shared/BottomNav";
-import { Card } from "../components/ui/Card";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
 import type { PlacementRequest } from "../features/build/BuildScreen";
+import { PlanScreen } from "../features/plan/PlanScreen";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
@@ -13,10 +13,17 @@ interface AppShellProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
-  onSaveRun: (workout: Workout, values: ValidRunEntry) => void;
+  onSaveRun: (
+    workout: Workout | null,
+    values: ValidRunEntry,
+    runLogId?: string,
+  ) => void;
+  /** Removes one recorded run, and the block it earned with it. */
+  onDeleteRun: (runLogId: string) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
-  placingWorkoutId: string | null;
-  onPlacingChange: (workoutId: string | null) => void;
+  /** The earned block Build is currently holding, identified by its run log. */
+  placingRunLogId: string | null;
+  onPlacingChange: (runLogId: string | null) => void;
 }
 
 export function AppShell({
@@ -26,8 +33,9 @@ export function AppShell({
   runLogs,
   blockPlacements,
   onSaveRun,
+  onDeleteRun,
   onPlaceBlock,
-  placingWorkoutId,
+  placingRunLogId,
   onPlacingChange,
 }: AppShellProps) {
   return (
@@ -44,11 +52,12 @@ export function AppShell({
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
             onViewBuild={() => onTabChange("build")}
-            onStartPlacing={(workoutId) => {
-              onPlacingChange(workoutId);
+            onStartPlacing={(runLogId) => {
+              onPlacingChange(runLogId);
               onTabChange("build");
             }}
             onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
           />
         )}
         {activeTab === "build" && (
@@ -56,16 +65,20 @@ export function AppShell({
             plan={plan}
             runLogs={runLogs}
             blockPlacements={blockPlacements}
+            onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
             onPlaceBlock={onPlaceBlock}
-            placingWorkoutId={placingWorkoutId}
+            placingRunLogId={placingRunLogId}
             onPlacingChange={onPlacingChange}
           />
         )}
         {activeTab === "plan" && (
-          <Card>
-            <h1>Plan</h1>
-            <p>The Plan screen will show your full 18-week schedule here.</p>
-          </Card>
+          <PlanScreen
+            plan={plan}
+            runLogs={runLogs}
+            onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
+          />
         )}
       </main>
       <nav className="app-shell__nav" aria-label="Primary">

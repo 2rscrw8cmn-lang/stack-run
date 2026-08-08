@@ -2,14 +2,29 @@
 
 | Phase | Name | Status | Branch / PR | Notes |
 |---:|---|---|---|---|
-| 0 | Repository foundation | Ready for review | `feature/phase-0-foundation` | `npm run check` passes (lint, 36 tests, build). Manually verified at 320px, 390px, and 1280px. |
-| 1 | App shell | Ready for review | `feature/ui-1-shell` | `npm run check` passes (lint, 54 tests, build). Manually verified at 320px, 390px, 768px, and 1280px. |
-| 2 | Today | Ready for review | `feature/ui-2-today` | `npm run check` passes (lint, 72 tests, build). All 5 Today states manually verified at 320px and desktop (via a fixed-clock Playwright pass, since the sandbox's real date is before plan start). |
-| 3 | Complete Run | Ready for review | `claude/ui3-log-modal-spacing-k0pwgp` | `npm run check` passes (lint, 91 tests, build). UI-3 implemented with validation, guarded entry/edit, one-log upsert, and local persistence. Sheet layout, keyboard-safe sheet height, digits-only duration entry, and Today card spacing fixed and verified at 320px, 390px, and 1280px via a fixed-clock Playwright pass. |
-| 4 | Build | Ready for review | `claude/ui-4-stack-viz-wb437s` | `npm run check` passes (lint, 182 tests, build). Earned-block placement per D-014. Revised again after review: the tower is isometric (D-015) and a training week fills as many five-column courses as its blocks need (D-016), so the full plan builds a 36-course tower instead of an 18-row slab. Schema version 3; version 2 placements are re-laid into the narrower grid. Verified at 320px, 390px, and 768px against a production build; no horizontal overflow, keyboard placement and reduced motion confirmed. The tower stands on a site — ground, sky, and a translucent shaft showing the climb left to the race — with a phase gauge beside it, and placing now happens on the tower itself: the block hovers over its landing course and Drop commits. The tower is drawn in true oblique rather than under a perspective camera, so verticals stay vertical and the depth offset is constant at every height. Carries a temporary data panel for hands-on testing, listed for removal in UI-7. Now revised again per **D-017**: blocks are two-dimensional and earned from the run itself (width from distance, height from type adjusted by pace against the runner's own median), and they stack continuously in one ten-column grid instead of per-week bands. Schema version 4; versions 2 and 3 are replayed through the packer. `docs/BUILD_CONCEPT.md` records the measurements behind it, including the throwaway preview used to settle the open questions before the data model was touched. Verified at 320px, 390px, 768px and 1280px against a production build; no horizontal overflow. Carries a temporary data panel for hands-on testing, listed for removal in UI-7. **Open:** at 320px the narrowest block measures 19px against the 24px WCAG target-size floor — see BUILD_CONCEPT §8.1. |
-| 5 | Plan | Not started |  |  |
-| 6 | Plan adjustment | Not started |  |  |
-| 7 | Polish and release | Not started |  |  |
+| 0 | Repository foundation | Ready for review | `feature/phase-0-foundation` | Foundation implemented; checks pass. |
+| 1 | App shell | Ready for review | `feature/ui-1-shell` | Three-tab shell implemented. |
+| 2 | Today | Ready for review | `feature/ui-2-today` | Implemented; product behavior will be revised by UI-5.5. |
+| 3 | Complete Run | Ready for review | `claude/ui3-log-modal-spacing-k0pwgp` | Manual run entry implemented; Date and extra-run type will be added in UI-5.5. |
+| 4 | Build | Ready for review | `claude/ui-4-stack-viz-wb437s` | Earned-block placement, persistence, continuous tower, and CSS rendering implemented. D-017 mechanics are now scheduled for simplification in UI-5.5: 8 columns, distance-only width, type-only height, less engineering UI, extra runs earning blocks, and more tactile placement. |
+| 5 | Plan | Ready for review | `claude/ui5-dated-plan-review-9lcvxx` / PR #8 | Week-by-week schedule review is implemented with run logging/editing from detail. PR #8 also carries the approved documentation revision defining the next product phase. |
+| 5.5 | Core Loop Revision | Ready for review | `claude/ui55-core-loop-revision` | `npm run check` passes (lint, 287 tests, build). `docs/CORE_LOOP_REVISION.md` implemented: schema 5 with nullable `workoutId` and `activityType`; placement identity moved to the run log; extra runs that earn blocks and miles but no scheduled completion; an editable actual Date that is never in the future; Today rebuilt as a dashboard (compact race line, day's workout, This Week strip, Next, persistent `+ Log Run`, Build preview); D-023 streak that holds while today's run is still owed; Build on 8 columns with width from distance and height from activity type only, pace/median/effort geometry deleted, and the projected shaft, phase gauge, mortar lines and packing readouts removed; snapped pointer drag over the same valid columns with tap and keyboard intact; DevDataPanel gated to `import.meta.env.DEV`. Verified against a production build at 320, 390, 768 and 1280px with a fixed clock: no horizontal overflow at any width, landing slots 96×40 at 320px, a stored schema-4 state migrating in the browser without losing its run or its block, drag placement working end to end, and no DevDataPanel string in `dist/`. Revised after hands-on review on a phone: block faces are culled per grid cell rather than per block (a partly covered edge no longer draws a sliver out from under its neighbour), the openings a bridging block spans are drawn as recessed cells so nothing reads as floating, courses are 26px, the Build legend is deleted to give the tower room, the run sheet can no longer scroll sideways on a narrow screen, and **runs can be deleted** — from Today, Plan, Build's block detail, or the `Blocks Ready` tray — with the tower re-settling through the packer when a placed block is removed. Deletion was requested during review and is not in `CORE_LOOP_REVISION.md`. **Not included, by scope:** UI-6 plan editing. |
+| 6 | Plan adjustment | Not started |  | **Next phase.** Expand Plan editing to add planned runs, change run to Rest, and move across weeks within the plan date range. |
+| 7 | Polish and release | Not started |  | Final installability, accessibility, storage recovery, and release pass. |
+
+## Current product review notes
+
+The current engineering foundation is strong, but the product loop needs one revision before more feature surface is added.
+
+Approved direction:
+
+- Today must be useful beyond a race countdown.
+- Extra runs must be first-class actual activities.
+- Actual run date must be editable.
+- Build should feel like placing chunky blocks, not operating a packing model.
+- Plan must ultimately be editable.
+- Streak must not reset before today's scheduled run has had a chance to happen.
+- Product-review deployments must not expose dev controls.
 
 ## Update format
 

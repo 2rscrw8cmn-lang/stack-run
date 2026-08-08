@@ -75,6 +75,7 @@ const completedLog: RunLog = {
   id: "log-1",
   workoutId: "workout-easy",
   completedDate: "2026-08-04",
+  activityType: "easy",
   distanceMiles: 2.1,
   durationSeconds: 1230,
   effort: "solid",

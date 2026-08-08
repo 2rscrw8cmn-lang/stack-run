@@ -40,7 +40,7 @@ export function PlacementBar({
           className="placement-bar__chip"
           style={
             {
-              "--piece-color": `var(--${block.workout.build.colorKey})`,
+              "--piece-color": `var(--${block.runLog.activityType})`,
               "--piece-span": block.footprint.width,
               "--piece-height": block.footprint.height,
             } as CSSProperties
@@ -50,7 +50,7 @@ export function PlacementBar({
         <div className="placement-bar__detail">
           <p className="placement-bar__title">
             {isMove ? "Move" : "Place"}{" "}
-            {WORKOUT_TYPE_LABEL[block.workout.type]}
+            {WORKOUT_TYPE_LABEL[block.runLog.activityType]}
           </p>
           <p className="placement-bar__position">
             {candidate

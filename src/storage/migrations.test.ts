@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRID_COLUMNS } from "../domain/placement";
+import { GRID_COLUMNS, lastColumnOf, topOf } from "../domain/placement";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 import {
   createInitialAppState,
@@ -8,8 +8,9 @@ import {
   UnsupportedSchemaVersionError,
 } from "./migrations";
 
-const version1RunLog = {
-  id: "log-1",
+/** A stored run from before activity types existed. workout-002 is an easy run. */
+const legacyEasyRun = {
+  id: "run-workout-002",
   workoutId: "workout-002",
   completedDate: "2026-08-04",
   distanceMiles: 2.1,
@@ -20,20 +21,45 @@ const version1RunLog = {
   updatedAt: "2026-08-04T12:00:00.000Z",
 };
 
-function version1State() {
+/** workout-060 is an intervals session, so its block is two courses tall. */
+const legacyIntervalsRun = {
+  id: "run-workout-060",
+  workoutId: "workout-060",
+  completedDate: "2026-10-01",
+  distanceMiles: 5.4,
+  durationSeconds: 2700,
+  effort: "great",
+  notes: "",
+  createdAt: "2026-10-01T12:00:00.000Z",
+  updatedAt: "2026-10-01T12:00:00.000Z",
+};
+
+function legacyState(schemaVersion: 1 | 2 | 3 | 4, extra: object = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion,
     settings: { units: "miles", theme: "dark" },
     plan: loadSeedPlan(),
-    runLogs: [version1RunLog],
+    runLogs: [legacyEasyRun, legacyIntervalsRun],
+    ...extra,
   };
 }
 
 /** Distinct grid cells the placements occupy, which also proves no overlap. */
-function occupiedCells(placements: { row: number; columnStart: number; width: number; height: number }[]): number {
+function occupiedCells(
+  placements: {
+    row: number;
+    columnStart: number;
+    width: number;
+    height: number;
+  }[],
+): number {
   const cells = new Set<string>();
   for (const placement of placements) {
-    for (let x = placement.columnStart; x < placement.columnStart + placement.width; x += 1) {
+    for (
+      let x = placement.columnStart;
+      x < placement.columnStart + placement.width;
+      x += 1
+    ) {
       for (let y = placement.row; y < placement.row + placement.height; y += 1) {
         cells.add(`${x}:${y}`);
       }
@@ -56,102 +82,12 @@ describe("migrateAppState", () => {
     expect(migrateAppState(existing)).toEqual(existing);
   });
 
-  it("upgrades a version 1 state, keeping every run log and the plan", () => {
-    const version1 = version1State();
-    const migrated = migrateAppState(version1);
-
-    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(migrated.runLogs).toEqual([version1RunLog]);
-    expect(migrated.plan).toEqual(version1.plan);
-    expect(migrated.settings).toEqual(version1.settings);
-  });
-
-  it("leaves migrated runs unplaced, so each one becomes a block the user can still place", () => {
-    expect(migrateAppState(version1State()).blockPlacements).toEqual([]);
-  });
-
   it("tolerates a current-version payload that is missing the placements array", () => {
     const withoutPlacements: Record<string, unknown> = {
       ...createInitialAppState(),
     };
     delete withoutPlacements.blockPlacements;
     expect(migrateAppState(withoutPlacements).blockPlacements).toEqual([]);
-  });
-
-  it("upgrades a version 2 state, repacking its blocks into the new grid", () => {
-    const version2 = {
-      schemaVersion: 2,
-      settings: { units: "miles", theme: "dark" },
-      plan: loadSeedPlan(),
-      runLogs: [version1RunLog],
-      blockPlacements: [
-        // Week 1 as version 2 laid it out: one eight-column course.
-        { workoutId: "w-a", weekNumber: 1, columnStart: 1, span: 1, placedAt: "t1" },
-        { workoutId: "w-b", weekNumber: 1, columnStart: 2, span: 1, placedAt: "t2" },
-        { workoutId: "w-c", weekNumber: 1, columnStart: 3, span: 1, placedAt: "t3" },
-        { workoutId: "w-d", weekNumber: 1, columnStart: 4, span: 3, placedAt: "t4" },
-      ],
-    };
-
-    const migrated = migrateAppState(version2);
-
-    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(migrated.runLogs).toEqual([version1RunLog]);
-    // Which blocks are placed survives, in the order they were built.
-    expect(migrated.blockPlacements.map((p) => p.workoutId)).toEqual([
-      "w-a",
-      "w-b",
-      "w-c",
-      "w-d",
-    ]);
-    expect(migrated.blockPlacements.map((p) => p.placedAt)).toEqual([
-      "t1",
-      "t2",
-      "t3",
-      "t4",
-    ]);
-
-    // Where they sit does not: the grid width and the meaning of `row` both
-    // changed, so positions are recomputed rather than reinterpreted.
-    for (const placement of migrated.blockPlacements) {
-      expect(placement.columnStart).toBeGreaterThanOrEqual(1);
-      expect(placement.columnStart + placement.width - 1).toBeLessThanOrEqual(
-        GRID_COLUMNS,
-      );
-      // Version 3 had no height to recover, so nothing inflates retroactively.
-      expect(placement.height).toBe(1);
-    }
-    expect(occupiedCells(migrated.blockPlacements)).toBe(
-      1 + 1 + 1 + 3,
-    );
-  });
-
-  it("upgrades a version 3 state the same way, discarding its week bands", () => {
-    const version3 = {
-      schemaVersion: 3,
-      settings: { units: "miles", theme: "dark" },
-      plan: loadSeedPlan(),
-      runLogs: [version1RunLog],
-      blockPlacements: [
-        { workoutId: "w-a", weekNumber: 1, row: 0, columnStart: 1, span: 2, placedAt: "t1" },
-        { workoutId: "w-b", weekNumber: 1, row: 1, columnStart: 1, span: 3, placedAt: "t2" },
-        // Week 2 started its own band at row 0, which no longer means anything.
-        { workoutId: "w-c", weekNumber: 2, row: 0, columnStart: 1, span: 1, placedAt: "t3" },
-      ],
-    };
-
-    const migrated = migrateAppState(version3);
-
-    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(migrated.runLogs).toEqual([version1RunLog]);
-    expect(migrated.blockPlacements.map((p) => p.workoutId)).toEqual([
-      "w-a",
-      "w-b",
-      "w-c",
-    ]);
-    // One continuous tower: three small blocks all reach the ground course.
-    expect(migrated.blockPlacements.every((p) => p.row === 0)).toBe(true);
-    expect(occupiedCells(migrated.blockPlacements)).toBe(2 + 3 + 1);
   });
 
   it("rejects an unknown future schema version", () => {
@@ -164,5 +100,231 @@ describe("migrateAppState", () => {
     expect(() => migrateAppState("not-an-app-state")).toThrow(
       UnsupportedSchemaVersionError,
     );
+  });
+});
+
+describe("migrateAppState from version 4", () => {
+  it("keeps every run's values, timestamps, and scheduled link", () => {
+    const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
+
+    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.runLogs).toHaveLength(2);
+    expect(migrated.runLogs[0]).toMatchObject({
+      id: "run-workout-002",
+      workoutId: "workout-002",
+      completedDate: "2026-08-04",
+      distanceMiles: 2.1,
+      durationSeconds: 1230,
+      effort: "solid",
+      notes: "Felt good.",
+      createdAt: "2026-08-04T12:00:00.000Z",
+      updatedAt: "2026-08-04T12:00:00.000Z",
+    });
+  });
+
+  it("takes each run's activity type from the workout it satisfied", () => {
+    const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
+
+    expect(migrated.runLogs.map((runLog) => runLog.activityType)).toEqual([
+      "easy",
+      "intervals",
+    ]);
+  });
+
+  it("never invents an extra run", () => {
+    const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
+
+    expect(
+      migrated.runLogs.every((runLog) => runLog.workoutId !== null),
+    ).toBe(true);
+  });
+
+  it("keeps a run whose workout has vanished, sizing it conservatively", () => {
+    const migrated = migrateAppState({
+      ...legacyState(4, { blockPlacements: [] }),
+      runLogs: [{ ...legacyEasyRun, workoutId: "workout-does-not-exist" }],
+    });
+
+    expect(migrated.runLogs).toHaveLength(1);
+    expect(migrated.runLogs[0].activityType).toBe("easy");
+  });
+
+  it("moves placement identity from the workout to the run that earned it", () => {
+    const migrated = migrateAppState(
+      legacyState(4, {
+        blockPlacements: [
+          {
+            workoutId: "workout-002",
+            row: 0,
+            columnStart: 9,
+            width: 1,
+            height: 1,
+            placedAt: "2026-08-04T13:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    expect(migrated.blockPlacements).toHaveLength(1);
+    expect(migrated.blockPlacements[0].runLogId).toBe("run-workout-002");
+    expect(migrated.blockPlacements[0].placedAt).toBe(
+      "2026-08-04T13:00:00.000Z",
+    );
+  });
+
+  it("repacks into the eight-column grid, because column 9 no longer exists", () => {
+    const migrated = migrateAppState(
+      legacyState(4, {
+        blockPlacements: [
+          {
+            workoutId: "workout-002",
+            row: 0,
+            columnStart: 9,
+            width: 1,
+            height: 1,
+            placedAt: "t1",
+          },
+          {
+            workoutId: "workout-060",
+            row: 0,
+            columnStart: 10,
+            width: 3,
+            height: 4,
+            placedAt: "t2",
+          },
+        ],
+      }),
+    );
+
+    for (const placement of migrated.blockPlacements) {
+      expect(placement.columnStart).toBeGreaterThanOrEqual(1);
+      expect(lastColumnOf(placement)).toBeLessThanOrEqual(GRID_COLUMNS);
+    }
+    expect(migrated.blockPlacements.map((p) => p.placedAt)).toEqual(["t1", "t2"]);
+  });
+
+  it("re-derives geometry from the activity, dropping pace-derived height", () => {
+    const migrated = migrateAppState(
+      legacyState(4, {
+        blockPlacements: [
+          {
+            workoutId: "workout-060",
+            row: 0,
+            columnStart: 1,
+            // Version 4 could store a four-course block, earned by pace.
+            width: 1,
+            height: 4,
+            placedAt: "t1",
+          },
+        ],
+      }),
+    );
+
+    // 5.4 miles is three wide; intervals is two tall. Nothing else can size it.
+    expect(migrated.blockPlacements[0]).toMatchObject({ width: 3, height: 2 });
+  });
+
+  it("drops a placement whose run log is gone rather than orphaning a block", () => {
+    const migrated = migrateAppState(
+      legacyState(4, {
+        blockPlacements: [
+          {
+            workoutId: "workout-055",
+            row: 0,
+            columnStart: 1,
+            width: 1,
+            height: 1,
+            placedAt: "t1",
+          },
+        ],
+      }),
+    );
+
+    expect(migrated.blockPlacements).toEqual([]);
+    expect(migrated.runLogs).toHaveLength(2);
+  });
+});
+
+describe("migrateAppState from versions 1 to 3", () => {
+  it("upgrades a version 1 state, keeping every run log and the plan", () => {
+    const version1 = legacyState(1);
+    const migrated = migrateAppState(version1);
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.runLogs.map((runLog) => runLog.id)).toEqual([
+      "run-workout-002",
+      "run-workout-060",
+    ]);
+    expect(migrated.plan).toEqual(version1.plan);
+    expect(migrated.settings).toEqual(version1.settings);
+  });
+
+  it("leaves version 1 runs unplaced, so each becomes a block the user can place", () => {
+    expect(migrateAppState(legacyState(1)).blockPlacements).toEqual([]);
+  });
+
+  it("upgrades a version 2 state, repacking its blocks into the new grid", () => {
+    const migrated = migrateAppState(
+      legacyState(2, {
+        blockPlacements: [
+          // Week 1 as version 2 laid it out: one eight-column course.
+          {
+            workoutId: "workout-002",
+            weekNumber: 1,
+            columnStart: 1,
+            span: 1,
+            placedAt: "t1",
+          },
+          {
+            workoutId: "workout-060",
+            weekNumber: 9,
+            columnStart: 4,
+            span: 3,
+            placedAt: "t2",
+          },
+        ],
+      }),
+    );
+
+    expect(migrated.blockPlacements.map((p) => p.runLogId)).toEqual([
+      "run-workout-002",
+      "run-workout-060",
+    ]);
+    // 2.1 miles is one wide; 5.4 miles is three wide and intervals is two tall.
+    expect(occupiedCells(migrated.blockPlacements)).toBe(1 + 6);
+    expect(Math.max(...migrated.blockPlacements.map(topOf))).toBe(2);
+  });
+
+  it("upgrades a version 3 state the same way, discarding its week bands", () => {
+    const migrated = migrateAppState(
+      legacyState(3, {
+        blockPlacements: [
+          {
+            workoutId: "workout-002",
+            weekNumber: 1,
+            row: 0,
+            columnStart: 1,
+            span: 2,
+            placedAt: "t1",
+          },
+          // Week 9 started its own band at row 0, which no longer means anything.
+          {
+            workoutId: "workout-060",
+            weekNumber: 9,
+            row: 0,
+            columnStart: 1,
+            span: 3,
+            placedAt: "t2",
+          },
+        ],
+      }),
+    );
+
+    expect(migrated.blockPlacements.map((p) => p.runLogId)).toEqual([
+      "run-workout-002",
+      "run-workout-060",
+    ]);
+    // One continuous tower: both blocks reach the ground course.
+    expect(migrated.blockPlacements.every((p) => p.row === 0)).toBe(true);
   });
 });

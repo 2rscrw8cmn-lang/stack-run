@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InvalidPlacementError } from "../domain/placement";
+import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement";
 import {
+  deleteRunLog,
   loadAppState,
   placeBlock,
   resetAppState,
@@ -15,14 +16,78 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+const scheduledRun = {
+  workoutId: "workout-002",
+  completedDate: "2026-08-04",
+  activityType: "easy" as const,
+  distanceMiles: 2,
+  durationSeconds: 1200,
+  effort: "solid" as const,
+  notes: "",
+};
+
+const extraRun = { ...scheduledRun, workoutId: null };
+
 describe("saveRunLog", () => {
   it("updates the one existing log for a workout and persists it", () => {
     let state = loadAppState();
-    const base = { workoutId: "workout-002", completedDate: "2026-08-04", distanceMiles: 2, durationSeconds: 1200, effort: "solid" as const, notes: "" };
-    state = saveRunLog(state, base);
-    state = saveRunLog(state, { ...base, distanceMiles: 2.25, notes: "Updated" });
+    state = saveRunLog(state, scheduledRun);
+    state = saveRunLog(state, { ...scheduledRun, distanceMiles: 2.25, notes: "Updated" });
     expect(state.runLogs).toHaveLength(1);
     expect(loadAppState().runLogs[0]).toMatchObject({ distanceMiles: 2.25, notes: "Updated" });
+  });
+
+  it("saves the date the run happened, not the date it was entered", () => {
+    const state = saveRunLog(loadAppState(), {
+      ...scheduledRun,
+      completedDate: "2026-08-01",
+    });
+
+    expect(state.runLogs[0].completedDate).toBe("2026-08-01");
+  });
+
+  it("records an extra run with no scheduled workout behind it", () => {
+    const state = saveRunLog(loadAppState(), {
+      ...extraRun,
+      activityType: "intervals",
+      distanceMiles: 5,
+    });
+
+    expect(state.runLogs).toHaveLength(1);
+    expect(state.runLogs[0].workoutId).toBeNull();
+    expect(state.runLogs[0].activityType).toBe("intervals");
+    expect(loadAppState().runLogs[0].id).toBe(state.runLogs[0].id);
+  });
+
+  it("never merges two extra runs, even on the same day", () => {
+    let state = saveRunLog(loadAppState(), extraRun);
+    state = saveRunLog(state, { ...extraRun, distanceMiles: 4 });
+
+    expect(state.runLogs).toHaveLength(2);
+    expect(new Set(state.runLogs.map((runLog) => runLog.id)).size).toBe(2);
+  });
+
+  it("updates an extra run when it is edited by id", () => {
+    let state = saveRunLog(loadAppState(), extraRun);
+    const { id } = state.runLogs[0];
+    state = saveRunLog(state, { ...extraRun, id, distanceMiles: 6.2 });
+
+    expect(state.runLogs).toHaveLength(1);
+    expect(loadAppState().runLogs[0]).toMatchObject({
+      id,
+      distanceMiles: 6.2,
+      workoutId: null,
+    });
+  });
+
+  it("does not let an extra run satisfy a scheduled workout", () => {
+    let state = saveRunLog(loadAppState(), extraRun);
+    state = saveRunLog(state, scheduledRun);
+
+    expect(state.runLogs).toHaveLength(2);
+    expect(
+      state.runLogs.filter((runLog) => runLog.workoutId === "workout-002"),
+    ).toHaveLength(1);
   });
 });
 
@@ -40,6 +105,7 @@ describe("loadAppState", () => {
       id: "log-1",
       workoutId: "workout-002",
       completedDate: "2026-08-04",
+      activityType: "easy",
       distanceMiles: 2,
       durationSeconds: 1200,
       effort: "solid",
@@ -77,7 +143,9 @@ describe("loadAppState", () => {
 
     const loaded = loadAppState();
     expect(loaded.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(loaded.runLogs).toEqual(version1.runLogs);
+    expect(loaded.runLogs).toEqual([
+      { ...version1.runLogs[0], activityType: "easy" },
+    ]);
     expect(loaded.blockPlacements).toEqual([]);
 
     // The upgrade is written back, so storage stops holding the old shape.
@@ -85,7 +153,7 @@ describe("loadAppState", () => {
       localStorage.getItem(APP_STATE_STORAGE_KEY) ?? "null",
     );
     expect(stored.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(stored.runLogs).toEqual(version1.runLogs);
+    expect(stored.runLogs).toEqual(loaded.runLogs);
   });
 
   it("backs up and reports corrupted storage instead of discarding it", () => {
@@ -102,6 +170,83 @@ describe("loadAppState", () => {
   });
 });
 
+describe("deleteRunLog", () => {
+  it("removes the run and persists the removal", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = deleteRunLog(state, "run-workout-002");
+
+    expect(state.runLogs).toEqual([]);
+    expect(loadAppState().runLogs).toEqual([]);
+  });
+
+  it("takes the block it earned out of the tower with it", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = placeBlock(state, {
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 3,
+      width: 1,
+      height: 1,
+    });
+
+    state = deleteRunLog(state, "run-workout-002");
+    expect(state.blockPlacements).toEqual([]);
+    expect(loadAppState().blockPlacements).toEqual([]);
+  });
+
+  it("re-settles the tower so nothing is left floating over the hole", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = saveRunLog(state, { ...scheduledRun, workoutId: "workout-004" });
+    state = saveRunLog(state, { ...scheduledRun, workoutId: "workout-006" });
+    state = placeBlock(state, {
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+    state = placeBlock(state, {
+      runLogId: "run-workout-004",
+      row: 1,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+    state = placeBlock(state, {
+      runLogId: "run-workout-006",
+      row: 2,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+
+    // Pull the bottom block out from under the other two.
+    state = deleteRunLog(state, "run-workout-002");
+
+    expect(state.blockPlacements).toHaveLength(2);
+    // Every remaining block still rests on something.
+    const ground = state.blockPlacements.filter((p) => p.row === 0);
+    expect(ground.length).toBeGreaterThan(0);
+    expect(Math.max(...state.blockPlacements.map(topOf))).toBe(
+      Math.max(...skylineOf(state.blockPlacements)),
+    );
+  });
+
+  it("leaves other runs and their blocks alone", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = saveRunLog(state, extraRun);
+    const extraId = state.runLogs[1].id;
+
+    state = deleteRunLog(state, "run-workout-002");
+    expect(state.runLogs.map((runLog) => runLog.id)).toEqual([extraId]);
+  });
+
+  it("ignores an id that is not there", () => {
+    const state = saveRunLog(loadAppState(), scheduledRun);
+    expect(deleteRunLog(state, "run-nothing")).toBe(state);
+  });
+});
+
 describe("resetAppState", () => {
   it("restores the seed plan and clears run logs", () => {
     const state = loadAppState();
@@ -109,6 +254,7 @@ describe("resetAppState", () => {
       id: "log-1",
       workoutId: "workout-002",
       completedDate: "2026-08-04",
+      activityType: "easy",
       distanceMiles: 2,
       durationSeconds: 1200,
       effort: "solid",
@@ -126,14 +272,7 @@ describe("resetAppState", () => {
 });
 
 describe("placeBlock", () => {
-  const easyRun = {
-    workoutId: "workout-002",
-    completedDate: "2026-08-04",
-    distanceMiles: 2,
-    durationSeconds: 1200,
-    effort: "solid" as const,
-    notes: "",
-  };
+  const easyRun = scheduledRun;
 
   function stateWithLoggedRun() {
     return saveRunLog(loadAppState(), easyRun);
@@ -141,7 +280,7 @@ describe("placeBlock", () => {
 
   it("persists a placement and reloads it", () => {
     const state = placeBlock(stateWithLoggedRun(), {
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 3,
       width: 1,
@@ -150,7 +289,7 @@ describe("placeBlock", () => {
 
     expect(state.blockPlacements).toHaveLength(1);
     expect(loadAppState().blockPlacements[0]).toMatchObject({
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 3,
       width: 1,
@@ -161,16 +300,16 @@ describe("placeBlock", () => {
     );
   });
 
-  it("keeps one placement per workout when a block is moved", () => {
+  it("keeps one placement per run when a block is moved", () => {
     let state = placeBlock(stateWithLoggedRun(), {
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 3,
       width: 1,
       height: 1,
     });
     state = placeBlock(state, {
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 5,
       width: 1,
@@ -185,7 +324,7 @@ describe("placeBlock", () => {
     // A 2 mile run earns a 1-wide block; the caller cannot ask for a bigger one.
     expect(() =>
       placeBlock(stateWithLoggedRun(), {
-        workoutId: "workout-002",
+        runLogId: "run-workout-002",
         row: 0,
         columnStart: 1,
         width: 3,
@@ -197,7 +336,7 @@ describe("placeBlock", () => {
   it("rejects a row that is not where the block would fall", () => {
     expect(() =>
       placeBlock(stateWithLoggedRun(), {
-        workoutId: "workout-002",
+        runLogId: "run-workout-002",
         row: 4,
         columnStart: 1,
         width: 1,
@@ -210,7 +349,7 @@ describe("placeBlock", () => {
     let state = saveRunLog(loadAppState(), easyRun);
     state = saveRunLog(state, { ...easyRun, workoutId: "workout-004" });
     state = placeBlock(state, {
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 3,
       width: 1,
@@ -220,7 +359,7 @@ describe("placeBlock", () => {
     // Claiming the occupied cell is refused; the course above is accepted.
     expect(() =>
       placeBlock(state, {
-        workoutId: "workout-004",
+        runLogId: "run-workout-004",
         row: 0,
         columnStart: 3,
         width: 1,
@@ -230,7 +369,7 @@ describe("placeBlock", () => {
 
     expect(() =>
       placeBlock(state, {
-        workoutId: "workout-004",
+        runLogId: "run-workout-004",
         row: 1,
         columnStart: 3,
         width: 1,
@@ -248,9 +387,9 @@ describe("placeBlock", () => {
 
     expect(() =>
       placeBlock(state, {
-        workoutId: "workout-007",
+        runLogId: "run-workout-007",
         row: 0,
-        columnStart: 9,
+        columnStart: 7,
         width: 4,
         height: 1,
       }),
@@ -260,7 +399,7 @@ describe("placeBlock", () => {
   it("refuses to place a block for a run that was never logged", () => {
     expect(() =>
       placeBlock(loadAppState(), {
-        workoutId: "workout-002",
+        runLogId: "run-workout-002",
         row: 0,
         columnStart: 1,
         width: 1,
@@ -273,14 +412,14 @@ describe("placeBlock", () => {
     let state = saveRunLog(loadAppState(), easyRun);
     state = saveRunLog(state, { ...easyRun, workoutId: "workout-004" });
     state = placeBlock(state, {
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 3,
       width: 1,
       height: 1,
     });
     state = placeBlock(state, {
-      workoutId: "workout-004",
+      runLogId: "run-workout-004",
       row: 0,
       columnStart: 5,
       width: 1,
@@ -290,7 +429,7 @@ describe("placeBlock", () => {
     // workout-004 was placed last, so only it can still be moved.
     expect(() =>
       placeBlock(state, {
-        workoutId: "workout-002",
+        runLogId: "run-workout-002",
         row: 0,
         columnStart: 1,
         width: 1,
@@ -299,10 +438,24 @@ describe("placeBlock", () => {
     ).toThrow(InvalidPlacementError);
   });
 
+  it("places an extra run's block like any other", () => {
+    const logged = saveRunLog(loadAppState(), extraRun);
+    const { id } = logged.runLogs[0];
+    placeBlock(logged, {
+      runLogId: id,
+      row: 0,
+      columnStart: 2,
+      width: 1,
+      height: 1,
+    });
+
+    expect(loadAppState().blockPlacements[0].runLogId).toBe(id);
+  });
+
   it("leaves run logs untouched", () => {
     const before = stateWithLoggedRun();
     const after = placeBlock(before, {
-      workoutId: "workout-002",
+      runLogId: "run-workout-002",
       row: 0,
       columnStart: 3,
       width: 1,

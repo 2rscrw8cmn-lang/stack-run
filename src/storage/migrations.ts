@@ -1,16 +1,29 @@
-import type { AppState, BlockPlacement, RunLog, TrainingPlan } from "../domain/types";
-import type { AppSettings } from "../domain/types";
+import { footprintFor } from "../domain/footprint";
 import { repackPlacements } from "../domain/placement";
+import type {
+  AppSettings,
+  AppState,
+  BlockPlacement,
+  Effort,
+  RunActivityType,
+  RunLog,
+  TrainingPlan,
+} from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
-/** Schema version 1: run logs only, before blocks were placed by hand. */
-interface AppStateV1 {
-  schemaVersion: 1;
-  settings: AppSettings;
-  plan: TrainingPlan;
-  runLogs: RunLog[];
+/** Every run log before version 5 belonged to a scheduled workout. */
+interface RunLogV4 {
+  id: string;
+  workoutId: string;
+  completedDate: string;
+  distanceMiles: number;
+  durationSeconds: number;
+  effort: Effort;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Schema version 2: one eight-column course per training week. */
@@ -22,25 +35,27 @@ interface BlockPlacementV2 {
   placedAt: string;
 }
 
-interface AppStateV2 {
-  schemaVersion: 2;
-  settings: AppSettings;
-  plan: TrainingPlan;
-  runLogs: RunLog[];
-  blockPlacements: BlockPlacementV2[];
-}
-
 /** Schema version 3: five-column courses, a week filling as many as it needs. */
 interface BlockPlacementV3 extends BlockPlacementV2 {
   row: number;
 }
 
-interface AppStateV3 {
-  schemaVersion: 3;
+/** Schema version 4: a continuous ten-column grid, blocks two-dimensional. */
+interface BlockPlacementV4 {
+  workoutId: string;
+  row: number;
+  columnStart: number;
+  width: 1 | 2 | 3 | 4;
+  height: 1 | 2 | 3 | 4;
+  placedAt: string;
+}
+
+interface LegacyAppState {
+  schemaVersion: 1 | 2 | 3 | 4;
   settings: AppSettings;
   plan: TrainingPlan;
-  runLogs: RunLog[];
-  blockPlacements: BlockPlacementV3[];
+  runLogs: RunLogV4[];
+  blockPlacements?: (BlockPlacementV2 | BlockPlacementV3 | BlockPlacementV4)[];
 }
 
 export class UnsupportedSchemaVersionError extends Error {
@@ -64,70 +79,65 @@ export function createInitialAppState(): AppState {
 }
 
 /**
- * Version 1 predates block placement. Every run logged before the update keeps
- * its log untouched and simply has no placement yet, which makes it a pending
- * earned block the user can place whenever they like. Nothing is auto-placed:
- * choosing where a block goes is the point of the feature.
+ * Every stored run belonged to a scheduled workout, so its activity type is
+ * the workout's type. A run whose workout has since vanished from the plan
+ * keeps its values and falls back to Easy: losing a recorded run to a lookup
+ * miss would be far worse than sizing its block conservatively.
  */
-function migrateV1(state: AppStateV1): AppState {
-  return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    settings: state.settings,
-    plan: state.plan,
-    runLogs: state.runLogs,
-    blockPlacements: [],
-  };
+function upgradeRunLogs(plan: TrainingPlan, runLogs: RunLogV4[]): RunLog[] {
+  const typeByWorkoutId = new Map(
+    plan.weeks
+      .flatMap((week) => week.workouts)
+      .map((workout) => [workout.id, workout.type]),
+  );
+
+  return runLogs.map((runLog) => {
+    const type = typeByWorkoutId.get(runLog.workoutId);
+    const activityType: RunActivityType =
+      type && type !== "rest" ? type : "easy";
+    return { ...runLog, activityType };
+  });
 }
 
 /**
- * Versions 2 and 3 both stored a one-dimensional `span` inside a training
- * week's own band of courses. Version 4 makes blocks two-dimensional and drops
- * the week bands, so neither the column count, nor `span`, nor the meaning of
- * `row` survives — a version 3 `row` was an index within a week, and a version
- * 4 `row` is an absolute course in one continuous tower.
+ * Placement identity moves from the scheduled workout to the actual run,
+ * because an extra run has a block and no workout (D-019). A placement whose
+ * run log is gone is dropped: it names a block that no activity earned.
  *
- * Placements are therefore replayed through the packer in the order they were
- * built. **Which** blocks are placed survives; **where** they sit does not.
- * Run logs are untouched, so nothing the user actually recorded is lost — only
- * an arrangement they can redo in a few taps.
- *
- * Heights cannot be recovered either: version 3 had no concept of one. Every
- * migrated block is one course tall, which keeps the old tower's total mass
- * roughly intact rather than inflating it retroactively.
+ * Geometry is re-derived from the activity and the tower is replayed through
+ * the packer, because the grid narrowed from ten columns to eight and a
+ * pace-derived height no longer exists. **Which** blocks are placed survives;
+ * **where** they sit does not. No run data is touched.
  */
-function repackLegacy(
-  placements: readonly { workoutId: string; span: number; placedAt: string }[],
+function upgradePlacements(
+  runLogs: RunLog[],
+  placements: readonly { workoutId: string; placedAt: string }[],
 ): BlockPlacement[] {
-  return repackPlacements(
-    placements.map((placement) => ({
-      workoutId: placement.workoutId,
-      placedAt: placement.placedAt,
-      row: 0,
-      columnStart: 1,
-      width: Math.min(4, Math.max(1, placement.span)) as BlockPlacement["width"],
-      height: 1,
-    })),
+  const runLogByWorkoutId = new Map(
+    runLogs.flatMap((runLog) =>
+      runLog.workoutId ? [[runLog.workoutId, runLog] as const] : [],
+    ),
   );
-}
 
-function migrateV2(state: AppStateV2): AppState {
-  return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    settings: state.settings,
-    plan: state.plan,
-    runLogs: state.runLogs,
-    blockPlacements: repackLegacy(state.blockPlacements ?? []),
-  };
-}
+  const carried = placements.flatMap((placement) => {
+    const runLog = runLogByWorkoutId.get(placement.workoutId);
+    if (!runLog) {
+      return [];
+    }
+    const { width, height } = footprintFor(runLog);
+    return [
+      {
+        runLogId: runLog.id,
+        placedAt: placement.placedAt,
+        row: 0,
+        columnStart: 1,
+        width,
+        height,
+      },
+    ];
+  });
 
-function migrateV3(state: AppStateV3): AppState {
-  return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    settings: state.settings,
-    plan: state.plan,
-    runLogs: state.runLogs,
-    blockPlacements: repackLegacy(state.blockPlacements ?? []),
-  };
+  return repackPlacements(carried);
 }
 
 /**
@@ -135,6 +145,9 @@ function migrateV3(state: AppStateV3): AppState {
  * Missing storage produces a fresh state from the seed plan. Any schemaVersion
  * newer than this build understands is a recoverable error so the caller can
  * offer a reset instead of silently discarding user data.
+ *
+ * Migration never invents an extra run. Every run that comes out of it is one
+ * the user recorded against a scheduled workout, still linked to it.
  */
 export function migrateAppState(input: unknown): AppState {
   if (input === null || input === undefined) {
@@ -150,16 +163,21 @@ export function migrateAppState(input: unknown): AppState {
     blockPlacements?: BlockPlacement[];
   };
 
-  if (candidate.schemaVersion === 1) {
-    return migrateV1(candidate as unknown as AppStateV1);
-  }
-
-  if (candidate.schemaVersion === 2) {
-    return migrateV2(candidate as unknown as AppStateV2);
-  }
-
-  if (candidate.schemaVersion === 3) {
-    return migrateV3(candidate as unknown as AppStateV3);
+  if (
+    candidate.schemaVersion === 1 ||
+    candidate.schemaVersion === 2 ||
+    candidate.schemaVersion === 3 ||
+    candidate.schemaVersion === 4
+  ) {
+    const legacy = candidate as unknown as LegacyAppState;
+    const runLogs = upgradeRunLogs(legacy.plan, legacy.runLogs ?? []);
+    return {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      settings: legacy.settings,
+      plan: legacy.plan,
+      runLogs,
+      blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
+    };
   }
 
   if (candidate.schemaVersion === CURRENT_SCHEMA_VERSION) {

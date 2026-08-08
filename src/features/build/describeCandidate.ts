@@ -20,5 +20,5 @@ export function describeCandidate(
     candidate.opened === 0
       ? "resting flat"
       : `arching over ${candidate.opened} ${candidate.opened === 1 ? "cell" : "cells"}`;
-  return `${WORKOUT_TYPE_LABEL[block.workout.type]} block over ${columns}, landing on course ${candidate.row}, ${support}.`;
+  return `${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block over ${columns}, landing on course ${candidate.row}, ${support}.`;
 }

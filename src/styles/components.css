@@ -140,6 +140,7 @@
 /* FormField */
 
 .form-field {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -230,8 +231,11 @@
 /* Only the body scrolls, so the header and a sticky action stay reachable. */
 .sheet__body {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  /* Nothing in a form sheet is ever worth panning sideways for. */
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
@@ -299,51 +303,235 @@
   gap: var(--space-4);
 }
 
-.race-summary-card__row {
+/* The race, reduced to one line above the day's work. */
+.race-context {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
-.race-summary-card__label {
+.race-context__name {
+  color: var(--text);
+}
+
+.race-context__separator {
+  color: var(--text-subtle);
+}
+
+.race-context__days {
+  color: var(--accent);
+}
+
+/* This Week */
+
+.this-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.this-week__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.this-week__title {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-subtle);
 }
 
-.race-summary-card__race-name {
-  margin: 0 0 var(--space-3);
-  font-size: 18px;
+.this-week__count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
 }
 
-.race-summary-card__race-date {
-  margin: 0;
+/* Extra runs sit beside the scheduled count, never inside it. */
+.this-week__extra {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  font-size: 11px;
   color: var(--text-muted);
 }
 
-.race-summary-card__countdown {
-  flex-shrink: 0;
-  text-align: right;
+.this-week__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.race-summary-card__days {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 650;
-  line-height: 1;
-  color: var(--accent);
+.this-week__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+  border-radius: var(--radius-sm);
 }
 
-.race-summary-card__days-label {
-  margin: 0;
-  font-size: 12px;
+.this-week__day[data-today] {
+  background: var(--surface-strong);
+}
+
+.this-week__weekday {
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-subtle);
+}
+
+.this-week__marker {
+  width: 100%;
+  max-width: 22px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--surface-strong);
+}
+
+/* Completed runs fill; upcoming ones outline; missed ones warn. */
+.this-week__day[data-status="completed"] .this-week__marker {
+  background: var(--piece-color);
+}
+
+.this-week__day[data-status="planned"] .this-week__marker {
+  background: color-mix(in srgb, var(--piece-color) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--piece-color) 55%, transparent);
+}
+
+.this-week__day[data-status="missed"] .this-week__marker {
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--long) 45%, transparent) 0 3px,
+    transparent 3px 6px
+  );
+  border: 1px solid color-mix(in srgb, var(--long) 45%, transparent);
+}
+
+.this-week__link {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Next */
+
+.next-workout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.next-workout__label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.next-workout__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.next-workout__color {
+  flex-shrink: 0;
+  width: 10px;
+  height: 34px;
+  border-radius: 5px;
+  background: var(--piece-color);
+}
+
+.next-workout__detail {
+  min-width: 0;
+}
+
+.next-workout__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.next-workout__meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* The extra-run action is always available, whatever the day scheduled. */
+.today-screen__log-extra {
+  width: 100%;
+}
+
+/* Build preview */
+
+.build-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.build-preview__count {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.build-preview__pending {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* A crop of the newest bricks, in the colours and widths they were placed at. */
+.build-preview__crop {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.build-preview__brick {
+  width: calc(var(--piece-span) * 12px);
+  height: calc(var(--piece-height) * 10px);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 86%, white),
+    var(--piece-color)
+  );
 }
 
 /* One vertical rhythm for every Today card, so no child needs ad-hoc margins. */
@@ -454,6 +642,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
+}
+
+/* Native date pickers otherwise centre their text and size themselves. */
+.run-input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
+}
+
+.complete-run-form__lede {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .complete-run-form .form-field__label,
@@ -467,7 +669,12 @@
 }
 
 .run-input {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  /* Native date and select controls carry an intrinsic width wider than a
+     narrow panel; without this they push the sheet sideways on iOS. */
+  min-width: 0;
   min-height: 48px;
   padding: var(--space-3);
   border: 1px solid var(--border-strong);
@@ -545,11 +752,22 @@ textarea.run-input {
  * Keeps Save Run in reach on a short viewport instead of stranding it below the
  * fold of the sheet body.
  */
+/* The sticky action sits over the scrolling body, so the last field needs
+   room to clear it rather than ending underneath. */
 .complete-run-form__actions {
   position: sticky;
   bottom: 0;
-  padding-top: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-1);
+  border-top: 1px solid var(--border);
   background: var(--surface);
+}
+
+.complete-run-form__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .complete-run-form__actions .button {
@@ -622,7 +840,7 @@ textarea.run-input {
   flex-direction: column;
   gap: var(--space-2);
   /* Ten columns across whatever the tower is given, so a course is short. */
-  --course-height: 20px;
+  --course-height: 26px;
   /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
   --iso-run: 16px;
   --iso-rise: 8px;
@@ -672,43 +890,6 @@ textarea.run-input {
   overflow: hidden;
 }
 
-/* Height gauge: which stretch of the plan each part of the tower belongs to. */
-.build-site__gauge {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-  width: 58px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-right: 1px solid var(--border);
-}
-
-.build-site__phase {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex: var(--phase-courses) 1 0;
-  min-height: 0;
-  padding-right: var(--space-2);
-  border-top: 1px solid var(--border);
-}
-
-.build-site__phase:last-child {
-  border-bottom: 1px solid var(--border);
-}
-
-.build-site__phase-label {
-  font-size: 8px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  line-height: 1.3;
-  text-align: right;
-  color: var(--text-subtle);
-  hyphens: none;
-}
-
 .build-site__tower {
   flex: 1 1 auto;
   display: flex;
@@ -717,69 +898,31 @@ textarea.run-input {
   min-width: 0;
 }
 
-/*
- * The sky is the height left to climb. It is a shaft and a capstone, never a
- * block-by-block outline: it says how tall this gets and that the race tops
- * it, and nothing about which run goes where.
- */
+/* Plain sky above the tower: scenery, not a projection of what is to come. */
 .build-site__sky {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  height: min(
-    calc(var(--remaining-courses) * var(--course-height)),
-    42vh
-  );
-  min-height: 96px;
-  padding-top: var(--space-3);
-  /* Fades out at the top: the shaft suggests the climb, the readout above the
-     stage gives the exact number of courses. */
-  mask-image: linear-gradient(180deg, transparent, #000 34%);
-}
-
-.build-site__summit {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: 0 0 var(--space-2);
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-subtle);
-}
-
-/* A faint race block at the top of the shaft: the thing being built toward. */
-.build-site__capstone {
-  width: 40%;
-  max-width: 100%;
-  height: 14px;
-  border: 1px dashed color-mix(in srgb, var(--race) 45%, transparent);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--race) 7%, transparent);
-}
-
-.build-site__shaft {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 100%;
-  min-height: 0;
-  margin-top: var(--space-2);
-  border-left: 1px dashed var(--border);
-  border-right: 1px dashed var(--border);
-  background: linear-gradient(
-    180deg,
-    transparent,
-    color-mix(in srgb, var(--text) 4%, transparent)
-  );
+  height: 88px;
+  mask-image: linear-gradient(180deg, transparent, #000 70%);
 }
 
 /* Scroll anchor: Build opens framed here, on the top of what is built. */
 .build-site__skyline {
   height: 1px;
   scroll-margin-block: 45vh;
+}
+
+/*
+ * An opening the tower spans. Drawn recessed, so the block above it reads as
+ * bridging a gap rather than floating over one.
+ */
+.built-tower__void {
+  z-index: 0;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.55),
+    rgba(0, 0, 0, 0.28)
+  );
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.55);
 }
 
 /*
@@ -868,6 +1011,10 @@ textarea.run-input {
   top: calc(-1 * var(--iso-rise));
   bottom: auto;
   height: var(--iso-rise);
+  /* One column of the brick's top, so the face ends where a neighbour rests. */
+  left: calc(var(--face-offset) / var(--face-cells) * 100%);
+  right: auto;
+  width: calc(100% / var(--face-cells));
   transform-origin: bottom left;
   transform: skewX(-63.435deg);
   background: color-mix(in srgb, var(--piece-color) 62%, white);
@@ -883,6 +1030,10 @@ textarea.run-input {
   left: 100%;
   right: auto;
   width: var(--iso-run);
+  /* One course of the brick's side, counted from the bottom up. */
+  top: auto;
+  bottom: calc(var(--face-offset) / var(--face-cells) * 100%);
+  height: calc(100% / var(--face-cells));
   transform-origin: 0 0;
   transform: skewY(-26.565deg);
   background: color-mix(in srgb, var(--piece-color) 58%, black);
@@ -963,6 +1114,8 @@ textarea.run-input {
 }
 
 .built-tower__slot[data-chosen="true"] .built-tower__slot-button {
+  touch-action: none;
+  cursor: grab;
   border: 1px solid color-mix(in srgb, var(--piece-color) 80%, white);
   background: color-mix(in srgb, var(--piece-color) 55%, transparent);
   box-shadow: 0 0 14px color-mix(in srgb, var(--piece-color) 45%, transparent);
@@ -979,39 +1132,6 @@ textarea.run-input {
   .built-tower__slot[data-chosen="true"] .built-tower__slot-button {
     animation: none;
   }
-}
-
-/*
- * A week's mortar line. Weeks no longer reserve space in the tower, so this is
- * an annotation drawn across a continuous structure rather than a boundary.
- */
-.built-tower__mortar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--mortar-row) * var(--course-height));
-  height: 0;
-  z-index: 60;
-  border-top: 1px dashed color-mix(in srgb, var(--text) 26%, transparent);
-  pointer-events: none;
-}
-
-.built-tower__mortar[data-active="true"] {
-  border-top-color: color-mix(in srgb, var(--accent) 60%, transparent);
-}
-
-.built-tower__mortar-label {
-  position: absolute;
-  top: -6px;
-  left: -14px;
-  font-size: 8px;
-  font-weight: 700;
-  color: var(--text-subtle);
-  font-variant-numeric: tabular-nums;
-}
-
-.built-tower__mortar[data-active="true"] .built-tower__mortar-label {
-  color: var(--accent);
 }
 
 /* The controls for the block in hand. */
@@ -1167,12 +1287,32 @@ textarea.run-input {
 .pending-tray__detail {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .pending-tray__type {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+}
+
+.pending-tray__extra {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
 }
 
 .pending-tray__meta {
@@ -1386,128 +1526,6 @@ textarea.run-input {
 
 /* Dev-only data panel (never present in a production build) */
 
-.dev-panel__toggle {
-  position: fixed;
-  bottom: calc(72px + env(safe-area-inset-bottom));
-  left: var(--space-3);
-  z-index: 10;
-  min-width: 56px;
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface-strong));
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-
-.dev-panel {
-  position: fixed;
-  bottom: calc(72px + env(safe-area-inset-bottom));
-  left: var(--space-2);
-  z-index: 10;
-  width: min(260px, calc(100vw - 2 * var(--space-2)));
-  padding: var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  font-size: 12px;
-}
-
-.dev-panel__header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: var(--space-2);
-  color: var(--text-subtle);
-}
-
-.dev-panel__header button {
-  border: none;
-  background: none;
-  color: var(--text-subtle);
-  cursor: pointer;
-}
-
-.dev-panel__status {
-  margin: 0 0 var(--space-2);
-  color: var(--text-muted);
-}
-
-.dev-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-.dev-panel__actions button {
-  min-height: 36px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.dev-panel__header button {
-  min-height: 32px;
-  padding: 0 var(--space-2);
-}
-
-/* Legend */
-
-.build-legend {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.build-legend__title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
-.build-legend__items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.build-legend__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.build-legend__swatch {
-  --piece-color: var(--text-muted);
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: var(--piece-color);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--piece-color) 86%, white),
-    var(--piece-color)
-  );
-}
-
 /* Workout detail */
 
 .workout-detail {
@@ -1581,4 +1599,242 @@ textarea.run-input {
   margin: 0;
   font-size: 14px;
   color: var(--text-muted);
+}
+
+.workout-detail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.workout-detail__actions .button {
+  width: 100%;
+}
+
+/* Plan */
+
+.plan-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-6);
+}
+
+.week-navigator {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.week-navigator__position {
+  flex: 1 1 auto;
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.week-navigator .icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Full width on its own line at 320px, so the steppers never get squeezed. */
+.week-navigator__shortcut {
+  flex: 1 0 100%;
+  min-height: 44px;
+}
+
+.week-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.week-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.week-header__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.week-header__now {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+/* The date range gets the full card width, so it never wraps at 320px. */
+.week-header__dates {
+  margin: 0;
+  font-size: clamp(19px, 6vw, 22px);
+  font-weight: 650;
+}
+
+.week-header__phase {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.week-header__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.week-header__count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.plan-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workout-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* A rest day is neutral: no fill, no status colour, nothing owed. */
+.workout-row--rest {
+  border-style: dashed;
+  background: var(--surface-soft);
+}
+
+.workout-row[data-today] {
+  border-color: var(--accent);
+}
+
+.workout-row__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--space-3);
+  text-align: left;
+}
+
+.workout-row__button {
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+}
+
+.workout-row__button:active {
+  background: var(--surface-strong);
+}
+
+.workout-row__date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 34px;
+}
+
+.workout-row__weekday {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+}
+
+.workout-row__day {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.workout-row__color {
+  width: 12px;
+  height: 40px;
+  border-radius: 6px;
+}
+
+/* Stands in for the colour block so every row shares one grid. */
+.workout-row__rest-marker {
+  flex-shrink: 0;
+  width: 12px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+}
+
+.workout-row__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.workout-row__title {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workout-row__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.workout-row__status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  width: 62px;
+  color: var(--text-subtle);
+}
+
+.workout-row__status[data-status="completed"] {
+  color: var(--accent);
+}
+
+.workout-row__status[data-status="missed"] {
+  color: var(--long);
+}
+
+.workout-row__status-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }

@@ -1,60 +1,39 @@
 import { describe, expect, it } from "vitest";
 import {
   footprintFor,
-  heightFor,
-  medianOf,
-  paceSecondsPerMile,
-  PACE_SAMPLE_MINIMUM,
+  heightForActivityType,
   widthForMiles,
 } from "./footprint";
-import type { RunLog, Workout, WorkoutType } from "./types";
+import type { Effort, RunActivityType, RunLog } from "./types";
 
-function workout(type: WorkoutType): Workout {
-  return {
-    id: `w-${type}`,
-    date: "2026-08-04",
-    weekNumber: 1,
-    phase: "Foundation",
-    type,
-    title: type,
-    targetDistanceMiles: "3",
-    details: "",
-    build: {
-      renders: type !== "rest",
-      weekRow: 1,
-      orderInWeek: 1,
-      span: 1,
-      colorKey: type === "rest" ? "neutral" : type,
-    },
-  };
-}
-
-function log(distanceMiles: number, minutesPerMile: number): RunLog {
+function log(
+  distanceMiles: number,
+  activityType: RunActivityType = "easy",
+  minutesPerMile = 10,
+  effort: Effort = "solid",
+): RunLog {
   return {
     id: "log",
     workoutId: "w",
     completedDate: "2026-08-04",
+    activityType,
     distanceMiles,
     durationSeconds: Math.round(distanceMiles * minutesPerMile * 60),
-    effort: "solid",
+    effort,
     notes: "",
     createdAt: "2026-08-04T12:00:00.000Z",
     updatedAt: "2026-08-04T12:00:00.000Z",
   };
 }
 
-/** Three samples is the minimum, so this is the smallest usable one. */
-const sampleAt = (minutesPerMile: number) =>
-  new Array(PACE_SAMPLE_MINIMUM).fill(minutesPerMile * 60);
-
 describe("widthForMiles", () => {
-  it("widens with distance and never exceeds the grid's widest block", () => {
+  it("follows the documented distance bands", () => {
     expect(widthForMiles(2)).toBe(1);
-    expect(widthForMiles(2.9)).toBe(1);
+    expect(widthForMiles(2.99)).toBe(1);
     expect(widthForMiles(3)).toBe(2);
-    expect(widthForMiles(4.9)).toBe(2);
+    expect(widthForMiles(4.99)).toBe(2);
     expect(widthForMiles(5)).toBe(3);
-    expect(widthForMiles(7.9)).toBe(3);
+    expect(widthForMiles(7.99)).toBe(3);
     expect(widthForMiles(8)).toBe(4);
     expect(widthForMiles(13.1)).toBe(4);
   });
@@ -69,68 +48,46 @@ describe("widthForMiles", () => {
   });
 });
 
-describe("paceSecondsPerMile", () => {
-  it("is seconds over miles", () => {
-    expect(paceSecondsPerMile(log(3, 10))).toBe(600);
-  });
-
-  it("is null for a run that cannot have a pace", () => {
-    expect(paceSecondsPerMile(log(0, 10))).toBeNull();
-  });
-});
-
-describe("medianOf", () => {
-  it("takes the middle of an odd sample and the mean of an even one", () => {
-    expect(medianOf([3, 1, 2])).toBe(2);
-    expect(medianOf([4, 1, 2, 3])).toBe(2.5);
-    expect(medianOf([])).toBeNull();
-  });
-});
-
-describe("heightFor", () => {
-  it("is the workout type's own height before there is a sample to judge", () => {
-    // The whole point of the warm-up: with one run the run *is* the median, so
-    // pace could never say anything about it.
-    expect(heightFor(workout("easy"), log(3, 10), [600])).toBe(1);
-    expect(heightFor(workout("intervals"), log(3, 8), [480, 480])).toBe(2);
-  });
-
-  it("raises a block that beat the runner's own median", () => {
-    expect(heightFor(workout("easy"), log(3, 9), sampleAt(10))).toBe(2);
-  });
-
-  it("lowers a block that came in slower", () => {
-    expect(heightFor(workout("intervals"), log(3, 11), sampleAt(10))).toBe(1);
-  });
-
-  it("leaves a block at its type height when the run was about usual", () => {
-    expect(heightFor(workout("intervals"), log(3, 10), sampleAt(10))).toBe(2);
-  });
-
-  it("never falls below one course, however slow the run", () => {
-    expect(heightFor(workout("easy"), log(3, 30), sampleAt(10))).toBe(1);
-  });
-
-  it("never exceeds four courses, however fast", () => {
-    expect(heightFor(workout("race"), log(13.1, 5), sampleAt(10))).toBe(4);
-  });
-
-  it("falls back to type height for a run with no usable pace", () => {
-    expect(heightFor(workout("easy"), log(0, 10), sampleAt(10))).toBe(1);
+describe("heightForActivityType", () => {
+  it("follows the documented type heights", () => {
+    expect(heightForActivityType("easy")).toBe(1);
+    expect(heightForActivityType("long")).toBe(1);
+    expect(heightForActivityType("intervals")).toBe(2);
+    expect(heightForActivityType("simulation")).toBe(2);
+    expect(heightForActivityType("race")).toBe(3);
   });
 });
 
 describe("footprintFor", () => {
-  it("sizes both axes from the run that was actually logged", () => {
-    // A long run the runner extended, at a pace beating their own median.
-    expect(footprintFor(workout("long"), log(9, 9), sampleAt(10))).toEqual({
-      width: 4,
-      height: 2,
-    });
+  it("takes width from distance and height from activity type", () => {
+    expect(footprintFor(log(9, "long"))).toEqual({ width: 4, height: 1 });
+    expect(footprintFor(log(5, "intervals"))).toEqual({ width: 3, height: 2 });
+    expect(footprintFor(log(2, "easy"))).toEqual({ width: 1, height: 1 });
   });
 
   it("gives the race the largest footprint in the plan", () => {
-    const race = footprintFor(workout("race"), log(13.1, 10), []);
-    expect(race).toEqual({ width: 4, height: 3 });
+    expect(footprintFor(log(13.1, "race"))).toEqual({ width: 4, height: 3 });
+  });
+
+  it("does not let pace change the block, however fast the run", () => {
+    // Same distance, same type, three very different paces: one block.
+    const slow = footprintFor(log(4, "easy", 14));
+    const usual = footprintFor(log(4, "easy", 10));
+    const fast = footprintFor(log(4, "easy", 6));
+
+    expect(slow).toEqual(usual);
+    expect(fast).toEqual(usual);
+  });
+
+  it("does not let effort change the block", () => {
+    const rough = footprintFor(log(4, "easy", 10, "rough"));
+    const great = footprintFor(log(4, "easy", 10, "great"));
+
+    expect(rough).toEqual(great);
+  });
+
+  it("sizes a run that has no usable pace at all", () => {
+    const noDuration = { ...log(4, "easy"), durationSeconds: 0 };
+    expect(footprintFor(noDuration)).toEqual({ width: 2, height: 1 });
   });
 });
