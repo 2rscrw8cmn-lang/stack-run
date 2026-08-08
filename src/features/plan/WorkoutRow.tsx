@@ -73,20 +73,22 @@ export function WorkoutRow({ day, onSelect }: WorkoutRowProps) {
     day: "numeric",
   });
 
-  if (status === "rest") {
-    return (
-      <li className="workout-row workout-row--rest" data-today={day.isToday || undefined}>
-        <div className="workout-row__body">{content}</div>
-      </li>
-    );
-  }
+  // A rest day opens straight into planning a run on it: there is nothing
+  // else to say about a day the plan leaves empty.
+  const label =
+    status === "rest"
+      ? `${dateLabel}, Rest. Add a planned run`
+      : `${dateLabel}, ${workout.title}, ${WORKOUT_TYPE_LABEL[workout.type]}, ${targetPhrase(day)}, ${statusLabel}`;
 
   return (
-    <li className="workout-row" data-today={day.isToday || undefined}>
+    <li
+      className={status === "rest" ? "workout-row workout-row--rest" : "workout-row"}
+      data-today={day.isToday || undefined}
+    >
       <button
         type="button"
         className="workout-row__body workout-row__button"
-        aria-label={`${dateLabel}, ${workout.title}, ${WORKOUT_TYPE_LABEL[workout.type]}, ${targetPhrase(day)}, ${statusLabel}`}
+        aria-label={label}
         onClick={() => onSelect(workout.id)}
       >
         {content}

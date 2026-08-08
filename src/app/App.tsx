@@ -4,6 +4,8 @@ import {
   deleteRunLog,
   loadAppState,
   placeBlock,
+  resetAppState,
+  savePlan,
   saveRunLog,
   StorageLoadError,
 } from "../storage/appStateRepository";
@@ -52,6 +54,8 @@ export function App() {
       onDeleteRun={(runLogId) =>
         setAppState((current) => deleteRunLog(current, runLogId))
       }
+      onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
+      onResetPlan={() => setAppState(resetAppState())}
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))
       }

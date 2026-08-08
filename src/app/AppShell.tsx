@@ -20,6 +20,9 @@ interface AppShellProps {
   ) => void;
   /** Removes one recorded run, and the block it earned with it. */
   onDeleteRun: (runLogId: string) => void;
+  /** Persists an edited plan, and restores the seed. */
+  onEditPlan: (plan: TrainingPlan) => void;
+  onResetPlan: () => void;
   onPlaceBlock: (request: PlacementRequest) => void;
   /** The earned block Build is currently holding, identified by its run log. */
   placingRunLogId: string | null;
@@ -34,6 +37,8 @@ export function AppShell({
   blockPlacements,
   onSaveRun,
   onDeleteRun,
+  onEditPlan,
+  onResetPlan,
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
@@ -76,8 +81,11 @@ export function AppShell({
           <PlanScreen
             plan={plan}
             runLogs={runLogs}
+            blockPlacements={blockPlacements}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
+            onEditPlan={onEditPlan}
+            onResetPlan={onResetPlan}
           />
         )}
       </main>

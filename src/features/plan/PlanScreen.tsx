@@ -6,10 +6,27 @@ import {
   currentWeekNumber,
   selectPlanWeekViewModel,
 } from "../../domain/plan";
-import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
+import {
+  addPlannedRun,
+  changeToRest,
+  editPlannedRun,
+  isRaceWorkout,
+  moveWorkout,
+  PlanEditError,
+  type PlannedRunValues,
+} from "../../domain/planEdit";
+import type {
+  BlockPlacement,
+  RunLog,
+  TrainingPlan,
+  Workout,
+} from "../../domain/types";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
+import { EditWorkoutSheet } from "./EditWorkoutSheet";
+import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
+import { ResetPlanDialog } from "./ResetPlanDialog";
 import { WeekHeader } from "./WeekHeader";
 import { WeekNavigator } from "./WeekNavigator";
 import { WorkoutRow } from "./WorkoutRow";
@@ -17,6 +34,7 @@ import { WorkoutRow } from "./WorkoutRow";
 interface PlanScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
+  blockPlacements?: BlockPlacement[];
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (
@@ -25,41 +43,70 @@ interface PlanScreenProps {
     runLogId?: string,
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
+  /** Persists an edited plan. The edit rules produce the whole plan. */
+  onEditPlan?: (plan: TrainingPlan) => void;
+  onResetPlan?: () => void;
 }
 
 /**
- * The complete schedule tracker: one training week at a time, opening on the
- * week that contains today. Build shows what has been built; Plan shows what
- * the plan asks for and what has actually been done about it.
+ * The sheet stacked over the detail sheet. Detail keeps its own state so it can
+ * close through the dialog before this one opens, which is what returns focus
+ * to the row the user came from.
+ */
+type Secondary =
+  | { kind: "run-entry" | "edit-workout" | "move-workout"; workoutId: string }
+  | { kind: "reset" };
+
+/**
+ * The complete editable schedule: one training week at a time, opening on the
+ * week that contains today.
+ *
+ * Two kinds of change live here and stay separate. Logging or editing a run
+ * records what happened. Editing, moving, or clearing a workout changes what
+ * the plan asks for. Nothing does both at once, and nothing here recommends a
+ * change — the plan only moves when the user moves it.
  */
 export function PlanScreen({
   plan,
   runLogs,
+  blockPlacements = [],
   today = todayLocalDate(),
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
+  onEditPlan = () => undefined,
+  onResetPlan = () => undefined,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     currentWeekNumber(plan, today),
   );
-  // Each sheet keeps its workout and its open state apart, so closing can run
-  // through the dialog itself. Clearing the workout alone would tear an open
-  // dialog out of the DOM, and the browser would drop focus to the body
-  // instead of returning it to the row the user came from.
   const [detailWorkoutId, setDetailWorkoutId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
-  const [entryWorkoutId, setEntryWorkoutId] = useState<string | null>(null);
-  const [isEntryOpen, setEntryOpen] = useState(false);
-  // Bumped every time run entry opens, so the form always starts from the
-  // saved log rather than from whatever the previous visit left in it.
-  const [entryVisit, setEntryVisit] = useState(0);
-  const [saveAnnouncement, setSaveAnnouncement] = useState("");
+  const [secondary, setSecondary] = useState<Secondary | null>(null);
+  const [isSecondaryOpen, setSecondaryOpen] = useState(false);
+  // Bumped whenever a form opens, so it starts from what is saved rather than
+  // from whatever the previous visit left in it.
+  const [secondaryVisit, setSecondaryVisit] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
 
   const week = selectPlanWeekViewModel(plan, runLogs, weekNumber, today);
+  const satisfiedWorkoutIds = new Set(
+    runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
+  );
+
   const detailDay =
     week.days.find((day) => day.workout.id === detailWorkoutId) ?? null;
-  const entryDay =
-    week.days.find((day) => day.workout.id === entryWorkoutId) ?? null;
+  const secondaryDay =
+    secondary && "workoutId" in secondary
+      ? (week.days.find((day) => day.workout.id === secondary.workoutId) ?? null)
+      : null;
+
+  function goToWeek(next: number) {
+    setDetailOpen(false);
+    setDetailWorkoutId(null);
+    setSecondaryOpen(false);
+    setSecondary(null);
+    setWeekNumber(clampWeekNumber(plan, next));
+  }
 
   function openDetail(workoutId: string) {
     setDetailWorkoutId(workoutId);
@@ -67,19 +114,70 @@ export function PlanScreen({
   }
 
   /** Hands off from the detail sheet, so only one sheet is ever open. */
-  function openRunEntry(workoutId: string) {
+  function openSecondary(next: Secondary) {
     setDetailOpen(false);
-    setEntryWorkoutId(workoutId);
-    setEntryVisit((visit) => visit + 1);
-    setEntryOpen(true);
+    setSecondary(next);
+    setSecondaryVisit((visit) => visit + 1);
+    setSecondaryOpen(true);
   }
 
-  function goToWeek(next: number) {
-    setDetailOpen(false);
-    setDetailWorkoutId(null);
-    setEntryOpen(false);
-    setEntryWorkoutId(null);
-    setWeekNumber(clampWeekNumber(plan, next));
+  function closeSecondary() {
+    setSecondaryOpen(false);
+    setSecondary(null);
+  }
+
+  /** Applies a plan edit, or says why it was refused rather than failing mutely. */
+  function applyPlanEdit(edit: () => TrainingPlan, announce: string) {
+    try {
+      onEditPlan(edit());
+      setAnnouncement(announce);
+      closeSecondary();
+    } catch (error) {
+      if (error instanceof PlanEditError) {
+        setAnnouncement(error.message);
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * A day with a run logged against it can still have its plan edited, but not
+   * by accident: the recorded run stays attached to the workout, and moving it
+   * moves what that run is counted against.
+   */
+  function confirmIfCompleted(workoutId: string): boolean {
+    if (!satisfiedWorkoutIds.has(workoutId)) {
+      return true;
+    }
+    return window.confirm(
+      "You have already logged a run for this day. Changing the plan keeps that run attached to it. Continue?",
+    );
+  }
+
+  function planActionsFor(workout: Workout, isCompleted: boolean) {
+    if (isRaceWorkout(workout)) {
+      return {};
+    }
+    const guarded = (next: Secondary) => () => {
+      if (confirmIfCompleted(workout.id)) {
+        openSecondary(next);
+      }
+    };
+
+    return {
+      onEditWorkout: guarded({ kind: "edit-workout", workoutId: workout.id }),
+      onMoveWorkout: guarded({ kind: "move-workout", workoutId: workout.id }),
+      // A logged run cannot point at a rest day, so this is offered only while
+      // the day is still just a plan.
+      onChangeToRest: isCompleted
+        ? undefined
+        : () =>
+            applyPlanEdit(
+              () => changeToRest(plan, workout.id, satisfiedWorkoutIds),
+              `${formatDateLabel(workout.date)} is now a rest day.`,
+            ),
+    };
   }
 
   return (
@@ -98,21 +196,34 @@ export function PlanScreen({
 
       <WeekHeader week={week} />
 
-      <ul
-        className="plan-week"
-        aria-label={`Week ${week.weekNumber} workouts`}
-      >
+      <ul className="plan-week" aria-label={`Week ${week.weekNumber} workouts`}>
         {week.days.map((day) => (
           <WorkoutRow
             key={day.workout.id}
             day={day}
-            onSelect={openDetail}
+            onSelect={(workoutId) => {
+              // A rest day has nothing to read; the only thing to do with one
+              // is plan a run on it.
+              if (day.status === "rest") {
+                openSecondary({ kind: "edit-workout", workoutId });
+                return;
+              }
+              openDetail(workoutId);
+            }}
           />
         ))}
       </ul>
 
+      <button
+        type="button"
+        className="plan-screen__reset"
+        onClick={() => openSecondary({ kind: "reset" })}
+      >
+        Reset Plan
+      </button>
+
       <p className="visually-hidden" aria-live="polite">
-        {saveAnnouncement}
+        {announcement}
       </p>
 
       {detailDay && detailDay.status !== "rest" && (
@@ -127,51 +238,111 @@ export function PlanScreen({
           }}
           onLogRun={
             detailDay.canLogRun
-              ? () => openRunEntry(detailDay.workout.id)
+              ? () =>
+                  openSecondary({
+                    kind: "run-entry",
+                    workoutId: detailDay.workout.id,
+                  })
               : undefined
           }
           onEditRun={
             detailDay.runLog
-              ? () => openRunEntry(detailDay.workout.id)
+              ? () =>
+                  openSecondary({
+                    kind: "run-entry",
+                    workoutId: detailDay.workout.id,
+                  })
               : undefined
           }
+          {...planActionsFor(detailDay.workout, detailDay.runLog !== null)}
         />
       )}
 
-      {entryDay && (
+      {secondary?.kind === "run-entry" && secondaryDay && (
         <CompleteRunSheet
-          key={`${entryDay.workout.id}-${entryVisit}`}
-          isOpen={isEntryOpen}
-          workout={entryDay.workout}
-          runLog={entryDay.runLog ?? undefined}
+          key={secondaryVisit}
+          isOpen={isSecondaryOpen}
+          workout={secondaryDay.workout}
+          runLog={secondaryDay.runLog ?? undefined}
           today={today}
-          onClose={() => {
-            setEntryOpen(false);
-            setEntryWorkoutId(null);
-          }}
+          onClose={closeSecondary}
           onDelete={
-            entryDay.runLog
+            secondaryDay.runLog
               ? () => {
-                  onDeleteRun(entryDay.runLog!.id);
-                  setSaveAnnouncement("Run deleted.");
-                  setEntryOpen(false);
+                  onDeleteRun(secondaryDay.runLog!.id);
+                  setAnnouncement("Run deleted.");
+                  setSecondaryOpen(false);
                 }
               : undefined
           }
           onSave={(workout, values) => {
-            const wasLogged = entryDay.runLog !== null;
-            onSaveRun(workout, values, entryDay.runLog?.id);
+            const wasLogged = secondaryDay.runLog !== null;
+            onSaveRun(workout, values, secondaryDay.runLog?.id);
             const dateLabel = formatDateLabel(values.completedDate, {
               weekday: "long",
               month: "long",
               day: "numeric",
             });
-            setSaveAnnouncement(
+            setAnnouncement(
               wasLogged
                 ? `Run updated for ${dateLabel}.`
                 : `Run saved for ${dateLabel}. You earned ${earnedBlockPhrase(values.activityType)}.`,
             );
-            setEntryOpen(false);
+            setSecondaryOpen(false);
+          }}
+        />
+      )}
+
+      {secondary?.kind === "edit-workout" && secondaryDay && (
+        <EditWorkoutSheet
+          key={secondaryVisit}
+          workout={secondaryDay.workout}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onSave={(values: PlannedRunValues) => {
+            const workout = secondaryDay.workout;
+            const isRest = workout.type === "rest";
+            applyPlanEdit(
+              () =>
+                isRest
+                  ? addPlannedRun(plan, workout.id, values)
+                  : editPlannedRun(plan, workout.id, values),
+              isRest
+                ? `${values.title} planned for ${formatDateLabel(workout.date)}.`
+                : `${formatDateLabel(workout.date)} updated.`,
+            );
+          }}
+        />
+      )}
+
+      {secondary?.kind === "move-workout" && secondaryDay && (
+        <MoveWorkoutSheet
+          key={secondaryVisit}
+          plan={plan}
+          workout={secondaryDay.workout}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onMove={(toDate) => {
+            const workout = secondaryDay.workout;
+            applyPlanEdit(
+              () => moveWorkout(plan, workout.id, toDate),
+              `${workout.title} moved to ${formatDateLabel(toDate)}.`,
+            );
+          }}
+        />
+      )}
+
+      {secondary?.kind === "reset" && (
+        <ResetPlanDialog
+          key={secondaryVisit}
+          runCount={runLogs.length}
+          blockCount={blockPlacements.length}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onReset={() => {
+            onResetPlan();
+            setAnnouncement("Plan reset. Everything recorded has been erased.");
+            setSecondaryOpen(false);
           }}
         />
       )}

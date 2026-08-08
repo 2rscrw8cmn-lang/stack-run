@@ -2,9 +2,9 @@
 
 ## Current state
 
-**UI-5.5 Core Loop Revision is implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, and dev controls are gone from production builds.
+**UI-5.5 Core Loop Revision and UI-6 Plan adjustment are implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, dev controls are gone from production builds, and the schedule itself is editable.
 
-The next approved implementation phase is **UI-6 — Plan adjustment**. Plan still reviews and logs; it does not yet edit the schedule.
+The next approved implementation phase is **UI-7 — Polish and release**.
 
 ## Current app shell
 
@@ -99,11 +99,33 @@ Added at the product owner's request during review; it is not in `CORE_LOOP_REVI
 
 The last two are how an **extra run** gets corrected or removed: Plan lists scheduled days and cannot show one.
 
-## Plan — unchanged in behavior
+## Plan — the editable schedule
 
-`src/features/plan/` is as UI-5 delivered it: current week by default, all 18 weeks reachable, boundaries that stop, the `Current Week` shortcut, seven dated rows, and logging or editing a run from the detail sheet. It now passes the activity date and type through the shared form, and `PlanWeekViewModel` gained `extraRuns` for Today's week strip.
+Review is as UI-5 delivered it: current week by default, all 18 weeks reachable, boundaries that stop, the `Current Week` shortcut, seven dated rows, and logging or editing a run from the detail sheet. `PlanWeekViewModel` gained `extraRuns` for Today's week strip.
 
-Not implemented, and deferred to UI-6: editing a planned workout, moving one, adding a run to a Rest day, changing a run to Rest, cross-week moves, and conflict confirmation.
+UI-6 makes the schedule editable. Two kinds of change live on this screen and stay separate: logging or editing a run records what *happened*; editing, moving, or clearing a workout changes what the plan *asks for*. Nothing does both at once, and nothing recommends a change — the plan only moves when the user moves it.
+
+### The rules live in `src/domain/planEdit.ts`
+
+Pure functions over a plan, returning a new one. Nothing here touches storage, run logs, or placements.
+
+- `editPlannedRun` changes type, name, target, and instructions. The id and the date do not move, so a completed run stays attached.
+- `addPlannedRun` turns a rest day into a run **keeping the day's existing workout id**, and `changeToRest` turns one back. A run with an activity logged against it cannot become rest: the recorded run names that workout, and a rest day is not something a run can satisfy.
+- `moveWorkout` moves a workout to any date the plan covers. **Every date in the plan holds exactly one workout, so a move is a swap**: the workout takes the destination date and whatever was there takes the source date. That is the whole reason nothing is ever silently merged or dropped — moving onto a rest day trades the two days, and moving onto another run trades the two runs, which is exactly what the confirmation warns about. Both ids survive, so a logged run follows its workout.
+- `rebuildWeeks` re-files every workout into the week whose dates contain it and re-derives what a week decides: `weekNumber`, `phase`, `build.weekRow`, and `orderInWeek`. A cross-week move therefore adopts the destination week's phase, because the phase describes the block of training a date falls in.
+- `moveConflict` reports the planned run already on a destination date, which is what the UI warns about. A rest day is not a conflict.
+- The race is refused everywhere: it cannot be edited, moved, changed to rest, or displaced by moving something else onto its day.
+- A domain test asserts the plan's shape survives every operation — 126 dates, one workout each, seven per week, sorted, with week metadata agreeing — and that a move and a move back is byte-identical to the seed.
+
+### The screens
+
+- `EditWorkoutSheet` is one form for both adding a run to a rest day and editing a scheduled one; the fields are identical and only the wording changes. `workoutValidation.ts` requires a name, keeps the target as text (`5`, or a range like `4-5`, or nothing), and bounds instructions.
+- `MoveWorkoutSheet` shows what is on the destination date *before* anything happens. Landing on a rest day is quiet; landing on another run turns the action into `Swap These Days` and names both days, which is the required confirmation made concrete rather than a yes/no about an unnamed collision. The date field is bounded by the plan's own range.
+- Rest rows are now buttons that open straight into `Add Planned Run` — there is nothing else to say about a day the plan leaves empty.
+- `WorkoutDetailSheet` gained a `Change the plan` group: `Edit Workout`, `Move Workout`, `Change to Rest`. It is absent on race day.
+- A day with a run already logged against it confirms before the plan changes under it, and `Change to Rest` is not offered for one at all.
+- `ResetPlanDialog` is the one action that destroys everything, behind two deliberate presses, with the counts of what will be erased on screen while the user decides. It is reached from a deliberately quiet `Reset Plan` control at the bottom of Plan.
+- `savePlan` in the repository persists an edited plan; run logs and placements are untouched, which is what keeps a completed run attached to its workout across an edit or a move.
 
 ## Persistence
 
@@ -130,13 +152,15 @@ Not implemented, and deferred to UI-6: editing a planned workout, moving one, ad
 - `src/features/run-entry/` — date defaults for both modes, the future-date rejection, and the activity type on save.
 - `src/features/today/TodayScreen.test.tsx` — the whole dashboard: race line, week strip, extra chip, Next, `+ Log Run`, and the build preview.
 - `src/features/build/BuildScreen.test.tsx` — eight-column slots, the removed engineering UI, the run-first detail sheet, extra runs in the tray, and the drag layer.
-- `src/app/App.test.tsx` — an extra run end to end through real storage, and a stored schema-4 state migrating without losing the run or its block.
+- `src/app/App.test.tsx` — an extra run end to end through real storage, a stored schema-4 state migrating without losing the run or its block, planning a run on a rest day and finding it after a reload, and the two-step reset.
+- `src/domain/planEdit.test.ts` — every edit rule, the plan's shape invariant, cross-week moves and the phase they adopt, race protection in both directions, and the move round trip.
+- `src/features/plan/PlanEditing.test.tsx` — the flows: edit, add to a rest day, change to rest, move onto rest, the swap warning, out-of-range refusal, the confirmation on a completed day and what happens when it is declined, race day offering no plan edits, and the two-step reset.
 - `deleteRunLog` — removal, the block leaving the tower with it, the tower re-settling after a block is pulled from underneath, and a no-op for an unknown id. Today and Build cover the confirmation, the decline, and the absence of delete on an unsaved entry.
 - Per-cell face culling, including an edge covered over only part of its length, and the openings a bridging block spans.
 
 ## Known limitations
 
-1. Plan editing is still not implemented (UI-6).
+1. A moved workout swaps days with whatever was on the destination. That is the non-destructive reading of "do not silently merge workouts", and the sheet says so before committing, but it is a choice: the alternative — refusing the move, or pushing the other workout to the next free day — would behave differently on a full week.
 2. A block can only be moved while it is the newest placement; there is still no way to remove one.
 3. The activity type is editable for a scheduled run as well as an extra one. The UX spec says "prefilled from scheduled workout otherwise", and one editable field for both modes was the smaller implementation; a scheduled run that was actually intervals therefore earns an intervals block.
 4. `Log Run` from Today always creates a new activity; extra runs are edited and deleted from Build, which is the only screen that lists them. There is still no chronological list of activities.

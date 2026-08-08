@@ -6,7 +6,12 @@ import {
   repackPlacements,
   type PlacementCandidate,
 } from "../domain/placement";
-import type { AppState, BlockPlacement, RunLog } from "../domain/types";
+import type {
+  AppState,
+  BlockPlacement,
+  RunLog,
+  TrainingPlan,
+} from "../domain/types";
 import { createInitialAppState, migrateAppState } from "./migrations";
 import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
 
@@ -195,6 +200,20 @@ export function placeBlock(
       : [...state.blockPlacements, placement],
   };
 
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Stores an edited plan.
+ *
+ * The plan edit rules live in `src/domain/planEdit.ts` and produce a whole new
+ * plan; this only persists one. Run logs and placements are untouched, which
+ * is what keeps a completed run attached to the workout it satisfied when that
+ * workout is edited or moved.
+ */
+export function savePlan(state: AppState, plan: TrainingPlan): AppState {
+  const next: AppState = { ...state, plan };
   saveAppState(next);
   return next;
 }
