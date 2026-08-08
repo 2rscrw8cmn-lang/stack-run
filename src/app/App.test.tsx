@@ -151,7 +151,7 @@ describe("App", () => {
     expect(screen.getByText("+1 extra")).toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
-    expect(stored.schemaVersion).toBe(5);
+    expect(stored.schemaVersion).toBe(6);
     expect(stored.runLogs).toHaveLength(1);
     expect(stored.runLogs[0].workoutId).toBeNull();
     expect(stored.runLogs[0].activityType).toBe("intervals");
@@ -219,7 +219,7 @@ describe("App", () => {
     ).not.toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
-    expect(stored.schemaVersion).toBe(5);
+    expect(stored.schemaVersion).toBe(6);
     expect(stored.runLogs[0].activityType).toBe("easy");
     expect(stored.blockPlacements[0].runLogId).toBe("run-workout-002");
     expect(stored.blockPlacements[0].columnStart).toBeLessThanOrEqual(8);

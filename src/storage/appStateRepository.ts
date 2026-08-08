@@ -6,6 +6,7 @@ import {
   repackPlacements,
   type PlacementCandidate,
 } from "../domain/placement";
+import type { AvailabilityCalendar } from "../domain/availability";
 import type {
   AppState,
   BlockPlacement,
@@ -247,6 +248,22 @@ export function deleteRunLog(state: AppState, runLogId: string): AppState {
     blockPlacements: wasPlaced ? repackPlacements(remaining) : remaining,
   };
 
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Stores the imported availability calendar, or clears it with null.
+ *
+ * Only what the app needs is kept: dates, shift names, and times. The source
+ * file, and any subscription URL it came from, are never stored — a URL of
+ * this kind is a standing credential to somebody else's calendar.
+ */
+export function saveAvailability(
+  state: AppState,
+  availability: AvailabilityCalendar | null,
+): AppState {
+  const next: AppState = { ...state, availability };
   saveAppState(next);
   return next;
 }

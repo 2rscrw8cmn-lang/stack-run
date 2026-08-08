@@ -5,6 +5,7 @@ import {
   loadAppState,
   placeBlock,
   resetAppState,
+  saveAvailability,
   savePlan,
   saveRunLog,
   StorageLoadError,
@@ -53,6 +54,10 @@ export function App() {
       }
       onDeleteRun={(runLogId) =>
         setAppState((current) => deleteRunLog(current, runLogId))
+      }
+      availability={appState.availability}
+      onSaveAvailability={(calendar) =>
+        setAppState((current) => saveAvailability(current, calendar))
       }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
       onResetPlan={() => setAppState(resetAppState())}

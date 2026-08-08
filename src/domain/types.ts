@@ -1,3 +1,5 @@
+import type { AvailabilityCalendar } from "./availability";
+
 export type WorkoutType =
   | "rest"
   | "easy"
@@ -111,9 +113,14 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 5;
+  schemaVersion: 6;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
+  /**
+   * An imported calendar of days the user cannot run, or null when none has
+   * been imported. It never changes the plan by itself.
+   */
+  availability: AvailabilityCalendar | null;
 }

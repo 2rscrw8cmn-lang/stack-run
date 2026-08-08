@@ -6,6 +6,8 @@ import { PLAN_DAY_STATUS_LABEL, type PlanWeekViewModel } from "../../domain/plan
 
 interface ThisWeekStripProps {
   week: PlanWeekViewModel;
+  /** Days an imported calendar says the user cannot run. */
+  blocked?: Map<string, string[]>;
   onViewPlan: () => void;
 }
 
@@ -17,7 +19,11 @@ interface ThisWeekStripProps {
  * Extra runs are counted beside the scheduled progress, never inside it: an
  * unplanned run is real mileage but it does not tick off a scheduled workout.
  */
-export function ThisWeekStrip({ week, onViewPlan }: ThisWeekStripProps) {
+export function ThisWeekStrip({
+  week,
+  blocked = new Map(),
+  onViewPlan,
+}: ThisWeekStripProps) {
   return (
     <Card className="this-week">
       <div className="this-week__header">
@@ -45,6 +51,7 @@ export function ThisWeekStrip({ week, onViewPlan }: ThisWeekStripProps) {
             className="this-week__day"
             data-status={day.status}
             data-today={day.isToday || undefined}
+            data-blocked={blocked.has(day.workout.date) || undefined}
           >
             <span className="this-week__weekday" aria-hidden="true">
               {formatDateLabel(day.workout.date, { weekday: "narrow" })}
@@ -63,7 +70,9 @@ export function ThisWeekStrip({ week, onViewPlan }: ThisWeekStripProps) {
             <span className="visually-hidden">
               {`${formatDateLabel(day.workout.date, {
                 weekday: "long",
-              })}: ${PLAN_DAY_STATUS_LABEL[day.status]}`}
+              })}: ${PLAN_DAY_STATUS_LABEL[day.status]}${
+                blocked.has(day.workout.date) ? ", blocked" : ""
+              }`}
             </span>
           </li>
         ))}
