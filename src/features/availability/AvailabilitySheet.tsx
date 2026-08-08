@@ -37,10 +37,10 @@ function shiftTime(startTime: string | null, endTime: string | null): string {
  *
  * Paste a subscription link or the contents of an .ics file — whichever you
  * have. A link is what a rostering system hands out, and on a phone it is
- * usually the only form of it you can get at, so the app fetches it directly
- * from the calendar host. There is no server in between; if the host refuses
- * cross-origin reads the app says so and falls back to the file picker, which
- * always works.
+ * usually the only form of it you can get at, so the app fetches it: from the
+ * calendar host directly when that host allows it, and otherwise through the
+ * deployment's own reader. The file picker remains the fallback that works
+ * with no network path at all.
  *
  * Which shifts block a morning run is the user's call, not a guess from the
  * shift's name — a night shift may free the morning or ruin it.
@@ -178,7 +178,9 @@ export function AvailabilitySheet({
                 </div>
                 <p className="availability__warning">
                   Anyone with this link can read the schedule. It is kept on
-                  this device only, and sent to nowhere but the calendar itself.
+                  this device only. It is sent to the calendar host — by way of
+                  this app's own reader when that host refuses the browser,
+                  which keeps no copy of it.
                 </p>
               </>
             )}

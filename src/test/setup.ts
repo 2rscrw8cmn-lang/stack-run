@@ -42,10 +42,15 @@ if (typeof HTMLDialogElement !== "undefined") {
  * jsdom does not implement scrollIntoView. Build uses it to open framed on the
  * top of the tower, which is a real-browser nicety with nothing to assert, so
  * a no-op is enough to let the component render under test.
+ *
+ * Guarded like the block above because the server function's tests run in a
+ * plain Node environment, where there is no DOM at all.
  */
-const elementPrototype = Element.prototype as Element & {
-  scrollIntoView?: () => void;
-};
-if (typeof elementPrototype.scrollIntoView !== "function") {
-  elementPrototype.scrollIntoView = () => undefined;
+if (typeof Element !== "undefined") {
+  const elementPrototype = Element.prototype as Element & {
+    scrollIntoView?: () => void;
+  };
+  if (typeof elementPrototype.scrollIntoView !== "function") {
+    elementPrototype.scrollIntoView = () => undefined;
+  }
 }

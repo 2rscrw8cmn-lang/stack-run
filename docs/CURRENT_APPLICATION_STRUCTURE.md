@@ -4,7 +4,7 @@
 
 **UI-5.5 Core Loop Revision and UI-6 Plan adjustment are implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, dev controls are gone from production builds, and the schedule itself is editable.
 
-An **availability calendar** was added after UI-6 at the product owner's request. It is not in any phase document, and it contradicts locked decisions that are still on the books — see the section below.
+An **availability calendar** was added after UI-6 at the product owner's request. It is not in any phase document, and it contradicts locked decisions that are still on the books — see the section below. Reading a subscription link needs one server-side function, which is the first thing in this repository that is not a static asset.
 
 The next approved implementation phase is **UI-7 — Polish and release**.
 
@@ -133,7 +133,7 @@ Pure functions over a plan, returning a new one. Nothing here touches storage, r
 
 Added at the product owner's request, and **not covered by any phase document**. It needs an explicit decision entry before the docs are consistent again, because it sits against three things `AGENTS.md` and `DECISION_LOG.md` currently lock:
 
-- "No account, auth, backend, API…" — an imported calendar is external data, though nothing here is fetched.
+- "No account, auth, backend, API…" — an imported calendar is external data, and reading a subscription link now needs one server-side function (see below). There is still no account, no auth, and nothing stored off the device.
 - "Manual logging only" — still true of runs; this imports commitments, not activity.
 - D-021's "no adaptive coaching" — the plan is never changed automatically, which is what keeps this on the right side of the line, but the line is close enough to be worth writing down.
 
@@ -143,9 +143,22 @@ Added at the product owner's request, and **not covered by any phase document**.
 
 The first version took file contents only, on the reasoning that a subscription URL is a standing credential worth not storing. That was the wrong trade in practice: a rostering system hands out a link, and on a phone the link is usually the only form of it you can get at — extracting the file behind it means downloading it, finding it in Files, opening it in something that shows text, and copying the lot. Pasting the link is the obvious move, so the app understands one.
 
-`src/domain/calendarSource.ts` decides which was pasted, rewrites `webcal://` to the HTTPS request it really is, and fetches. **The request goes straight from the page to the calendar host — there is no server in this app.** That only works if the host allows cross-origin reads, and a browser reports a refusal exactly as it reports a dead network, so the failure message covers both causes and names the file picker, which always works.
+`src/domain/calendarSource.ts` decides which was pasted, rewrites `webcal://` to the HTTPS request it really is, and fetches.
 
-A link that worked is remembered so refreshing is one tap. It is shown in full wherever it appears, carries a plain warning that anyone holding it can read the schedule, and can be forgotten without discarding the shifts already imported. It is sent to the calendar host and nowhere else.
+The page asks the calendar host itself first, so when the host permits it nothing but the browser ever sees the link. Rostering systems generally do not permit it: a browser cannot read a cross-origin response unless the host sends `Access-Control-Allow-Origin`, and QGenda — the calendar this was built for — does not. That refusal is reported to the page exactly as a dead network is, an opaque failure, and no amount of client code can get around it.
+
+So a refused read falls through to **`api/calendar.ts`, the one piece of server-side code in STACK**. It fetches the link where the same-origin rule does not apply and hands the calendar back. A host that answers with an *error status* has genuinely answered and is not retried — the server would get the same reply. When there is no reader deployed at all (`/api/calendar` answers with the app's own HTML), the message falls back to naming the file picker, which works with no network path whatsoever.
+
+The function is deliberately small and deliberately dull:
+
+- It answers `POST` only, with the link in the body, so a standing credential never lands in a request log or a browser history.
+- `https` only, and never an address that is not on the public internet — loopback, link-local, and the private ranges are refused, on every redirect hop as well as the first, and redirects are followed by hand up to three times for that reason.
+- It returns nothing that does not contain `BEGIN:VCALENDAR`, which is also what stops it being a general-purpose fetcher for other people's pages, and nothing larger than 2 MB.
+- It stores nothing, logs nothing, and reads nothing from the request but the link.
+
+A link that worked is remembered so refreshing is one tap. It is shown in full wherever it appears, carries a plain warning that anyone holding it can read the schedule, and can be forgotten without discarding the shifts already imported. It is sent to the calendar host, by way of the reader when the host refuses the browser, and nowhere else.
+
+`api/` is typechecked as its own TypeScript project (`tsconfig.api.json`) because it runs on Node rather than in the browser, and `api/calendar.test.ts` runs in a Node environment rather than jsdom.
 
 `src/domain/ics.ts` parses it: RFC 5545 line unfolding, `VEVENT` extraction, `DTSTART`/`DTEND`/`SUMMARY` in all-day, UTC and `TZID` forms, multi-day expansion with the exclusive all-day end date, and escaped text. A `TZID` value is read as wall-clock time and used as written; converting properly would need a timezone database, and the calendar being imported is one the user reads in their own zone. Recurring events are **skipped and reported**, never expanded — a half-implemented `RRULE` would invent working days that do not exist.
 

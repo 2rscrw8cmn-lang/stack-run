@@ -4,7 +4,7 @@
 
 Build STACK as a static client-side React application with local persistence.
 
-There is no server in v1.
+There is no server in v1, with one exception added after UI-6: `api/calendar.ts` reads a calendar subscription link on the page's behalf, because a browser cannot read a cross-origin calendar the host refuses it. It holds no state, and nothing else in the app talks to it. See `docs/CURRENT_APPLICATION_STRUCTURE.md`; it still needs a decision entry.
 
 ## Dependency list
 
