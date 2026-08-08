@@ -11,9 +11,14 @@
  * request beyond the link, and returns nothing that is not a calendar. The
  * link arrives in a POST body rather than a query string so it stays out of
  * request logs — a subscription link is a standing credential.
+ *
+ * Vercel deploys a file in `api/` as the route of the same name, on the Node
+ * runtime, with no configuration. There was a `config` export here pinning
+ * that runtime; it said nothing the default does not, and a runtime name a
+ * builder does not recognise fails the build rather than the function — which
+ * would take the whole deployment down with it. Not worth the risk for a line
+ * that changes nothing.
  */
-
-export const config = { runtime: "nodejs" };
 
 /** A roster is tens of kilobytes. This is a ceiling, not a target. */
 const MAX_BYTES = 2_000_000;
@@ -112,7 +117,13 @@ async function readCapped(response: Response): Promise<string | null> {
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "POST") {
-    return plain(405, 'Send the calendar link in a POST body: {"url": "https://…"}.');
+    // Worded to be read by a person: opening this path in a browser is the
+    // one-tap way to find out whether the reader is deployed at all, and
+    // "405" on its own does not answer that question.
+    return plain(
+      405,
+      'STACK calendar reader: deployed and ready. It answers POST only — send {"url": "https://…"} as the body.',
+    );
   }
 
   let target: URL;
