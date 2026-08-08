@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CalendarFetchError,
   fetchCalendar,
+  nameFromFile,
   nameFromUrl,
   normalizeCalendarUrl,
   readCalendarSource,
@@ -52,6 +53,22 @@ describe("nameFromUrl", () => {
 
   it("falls back rather than throwing on nonsense", () => {
     expect(nameFromUrl("not a url")).toBe("Imported calendar");
+  });
+});
+
+describe("nameFromFile", () => {
+  it("names a calendar after the file, without its extension", () => {
+    expect(nameFromFile("Sarah shifts.ics")).toBe("Sarah shifts");
+    expect(nameFromFile("roster")).toBe("roster");
+  });
+
+  it("ignores the names a phone invents", () => {
+    // Safari saves a downloaded calendar as plain `text`.
+    expect(nameFromFile("text")).toBe("Imported calendar");
+    expect(nameFromFile("text.txt")).toBe("Imported calendar");
+    expect(nameFromFile("Untitled")).toBe("Imported calendar");
+    expect(nameFromFile("calendar.ics")).toBe("Imported calendar");
+    expect(nameFromFile(".ics")).toBe("Imported calendar");
   });
 });
 

@@ -42,6 +42,22 @@ export function nameFromUrl(url: string): string {
   }
 }
 
+/**
+ * A short name for a calendar, taken from the file it arrived in.
+ *
+ * A calendar downloaded on a phone rarely carries a useful name: Safari saves
+ * one as plain `text`. Naming the import after that is worse than not naming
+ * it, so the generic ones are treated as no name at all.
+ */
+export function nameFromFile(fileName: string): string {
+  const withoutExtension = fileName.replace(/\.[^./\\]+$/, "").trim();
+  return /^(text|txt|calendar|ical|ics|download|untitled)?$/i.test(
+    withoutExtension,
+  )
+    ? "Imported calendar"
+    : withoutExtension;
+}
+
 export class CalendarFetchError extends Error {
   constructor(message: string) {
     super(message);
