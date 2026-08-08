@@ -115,20 +115,47 @@ describe("fetchCalendar", () => {
     );
   });
 
-  it("points at the file picker when there is no reader deployed", async () => {
-    // A static-only deployment answers /api/calendar with the app's own HTML.
+  it("says when the build has no reader, rather than blaming the calendar", async () => {
+    // A deployment without the function answers a POST to it with a 404.
     vi.stubGlobal(
       "fetch",
       vi
         .fn()
         .mockRejectedValueOnce(new TypeError("failed"))
         .mockResolvedValueOnce(
-          new Response("<!doctype html>", {
+          new Response("Not Found", {
             status: 404,
+            headers: { "Content-Type": "text/plain" },
+          }),
+        ),
+    );
+
+    await expect(fetchCalendar("https://example.com/x.ics")).rejects.toThrow(
+      /no calendar reader/,
+    );
+  });
+
+  it("is not fooled by a static host that rewrites everything to the app", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("failed"))
+        .mockResolvedValueOnce(
+          new Response("<!doctype html><title>STACK</title>", {
+            status: 200,
             headers: { "Content-Type": "text/html" },
           }),
         ),
     );
+
+    await expect(fetchCalendar("https://example.com/x.ics")).rejects.toThrow(
+      /no calendar reader/,
+    );
+  });
+
+  it("points at the file picker when nothing can be reached at all", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("failed")));
 
     await expect(fetchCalendar("https://example.com/x.ics")).rejects.toThrow(
       /Could not reach that link.*choose it below/s,

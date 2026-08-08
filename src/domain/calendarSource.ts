@@ -55,6 +55,17 @@ const PROXY_PATH = "/api/calendar";
 const UNREACHABLE =
   "Could not reach that link, either directly or through this app. Download the .ics file and choose it below instead.";
 
+/**
+ * Told apart from an ordinary failure on purpose.
+ *
+ * Standing in front of the app with a link that will not import, the first
+ * thing worth knowing is whether this build has a reader at all — a deploy
+ * that has not finished, or one that dropped `api/`, looks exactly like a
+ * calendar host having a bad day unless the app says which it is.
+ */
+const NO_READER =
+  "This build has no calendar reader: /api/calendar did not answer. If the app was deployed just now, give it a minute and try again. Otherwise download the .ics file and choose it below.";
+
 function requireCalendar(text: string): string {
   if (!text.trim()) {
     throw new CalendarFetchError("That link returned an empty calendar.");
@@ -62,14 +73,22 @@ function requireCalendar(text: string): string {
   return text;
 }
 
+/** Enough of a calendar to be worth handing to the parser. */
+function looksLikeCalendar(text: string): boolean {
+  return text.toUpperCase().includes("BEGIN:VCALENDAR");
+}
+
 /**
  * Asks the deployment's own function to read the link.
  *
  * The link goes in the body, not the query string, so it does not end up in
- * request logs. The function answers failures as short plain text, which is
- * worth showing; anything else — most likely a deployment without the function,
- * answering with the app's own HTML — is not, so it falls back to the message
- * that names the file picker.
+ * request logs.
+ *
+ * The reader always answers a POST: with a calendar, or with its own short
+ * plain-text explanation, which is worth repeating. A 404 or a 405 therefore
+ * means there is no reader here. So does a 200 that is not a calendar, which
+ * is what a static host does when it rewrites every unknown path to the app's
+ * own HTML.
  */
 async function fetchThroughProxy(url: string): Promise<string> {
   let response: Response;
@@ -81,6 +100,10 @@ async function fetchThroughProxy(url: string): Promise<string> {
     });
   } catch {
     throw new CalendarFetchError(UNREACHABLE);
+  }
+
+  if (response.status === 404 || response.status === 405) {
+    throw new CalendarFetchError(NO_READER);
   }
 
   if (!response.ok) {
@@ -95,7 +118,11 @@ async function fetchThroughProxy(url: string): Promise<string> {
     );
   }
 
-  return requireCalendar(await response.text());
+  const text = requireCalendar(await response.text());
+  if (!looksLikeCalendar(text)) {
+    throw new CalendarFetchError(NO_READER);
+  }
+  return text;
 }
 
 /**
