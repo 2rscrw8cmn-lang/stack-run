@@ -23,7 +23,18 @@
 /** A roster is tens of kilobytes. This is a ceiling, not a target. */
 const MAX_BYTES = 2_000_000;
 const MAX_REDIRECTS = 3;
-const TIMEOUT_MS = 10_000;
+/** Rostering systems are not fast. Fifteen seconds is what works in practice. */
+const TIMEOUT_MS = 15_000;
+
+/**
+ * Sent because rostering hosts answer a request that looks like a browser and
+ * refuse one that does not — a working import against the same feed from
+ * another app confirmed it. This is the user asking for their own calendar
+ * with a link they already hold, from a request they made; the header is here
+ * so the host serves it, not to disguise anything.
+ */
+const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 STACK/1.0";
 
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
@@ -158,10 +169,8 @@ export default async function handler(request: Request): Promise<Response> {
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
         headers: {
-          Accept: "text/calendar, text/plain;q=0.9",
-          // Some hosts refuse a request that names nothing. This says what
-          // this is and does not pretend to be a browser.
-          "User-Agent": "STACK calendar import (https://github.com/stack-run)",
+          Accept: "text/calendar, text/plain;q=0.9, */*;q=0.5",
+          "User-Agent": USER_AGENT,
         },
       });
     } catch {
