@@ -167,7 +167,7 @@ export function AvailabilitySheet({
                     isLoading={isLoading}
                     onClick={() => refresh(draft.sourceUrl!)}
                   >
-                    Refresh
+                    {isLoading ? "Reading…" : "Refresh"}
                   </Button>
                   <Button
                     variant="ghost"
@@ -213,7 +213,7 @@ export function AvailabilitySheet({
             isLoading={isLoading}
             onClick={importPasted}
           >
-            Import
+            {isLoading ? "Reading…" : "Import"}
           </Button>
 
           <label className="availability__file" htmlFor={fileId}>
@@ -239,6 +239,17 @@ export function AvailabilitySheet({
             />
           </label>
         </div>
+
+        {/*
+          A dimmed button is not enough feedback on a phone: reading a link can
+          take seconds, and with nothing on screen saying so the app looks like
+          it ignored the tap.
+        */}
+        {isLoading && (
+          <p className="availability__status" role="status">
+            Reading the calendar. This can take a few seconds.
+          </p>
+        )}
 
         {skipped.length > 0 && (
           <p className="availability__skipped">

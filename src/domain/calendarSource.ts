@@ -52,6 +52,27 @@ export class CalendarFetchError extends Error {
 /** Where the deployment's calendar reader lives. See `api/calendar.ts`. */
 const PROXY_PATH = "/api/calendar";
 
+/**
+ * A request that never answers is worse than one that fails: the app sits
+ * there looking broken and the user has nothing to act on. Neither of these
+ * is a performance budget — they are the point at which waiting longer stops
+ * being useful.
+ */
+const DIRECT_TIMEOUT_MS = 8_000;
+/** Longer, because the reader is allowed ten seconds of its own upstream. */
+const READER_TIMEOUT_MS = 25_000;
+
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  return typeof AbortSignal !== "undefined" &&
+    typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(ms)
+    : undefined;
+}
+
+function isTimeout(caught: unknown): boolean {
+  return (caught as { name?: string } | null)?.name === "TimeoutError";
+}
+
 const UNREACHABLE =
   "Could not reach that link, either directly or through this app. Download the .ics file and choose it below instead.";
 
@@ -65,6 +86,9 @@ const UNREACHABLE =
  */
 const NO_READER =
   "This build has no calendar reader: /api/calendar did not answer. If the app was deployed just now, give it a minute and try again. Otherwise download the .ics file and choose it below.";
+
+const TIMED_OUT =
+  "The calendar reader did not answer in time. Try again, or download the .ics file and choose it below.";
 
 function requireCalendar(text: string): string {
   if (!text.trim()) {
@@ -97,9 +121,10 @@ async function fetchThroughProxy(url: string): Promise<string> {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/calendar" },
       body: JSON.stringify({ url }),
+      signal: timeoutSignal(READER_TIMEOUT_MS),
     });
-  } catch {
-    throw new CalendarFetchError(UNREACHABLE);
+  } catch (caught) {
+    throw new CalendarFetchError(isTimeout(caught) ? TIMED_OUT : UNREACHABLE);
   }
 
   if (response.status === 404 || response.status === 405) {
@@ -134,14 +159,18 @@ async function fetchThroughProxy(url: string): Promise<string> {
  * falls through to the deployment's own function, which is not bound by the
  * same-origin rule.
  *
- * A refused read and a dead network are the same opaque rejection here, so
- * both take that path; a host that answers with an error status has genuinely
- * answered, and repeating the question from a server would get the same reply.
+ * A refused read, a dead network and a host that never answers are all the
+ * same thing from here — the page cannot see a response — so all three take
+ * that path. A host that answers with an error status has genuinely answered,
+ * and repeating the question from a server would get the same reply.
  */
 export async function fetchCalendar(url: string): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(url, { headers: { Accept: "text/calendar" } });
+    response = await fetch(url, {
+      headers: { Accept: "text/calendar" },
+      signal: timeoutSignal(DIRECT_TIMEOUT_MS),
+    });
   } catch {
     return fetchThroughProxy(url);
   }

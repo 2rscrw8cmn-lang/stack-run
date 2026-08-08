@@ -70,9 +70,38 @@ describe("fetchCalendar", () => {
       "BEGIN:VCALENDAR",
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith("https://example.com/x.ics", {
-      headers: { Accept: "text/calendar" },
+    const [target, init] = fetchMock.mock.calls[0];
+    expect(target).toBe("https://example.com/x.ics");
+    expect(init.headers).toEqual({ Accept: "text/calendar" });
+    // A request that never answers must not leave the app waiting forever.
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("treats a host that never answers as one that refused", async () => {
+    const timeout = Object.assign(new Error("timed out"), {
+      name: "TimeoutError",
     });
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(timeout)
+      .mockResolvedValueOnce(new Response("BEGIN:VCALENDAR", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchCalendar("https://example.com/x.ics")).resolves.toBe(
+      "BEGIN:VCALENDAR",
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/calendar");
+  });
+
+  it("says so when the reader itself never answers", async () => {
+    const timeout = Object.assign(new Error("timed out"), {
+      name: "TimeoutError",
+    });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(timeout));
+
+    await expect(fetchCalendar("https://example.com/x.ics")).rejects.toThrow(
+      /did not answer in time/,
+    );
   });
 
   it("asks the deployment's reader when the browser is refused", async () => {
