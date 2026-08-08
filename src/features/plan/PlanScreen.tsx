@@ -58,6 +58,8 @@ interface PlanScreenProps {
   /** The imported calendar of days the user cannot run. */
   availability?: AvailabilityCalendar | null;
   onSaveAvailability?: (calendar: AvailabilityCalendar | null) => void;
+  /** Overridable so tests do not depend on the network. */
+  fetchIcs?: (url: string) => Promise<string>;
 }
 
 /**
@@ -91,6 +93,7 @@ export function PlanScreen({
   onResetPlan = () => undefined,
   availability = null,
   onSaveAvailability = () => undefined,
+  fetchIcs,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     currentWeekNumber(plan, today),
@@ -387,6 +390,7 @@ export function PlanScreen({
         <AvailabilitySheet
           key={secondaryVisit}
           calendar={availability}
+          fetchIcs={fetchIcs}
           isOpen={isSecondaryOpen}
           onClose={closeSecondary}
           onSave={(calendar) => {

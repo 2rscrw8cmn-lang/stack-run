@@ -17,6 +17,15 @@ export interface AvailabilityCalendar {
   /** What the user calls this calendar, e.g. `Sarah's shifts`. */
   name: string;
   importedAt: string;
+  /**
+   * The link it was fetched from, kept so refreshing is one tap.
+   *
+   * This is a standing credential to somebody else's calendar, so it is shown
+   * in full wherever it is used and can be forgotten without discarding the
+   * shifts already imported. It is sent to the calendar host and nowhere else:
+   * there is no server in this app to send it to.
+   */
+  sourceUrl?: string | null;
   shifts: CalendarShift[];
   /**
    * The shift labels that block a run. Chosen by the user, because only they

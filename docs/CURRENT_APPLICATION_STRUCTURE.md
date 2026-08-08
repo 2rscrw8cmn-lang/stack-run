@@ -139,7 +139,13 @@ Added at the product owner's request, and **not covered by any phase document**.
 
 ### How the data gets in
 
-`src/features/availability/AvailabilitySheet.tsx` takes a pasted or picked `.ics` file. Nothing is fetched. A calendar subscription URL is a standing credential to another person's whereabouts, and this app has nowhere safe to keep one; re-pasting an export takes seconds and a roster changes about monthly. **No URL and no raw file is ever stored** — a browser check asserts the persisted state contains neither.
+`src/features/availability/AvailabilitySheet.tsx` takes **either a subscription link or the contents of an `.ics` file**, in one box, plus a file picker.
+
+The first version took file contents only, on the reasoning that a subscription URL is a standing credential worth not storing. That was the wrong trade in practice: a rostering system hands out a link, and on a phone the link is usually the only form of it you can get at — extracting the file behind it means downloading it, finding it in Files, opening it in something that shows text, and copying the lot. Pasting the link is the obvious move, so the app understands one.
+
+`src/domain/calendarSource.ts` decides which was pasted, rewrites `webcal://` to the HTTPS request it really is, and fetches. **The request goes straight from the page to the calendar host — there is no server in this app.** That only works if the host allows cross-origin reads, and a browser reports a refusal exactly as it reports a dead network, so the failure message covers both causes and names the file picker, which always works.
+
+A link that worked is remembered so refreshing is one tap. It is shown in full wherever it appears, carries a plain warning that anyone holding it can read the schedule, and can be forgotten without discarding the shifts already imported. It is sent to the calendar host and nowhere else.
 
 `src/domain/ics.ts` parses it: RFC 5545 line unfolding, `VEVENT` extraction, `DTSTART`/`DTEND`/`SUMMARY` in all-day, UTC and `TZID` forms, multi-day expansion with the exclusive all-day end date, and escaped text. A `TZID` value is read as wall-clock time and used as written; converting properly would need a timezone database, and the calendar being imported is one the user reads in their own zone. Recurring events are **skipped and reported**, never expanded — a half-implemented `RRULE` would invent working days that do not exist.
 
