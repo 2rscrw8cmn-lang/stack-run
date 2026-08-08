@@ -46,7 +46,9 @@ Strava requires application registration, OAuth authorization, token handling, u
 
 ## Vercel
 
-Vite static deployments use `npm run build` and the default `dist` output.
+Vite static deployments use `npm run build` and the default `dist` output. A file in `api/` is picked up as a serverless function with no extra configuration; `api/calendar.ts` uses the web-standard `(Request) => Response` signature, which needs no Vercel types package.
 
 - https://vercel.com/docs/frameworks/frontend/vite
 - https://vite.dev/guide/static-deploy
+- https://vercel.com/docs/functions
+- https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS

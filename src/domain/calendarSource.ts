@@ -49,24 +49,74 @@ export class CalendarFetchError extends Error {
   }
 }
 
+/** Where the deployment's calendar reader lives. See `api/calendar.ts`. */
+const PROXY_PATH = "/api/calendar";
+
+const UNREACHABLE =
+  "Could not reach that link, either directly or through this app. Download the .ics file and choose it below instead.";
+
+function requireCalendar(text: string): string {
+  if (!text.trim()) {
+    throw new CalendarFetchError("That link returned an empty calendar.");
+  }
+  return text;
+}
+
 /**
- * Fetches a calendar link from the browser.
+ * Asks the deployment's own function to read the link.
  *
- * There is no server in this app, so the request goes straight from the page
- * to the calendar host — which only works if that host allows it. Many do not,
- * and a browser reports a blocked cross-origin request exactly as it reports a
- * dead network: an opaque failure. The message therefore covers both and
- * points at the fallback that always works, rather than guessing which
- * happened and being wrong half the time.
+ * The link goes in the body, not the query string, so it does not end up in
+ * request logs. The function answers failures as short plain text, which is
+ * worth showing; anything else — most likely a deployment without the function,
+ * answering with the app's own HTML — is not, so it falls back to the message
+ * that names the file picker.
+ */
+async function fetchThroughProxy(url: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(PROXY_PATH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "text/calendar" },
+      body: JSON.stringify({ url }),
+    });
+  } catch {
+    throw new CalendarFetchError(UNREACHABLE);
+  }
+
+  if (!response.ok) {
+    const isPlain = response.headers
+      .get("content-type")
+      ?.startsWith("text/plain");
+    const reason = isPlain ? (await response.text()).trim() : "";
+    throw new CalendarFetchError(
+      reason && reason.length <= 200
+        ? `${reason} Otherwise download the .ics file and choose it below.`
+        : UNREACHABLE,
+    );
+  }
+
+  return requireCalendar(await response.text());
+}
+
+/**
+ * Fetches a calendar link.
+ *
+ * The page asks the calendar host itself first: when that works nothing but
+ * the browser ever sees the link. It only works if the host allows
+ * cross-origin reads, and rostering systems generally do not — so a refusal
+ * falls through to the deployment's own function, which is not bound by the
+ * same-origin rule.
+ *
+ * A refused read and a dead network are the same opaque rejection here, so
+ * both take that path; a host that answers with an error status has genuinely
+ * answered, and repeating the question from a server would get the same reply.
  */
 export async function fetchCalendar(url: string): Promise<string> {
   let response: Response;
   try {
     response = await fetch(url, { headers: { Accept: "text/calendar" } });
   } catch {
-    throw new CalendarFetchError(
-      "Could not reach that link. Either the calendar provider does not allow apps to read it directly, or the connection failed. Download the .ics file and choose it below instead.",
-    );
+    return fetchThroughProxy(url);
   }
 
   if (!response.ok) {
@@ -75,9 +125,5 @@ export async function fetchCalendar(url: string): Promise<string> {
     );
   }
 
-  const text = await response.text();
-  if (!text.trim()) {
-    throw new CalendarFetchError("That link returned an empty calendar.");
-  }
-  return text;
+  return requireCalendar(await response.text());
 }

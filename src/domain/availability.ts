@@ -22,8 +22,9 @@ export interface AvailabilityCalendar {
    *
    * This is a standing credential to somebody else's calendar, so it is shown
    * in full wherever it is used and can be forgotten without discarding the
-   * shifts already imported. It is sent to the calendar host and nowhere else:
-   * there is no server in this app to send it to.
+   * shifts already imported. It goes to the calendar host, and — when that
+   * host refuses the browser — through this deployment's own reader
+   * (`api/calendar.ts`), which stores nothing. Nowhere else.
    */
   sourceUrl?: string | null;
   shifts: CalendarShift[];

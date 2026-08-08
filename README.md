@@ -40,7 +40,7 @@ STACK is a mobile-first running plan app that turns completed workouts into a gr
 - Plain CSS with design tokens
 - Lucide React icons
 - Local storage through a small versioned repository module
-- Static deployment to Vercel
+- Vercel deployment: a static site plus one serverless function (`api/calendar.ts`), which reads a calendar subscription link for the page when the calendar host refuses the browser
 
 React's official documentation recommends a build tool such as Vite for a from-scratch app, and Lucide provides individual tree-shakable React icon components. See `docs/TECHNICAL_REFERENCES.md`.
 
@@ -51,6 +51,7 @@ React's official documentation recommends a build tool such as Vite for a from-s
 ├─ AGENTS.md
 ├─ START_HERE.md
 ├─ README.md
+├─ api/
 ├─ docs/
 ├─ seed/
 ├─ reference/
