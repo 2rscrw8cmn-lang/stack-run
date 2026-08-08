@@ -1962,6 +1962,29 @@ textarea.run-input {
   border-radius: var(--radius-sm);
 }
 
+.availability__status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  animation: availability-status-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes availability-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .availability__status {
+    animation: none;
+  }
+}
+
 .availability__skipped {
   display: flex;
   align-items: flex-start;

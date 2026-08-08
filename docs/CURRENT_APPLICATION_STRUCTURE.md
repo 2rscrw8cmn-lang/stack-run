@@ -155,6 +155,8 @@ The three ways this can fail are told apart on purpose, because standing in fron
 - **The reader failed** — it explains itself in short plain text (the upstream status, an unreachable host, a link that is not a calendar), and those words are shown as they are.
 - **Nothing reachable at all** — the request itself threw. The message names the file picker, which needs no network path whatsoever.
 
+Both requests are bounded: eight seconds for the direct read, twenty-five for the reader, which is allowed ten seconds of its own upstream. A host that accepts a connection and then says nothing is otherwise indistinguishable from a broken app — the promise simply never settles. And while a read is in flight the sheet says so in words, because the shared button's loading state is a drop to 60% opacity, which on a dark screen reads as nothing happening at all.
+
 The function is deliberately small and deliberately dull:
 
 - It answers `POST` only, with the link in the body, so a standing credential never lands in a request log or a browser history.
