@@ -235,6 +235,56 @@ describe("App", () => {
     ).toHaveLength(1);
   });
 
+  it("edits the plan from Plan and keeps the edit after a reload", async () => {
+    const user = setupUser();
+    const { unmount } = render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    // Monday of week 1 is a rest day; plan a run on it.
+    await user.click(
+      screen.getByRole("button", {
+        name: "Monday, August 3, Rest. Add a planned run",
+      }),
+    );
+    await user.selectOptions(screen.getByLabelText(/Type/), "intervals");
+    await user.type(screen.getByLabelText(/Name/), "6 x 400m");
+    await user.type(screen.getByLabelText(/Target/), "5");
+    await user.click(screen.getByRole("button", { name: "Add Planned Run" }));
+
+    expect(
+      screen.getByRole("button", {
+        name: "Monday, August 3, 6 x 400m, Intervals, 5 mi, Missed",
+      }),
+    ).toBeInTheDocument();
+    // The week now schedules five runs rather than four.
+    expect(screen.getByText("0 of 5 runs complete")).toBeInTheDocument();
+
+    unmount();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    expect(screen.getByText("0 of 5 runs complete")).toBeInTheDocument();
+  });
+
+  it("resets everything back to the seed after two confirmations", async () => {
+    const user = setupUser();
+    render(<App />);
+
+    await logTodaysRun(user);
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    await user.click(screen.getByRole("button", { name: "Reset Plan" }));
+
+    const sheet = screen.getByRole("dialog");
+    await user.click(within(sheet).getByRole("button", { name: "Reset Plan" }));
+    await user.click(
+      within(sheet).getByRole("button", { name: "Yes, Erase Everything" }),
+    );
+
+    expect(screen.getByText("0 of 4 runs complete")).toBeInTheDocument();
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.runLogs).toEqual([]);
+    expect(stored.blockPlacements).toEqual([]);
+  });
+
   it("places an earned block, shows it in the structure, and keeps it after a reload", async () => {
     const user = setupUser();
     const { unmount } = render(<App />);

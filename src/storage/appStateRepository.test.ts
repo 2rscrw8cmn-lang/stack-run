@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement";
+import { moveWorkout } from "../domain/planEdit";
 import {
   deleteRunLog,
   loadAppState,
   placeBlock,
   resetAppState,
   saveAppState,
+  savePlan,
   saveRunLog,
   StorageLoadError,
 } from "./appStateRepository";
@@ -247,7 +249,53 @@ describe("deleteRunLog", () => {
   });
 });
 
+describe("savePlan", () => {
+  it("persists an edited plan and reloads it", () => {
+    const state = loadAppState();
+    const edited = moveWorkout(state.plan, "workout-002", "2026-08-05");
+
+    savePlan(state, edited);
+
+    const reloaded = loadAppState();
+    const moved = reloaded.plan.weeks[0].workouts.find(
+      (workout) => workout.id === "workout-002",
+    );
+    expect(moved?.date).toBe("2026-08-05");
+  });
+
+  it("leaves runs and placements attached to the workouts they name", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = placeBlock(state, {
+      runLogId: "run-workout-002",
+      row: 0,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+
+    state = savePlan(state, moveWorkout(state.plan, "workout-002", "2026-09-16"));
+
+    expect(state.runLogs[0].workoutId).toBe("workout-002");
+    expect(state.blockPlacements[0].runLogId).toBe("run-workout-002");
+    expect(loadAppState().runLogs).toHaveLength(1);
+    expect(loadAppState().blockPlacements).toHaveLength(1);
+  });
+});
+
 describe("resetAppState", () => {
+  it("discards plan edits along with the runs and blocks", () => {
+    const logged = saveRunLog(loadAppState(), scheduledRun);
+    savePlan(logged, moveWorkout(logged.plan, "workout-004", "2026-08-05"));
+
+    const reset = resetAppState();
+
+    expect(reset.runLogs).toEqual([]);
+    expect(reset.blockPlacements).toEqual([]);
+    expect(
+      reset.plan.weeks[0].workouts.find((w) => w.id === "workout-004")?.date,
+    ).toBe("2026-08-06");
+  });
+
   it("restores the seed plan and clears run logs", () => {
     const state = loadAppState();
     state.runLogs.push({

@@ -19,6 +19,10 @@ interface WorkoutDetailSheetProps {
   onLogRun?: () => void;
   /** Provided by Plan for a completed run. */
   onEditRun?: () => void;
+  /** Plan editing. Absent on race day, which is fixed. */
+  onEditWorkout?: () => void;
+  onMoveWorkout?: () => void;
+  onChangeToRest?: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -26,8 +30,11 @@ interface WorkoutDetailSheetProps {
 /**
  * What the plan asked for on one day, and what actually happened on it. The
  * block a run earned belongs to the tower, so Build has its own activity-first
- * sheet; this one is the schedule's side. Editing the scheduled workout itself
- * belongs to UI-6.
+ * sheet; this one is the schedule's side.
+ *
+ * The two halves stay separate on purpose: the run actions record what
+ * happened, and the plan actions change what is asked for. Nothing here edits
+ * both at once.
  */
 export function WorkoutDetailSheet({
   workout,
@@ -35,10 +42,14 @@ export function WorkoutDetailSheet({
   runLog,
   onLogRun,
   onEditRun,
+  onEditWorkout,
+  onMoveWorkout,
+  onChangeToRest,
   isOpen,
   onClose,
 }: WorkoutDetailSheetProps) {
   const StatusIcon = state === "completed" ? CircleCheck : Circle;
+  const hasPlanActions = Boolean(onEditWorkout || onMoveWorkout || onChangeToRest);
 
   return (
     <Sheet title={workout.title} isOpen={isOpen} onClose={onClose}>
@@ -109,6 +120,27 @@ export function WorkoutDetailSheet({
             {onEditRun && (
               <Button variant="secondary" onClick={onEditRun}>
                 Edit Run
+              </Button>
+            )}
+          </div>
+        )}
+
+        {hasPlanActions && (
+          <div className="workout-detail__actions">
+            <h3 className="workout-detail__result-title">Change the plan</h3>
+            {onEditWorkout && (
+              <Button variant="secondary" onClick={onEditWorkout}>
+                Edit Workout
+              </Button>
+            )}
+            {onMoveWorkout && (
+              <Button variant="secondary" onClick={onMoveWorkout}>
+                Move Workout
+              </Button>
+            )}
+            {onChangeToRest && (
+              <Button variant="ghost" onClick={onChangeToRest}>
+                Change to Rest
               </Button>
             )}
           </div>

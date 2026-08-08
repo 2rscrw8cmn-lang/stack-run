@@ -138,15 +138,17 @@ describe("PlanScreen week navigation", () => {
 });
 
 describe("PlanScreen week list", () => {
-  it("shows all seven days, with rest days as non-interactive rows", () => {
+  it("shows all seven days, with rest days offering to be planned", () => {
     renderPlan();
     const rows = within(weekList()).getAllByRole("listitem");
 
     expect(rows).toHaveLength(7);
-    expect(within(rows[0]).queryByRole("button")).not.toBeInTheDocument();
     // The row names the rest day and repeats it as its status.
     expect(within(rows[0]).getAllByText("Rest")).toHaveLength(2);
     expect(within(rows[0]).getByText("No scheduled run")).toBeInTheDocument();
+    expect(within(rows[0]).getByRole("button")).toHaveAccessibleName(
+      "Monday, August 3, Rest. Add a planned run",
+    );
     expect(within(rows[1]).getByRole("button")).toBeInTheDocument();
   });
 

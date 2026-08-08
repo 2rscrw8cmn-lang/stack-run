@@ -1814,6 +1814,92 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
+/* Reset is deliberately the quietest control on the screen. */
+.plan-screen__reset {
+  align-self: center;
+  min-height: 44px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-screen__reset:hover {
+  color: var(--danger);
+}
+
+/* What is on the destination date, before a move commits. */
+.move-workout__destination {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.move-workout__destination[data-conflict="true"] {
+  border-color: color-mix(in srgb, var(--long) 55%, transparent);
+  color: var(--text);
+}
+
+.move-workout__destination svg {
+  flex-shrink: 0;
+  color: var(--long);
+}
+
+/* Reset dialog */
+
+.reset-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.reset-plan__lede {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.reset-plan__lede svg {
+  flex-shrink: 0;
+  color: var(--danger);
+}
+
+.reset-plan__list {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.reset-plan__note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.reset-plan__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.reset-plan__actions .button {
+  width: 100%;
+}
+
 .workout-row__status {
   display: flex;
   flex-direction: column;
