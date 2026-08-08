@@ -49,7 +49,9 @@ describe("the calendar reader", () => {
     const response = await handler(ask(null, "GET"));
 
     expect(response.status).toBe(405);
-    await expect(response.text()).resolves.toMatch(/POST body/);
+    // Readable by a person: opening the path in a browser is how you find out
+    // whether the reader is deployed.
+    expect(await response.text()).toMatch(/deployed and ready.*POST/s);
   });
 
   it("refuses a request with no link in it", async () => {
