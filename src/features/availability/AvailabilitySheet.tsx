@@ -10,6 +10,7 @@ import {
 import {
   CalendarFetchError,
   fetchCalendar,
+  nameFromFile,
   nameFromUrl,
   readCalendarSource,
 } from "../../domain/calendarSource";
@@ -86,12 +87,23 @@ export function AvailabilitySheet({
     return "That calendar could not be read.";
   }
 
-  /** Handles both forms of paste: a link to fetch, or a calendar to read. */
-  async function importPasted() {
-    const source = readCalendarSource(text);
+  /**
+   * Imports whatever the user has, from wherever it came.
+   *
+   * Pasted or chosen from Files, the contents are either a calendar or a link
+   * to one, and the same two paths handle both. A chosen file holding nothing
+   * but a link is not a strange case: saving the subscription link is what
+   * "download the calendar" gets you on a phone more often than not.
+   */
+  async function importFrom(value: string, fileName: string | null) {
+    const source = readCalendarSource(value);
+    const localName = fileName
+      ? nameFromFile(fileName)
+      : (draft?.name ?? "Imported calendar");
+
     if (source.kind === "text") {
       try {
-        applyCalendar(source.text, draft?.name ?? "Imported calendar", null);
+        applyCalendar(source.text, localName, null);
       } catch (caught) {
         setError(describe(caught));
       }
@@ -211,29 +223,28 @@ export function AvailabilitySheet({
             variant="secondary"
             disabled={text.trim().length === 0}
             isLoading={isLoading}
-            onClick={importPasted}
+            onClick={() => importFrom(text, null)}
           >
             {isLoading ? "Reading…" : "Import"}
           </Button>
 
           <label className="availability__file" htmlFor={fileId}>
-            or choose an .ics file
+            or choose a downloaded file
+            {/*
+              Deliberately unrestricted. A calendar downloaded on a phone often
+              arrives with no extension and no type — Safari saves one as plain
+              `text` — and an `accept` list greys exactly that file out in the
+              Files picker, leaving the fallback useless for the person who
+              needs it most. The parser is the real check, and it says plainly
+              when a file is not a calendar.
+            */}
             <input
               id={fileId}
               type="file"
-              accept=".ics,text/calendar"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                try {
-                  applyCalendar(
-                    await file.text(),
-                    file.name.replace(/\.ics$/i, ""),
-                    null,
-                  );
-                } catch (caught) {
-                  setError(describe(caught));
-                }
+                await importFrom(await file.text(), file.name);
                 event.target.value = "";
               }}
             />

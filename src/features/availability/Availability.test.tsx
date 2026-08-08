@@ -106,6 +106,64 @@ describe("importing a calendar", () => {
     expect(onSaveAvailability).not.toHaveBeenCalled();
   });
 
+  it("takes a downloaded file whatever the phone called it", async () => {
+    // A calendar saved on a phone often has no extension and no type. An
+    // accept list greys exactly that file out in the picker, which breaks the
+    // fallback for the person who has already been let down once.
+    const { user, onSaveAvailability } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    const picker = screen.getByLabelText(/choose a downloaded file/);
+    expect(picker).not.toHaveAttribute("accept");
+
+    await user.upload(picker, new File([ICS], "text", { type: "" }));
+
+    expect(await screen.findByText(/2 days imported/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const saved = onSaveAvailability.mock.calls[0][0] as AvailabilityCalendar;
+    expect(saved.shifts).toHaveLength(2);
+    // "text" is not a name worth keeping.
+    expect(saved.name).toBe("Imported calendar");
+    expect(saved.sourceUrl).toBeNull();
+  });
+
+  it("follows a chosen file that turns out to hold only the link", async () => {
+    // What "download the calendar" actually produces on a phone as often as
+    // not: a 68-byte file containing the subscription URL.
+    const fetchIcs = stubFetch(ICS);
+    const { user, onSaveAvailability } = renderPlan({ fetchIcs });
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.upload(
+      screen.getByLabelText(/choose a downloaded file/),
+      new File(["https://app.example.com/ical?key=abc\n"], "text", { type: "" }),
+    );
+
+    expect(fetchIcs).toHaveBeenCalledWith("https://app.example.com/ical?key=abc");
+    expect(await screen.findByText(/2 days imported/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const saved = onSaveAvailability.mock.calls[0][0] as AvailabilityCalendar;
+    // And it is remembered as a link, so refreshing stays one tap.
+    expect(saved.sourceUrl).toBe("https://app.example.com/ical?key=abc");
+    expect(saved.name).toBe("app.example.com");
+  });
+
+  it("names a chosen file's calendar after the file", async () => {
+    const { user, onSaveAvailability } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.upload(
+      screen.getByLabelText(/choose a downloaded file/),
+      new File([ICS], "Sarah shifts.ics", { type: "text/calendar" }),
+    );
+
+    expect(await screen.findByText(/2 days imported/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const saved = onSaveAvailability.mock.calls[0][0] as AvailabilityCalendar;
+    expect(saved.name).toBe("Sarah shifts");
+  });
+
   it("fetches a pasted subscription link", async () => {
     const fetchIcs = stubFetch(ICS);
     const { user, onSaveAvailability } = renderPlan({ fetchIcs });
