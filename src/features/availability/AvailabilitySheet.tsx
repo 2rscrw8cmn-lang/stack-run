@@ -1,4 +1,4 @@
-import { CalendarDays, TriangleAlert } from "lucide-react";
+import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
@@ -7,6 +7,12 @@ import {
   shiftKinds,
   type AvailabilityCalendar,
 } from "../../domain/availability";
+import {
+  CalendarFetchError,
+  fetchCalendar,
+  nameFromUrl,
+  readCalendarSource,
+} from "../../domain/calendarSource";
 import { formatDateLabel } from "../../domain/dates";
 import { CalendarParseError, parseCalendar } from "../../domain/ics";
 
@@ -15,6 +21,8 @@ interface AvailabilitySheetProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (calendar: AvailabilityCalendar | null) => void;
+  /** Overridable so tests do not depend on the network. */
+  fetchIcs?: (url: string) => Promise<string>;
 }
 
 function shiftTime(startTime: string | null, endTime: string | null): string {
@@ -27,10 +35,12 @@ function shiftTime(startTime: string | null, endTime: string | null): string {
 /**
  * Importing somebody else's schedule, and deciding which of it matters.
  *
- * The file is pasted or picked, never fetched. A calendar subscription URL is
- * a standing credential to another person's whereabouts, and this app has
- * nowhere safe to keep one; re-pasting an export takes a few seconds and a
- * roster changes about monthly.
+ * Paste a subscription link or the contents of an .ics file — whichever you
+ * have. A link is what a rostering system hands out, and on a phone it is
+ * usually the only form of it you can get at, so the app fetches it directly
+ * from the calendar host. There is no server in between; if the host refuses
+ * cross-origin reads the app says so and falls back to the file picker, which
+ * always works.
  *
  * Which shifts block a morning run is the user's call, not a guess from the
  * shift's name — a night shift may free the morning or ruin it.
@@ -40,37 +50,79 @@ export function AvailabilitySheet({
   isOpen,
   onClose,
   onSave,
+  fetchIcs,
 }: AvailabilitySheetProps) {
+  const fetchIcsFile = fetchIcs ?? fetchCalendar;
   const [draft, setDraft] = useState<AvailabilityCalendar | null>(calendar);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
+  const [isLoading, setLoading] = useState(false);
   const fileId = useId();
 
   const kinds = draft ? shiftKinds(draft) : [];
 
-  function importText(source: string, name: string) {
+  function applyCalendar(source: string, name: string, sourceUrl: string | null) {
+    const parsed = parseCalendar(source);
+    setDraft((current) => ({
+      name,
+      importedAt: new Date().toISOString(),
+      shifts: parsed.shifts,
+      sourceUrl,
+      // Nothing blocks anything until the user says so, and a refresh keeps
+      // the choices already made.
+      blockingLabels: current?.blockingLabels ?? [],
+      enabled: current?.enabled ?? true,
+    }));
+    setSkipped(parsed.skipped.map((item) => `${item.label} — ${item.reason}`));
+    setError(null);
+    setText("");
+  }
+
+  function describe(caught: unknown): string {
+    if (caught instanceof CalendarParseError || caught instanceof CalendarFetchError) {
+      return caught.message;
+    }
+    return "That calendar could not be read.";
+  }
+
+  /** Handles both forms of paste: a link to fetch, or a calendar to read. */
+  async function importPasted() {
+    const source = readCalendarSource(text);
+    if (source.kind === "text") {
+      try {
+        applyCalendar(source.text, draft?.name ?? "Imported calendar", null);
+      } catch (caught) {
+        setError(describe(caught));
+      }
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
     try {
-      const parsed = parseCalendar(source);
-      setDraft({
-        name,
-        importedAt: new Date().toISOString(),
-        shifts: parsed.shifts,
-        // Nothing blocks anything until the user says so.
-        blockingLabels: draft?.blockingLabels ?? [],
-        enabled: true,
-      });
-      setSkipped(
-        parsed.skipped.map((item) => `${item.label} — ${item.reason}`),
-      );
-      setError(null);
-      setText("");
+      const body = await fetchIcsFile(source.url);
+      applyCalendar(body, draft?.name ?? nameFromUrl(source.url), source.url);
     } catch (caught) {
-      setError(
-        caught instanceof CalendarParseError
-          ? caught.message
-          : "That calendar could not be read.",
+      setError(describe(caught));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refresh(url: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      applyCalendar(
+        await fetchIcsFile(url),
+        draft?.name ?? nameFromUrl(url),
+        url,
       );
+    } catch (caught) {
+      setError(describe(caught));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -104,20 +156,46 @@ export function AvailabilitySheet({
               {draft.shifts.length === 1 ? "day" : "days"} imported{" "}
               {formatDateLabel(draft.importedAt.slice(0, 10))}
             </p>
+
+            {draft.sourceUrl && (
+              <>
+                <p className="availability__source">{draft.sourceUrl}</p>
+                <div className="availability__source-actions">
+                  <Button
+                    variant="secondary"
+                    icon={<RotateCcw size={16} strokeWidth={2} />}
+                    isLoading={isLoading}
+                    onClick={() => refresh(draft.sourceUrl!)}
+                  >
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setDraft({ ...draft, sourceUrl: null })}
+                  >
+                    Forget Link
+                  </Button>
+                </div>
+                <p className="availability__warning">
+                  Anyone with this link can read the schedule. It is kept on
+                  this device only, and sent to nowhere but the calendar itself.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <p className="availability__meta">No calendar imported yet.</p>
         )}
 
         <FormField
-          label="Paste calendar (.ics)"
-          hint="Export the schedule from its calendar app, then paste the file's contents here."
+          label="Calendar link or .ics contents"
+          hint="Paste the subscription link from the calendar app, or the contents of an exported .ics file."
           error={error ?? undefined}
         >
           <textarea
             className="run-input"
             rows={3}
-            placeholder="BEGIN:VCALENDAR…"
+            placeholder="https://… or BEGIN:VCALENDAR…"
             value={text}
             onChange={(event) => {
               setText(event.target.value);
@@ -130,9 +208,10 @@ export function AvailabilitySheet({
           <Button
             variant="secondary"
             disabled={text.trim().length === 0}
-            onClick={() => importText(text, draft?.name ?? "Imported calendar")}
+            isLoading={isLoading}
+            onClick={importPasted}
           >
-            Import Pasted Calendar
+            Import
           </Button>
 
           <label className="availability__file" htmlFor={fileId}>
@@ -144,7 +223,15 @@ export function AvailabilitySheet({
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                importText(await file.text(), file.name.replace(/\.ics$/i, ""));
+                try {
+                  applyCalendar(
+                    await file.text(),
+                    file.name.replace(/\.ics$/i, ""),
+                    null,
+                  );
+                } catch (caught) {
+                  setError(describe(caught));
+                }
                 event.target.value = "";
               }}
             />

@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AvailabilityCalendar } from "../../domain/availability";
+import { CalendarFetchError } from "../../domain/calendarSource";
 import { findWorkout } from "../../domain/planEdit";
 import type { TrainingPlan } from "../../domain/types";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
@@ -43,6 +44,14 @@ function calendarOf(
   };
 }
 
+/** A stand-in for the network, so these tests never touch it. */
+function stubFetch(result: string | Error) {
+  return vi.fn(async () => {
+    if (result instanceof Error) throw result;
+    return result;
+  });
+}
+
 function renderPlan(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
   const onSaveAvailability = vi.fn();
   const onEditPlan = vi.fn();
@@ -65,10 +74,8 @@ describe("importing a calendar", () => {
     const { user, onSaveAvailability } = renderPlan();
 
     await user.click(screen.getByRole("button", { name: "Availability" }));
-    await user.type(screen.getByLabelText(/Paste calendar/), ICS);
-    await user.click(
-      screen.getByRole("button", { name: "Import Pasted Calendar" }),
-    );
+    await user.type(screen.getByLabelText(/Calendar link/), ICS);
+    await user.click(screen.getByRole("button", { name: "Import" }));
 
     expect(screen.getByText(/2 days imported/)).toBeInTheDocument();
     const shifts = screen.getByRole("button", { name: /MICU Day/ });
@@ -92,13 +99,106 @@ describe("importing a calendar", () => {
     const { user, onSaveAvailability } = renderPlan();
 
     await user.click(screen.getByRole("button", { name: "Availability" }));
-    await user.type(screen.getByLabelText(/Paste calendar/), "just some text");
-    await user.click(
-      screen.getByRole("button", { name: "Import Pasted Calendar" }),
-    );
+    await user.type(screen.getByLabelText(/Calendar link/), "just some text");
+    await user.click(screen.getByRole("button", { name: "Import" }));
 
     expect(screen.getByText(/does not look like a calendar/)).toBeInTheDocument();
     expect(onSaveAvailability).not.toHaveBeenCalled();
+  });
+
+  it("fetches a pasted subscription link", async () => {
+    const fetchIcs = stubFetch(ICS);
+    const { user, onSaveAvailability } = renderPlan({ fetchIcs });
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.type(
+      screen.getByLabelText(/Calendar link/),
+      "https://app.example.com/ical?key=abc",
+    );
+    await user.click(screen.getByRole("button", { name: "Import" }));
+
+    expect(fetchIcs).toHaveBeenCalledWith("https://app.example.com/ical?key=abc");
+    expect(await screen.findByText(/2 days imported/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const saved = onSaveAvailability.mock.calls[0][0] as AvailabilityCalendar;
+    expect(saved.sourceUrl).toBe("https://app.example.com/ical?key=abc");
+    expect(saved.name).toBe("app.example.com");
+  });
+
+  it("turns a webcal link into the request it really is", async () => {
+    const fetchIcs = stubFetch(ICS);
+    const { user } = renderPlan({ fetchIcs });
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.type(
+      screen.getByLabelText(/Calendar link/),
+      "webcal://example.com/x.ics",
+    );
+    await user.click(screen.getByRole("button", { name: "Import" }));
+
+    expect(fetchIcs).toHaveBeenCalledWith("https://example.com/x.ics");
+  });
+
+  it("explains a link the browser is not allowed to read", async () => {
+    const fetchIcs = stubFetch(
+      new CalendarFetchError(
+        "Could not reach that link. Either the calendar provider does not allow apps to read it directly, or the connection failed. Download the .ics file and choose it below instead.",
+      ),
+    );
+    const { user, onSaveAvailability } = renderPlan({ fetchIcs });
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.type(
+      screen.getByLabelText(/Calendar link/),
+      "https://app.example.com/ical?key=abc",
+    );
+    await user.click(screen.getByRole("button", { name: "Import" }));
+
+    expect(
+      await screen.findByText(/does not allow apps to read it directly/),
+    ).toBeInTheDocument();
+    // The fallback that always works is named in the same breath.
+    expect(screen.getByText(/choose it below/)).toBeInTheDocument();
+    expect(onSaveAvailability).not.toHaveBeenCalled();
+  });
+
+  it("refreshes from a remembered link, keeping the shifts already chosen", async () => {
+    const fetchIcs = stubFetch(ICS);
+    const { user, onSaveAvailability } = renderPlan({
+      fetchIcs,
+      availability: calendarOf({
+        sourceUrl: "https://app.example.com/ical?key=abc",
+      }),
+    });
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    expect(
+      screen.getByText("https://app.example.com/ical?key=abc"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(fetchIcs).toHaveBeenCalledWith("https://app.example.com/ical?key=abc");
+
+    await user.click(await screen.findByRole("button", { name: "Save" }));
+    const saved = onSaveAvailability.mock.calls[0][0] as AvailabilityCalendar;
+    expect(saved.blockingLabels).toEqual(["MICU Day"]);
+  });
+
+  it("forgets a link without discarding the shifts", async () => {
+    const { user, onSaveAvailability } = renderPlan({
+      availability: calendarOf({
+        sourceUrl: "https://app.example.com/ical?key=abc",
+      }),
+    });
+
+    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: "Forget Link" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const saved = onSaveAvailability.mock.calls[0][0] as AvailabilityCalendar;
+    expect(saved.sourceUrl).toBeNull();
+    expect(saved.shifts).toHaveLength(2);
   });
 
   it("can be switched off without losing the import", async () => {

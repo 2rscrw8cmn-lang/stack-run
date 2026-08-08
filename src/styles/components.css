@@ -1908,6 +1908,27 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
+/* The link is shown in full: it is a credential, not a detail. */
+.availability__source {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  color: var(--text-subtle);
+  overflow-wrap: anywhere;
+}
+
+.availability__source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.availability__warning {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .availability__import {
   display: flex;
   flex-direction: column;
