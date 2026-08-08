@@ -189,6 +189,7 @@ export function parseCalendar(text: string): ParsedCalendar {
   let end: Moment | null = null;
   let recurring = false;
   let unreadable = false;
+  let cancelled = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -200,12 +201,19 @@ export function parseCalendar(text: string): ParsedCalendar {
       end = null;
       recurring = false;
       unreadable = false;
+      cancelled = false;
       continue;
     }
 
     if (/^END:VEVENT$/i.test(trimmed)) {
       inEvent = false;
       const label = summary || "Untitled";
+      // A cancelled shift is a day off, and rosters keep the event around
+      // rather than deleting it. Blocking a run for one would be exactly
+      // backwards.
+      if (cancelled) {
+        continue;
+      }
       if (recurring) {
         skipped.push({ label, reason: "repeats on a rule" });
       } else if (!start || unreadable) {
@@ -236,6 +244,8 @@ export function parseCalendar(text: string): ParsedCalendar {
       summary = unescapeText(property.value);
     } else if (property.name === "RRULE") {
       recurring = true;
+    } else if (property.name === "STATUS") {
+      cancelled = /^CANCELLED$/i.test(property.value.trim());
     } else if (property.name === "DTSTART") {
       start = parseMoment(property.value);
       if (!start) {

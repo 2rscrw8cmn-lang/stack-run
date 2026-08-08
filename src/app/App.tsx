@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import type { AvailabilityCalendar } from "../domain/availability";
 import type { AppState } from "../domain/types";
 import {
   deleteRunLog,
@@ -13,6 +14,7 @@ import {
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
 import { DevDataPanel } from "../dev/DevDataPanel";
+import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 
 export type TabId = "today" | "build" | "plan";
@@ -32,6 +34,17 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabId>("today");
   const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
   const [appState, setAppState] = useState<AppState>(loadInitialAppState);
+
+  const saveCalendar = useCallback(
+    (calendar: AvailabilityCalendar | null) =>
+      setAppState((current) => saveAvailability(current, calendar)),
+    [],
+  );
+
+  // A remembered roster is re-read once when the app opens, so blocked days
+  // are as current as the calendar rather than as current as the last time
+  // anybody tapped Refresh. Quiet on failure; the stored roster stands.
+  useRosterRefresh(appState.availability, saveCalendar);
 
   return (
     <>
@@ -56,9 +69,7 @@ export function App() {
         setAppState((current) => deleteRunLog(current, runLogId))
       }
       availability={appState.availability}
-      onSaveAvailability={(calendar) =>
-        setAppState((current) => saveAvailability(current, calendar))
-      }
+      onSaveAvailability={saveCalendar}
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
       onResetPlan={() => setAppState(resetAppState())}
       onPlaceBlock={(request) =>

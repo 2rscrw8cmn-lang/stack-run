@@ -30,6 +30,36 @@ const timed = [
 ].join("\r\n");
 
 describe("parseCalendar", () => {
+  it("ignores a cancelled shift, which is a day off", () => {
+    // Rosters keep a cancelled event rather than deleting it. Blocking a run
+    // for one would be exactly backwards.
+    const cancelled = [
+      "BEGIN:VEVENT",
+      "UID:3@example.com",
+      "SUMMARY:MICU Day",
+      "DTSTART;VALUE=DATE:20260815",
+      "DTEND;VALUE=DATE:20260816",
+      "STATUS:CANCELLED",
+      "END:VEVENT",
+    ].join("\r\n");
+    const { shifts, skipped } = parseCalendar(calendar(allDay, cancelled));
+
+    expect(shifts).toEqual([
+      { date: "2026-08-10", label: "MICU Day", startTime: null, endTime: null },
+    ]);
+    // Not "skipped" either: there is nothing for the user to do about it.
+    expect(skipped).toEqual([]);
+  });
+
+  it("keeps a confirmed shift", () => {
+    const confirmed = allDay.replace(
+      "END:VEVENT",
+      "STATUS:CONFIRMED\r\nEND:VEVENT",
+    );
+
+    expect(parseCalendar(calendar(confirmed)).shifts).toHaveLength(1);
+  });
+
   it("reads an all-day shift as one day, not two", () => {
     // An all-day DTEND is exclusive, so this is Aug 10 alone.
     const { shifts } = parseCalendar(calendar(allDay));
