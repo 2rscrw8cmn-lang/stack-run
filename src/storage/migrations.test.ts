@@ -107,7 +107,8 @@ describe("migrateAppState from version 4", () => {
   it("keeps every run's values, timestamps, and scheduled link", () => {
     const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
 
-    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.schemaVersion).toBe(6);
+    expect(migrated.availability).toBeNull();
     expect(migrated.runLogs).toHaveLength(2);
     expect(migrated.runLogs[0]).toMatchObject({
       id: "run-workout-002",
@@ -242,6 +243,42 @@ describe("migrateAppState from version 4", () => {
 
     expect(migrated.blockPlacements).toEqual([]);
     expect(migrated.runLogs).toHaveLength(2);
+  });
+});
+
+describe("migrateAppState from version 5", () => {
+  it("adds an empty availability without inventing a calendar", () => {
+    const version5 = {
+      schemaVersion: 5,
+      settings: { units: "miles", theme: "dark" },
+      plan: loadSeedPlan(),
+      runLogs: [{ ...legacyEasyRun, activityType: "easy" }],
+      blockPlacements: [],
+    };
+
+    const migrated = migrateAppState(version5);
+
+    expect(migrated.schemaVersion).toBe(6);
+    expect(migrated.availability).toBeNull();
+    expect(migrated.runLogs).toHaveLength(1);
+    expect(migrated.plan).toEqual(version5.plan);
+  });
+
+  it("keeps a calendar a current-version state already has", () => {
+    const current = {
+      ...createInitialAppState(),
+      availability: {
+        name: "Shifts",
+        importedAt: "2026-08-01T12:00:00.000Z",
+        shifts: [
+          { date: "2026-08-04", label: "MICU", startTime: null, endTime: null },
+        ],
+        blockingLabels: ["MICU"],
+        enabled: true,
+      },
+    };
+
+    expect(migrateAppState(current).availability).toEqual(current.availability);
   });
 });
 

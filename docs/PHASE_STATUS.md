@@ -12,6 +12,12 @@
 | 6 | Plan adjustment | Ready for review | `claude/ui6-plan-adjustment` | `npm run check` passes (lint, 336 tests, build). The schedule is editable: edit a planned workout's type, name, target and instructions; add a planned run to a rest day (keeping the day's workout id); change a run back to rest; and move a workout to any date the plan covers, across week boundaries, adopting the destination week's phase. Every date holds exactly one workout, so a move is a swap — the sheet names both days before committing, which is the conflict confirmation. The race cannot be edited, moved, changed to rest, or displaced. A day with a run logged against it confirms before the plan changes under it, and the run stays attached to its workout through edits and moves. Reset is behind two deliberate presses with the counts of what will be erased on screen. Verified against a production build at 320, 390, 768 and 1280px with a fixed clock: no horizontal overflow, rows and controls 44px or taller, plan edits surviving a reload, and the plan's 126-date shape intact after a cross-week swap. |
 | 7 | Polish and release | Not started |  | **Next phase.** Final installability, accessibility, storage recovery, and release pass, including deleting `DevDataPanel` outright. |
 
+### Availability calendar (unphased)
+
+Requested during review and built on `claude/ui8-availability`. `npm run check` passes (lint, 379 tests, build). Import a partner's roster as a pasted or picked `.ics`; choose which shifts stop a morning run; blocked days are marked on Plan and Today; runs landing on them are listed with one proposed move each — the nearest unblocked rest day in the same training week — which the user accepts one at a time through UI-6's move rules. Nothing is fetched, nothing is applied automatically, and no URL or raw file is stored. Schema version 6.
+
+**Needs a decision entry.** This contradicts locked decisions still on the books (external data, and the spirit of D-021's "no adaptive coaching"), and no phase document covers it. The product owner asked for it directly and said the docs would follow.
+
 ## Current product review notes
 
 The current engineering foundation is strong, but the product loop needs one revision before more feature surface is added.

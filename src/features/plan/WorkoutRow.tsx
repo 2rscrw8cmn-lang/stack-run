@@ -1,4 +1,4 @@
-import { Circle, CircleCheck, MinusCircle } from "lucide-react";
+import { CalendarDays, Circle, CircleCheck, MinusCircle } from "lucide-react";
 import type { CSSProperties } from "react";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
@@ -6,6 +6,8 @@ import { PLAN_DAY_STATUS_LABEL, type PlanDay } from "../../domain/plan";
 
 interface WorkoutRowProps {
   day: PlanDay;
+  /** Shifts blocking this day, when a calendar has been imported. */
+  blockedBy?: string[];
   onSelect: (workoutId: string) => void;
 }
 
@@ -27,7 +29,8 @@ function targetPhrase(day: PlanDay): string {
  * owes nothing, and has no detail worth opening. A run day is a button that
  * opens the workout detail sheet.
  */
-export function WorkoutRow({ day, onSelect }: WorkoutRowProps) {
+export function WorkoutRow({ day, blockedBy, onSelect }: WorkoutRowProps) {
+  const isBlocked = (blockedBy?.length ?? 0) > 0;
   const { workout, status } = day;
   const StatusIcon = STATUS_ICON[status];
   const statusLabel = PLAN_DAY_STATUS_LABEL[status];
@@ -59,6 +62,12 @@ export function WorkoutRow({ day, onSelect }: WorkoutRowProps) {
             ? "No scheduled run"
             : `${WORKOUT_TYPE_LABEL[workout.type]} · ${targetPhrase(day)}`}
         </span>
+        {isBlocked && (
+          <span className="workout-row__blocked">
+            <CalendarDays size={13} strokeWidth={2} aria-hidden="true" />
+            {blockedBy!.join(", ")}
+          </span>
+        )}
       </span>
       <span className="workout-row__status" data-status={status}>
         <StatusIcon size={20} strokeWidth={1.8} aria-hidden="true" />
@@ -75,15 +84,17 @@ export function WorkoutRow({ day, onSelect }: WorkoutRowProps) {
 
   // A rest day opens straight into planning a run on it: there is nothing
   // else to say about a day the plan leaves empty.
+  const blockedPhrase = isBlocked ? `, blocked by ${blockedBy!.join(", ")}` : "";
   const label =
     status === "rest"
-      ? `${dateLabel}, Rest. Add a planned run`
-      : `${dateLabel}, ${workout.title}, ${WORKOUT_TYPE_LABEL[workout.type]}, ${targetPhrase(day)}, ${statusLabel}`;
+      ? `${dateLabel}, Rest${blockedPhrase}. Add a planned run`
+      : `${dateLabel}, ${workout.title}, ${WORKOUT_TYPE_LABEL[workout.type]}, ${targetPhrase(day)}, ${statusLabel}${blockedPhrase}`;
 
   return (
     <li
       className={status === "rest" ? "workout-row workout-row--rest" : "workout-row"}
       data-today={day.isToday || undefined}
+      data-blocked={isBlocked || undefined}
     >
       <button
         type="button"

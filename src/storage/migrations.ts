@@ -11,7 +11,7 @@ import type {
 } from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -75,6 +75,7 @@ export function createInitialAppState(): AppState {
     plan: loadSeedPlan(),
     runLogs: [],
     blockPlacements: [],
+    availability: null,
   };
 }
 
@@ -177,6 +178,21 @@ export function migrateAppState(input: unknown): AppState {
       plan: legacy.plan,
       runLogs,
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
+      availability: null,
+    };
+  }
+
+  /**
+   * Version 5 predates the availability calendar. There is nothing to derive
+   * one from and nothing to guess: a state that never imported a calendar has
+   * none, and the plan it already holds is untouched.
+   */
+  if (candidate.schemaVersion === 5) {
+    return {
+      ...(candidate as unknown as AppState),
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      blockPlacements: candidate.blockPlacements ?? [],
+      availability: null,
     };
   }
 
@@ -184,8 +200,9 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...(candidate as unknown as AppState),
       // A payload written by an older build of this phase, or hand edited,
-      // may still be missing the array.
+      // may still be missing these.
       blockPlacements: candidate.blockPlacements ?? [],
+      availability: (candidate as unknown as AppState).availability ?? null,
     };
   }
 

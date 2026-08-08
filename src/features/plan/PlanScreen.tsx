@@ -1,4 +1,10 @@
+import { CalendarDays } from "lucide-react";
 import { useState } from "react";
+import {
+  blockedDates,
+  findAvailabilityConflicts,
+  type AvailabilityCalendar,
+} from "../../domain/availability";
 import { earnedBlockPhrase } from "../../domain/build";
 import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import {
@@ -10,6 +16,7 @@ import {
   addPlannedRun,
   changeToRest,
   editPlannedRun,
+  findWorkout,
   isRaceWorkout,
   moveWorkout,
   PlanEditError,
@@ -21,6 +28,8 @@ import type {
   TrainingPlan,
   Workout,
 } from "../../domain/types";
+import { AvailabilitySheet } from "../availability/AvailabilitySheet";
+import { ConflictReviewSheet } from "../availability/ConflictReviewSheet";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
@@ -46,6 +55,9 @@ interface PlanScreenProps {
   /** Persists an edited plan. The edit rules produce the whole plan. */
   onEditPlan?: (plan: TrainingPlan) => void;
   onResetPlan?: () => void;
+  /** The imported calendar of days the user cannot run. */
+  availability?: AvailabilityCalendar | null;
+  onSaveAvailability?: (calendar: AvailabilityCalendar | null) => void;
 }
 
 /**
@@ -55,7 +67,9 @@ interface PlanScreenProps {
  */
 type Secondary =
   | { kind: "run-entry" | "edit-workout" | "move-workout"; workoutId: string }
-  | { kind: "reset" };
+  | { kind: "reset" }
+  | { kind: "availability" }
+  | { kind: "conflicts" };
 
 /**
  * The complete editable schedule: one training week at a time, opening on the
@@ -75,6 +89,8 @@ export function PlanScreen({
   onDeleteRun = () => undefined,
   onEditPlan = () => undefined,
   onResetPlan = () => undefined,
+  availability = null,
+  onSaveAvailability = () => undefined,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     currentWeekNumber(plan, today),
@@ -89,6 +105,8 @@ export function PlanScreen({
   const [announcement, setAnnouncement] = useState("");
 
   const week = selectPlanWeekViewModel(plan, runLogs, weekNumber, today);
+  const blocked = blockedDates(availability);
+  const conflicts = findAvailabilityConflicts(plan, availability, runLogs, today);
   const satisfiedWorkoutIds = new Set(
     runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
   );
@@ -126,12 +144,22 @@ export function PlanScreen({
     setSecondary(null);
   }
 
-  /** Applies a plan edit, or says why it was refused rather than failing mutely. */
-  function applyPlanEdit(edit: () => TrainingPlan, announce: string) {
+  /**
+   * Applies a plan edit, or says why it was refused rather than failing
+   * mutely. Reviewing blocked days keeps the sheet open, because the point of
+   * that screen is working through several conflicts in one sitting.
+   */
+  function applyPlanEdit(
+    edit: () => TrainingPlan,
+    announce: string,
+    { close = true }: { close?: boolean } = {},
+  ) {
     try {
       onEditPlan(edit());
       setAnnouncement(announce);
-      closeSecondary();
+      if (close) {
+        closeSecondary();
+      }
     } catch (error) {
       if (error instanceof PlanEditError) {
         setAnnouncement(error.message);
@@ -196,11 +224,25 @@ export function PlanScreen({
 
       <WeekHeader week={week} />
 
+      {conflicts.length > 0 && (
+        <button
+          type="button"
+          className="plan-screen__conflicts"
+          onClick={() => openSecondary({ kind: "conflicts" })}
+        >
+          <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
+          <span>
+            {`${conflicts.length} ${conflicts.length === 1 ? "run lands" : "runs land"} on a blocked day`}
+          </span>
+        </button>
+      )}
+
       <ul className="plan-week" aria-label={`Week ${week.weekNumber} workouts`}>
         {week.days.map((day) => (
           <WorkoutRow
             key={day.workout.id}
             day={day}
+            blockedBy={blocked.get(day.workout.date)}
             onSelect={(workoutId) => {
               // A rest day has nothing to read; the only thing to do with one
               // is plan a run on it.
@@ -214,13 +256,22 @@ export function PlanScreen({
         ))}
       </ul>
 
-      <button
-        type="button"
-        className="plan-screen__reset"
-        onClick={() => openSecondary({ kind: "reset" })}
-      >
-        Reset Plan
-      </button>
+      <div className="plan-screen__quiet-actions">
+        <button
+          type="button"
+          className="plan-screen__reset"
+          onClick={() => openSecondary({ kind: "availability" })}
+        >
+          Availability
+        </button>
+        <button
+          type="button"
+          className="plan-screen__reset"
+          onClick={() => openSecondary({ kind: "reset" })}
+        >
+          Reset Plan
+        </button>
+      </div>
 
       <p className="visually-hidden" aria-live="polite">
         {announcement}
@@ -327,6 +378,41 @@ export function PlanScreen({
             applyPlanEdit(
               () => moveWorkout(plan, workout.id, toDate),
               `${workout.title} moved to ${formatDateLabel(toDate)}.`,
+            );
+          }}
+        />
+      )}
+
+      {secondary?.kind === "availability" && (
+        <AvailabilitySheet
+          key={secondaryVisit}
+          calendar={availability}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onSave={(calendar) => {
+            onSaveAvailability(calendar);
+            setAnnouncement(
+              calendar
+                ? `Calendar saved. ${blockedDates(calendar).size} blocked days.`
+                : "Calendar removed.",
+            );
+            setSecondaryOpen(false);
+          }}
+        />
+      )}
+
+      {secondary?.kind === "conflicts" && (
+        <ConflictReviewSheet
+          key={secondaryVisit}
+          conflicts={conflicts}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onMove={(workoutId, toDate) => {
+            const workout = findWorkout(plan, workoutId);
+            applyPlanEdit(
+              () => moveWorkout(plan, workoutId, toDate),
+              `${workout?.title ?? "Workout"} moved to ${formatDateLabel(toDate)}.`,
+              { close: false },
             );
           }}
         />

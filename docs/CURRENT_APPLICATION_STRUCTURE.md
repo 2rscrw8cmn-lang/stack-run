@@ -4,6 +4,8 @@
 
 **UI-5.5 Core Loop Revision and UI-6 Plan adjustment are implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, dev controls are gone from production builds, and the schedule itself is editable.
 
+An **availability calendar** was added after UI-6 at the product owner's request. It is not in any phase document, and it contradicts locked decisions that are still on the books — see the section below.
+
 The next approved implementation phase is **UI-7 — Polish and release**.
 
 ## Current app shell
@@ -127,9 +129,39 @@ Pure functions over a plan, returning a new one. Nothing here touches storage, r
 - `ResetPlanDialog` is the one action that destroys everything, behind two deliberate presses, with the counts of what will be erased on screen while the user decides. It is reached from a deliberately quiet `Reset Plan` control at the bottom of Plan.
 - `savePlan` in the repository persists an edited plan; run logs and placements are untouched, which is what keeps a completed run attached to its workout across an edit or a move.
 
+## Availability — days you cannot run
+
+Added at the product owner's request, and **not covered by any phase document**. It needs an explicit decision entry before the docs are consistent again, because it sits against three things `AGENTS.md` and `DECISION_LOG.md` currently lock:
+
+- "No account, auth, backend, API…" — an imported calendar is external data, though nothing here is fetched.
+- "Manual logging only" — still true of runs; this imports commitments, not activity.
+- D-021's "no adaptive coaching" — the plan is never changed automatically, which is what keeps this on the right side of the line, but the line is close enough to be worth writing down.
+
+### How the data gets in
+
+`src/features/availability/AvailabilitySheet.tsx` takes a pasted or picked `.ics` file. Nothing is fetched. A calendar subscription URL is a standing credential to another person's whereabouts, and this app has nowhere safe to keep one; re-pasting an export takes seconds and a roster changes about monthly. **No URL and no raw file is ever stored** — a browser check asserts the persisted state contains neither.
+
+`src/domain/ics.ts` parses it: RFC 5545 line unfolding, `VEVENT` extraction, `DTSTART`/`DTEND`/`SUMMARY` in all-day, UTC and `TZID` forms, multi-day expansion with the exclusive all-day end date, and escaped text. A `TZID` value is read as wall-clock time and used as written; converting properly would need a timezone database, and the calendar being imported is one the user reads in their own zone. Recurring events are **skipped and reported**, never expanded — a half-implemented `RRULE` would invent working days that do not exist.
+
+### Which shifts matter is the user's call
+
+`shiftKinds` groups the import by shift name with day counts and times, and the sheet asks which of them stop a morning run. A night shift may free the morning or ruin it, and only the user knows. Nothing blocks anything until they say so. The whole calendar can be switched off without losing the import.
+
+### What it does with them
+
+- `blockedDates` is the set of days, with the shifts responsible for each.
+- Blocked days are marked on Plan's rows (with the shift named) and on Today's This Week strip.
+- `findAvailabilityConflicts` reports scheduled runs on blocked days that could still move: today or later, not already logged, never the race.
+- `proposeDateFor` offers **one** destination: the nearest unblocked rest day in the workout's own training week, earlier date breaking ties. Only rest days, because a swap onto another run would push that run onto the blocked day and just relocate the problem. Only the same week, because the week is the unit that carries the training. When there is no room it says so rather than inventing something.
+- `ConflictReviewSheet` lists the conflicts and their proposals. **Every move is accepted individually and applied through UI-6's `moveWorkout`**, so the plan's invariants hold. Nothing is ever applied automatically: sliding an easy run a day is nothing, moving a long run reshapes a week, and only the runner knows which they meant.
+
+There is no pace model, no ranking of sessions, and nothing that chooses *what* to run — only *when*, and only when the user says yes.
+
 ## Persistence
 
-`AppState.schemaVersion` is **5**. The storage key is unchanged.
+`AppState.schemaVersion` is **6**. The storage key is unchanged.
+
+- `availability` holds the imported calendar — name, import time, shifts (date, label, times), the blocking labels, and its on/off state — or null. Version 5 migrates by setting it to null; there is nothing to derive one from and nothing to guess.
 
 - `RunLog.workoutId` is `string | null`, and `RunLog.activityType` records what the run was.
 - `BlockPlacement.runLogId` replaces `workoutId`; `height` is `1 | 2 | 3`.

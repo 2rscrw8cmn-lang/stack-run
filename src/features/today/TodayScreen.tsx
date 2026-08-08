@@ -3,6 +3,10 @@ import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import {
+  blockedDates,
+  type AvailabilityCalendar,
+} from "../../domain/availability";
+import {
   earnedBlockPhrase,
   findPlacementForRunLog,
   selectBuildViewModel,
@@ -49,6 +53,7 @@ interface TodayScreenProps {
     runLogId?: string,
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
+  availability?: AvailabilityCalendar | null;
 }
 
 /** Which run the entry sheet is open for, and what it is about to write. */
@@ -71,6 +76,7 @@ export function TodayScreen({
   onStartPlacing = () => undefined,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
+  availability = null,
 }: TodayScreenProps) {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [isEntryOpen, setEntryOpen] = useState(false);
@@ -161,7 +167,11 @@ export function TodayScreen({
         />
       )}
 
-      <ThisWeekStrip week={week} onViewPlan={onViewPlan} />
+      <ThisWeekStrip
+        week={week}
+        blocked={blockedDates(availability)}
+        onViewPlan={onViewPlan}
+      />
 
       {next && <NextWorkoutCard workout={next} />}
 

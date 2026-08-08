@@ -1,4 +1,5 @@
 import { BottomNav } from "../components/shared/BottomNav";
+import type { AvailabilityCalendar } from "../domain/availability";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
 import type { PlacementRequest } from "../features/build/BuildScreen";
@@ -23,6 +24,9 @@ interface AppShellProps {
   /** Persists an edited plan, and restores the seed. */
   onEditPlan: (plan: TrainingPlan) => void;
   onResetPlan: () => void;
+  /** Days the user cannot run, imported from a calendar. */
+  availability: AvailabilityCalendar | null;
+  onSaveAvailability: (calendar: AvailabilityCalendar | null) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
   /** The earned block Build is currently holding, identified by its run log. */
   placingRunLogId: string | null;
@@ -39,6 +43,8 @@ export function AppShell({
   onDeleteRun,
   onEditPlan,
   onResetPlan,
+  availability,
+  onSaveAvailability,
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
@@ -63,6 +69,7 @@ export function AppShell({
             }}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
+            availability={availability}
           />
         )}
         {activeTab === "build" && (
@@ -86,6 +93,8 @@ export function AppShell({
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
             onResetPlan={onResetPlan}
+            availability={availability}
+            onSaveAvailability={onSaveAvailability}
           />
         )}
       </main>
