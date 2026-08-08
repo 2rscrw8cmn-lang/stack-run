@@ -146,7 +146,12 @@ export default async function handler(request: Request): Promise<Response> {
       response = await fetch(current, {
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
-        headers: { Accept: "text/calendar, text/plain;q=0.9" },
+        headers: {
+          Accept: "text/calendar, text/plain;q=0.9",
+          // Some hosts refuse a request that names nothing. This says what
+          // this is and does not pretend to be a browser.
+          "User-Agent": "STACK calendar import (https://github.com/stack-run)",
+        },
       });
     } catch {
       return plain(502, "Could not reach that calendar host.");
