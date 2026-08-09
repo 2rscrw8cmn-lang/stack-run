@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
-import handler from "./calendar";
+import handler, { readCalendar } from "./calendar";
 
 const ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR";
 
@@ -32,7 +32,7 @@ describe("the calendar reader", () => {
     const fetchMock = vi.fn().mockResolvedValue(calendar());
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await handler(ask("https://roster.example/ical?key=abc"));
+    const response = await readCalendar(ask("https://roster.example/ical?key=abc"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toMatch(/text\/calendar/);
@@ -46,7 +46,7 @@ describe("the calendar reader", () => {
   });
 
   it("only answers POST, so links stay out of request logs", async () => {
-    const response = await handler(ask(null, "GET"));
+    const response = await readCalendar(ask(null, "GET"));
 
     expect(response.status).toBe(405);
     // Readable by a person: opening the path in a browser is how you find out
@@ -55,7 +55,7 @@ describe("the calendar reader", () => {
   });
 
   it("refuses a request with no link in it", async () => {
-    const response = await handler(ask(42));
+    const response = await readCalendar(ask(42));
 
     expect(response.status).toBe(400);
     await expect(response.text()).resolves.toMatch(/did not contain/);
@@ -65,7 +65,7 @@ describe("the calendar reader", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await handler(ask("http://roster.example/ical"));
+    const response = await readCalendar(ask("http://roster.example/ical"));
 
     expect(response.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -85,7 +85,7 @@ describe("the calendar reader", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await handler(ask(url));
+    const response = await readCalendar(ask(url));
 
     expect(response.status).toBe(400);
     await expect(response.text()).resolves.toMatch(/public calendar host/);
@@ -101,7 +101,7 @@ describe("the calendar reader", () => {
         .mockResolvedValueOnce(calendar()),
     );
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toBe(ICS);
@@ -113,7 +113,7 @@ describe("the calendar reader", () => {
       vi.fn().mockResolvedValue(redirectTo("https://169.254.169.254/")),
     );
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(400);
     await expect(response.text()).resolves.toMatch(/public calendar host/);
@@ -125,7 +125,7 @@ describe("the calendar reader", () => {
       vi.fn().mockResolvedValue(redirectTo("https://roster.example/again")),
     );
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(502);
     await expect(response.text()).resolves.toMatch(/redirected too many times/);
@@ -134,7 +134,7 @@ describe("the calendar reader", () => {
   it("reports the status a host answered with", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(calendar("no", 403)));
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(502);
     await expect(response.text()).resolves.toMatch(/answered 403/);
@@ -143,7 +143,7 @@ describe("the calendar reader", () => {
   it("says so when the host cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(502);
     await expect(response.text()).resolves.toMatch(/Could not reach/);
@@ -156,17 +156,96 @@ describe("the calendar reader", () => {
       vi.fn().mockResolvedValue(new Response("<html>secrets</html>")),
     );
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(502);
     await expect(response.text()).resolves.toMatch(/did not return a calendar/);
+  });
+
+  it("spends its time budget across every hop, not on each of them", async () => {
+    // Three redirects at a fresh timeout each could outlast the platform's
+    // own limit, and being killed mid-read tells the page nothing.
+    let now = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        now += 6_000;
+        return redirectTo("https://cdn.example/next");
+      }),
+    );
+
+    const response = await readCalendar(ask("https://roster.example/ical"));
+
+    expect(response.status).toBe(504);
+    await expect(response.text()).resolves.toMatch(/took too long/);
+    vi.restoreAllMocks();
+  });
+
+  it("answers the same when called the older way, with a response to write to", async () => {
+    // Guessing the calling convention wrong is invisible: nothing is ever
+    // sent, the invocation runs until the platform kills it, and the
+    // dashboard shows a timeout with no error beside it.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(calendar()));
+    const headers: Record<string, string> = {};
+    let body: string | undefined;
+    const res = {
+      statusCode: 0,
+      setHeader: (name: string, value: string) => {
+        headers[name] = value;
+      },
+      end: (written?: string) => {
+        body = written;
+      },
+    };
+    const req = {
+      method: "POST",
+      url: "/api/calendar",
+      body: { url: "https://roster.example/ical?key=abc" },
+      on: () => undefined,
+    };
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(headers["content-type"]).toMatch(/text\/calendar/);
+    expect(body).toBe(ICS);
+  });
+
+  it("reads a streamed body when the platform has not parsed one", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(calendar()));
+    const listeners: Record<string, (chunk?: unknown) => void> = {};
+    let body: string | undefined;
+    const res = {
+      statusCode: 0,
+      setHeader: () => undefined,
+      end: (written?: string) => {
+        body = written;
+      },
+    };
+    const req = {
+      method: "POST",
+      url: "/api/calendar",
+      on: (event: string, listener: (chunk?: unknown) => void) => {
+        listeners[event] = listener;
+        if (event === "end") {
+          listeners.data?.('{"url":"https://roster.example/ical"}');
+          listener();
+        }
+      },
+    };
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(body).toBe(ICS);
   });
 
   it("refuses to buffer something enormous", async () => {
     const huge = `BEGIN:VCALENDAR${"x".repeat(2_000_001)}`;
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(huge)));
 
-    const response = await handler(ask("https://roster.example/ical"));
+    const response = await readCalendar(ask("https://roster.example/ical"));
 
     expect(response.status).toBe(502);
     await expect(response.text()).resolves.toMatch(/too large/);
