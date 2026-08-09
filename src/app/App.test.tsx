@@ -20,6 +20,11 @@ function setupUser() {
   return userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 }
 
+/** Plan leads with the week rather than with the word "Plan". */
+function weekHeading() {
+  return screen.getByRole("heading", { level: 1 });
+}
+
 async function logTodaysRun(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Mark Complete" }));
   await user.type(screen.getByLabelText(/Distance/), "2.1");
@@ -43,19 +48,19 @@ describe("App", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Build" }));
-    expect(screen.getByRole("heading", { name: "Build" })).toBeInTheDocument();
+    // Build leads with the miles the tower is made of, not the word "Build".
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "0 miles built",
+    );
     expect(screen.getByRole("button", { name: "Build" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(
-      screen.getByRole("list", { name: "Built blocks" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Nothing built yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     // Plan opens on the week containing the pinned date.
-    expect(screen.getByText("Week 1 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 1 of 18");
     expect(
       within(screen.getByRole("list", { name: "Week 1 workouts" })).getAllByRole(
         "listitem",
@@ -70,7 +75,7 @@ describe("App", () => {
     const { unmount } = render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    expect(screen.getByText("Week 2 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 2 of 18");
     await user.click(screen.getByRole("button", { name: "Previous week" }));
     await user.click(
       screen.getByRole("button", {
@@ -116,11 +121,10 @@ describe("App", () => {
         "listitem",
       ),
     ).toHaveLength(1);
-    expect(
-      within(screen.getByRole("list", { name: "Built blocks" })).queryAllByRole(
-        "button",
-      ),
-    ).toHaveLength(0);
+    // Earned is not built: with nothing placed the tower is still the
+    // first-run empty state rather than a grid of blocks.
+    expect(screen.queryByRole("list", { name: "Built blocks" })).toBeNull();
+    expect(screen.getByText("Nothing built yet")).toBeInTheDocument();
 
     // A pending block survives a reload.
     unmount();
@@ -158,7 +162,9 @@ describe("App", () => {
 
     // The block it earned is waiting in Build, and its miles are counted.
     await user.click(screen.getByRole("button", { name: "Build" }));
-    expect(screen.getByText("Total Miles").parentElement).toHaveTextContent("5");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "5 miles built",
+    );
     expect(screen.getByText("Runs Complete").parentElement).toHaveTextContent(
       "0 / 71",
     );

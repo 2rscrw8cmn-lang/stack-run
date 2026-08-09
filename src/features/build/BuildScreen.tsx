@@ -14,7 +14,7 @@ import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { BlockDetailSheet } from "./BlockDetailSheet";
-import { BuildMetrics } from "./BuildMetrics";
+import { BuildHeading } from "./BuildHeading";
 import { BuiltStructure } from "./BuiltStructure";
 import { PendingBlocksTray } from "./PendingBlocksTray";
 import { describeCandidate } from "./describeCandidate";
@@ -157,8 +157,7 @@ export function BuildScreen({
 
   return (
     <div className="build-screen" data-placing={placingBlock ? "true" : undefined}>
-      <h1 className="screen-title">Build</h1>
-      <BuildMetrics metrics={viewModel.metrics} />
+      <BuildHeading metrics={viewModel.metrics} />
       {!placingBlock && (
         <PendingBlocksTray
           blocks={viewModel.pendingBlocks}

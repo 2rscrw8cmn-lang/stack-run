@@ -1,5 +1,6 @@
 import { CalendarDays, Circle, CircleCheck, MinusCircle } from "lucide-react";
 import type { CSSProperties } from "react";
+import { ActivityIcon } from "../../components/shared/ActivityIcon";
 import { blockedPhrase, type BlockedDay } from "../../domain/availability";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
@@ -62,6 +63,7 @@ export function WorkoutRow({ day, blocked, onSelect }: WorkoutRowProps) {
       <span className="workout-row__detail">
         <span className="workout-row__title">{workout.title}</span>
         <span className="workout-row__meta">
+          <ActivityIcon type={workout.type} size={13} />
           {status === "rest"
             ? "No scheduled run"
             : `${WORKOUT_TYPE_LABEL[workout.type]} · ${targetPhrase(day)}`}

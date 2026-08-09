@@ -13,7 +13,12 @@
 - No console errors.
 - No external API is required for core behavior.
 - Refresh preserves saved state.
-- Production builds contain no DevDataPanel or bulk-seed control.
+- The source tree contains no DevDataPanel or bulk-seed control at all.
+- Exactly one `h1` per screen, and no screen is titled with its own name.
+- Small text meets 4.5:1 against every surface it is used on.
+- The app installs to a home screen and opens without browser chrome.
+- Unreadable stored state is reported and preserved, never silently replaced.
+- A change that could not be saved is said out loud.
 - `npm run check` passes.
 
 ## Today
@@ -142,6 +147,10 @@ Migration must:
 Invalid data must not cause a blank screen.
 
 ## Production smoke test
+
+`docs/RELEASE_CHECKLIST.md` is the checklist to work through on the deployed
+URL, on the phone the app is for. It covers the loop below plus installation,
+survival across a deploy, storage recovery, and an accessibility spot check.
 
 1. Open production URL in iPhone Safari.
 2. Confirm no dev/bulk-seed panel is visible.

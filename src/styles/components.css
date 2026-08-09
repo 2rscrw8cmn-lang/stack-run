@@ -1,14 +1,25 @@
-.wordmark {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+/* The brand is a lockup, not a headline: the mark carries the identity and
+   the word stands beside it at reading size. It used to be set at 34px above
+   a tagline, which made every screen open on the app's own name. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.tagline {
+.wordmark {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  /* The tracking pushes the last letter off its own box; pull it back so the
+     lockup is optically centred. */
+  text-indent: 0.18em;
+  color: var(--text);
+}
+
+.wordmark--small {
+  font-size: 15px;
 }
 
 .card {
@@ -16,6 +27,106 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-5);
+}
+
+/* Section — a titled band of content, and the alternative to another card. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.section__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.section__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.section__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* Pushed to the far edge, so the title and its value read as one line. */
+.section__meta {
+  margin-left: auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.section__meta p {
+  margin: 0;
+}
+
+.section__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Empty state */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+}
+
+.empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--space-1);
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--accent);
+}
+
+.empty-state__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.empty-state__body {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty-state__action {
+  margin-top: var(--space-2);
 }
 
 .bottom-nav__item {
@@ -303,6 +414,30 @@
   gap: var(--space-4);
 }
 
+/* Today opens on the date rather than on the word "Today". */
+.today-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.today-heading__date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: clamp(24px, 7.5vw, 30px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.today-heading__day {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 /* The race, reduced to one line above the day's work. */
 .race-context {
   display: flex;
@@ -328,32 +463,10 @@
 
 /* This Week */
 
-.this-week {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.this-week__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.this-week__title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
 .this-week__count {
   display: flex;
   align-items: baseline;
+  justify-content: flex-end;
   gap: var(--space-2);
   margin: 0;
   font-size: 14px;
@@ -424,35 +537,7 @@
   border: 1px solid color-mix(in srgb, var(--long) 45%, transparent);
 }
 
-.this-week__link {
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* Next */
-
-.next-workout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.next-workout__label {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
 
 .next-workout__row {
   display: flex;
@@ -473,10 +558,18 @@
 }
 
 .next-workout__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.next-workout__title svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 .next-workout__meta {
@@ -486,28 +579,26 @@
 }
 
 /* The extra-run action is always available, whatever the day scheduled. */
+.today-screen__log-band {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
 .today-screen__log-extra {
   width: 100%;
 }
 
 /* Build preview */
 
-.build-preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
 .build-preview__count {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .build-preview__pending {
-  margin: 2px 0 0;
-  font-size: 12px;
+  margin: 0;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -551,6 +642,15 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--accent);
+}
+
+/* A rest day asks nothing of you, so it does not wear the action colour. */
+.today-workout-card--rest {
+  background: var(--surface-soft);
+}
+
+.today-workout-card--rest .today-workout-card__eyebrow {
+  color: var(--text-muted);
 }
 
 .today-workout-card__header {
@@ -782,35 +882,54 @@ textarea.run-input {
   gap: var(--space-4);
 }
 
-.screen-title {
+/* Build opens on the miles the tower is made of. */
+
+.build-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.build-heading__hero {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   margin: 0;
-  font-size: 28px;
+}
+
+.build-heading__value {
+  font-size: clamp(38px, 12vw, 46px);
   font-weight: 650;
-  letter-spacing: -0.01em;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  overflow-wrap: anywhere;
 }
 
-/* Summary metrics */
-
-.build-metrics {
-  padding: var(--space-4);
+.build-heading__unit {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
-.build-metrics__list {
+.build-heading__stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
-/* Reversed so the value reads above its label while `dt` stays first in the DOM. */
-.build-metrics__metric {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: var(--space-1);
+.build-heading__stat {
   min-width: 0;
 }
 
-.build-metrics__metric dt {
+.build-heading__stat dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -818,17 +937,16 @@ textarea.run-input {
   color: var(--text-subtle);
 }
 
-.build-metrics__metric dd {
-  margin: 0;
-  font-size: 26px;
+.build-heading__stat dd {
+  margin: var(--space-1) 0 0;
+  font-size: 20px;
   font-weight: 650;
   line-height: 1.1;
-  color: var(--accent);
   overflow-wrap: anywhere;
 }
 
-.build-metrics__of {
-  font-size: 14px;
+.build-heading__of {
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -844,29 +962,6 @@ textarea.run-input {
   /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
   --iso-run: 16px;
   --iso-rise: 8px;
-}
-
-.build-site__heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.build-site__title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
-.build-site__scale {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -1237,25 +1332,6 @@ textarea.run-input {
 
 /* Blocks Ready tray */
 
-.pending-tray {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.pending-tray__title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
 .pending-tray__count {
   padding: 2px var(--space-2);
   border-radius: 999px;
@@ -1264,7 +1340,7 @@ textarea.run-input {
   font-size: 11px;
 }
 
-/* A long backlog scrolls inside the card instead of pushing the build away. */
+/* A long backlog scrolls in place instead of pushing the build away. */
 .pending-tray__list {
   display: flex;
   flex-direction: column;
@@ -1622,95 +1698,94 @@ textarea.run-input {
   padding-bottom: var(--space-6);
 }
 
-.week-navigator {
+/* Which week, and how it is going: one header where there were two cards. */
+
+.week-lead {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.week-lead__bar {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.week-navigator__position {
+.week-lead__identity {
   flex: 1 1 auto;
-  margin: 0;
+  min-width: 0;
   text-align: center;
-  font-size: 15px;
+}
+
+.week-lead__title {
+  margin: 0;
+  font-size: clamp(22px, 6.5vw, 26px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.week-lead__of {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-subtle);
+  letter-spacing: 0;
+}
+
+.week-lead__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.week-lead__phase {
+  color: var(--text);
   font-weight: 600;
 }
 
-.week-navigator .icon-button:disabled {
+.week-lead__dot {
+  color: var(--text-subtle);
+}
+
+.week-lead .icon-button:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
-/* Full width on its own line at 320px, so the steppers never get squeezed. */
-.week-navigator__shortcut {
-  flex: 1 0 100%;
-  min-height: 44px;
-}
-
-.week-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.week-header__row {
+.week-lead__progress {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.week-header__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
-.week-header__now {
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  background: var(--surface-strong);
-  color: var(--accent);
-  letter-spacing: 0.02em;
-}
-
-/* The date range gets the full card width, so it never wraps at 320px. */
-.week-header__dates {
-  margin: 0;
-  font-size: clamp(19px, 6vw, 22px);
-  font-weight: 650;
-}
-
-.week-header__phase {
-  flex-shrink: 0;
-  margin: 0;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.week-header__progress {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-top: var(--space-1);
-}
-
-.week-header__count {
+.week-lead__count {
   margin: 0;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.week-lead__now {
+  padding: 3px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.week-lead__shortcut {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  color: var(--accent);
+  font-size: 13px;
 }
 
 .plan-week {
@@ -1810,8 +1885,16 @@ textarea.run-input {
 }
 
 .workout-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.workout-row__meta svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
 }
 
 /* Blocked days */
@@ -1862,11 +1945,45 @@ textarea.run-input {
   outline-offset: 2px;
 }
 
+/* The settings the plan is built from, kept quiet and out of the way of the
+   week itself. Icons make four near-identical text buttons tellable apart. */
 .plan-screen__quiet-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.plan-screen__quiet-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-screen__quiet-action svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.plan-screen__quiet-action:hover {
+  color: var(--text);
+}
+
+.plan-screen__quiet-action--danger:hover,
+.plan-screen__quiet-action--danger:hover svg {
+  color: var(--danger);
 }
 
 /* Availability */
@@ -2311,24 +2428,6 @@ textarea.run-input {
   color: var(--long);
 }
 
-/* Reset is deliberately the quietest control on the screen. */
-.plan-screen__reset {
-  align-self: center;
-  min-height: 44px;
-  margin-top: var(--space-2);
-  padding: 0 var(--space-4);
-  border: 0;
-  background: none;
-  color: var(--text-subtle);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.plan-screen__reset:hover {
-  color: var(--danger);
-}
-
 /* What is on the destination date, before a move commits. */
 .move-workout__destination {
   display: flex;
@@ -2420,4 +2519,139 @@ textarea.run-input {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Storage recovery — what the app is when it could not read its own state */
+
+.recovery {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--space-6) var(--space-4)
+    calc(var(--space-6) + env(safe-area-inset-bottom));
+}
+
+.recovery__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 440px;
+}
+
+.recovery__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.recovery__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+.recovery__title {
+  margin: 0;
+  font-size: clamp(22px, 6.5vw, 26px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.recovery__body {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* The words of whatever threw, and the key the damaged copy went to. Both are
+   here to be read out or written down, so they wrap rather than truncate. */
+.recovery__detail {
+  width: 100%;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.recovery__detail--key {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.recovery__warning {
+  margin: 0;
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.recovery__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-3);
+}
+
+.recovery__actions .button {
+  width: 100%;
+}
+
+.recovery__note {
+  margin: 0;
+  min-height: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* A change that never reached storage, said out loud. */
+
+.write-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.write-banner__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding-top: 2px;
+  color: var(--danger);
+}
+
+.write-banner__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.write-banner .icon-button {
+  flex-shrink: 0;
+  align-self: flex-start;
 }

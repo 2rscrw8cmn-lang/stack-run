@@ -9,7 +9,11 @@
 
   --text: #f6f7f8;
   --text-muted: #9ca7b1;
-  --text-subtle: #6f7a84;
+  /* Raised from #6f7a84 in UI-7. It carries small text — inactive tab labels,
+     row status, uppercase metric labels — and at the old value it measured
+     3.7:1 on `--surface-strong`, under the 4.5:1 WCAG AA asks of body text.
+     This is 4.9:1 on the lightest surface and 5.8:1 on the page. */
+  --text-subtle: #848e98;
 
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.15);

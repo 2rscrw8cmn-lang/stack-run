@@ -1,6 +1,8 @@
+import { Boxes } from "lucide-react";
 import type { CSSProperties } from "react";
+import { ActivityIcon } from "../../components/shared/ActivityIcon";
 import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
+import { Section } from "../../components/ui/Section";
 import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 
@@ -25,10 +27,12 @@ export function PendingBlocksTray({
   }
 
   return (
-    <Card className="pending-tray">
-      <p className="pending-tray__title">
-        Blocks Ready <span className="pending-tray__count">{blocks.length}</span>
-      </p>
+    <Section
+      className="pending-tray"
+      icon={<Boxes size={15} strokeWidth={2} />}
+      title="Blocks Ready"
+      meta={<span className="pending-tray__count">{blocks.length}</span>}
+    >
       <ul className="pending-tray__list" aria-label="Blocks ready to place">
         {blocks.map((block) => (
           <li key={block.runLog.id} className="pending-tray__item">
@@ -50,6 +54,7 @@ export function PendingBlocksTray({
               onClick={() => onEditRun?.(block.runLog.id)}
             >
               <p className="pending-tray__type">
+                <ActivityIcon type={block.runLog.activityType} size={15} />
                 {WORKOUT_TYPE_LABEL[block.runLog.activityType]}
                 {!block.workout && (
                   <span className="pending-tray__extra">Extra</span>
@@ -70,6 +75,6 @@ export function PendingBlocksTray({
           </li>
         ))}
       </ul>
-    </Card>
+    </Section>
   );
 }

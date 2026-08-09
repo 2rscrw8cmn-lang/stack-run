@@ -1,6 +1,6 @@
+import { Blocks, ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
+import { Section } from "../../components/ui/Section";
 import type { EarnedBlock, PlacedBlock } from "../../domain/build";
 
 interface BuildPreviewProps {
@@ -25,20 +25,16 @@ export function BuildPreview({
   const crop = blocks.slice(-CROP_SIZE);
 
   return (
-    <Card className="build-preview">
-      <div className="build-preview__detail">
+    <Section
+      className="build-preview"
+      icon={<Blocks size={15} strokeWidth={2} />}
+      title="Your Build"
+      meta={
         <p className="build-preview__count">
           {blocks.length} {blocks.length === 1 ? "block" : "blocks"} built
         </p>
-        <p className="build-preview__pending">
-          {pendingBlocks.length > 0
-            ? `${pendingBlocks.length} ready to place`
-            : blocks.length === 0
-              ? "Log a run to earn your first block"
-              : "Nothing waiting to be placed"}
-        </p>
-      </div>
-
+      }
+    >
       {crop.length > 0 && (
         <ul className="build-preview__crop" aria-hidden="true">
           {crop.map((block) => (
@@ -57,9 +53,18 @@ export function BuildPreview({
         </ul>
       )}
 
-      <Button variant="secondary" onClick={onViewBuild}>
+      <p className="build-preview__pending">
+        {pendingBlocks.length > 0
+          ? `${pendingBlocks.length} ready to place`
+          : blocks.length === 0
+            ? "Log a run to earn your first block"
+            : "Nothing waiting to be placed"}
+      </p>
+
+      <button type="button" className="section__link" onClick={onViewBuild}>
         View Build
-      </Button>
-    </Card>
+        <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
+      </button>
+    </Section>
   );
 }

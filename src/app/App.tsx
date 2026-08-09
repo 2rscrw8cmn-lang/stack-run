@@ -1,10 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AvailabilityCalendar } from "../domain/availability";
 import type { AppState } from "../domain/types";
 import {
   deleteRunLog,
   loadAppState,
+  onStorageWriteError,
   placeBlock,
+  readBackup,
   resetAppState,
   saveAvailability,
   savePlan,
@@ -15,47 +17,98 @@ import {
 } from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
-import { DevDataPanel } from "../dev/DevDataPanel";
+import { StorageRecoveryScreen } from "../features/recovery/StorageRecoveryScreen";
+import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
 import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 
 export type TabId = "today" | "build" | "plan";
 
-function loadInitialAppState(): AppState {
+/**
+ * Either an app, or the reason there isn't one.
+ *
+ * Loading used to swallow a failure and hand back a fresh state, which meant
+ * a browser that could not read its own storage looked exactly like a browser
+ * that had never been used — and quietly overwrote whatever was really there
+ * on the first save. Recovery is a state of the app, not a caught exception.
+ */
+type BootState =
+  | { kind: "ready"; state: AppState }
+  | { kind: "recovering"; error: StorageLoadError };
+
+function readBootState(): BootState {
   try {
-    return loadAppState();
+    return { kind: "ready", state: loadAppState() };
   } catch (error) {
     if (error instanceof StorageLoadError) {
-      console.warn(error.message);
+      return { kind: "recovering", error };
     }
-    return createInitialAppState();
+    throw error;
   }
 }
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>("today");
   const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
-  const [appState, setAppState] = useState<AppState>(loadInitialAppState);
+  const [boot, setBoot] = useState<BootState>(readBootState);
+  const [writeError, setWriteError] = useState<string | null>(null);
+
+  const appState = boot.kind === "ready" ? boot.state : null;
+
+  const setAppState = useCallback((next: (current: AppState) => AppState) => {
+    setBoot((current) =>
+      current.kind === "ready"
+        ? { kind: "ready", state: next(current.state) }
+        : current,
+    );
+  }, []);
+
+  useEffect(() => onStorageWriteError((error) => setWriteError(error.message)), []);
 
   const saveCalendar = useCallback(
     (calendar: AvailabilityCalendar | null) =>
       setAppState((current) => saveAvailability(current, calendar)),
-    [],
+    [setAppState],
   );
 
   // A remembered roster is re-read once when the app opens, so blocked days
   // are as current as the calendar rather than as current as the last time
   // anybody tapped Refresh. Quiet on failure; the stored roster stands.
-  useRosterRefresh(appState.availability, saveCalendar);
+  useRosterRefresh(appState?.availability ?? null, saveCalendar);
+
+  if (boot.kind === "recovering") {
+    return (
+      <StorageRecoveryScreen
+        reason={boot.error.reason}
+        detail={boot.error.message}
+        backupKey={boot.error.backupKey}
+        onReadBackup={readBackup}
+        onStartFresh={() => setBoot({ kind: "ready", state: resetAppState() })}
+        // Nothing was readable, so there is nothing to preserve and nothing to
+        // write; this is the same seed plan, held in memory for one session.
+        onContinueAnyway={() =>
+          setBoot({ kind: "ready", state: createInitialAppState() })
+        }
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
 
   return (
-    <>
     <AppShell
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      plan={appState.plan}
-      runLogs={appState.runLogs}
-      blockPlacements={appState.blockPlacements}
+      notice={
+        writeError && (
+          <StorageWriteBanner
+            message={writeError}
+            onDismiss={() => setWriteError(null)}
+          />
+        )
+      }
+      plan={boot.state.plan}
+      runLogs={boot.state.runLogs}
+      blockPlacements={boot.state.blockPlacements}
       onSaveRun={(workout, values: ValidRunEntry, runLogId?: string) =>
         setAppState((current) =>
           saveRunLog(current, {
@@ -70,32 +123,23 @@ export function App() {
       onDeleteRun={(runLogId) =>
         setAppState((current) => deleteRunLog(current, runLogId))
       }
-      availability={appState.availability}
+      availability={boot.state.availability}
       onSaveAvailability={saveCalendar}
-      raceSetup={appState.raceSetup}
+      raceSetup={boot.state.raceSetup}
       onGeneratePlan={(setup, plan) =>
         setAppState((current) => saveGeneratedPlan(current, setup, plan))
       }
-      runDays={appState.runDays}
+      runDays={boot.state.runDays}
       onSaveRunDays={(runDays, plan) =>
         setAppState((current) => saveRunDays(current, runDays, plan))
       }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
-      onResetPlan={() => setAppState(resetAppState())}
+      onResetPlan={() => setBoot({ kind: "ready", state: resetAppState() })}
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))
       }
       placingRunLogId={placingRunLogId}
       onPlacingChange={setPlacingRunLogId}
     />
-    {/*
-      Local scaffolding for bulk-seeding a tower by hand. Per D-025 it is gated
-      on DEV, so it is absent from production bundles and from every deployed
-      preview the product is reviewed in — and from the test DOM with them.
-    */}
-    {import.meta.env.DEV && (
-      <DevDataPanel state={appState} onChange={setAppState} />
-    )}
-    </>
   );
 }

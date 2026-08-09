@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { ActivityIcon } from "../../components/shared/ActivityIcon";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import type { Workout } from "../../domain/types";
@@ -8,14 +9,21 @@ interface TodayWorkoutCardProps {
   onMarkComplete: () => void;
 }
 
+/**
+ * The one card on Today, because it is the one thing on the screen you can
+ * act on. Everything else is a section.
+ */
 export function TodayWorkoutCard({
   workout,
   onMarkComplete,
 }: TodayWorkoutCardProps) {
   if (workout.type === "rest") {
     return (
-      <Card className="today-workout-card">
-        <p className="today-workout-card__eyebrow">Rest Day</p>
+      <Card className="today-workout-card today-workout-card--rest">
+        <p className="today-workout-card__eyebrow">
+          <ActivityIcon type="rest" size={16} />
+          Rest Day
+        </p>
         <p className="today-workout-card__details">{workout.details}</p>
       </Card>
     );
@@ -28,7 +36,10 @@ export function TodayWorkoutCard({
 
   return (
     <Card className="today-workout-card">
-      <p className="today-workout-card__eyebrow">Today&rsquo;s workout</p>
+      <p className="today-workout-card__eyebrow">
+        <ActivityIcon type={workout.type} size={16} />
+        Today&rsquo;s workout
+      </p>
       <div className="today-workout-card__header">
         <span
           className="workout-color-block"

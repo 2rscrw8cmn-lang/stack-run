@@ -16,26 +16,90 @@ import type {
   TrainingPlan,
 } from "../domain/types";
 import { createInitialAppState, migrateAppState } from "./migrations";
-import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
+import {
+  APP_STATE_STORAGE_KEY,
+  backupStorageKey,
+  listBackupStorageKeys,
+} from "./storageKeys";
+
+/**
+ * Why the stored state could not be turned into an app.
+ *
+ * `corrupt` means there was something there and it could not be read; the raw
+ * text is kept under `backupKey`. `unreadable` means the browser refused to
+ * hand over local storage at all — Safari in private mode, or a profile with
+ * site data switched off — so there is nothing to keep and nothing to fix,
+ * only a session that will not survive being closed.
+ */
+export type StorageLoadFailure = "corrupt" | "unreadable";
 
 export class StorageLoadError extends Error {
   readonly backupKey: string | null;
+  readonly reason: StorageLoadFailure;
 
-  constructor(message: string, backupKey: string | null) {
+  constructor(
+    message: string,
+    backupKey: string | null,
+    reason: StorageLoadFailure = "corrupt",
+  ) {
     super(message);
     this.name = "StorageLoadError";
     this.backupKey = backupKey;
+    this.reason = reason;
   }
+}
+
+export class StorageWriteError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "StorageWriteError";
+  }
+}
+
+type StorageWriteErrorListener = (error: StorageWriteError) => void;
+
+let writeErrorListener: StorageWriteErrorListener | null = null;
+
+/**
+ * Registers the one listener told when a write fails, and returns the
+ * function that removes it.
+ *
+ * A write that cannot happen is the failure a user most needs to hear about
+ * and the one they are least likely to notice: the screen updates, the run is
+ * on it, and it is gone at the next cold start. Every mutation in this module
+ * ends in `saveAppState`, so telling the shell from here costs nothing and
+ * threading a result through fifteen call sites would cost a great deal.
+ */
+export function onStorageWriteError(
+  listener: StorageWriteErrorListener,
+): () => void {
+  writeErrorListener = listener;
+  return () => {
+    if (writeErrorListener === listener) {
+      writeErrorListener = null;
+    }
+  };
 }
 
 /**
  * Reads AppState from localStorage. When no state has been saved yet, this
- * returns a fresh state built from the seed plan. When the stored value is
- * not valid JSON, the raw value is preserved under a timestamped backup key
- * and a recoverable StorageLoadError is thrown so the UI can offer a reset.
+ * returns a fresh state built from the seed plan. When the stored value
+ * cannot be read — invalid JSON, or a shape no migration recognises — the raw
+ * value is preserved under a timestamped backup key and a recoverable
+ * StorageLoadError is thrown so the UI can offer a way out.
  */
 export function loadAppState(): AppState {
-  const raw = localStorage.getItem(APP_STATE_STORAGE_KEY);
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(APP_STATE_STORAGE_KEY);
+  } catch (error) {
+    throw new StorageLoadError(
+      `This browser will not give the app its local storage: ${describe(error)}`,
+      null,
+      "unreadable",
+    );
+  }
+
   if (raw === null) {
     return createInitialAppState();
   }
@@ -43,16 +107,25 @@ export function loadAppState(): AppState {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
-    const backupKey = backupStorageKey(new Date().toISOString());
-    localStorage.setItem(backupKey, raw);
+  } catch (error) {
     throw new StorageLoadError(
-      "Stored app state is not valid JSON.",
-      backupKey,
+      `Stored app state is not valid JSON: ${describe(error)}`,
+      keepBackupOf(raw),
     );
   }
 
-  const state = migrateAppState(parsed);
+  // A migration walks the stored shape and will throw on anything it does not
+  // recognise. That is the same class of problem as unparseable text and it
+  // gets the same answer: keep what was there, and say so.
+  let state: AppState;
+  try {
+    state = migrateAppState(parsed);
+  } catch (error) {
+    throw new StorageLoadError(
+      `Stored app state could not be read: ${describe(error)}`,
+      keepBackupOf(raw),
+    );
+  }
 
   // Write an upgraded state straight back, so storage stops holding a shape
   // this build no longer writes. Nothing is lost: the migration only ever
@@ -66,8 +139,74 @@ export function loadAppState(): AppState {
   return state;
 }
 
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Copies the unreadable value aside before anything is allowed to overwrite
+ * it, and returns the key it went to — or null if even that failed, which is
+ * worth saying plainly rather than pretending a backup exists.
+ */
+function keepBackupOf(raw: string): string | null {
+  const backupKey = backupStorageKey(new Date().toISOString());
+  try {
+    localStorage.setItem(backupKey, raw);
+    return backupKey;
+  } catch {
+    return null;
+  }
+}
+
+/** The raw text of a backup, or null if it is no longer there. */
+export function readBackup(backupKey: string): string | null {
+  try {
+    return localStorage.getItem(backupKey);
+  } catch {
+    return null;
+  }
+}
+
 export function saveAppState(state: AppState): void {
-  localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(state));
+  const serialized = JSON.stringify(state);
+  try {
+    localStorage.setItem(APP_STATE_STORAGE_KEY, serialized);
+  } catch (error) {
+    // A full quota is the one write failure with something to try: the
+    // backups this app took are the largest thing it owns that nothing reads
+    // on a normal run. Drop them oldest first and try again once.
+    if (isQuotaError(error) && discardOldestBackup()) {
+      saveAppState(state);
+      return;
+    }
+    writeErrorListener?.(
+      new StorageWriteError(
+        `This change could not be saved to this browser: ${describe(error)}`,
+        { cause: error },
+      ),
+    );
+  }
+}
+
+function isQuotaError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === "QuotaExceededError" ||
+      error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+  );
+}
+
+function discardOldestBackup(): boolean {
+  try {
+    const [oldest] = listBackupStorageKeys();
+    if (oldest === undefined) {
+      return false;
+    }
+    localStorage.removeItem(oldest);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export type RunLogInput = Omit<RunLog, "id" | "createdAt" | "updatedAt"> & {
