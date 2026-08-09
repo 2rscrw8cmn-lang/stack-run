@@ -1,106 +1,182 @@
 # Production smoke test
 
-Run this against the deployed production URL, on the iPhone the app is for and
-once in a desktop browser. It takes about ten minutes. Nothing here is
-automated because the point of it is the things automation cannot see: whether
-the app installs, whether it survives being closed, and whether it is usable in
-one hand.
-
-`npm run check` is the gate for everything that *can* be automated, and it must
-pass before a deploy.
+Run this against the deployed production URL on the iPhone the app is for and once in a desktop browser. `npm run check` is the gate for everything that can be automated and must pass before deploy.
 
 ## 1. The build reached the internet
 
-- [ ] The production URL loads, and the header shows the STACK mark and word.
-- [ ] View source: `<link rel="manifest" href="/manifest.webmanifest">` is
-      there, and opening that path returns JSON rather than the app's HTML.
-- [ ] `/favicon.svg`, `/apple-touch-icon.png`, `/icon-192.png`,
-      `/icon-512.png` and `/icon-maskable-512.png` all load.
-- [ ] `/api/calendar` answers in plain English that the reader is deployed. If
-      it returns the app's HTML, the function did not deploy.
-- [ ] Nothing in the page mentions a dev or data panel, and there is no control
-      that seeds runs.
+- [ ] Production URL loads with STACK mark/word.
+- [ ] `manifest.webmanifest`, favicon and app icons load as real files.
+- [ ] `/api/calendar` answers as the calendar reader rather than returning app HTML.
+- [ ] Nothing exposes a dev/data seed panel.
+- [ ] After UI-8, `/api/intervals?resource=status` without an authorization header does **not** reveal private data.
 
 ## 2. Fresh install
 
-Use a private window, or clear site data first, so this is genuinely first-run.
+Use a private window or clear site data first.
 
-- [ ] Today opens on the current date, with the race line under it.
-- [ ] Build says **Nothing built yet** rather than showing an empty grid.
-- [ ] Plan opens on the week containing today, and all eighteen weeks are
-      reachable with the arrows.
-- [ ] `+ Log Run` opens the run sheet.
+- [ ] Today opens on current date/race context.
+- [ ] Build shows its proper empty state rather than a broken-looking empty grid.
+- [ ] Plan opens on the current plan week/date range and can navigate the active plan.
+- [ ] `+ Log Run` opens manual run entry.
 
-## 3. The loop, end to end
+## 3. Manual loop end to end
 
-- [ ] Log today's scheduled run: distance, duration, effort, save.
-- [ ] Today shows the completed summary and the block it earned.
-- [ ] Build lists the block under **Blocks Ready**.
-- [ ] Place it: tap `Place`, choose a column by tapping or dragging, `Drop`.
-- [ ] The block is in the tower and the miles at the top of Build went up.
-- [ ] Tap the block: the run behind it opens, with the right date and distance.
-- [ ] Edit the run's distance and save; the block's width follows.
-- [ ] Delete the run; the block leaves the tower and the tower re-settles.
+- [ ] Log a scheduled run manually.
+- [ ] Today shows completed summary/block.
+- [ ] Build shows it under Blocks Ready.
+- [ ] Place using tap or drag + Drop.
+- [ ] Tower/miles update.
+- [ ] Block detail opens correct actual run.
+- [ ] Edit run; saved values update.
+- [ ] Delete run; earned block is removed/repacked correctly.
+- [ ] Log an extra run; scheduled completion does not increase.
 
-## 4. It is still there tomorrow
+## 4. Persistence
 
-- [ ] Log a run, then fully close the browser (or the installed app) and
-      reopen it. The run, the plan edits and the tower are all still there.
-- [ ] Deploy again, reload, and check the same. A deploy must not cost data.
+- [ ] Log/edit/place, fully close app/browser, reopen: state remains.
+- [ ] Deploy again to same production origin and reload: state remains/migrates.
+- [ ] Plan/race/run-day/availability settings remain.
 
-## 5. Installed to the home screen
+## 5. Installed to home screen
 
-- [ ] iOS Safari: **Share → Add to Home Screen**. The icon is the three-bar
-      mark, not a screenshot, and the name reads `STACK`.
-- [ ] Opening from the home screen shows no browser chrome.
-- [ ] The bottom navigation sits clear of the home indicator, and the header
-      clears the status bar and the notch.
-- [ ] Data logged in Safari is visible in the installed app, and the reverse.
+- [ ] iOS Safari: Share → Add to Home Screen.
+- [ ] Icon/name correct.
+- [ ] Opens without browser chrome.
+- [ ] Header/bottom nav clear notch/home indicator.
+- [ ] Safari tab and installed app share same-origin local data.
 
-## 6. One-handed and at the edges
+## 6. One-handed / edge sizes
 
-- [ ] Nothing scrolls sideways on any screen, on the phone or with a desktop
-      window narrowed to 320px.
-- [ ] Every button can be hit with a thumb; nothing important sits under the
-      bottom navigation.
-- [ ] Open the run sheet and tap into Duration: the keyboard does not cover
-      `Save Run`.
-- [ ] Rotate to landscape and back; nothing is lost or clipped.
+- [ ] No horizontal page scroll at phone/320px.
+- [ ] Primary controls are thumb-sized.
+- [ ] Run-sheet keyboard does not hide Save.
+- [ ] Landscape round trip loses nothing.
 
 ## 7. Recovery
 
-Do this deliberately once per release. In the browser console on the production
-origin:
+Deliberately test unreadable local state on a nonessential/test copy of production data.
 
 ```js
 localStorage.setItem("stack.app-state.v1", "{ not json");
 location.reload();
 ```
 
-- [ ] The app shows **Your saved training could not be read**, names the backup
-      key, and does not show the training screens.
-- [ ] `Save the Damaged Copy` downloads a file containing the damaged text.
-- [ ] `Start Fresh` asks a second time before doing anything.
-- [ ] After confirming, the app opens on the seed plan, and the backup key is
-      still in local storage.
+- [ ] Recovery screen names/preserves backup.
+- [ ] Damaged copy can be downloaded.
+- [ ] Start Fresh takes two deliberate actions.
+- [ ] Backup remains after reset.
 
-Then restore what you had, if this was a browser holding real training:
-
-```js
-localStorage.setItem("stack.app-state.v1", localStorage.getItem("<backup key>"));
-```
+Restore if necessary from the recorded backup key.
 
 ## 8. Accessibility spot check
 
-- [ ] iOS: turn text size up two steps. Nothing overlaps and nothing is cut off.
-- [ ] VoiceOver: swipe through Today. The date is the heading, the race line
-      reads as one sentence, and every button says what it does.
-- [ ] Reduce Motion on: placing a block still works and does not animate.
-- [ ] Tab through Plan with a keyboard: focus is always visible, and the week
-      arrows, rows and sheets are all reachable.
+- [ ] iOS text size +2: no overlap/cutoff.
+- [ ] VoiceOver Today: heading, race/context, controls understandable.
+- [ ] Reduce Motion: block placement still works without nonessential animation.
+- [ ] Keyboard Plan/Build/secondary sheets: focus visible/reachable.
+
+# Connected Training smoke test — UI-8+
+
+Run this only after the active connected phase is deployed with real Vercel secrets. Never paste those secrets into this file/PR.
+
+## 9. Server secret configuration
+
+Vercel environment contains:
+
+```text
+INTERVALS_API_KEY
+STACK_SYNC_TOKEN
+```
+
+- [ ] Both configured in Production.
+- [ ] Both configured in the specific Preview environment when testing a PR preview against real data.
+- [ ] Neither is prefixed `VITE_`.
+- [ ] Repo/source/build contains no real value.
+
+## 10. Proxy protection
+
+- [ ] Missing `X-Stack-Sync-Token` → no private data.
+- [ ] Wrong token → no private data.
+- [ ] Correct token via in-app connection → status succeeds.
+- [ ] Browser source/localStorage/network does not contain the personal Intervals API key.
+- [ ] Intervals proxy responses are `no-store`.
+- [ ] Existing calendar route still works.
+
+## 11. First real activity discovery
+
+Known fixture: HealthFit-originated run in Intervals.icu on **June 10, 2026**.
+
+- [ ] Run Data connection accepts only STACK sync token.
+- [ ] Initial backfill reaches far enough to include June 10.
+- [ ] June 10 running activity appears as a candidate.
+- [ ] `docs/CONNECTED_DATA_FIELDS.md` has been updated with exact verified field names/semantics after this test.
+- [ ] No raw payload/GPS coordinates were committed.
+
+## 12. Import/matching
+
+- [ ] Candidate suggests a reasonable planned match when one exists.
+- [ ] Actual/planned dates visible if different.
+- [ ] Confirm Match does not require retyping objective date/distance/duration.
+- [ ] Extra Run works when no planned link is desired.
+- [ ] Effort/optional notes are local STACK fields.
+- [ ] Imported run earns a normal Build block.
+
+## 13. Idempotency / existing manual data
+
+- [ ] Sync again: accepted external activity is not offered/created twice.
+- [ ] Explicit ignored activity stays suppressed.
+- [ ] Clear ignored ids makes it eligible again.
+- [ ] A remote activity matching an existing manual run offers Attach Synced Data rather than duplicate.
+- [ ] Attaching preserves RunLog id/workout link/effort/notes/block identity.
+
+## 14. Failure fallback
+
+Temporarily forget/disable connection or simulate an upstream error.
+
+- [ ] Today/Plan/Build still open.
+- [ ] Manual Mark Complete / + Log Run still works.
+- [ ] Sync error is understandable/retryable.
+- [ ] No request loop/polling storm.
+
+# Later connected phases
+
+## UI-9 Run Detail
+
+- [ ] Minimum imported run detail works when every optional metric is absent.
+- [ ] Verified HR/cadence/elevation/load/zones render correctly when present.
+- [ ] Missing metric omitted, never 0.
+- [ ] Structured interval detail is tested with a real/known interval workout.
+
+## UI-10 Today + Week
+
+- [ ] Run Found state does not turn Today into a dashboard wall.
+- [ ] Quiet open/focus sync is stale-aware and does not request-storm.
+- [ ] Weekly actual miles/time/longest include actual scheduled + extra runs.
+- [ ] Scheduled N-of-M still excludes extras.
+
+## UI-11 Trends
+
+- [ ] Trend calculations use actual run dates.
+- [ ] Low-data states do not overclaim.
+- [ ] Charts have textual alternatives.
+
+## UI-12 Wellness
+
+- [ ] Only begin after real HealthFit → Intervals wellness coverage is verified.
+- [ ] Missing data degrades cleanly.
+- [ ] No readiness score/medical claim/automatic plan change.
+- [ ] Baseline language only after enough runner history.
 
 ## Sign-off
 
-Record in `docs/PHASE_STATUS.md`: the commit deployed, the date, the device and
-browser used, and anything found. A release with a known P0 or P1 defect is not
-signed off.
+Record in `docs/PHASE_STATUS.md`:
+
+- deployed commit;
+- date;
+- device/browser;
+- automated `npm run check` result;
+- real-data smoke result for connected phases;
+- fields newly Verified/Missing;
+- known limitations.
+
+A release with a known P0/P1 defect is not signed off.
