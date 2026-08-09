@@ -19,14 +19,16 @@ function dateBefore(today: string, days: number): string { const value = new Dat
 export function RunDataSheet(props: Props) {
   const [token, setToken] = useState(props.initialToken ?? "");
   const [connected, setConnected] = useState(Boolean(props.initialToken));
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [failed, setFailed] = useState(false);
   const [candidates, setCandidates] = useState<IntervalsCandidate[]>([]);
   const [selected, setSelected] = useState<IntervalsCandidate | null>(null);
   const [workoutId, setWorkoutId] = useState<string | null>(null);
   const [type, setType] = useState<RunActivityType>("easy"); const [effort, setEffort] = useState<Effort>("solid"); const [notes, setNotes] = useState("");
 
-  async function connect() { setBusy(true); setMessage(""); try { await fetchIntervals("status", token.trim()); props.onConnect(token.trim()); setConnected(true); setMessage("Intervals.icu connected."); await sync(true, token.trim()); } catch (error) { setMessage(error instanceof Error ? error.message : "Connection failed."); } finally { setBusy(false); } }
-  async function sync(first = false, credential = token) { setBusy(true); setMessage(""); try { const newest = todayLocalDate(); const raw = await fetchIntervals("activities", credential, { oldest: dateBefore(newest, first || !props.state.intervalsSync.lastSuccessfulActivitySyncAt ? 90 : 14), newest }); const normalized = normalizeActivityList(raw, props.state.runLogs, props.state.intervalsSync.ignoredActivityIds); setCandidates(normalized); const at = new Date().toISOString(); props.onSynced(at); setMessage(normalized.length ? `${normalized.length} run ${normalized.length === 1 ? "is" : "are"} ready to review.` : "Sync complete. No new runs found."); } catch (error) { setMessage(error instanceof Error ? error.message : "Sync failed."); } finally { setBusy(false); } }
+  /** A failure is worth reading and worth announcing; progress is not. */
+  function report(text: string, isFailure = false) { setMessage(text); setFailed(isFailure); }
+  async function connect() { setBusy(true); report(""); try { await fetchIntervals("status", token.trim()); props.onConnect(token.trim()); setConnected(true); report("Intervals.icu connected."); await sync(true, token.trim()); } catch (error) { report(error instanceof Error ? error.message : "Connection failed.", true); } finally { setBusy(false); } }
+  async function sync(first = false, credential = token) { setBusy(true); report(""); try { const newest = todayLocalDate(); const raw = await fetchIntervals("activities", credential, { oldest: dateBefore(newest, first || !props.state.intervalsSync.lastSuccessfulActivitySyncAt ? 90 : 14), newest }); const normalized = normalizeActivityList(raw, props.state.runLogs, props.state.intervalsSync.ignoredActivityIds); setCandidates(normalized); const at = new Date().toISOString(); props.onSynced(at); report(normalized.length ? `${normalized.length} run ${normalized.length === 1 ? "is" : "are"} ready to review.` : "Sync complete. No new runs found."); } catch (error) { report(error instanceof Error ? error.message : "Sync failed.", true); } finally { setBusy(false); } }
   function review(candidate: IntervalsCandidate) { setSelected(candidate); const match = suggestScheduledMatches(candidate, props.state.plan, props.state.runLogs)[0]; setWorkoutId(match?.id ?? null); setType(match?.type && match.type !== "rest" ? match.type : "easy"); }
   function finish() { if (!selected) return; props.onImport(selected, workoutId, type, effort, notes); setCandidates((all) => all.filter((item) => item.externalId !== selected.externalId)); setSelected(null); }
 
@@ -46,7 +48,7 @@ export function RunDataSheet(props: Props) {
         <Button variant="ghost" onClick={() => { props.onForget(); setConnected(false); setCandidates([]); }}>Forget Connection</Button>
         <Button variant="ghost" disabled={!props.state.intervalsSync.ignoredActivityIds.length} onClick={props.onClearIgnored}>Clear Ignored Activities</Button>
       </>}
-      {message && <p role="status" className="run-data__message">{message}</p>}
+      {message && <p role={failed ? "alert" : "status"} className={failed ? "run-data__message run-data__message--failed" : "run-data__message"}>{message}</p>}
       {selected && <div className="run-data__review">
         <h3>Review synced run</h3><p>{selected.completedDate} · {selected.distanceMiles.toFixed(2)} mi · {Math.round(selected.durationSeconds / 60)} min</p>
         {manual && <><p>Possible manual run: {manual.completedDate}, {manual.distanceMiles.toFixed(2)} mi, {Math.round(manual.durationSeconds / 60)} min. Synced values above will replace date, distance and duration; effort, notes, workout link and block identity stay unchanged.</p><Button onClick={() => { props.onAttach(selected, manual.id); setCandidates((all) => all.filter((item) => item.externalId !== selected.externalId)); setSelected(null); }}>Attach Synced Data</Button></>}

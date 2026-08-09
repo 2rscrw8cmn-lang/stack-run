@@ -5,6 +5,7 @@ import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { ACTIVITY_TYPES, WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
+import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import type {
   Effort,
@@ -68,7 +69,7 @@ function initialValues(
   return {
     date: runLog.completedDate,
     activityType: runLog.activityType,
-    distance: String(runLog.distanceMiles),
+    distance: formatMiles(runLog.distanceMiles),
     duration: formatDurationSeconds(runLog.durationSeconds),
     effort: runLog.effort,
     notes: runLog.notes,

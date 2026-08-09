@@ -2689,6 +2689,7 @@ textarea.run-input {
 
 .run-data { display: flex; flex-direction: column; gap: var(--space-3); }
 .run-data__copy, .run-data__message, .run-data__status p, .run-data__review p { margin: 0; color: var(--text-muted); line-height: 1.5; }
+.run-data__message--failed { color: var(--danger); }
 .run-data__status { display: flex; gap: var(--space-3); align-items: flex-start; }
 .run-data__status svg { color: var(--accent); flex: none; }
 .run-data__candidate { display: flex; flex-direction: column; gap: 4px; width: 100%; min-height: 58px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); color: var(--text); text-align: left; }

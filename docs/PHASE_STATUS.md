@@ -73,6 +73,26 @@ The first deployed sync must query far enough back to include the known June 10 
 
 Do not commit the raw personal API response.
 
+## Connection repair after the UI-8/UI-9 merges
+
+Branch `claude/stack-sync-token-connection-txwds5`. The first real connection
+attempt failed with "Run Data could not be reached" on a correct sync token.
+Fixed on this branch:
+
+- `resource=status` no longer probes an athlete endpoint outside the integration
+  contract; it runs a one-day query against the activity endpoint sync uses;
+- `api/intervals.ts` answers both serverless calling conventions;
+- the sync token is compared in constant time and both secrets are trimmed;
+- the upstream read carries a 15s timeout and returns `504 upstream_timeout`;
+- the browser maps every reader error code to an actionable message instead of
+  one generic sentence, and names the missing variable on `503`;
+- imported distance is rounded where it enters STACK.
+
+`npm run check` passes (547 tests). The deployed real-data smoke test still
+belongs to the owner: it needs `INTERVALS_API_KEY` and `STACK_SYNC_TOKEN` set
+in Vercel **and a redeploy**, which the repository environment cannot do.
+`docs/DEPLOYMENT.md` carries the message-by-message troubleshooting table.
+
 ## UI-9 validation state
 
 The secret-free automated suite covers minimum imported/manual runs, absent and

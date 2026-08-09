@@ -3,6 +3,14 @@ import { daysBetweenLocalDates } from "../domain/dates";
 
 const METERS_PER_MILE = 1609.344;
 const FEET_PER_METER = 3.28084;
+/**
+ * Imported distance is rounded where it enters STACK rather than at each place
+ * it is shown. A converted distance is a float with fifteen decimals behind
+ * it; STACK's own runs carry the two a person types, every screen prints the
+ * stored number, and the edit sheet puts it back in a text field. Two decimals
+ * is sixteen metres, which is below what a watch can tell you anyway.
+ */
+const MILE_DECIMALS = 2;
 /** Intervals' canonical running activity type. Add source-verified aliases here only. */
 export const VERIFIED_RUNNING_TYPES = new Set(["Run"]);
 
@@ -32,6 +40,9 @@ function positive(value: unknown): number | undefined {
 }
 function nonnegative(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+function miles(meters: number): number {
+  return Number((meters / METERS_PER_MILE).toFixed(MILE_DECIMALS));
 }
 function date(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -68,7 +79,7 @@ export function normalizeIntervalsActivity(raw: unknown): IntervalsCandidate | n
     const zones = activity.icu_hr_zone_times.map(nonnegative);
     if (zones.length > 0 && zones.every((zone): zone is number => zone !== undefined) && zones.some((zone) => zone > 0)) metrics.hrZoneSeconds = zones;
   }
-  return { externalId, sourceType, completedDate, distanceMiles: meters / METERS_PER_MILE, durationSeconds: Math.round(moving ?? elapsed!), sourceUpdatedAt: typeof activity.updated === "string" ? activity.updated : null, metrics };
+  return { externalId, sourceType, completedDate, distanceMiles: miles(meters), durationSeconds: Math.round(moving ?? elapsed!), sourceUpdatedAt: typeof activity.updated === "string" ? activity.updated : null, metrics };
 }
 
 /**
@@ -92,7 +103,7 @@ export function normalizeIntervalsActivityDetail(raw: unknown): IntervalsActivit
     return [{
       label,
       durationSeconds: Math.round(duration),
-      ...(distanceMeters ? { distanceMiles: distanceMeters / METERS_PER_MILE } : {}),
+      ...(distanceMeters ? { distanceMiles: miles(distanceMeters) } : {}),
       ...(averageHeartRate ? { averageHeartRate } : {}),
     }];
   });
@@ -135,22 +146,98 @@ export function likelyManualMatches(candidate: IntervalsCandidate, runLogs: read
   return runLogs.filter((run) => run.source === "manual" && Math.abs(daysBetweenLocalDates(run.completedDate, candidate.completedDate)) <= 1 && Math.abs(run.distanceMiles - candidate.distanceMiles) <= Math.max(0.5, candidate.distanceMiles * 0.1));
 }
 
-export async function fetchIntervals(resource: "status" | "activities", token: string, range?: { oldest: string; newest: string }): Promise<unknown> {
-  const params = new URLSearchParams({ resource });
-  if (range) { params.set("oldest", range.oldest); params.set("newest", range.newest); }
-  const response = await fetch(`/api/intervals?${params}`, { headers: { "X-Stack-Sync-Token": token }, cache: "no-store" });
-  if (!response.ok) throw new Error(response.status === 401 ? "That sync token was not accepted." : response.status === 429 ? "Intervals.icu is rate limiting sync. Try again later." : "Run Data could not be reached.");
+/**
+ * What a failed read is called on screen.
+ *
+ * Everything below exists because "Run Data could not be reached" was the only
+ * thing the app said about a missing deployment secret, a reader that was
+ * never deployed, an Intervals key the server had rejected and an argument
+ * STACK itself got wrong. Four different jobs, one sentence, none of them
+ * doable from a phone. The reader answers with a code for each; this turns
+ * every one of them into the thing to go and fix.
+ */
+type ReadContext = "sync" | "detail";
+
+const CONTEXT_FAILURE: Record<ReadContext, string> = {
+  sync: "Run Data could not be reached",
+  detail: "Run detail could not be loaded",
+};
+
+interface ReaderError {
+  error?: unknown;
+  message?: unknown;
+  missing?: unknown;
+  upstreamStatus?: unknown;
+}
+
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** The reader's error body, or null when the response is not one of its own. */
+async function readerError(response: Response): Promise<ReaderError | null> {
+  try {
+    const body: unknown = await response.json();
+    return body && typeof body === "object" ? (body as ReaderError) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function describeFailure(response: Response, context: ReadContext): Promise<string> {
+  const body = await readerError(response);
+  const rateLimited = context === "sync"
+    ? "Intervals.icu is rate limiting sync. Try again later."
+    : "Intervals.icu is rate limiting detail requests. Try again later.";
+
+  switch (text(body?.error)) {
+    case "not_configured":
+      return `Run Data is not configured on the server. Set ${text(body?.missing) ?? "INTERVALS_API_KEY and STACK_SYNC_TOKEN"} in the Vercel project, then redeploy.`;
+    case "unauthorized":
+      return "That sync token was not accepted. It has to match STACK_SYNC_TOKEN in Vercel exactly.";
+    case "rate_limited":
+      return rateLimited;
+    case "upstream_authorization_failed":
+      return "Intervals.icu rejected STACK's API key. Check INTERVALS_API_KEY in Vercel.";
+    case "upstream_unavailable":
+      return "Intervals.icu could not be reached. Try again shortly.";
+    case "upstream_timeout":
+      return "Intervals.icu took too long to answer. Try again shortly.";
+    case "upstream_rejected_request":
+      return `Intervals.icu refused that request${typeof body?.upstreamStatus === "number" ? ` (${body.upstreamStatus})` : ""}.`;
+    case "invalid_date_range":
+    case "invalid_activity_id":
+    case "invalid_resource":
+    case "method_not_allowed":
+      return `${CONTEXT_FAILURE[context]}: STACK asked the Run Data reader for something it does not serve.`;
+  }
+
+  // No code, so this is not the reader answering. The status is all there is.
+  if (response.status === 401) return "That sync token was not accepted. It has to match STACK_SYNC_TOKEN in Vercel exactly.";
+  if (response.status === 429) return rateLimited;
+  if (response.status === 404) return `${CONTEXT_FAILURE[context]}: this deployment has no /api/intervals reader. Redeploy STACK so the Run Data function ships with the app.`;
+  return `${CONTEXT_FAILURE[context]} (HTTP ${response.status}${text(body?.message) ? `: ${text(body?.message)}` : ""}).`;
+}
+
+async function read(params: URLSearchParams, token: string, context: ReadContext): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/intervals?${params}`, { headers: { "X-Stack-Sync-Token": token.trim() }, cache: "no-store" });
+  } catch {
+    // The request never arrived, which is a different problem from any answer.
+    throw new Error(`${CONTEXT_FAILURE[context]}. Check this device's connection and try again.`);
+  }
+  if (!response.ok) throw new Error(await describeFailure(response, context));
   return response.json();
 }
 
+export async function fetchIntervals(resource: "status" | "activities", token: string, range?: { oldest: string; newest: string }): Promise<unknown> {
+  const params = new URLSearchParams({ resource });
+  if (range) { params.set("oldest", range.oldest); params.set("newest", range.newest); }
+  return read(params, token, "sync");
+}
 
 export async function fetchIntervalsActivityDetail(activityId: string, token: string): Promise<IntervalsActivityDetail> {
   const params = new URLSearchParams({ resource: "activity", id: activityId, intervals: "true" });
-  const response = await fetch(`/api/intervals?${params}`, { headers: { "X-Stack-Sync-Token": token }, cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(response.status === 429
-      ? "Intervals.icu is rate limiting detail requests. Try again later."
-      : "Run detail could not be loaded.");
-  }
-  return normalizeIntervalsActivityDetail(await response.json());
+  return normalizeIntervalsActivityDetail(await read(params, token, "detail"));
 }

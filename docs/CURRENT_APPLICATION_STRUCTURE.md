@@ -422,3 +422,42 @@ chart-only encoding. Structured interval rows likewise include readable names
 and durations, with distance and average HR only when present. No cadence,
 wellness, trends, maps, raw streams, FIT parsing, chart dependency, persistence
 migration, or upstream write was added.
+
+## UI-8/UI-9 connection repair
+
+Connecting failed on a correctly entered sync token, and every distinct cause
+arrived on the phone as the same sentence: "Run Data could not be reached."
+Four things were behind that.
+
+**The connection test asked for an endpoint the contract does not name.**
+`resource=status` read `/api/v1/athlete/0`, which is not one of the three
+activity endpoints this integration is specified against; an upstream refusal
+became a generic `502` and the owner could never get past **Test / Connect**.
+Status now runs a one-day query against the same activity endpoint sync itself
+uses — a broken setup and a working one now answer differently — and returns
+`{ ok: true }` rather than any of the data it read.
+
+**The reader answered only one of the two calling conventions.** A Vercel Node
+function may be invoked web-standard (`Request` → `Response`) or Node-style
+(`req`, `res`). `api/intervals.ts` assumed the first, so under the second it
+either dropped its answer until the platform killed the invocation or threw on
+a path with no origin. It now handles both, forwarding method, query and the
+token header, exactly as `api/calendar.ts` has since UI-7.
+
+**Nothing the reader said reached the screen.** The client threw away the
+response body, so a missing deployment secret, an undeployed route, a rejected
+Intervals key and a bad argument were indistinguishable. Each reader error code
+now maps to the thing to go and fix, `503` names the missing variable, `404`
+says the function is not deployed, and a request that never left the device is
+reported separately from one that was refused.
+
+**Two smaller repairs.** The sync token is compared in constant time and both
+secrets are trimmed, so a value pasted into a dashboard with a trailing newline
+authorizes instead of mysteriously failing; and the upstream read carries its
+own timeout, so a slow Intervals returns `504 upstream_timeout` instead of a
+bare platform timeout.
+
+Imported distance is also now rounded to two decimals where it enters STACK —
+`src/domain/distance.ts` formats what is already stored — because a converted
+distance is a fifteen-decimal float and every screen, including the edit
+sheet's text field, prints the stored number directly.

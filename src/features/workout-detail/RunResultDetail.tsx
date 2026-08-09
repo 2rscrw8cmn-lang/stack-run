@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { fetchIntervalsActivityDetail, type IntervalsActivityDetail } from "../../connected/intervals";
 import { formatDateLabel } from "../../domain/dates";
+import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { RunLog } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
@@ -41,7 +42,7 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: s
       {imported && <p className="run-result-detail__source">Synced via Intervals.icu</p>}
       <dl className="workout-detail__facts">
         <div><dt>Date</dt><dd>{formatDateLabel(run.completedDate)}</dd></div>
-        <div><dt>Distance</dt><dd>{run.distanceMiles} mi</dd></div>
+        <div><dt>Distance</dt><dd>{formatMiles(run.distanceMiles)} mi</dd></div>
         <div><dt>Duration</dt><dd>{formatDurationSeconds(run.durationSeconds)}</dd></div>
         <div><dt>Pace</dt><dd>{pace(run)}</dd></div>
         <div><dt>Effort</dt><dd>{EFFORT_LABEL[run.effort]}</dd></div>
