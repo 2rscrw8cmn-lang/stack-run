@@ -1825,11 +1825,8 @@ textarea.run-input {
 .run-result-detail__request .button { width: 100%; }
 .run-result-detail__zones,
 .run-result-detail__intervals { display: grid; gap: var(--space-2); }
-.run-result-detail__zones ol,
 .run-result-detail__intervals ol { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.run-result-detail__zones li,
 .run-result-detail__intervals li { display: flex; justify-content: space-between; gap: var(--space-3); font-size: 13px; }
-.run-result-detail__zones li span:last-child,
 .run-result-detail__intervals li span { color: var(--text-muted); text-align: right; }
 
 @media (max-width: 360px) {
@@ -2814,3 +2811,193 @@ textarea.run-input {
 .run-data__candidate span { color: var(--text-muted); font-size: 13px; }
 .run-data__review { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .run-data__review h3 { margin: 0; }
+
+/* Charts — UI-11
+   ------------------------------------------------------------------
+   Every chart here plots one series, so there is one colour and no legend:
+   the section title says what is being drawn. Marks stay thin and the axis
+   stays a hairline, because the data is the only thing allowed to be loud.
+   Text never wears the series colour — a lime value on this surface is
+   unreadable, and the mark beside it already carries the identity. */
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart__axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.chart__column {
+  fill: var(--accent);
+}
+
+/* The week in progress: the same colour, weaker, because it is not done. */
+.chart__column--partial {
+  fill: var(--accent);
+  opacity: 0.4;
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart__dot {
+  fill: var(--accent);
+  /* A ring in the surface colour, so dots stay legible where they overlap. */
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* Where the measure already has a colour in STACK, the chart wears it: the
+   long run is the same amber as its block in the tower. */
+.chart--long .chart__line { stroke: var(--long); }
+.chart--long .chart__dot { fill: var(--long); }
+.chart--intervals .chart__line { stroke: var(--intervals); }
+.chart--intervals .chart__dot { fill: var(--intervals); }
+
+.chart__value {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  /* The same idea as the ring on a dot: the surface separates the label from
+     whatever it lands on, so an end value stays readable where the line
+     doubles back under it. */
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.chart__tick {
+  fill: var(--text-subtle);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Trends view */
+
+.trends {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.trend {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.trend__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.trend__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.trend__range {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.trend__figure {
+  margin: 0;
+}
+
+.trend__summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.trend__meter {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* The one number this section is about; proportional figures, not tabular. */
+.trend__figure-value {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.trends__footnote {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.this-week__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Heart-rate zones
+   ------------------------------------------------------------------
+   An ordered scale, so one hue that strengthens with intensity rather than
+   seven hues that have to be learned. Every row keeps its duration and
+   percentage as text: nothing here is encoded in colour or length alone. */
+
+.zone-bars {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zone-bars__row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.zone-bars__name {
+  color: var(--text-muted);
+}
+
+.zone-bars__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+}
+
+.zone-bars__fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: var(--zone-strength, 1);
+}
+
+.zone-bars__value {
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}

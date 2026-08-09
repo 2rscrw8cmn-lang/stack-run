@@ -499,3 +499,62 @@ is computed exactly as before.
 A failed sync stays quiet. The plan, the manual log and the Build are all still
 true without Intervals, so a failure sets a retry line low on Today and gets
 out of the way — and says nothing at all while there is a run to offer.
+
+## UI-11 — Training Trends
+
+`src/domain/trends.ts` derives five answers from the plan and the recorded
+runs; `src/features/trends/TrendsSheet.tsx` shows them in a secondary sheet
+opened from This Week on Today and from Plan's quiet actions. There is still
+no fourth tab.
+
+Two rules run through the selectors. Runs are placed by the date they were
+actually run, never by the date of the workout they satisfied — a Sunday long
+run confirmed against Saturday's slot is Sunday's mileage. And a run is a run:
+a typed one and a synced one are the same thing once recorded. Consistency is
+the one measure that stays about the plan, so it counts only scheduled
+workouts whose day has arrived, and extra runs are excluded from it by
+construction.
+
+Coverage is a first-class idea rather than an afterthought. Easy pace and Easy
+heart rate need four runs before a line is drawn or a direction named; below
+that the section says how many more would start it. A run without heart rate
+is left out of the HR series rather than counted as zero, and the summary says
+how many of the Easy runs carried it. `describeDirection` compares the median
+of the first half against the median of the last, so one enormous week is not
+a trend.
+
+`src/components/charts/` holds the drawings: `TrendColumns` for weekly
+mileage, `TrendLine` for the three time series, `TrendSection` for the frame,
+and `ZoneBars` for heart-rate zones. No chart library was added.
+
+The rules they follow are the ones that keep a chart honest rather than
+decorative:
+
+- **One series per chart, so one colour and no legend** — the section title
+  names what is drawn. Where a measure already has a colour in STACK, the
+  chart wears it: long runs are the same amber as their block in the tower.
+- **Text never wears the series colour.** Values and labels use text tokens; a
+  lime number on this surface is unreadable, and the mark beside it already
+  carries the identity.
+- **Selective direct labels.** The last value, and the two ends of the scale.
+  A number on every point is chaos and goes unread.
+- **The surface does the separating** — a 2px gap between columns, a 2px ring
+  on dots, a 2px halo behind an end label — rather than a stroke drawn around
+  every mark.
+- **Pace is drawn with faster at the top**, and both ends of the axis are
+  labelled with real paces so the direction is legible from the chart rather
+  than from knowing the convention.
+- **Every chart carries the same numbers as a table**, visually hidden beside
+  it, plus a summary sentence. The drawing is `aria-hidden`: it is the least
+  useful copy of data that exists in two better forms.
+- **A one-column chart is not a chart.** Week one shows the number instead.
+
+Heart-rate zones on run detail are now `ZoneBars` rather than a plain list.
+Zones are an ordered scale, so they wear one hue that strengthens with
+intensity instead of seven hues that have to be learned, and every row keeps
+its duration and percentage as text — nothing is encoded in colour or length
+alone. A zone with no time in it keeps its row and shows an empty track.
+
+Deliberately absent, and to stay absent: any readiness score, any CTL/ATL or
+form dashboard, any predicted finishing time, and any language that coaches.
+STACK says what happened and which way it is moving.

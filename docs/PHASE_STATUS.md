@@ -52,7 +52,7 @@ Known external setup before implementation:
 | 8 | Connected Data Foundation | **Complete** | `claude/stack-sync-token-connection-txwds5` | Protected read proxy, schema 9, sync/dedupe, match/extra/attach import. Verified on the production deployment Aug 9, 2026: a real HealthFit activity synced, matched and imported on iPhone. |
 | 9 | Connected Run Detail | **Complete, with two fields still unverified** | `claude/stack-sync-token-connection-txwds5` | Shared scheduled/extra detail, derived pace, HR/elevation/load/zones and on-demand interval rows, verified against the real Aug 9 activity. Cadence stays omitted; structured intervals still need a structured Apple Watch workout. |
 | 10 | Connected Today + Week | **Implementation complete; deployed check pending** | `claude/stack-sync-token-connection-txwds5` | Stale-aware quiet sync on open/focus, Run Found on Today, weekly actual miles/time/longest. |
-| 11 | Training Trends | Not started |  | Mileage, long-run progression, consistency, Easy pace/HR trends in secondary view. |
+| 11 | Training Trends | **Implementation complete; deployed check pending** | `claude/stack-sync-token-connection-txwds5` | Secondary Trends sheet from Today and Plan: weekly mileage, long-run progression, consistency, Easy pace and Easy HR, each with a summary, a table view and a low-data state. HR zones on run detail are now a chart. |
 | 12 | Wellness / Recovery Context | Blocked on field verification |  | HRV/resting HR/sleep only if real HealthFit → Intervals coverage is verified. |
 | 13 | Optional Plan Export Investigation | **Deferred** |  | No code authorization. Possible STACK Plan → Intervals → HealthFit write path requires separate decision. |
 
@@ -84,6 +84,22 @@ running it on the deployed app after a real HealthFit sync.
 
 Deliberately not built, per the phase boundaries: no fourth tab, no trends, no
 wellness, no automatic plan edits, and no polling of any kind.
+
+## UI-11 validation state
+
+Branch `claude/stack-sync-token-connection-txwds5`. `npm run check` passes
+(597 tests). Every chart was rendered at 320px against six weeks of seeded
+runs and read back from the screenshots, which is what caught two real
+defects: a one-column week-one chart that said less than the number does, and
+a stale rule that collapsed the new zone bars to nothing.
+
+No chart dependency was added — all five drawings are inline SVG or CSS. What
+was deliberately not built: no fourth tab, no readiness score, no CTL/ATL, no
+race prediction, no coaching language, and nothing that changes the plan.
+
+Known limitation: weekly mileage buckets by plan week, so runs recorded before
+the plan's first week are counted nowhere in that chart. The summary sentence
+says so rather than leaving the reader to notice a gap.
 
 ## Connection repair after the UI-8/UI-9 merges
 

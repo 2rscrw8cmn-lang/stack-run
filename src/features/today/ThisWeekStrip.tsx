@@ -16,6 +16,8 @@ interface ThisWeekStripProps {
   /** What was actually run this week, scheduled or not. */
   actuals?: WeekActuals;
   onViewPlan: () => void;
+  /** Opens Training Trends, the secondary view. Absent until there is a run. */
+  onViewTrends?: () => void;
 }
 
 /**
@@ -33,6 +35,7 @@ export function ThisWeekStrip({
   blocked = new Map(),
   actuals,
   onViewPlan,
+  onViewTrends,
 }: ThisWeekStripProps) {
   return (
     <Section
@@ -110,10 +113,18 @@ export function ThisWeekStrip({
         })}
       </ol>
 
-      <button type="button" className="section__link" onClick={onViewPlan}>
-        View Plan
-        <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
-      </button>
+      <div className="this-week__links">
+        <button type="button" className="section__link" onClick={onViewPlan}>
+          View Plan
+          <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+        {onViewTrends && (
+          <button type="button" className="section__link" onClick={onViewTrends}>
+            View Trends
+            <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
+          </button>
+        )}
+      </div>
     </Section>
   );
 }

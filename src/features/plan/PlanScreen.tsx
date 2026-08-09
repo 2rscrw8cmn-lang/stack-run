@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Flag,
   RotateCcw,
+  TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -74,6 +75,8 @@ interface PlanScreenProps {
   /** The race the plan was generated for, or null for the shipped plan. */
   raceSetup?: RacePlanSetup | null;
   onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
+  /** Opens the secondary Training Trends view. */
+  onViewTrends?: () => void;
   /** The weekdays the runner will run on, or null while they have not said. */
   runDays?: Weekday[] | null;
   /** Records the preference and the plan reshaped to match, together. */
@@ -120,6 +123,7 @@ export function PlanScreen({
   onSaveRunDays = () => undefined,
   raceSetup = null,
   syncToken,
+  onViewTrends,
   onGeneratePlan = () => undefined,
   fetchIcs,
 }: PlanScreenProps) {
@@ -309,6 +313,16 @@ export function PlanScreen({
           <CalendarClock size={16} strokeWidth={2} aria-hidden="true" />
           Availability
         </button>
+        {onViewTrends && (
+          <button
+            type="button"
+            className="plan-screen__quiet-action"
+            onClick={onViewTrends}
+          >
+            <TrendingUp size={16} strokeWidth={2} aria-hidden="true" />
+            Trends
+          </button>
+        )}
         <button
           type="button"
           className="plan-screen__quiet-action plan-screen__quiet-action--danger"

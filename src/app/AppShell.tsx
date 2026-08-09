@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { BottomNav } from "../components/shared/BottomNav";
 import { StackMark } from "../components/shared/StackMark";
 import type { AvailabilityCalendar } from "../domain/availability";
+import { todayLocalDate } from "../domain/dates";
 import type { RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
@@ -15,6 +16,7 @@ import type { AppState, Effort, RunActivityType } from "../domain/types";
 import type { IntervalsCandidate } from "../connected/intervals";
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
+import { TrendsSheet } from "../features/trends/TrendsSheet";
 import { Button } from "../components/ui/Button";
 import { Database } from "lucide-react";
 import { useState } from "react";
@@ -83,6 +85,7 @@ export function AppShell({
   // opens on that run rather than on whatever it was last showing.
   const [review, setReview] = useState<RunDataReview | null>(null);
   const [runDataVisit, setRunDataVisit] = useState(0);
+  const [trendsOpen, setTrendsOpen] = useState(false);
 
   function openRunData(next: RunDataReview | null) {
     setReview(next);
@@ -111,6 +114,7 @@ export function AppShell({
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
+            onViewTrends={() => setTrendsOpen(true)}
             onViewBuild={() => onTabChange("build")}
             onStartPlacing={(runLogId) => {
               onPlacingChange(runLogId);
@@ -159,6 +163,7 @@ export function AppShell({
             onSaveRunDays={onSaveRunDays}
             raceSetup={raceSetup}
             onGeneratePlan={onGeneratePlan}
+            onViewTrends={() => setTrendsOpen(true)}
             syncToken={syncToken}
           />
         )}
@@ -166,6 +171,7 @@ export function AppShell({
       <nav className="app-shell__nav" aria-label="Primary">
         <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
       </nav>
+      <TrendsSheet plan={plan} runLogs={runLogs} today={todayLocalDate()} isOpen={trendsOpen} onClose={() => setTrendsOpen(false)} />
       <RunDataSheet key={runDataVisit} isOpen={runDataOpen} onClose={() => setRunDataOpen(false)} state={appState} initialToken={syncToken} initialReview={review} candidates={connectedSync.candidates} isSyncing={connectedSync.status === "syncing"} syncError={connectedSync.error} onSync={connectedSync.sync} onSettle={connectedSync.settle} onConnect={onConnectIntervals} onForget={onForgetIntervals} onImport={onImportIntervals} onAttach={onAttachIntervals} onIgnore={onIgnoreIntervals} onClearIgnored={onClearIgnoredIntervals}/>
     </div>
   );

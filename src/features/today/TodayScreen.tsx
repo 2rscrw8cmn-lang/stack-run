@@ -46,6 +46,8 @@ interface TodayScreenProps {
   runLogs: RunLog[];
   blockPlacements?: BlockPlacement[];
   onViewPlan: () => void;
+  /** Opens the secondary Training Trends view. */
+  onViewTrends?: () => void;
   onViewBuild?: () => void;
   /** Hands the earned block to Build, which is where placing happens. */
   onStartPlacing?: (runLogId: string) => void;
@@ -85,6 +87,7 @@ export function TodayScreen({
   runLogs,
   blockPlacements = [],
   onViewPlan,
+  onViewTrends,
   onViewBuild = () => undefined,
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
@@ -213,6 +216,9 @@ export function TodayScreen({
         blocked={blockedDates(availability)}
         actuals={actuals}
         onViewPlan={onViewPlan}
+        // Nothing to trend before the first run, and an empty view invites a
+        // tap that answers nothing.
+        onViewTrends={onViewTrends && runLogs.length > 0 ? onViewTrends : undefined}
       />
 
       {next && <NextWorkoutCard workout={next} />}
