@@ -2,6 +2,9 @@
   "functions": {
     "api/calendar.ts": {
       "maxDuration": 30
+    },
+    "api/intervals.ts": {
+      "maxDuration": 30
     }
   },
   "headers": [

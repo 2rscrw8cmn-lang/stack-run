@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { Section } from "../../components/ui/Section";
 import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
+import { formatMiles } from "../../domain/distance";
 
 interface PendingBlocksTrayProps {
   blocks: EarnedBlock[];
@@ -62,7 +63,7 @@ export function PendingBlocksTray({
               </p>
               <p className="pending-tray__meta">
                 {formatDateLabel(block.runLog.completedDate)} ·{" "}
-                {block.runLog.distanceMiles} mi
+                {formatMiles(block.runLog.distanceMiles)} mi
               </p>
             </button>
             <Button

@@ -7,6 +7,7 @@ import {
   WORKOUT_TYPE_LABEL,
 } from "../../domain/build";
 import { footprintFor } from "../../domain/footprint";
+import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
@@ -46,7 +47,7 @@ export function CompletedRunSummary({
       <dl className="completed-run-summary__stats">
         <div>
           <dt>Distance</dt>
-          <dd>{runLog.distanceMiles} mi</dd>
+          <dd>{formatMiles(runLog.distanceMiles)} mi</dd>
         </div>
         <div>
           <dt>Duration</dt>

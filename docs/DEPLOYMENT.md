@@ -158,6 +158,28 @@ High-level deployment requirements:
 
 Opening `/api/intervals?resource=status` in an ordinary browser without the sync-token header should **not** reveal private data; it should reject the request. Use the in-app connection test or an authorized local request to verify it.
 
+## Troubleshooting the Run Data connection
+
+The connection sheet reports what actually failed. Open **Run Data**, enter the token, tap **Test / Connect**, and read the message.
+
+| Message | Cause | Fix |
+|---|---|---|
+| `Run Data is not configured on the server. Set … in the Vercel project` | The named variable is missing from the environment this deployment was built for | Add it in Vercel → Settings → Environment Variables for **Production** (and Preview if testing a preview), then **redeploy** — a function only sees variables present at deploy time |
+| `That sync token was not accepted` | The entered token is not `STACK_SYNC_TOKEN` | Re-copy the value from Vercel. Leading/trailing whitespace on either side is tolerated; nothing else is |
+| `Intervals.icu rejected STACK's API key` | `INTERVALS_API_KEY` is wrong, revoked, or has whitespace inside it | Regenerate the personal API key in Intervals.icu and update the Vercel variable, then redeploy |
+| `this deployment has no /api/intervals reader` | The route 404s: the deployment predates UI-8, or `api/` was excluded from it | Redeploy the current branch and confirm the function is listed in the Vercel deployment |
+| `Intervals.icu refused that request (…)` | Upstream answered an unexpected status; the number is the upstream status | Check the Intervals.icu API status; a `404` here means the endpoint or activity id no longer resolves |
+| `Intervals.icu took too long to answer` / `could not be reached` | Upstream timeout or network failure | Retry; these are transient |
+| `Check this device's connection and try again` | The request never left the phone | Reconnect the device, then retry |
+
+Opening `/api/intervals` in a browser is the quickest way to separate a deployment problem from a token problem, and reveals nothing:
+
+- `503` with a `missing` field — the named secret is not set for this deployment;
+- `401` — deployed and configured, and the browser simply has no token header;
+- `404` — this deployment has no reader at all.
+
+Both secrets are read at request time, but Vercel binds environment variables per deployment: **changing either variable requires a redeploy**, not just a save.
+
 ## Stored data and deployments
 
 Local storage remains scoped to browser **origin**, not deployment build.

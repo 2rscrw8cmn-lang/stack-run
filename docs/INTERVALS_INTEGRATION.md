@@ -147,6 +147,12 @@ Implement one narrow serverless entry point:
 api/intervals.ts
 ```
 
+`resource=status` is a connection test, not an endpoint of its own. It runs a
+one-day activity query — the same upstream endpoint sync uses, with the same
+credentials — and returns `{ "ok": true, "resource": "status" }` without any of
+what it read. A status check against a different endpoint family can pass while
+sync is broken, or fail while sync would work; this one cannot.
+
 Recommended client contract:
 
 ```text
@@ -174,7 +180,13 @@ The proxy must whitelist resources. It must **not** accept an arbitrary upstream
 - Return `503` with a human-readable configuration error when server secrets are absent.
 - Send `Cache-Control: no-store` on every response.
 - Never log response bodies, credentials or personal metrics.
-- Normalize upstream errors into small safe error objects.
+- Normalize upstream errors into small safe error objects, each carrying a
+  stable `error` code the browser maps to an actionable message. A failure the
+  owner cannot act on is a failure they cannot fix from a phone.
+- Answer both serverless calling conventions (web-standard `Request`/`Response`
+  and Node `req`/`res`), as `api/calendar.ts` does. Guessing wrong is invisible:
+  the route either times out with no error or answers 500.
+- Trim both environment secrets and compare the sync token in constant time.
 - Preserve a useful upstream status category (`401/403`, `429`, `5xx`) without forwarding upstream body text that might contain unexpected data.
 - Use an explicit `User-Agent` identifying STACK; Intervals.icu notes that some non-browser-looking clients can be challenged by Cloudflare.
 
