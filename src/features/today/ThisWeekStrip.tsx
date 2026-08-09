@@ -1,7 +1,8 @@
+import { CalendarRange, ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { BlockedDay } from "../../domain/availability";
-import { Card } from "../../components/ui/Card";
 import { ProgressBar } from "../../components/ui/ProgressBar";
+import { Section } from "../../components/ui/Section";
 import { formatDateLabel } from "../../domain/dates";
 import { PLAN_DAY_STATUS_LABEL, type PlanWeekViewModel } from "../../domain/plan";
 
@@ -26,19 +27,19 @@ export function ThisWeekStrip({
   onViewPlan,
 }: ThisWeekStripProps) {
   return (
-    <Card className="this-week">
-      <div className="this-week__header">
-        <p className="this-week__title">This Week</p>
+    <Section
+      className="this-week"
+      icon={<CalendarRange size={15} strokeWidth={2} />}
+      title="This Week"
+      meta={
         <p className="this-week__count">
           {week.completedRuns} of {week.scheduledRuns} runs
           {week.extraRuns > 0 && (
-            <span className="this-week__extra">
-              +{week.extraRuns} extra
-            </span>
+            <span className="this-week__extra">+{week.extraRuns} extra</span>
           )}
         </p>
-      </div>
-
+      }
+    >
       <ProgressBar
         value={week.completedRuns}
         max={week.scheduledRuns}
@@ -84,9 +85,10 @@ export function ThisWeekStrip({
         })}
       </ol>
 
-      <button type="button" className="this-week__link" onClick={onViewPlan}>
+      <button type="button" className="section__link" onClick={onViewPlan}>
         View Plan
+        <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
       </button>
-    </Card>
+    </Section>
   );
 }

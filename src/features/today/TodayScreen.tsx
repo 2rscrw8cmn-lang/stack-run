@@ -1,7 +1,8 @@
-import { Plus } from "lucide-react";
+import { CalendarPlus, PartyPopper, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
 import {
   blockedDates,
   type AvailabilityCalendar,
@@ -33,8 +34,8 @@ import { selectTodayViewModel } from "../../domain/workout";
 import { BuildPreview } from "./BuildPreview";
 import { CompletedRunSummary } from "./CompletedRunSummary";
 import { NextWorkoutCard } from "./NextWorkoutCard";
-import { RaceContext } from "./RaceContext";
 import { ThisWeekStrip } from "./ThisWeekStrip";
+import { TodayHeading } from "./TodayHeading";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
 
 interface TodayScreenProps {
@@ -111,33 +112,40 @@ export function TodayScreen({
 
   return (
     <div className="today-screen">
-      <RaceContext race={plan.race} daysRemaining={daysRemaining} />
+      <TodayHeading
+        today={today}
+        race={plan.race}
+        daysRemaining={daysRemaining}
+      />
 
       {viewModel.kind === "before-plan" && (
         <Card className="today-workout-card">
-          <p className="today-workout-card__eyebrow">Plan starts soon</p>
-          <p className="today-workout-card__title">
+          <EmptyState
+            icon={<CalendarPlus size={24} strokeWidth={1.6} />}
+            title="Plan starts soon"
+          >
+            Training begins{" "}
             {formatDateLabel(viewModel.planStartDate, {
               weekday: "long",
               month: "long",
               day: "numeric",
               year: "numeric",
             })}
-          </p>
-          <p className="today-workout-card__details">
-            Nothing is scheduled yet. Anything you run before then is an extra
-            run, and it still earns a block.
-          </p>
+            . Anything you run before then is an extra run, and it still earns
+            a block.
+          </EmptyState>
         </Card>
       )}
 
       {viewModel.kind === "after-race" && (
         <Card className="today-workout-card">
-          <p className="today-workout-card__eyebrow">Race complete</p>
-          <p className="today-workout-card__details">
-            You crossed the finish line. Your full build is ready to look
-            back on.
-          </p>
+          <EmptyState
+            icon={<PartyPopper size={24} strokeWidth={1.6} />}
+            title="Race complete"
+          >
+            You crossed the finish line. Every block below is a run you
+            actually did.
+          </EmptyState>
         </Card>
       )}
 
@@ -175,14 +183,17 @@ export function TodayScreen({
 
       {next && <NextWorkoutCard workout={next} />}
 
-      <Button
-        variant="secondary"
-        className="today-screen__log-extra"
-        icon={<Plus size={18} strokeWidth={2} />}
-        onClick={() => openEntry({ kind: "extra" })}
-      >
-        Log Run
-      </Button>
+      {/* Its own band, so it does not read as an action belonging to Next. */}
+      <div className="today-screen__log-band">
+        <Button
+          variant="secondary"
+          className="today-screen__log-extra"
+          icon={<Plus size={18} strokeWidth={2} />}
+          onClick={() => openEntry({ kind: "extra" })}
+        >
+          Log Run
+        </Button>
+      </div>
 
       <BuildPreview
         blocks={build.blocks}

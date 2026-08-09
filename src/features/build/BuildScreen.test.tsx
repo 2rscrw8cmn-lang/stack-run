@@ -82,11 +82,12 @@ describe("BuildScreen", () => {
       today: "2026-08-06",
     });
 
+    // The miles are the headline; runs and streak are the context beside it.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "4.5 miles built",
+    );
     expect(screen.getByText("Runs Complete").parentElement).toHaveTextContent(
       "2 / 71",
-    );
-    expect(screen.getByText("Total Miles").parentElement).toHaveTextContent(
-      "4.5",
     );
     expect(screen.getByText("Run Streak").parentElement).toHaveTextContent("2");
   });
@@ -94,11 +95,10 @@ describe("BuildScreen", () => {
   it("does not render a full 18-week blueprint of future workouts", () => {
     renderBuild();
 
-    // Nothing is built until a block is placed, so the tower is empty.
-    expect(within(tower()).queryAllByRole("listitem")).toHaveLength(0);
-    expect(
-      screen.getByText("Nothing built yet. Log a run to earn your first block."),
-    ).toBeInTheDocument();
+    // Nothing is built until a block is placed, and an empty grid with a
+    // ground line under it reads as a fault, so the first run gets words.
+    expect(screen.queryByRole("list", { name: "Built blocks" })).toBeNull();
+    expect(screen.getByText("Nothing built yet")).toBeInTheDocument();
   });
 
   it("counts what has been built without a packing readout", () => {

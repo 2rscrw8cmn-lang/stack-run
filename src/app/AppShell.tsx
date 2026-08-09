@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { BottomNav } from "../components/shared/BottomNav";
+import { StackMark } from "../components/shared/StackMark";
 import type { AvailabilityCalendar } from "../domain/availability";
 import type { RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
@@ -13,6 +15,8 @@ import type { TabId } from "./App";
 interface AppShellProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  /** Something the whole app needs to say, shown under the brand bar. */
+  notice?: ReactNode;
   plan: TrainingPlan;
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
@@ -42,6 +46,7 @@ interface AppShellProps {
 export function AppShell({
   activeTab,
   onTabChange,
+  notice,
   plan,
   runLogs,
   blockPlacements,
@@ -61,10 +66,18 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="app-shell">
+      {/*
+        The brand is a small standing lockup rather than a headline. Each
+        screen leads with the thing it is actually about — the date, the miles,
+        the week — so nothing on any screen has to be titled with its own name.
+      */}
       <header className="app-shell__header">
-        <p className="wordmark">STACK</p>
-        <p className="tagline">Build your race.</p>
+        <div className="brand">
+          <StackMark size={22} />
+          <p className="wordmark">STACK</p>
+        </div>
       </header>
+      {notice}
       <main className="app-shell__main">
         {activeTab === "today" && (
           <TodayScreen

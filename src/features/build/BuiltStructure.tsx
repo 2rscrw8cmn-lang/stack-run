@@ -1,5 +1,8 @@
+import { Blocks } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Section } from "../../components/ui/Section";
 import type {
   EarnedBlock,
   PlacedBlock as PlacedBlockData,
@@ -100,15 +103,33 @@ export function BuiltStructure({
     }
   }
 
-  return (
-    <section className="build-site" aria-label="Your build">
-      <div className="build-site__heading">
-        <h2 className="build-site__title">Your build</h2>
-        <p className="build-site__scale">
-          {blocks.length} {blocks.length === 1 ? "block" : "blocks"}
-        </p>
-      </div>
+  // An empty site with a ground line and nothing on it reads as a rendering
+  // fault rather than a beginning, so the first-run state says so in words.
+  if (blocks.length === 0 && !placing) {
+    return (
+      <Section
+        className="build-site build-site--empty"
+        icon={<Blocks size={15} strokeWidth={2} />}
+        title="Your Build"
+      >
+        <EmptyState
+          icon={<Blocks size={26} strokeWidth={1.6} />}
+          title="Nothing built yet"
+        >
+          Every run you log earns a block — wide for the distance, tall for the
+          kind of session. Place the first one and the tower starts here.
+        </EmptyState>
+      </Section>
+    );
+  }
 
+  return (
+    <Section
+      className="build-site"
+      icon={<Blocks size={15} strokeWidth={2} />}
+      title="Your Build"
+      meta={`${blocks.length} ${blocks.length === 1 ? "block" : "blocks"}`}
+    >
       <div className="build-site__stage">
         <div className="build-site__tower">
           <div className="build-site__sky" aria-hidden="true" />
@@ -167,12 +188,10 @@ export function BuiltStructure({
       </div>
 
       <p className="build-site__caption">
-        {blocks.length === 0
-          ? "Nothing built yet. Log a run to earn your first block."
-          : placing
-            ? "Drag or tap to choose a column, then Drop."
-            : "Tap a block to see the run behind it."}
+        {placing
+          ? "Drag or tap to choose a column, then Drop."
+          : "Tap a block to see the run behind it."}
       </p>
-    </section>
+    </Section>
   );
 }

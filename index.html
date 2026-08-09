@@ -2,9 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets the layout reach the edges of a notched phone;
+         the shell pays the safe-area insets back in CSS. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="color-scheme" content="dark" />
-    <title>STACK</title>
+    <meta name="theme-color" content="#071018" />
+
+    <title>STACK — Build your race</title>
+    <meta
+      name="description"
+      content="A running plan that turns the runs you finish into a tower of blocks. Manual, local, and yours."
+    />
+    <meta name="application-name" content="STACK" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Installed to a home screen, STACK runs without browser chrome. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="STACK" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="STACK — Build your race" />
+    <meta
+      property="og:description"
+      content="A running plan that turns the runs you finish into a tower of blocks."
+    />
+    <meta property="og:image" content="/icon-512.png" />
   </head>
   <body>
     <div id="root"></div>

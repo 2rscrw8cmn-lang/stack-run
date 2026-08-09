@@ -1,4 +1,10 @@
-import { CalendarDays } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  Flag,
+  RotateCcw,
+} from "lucide-react";
 import { useState } from "react";
 import {
   blockedDates,
@@ -44,8 +50,7 @@ import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
 import { RaceSetupSheet } from "./RaceSetupSheet";
 import { ResetPlanDialog } from "./ResetPlanDialog";
 import { RunDaysSheet } from "./RunDaysSheet";
-import { WeekHeader } from "./WeekHeader";
-import { WeekNavigator } from "./WeekNavigator";
+import { WeekLead } from "./WeekLead";
 import { WorkoutRow } from "./WorkoutRow";
 
 interface PlanScreenProps {
@@ -234,19 +239,12 @@ export function PlanScreen({
 
   return (
     <div className="plan-screen">
-      <h1 className="screen-title">Plan</h1>
-
-      <WeekNavigator
-        weekNumber={week.weekNumber}
+      <WeekLead
+        week={week}
         totalWeeks={plan.weeks.length}
-        hasPreviousWeek={week.hasPreviousWeek}
-        hasNextWeek={week.hasNextWeek}
-        isCurrentWeek={week.isCurrentWeek}
         onStep={(direction) => goToWeek(week.weekNumber + direction)}
         onCurrentWeek={() => goToWeek(currentWeekNumber(plan, today))}
       />
-
-      <WeekHeader week={week} />
 
       {conflicts.length > 0 && (
         <button
@@ -287,30 +285,34 @@ export function PlanScreen({
       <div className="plan-screen__quiet-actions">
         <button
           type="button"
-          className="plan-screen__reset"
+          className="plan-screen__quiet-action"
           onClick={() => openSecondary({ kind: "race" })}
         >
+          <Flag size={16} strokeWidth={2} aria-hidden="true" />
           Race
         </button>
         <button
           type="button"
-          className="plan-screen__reset"
+          className="plan-screen__quiet-action"
           onClick={() => openSecondary({ kind: "run-days" })}
         >
+          <CalendarCheck size={16} strokeWidth={2} aria-hidden="true" />
           Run Days
         </button>
         <button
           type="button"
-          className="plan-screen__reset"
+          className="plan-screen__quiet-action"
           onClick={() => openSecondary({ kind: "availability" })}
         >
+          <CalendarClock size={16} strokeWidth={2} aria-hidden="true" />
           Availability
         </button>
         <button
           type="button"
-          className="plan-screen__reset"
+          className="plan-screen__quiet-action plan-screen__quiet-action--danger"
           onClick={() => openSecondary({ kind: "reset" })}
         >
+          <RotateCcw size={16} strokeWidth={2} aria-hidden="true" />
           Reset Plan
         </button>
       </div>

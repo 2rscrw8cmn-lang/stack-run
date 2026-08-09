@@ -1,22 +1,36 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement";
 import { moveWorkout } from "../domain/planEdit";
 import {
   deleteRunLog,
   loadAppState,
+  onStorageWriteError,
   placeBlock,
+  readBackup,
   resetAppState,
   saveAppState,
   savePlan,
   saveRunLog,
   StorageLoadError,
+  StorageWriteError,
 } from "./appStateRepository";
 import { CURRENT_SCHEMA_VERSION } from "./migrations";
-import { APP_STATE_STORAGE_KEY } from "./storageKeys";
+import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
 
 beforeEach(() => {
   localStorage.clear();
 });
+
+/** Asserts the load failed recoverably, and hands back why. */
+function catchLoadError(): StorageLoadError {
+  try {
+    loadAppState();
+  } catch (error) {
+    expect(error).toBeInstanceOf(StorageLoadError);
+    return error as StorageLoadError;
+  }
+  throw new Error("Expected loadAppState to fail.");
+}
 
 const scheduledRun = {
   workoutId: "workout-002",
@@ -169,6 +183,89 @@ describe("loadAppState", () => {
     );
     expect(backupKeys).toHaveLength(1);
     expect(localStorage.getItem(backupKeys[0])).toBe("{not valid json");
+  });
+
+  it("backs up and reports a stored shape no migration recognises", () => {
+    // Valid JSON, unreadable state: the migration throws part-way through and
+    // this used to take the whole app down with it.
+    localStorage.setItem(
+      APP_STATE_STORAGE_KEY,
+      JSON.stringify({ schemaVersion: 99, runLogs: [] }),
+    );
+
+    const error = catchLoadError();
+    expect(error.reason).toBe("corrupt");
+    expect(error.backupKey).not.toBeNull();
+    expect(readBackup(error.backupKey!)).toContain('"schemaVersion":99');
+    // Nothing is overwritten while the user has not chosen anything.
+    expect(localStorage.getItem(APP_STATE_STORAGE_KEY)).toContain('"schemaVersion":99');
+  });
+
+  it("reports storage the browser will not hand over at all", () => {
+    const getItem = vi
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new DOMException("The operation is insecure.", "SecurityError");
+      });
+
+    const error = catchLoadError();
+    expect(error.reason).toBe("unreadable");
+    expect(error.backupKey).toBeNull();
+    expect(error.message).toContain("The operation is insecure.");
+
+    getItem.mockRestore();
+  });
+});
+
+describe("saveAppState", () => {
+  it("reports a write it could not make instead of throwing into the render", () => {
+    const state = loadAppState();
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("The quota has been exceeded.", "InvalidStateError");
+      });
+
+    const errors: StorageWriteError[] = [];
+    const stop = onStorageWriteError((error) => errors.push(error));
+
+    expect(() => saveAppState(state)).not.toThrow();
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("The quota has been exceeded.");
+
+    stop();
+    setItem.mockRestore();
+  });
+
+  it("drops the oldest backup and retries once when the quota is full", () => {
+    const state = loadAppState();
+    localStorage.setItem(backupStorageKey("2026-01-01T00:00:00.000Z"), "old");
+
+    let refusals = 1;
+    const real = Storage.prototype.setItem;
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(function (this: Storage, key: string, value: string) {
+        if (key === APP_STATE_STORAGE_KEY && refusals > 0) {
+          refusals -= 1;
+          const error = new Error("full");
+          error.name = "QuotaExceededError";
+          throw error;
+        }
+        real.call(this, key, value);
+      });
+
+    const errors: StorageWriteError[] = [];
+    const stop = onStorageWriteError((error) => errors.push(error));
+
+    saveAppState({ ...state, runLogs: [] });
+
+    expect(errors).toEqual([]);
+    expect(localStorage.getItem(backupStorageKey("2026-01-01T00:00:00.000Z"))).toBeNull();
+    expect(localStorage.getItem(APP_STATE_STORAGE_KEY)).toContain("schemaVersion");
+
+    stop();
+    setItem.mockRestore();
   });
 });
 

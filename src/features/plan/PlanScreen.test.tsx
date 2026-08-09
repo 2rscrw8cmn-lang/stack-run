@@ -48,35 +48,40 @@ function weekList() {
   return screen.getByRole("list", { name: /^Week \d+ workouts$/ });
 }
 
+/** The week is the screen's heading; there is no separate "Plan" title. */
+function weekHeading() {
+  return screen.getByRole("heading", { level: 1 });
+}
+
 describe("PlanScreen week navigation", () => {
   it("opens on the week containing today", () => {
     renderPlan({ today: "2026-08-12" });
 
-    expect(screen.getByText("Week 2 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 2 of 18");
     expect(screen.getByText("Aug 10 – Aug 16")).toBeInTheDocument();
     expect(screen.getByText("This week")).toBeInTheDocument();
   });
 
   it("opens on week 1 before the plan starts and week 18 after the race", () => {
     const { unmount } = renderPlan({ today: "2026-07-01" });
-    expect(screen.getByText("Week 1 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 1 of 18");
     unmount();
 
     renderPlan({ today: "2026-12-31" });
-    expect(screen.getByText("Week 18 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 18 of 18");
   });
 
   it("steps to the previous and next week", async () => {
     const { user } = renderPlan({ today: "2026-09-30" });
-    expect(screen.getByText("Week 9 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 9 of 18");
 
     await user.click(screen.getByRole("button", { name: "Next week" }));
-    expect(screen.getByText("Week 10 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 10 of 18");
     expect(screen.getByText("Oct 5 – Oct 11")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Previous week" }));
     await user.click(screen.getByRole("button", { name: "Previous week" }));
-    expect(screen.getByText("Week 8 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 8 of 18");
   });
 
   it("stops at the first week", async () => {
@@ -94,7 +99,7 @@ describe("PlanScreen week navigation", () => {
     const next = () => screen.getByRole("button", { name: "Next week" });
 
     for (let weekNumber = 1; weekNumber <= 18; weekNumber += 1) {
-      expect(screen.getByText(`Week ${weekNumber} of 18`)).toBeInTheDocument();
+      expect(weekHeading()).toHaveTextContent(`Week ${weekNumber} of 18`);
       expect(within(weekList()).getAllByRole("listitem")).toHaveLength(7);
       if (weekNumber < 18) {
         expect(next()).toBeEnabled();
@@ -102,7 +107,7 @@ describe("PlanScreen week navigation", () => {
       }
     }
 
-    expect(screen.getByText("Week 18 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 18 of 18");
     expect(next()).toBeDisabled();
     expect(screen.getByText("Nov 30 – Dec 6")).toBeInTheDocument();
   });
@@ -115,10 +120,10 @@ describe("PlanScreen week navigation", () => {
 
     await user.click(screen.getByRole("button", { name: "Next week" }));
     await user.click(screen.getByRole("button", { name: "Next week" }));
-    expect(screen.getByText("Week 3 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 3 of 18");
 
     await user.click(screen.getByRole("button", { name: "Current Week" }));
-    expect(screen.getByText("Week 1 of 18")).toBeInTheDocument();
+    expect(weekHeading()).toHaveTextContent("Week 1 of 18");
     expect(
       screen.queryByRole("button", { name: "Current Week" }),
     ).not.toBeInTheDocument();
