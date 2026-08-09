@@ -7,6 +7,7 @@ import {
   type PlacementCandidate,
 } from "../domain/placement";
 import type { AvailabilityCalendar } from "../domain/availability";
+import { relinkRunLogs, type RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
 import type {
   AppState,
@@ -282,6 +283,25 @@ export function saveRunDays(
   plan: TrainingPlan,
 ): AppState {
   const next: AppState = { ...state, runDays, plan };
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Replaces the plan with one generated from a race, keeping every run.
+ *
+ * The runs and the blocks they earned belong to the runner, not to the plan
+ * that happened to ask for them, so a regenerated plan never costs either.
+ * Runs are re-attached to whatever the new plan schedules on the same date;
+ * the rest become extra runs, which is what they now are.
+ */
+export function saveGeneratedPlan(
+  state: AppState,
+  setup: RacePlanSetup,
+  plan: TrainingPlan,
+): AppState {
+  const { runLogs } = relinkRunLogs(state.runLogs, plan);
+  const next: AppState = { ...state, plan, raceSetup: setup, runLogs };
   saveAppState(next);
   return next;
 }

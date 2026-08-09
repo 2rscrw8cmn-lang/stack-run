@@ -12,6 +12,7 @@ import {
   currentWeekNumber,
   selectPlanWeekViewModel,
 } from "../../domain/plan";
+import type { RacePlanSetup } from "../../domain/racePlan";
 import {
   applyRunDays,
   planRunDayChange,
@@ -40,6 +41,7 @@ import type { ValidRunEntry } from "../run-entry/runValidation";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
 import { EditWorkoutSheet } from "./EditWorkoutSheet";
 import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
+import { RaceSetupSheet } from "./RaceSetupSheet";
 import { ResetPlanDialog } from "./ResetPlanDialog";
 import { RunDaysSheet } from "./RunDaysSheet";
 import { WeekHeader } from "./WeekHeader";
@@ -64,6 +66,9 @@ interface PlanScreenProps {
   /** The imported calendar of days the user cannot run. */
   availability?: AvailabilityCalendar | null;
   onSaveAvailability?: (calendar: AvailabilityCalendar | null) => void;
+  /** The race the plan was generated for, or null for the shipped plan. */
+  raceSetup?: RacePlanSetup | null;
+  onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   /** The weekdays the runner will run on, or null while they have not said. */
   runDays?: Weekday[] | null;
   /** Records the preference and the plan reshaped to match, together. */
@@ -82,6 +87,7 @@ type Secondary =
   | { kind: "reset" }
   | { kind: "availability" }
   | { kind: "run-days" }
+  | { kind: "race" }
   | { kind: "conflicts" };
 
 /**
@@ -106,6 +112,8 @@ export function PlanScreen({
   onSaveAvailability = () => undefined,
   runDays = null,
   onSaveRunDays = () => undefined,
+  raceSetup = null,
+  onGeneratePlan = () => undefined,
   fetchIcs,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
@@ -280,6 +288,13 @@ export function PlanScreen({
         <button
           type="button"
           className="plan-screen__reset"
+          onClick={() => openSecondary({ kind: "race" })}
+        >
+          Race
+        </button>
+        <button
+          type="button"
+          className="plan-screen__reset"
           onClick={() => openSecondary({ kind: "run-days" })}
         >
           Run Days
@@ -423,6 +438,27 @@ export function PlanScreen({
               calendar
                 ? `Calendar saved. ${blockedDates(calendar).size} blocked days.`
                 : "Calendar removed.",
+            );
+            setSecondaryOpen(false);
+          }}
+        />
+      )}
+
+      {secondary?.kind === "race" && (
+        <RaceSetupSheet
+          key={secondaryVisit}
+          plan={plan}
+          setup={raceSetup}
+          runDays={runDays}
+          runLogs={runLogs}
+          today={today}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onGenerate={(next, generated) => {
+            onGeneratePlan(next, generated);
+            setWeekNumber(currentWeekNumber(generated, today));
+            setAnnouncement(
+              `${generated.weeks.length}-week plan built for ${next.name}.`,
             );
             setSecondaryOpen(false);
           }}

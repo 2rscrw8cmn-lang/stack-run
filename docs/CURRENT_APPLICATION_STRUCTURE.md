@@ -129,6 +129,28 @@ Pure functions over a plan, returning a new one. Nothing here touches storage, r
 - `ResetPlanDialog` is the one action that destroys everything, behind two deliberate presses, with the counts of what will be erased on screen while the user decides. It is reached from a deliberately quiet `Reset Plan` control at the bottom of Plan.
 - `savePlan` in the repository persists an edited plan; run logs and placements are untouched, which is what keeps a completed run attached to its workout across an edit or a move.
 
+## The race, and the plan built for it
+
+`src/domain/racePlan.ts` and `src/features/plan/RaceSetupSheet.tsx`, reached from `Race` at the bottom of Plan.
+
+**One race at a time.** A plan is for the thing you are training for, and two of those is two plans. Name, date, distance (5K / 10K / Half / Marathon) and level (Novice / Intermediate / Advanced) are the four answers, and changing any of them rebuilds the schedule.
+
+### What the generator is, and is not
+
+It is arithmetic over a template. The distance and level pick runs per week, where the long run starts and finishes, and how long the taper is; the weeks between today and race day decide the rest. The long run climbs to its peak the week before the taper, drops about a third every fourth week, and comes down through the taper; race week is two shakeouts and the race.
+
+It is **not** coaching. It reads no logged run, knows nothing about how last Tuesday went, and will not adapt if it went badly. It produces a starting point, which every other screen then lets you edit. That is the line D-021 draws and this stays on the right side of it.
+
+- The plan runs to **race day**, not to a round number of weeks, and nothing is scheduled after it.
+- The weeks come from the calendar, clamped to what the template stretches to. A race further out than that starts later than today, and the sheet says so rather than inventing an eight-month 10K plan.
+- Too close for the distance is a **warning, not a refusal** — it is the runner's race. A date already past is refused, because there is nothing to plan.
+- Runs land only on the days `runDays` allows, spread across the week with the long run last. Race day is exempt: the race is when the race is.
+- Every date holds exactly one workout, so plan editing, moving, and the run-day reshape all work on a generated plan exactly as on the seeded one.
+
+### Regenerating never costs a run
+
+`relinkRunLogs` re-attaches recorded runs to the new plan **by date**: a run keeps its scheduled link when the new plan asks for a run that day, and becomes an extra run when it does not. Nothing is ever discarded — the miles are real and the block is already built — and two runs on one date cannot both satisfy it, so the earlier keeps the link. `saveGeneratedPlan` is the only writer that touches the plan and the run logs together, and it is why offering a rebuild is reasonable at all.
+
 ## Run days — the shape of the week
 
 `src/domain/runDays.ts` and `src/features/plan/RunDaysSheet.tsx`, reached from `Run Days` at the bottom of Plan.
@@ -215,7 +237,9 @@ There is no pace model, no ranking of sessions, and nothing that chooses *what* 
 
 ## Persistence
 
-`AppState.schemaVersion` is **7**. The storage key is unchanged.
+`AppState.schemaVersion` is **8**. The storage key is unchanged.
+
+- `raceSetup` holds the race a plan was generated for, or null for the plan STACK shipped with. Version 7 migrates to null: there is no setup behind the seeded plan to reconstruct, and guessing one would claim the generator produced something it did not.
 
 - `runDays` holds the weekdays the runner will run on, or null. Version 6 migrates to null rather than to the days the plan happens to use: the runner has not said anything yet, and inventing a preference from the schedule would put words in their mouth.
 

@@ -8,6 +8,7 @@ import {
   resetAppState,
   saveAvailability,
   savePlan,
+  saveGeneratedPlan,
   saveRunDays,
   saveRunLog,
   StorageLoadError,
@@ -71,6 +72,10 @@ export function App() {
       }
       availability={appState.availability}
       onSaveAvailability={saveCalendar}
+      raceSetup={appState.raceSetup}
+      onGeneratePlan={(setup, plan) =>
+        setAppState((current) => saveGeneratedPlan(current, setup, plan))
+      }
       runDays={appState.runDays}
       onSaveRunDays={(runDays, plan) =>
         setAppState((current) => saveRunDays(current, runDays, plan))
