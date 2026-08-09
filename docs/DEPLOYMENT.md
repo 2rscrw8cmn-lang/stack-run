@@ -1,48 +1,102 @@
 # Deployment
 
-STACK is a static site plus one serverless function, deployed to Vercel. There
-is no database, no account system, and nothing stored off the device: the whole
-application state lives in the browser's local storage.
+STACK is a Vite web app plus narrowly scoped Vercel serverless functions. There is no application database, no account system, and no server-side persistence of the user's training data: normalized STACK state remains in browser localStorage.
 
-## What Vercel needs
+Current/approved server routes:
 
-The repository is a stock Vite project, so the Vercel defaults are correct and
-nothing has to be configured by hand:
+- `api/calendar.ts` — reads an availability-calendar subscription when browser CORS blocks it.
+- `api/intervals.ts` — added by UI-8; read-only protected proxy for Intervals.icu activity/wellness data.
 
-| Setting | Value | Where it comes from |
-|---|---|---|
-| Framework preset | Vite | detected from `package.json` |
-| Build command | `npm run build` | `package.json` |
-| Output directory | `dist` | Vite's default |
-| Install command | `npm ci` | detected from `package-lock.json` |
-| Node version | 22.x or later | Vercel default |
+## Vercel project settings
 
-`vercel.json` carries only what the defaults get wrong:
+The repository is a stock Vite project, so the defaults are correct:
 
-- **`functions."api/calendar.ts".maxDuration: 30`** — a Hobby deployment stops a
-  function at ten seconds, which is *less* than the fifteen the calendar reader
-  allows its upstream. Without this, a rostering host having a slow morning is
-  cut off mid-fetch and the page is told something vague instead of the truth.
-  Naming the file here also states plainly that it is meant to be a function.
-- **`Content-Type` on `/manifest.webmanifest`** — so the manifest is served as
-  `application/manifest+json` rather than something a browser may decline to
-  read as one.
-- **`Cache-Control: immutable` on `/assets/*`** — those filenames carry a
-  content hash, so they can be cached for a year. Everything else, `index.html`
-  included, keeps Vercel's default revalidating cache, which is what lets a
-  deploy actually reach a phone that already has the app open.
+| Setting | Value |
+|---|---|
+| Framework preset | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Install command | `npm ci` |
+| Node | current supported 22.x+ |
 
-There are no rewrites and no redirects. STACK is one page with no client-side
-router, so nothing needs to be rewritten to `index.html`.
+`vercel.json` should remain minimal and may set per-function duration/headers when the implementation needs them. Do not add broad rewrites or a second deployment service for Connected Training.
 
-## Environment variables
+## Environment variables — Connected Training
 
-None. The application reads no configuration, and `api/calendar.ts` takes
-everything it needs from the request body.
+UI-8 requires two server-side secrets.
 
-## What a build must contain
+### `INTERVALS_API_KEY`
 
-`npm run build` writes `dist/`. A release is only correct if it holds:
+The user's personal Intervals.icu API key.
+
+- Store in Vercel only.
+- Never commit it.
+- Never prefix it `VITE_`.
+- Never expose it to browser code.
+- Never paste it into PR text, issues, screenshots, docs or test fixtures.
+
+### `STACK_SYNC_TOKEN`
+
+A separate long random token that authorizes the owner's browser to call STACK's read-only Intervals proxy.
+
+Generate independently, for example:
+
+```bash
+openssl rand -hex 32
+```
+
+or use a password manager to generate a long random value.
+
+- Store the canonical value in Vercel as `STACK_SYNC_TOKEN`.
+- After UI-8 exists, enter the same token once in STACK's `Run Data` connection sheet.
+- The browser sends it in `X-Stack-Sync-Token`.
+- Never put it in a URL/query string.
+- This is intentionally separate from the Intervals API key so it can be rotated without touching the upstream credential.
+
+## Which Vercel environments
+
+For normal personal use:
+
+- **Production:** both secrets required.
+- **Preview:** both secrets required only when the user wants real Intervals data tested on PR preview deployments. UI-8's real-data smoke test expects this.
+- **Development:** optional; use local environment configuration when actively testing the serverless route locally.
+
+A preview deployment is a different browser origin from production, so it has its own local STACK state and local connection token even when Vercel uses the same server environment secrets.
+
+## Local development
+
+The repository already ignores `.env` / `.env.*` / `*.local`.
+
+For local Vercel/function testing, use an ignored file such as `.env.local`:
+
+```text
+INTERVALS_API_KEY=...
+STACK_SYNC_TOKEN=...
+```
+
+Do not create a committed `.env` containing real values.
+
+An optional committed `.env.example` may name the variables with empty/example placeholders only.
+
+`npm run check` must pass with neither variable present; automated tests mock/inject configuration.
+
+## Why there are two connected-data secrets
+
+Putting the Intervals personal API key into browser code would expose a powerful upstream credential.
+
+Hiding it behind an **unauthenticated** serverless proxy would still be unsafe: anybody who discovered the public deployment route could use STACK's server credential to read the owner's private training data.
+
+Therefore:
+
+1. Intervals API key stays server-only.
+2. Public Vercel route requires the separate STACK sync token.
+3. Proxy is read-only and whitelists resources.
+
+This is a single-user architecture. If STACK becomes multi-user, redesign around Intervals.icu OAuth 2.0 rather than sharing these secrets.
+
+## Build contents
+
+`npm run build` writes `dist/`. A release still contains the installable static app:
 
 ```text
 dist/index.html
@@ -56,68 +110,116 @@ dist/assets/index-<hash>.css
 dist/assets/index-<hash>.js
 ```
 
-Everything in `public/` is copied verbatim, so the icons and the manifest are
-part of the build rather than something uploaded separately.
+Vercel separately deploys files under `api/` as serverless functions.
 
-`src/app/installability.test.ts` asserts the metadata, the manifest and the
-icons agree with each other, and that no product-review tooling is left in the
-source tree, so `npm run check` fails before a broken release can be deployed.
+## App metadata/icons
 
-## Regenerating the icons
-
-The icons are committed. They are drawn by a script rather than an image
-editor, from the same geometry the in-app mark uses:
+Icons are committed and generated by:
 
 ```bash
 node scripts/generate-icons.mjs
 ```
 
-It needs nothing but Node. Run it after changing the mark, and commit what it
-writes.
+Normal builds do not need image tooling.
 
-## The serverless function
+## Existing availability-calendar serverless function
 
-`api/calendar.ts` reads a calendar subscription link for the page when the
-calendar host refuses the browser. It is deployed automatically because it
-lives in `api/`; Vercel needs no configuration for that beyond the duration
-already in `vercel.json`.
+`api/calendar.ts` remains the availability-calendar reader introduced before UI-7. It:
 
-To check it is deployed, open `https://<your-deployment>/api/calendar` in a
-browser. A `GET` answers in plain English that the reader is there. If it
-answers with the app's own HTML instead, the function is not deployed and the
-calendar import will fall back to the file picker and say so.
+- stores nothing;
+- accepts the calendar URL in a POST body;
+- requires https/public targets;
+- bounds redirects/size/time;
+- returns only calendar-looking content.
 
-## How stored data survives a deployment
+Connected Training must not break this route.
 
-Local storage is scoped to an **origin**, not to a build. Deploying a new
-version to the same domain leaves every run, block and plan edit exactly where
-it was; `loadAppState` migrates an older schema forward on the next open and
-writes the upgraded shape straight back.
+## Connected Intervals serverless function
 
-Two consequences worth knowing before a release:
+UI-8 adds:
 
-- **A preview deployment is a different origin.** `stack-abc123.vercel.app`
-  cannot see data stored under the production domain, and neither can a custom
-  domain see data stored under `*.vercel.app`. Test on the origin you intend to
-  keep, and pick the domain before entering real training.
-- **Changing the domain strands the data.** There is no export yet, so moving
-  domains means starting from the seed plan.
+```text
+/api/intervals
+```
 
-The storage key is `stack.app-state.v1` and has not changed since the first
-release. Schema versions move inside that key; the key itself is the contract.
+See `docs/INTERVALS_INTEGRATION.md` for the exact contract.
 
-## Installing it on a phone
+High-level deployment requirements:
 
-iOS Safari does not offer an install prompt: open the production URL, then
-**Share → Add to Home Screen**. The icon comes from `apple-touch-icon.png`, the
-name from `apple-mobile-web-app-title`, and the app opens without browser
-chrome because of `apple-mobile-web-app-capable`. Android offers a normal
-install prompt, driven by `manifest.webmanifest`.
+- server reads `INTERVALS_API_KEY` and `STACK_SYNC_TOKEN` from environment;
+- GET/read-only only;
+- require `X-Stack-Sync-Token`;
+- upstream Basic auth uses username `API_KEY` and password `INTERVALS_API_KEY`;
+- only whitelisted resource kinds;
+- no arbitrary upstream URL;
+- `Cache-Control: no-store`;
+- no payload/secret logging;
+- safe handling of upstream auth/rate-limit/server errors.
 
-A home-screen install and the browser tab share the same local storage on both
-platforms, so the data is the same app either way.
+Opening `/api/intervals?resource=status` in an ordinary browser without the sync-token header should **not** reveal private data; it should reject the request. Use the in-app connection test or an authorized local request to verify it.
 
-## Before calling a deployment good
+## Stored data and deployments
 
-Work through `docs/RELEASE_CHECKLIST.md` on the production URL, on the phone
-the app is actually for.
+Local storage remains scoped to browser **origin**, not deployment build.
+
+Deploying a new build to the same production domain preserves local state and migrations advance its schema.
+
+Consequences:
+
+- a Vercel preview cannot see production localStorage;
+- a custom domain cannot see data stored under a different `*.vercel.app` origin;
+- changing production domains still strands healthy local state unless a separate export/import capability is added.
+
+The training-state key remains:
+
+```text
+stack.app-state.v1
+```
+
+Connected UI-8 adds a separate browser key for the narrow proxy credential, recommended:
+
+```text
+stack.intervals.sync-token.v1
+```
+
+Forgetting that connection token must not delete training state.
+
+## Privacy notes
+
+After Connected Training, local state may contain heart rate/cadence/elevation/training-load metrics and later may contain wellness data.
+
+Deployment rules:
+
+- no analytics SDK added by this integration;
+- no production console logging of personal API responses;
+- no server persistence of training/wellness payloads;
+- no caching private proxy responses;
+- no health data in URL query values except non-sensitive bounded request selectors such as date range/activity id;
+- credentials only in environment/header storage paths described above.
+
+## Installing on iPhone
+
+Open the production URL in Safari and use **Share → Add to Home Screen**. The installed app and Safari tab on the same origin share the same local data.
+
+Connected sync still requires network access. STACK remains intentionally without a service worker until offline behavior is separately designed/tested.
+
+## UI-8 deployment smoke test
+
+After the UI-8 PR passes automated checks:
+
+1. Configure `INTERVALS_API_KEY` and `STACK_SYNC_TOKEN` for that Vercel Preview (or test production).
+2. Deploy.
+3. On the user's iPhone, open `Run Data`.
+4. Enter only the `STACK_SYNC_TOKEN`.
+5. Test connection.
+6. Run the initial 90-day backfill so the known June 10 HealthFit-originated activity is included.
+7. Verify the activity appears and update `docs/CONNECTED_DATA_FIELDS.md` with field presence/semantics, not raw personal data.
+8. Import/attach it.
+9. Refresh/reopen and sync again; confirm no duplicate.
+10. Inspect browser storage/source/network requests enough to confirm the Intervals API key never reached the client.
+11. Confirm `/api/intervals` refuses missing/wrong sync tokens.
+12. Confirm the existing availability-calendar route still works.
+
+## Before calling any deployment good
+
+Continue to use `docs/RELEASE_CHECKLIST.md` for the general phone smoke test, plus the active connected phase's real-data checklist.
