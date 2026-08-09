@@ -1,13 +1,17 @@
 import { CalendarDays, Circle, CircleCheck, MinusCircle } from "lucide-react";
 import type { CSSProperties } from "react";
+import { blockedPhrase, type BlockedDay } from "../../domain/availability";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { PLAN_DAY_STATUS_LABEL, type PlanDay } from "../../domain/plan";
 
 interface WorkoutRowProps {
   day: PlanDay;
-  /** Shifts blocking this day, when a calendar has been imported. */
-  blockedBy?: string[];
+  /**
+   * When this day is blocked by an imported calendar. Only ever passed for a
+   * day that asks for a run: a rest day is not owed, so nothing is in its way.
+   */
+  blocked?: BlockedDay;
   onSelect: (workoutId: string) => void;
 }
 
@@ -29,8 +33,8 @@ function targetPhrase(day: PlanDay): string {
  * owes nothing, and has no detail worth opening. A run day is a button that
  * opens the workout detail sheet.
  */
-export function WorkoutRow({ day, blockedBy, onSelect }: WorkoutRowProps) {
-  const isBlocked = (blockedBy?.length ?? 0) > 0;
+export function WorkoutRow({ day, blocked, onSelect }: WorkoutRowProps) {
+  const isBlocked = blocked !== undefined;
   const { workout, status } = day;
   const StatusIcon = STATUS_ICON[status];
   const statusLabel = PLAN_DAY_STATUS_LABEL[status];
@@ -62,10 +66,10 @@ export function WorkoutRow({ day, blockedBy, onSelect }: WorkoutRowProps) {
             ? "No scheduled run"
             : `${WORKOUT_TYPE_LABEL[workout.type]} · ${targetPhrase(day)}`}
         </span>
-        {isBlocked && (
+        {blocked && (
           <span className="workout-row__blocked">
             <CalendarDays size={13} strokeWidth={2} aria-hidden="true" />
-            {blockedBy!.join(", ")}
+            {blockedPhrase(blocked)}
           </span>
         )}
       </span>
@@ -84,11 +88,15 @@ export function WorkoutRow({ day, blockedBy, onSelect }: WorkoutRowProps) {
 
   // A rest day opens straight into planning a run on it: there is nothing
   // else to say about a day the plan leaves empty.
-  const blockedPhrase = isBlocked ? `, blocked by ${blockedBy!.join(", ")}` : "";
+  // Screen readers get the shift names too: there is no room cost in speech,
+  // and "blocked" without saying by what is a worse answer than the truth.
+  const spokenBlock = blocked
+    ? `, ${blockedPhrase(blocked).toLowerCase()} by ${blocked.labels.join(", ")}`
+    : "";
   const label =
     status === "rest"
-      ? `${dateLabel}, Rest${blockedPhrase}. Add a planned run`
-      : `${dateLabel}, ${workout.title}, ${WORKOUT_TYPE_LABEL[workout.type]}, ${targetPhrase(day)}, ${statusLabel}${blockedPhrase}`;
+      ? `${dateLabel}, Rest. Add a planned run`
+      : `${dateLabel}, ${workout.title}, ${WORKOUT_TYPE_LABEL[workout.type]}, ${targetPhrase(day)}, ${statusLabel}${spokenBlock}`;
 
   return (
     <li

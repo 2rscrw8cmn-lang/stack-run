@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { BlockedDay } from "../../domain/availability";
 import { Card } from "../../components/ui/Card";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { formatDateLabel } from "../../domain/dates";
@@ -7,7 +8,7 @@ import { PLAN_DAY_STATUS_LABEL, type PlanWeekViewModel } from "../../domain/plan
 interface ThisWeekStripProps {
   week: PlanWeekViewModel;
   /** Days an imported calendar says the user cannot run. */
-  blocked?: Map<string, string[]>;
+  blocked?: Map<string, BlockedDay>;
   onViewPlan: () => void;
 }
 
@@ -45,13 +46,17 @@ export function ThisWeekStrip({
       />
 
       <ol className="this-week__days" aria-label={`Week ${week.weekNumber} days`}>
-        {week.days.map((day) => (
+        {week.days.map((day) => {
+          // Only a day that asks for a run can be in the way of one.
+          const isBlocked =
+            day.status !== "rest" && blocked.has(day.workout.date);
+          return (
           <li
             key={day.workout.id}
             className="this-week__day"
             data-status={day.status}
             data-today={day.isToday || undefined}
-            data-blocked={blocked.has(day.workout.date) || undefined}
+            data-blocked={isBlocked || undefined}
           >
             <span className="this-week__weekday" aria-hidden="true">
               {formatDateLabel(day.workout.date, { weekday: "narrow" })}
@@ -71,11 +76,12 @@ export function ThisWeekStrip({
               {`${formatDateLabel(day.workout.date, {
                 weekday: "long",
               })}: ${PLAN_DAY_STATUS_LABEL[day.status]}${
-                blocked.has(day.workout.date) ? ", blocked" : ""
+                isBlocked ? ", blocked" : ""
               }`}
             </span>
           </li>
-        ))}
+          );
+        })}
       </ol>
 
       <button type="button" className="this-week__link" onClick={onViewPlan}>

@@ -245,7 +245,11 @@ export function PlanScreen({
           <WorkoutRow
             key={day.workout.id}
             day={day}
-            blockedBy={blocked.get(day.workout.date)}
+            // A rest day is not owed, so a work shift is not in its way.
+            // Marking one blocked says a run is at risk when none is asked for.
+            blocked={
+              day.status === "rest" ? undefined : blocked.get(day.workout.date)
+            }
             onSelect={(workoutId) => {
               // A rest day has nothing to read; the only thing to do with one
               // is plan a run on it.

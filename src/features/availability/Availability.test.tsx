@@ -288,16 +288,51 @@ describe("importing a calendar", () => {
 });
 
 describe("blocked days on the schedule", () => {
-  it("marks a blocked day on its row and names the shift", () => {
+  it("marks a blocked run day, and shows the hours rather than the shift", () => {
+    renderPlan({
+      availability: calendarOf({
+        shifts: [
+          { date: "2026-08-04", label: "CCM ORMC APP Day 1R", startTime: "06:00", endTime: "18:00" },
+        ],
+        blockingLabels: ["CCM ORMC APP Day 1R"],
+      }),
+    });
+
+    // The roster's own shorthand belongs in the availability sheet, where
+    // choosing it is the task. Here the useful fact is the hours.
+    expect(screen.getByText("Blocked 6 AM – 6 PM")).toBeInTheDocument();
+    expect(screen.queryByText(/CCM ORMC APP/)).not.toBeInTheDocument();
+    // A screen reader still hears which shift it was.
+    expect(
+      screen.getByRole("button", {
+        name: /Tuesday, August 4.*blocked 6 am – 6 pm by CCM ORMC APP Day 1R/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("says all day when the shift has no hours", () => {
     renderPlan({ availability: calendarOf() });
 
-    expect(
-      screen.getByRole("button", { name: /Tuesday, August 4.*blocked by MICU Day/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Blocked all day")).toBeInTheDocument();
     // Night Float was not marked as blocking, so Saturday is an ordinary day.
     expect(
       screen.queryByRole("button", { name: /Saturday, August 8.*blocked/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("leaves rest days unmarked: nothing is owed, so nothing is in the way", () => {
+    renderPlan({
+      availability: calendarOf({
+        // Aug 3 and Aug 5 are rest days in week 1; Aug 4 asks for a run.
+        shifts: [
+          { date: "2026-08-03", label: "MICU Day", startTime: null, endTime: null },
+          { date: "2026-08-05", label: "MICU Day", startTime: null, endTime: null },
+        ],
+      }),
+    });
+
+    expect(screen.queryByText(/^Blocked/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lands on a blocked day/)).not.toBeInTheDocument();
   });
 
   it("marks nothing while the calendar is switched off", () => {
@@ -375,8 +410,7 @@ describe("reviewing blocked days", () => {
     });
 
     expect(screen.queryByText(/lands on a blocked day/)).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Monday, August 3.*blocked by Admin/ }),
-    ).toBeInTheDocument();
+    // And the rest day itself stays quiet about it.
+    expect(screen.queryByText(/^Blocked/)).not.toBeInTheDocument();
   });
 });
