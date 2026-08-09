@@ -107,7 +107,7 @@ describe("migrateAppState from version 4", () => {
   it("keeps every run's values, timestamps, and scheduled link", () => {
     const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
 
-    expect(migrated.schemaVersion).toBe(6);
+    expect(migrated.schemaVersion).toBe(7);
     expect(migrated.availability).toBeNull();
     expect(migrated.runLogs).toHaveLength(2);
     expect(migrated.runLogs[0]).toMatchObject({
@@ -258,7 +258,7 @@ describe("migrateAppState from version 5", () => {
 
     const migrated = migrateAppState(version5);
 
-    expect(migrated.schemaVersion).toBe(6);
+    expect(migrated.schemaVersion).toBe(7);
     expect(migrated.availability).toBeNull();
     expect(migrated.runLogs).toHaveLength(1);
     expect(migrated.plan).toEqual(version5.plan);

@@ -1,5 +1,6 @@
 import { BottomNav } from "../components/shared/BottomNav";
 import type { AvailabilityCalendar } from "../domain/availability";
+import type { Weekday } from "../domain/runDays";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
 import type { PlacementRequest } from "../features/build/BuildScreen";
@@ -27,6 +28,8 @@ interface AppShellProps {
   /** Days the user cannot run, imported from a calendar. */
   availability: AvailabilityCalendar | null;
   onSaveAvailability: (calendar: AvailabilityCalendar | null) => void;
+  runDays: Weekday[] | null;
+  onSaveRunDays: (runDays: Weekday[], plan: TrainingPlan) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
   /** The earned block Build is currently holding, identified by its run log. */
   placingRunLogId: string | null;
@@ -45,6 +48,8 @@ export function AppShell({
   onResetPlan,
   availability,
   onSaveAvailability,
+  runDays,
+  onSaveRunDays,
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
@@ -95,6 +100,8 @@ export function AppShell({
             onResetPlan={onResetPlan}
             availability={availability}
             onSaveAvailability={onSaveAvailability}
+            runDays={runDays}
+            onSaveRunDays={onSaveRunDays}
           />
         )}
       </main>

@@ -13,6 +13,11 @@ import {
   selectPlanWeekViewModel,
 } from "../../domain/plan";
 import {
+  applyRunDays,
+  planRunDayChange,
+  type Weekday,
+} from "../../domain/runDays";
+import {
   addPlannedRun,
   changeToRest,
   editPlannedRun,
@@ -36,6 +41,7 @@ import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
 import { EditWorkoutSheet } from "./EditWorkoutSheet";
 import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
 import { ResetPlanDialog } from "./ResetPlanDialog";
+import { RunDaysSheet } from "./RunDaysSheet";
 import { WeekHeader } from "./WeekHeader";
 import { WeekNavigator } from "./WeekNavigator";
 import { WorkoutRow } from "./WorkoutRow";
@@ -58,6 +64,10 @@ interface PlanScreenProps {
   /** The imported calendar of days the user cannot run. */
   availability?: AvailabilityCalendar | null;
   onSaveAvailability?: (calendar: AvailabilityCalendar | null) => void;
+  /** The weekdays the runner will run on, or null while they have not said. */
+  runDays?: Weekday[] | null;
+  /** Records the preference and the plan reshaped to match, together. */
+  onSaveRunDays?: (runDays: Weekday[], plan: TrainingPlan) => void;
   /** Overridable so tests do not depend on the network. */
   fetchIcs?: (url: string) => Promise<string>;
 }
@@ -71,6 +81,7 @@ type Secondary =
   | { kind: "run-entry" | "edit-workout" | "move-workout"; workoutId: string }
   | { kind: "reset" }
   | { kind: "availability" }
+  | { kind: "run-days" }
   | { kind: "conflicts" };
 
 /**
@@ -93,6 +104,8 @@ export function PlanScreen({
   onResetPlan = () => undefined,
   availability = null,
   onSaveAvailability = () => undefined,
+  runDays = null,
+  onSaveRunDays = () => undefined,
   fetchIcs,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
@@ -267,6 +280,13 @@ export function PlanScreen({
         <button
           type="button"
           className="plan-screen__reset"
+          onClick={() => openSecondary({ kind: "run-days" })}
+        >
+          Run Days
+        </button>
+        <button
+          type="button"
+          className="plan-screen__reset"
           onClick={() => openSecondary({ kind: "availability" })}
         >
           Availability
@@ -403,6 +423,36 @@ export function PlanScreen({
               calendar
                 ? `Calendar saved. ${blockedDates(calendar).size} blocked days.`
                 : "Calendar removed.",
+            );
+            setSecondaryOpen(false);
+          }}
+        />
+      )}
+
+      {secondary?.kind === "run-days" && (
+        <RunDaysSheet
+          key={secondaryVisit}
+          plan={plan}
+          runDays={runDays}
+          runLogs={runLogs}
+          today={today}
+          blocked={new Set(blocked.keys())}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onApply={(days) => {
+            const reshaped = applyRunDays(plan, days, {
+              today,
+              blocked: new Set(blocked.keys()),
+              runLogs,
+            });
+            const moved = planRunDayChange(plan, days, {
+              today,
+              blocked: new Set(blocked.keys()),
+              runLogs,
+            }).moves.length;
+            onSaveRunDays(days, reshaped);
+            setAnnouncement(
+              `Run days saved. ${moved} ${moved === 1 ? "run" : "runs"} moved.`,
             );
             setSecondaryOpen(false);
           }}
