@@ -2,37 +2,60 @@
 
 ## Current state
 
-**UI-5.5 Core Loop Revision and UI-6 Plan adjustment are implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, dev controls are gone from production builds, and the schedule itself is editable.
+**UI-5.5 Core Loop Revision, UI-6 Plan adjustment, and UI-7 Polish and release are implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, and the schedule itself is editable. UI-7 gave the app a face, made unreadable storage a state of the app rather than a caught exception, made it installable, and deleted the dev panel outright.
 
 An **availability calendar** was added after UI-6 at the product owner's request. It is not in any phase document, and it contradicts locked decisions that are still on the books — see the section below. Reading a subscription link needs one server-side function, which is the first thing in this repository that is not a static asset.
-
-The next approved implementation phase is **UI-7 — Polish and release**.
 
 ## Current app shell
 
 `src/app/App.tsx`
 
-- Loads one versioned local `AppState` (schema version 5).
+- Loads one versioned local `AppState` (schema version 8) into a `BootState` that is either an app or the reason there is not one.
 - Owns the active Today / Build / Plan tab.
-- Owns the block-placement handoff, now keyed by run-log id rather than workout id.
+- Owns the block-placement handoff, keyed by run-log id rather than workout id.
 - Saves every activity through `appStateRepository.saveRunLog`, passing the workout when there is one and `null` when there is not.
-- Renders `DevDataPanel` only under `import.meta.env.DEV`, per D-025.
+- Subscribes to failed writes and hands the shell a banner when one happens.
+
+`src/app/AppErrorBoundary.tsx` wraps the app in `main.tsx`. A render fault used to be a white screen with everything still safely in storage and no way to learn that; it now says what happened, in words that can be repeated, and offers a reload.
 
 `src/app/AppShell.tsx`
 
 - Renders the three primary screens and passes plan, run logs, placements, and the save/place callbacks.
 - Bottom navigation remains Today / Build / Plan only.
+- The header is a small brand lockup — `StackMark` plus the wordmark — and nothing else. It used to be a 34px `STACK` over a tagline, repeated above every screen.
+
+## The look, after UI-7
+
+Three things made the app read as generic, and all three were structural rather than decorative.
+
+**The screens led with their own names.** A large wordmark and tagline on every screen, then `Build`, then `Plan` — the app introducing itself in the space where it should be telling the runner something. The tab that got you here already said which screen it was. Each screen now leads with what it is *about*:
+
+- Today: the date (`Thursday September 10`) as the `h1`, with the race line under it. `RaceContext` is folded into `src/features/today/TodayHeading.tsx`.
+- Build: the miles the tower is made of, as a hero number, with runs and streak beside it. `BuildMetrics` is replaced by `src/features/build/BuildHeading.tsx`.
+- Plan: the week. `WeekNavigator` and `WeekHeader` — a stepper card above a description card — are one `src/features/plan/WeekLead.tsx`, which is also the screen's heading.
+
+Every screen has exactly one `h1`, and it is content rather than a label.
+
+**Everything was a card.** Five unrelated bands of content carried identical weight, so nothing was the thing to look at first. `src/components/ui/Section.tsx` is the quiet alternative: a hairline, an icon, a name, and the content. The card is kept for the one thing on a screen that can be acted on — the day's workout, and the completed-run summary that replaces it. This Week, Next, the build preview, `Blocks Ready` and the tower are all sections now.
+
+**Almost nothing carried an icon.** `src/components/shared/ActivityIcon.tsx` maps every workout type to one lucide icon — Moon for rest, Footprints for easy, Zap for intervals, Timer for simulation, Mountain for the long run, Flag for the race — used on the day's card, plan rows, the pending tray and Next. Section headers, the four plan settings at the bottom of Plan, and both empty states carry their own.
+
+`src/components/shared/StackMark.tsx` is three courses of a tower, narrowing as they climb, in the piece colours. It is the same geometry `scripts/generate-icons.mjs` renders, so the header mark and the home-screen icon are one mark rather than two that resemble each other.
+
+`src/components/ui/EmptyState.tsx` is the shared treatment for a screen with nothing on it yet: an icon, a reason, and what would put something there.
 
 ## Today — the daily dashboard
 
 `src/features/today/TodayScreen.tsx` composes, in the order D-020 asks for:
 
-1. `RaceContext` — the race reduced to one line (`OUC Half Marathon · 114 days`, or `Race day`). The large countdown card is deleted; `RaceSummaryCard` is gone.
-2. The day's workout: `TodayWorkoutCard` for a run or rest day, `CompletedRunSummary` once it is logged, plus the before-plan and after-race states.
+1. `TodayHeading` — the date as the screen's heading, and under it the race reduced to one line (`OUC Half Marathon · 114 days`, or `Race day`). The large countdown card was deleted in UI-5.5 along with `RaceSummaryCard`; UI-7 folded the surviving `RaceContext` line into this heading.
+2. The day's workout: `TodayWorkoutCard` for a run or rest day, `CompletedRunSummary` once it is logged, plus the before-plan and after-race states, both of which now use `EmptyState` inside the day's card.
 3. `ThisWeekStrip` — scheduled completion for the current week, the thin progress bar, seven day markers with per-status treatments, and a `View Plan` link. Extra runs appear as a separate `+N extra` chip and never move the scheduled count.
 4. `NextWorkoutCard` — the next scheduled non-rest workout, omitted when the race is the last thing left.
-5. A persistent `+ Log Run` secondary action, available on any day, that opens run entry in extra-run mode.
+5. A persistent `+ Log Run` secondary action, available on any day, that opens run entry in extra-run mode. It sits in its own band, because directly under `Next` it read as an action belonging to it.
 6. `BuildPreview` — blocks built, blocks waiting, a crop of the newest bricks, and `View Build`.
+
+Items 3, 4 and 6 are sections rather than cards; only the day's workout is a card.
 
 The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagree about the week. The `Log First Run` affordance is gone: `+ Log Run` covers logging before the plan starts, as an extra run.
 
@@ -71,8 +94,9 @@ The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagr
 
 `src/features/build/`:
 
-- `BuildMetrics`, `PendingBlocksTray`, `BuiltStructure`, `PlacedBlock`, `LandingSlot`, and `PlacementBar` are kept. **The legend is deleted**: five colours are learnable from the blocks and their detail sheets, and the tower is what the screen is for.
+- `PendingBlocksTray`, `BuiltStructure`, `PlacedBlock`, `LandingSlot`, and `PlacementBar` are kept. **The legend is deleted**: five colours are learnable from the blocks and their detail sheets, and the tower is what the screen is for. `BuildMetrics` was replaced in UI-7 by `BuildHeading`.
 - The projected-height shaft, capstone, summit readout, phase gauge, week mortar lines, and the `N of about M courses` scale readout are removed. `BuiltStructure` now shows the tower, the ground, a plain sky, and a block count.
+- With nothing placed, `BuiltStructure` draws an `EmptyState` rather than an empty grid over a ground line, which read as a rendering fault instead of a beginning.
 - `BlockDetailSheet` replaces the workout-detail sheet on Build: it opens the **run** behind a block (date, distance, duration, effort, notes), shows the scheduled workout as context when there is one, says "Extra run" when there is not, and offers `Move Block` on the newest placement only.
 - The pending tray and the tower read type, colour, and date from the activity, so an extra run behaves exactly like a scheduled one and is tagged `Extra` in the tray.
 
@@ -103,7 +127,7 @@ The last two are how an **extra run** gets corrected or removed: Plan lists sche
 
 ## Plan — the editable schedule
 
-Review is as UI-5 delivered it: current week by default, all 18 weeks reachable, boundaries that stop, the `Current Week` shortcut, seven dated rows, and logging or editing a run from the detail sheet. `PlanWeekViewModel` gained `extraRuns` for Today's week strip.
+Review is as UI-5 delivered it: current week by default, all 18 weeks reachable, boundaries that stop, the `Current Week` shortcut, seven dated rows, and logging or editing a run from the detail sheet. `PlanWeekViewModel` gained `extraRuns` for Today's week strip. UI-7 merged the stepper and the week description into one `WeekLead`, which is also the screen's `h1`, and gave the four settings at the bottom — `Race`, `Run Days`, `Availability`, `Reset Plan` — icons and a two-column grid, because four identical text buttons in a row were tellable apart only by reading them.
 
 UI-6 makes the schedule editable. Two kinds of change live on this screen and stay separate: logging or editing a run records what *happened*; editing, moving, or clearing a workout changes what the plan *asks for*. Nothing does both at once, and nothing recommends a change — the plan only moves when the user moves it.
 
@@ -251,13 +275,56 @@ There is no pace model, no ranking of sessions, and nothing that chooses *what* 
 - `placeBlock` validates against the run log's own footprint.
 - `migrateAppState` upgrades versions 1–4 to 5: every run keeps its values and timestamps, its activity type comes from the workout it satisfied (falling back to Easy if that workout is gone), placement identity moves to the run log, geometry is re-derived from the activity, and the tower is replayed through the packer because the grid narrowed. **Migration never invents an extra run**, and a placement whose run log is missing is dropped rather than orphaned.
 
+## When storage cannot be read
+
+Everything STACK knows lives in one browser, which makes unreadable storage the
+one failure that can cost a season of training. The old behaviour was to catch
+it, warn the console, and hand back a fresh state — a recoverable problem
+turned into an unrecoverable one, silently, and then overwritten on the first
+save.
+
+`loadAppState` now distinguishes three failures and never destroys anything:
+
+- **Corrupt** — the stored text is not JSON, *or* it is JSON that no migration recognises. The second case used to escape the `try` altogether and take the whole app down with it. Either way the raw value is copied to a timestamped backup key before anything else happens, and a `StorageLoadError` carrying that key is thrown.
+- **Unreadable** — the browser refused local storage outright (a private window, or site data switched off). There is nothing to keep and nothing to repair, only a session that will not survive being closed.
+- **Absent** — no state yet, which is not a failure: the seed plan.
+
+`src/features/recovery/StorageRecoveryScreen.tsx` is what the app *is* while a load has failed. It names the backup key, offers to download the damaged copy as a file, puts `Start Fresh` behind a second deliberate press with what will be lost on screen, and offers `Try Again`. Nothing in storage is touched until the user chooses. Unreadable storage gets different words and one action — `Continue Without Saving` — because none of the others would do anything.
+
+A **failed write** is the other invisible loss: the screen already shows the run, and it is gone at the next cold start. `saveAppState` no longer throws into the render. On a quota error it drops the oldest backup and retries once — those backups are the largest thing the app owns that nothing reads on a normal run — and otherwise reports through `onStorageWriteError`, which the shell turns into `StorageWriteBanner`. One listener rather than a threaded result: every mutation in the repository ends in `saveAppState`, so this costs nothing at fifteen call sites.
+
+## Installability
+
+`public/` is copied verbatim into the build:
+
+- `manifest.webmanifest` — standalone display, portrait, `#071018` on both colours, and three icons (192, 512, and a 512 maskable with everything inside the middle half).
+- `icon-192.png`, `icon-512.png` — rounded, transparent outside.
+- `apple-touch-icon.png` — 180px and square, because iOS applies its own mask and pre-rounded corners would show as dark ones.
+- `icon-maskable-512.png`, `favicon.svg`.
+
+`scripts/generate-icons.mjs` draws all of them. There is no image tooling in this repository and no reason to add a dependency for four flat shapes, so it rasterises rounded rectangles at 4× and encodes the PNG with Node's own zlib. The PNGs are committed; a normal build never runs it.
+
+`index.html` carries the description, `theme-color`, the Apple web-app meta, `viewport-fit=cover`, and Open Graph tags. The shell pays the safe-area insets back in CSS, so the header clears the notch and the bottom navigation clears the home indicator.
+
+**There is no service worker.** UI-7 allows one only if offline behaviour is explicitly tested, and it is not, so there is none: an untested service worker is a cache that serves a stale app and cannot be talked out of it.
+
+`src/app/installability.test.ts` reads `index.html` and the manifest through Vite's `?raw`, and asserts they agree with each other and with the files in `public/` — and that `DevDataPanel` has left the source tree rather than merely being gated.
+
+## Accessibility, after the final pass
+
+- Exactly one `h1` per screen, and it is the content the screen leads with. No level is skipped.
+- `--text-subtle` was raised from `#6f7a84` to `#848e98`. It carries small text — inactive tab labels, row status, uppercase metric labels — and at the old value it measured 3.7:1 on `--surface-strong`, under the 4.5:1 WCAG AA asks of body text. It is now 4.9:1 at worst and 5.8:1 on the page.
+- Every interactive control on every screen and in every sheet measures at least 44px tall at 320 and 390px, checked by driving a production build rather than by reading the CSS.
+- Icons are decorative throughout: every one sits beside text that carries the same meaning, and none is the only way to know something.
+- Motion, focus rings, and the reduced-motion escape hatch are unchanged from UI-5.5.
+
 ## Dev tools
 
-`src/dev/DevDataPanel.tsx` is rendered only under `import.meta.env.DEV`. Its styles moved out of the design system and into the component itself, because a CSS import is an unconditional side effect and would otherwise ship rules for a component that never renders. The production bundle contains no trace of it — verified by grep against `dist/` and by a browser check that the DEV toggle is absent from a production preview. `src/dev/devPanelGate.test.ts` guards the gate itself.
+There are none. `src/dev/` is deleted, along with the gate test that guarded it: gating a panel is a thing you do while it is still useful, and UI-7 is where it stops being.
 
 ## Tests
 
-274 tests pass. New or substantially rewritten coverage:
+510 tests pass. New or substantially rewritten coverage:
 
 - `src/storage/migrations.test.ts` — the 4 → 5 upgrade: values and timestamps preserved, activity type from the workout, no invented extra runs, identity moved to the run log, repack into eight columns, pace-derived height discarded, orphaned placements dropped, and versions 1–3 still upgrading.
 - `src/domain/footprint.test.ts` — every width band and type height, and proof that pace and effort do not move geometry.
@@ -272,6 +339,12 @@ There is no pace model, no ranking of sessions, and nothing that chooses *what* 
 - `deleteRunLog` — removal, the block leaving the tower with it, the tower re-settling after a block is pulled from underneath, and a no-op for an unknown id. Today and Build cover the confirmation, the decline, and the absence of delete on an unsaved entry.
 - Per-cell face culling, including an edge covered over only part of its length, and the openings a bridging block spans.
 
+Added by UI-7:
+
+- `src/storage/appStateRepository.test.ts` — a stored shape no migration recognises being backed up rather than thrown into the render, storage the browser refuses to open at all, a write failure reported instead of raised, and the oldest backup dropped on a full quota so the retry succeeds.
+- `src/features/recovery/StorageRecovery.test.tsx` — the recovery screen end to end through the real `App`: the damaged value untouched and named on screen, `Start Fresh` refusing to act on one press, the seed plan afterwards with the backup still in storage, the damaged copy downloaded as a file, unreadable storage offering only `Continue Without Saving`, and a failed write raising a dismissible alert.
+- `src/app/installability.test.ts` — document metadata, the manifest, the icons it names, the icons it does not, and the absence of `DevDataPanel` from the source tree.
+
 ## Known limitations
 
 1. A moved workout swaps days with whatever was on the destination. That is the non-destructive reading of "do not silently merge workouts", and the sheet says so before committing, but it is a choice: the alternative — refusing the move, or pushing the other workout to the next free day — would behave differently on a full week.
@@ -279,8 +352,10 @@ There is no pace model, no ranking of sessions, and nothing that chooses *what* 
 3. The activity type is editable for a scheduled run as well as an extra one. The UX spec says "prefilled from scheduled workout otherwise", and one editable field for both modes was the smaller implementation; a scheduled run that was actually intervals therefore earns an intervals block.
 4. `Log Run` from Today always creates a new activity; extra runs are edited and deleted from Build, which is the only screen that lists them. There is still no chronological list of activities.
 5. The tower's stage keeps a fixed sky above the blocks, so a two-block tower sits under some empty space. That is scenery, not a projection.
-6. `DevDataPanel` remains in the repository as dev-only scaffolding; UI-7 owns deleting it.
-7. The run form's Date field is a native `input[type="date"]`. Its intrinsic width is wider than a 320px sheet on iOS, which used to push the sheet sideways; it is now pinned with `min-width: 0`, `max-width: 100%`, and `-webkit-appearance: none`, with `overflow-x: hidden` on the sheet body as a backstop. There is no iOS Safari in this environment, so that combination is reasoned rather than measured here — worth a look on the phone.
+6. The run form's Date field is a native `input[type="date"]`. Its intrinsic width is wider than a 320px sheet on iOS, which used to push the sheet sideways; it is now pinned with `min-width: 0`, `max-width: 100%`, and `-webkit-appearance: none`, with `overflow-x: hidden` on the sheet body as a backstop. There is no iOS Safari in this environment, so that combination is reasoned rather than measured here — worth a look on the phone.
+7. There is no way to export or import the stored state. Recovery can save a *damaged* copy off the device, but a healthy one cannot be moved to another browser or another domain, and local storage belongs to an origin. Changing the production domain therefore strands the training behind it.
+8. Nothing works offline, deliberately: no service worker was added because none was tested. Opening the installed app without a network shows the browser's own failure page.
+9. `apple-mobile-web-app-status-bar-style: black-translucent` and `viewport-fit=cover` are paid back with `env(safe-area-inset-*)` in the shell. That is reasoned from the spec and checked in Chromium; it is one of the things `docs/RELEASE_CHECKLIST.md` asks to be looked at on the actual phone.
 
 ## Update rule
 

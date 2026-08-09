@@ -44,6 +44,22 @@ STACK is a mobile-first running plan app that turns completed workouts into a gr
 
 React's official documentation recommends a build tool such as Vite for a from-scratch app, and Lucide provides individual tree-shakable React icon components. See `docs/TECHNICAL_REFERENCES.md`.
 
+## Installing it
+
+STACK is installable to a home screen and runs without browser chrome, but it
+is **not** offline-capable: there is no service worker, by decision, because
+nothing has been tested against one. Open the production URL and, on iOS,
+**Share → Add to Home Screen**; Android offers its own install prompt. The
+browser tab and the installed app share the same stored training.
+
+Everything lives in one browser's local storage, under one key that has not
+changed since the first release. Deploying a new version to the same domain
+costs nothing; opening a different domain shows an empty app, because storage
+belongs to an origin. See `docs/DEPLOYMENT.md`.
+
+If that stored state is ever unreadable, STACK says so and offers to save the
+damaged copy off the device rather than quietly starting over.
+
 ## Repository map
 
 ```text
@@ -51,14 +67,15 @@ React's official documentation recommends a build tool such as Vite for a from-s
 ├─ AGENTS.md
 ├─ START_HERE.md
 ├─ README.md
-├─ api/
+├─ api/            one serverless function: the calendar reader
 ├─ docs/
+├─ public/         manifest and app icons, copied verbatim into the build
+├─ scripts/        generate-icons.mjs, which draws those icons
 ├─ seed/
+├─ src/
 ├─ reference/
 └─ .github/
 ```
-
-The application source tree is created during Phase 0.
 
 ## Build workflow
 
@@ -83,3 +100,6 @@ npm run check
 ```
 
 The `check` script must run lint, tests, and a production build.
+
+A release additionally goes through `docs/RELEASE_CHECKLIST.md` on the deployed
+URL, on the phone the app is for.

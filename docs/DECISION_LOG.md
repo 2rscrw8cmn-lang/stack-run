@@ -216,6 +216,41 @@ If retained for local development, gate it with:
 import.meta.env.DEV
 ```
 
+## D-026 — A screen leads with its content, not its name
+
+**Decision:** No screen carries a title that repeats the tab that opened it. Each screen's `h1` is the thing the screen is about — the date on Today, the miles built on Build, the week on Plan — and there is exactly one per screen.
+
+The app wordmark is a lockup at reading size beside the mark, not a headline above every screen.
+
+**Reason:** The wordmark, the tagline and the screen titles together spent the top of every screen telling the user which app they had opened and which tab they had tapped, both of which they knew. It reads as a template rather than as a product.
+
+## D-027 — One card per screen; everything else is a section
+
+**Decision:** A card is reserved for the one thing on a screen the user can act on. Every other band of content is a section: a hairline, an icon, a name.
+
+**Reason:** Equal weight for five unrelated things is the same as no hierarchy at all.
+
+**Also:** every workout type, every section, and every empty state carries an icon, and every icon is decorative — none is the only way to know something.
+
+## D-028 — Unreadable storage is a state of the app, never a silent reset
+
+**Decision:** When stored state cannot be read, STACK shows a recovery screen and changes nothing until the user chooses.
+
+- The unreadable value is copied to a timestamped backup key before anything else happens, and the original is left where it is.
+- The backup key is shown, and the damaged copy can be downloaded.
+- `Start Fresh` takes two deliberate presses, with what will be lost on screen.
+- A shape no migration recognises is treated exactly like unparseable text, not as an exception that reaches the render.
+- Storage the browser refuses to open at all is a different message and one action: carry on without saving.
+- A failed **write** raises a visible banner. It is never silent.
+
+**Reason:** Everything the app knows lives in one browser, so this is the one failure that can cost a season of training. Catching it and handing back a fresh seed plan turns a recoverable problem into an unrecoverable one, and does it without telling anybody.
+
+## D-029 — No service worker until offline behaviour is tested
+
+**Decision:** STACK is installable but not offline-capable. No service worker ships.
+
+**Reason:** An untested service worker is a cache that serves a stale app and cannot be talked out of it. Installability is worth having on its own; offline is a feature with its own testing, and nothing has been done to earn it.
+
 ## Active implementation order
 
-Implement D-018 through D-025 in **UI-5.5 — Core Loop Revision** before beginning UI-6 Plan Adjustment.
+D-018 through D-025 were implemented in **UI-5.5 — Core Loop Revision** and **UI-6 — Plan Adjustment**. D-026 through D-029 were implemented in **UI-7 — Polish and release**.

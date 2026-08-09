@@ -53,8 +53,26 @@ Use `currentColor`.
 | Solid effort | `Meh` |
 | Great effort | `Smile` |
 | Warning | `TriangleAlert` |
+| Failed write | `CloudAlert` |
+| Download | `Download` |
+| Rest activity | `Moon` |
+| Easy activity | `Footprints` |
+| Intervals activity | `Zap` |
+| Simulation activity | `Timer` |
+| Long run activity | `Mountain` |
+| This Week section | `CalendarRange` |
+| Next section | `CalendarClock` |
+| Build section, empty build | `Blocks` |
+| Blocks Ready section | `Boxes` |
+| Run streak | `Flame` |
+| Run days | `CalendarCheck` |
+| Plan starts soon | `CalendarPlus` |
+| Race complete | `PartyPopper` |
 
 Do not use a hard-hat icon in the core interface.
+
+Activity icons live in one place, `src/components/shared/ActivityIcon.tsx`, so
+a workout type cannot pick up two different icons on two different screens.
 
 ## Shared UI primitives
 
@@ -84,7 +102,17 @@ Requirements:
 
 ### `Card`
 
-One neutral surface. No variant explosion.
+One neutral surface. No variant explosion. Used for the **one** thing on a
+screen the user can act on; everything else is a `Section`.
+
+### `Section`
+
+A titled band of content: icon, uppercase title, optional right-aligned value,
+and the content under a hairline rule.
+
+### `EmptyState`
+
+Icon, title, and a sentence saying what would put something here.
 
 ### `ProgressBar`
 
@@ -129,36 +157,57 @@ No badge counts.
 
 ## Feature components
 
+This list is what the app actually renders, after UI-5.5, UI-6 and UI-7.
+
+### Shell
+
+- `StackMark` — the brand mark, and the geometry the app icons are drawn from
+- `BottomNav`
+
 ### Today
 
-- `RaceSummaryCard`
+- `TodayHeading` — the date, and the race line under it
 - `TodayWorkoutCard`
 - `CompletedRunSummary`
+- `ThisWeekStrip`
+- `NextWorkoutCard`
+- `BuildPreview`
 
 ### Run entry
 
 - `CompleteRunSheet`
-- `DurationInput`
-- `EffortPicker`
 
 ### Build
 
-- `BuildStructure`
-- `BuildWeekRow`
-- `StackBlock`
-- `BuildLegend`
-- `BuildMetrics`
-- `WorkoutDetailSheet`
+- `BuildHeading` — the miles, and the runs and streak beside them
+- `PendingBlocksTray`
+- `BuiltStructure`
+- `PlacedBlock`
+- `LandingSlot`
+- `PlacementBar`
+- `BlockDetailSheet`
 
 ### Plan
 
-- `WeekHeader`
-- `WeekNavigator`
+- `WeekLead` — the week, its phase and dates, its progress, and the stepper
 - `WorkoutRow`
 - `WorkoutDetailSheet`
 - `EditWorkoutSheet`
 - `MoveWorkoutSheet`
+- `RaceSetupSheet`
+- `RunDaysSheet`
+- `AvailabilitySheet`
+- `ConflictReviewSheet`
 - `ResetPlanDialog`
+
+### Recovery
+
+- `StorageRecoveryScreen`
+- `StorageWriteBanner`
+- `AppErrorBoundary`
+
+Deleted along the way: `RaceSummaryCard`, `BuildLegend`, `BuildWeekRow`,
+`BuildMetrics`, `WeekHeader`, `WeekNavigator`, `RaceContext`, `DevDataPanel`.
 
 ## Stack block API
 

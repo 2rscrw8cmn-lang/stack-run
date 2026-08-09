@@ -108,7 +108,7 @@ export function BuiltStructure({
   if (blocks.length === 0 && !placing) {
     return (
       <Section
-        className="build-site build-site--empty"
+        className="build-site"
         icon={<Blocks size={15} strokeWidth={2} />}
         title="Your Build"
       >
