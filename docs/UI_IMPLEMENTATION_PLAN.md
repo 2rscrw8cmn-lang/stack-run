@@ -1,217 +1,295 @@
 # UI Implementation Plan
 
-## UI-1 — App shell and design system
+## Implemented foundation
 
-Deliver:
+UI-0 through UI-7 are implemented. Do not re-run old phase prompts as if they are pending.
 
-- Global dark theme
-- Responsive app shell
-- STACK wordmark
-- Three-item bottom navigation
-- CSS tokens
-- Reusable Button, Card, IconButton, ProgressBar, and Sheet primitives
-- Placeholder screens for Today, Build, and Plan
+The current product already has:
 
-Exit gate:
+- Today / Build / Plan shell;
+- scheduled and extra actual runs;
+- manual run entry;
+- 8-column interactive Build tower;
+- editable generated race plan;
+- run-day preferences;
+- availability-calendar proposals;
+- installability/storage recovery/UI-7 polish.
 
-- Navigation works.
-- Layout works at 320 px and desktop.
-- Lucide icons are used.
-- No horizontal overflow.
-- `npm run check` passes.
+Connected Training begins at UI-8.
 
-## UI-2 — Today screen
+Primary references:
 
-Original deliverable:
+- `docs/CONNECTED_TRAINING.md`
+- `docs/INTERVALS_INTEGRATION.md`
+- `docs/CONNECTED_DATA_FIELDS.md`
 
-- Race summary
-- Current-date workout
-- Run/rest/completed states
-- Mark Complete entry point
+## UI-8 — Connected Data Foundation
 
-This phase is implemented but will be revised by UI-5.5.
+### Product outcome
 
-## UI-3 — Complete Run flow
+The user can securely sync recent Intervals.icu running activities, confirm one as the actual run for a planned workout or an extra run, and avoid retyping date/distance/duration.
 
-Original deliverable:
+### Server deliverables
 
-- Distance
-- Duration
-- Effort
-- Notes
-- Validation
-- Save/update
-- Local persistence
+- Add `api/intervals.ts`.
+- GET-only, read-only proxy.
+- Whitelist resources: status, activities, single activity detail, wellness (wellness may remain unused in UI-8).
+- Authenticate upstream with server-only `INTERVALS_API_KEY` using Basic auth `API_KEY:<key>`.
+- Require local `X-Stack-Sync-Token` matching server `STACK_SYNC_TOKEN`.
+- Never accept arbitrary upstream URL/path/method.
+- Validate bounded date ranges/activity ids.
+- `Cache-Control: no-store`.
+- Safe errors for missing config, auth, rate limit, upstream failure.
+- No body/credential logging.
+- Tests use injected/mocked environment/fetch, never real secrets.
 
-This phase is implemented but the form gains Date and extra-run Type in UI-5.5.
+### Client connection deliverables
 
-## UI-4 — Build screen
+- Dedicated local connection-token repository outside AppState.
+- Secondary `Run Data` connection sheet/surface.
+- Disconnected: enter only STACK sync token, test connection.
+- Connected: status, last successful sync, `Sync Now`, forget connection, clear ignored ids.
+- Do not ask for/show Intervals API key in client UI.
 
-Original Build is implemented through D-017.
+### Schema/data deliverables
 
-Useful infrastructure to preserve:
+- AppState schema 8 → 9 migration.
+- Existing runs become `source: manual` with null external data.
+- Add Intervals sync state/ignored ids.
+- Add normalized imported source + optional metrics to RunLog.
+- Preserve every existing run id/link/block/plan/availability/run-day/race value.
+- Add external-id selectors/dedupe helpers.
 
-- Earned versus placed blocks
-- Continuous stacking
-- Placement persistence
-- Valid landing-column calculation
-- Auto Place
-- Workout/block detail
-- CSS tower rendering
+### Sync deliverables
 
-The Build product behavior is revised by UI-5.5.
+- Activity-list fetch/normalizer.
+- First connect: bounded 90-day backfill.
+- Normal sync: rolling 14-day lookback.
+- Running-only allowlist begins from verified real HealthFit activity type.
+- Repeated external ids suppressed.
+- Ignored ids suppressed.
+- No continuous polling.
+- Manual `Sync Now`.
 
-## UI-5 — Plan screen
+### Field discovery deliverable
 
-Implemented in PR #8.
+Using the real June 10 HealthFit-originated activity through a deployed preview/production proxy, update `docs/CONNECTED_DATA_FIELDS.md` with:
 
-Deliver:
+- exact source run type;
+- distance unit;
+- moving/elapsed time behavior;
+- available HR/cadence/elevation/load/zone fields.
 
-- Current week selection
-- Previous/next navigation
-- Week phase/date/progress
-- Seven-day list
-- Run and rest row states
-- Workout detail sheet
-- Log or edit actual runs from detail
+Do not commit the raw personal response.
 
-Exit gate:
+### Matching/import deliverables
 
-- All 18 weeks are reachable.
-- Current week opens by default.
-- Completed status matches run logs.
-- No horizontal table layout on mobile.
+For an unimported remote run:
 
-## UI-5.5 — Core Loop Revision
+- suggest unmatched scheduled workouts within ±2 days;
+- prioritize closest date then safe distance fit;
+- user confirms proposed plan link or Extra Run;
+- scheduled import defaults STACK type from planned workout;
+- extra import asks/confirms STACK type, default Easy;
+- ask effort + optional notes;
+- save normalized objective fields/source/metrics;
+- earn normal Build block.
 
-**Implement this phase before UI-6.**
+For a likely remote match to an existing manual RunLog:
 
-Source of truth:
+- offer `Attach synced data`;
+- preserve local run id, workout link, effort, notes and placement identity;
+- clearly confirm objective differences;
+- do not create duplicate.
 
-- `docs/CORE_LOOP_REVISION.md`
-- `docs/PRODUCT_AND_SCOPE.md`
-- `docs/UX_PRODUCT_SPEC.md`
-- `docs/DATA_AND_STORAGE.md`
+### UI-8 boundaries
 
-### Deliver — activity model
+Do not add:
 
-- Schema version 5 migration
-- Scheduled and extra run support
-- Actual editable run date
-- Activity type for extra runs
-- Preserve existing run data
-- Placements identify actual runs rather than only scheduled workouts
+- wellness/recovery UI;
+- training trends;
+- complex HR charts;
+- upstream writes;
+- OAuth/webhooks;
+- fourth persistent tab;
+- FIT parsing;
+- live workout tracking.
 
-### Deliver — Today
+### UI-8 exit gate
 
-- Compact race context
-- Today's workout
-- This Week scheduled-progress strip
-- Next scheduled run
-- Persistent `+ Log Run`
-- Small Build preview/link
-- Completed state with earned block
+- `npm run check` passes with no secrets.
+- Schema 8 state migrates losslessly except additive fields.
+- Proxy rejects absent/wrong sync token.
+- API key does not appear in built JS, browser localStorage or browser request payloads.
+- June 10 activity appears in real field-discovery test.
+- Imported run can become planned or extra.
+- Same external id is never imported twice.
+- Existing manual run can be enriched without changing its id/block link.
+- Manual logging still works disconnected.
+- Works at 320/390/768/1280 px.
+- Real iPhone preview/production smoke test passes.
 
-### Deliver — Build simplification
+## UI-9 — Connected Run Detail
 
-- Continuous 8-column tower
-- Width from actual distance only
-- Height from activity type only
-- Remove pace/median geometry logic
-- Extra runs earn blocks
-- Remove/de-emphasize projected tower height, phase gauge, mortar/course engineering UI
-- Keep `Blocks Ready`
-- Keep deterministic valid landing columns
-- Keep tap/left/right placement controls
-- Allow optional pointer/touch horizontal drag that snaps to the same valid candidates
-- Keep `Drop` to commit and `Auto Place` as secondary
-- Preserve keyboard and reduced-motion alternatives
+### Product outcome
 
-### Deliver — streak correction
+A synced run contains enough useful detail to understand the session without opening another app for basic facts.
 
-- Today's unfinished workout does not break an existing streak until the date passes
-- Extra runs do not affect scheduled-run streak
+### Deliver
 
-### Deliver — dev cleanup
+- Primary distance/duration/pace/date.
+- Optional avg/max HR.
+- Optional cadence only after semantics verified.
+- Optional elevation gain.
+- Optional Intervals training load.
+- Optional HR-zone distribution when verified.
+- Quiet `Synced via Intervals.icu` source label.
+- On-demand `/activity/{id}?intervals=true` detail request.
+- Structured interval/lap rows only when source data is verified/understood.
+- Missing values omitted.
 
-- Production/deployed previews contain no DevDataPanel
-- If the panel remains for local work, render it only under `import.meta.env.DEV`
+### Data strategy
 
-### Do not include
-
-- Full Plan editing from UI-6
-- Adaptive coaching
-- Automatic rescheduling
-- New navigation tabs
-- Backend or integrations
-- Canvas/WebGL/physics
+Prefer on-demand detail over persisting large interval arrays. If persistence is needed for UX/offline-like behavior, define a bounded normalized schema addition before implementation rather than storing the raw response.
 
 ### Exit gate
 
-- Existing schema-4 data migrates without losing run data.
-- User can log an extra run from Today.
-- Extra run does not change scheduled weekly completion.
-- Extra run adds total miles and earns a block.
-- Run date is editable and persists.
-- Today communicates Today / This Week / Next without becoming a dashboard wall.
-- Build grid is 8 columns and block geometry is immediately explainable from distance/type.
-- Pace history no longer changes block size.
-- Placement works by tap and keyboard; optional drag snaps to identical candidates.
-- Today's uncompleted workout does not zero the streak prematurely.
-- DevDataPanel is absent from production builds.
-- Works at 320, 390, 768, and 1280 px.
+- Detail works with only minimum import fields.
+- Every optional-metric combination is safe.
+- No missing metric renders as zero.
+- Detail fetch occurs on demand.
+- Structured interval fixture is tested.
+- Accessible labels/text accompany HR-zone visuals.
 - `npm run check` passes.
 
-## UI-6 — Plan adjustment
+## UI-10 — Connected Today + Week
 
-Implement only after UI-5.5 is complete.
+### Product outcome
 
-Deliver:
+A freshly synced run naturally appears in the daily workflow and weekly progress reflects actual training without clutter.
 
-- Edit future planned workout type, target, title, and instructions
-- Move a planned workout anywhere inside the plan date range
-- Update destination week/phase when moving across week boundaries
-- Conflict confirmation when destination date already has a planned run
-- Convert a Rest day to `Add Planned Run`
-- Change a future planned run to Rest
-- Explicit confirmation before editing/moving a completed scheduled workout
-- Preserve linked actual run
-- Race remains fixed
-- Reset plan confirmation
+### Deliver
 
-Exit gate:
+- Quiet stale-aware sync on app start/focus.
+- Avoid duplicate focus syncs / request storms.
+- `Run found` actionable Today state for high-quality candidates.
+- `Confirm Match`, `Extra Run`, temporary dismiss/explicit ignore.
+- Sync state/retry that does not replace the planned-workout experience when nothing is found.
+- This Week actual miles.
+- This Week total run time.
+- Longest run.
+- Scheduled progress remains mathematically separate.
+- Build block reward immediately after imported-run confirmation.
 
-- Workout IDs stay stable through ordinary edits.
-- Cross-week moves update the correct week/phase.
-- Conflicts require confirmation.
-- Race cannot be deleted or casually moved.
-- Adding a planned run to Rest persists.
-- Changing a planned run to Rest persists.
-- Reset restores seed exactly.
-- Accidental destructive actions require confirmation.
+### Exit gate
+
+- Today still communicates the primary workout in under five seconds.
+- No continuous polling.
+- Late HealthFit upload in rolling lookback can still be discovered.
+- Sync failure never blocks manual log/edit/build/plan.
+- Extra runs do not alter scheduled completion/streak.
+- 320px Today remains visually restrained.
 - `npm run check` passes.
 
-## UI-7 — Polish, installability, and release
+## UI-11 — Training Trends
 
-Deliver:
+### Product outcome
 
-- App metadata
-- Web app manifest
-- App icons
-- Empty and recovery states
-- Corrupted-storage recovery
-- Final responsive pass
-- Final accessibility pass
-- Vercel deployment documentation
-- Production smoke test
+The user can answer `Am I building toward this race?` without a generic analytics dashboard.
 
-A service worker is optional. Do not add one unless offline behavior is explicitly tested.
+### Navigation
 
-Exit gate:
+Training Trends is a secondary view opened from Today/Plan. It is not a fourth persistent tab.
 
+### Deliver
+
+- Weekly actual mileage.
+- Long-run distance progression.
+- Scheduled consistency percentage.
+- Easy-run average pace trend.
+- Easy-run average-HR trend when coverage is adequate.
+- Clear date ranges/units.
+- Low-data states.
+- Text summaries paired with visuals.
+
+### Visualization discipline
+
+- Prefer simple CSS/inline SVG.
+- No chart library unless approved separately.
+- One visual idea at a time on phone.
+- No race prediction.
+- No generic CTL/ATL/form dashboard unless separately approved.
+
+### Exit gate
+
+- Calculation helpers unit-tested.
+- Trends use actual run date, not planned date.
+- Imported/manual source is irrelevant to trend math once a RunLog exists.
+- Easy HR trend omits runs without HR.
+- Low coverage is stated/omitted rather than extrapolated.
+- Accessible text summary exists for each chart.
 - `npm run check` passes.
-- Fresh install works.
-- Existing data survives deployment updates.
-- Production URL works on iPhone Safari and desktop browser.
-- No temporary product-review tooling remains.
-- No known P0/P1 defects.
+
+## UI-12 — Wellness / Recovery Context
+
+### Precondition
+
+Do not start until real Intervals wellness responses have been checked and `docs/CONNECTED_DATA_FIELDS.md` marks useful fields Verified.
+
+### Product outcome
+
+Today can show a small amount of recovery context from the user's own recent baseline without becoming a readiness engine.
+
+### Deliver when verified
+
+- Wellness-range fetch/normalizer.
+- Bounded local cache if persistence is useful; recommended ≤120 days.
+- HRV.
+- Resting HR.
+- Sleep duration.
+- Optional steps/weight only when verified and product-useful.
+- Recent-baseline helper, preferring 28 days.
+- Require enough observations before comparison language.
+- Raw-value-only state when history is insufficient.
+- Compact Recovery section on Today or secondary detail.
+
+### Language
+
+Allowed:
+
+- `near recent baseline`
+- `above recent baseline`
+- `below recent baseline`
+- numeric deltas
+
+Not allowed:
+
+- `readiness 72`
+- `bad recovery`
+- medical diagnosis
+- deterministic instruction to skip/change a workout
+
+### Exit gate
+
+- Missing wellness never blocks Today.
+- Baseline math tested with missing days/outliers.
+- No automatic plan mutation.
+- Wellness cache bounded.
+- No proprietary readiness score.
+- `npm run check` passes.
+
+## UI-13 — Optional Plan Export Investigation
+
+**Deferred. No implementation authorization.**
+
+Before coding any Intervals write route, produce a decision/proposal covering:
+
+- source of truth;
+- external planned-workout ids;
+- create/update/delete behavior;
+- conflict/duplicate behavior;
+- token/write-scope security;
+- retries/rollback;
+- what HealthFit actually receives from Intervals.
+
+Then request product-owner approval for a separate phase.
