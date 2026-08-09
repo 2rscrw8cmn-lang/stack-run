@@ -85,16 +85,35 @@ describe("blockedDates", () => {
     expect([...blockedDates(calendar).keys()]).toEqual(["2026-08-04"]);
   });
 
-  it("names every shift responsible for a day", () => {
+  it("names every shift responsible for a day, and spans their hours", () => {
     const calendar = calendarOf(
-      [shift("2026-08-04", "MICU Day"), shift("2026-08-04", "Clinic")],
+      [
+        shift("2026-08-04", "MICU Day"),
+        { date: "2026-08-04", label: "Clinic", startTime: "05:30", endTime: "21:00" },
+      ],
       { blockingLabels: ["MICU Day", "Clinic"] },
     );
 
-    expect(blockedDates(calendar).get("2026-08-04")).toEqual([
-      "MICU Day",
-      "Clinic",
-    ]);
+    expect(blockedDates(calendar).get("2026-08-04")).toEqual({
+      labels: ["MICU Day", "Clinic"],
+      startTime: "05:30",
+      endTime: "21:00",
+    });
+  });
+
+  it("lets an all-day shift swallow the hours of the others", () => {
+    const calendar = calendarOf(
+      [
+        shift("2026-08-04", "MICU Day"),
+        { date: "2026-08-04", label: "On call", startTime: null, endTime: null },
+      ],
+      { blockingLabels: ["MICU Day", "On call"] },
+    );
+
+    expect(blockedDates(calendar).get("2026-08-04")).toMatchObject({
+      startTime: null,
+      endTime: null,
+    });
   });
 
   it("blocks nothing while the calendar is switched off", () => {

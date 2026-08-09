@@ -83,11 +83,29 @@ export function shiftKinds(calendar: AvailabilityCalendar): ShiftKind[] {
   );
 }
 
-/** The dates the user cannot run, and the shifts responsible for each. */
+/**
+ * One blocked day: when it is blocked, and by what.
+ *
+ * The hours are what the plan shows. A shift's name belongs to the roster it
+ * came from — `CCM ORMC APP Day 1R 6a-6p [Turco St]` is precise, and it is
+ * also a wall of somebody else's shorthand on a screen whose job is to say
+ * what to run. The names stay in the availability sheet, where choosing them
+ * is the task.
+ */
+export interface BlockedDay {
+  /** The shift names responsible, kept for the sheet and for screen readers. */
+  labels: string[];
+  /** Earliest start across the day's blocking shifts; null means all day. */
+  startTime: string | null;
+  /** Latest end, or null when a shift is open-ended. */
+  endTime: string | null;
+}
+
+/** The dates the user cannot run, and when each is blocked. */
 export function blockedDates(
   calendar: AvailabilityCalendar | null,
-): Map<string, string[]> {
-  const blocked = new Map<string, string[]>();
+): Map<string, BlockedDay> {
+  const blocked = new Map<string, BlockedDay>();
   if (!calendar || !calendar.enabled) {
     return blocked;
   }
@@ -97,16 +115,57 @@ export function blockedDates(
     if (!blocking.has(shift.label)) {
       continue;
     }
-    const labels = blocked.get(shift.date);
-    if (labels) {
-      if (!labels.includes(shift.label)) {
-        labels.push(shift.label);
-      }
-    } else {
-      blocked.set(shift.date, [shift.label]);
+
+    const day = blocked.get(shift.date);
+    if (!day) {
+      blocked.set(shift.date, {
+        labels: [shift.label],
+        startTime: shift.startTime,
+        endTime: shift.startTime ? shift.endTime : null,
+      });
+      continue;
     }
+
+    if (!day.labels.includes(shift.label)) {
+      day.labels.push(shift.label);
+    }
+    // Two shifts on one day block the span that covers both, and an all-day
+    // shift swallows whatever else is there.
+    if (!shift.startTime || !day.startTime) {
+      day.startTime = null;
+      day.endTime = null;
+      continue;
+    }
+    day.startTime = shift.startTime < day.startTime ? shift.startTime : day.startTime;
+    day.endTime =
+      day.endTime && shift.endTime
+        ? (shift.endTime > day.endTime ? shift.endTime : day.endTime)
+        : null;
   }
   return blocked;
+}
+
+/** `06:00` as a person would say it: `6 AM`, `6:30 PM`, `12 AM`. */
+export function formatClockTime(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return time;
+  }
+  const suffix = hours < 12 ? "AM" : "PM";
+  const hour = hours % 12 === 0 ? 12 : hours % 12;
+  return minutes === 0
+    ? `${hour} ${suffix}`
+    : `${hour}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+/** What a blocked day says on the plan: the hours, not the roster's shorthand. */
+export function blockedPhrase(day: BlockedDay): string {
+  if (!day.startTime) {
+    return "Blocked all day";
+  }
+  return day.endTime
+    ? `Blocked ${formatClockTime(day.startTime)} – ${formatClockTime(day.endTime)}`
+    : `Blocked from ${formatClockTime(day.startTime)}`;
 }
 
 /**
@@ -123,7 +182,7 @@ export function blockedDates(
  */
 export function proposeDateFor(
   plan: TrainingPlan,
-  blocked: Map<string, string[]>,
+  blocked: Map<string, BlockedDay>,
   workout: Workout,
   today: string,
 ): string | null {
@@ -185,7 +244,7 @@ export function findAvailabilityConflicts(
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((workout) => ({
       workout,
-      labels: blocked.get(workout.date) ?? [],
+      labels: blocked.get(workout.date)?.labels ?? [],
       proposedDate: proposeDateFor(plan, blocked, workout, today),
     }));
 }
