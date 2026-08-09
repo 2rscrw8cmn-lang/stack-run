@@ -1,54 +1,77 @@
 # STACK — Start Here
 
-This repository is the source of truth for building **STACK**, a small mobile-first running plan app.
+This repository is the source of truth for **STACK**, a small mobile-first running plan app.
 
 ## Current project state
 
-UI-5 Plan review is implemented in PR #8. Before beginning UI-6 Plan Adjustment, implement the approved **UI-5.5 Core Loop Revision**.
+The original product roadmap through **UI-7 — Polish and release** is implemented. PR #24 merged UI-7 on August 9, 2026.
 
-Read:
+The next approved program is **Connected Training**:
+
+> Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
+
+The goal is not to turn STACK into another fitness analytics platform. The goal is to remove manual re-entry, enrich completed runs with useful watch data, add race-training trends/recovery context, and preserve the run → earn → place Build loop.
+
+Read first:
 
 ```text
-docs/CORE_LOOP_REVISION.md
+docs/CONNECTED_TRAINING.md
+docs/INTERVALS_INTEGRATION.md
+docs/CONNECTED_DATA_FIELDS.md
 ```
-
-That revision exists because the engineering foundation is strong, but the product loop needs to become more useful and more fun before more plan-management capability is added.
 
 ## Authority order
 
 When documents conflict, use this order:
 
 1. `docs/PRODUCT_AND_SCOPE.md`
-2. `docs/CORE_LOOP_REVISION.md`
-3. `docs/UX_PRODUCT_SPEC.md`
-4. `docs/DATA_AND_STORAGE.md`
-5. `docs/DECISION_LOG.md`
-6. `docs/ENGINEERING_STANDARDS.md`
-7. `docs/IMPLEMENTATION_ROADMAP.md`
-8. `docs/UI_IMPLEMENTATION_PLAN.md`
-9. `docs/AGENT_PROMPTS.md`
-10. Existing code
+2. `docs/CONNECTED_TRAINING.md`
+3. `docs/INTERVALS_INTEGRATION.md` for connected-data engineering
+4. `docs/UX_PRODUCT_SPEC.md`
+5. `docs/DATA_AND_STORAGE.md`
+6. `docs/DECISION_LOG.md`
+7. `docs/ENGINEERING_STANDARDS.md`
+8. `docs/IMPLEMENTATION_ROADMAP.md`
+9. `docs/UI_IMPLEMENTATION_PLAN.md`
+10. `docs/AGENT_PROMPTS.md`
+11. Existing code
+
+`docs/CONNECTED_DATA_FIELDS.md` records verified source-field availability and wins over guesses about what HealthFit/Intervals data happens to contain.
 
 Existing code is evidence of current behavior. It is not permission to violate newer locked product decisions.
 
-Older Build documents and comments may describe D-014 through D-017 behavior that has since been revised. D-018 through D-025 and `CORE_LOOP_REVISION.md` control where they conflict.
+## Core product rule
 
-## Core rule
-
-STACK is not a fitness platform. It is a focused running companion built around one loop:
-
-> See the run → run → log it → earn a block → place the block → see the build grow.
-
-The first release has only three primary screens:
+STACK has three persistent destinations only:
 
 - Today
 - Build
 - Plan
 
-## Next work
+The core loop remains:
 
-1. Finish/review PR #8 as the UI-5 Plan foundation.
-2. Start UI-5.5 Core Loop Revision on its own branch/PR.
-3. Complete the schema/activity migration, Today revision, Build simplification, extra-run support, streak correction, actual run date, and production dev-tool cleanup.
-4. Only then begin UI-6 Plan Adjustment.
-5. Finish with UI-7 release polish.
+> See the run → run → record/confirm it → earn a block → place the block → see the build grow.
+
+Connected data should make `record/confirm it` faster, not remove the block-placement ritual or bury the app in metrics.
+
+## Connected setup already complete
+
+The owner has:
+
+- HealthFit installed;
+- HealthFit connected to Intervals.icu;
+- a HealthFit-originated run visible in Intervals.icu from June 10, 2026;
+- a personal Intervals.icu API key.
+
+Do **not** ask for the API key in chat, an issue, a PR, a source file or a screenshot.
+
+## Next implementation order
+
+1. **UI-8 — Connected Data Foundation**: secure read proxy, field discovery, sync, dedupe, matching, extra-run import, attach-to-existing manual run.
+2. **UI-9 — Connected Run Detail**: useful imported run metrics and interval/lap detail.
+3. **UI-10 — Connected Today + Week**: run-found flow, quiet sync, weekly actual stats.
+4. **UI-11 — Training Trends**: race-training progress, not generic analytics.
+5. **UI-12 — Wellness / Recovery Context**: HRV, resting HR, sleep only after real coverage is verified.
+6. **UI-13 — Optional plan export** is investigation-only until a separate write-integration decision is approved.
+
+Use one branch and one PR per phase. Do not implement several connected phases in one agent pass.
