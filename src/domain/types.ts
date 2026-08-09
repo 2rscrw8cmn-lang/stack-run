@@ -14,6 +14,24 @@ export type WorkoutType =
 export type RunActivityType = Exclude<WorkoutType, "rest">;
 
 export type Effort = "rough" | "solid" | "great";
+export type RunSource = "manual" | "intervals";
+
+export interface ExternalRunSource {
+  provider: "intervals";
+  activityId: string;
+  sourceUpdatedAt: string | null;
+  importedAt: string;
+}
+
+export interface ImportedRunMetrics {
+  averageHeartRate?: number;
+  maxHeartRate?: number;
+  averageCadence?: number;
+  elevationGainFeet?: number;
+  elapsedTimeSeconds?: number;
+  trainingLoad?: number;
+  hrZoneSeconds?: number[];
+}
 
 export interface Race {
   name: string;
@@ -81,6 +99,15 @@ export interface RunLog {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  /** Required in persisted schema 9; optional here for legacy in-memory test fixtures. */
+  source?: RunSource;
+  externalSource?: ExternalRunSource | null;
+  importedMetrics?: ImportedRunMetrics | null;
+}
+
+export interface IntervalsSyncState {
+  lastSuccessfulActivitySyncAt: string | null;
+  ignoredActivityIds: string[];
 }
 
 export interface AppSettings {
@@ -115,7 +142,7 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 8;
+  schemaVersion: 9;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
@@ -137,4 +164,5 @@ export interface AppState {
    * the thing you are training for, and two of those is two plans.
    */
   raceSetup: RacePlanSetup | null;
+  intervalsSync: IntervalsSyncState;
 }

@@ -11,6 +11,12 @@ import { PlanScreen } from "../features/plan/PlanScreen";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
+import type { AppState, Effort, RunActivityType } from "../domain/types";
+import type { IntervalsCandidate } from "../connected/intervals";
+import { RunDataSheet } from "../features/connected/RunDataSheet";
+import { Button } from "../components/ui/Button";
+import { Database } from "lucide-react";
+import { useState } from "react";
 
 interface AppShellProps {
   activeTab: TabId;
@@ -41,6 +47,10 @@ interface AppShellProps {
   /** The earned block Build is currently holding, identified by its run log. */
   placingRunLogId: string | null;
   onPlacingChange: (runLogId: string | null) => void;
+  appState: AppState; syncToken: string | null;
+  onConnectIntervals: (token: string) => void; onForgetIntervals: () => void; onIntervalsSynced: (at: string) => void;
+  onImportIntervals: (candidate: IntervalsCandidate, workoutId: string | null, type: RunActivityType, effort: Effort, notes: string) => void;
+  onAttachIntervals: (candidate: IntervalsCandidate, runLogId: string) => void; onIgnoreIntervals: (id: string) => void; onClearIgnoredIntervals: () => void;
 }
 
 export function AppShell({
@@ -63,7 +73,9 @@ export function AppShell({
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
+  appState, syncToken, onConnectIntervals, onForgetIntervals, onIntervalsSynced, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
 }: AppShellProps) {
+  const [runDataOpen, setRunDataOpen] = useState(false);
   return (
     <div className="app-shell">
       {/*
@@ -76,6 +88,7 @@ export function AppShell({
           <StackMark size={22} />
           <p className="wordmark">STACK</p>
         </div>
+        <Button className="run-data-trigger" variant="ghost" icon={<Database size={17}/>} onClick={() => setRunDataOpen(true)}>Run Data</Button>
       </header>
       {notice}
       <main className="app-shell__main">
@@ -128,6 +141,7 @@ export function AppShell({
       <nav className="app-shell__nav" aria-label="Primary">
         <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
       </nav>
+      <RunDataSheet isOpen={runDataOpen} onClose={() => setRunDataOpen(false)} state={appState} initialToken={syncToken} onConnect={onConnectIntervals} onForget={onForgetIntervals} onSynced={onIntervalsSynced} onImport={onImportIntervals} onAttach={onAttachIntervals} onIgnore={onIgnoreIntervals} onClearIgnored={onClearIgnoredIntervals}/>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import type {
   RunLog,
   TrainingPlan,
 } from "../domain/types";
+import type { IntervalsCandidate } from "../connected/intervals";
 import { createInitialAppState, migrateAppState } from "./migrations";
 import {
   APP_STATE_STORAGE_KEY,
@@ -209,9 +210,12 @@ function discardOldestBackup(): boolean {
   }
 }
 
-export type RunLogInput = Omit<RunLog, "id" | "createdAt" | "updatedAt"> & {
+export type RunLogInput = Omit<RunLog, "id" | "createdAt" | "updatedAt" | "source" | "externalSource" | "importedMetrics"> & {
   /** Set when editing an existing run; otherwise a new activity is created. */
   id?: string;
+  source?: RunLog["source"];
+  externalSource?: RunLog["externalSource"];
+  importedMetrics?: RunLog["importedMetrics"];
 };
 
 /**
@@ -262,6 +266,9 @@ export function saveRunLog(state: AppState, input: RunLogInput): AppState {
     durationSeconds: input.durationSeconds,
     effort: input.effort,
     notes: input.notes,
+    source: input.source ?? existing?.source ?? "manual",
+    externalSource: input.externalSource ?? existing?.externalSource ?? null,
+    importedMetrics: input.importedMetrics ?? existing?.importedMetrics ?? null,
   };
 
   const runLog: RunLog = existing
@@ -391,6 +398,39 @@ export function deleteRunLog(state: AppState, runLogId: string): AppState {
 
   saveAppState(next);
   return next;
+}
+
+export function acceptIntervalsRun(state: AppState, candidate: IntervalsCandidate, workoutId: string | null, activityType: RunLog["activityType"], effort: RunLog["effort"], notes: string): AppState {
+  if (state.runLogs.some((run) => run.externalSource?.provider === "intervals" && run.externalSource.activityId === candidate.externalId)) return state;
+  return saveRunLog(state, {
+    workoutId, completedDate: candidate.completedDate, activityType,
+    distanceMiles: candidate.distanceMiles, durationSeconds: candidate.durationSeconds,
+    effort, notes, source: "intervals",
+    externalSource: { provider: "intervals", activityId: candidate.externalId, sourceUpdatedAt: candidate.sourceUpdatedAt, importedAt: new Date().toISOString() },
+    importedMetrics: Object.keys(candidate.metrics).length ? candidate.metrics : null,
+  });
+}
+
+export function attachIntervalsRun(state: AppState, candidate: IntervalsCandidate, runLogId: string): AppState {
+  const existing = state.runLogs.find((run) => run.id === runLogId);
+  if (!existing || state.runLogs.some((run) => run.externalSource?.activityId === candidate.externalId)) return state;
+  return saveRunLog(state, { ...existing, id: existing.id, completedDate: candidate.completedDate, distanceMiles: candidate.distanceMiles, durationSeconds: candidate.durationSeconds, source: "intervals", externalSource: { provider: "intervals", activityId: candidate.externalId, sourceUpdatedAt: candidate.sourceUpdatedAt, importedAt: new Date().toISOString() }, importedMetrics: Object.keys(candidate.metrics).length ? candidate.metrics : null });
+}
+
+export function saveIntervalsSync(state: AppState, syncedAt: string): AppState {
+  const next = { ...state, intervalsSync: { ...state.intervalsSync, lastSuccessfulActivitySyncAt: syncedAt } };
+  saveAppState(next); return next;
+}
+
+export function ignoreIntervalsActivity(state: AppState, activityId: string): AppState {
+  const ignoredActivityIds = [...new Set([...state.intervalsSync.ignoredActivityIds, activityId])];
+  const next = { ...state, intervalsSync: { ...state.intervalsSync, ignoredActivityIds } };
+  saveAppState(next); return next;
+}
+
+export function clearIgnoredIntervalsActivities(state: AppState): AppState {
+  const next = { ...state, intervalsSync: { ...state.intervalsSync, ignoredActivityIds: [] } };
+  saveAppState(next); return next;
 }
 
 /**

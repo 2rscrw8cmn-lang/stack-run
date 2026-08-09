@@ -11,7 +11,7 @@ import type {
 } from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -78,6 +78,7 @@ export function createInitialAppState(): AppState {
     availability: null,
     runDays: null,
     raceSetup: null,
+    intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
   };
 }
 
@@ -98,7 +99,7 @@ function upgradeRunLogs(plan: TrainingPlan, runLogs: RunLogV4[]): RunLog[] {
     const type = typeByWorkoutId.get(runLog.workoutId);
     const activityType: RunActivityType =
       type && type !== "rest" ? type : "easy";
-    return { ...runLog, activityType };
+    return { ...runLog, activityType, source: "manual", externalSource: null, importedMetrics: null };
   });
 }
 
@@ -183,6 +184,7 @@ export function migrateAppState(input: unknown): AppState {
       availability: null,
       runDays: null,
       raceSetup: null,
+      intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
   }
 
@@ -199,6 +201,7 @@ export function migrateAppState(input: unknown): AppState {
       availability: null,
       runDays: null,
       raceSetup: null,
+      intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
   }
 
@@ -215,6 +218,7 @@ export function migrateAppState(input: unknown): AppState {
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: null,
       raceSetup: null,
+      intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
   }
 
@@ -231,6 +235,17 @@ export function migrateAppState(input: unknown): AppState {
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
       raceSetup: null,
+      intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
+    };
+  }
+
+  if (candidate.schemaVersion === 8) {
+    const legacy = candidate as unknown as Omit<AppState, "schemaVersion" | "intervalsSync"> & { schemaVersion: 8; runLogs: Array<Omit<RunLog, "source" | "externalSource" | "importedMetrics">> };
+    return {
+      ...legacy,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      runLogs: legacy.runLogs.map((runLog) => ({ ...runLog, source: "manual", externalSource: null, importedMetrics: null })),
+      intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
   }
 
@@ -243,6 +258,7 @@ export function migrateAppState(input: unknown): AppState {
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
       raceSetup: (candidate as unknown as AppState).raceSetup ?? null,
+      intervalsSync: (candidate as unknown as AppState).intervalsSync ?? { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
   }
 
