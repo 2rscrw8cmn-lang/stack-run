@@ -2,63 +2,117 @@
 
 **Build your race.**
 
-STACK is a mobile-first running plan app that turns completed workouts into a growing 2D block structure. It is intentionally small, manual, and single-user.
+STACK is a phone-first running-plan app that turns completed runs into a growing block structure. It keeps one active race/plan simple: know what to run, record what actually happened, see whether training is accumulating, and place the block.
 
 ![STACK UI reference](reference/stack-ui-reference.png)
 
-## First-release scope
+## Current product
 
-- OUC Half Marathon target: **December 5, 2026**
-- Adjusted **18-week** plan beginning **August 3, 2026**
-- Three tabs: **Today**, **Build**, and **Plan**
-- Manual run completion
-- Actual distance, duration, effort, and optional notes
-- Deterministic 2D block structure
-- Local browser persistence
-- Dark-only responsive interface
-- Mobile-first, desktop-usable
+The original UI-0 through UI-7 program is implemented.
 
-## Explicitly excluded
+STACK currently includes:
 
-- Accounts or authentication
-- Backend or database
-- Strava integration
-- Apple Health / HealthKit integration
-- GPS, maps, routes, elevation, or heart rate
-- Live run timer
-- Social feed, friends, leaderboards, or sharing
-- AI coaching or automatic training changes
-- Drag-and-drop Tetris gameplay
-- Canvas, WebGL, 3D rendering, or physics
-- Multiple training plans in the first release
+- three persistent tabs: **Today**, **Build**, **Plan**;
+- scheduled and extra runs;
+- editable actual run date, distance, duration, effort/type and notes;
+- deterministic 8-column Build tower, one block per actual run;
+- editable/generated one-race plan;
+- preferred run-day reshaping;
+- optional availability-calendar conflict proposals;
+- browser-local persistence/recovery;
+- installable dark phone-first PWA-style experience (without offline service worker).
+
+## Next program — Connected Training
+
+The approved running-data path is:
+
+```text
+Apple Watch
+  ↓
+Apple Health
+  ↓
+HealthFit
+  ↓
+Intervals.icu
+  ↓
+STACK
+```
+
+The goal is to eliminate retyping objective run data while preserving the product loop:
+
+> See the run → run → confirm/record it → earn a block → place it → see the build grow.
+
+Manual logging remains a complete fallback.
+
+Connected phases add:
+
+- secure read-only Intervals.icu activity sync;
+- planned-match / extra-run confirmation;
+- attachment of synced data to existing manual runs;
+- pace, HR, cadence, elevation, training load and HR zones when the real source contains them;
+- weekly actual stats;
+- race-training trends;
+- optional HRV/resting-HR/sleep context only after HealthFit → Intervals coverage is verified.
+
+Read:
+
+```text
+docs/CONNECTED_TRAINING.md
+docs/INTERVALS_INTEGRATION.md
+docs/CONNECTED_DATA_FIELDS.md
+```
+
+## Product boundaries
+
+STACK is not a replacement for Apple Fitness, HealthFit or Intervals.icu.
+
+It does not become:
+
+- a live GPS/run tracker;
+- a social platform;
+- a generic fitness analytics dashboard;
+- an AI coach;
+- an automatic recovery-based plan editor;
+- a medical-readiness tool;
+- a Strava integration;
+- a direct HealthKit/native app;
+- a multi-user cloud service in the personal API-key release.
+
+Build remains deterministic HTML/CSS — no canvas, WebGL or physics engine.
 
 ## Technical direction
 
 - React
 - TypeScript
 - Vite
-- Plain CSS with design tokens
-- Lucide React icons
-- Local storage through a small versioned repository module
-- Vercel deployment: a static site plus one serverless function (`api/calendar.ts`), which reads a calendar subscription link for the page when the calendar host refuses the browser
+- Plain CSS/design tokens
+- Lucide React
+- Versioned browser localStorage for user state
+- Vercel deployment
+- Narrow stateless serverless readers under `api/`
 
-React's official documentation recommends a build tool such as Vite for a from-scratch app, and Lucide provides individual tree-shakable React icon components. See `docs/TECHNICAL_REFERENCES.md`.
+Current server routes:
+
+- `api/calendar.ts` — availability-calendar reader when source CORS blocks the browser;
+- `api/intervals.ts` — planned for UI-8, protected read-only Intervals proxy.
+
+Connected Training keeps the powerful Intervals personal API key server-side and protects the proxy with a separate local STACK sync token. See `docs/DEPLOYMENT.md`.
 
 ## Installing it
 
-STACK is installable to a home screen and runs without browser chrome, but it
-is **not** offline-capable: there is no service worker, by decision, because
-nothing has been tested against one. Open the production URL and, on iOS,
-**Share → Add to Home Screen**; Android offers its own install prompt. The
-browser tab and the installed app share the same stored training.
+STACK is installable to a home screen and opens without browser chrome. It is intentionally **not offline-capable** yet: no service worker ships until offline behavior is separately designed/tested.
 
-Everything lives in one browser's local storage, under one key that has not
-changed since the first release. Deploying a new version to the same domain
-costs nothing; opening a different domain shows an empty app, because storage
-belongs to an origin. See `docs/DEPLOYMENT.md`.
+On iOS Safari: **Share → Add to Home Screen**.
 
-If that stored state is ever unreadable, STACK says so and offers to save the
-damaged copy off the device rather than quietly starting over.
+A browser tab and installed app on the same origin share local training state.
+
+## Persistence
+
+Training state lives under the same browser-origin storage key across deployments. Deploying to the same domain preserves it; changing domains does not.
+
+Unreadable storage enters the recovery flow instead of silently resetting.
+
+Connected Training may add normalized health/run metrics to that local state but does not add a server database.
 
 ## Repository map
 
@@ -67,10 +121,10 @@ damaged copy off the device rather than quietly starting over.
 ├─ AGENTS.md
 ├─ START_HERE.md
 ├─ README.md
-├─ api/            one serverless function: the calendar reader
-├─ docs/
-├─ public/         manifest and app icons, copied verbatim into the build
-├─ scripts/        generate-icons.mjs, which draws those icons
+├─ api/            narrow Vercel serverless readers
+├─ docs/           product, data, integration, QA and phase source of truth
+├─ public/         manifest and app icons
+├─ scripts/        icon generation
 ├─ seed/
 ├─ src/
 ├─ reference/
@@ -79,27 +133,25 @@ damaged copy off the device rather than quietly starting over.
 
 ## Build workflow
 
-One phase equals one branch and one pull request.
+One implementation phase equals one branch and one pull request.
+
+Connected sequence:
 
 ```text
-docs/foundation
-feature/phase-0-foundation
-feature/ui-1-shell
-feature/ui-2-today
-feature/ui-3-run-entry
-feature/ui-4-build
-feature/ui-5-plan
-feature/ui-6-plan-adjustment
-feature/phase-7-polish
+UI-8  Connected Data Foundation
+UI-9  Connected Run Detail
+UI-10 Connected Today + Week
+UI-11 Training Trends
+UI-12 Wellness / Recovery Context
+UI-13 Optional plan-export investigation (deferred)
 ```
 
-Every phase must pass:
+Every automated phase must pass without real external credentials:
 
 ```bash
 npm run check
 ```
 
-The `check` script must run lint, tests, and a production build.
+Connected phases then add a separate deployed real-data smoke test using Vercel secrets and the user's own HealthFit/Intervals data.
 
-A release additionally goes through `docs/RELEASE_CHECKLIST.md` on the deployed
-URL, on the phone the app is for.
+See `START_HERE.md` and `docs/AGENT_PROMPTS.md` before starting a phase.
