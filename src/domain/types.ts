@@ -1,4 +1,5 @@
 import type { AvailabilityCalendar } from "./availability";
+import type { Weekday } from "./runDays";
 
 export type WorkoutType =
   | "rest"
@@ -113,7 +114,7 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 6;
+  schemaVersion: 7;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
@@ -123,4 +124,10 @@ export interface AppState {
    * been imported. It never changes the plan by itself.
    */
   availability: AvailabilityCalendar | null;
+  /**
+   * The weekdays the runner is willing to run on, or null while they have not
+   * said. A preference, not a rule: it reshapes the plan when the runner asks
+   * it to, and does not police edits made afterwards.
+   */
+  runDays: Weekday[] | null;
 }

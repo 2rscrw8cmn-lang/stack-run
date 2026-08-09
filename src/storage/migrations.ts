@@ -11,7 +11,7 @@ import type {
 } from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -76,6 +76,7 @@ export function createInitialAppState(): AppState {
     runLogs: [],
     blockPlacements: [],
     availability: null,
+    runDays: null,
   };
 }
 
@@ -179,6 +180,7 @@ export function migrateAppState(input: unknown): AppState {
       runLogs,
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
       availability: null,
+      runDays: null,
     };
   }
 
@@ -193,6 +195,22 @@ export function migrateAppState(input: unknown): AppState {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       blockPlacements: candidate.blockPlacements ?? [],
       availability: null,
+      runDays: null,
+    };
+  }
+
+  /**
+   * Version 6 predates the run-day preference. Null rather than the days the
+   * plan happens to use: the runner has not said anything yet, and inventing
+   * a preference from the schedule would put words in their mouth.
+   */
+  if (candidate.schemaVersion === 6) {
+    return {
+      ...(candidate as unknown as AppState),
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      blockPlacements: candidate.blockPlacements ?? [],
+      availability: (candidate as unknown as AppState).availability ?? null,
+      runDays: null,
     };
   }
 
@@ -203,6 +221,7 @@ export function migrateAppState(input: unknown): AppState {
       // may still be missing these.
       blockPlacements: candidate.blockPlacements ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
+      runDays: (candidate as unknown as AppState).runDays ?? null,
     };
   }
 

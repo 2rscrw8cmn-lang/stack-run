@@ -7,6 +7,7 @@ import {
   type PlacementCandidate,
 } from "../domain/placement";
 import type { AvailabilityCalendar } from "../domain/availability";
+import type { Weekday } from "../domain/runDays";
 import type {
   AppState,
   BlockPlacement,
@@ -264,6 +265,23 @@ export function saveAvailability(
   availability: AvailabilityCalendar | null,
 ): AppState {
   const next: AppState = { ...state, availability };
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Records the weekdays the runner will run on, and the plan reshaped to match.
+ *
+ * Both together, because they are one decision: the preference on its own
+ * would be a setting that did nothing, and a reshaped plan without the
+ * preference would forget why it looks the way it does.
+ */
+export function saveRunDays(
+  state: AppState,
+  runDays: Weekday[],
+  plan: TrainingPlan,
+): AppState {
+  const next: AppState = { ...state, runDays, plan };
   saveAppState(next);
   return next;
 }

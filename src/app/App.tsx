@@ -8,6 +8,7 @@ import {
   resetAppState,
   saveAvailability,
   savePlan,
+  saveRunDays,
   saveRunLog,
   StorageLoadError,
 } from "../storage/appStateRepository";
@@ -70,6 +71,10 @@ export function App() {
       }
       availability={appState.availability}
       onSaveAvailability={saveCalendar}
+      runDays={appState.runDays}
+      onSaveRunDays={(runDays, plan) =>
+        setAppState((current) => saveRunDays(current, runDays, plan))
+      }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
       onResetPlan={() => setAppState(resetAppState())}
       onPlaceBlock={(request) =>
