@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/calendar.ts": {
+      "maxDuration": 30
+    }
+  }
+}
