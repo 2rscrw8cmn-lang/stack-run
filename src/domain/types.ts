@@ -1,4 +1,5 @@
 import type { AvailabilityCalendar } from "./availability";
+import type { RacePlanSetup } from "./racePlan";
 import type { Weekday } from "./runDays";
 
 export type WorkoutType =
@@ -114,7 +115,7 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 7;
+  schemaVersion: 8;
   settings: AppSettings;
   plan: TrainingPlan;
   runLogs: RunLog[];
@@ -130,4 +131,10 @@ export interface AppState {
    * it to, and does not police edits made afterwards.
    */
   runDays: Weekday[] | null;
+  /**
+   * The race the plan was generated for — name, date, distance, level — or
+   * null for the plan STACK shipped with. One race at a time: a plan is for
+   * the thing you are training for, and two of those is two plans.
+   */
+  raceSetup: RacePlanSetup | null;
 }

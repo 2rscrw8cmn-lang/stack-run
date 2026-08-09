@@ -2080,6 +2080,115 @@ textarea.run-input {
   width: 100%;
 }
 
+.race-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.race-setup__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.race-setup__legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.race-setup__options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.race-setup__option,
+.race-setup__level {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.race-setup__option {
+  text-align: center;
+}
+
+.race-setup__option[aria-pressed="true"],
+.race-setup__level[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+.race-setup__levels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.race-setup__level {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.race-setup__level-blurb {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.race-setup__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.race-setup__summary {
+  margin: 0;
+  font-size: 14px;
+}
+
+.race-setup__warning,
+.race-setup__kept {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.race-setup__warning svg {
+  flex-shrink: 0;
+  color: var(--long);
+}
+
+.race-setup__actions .button {
+  width: 100%;
+}
+
 .run-days {
   display: flex;
   flex-direction: column;

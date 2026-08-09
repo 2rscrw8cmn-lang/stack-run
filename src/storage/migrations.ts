@@ -11,7 +11,7 @@ import type {
 } from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -77,6 +77,7 @@ export function createInitialAppState(): AppState {
     blockPlacements: [],
     availability: null,
     runDays: null,
+    raceSetup: null,
   };
 }
 
@@ -181,6 +182,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
       availability: null,
       runDays: null,
+      raceSetup: null,
     };
   }
 
@@ -196,6 +198,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: null,
       runDays: null,
+      raceSetup: null,
     };
   }
 
@@ -211,6 +214,23 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: null,
+      raceSetup: null,
+    };
+  }
+
+  /**
+   * Version 7 predates generated plans. Null means "the plan STACK shipped
+   * with": there is no race setup behind it to reconstruct, and guessing one
+   * from the plan would claim the generator produced something it did not.
+   */
+  if (candidate.schemaVersion === 7) {
+    return {
+      ...(candidate as unknown as AppState),
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      blockPlacements: candidate.blockPlacements ?? [],
+      availability: (candidate as unknown as AppState).availability ?? null,
+      runDays: (candidate as unknown as AppState).runDays ?? null,
+      raceSetup: null,
     };
   }
 
@@ -222,6 +242,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
+      raceSetup: (candidate as unknown as AppState).raceSetup ?? null,
     };
   }
 

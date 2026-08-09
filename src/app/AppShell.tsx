@@ -1,5 +1,6 @@
 import { BottomNav } from "../components/shared/BottomNav";
 import type { AvailabilityCalendar } from "../domain/availability";
+import type { RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
@@ -30,6 +31,8 @@ interface AppShellProps {
   onSaveAvailability: (calendar: AvailabilityCalendar | null) => void;
   runDays: Weekday[] | null;
   onSaveRunDays: (runDays: Weekday[], plan: TrainingPlan) => void;
+  raceSetup: RacePlanSetup | null;
+  onGeneratePlan: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
   /** The earned block Build is currently holding, identified by its run log. */
   placingRunLogId: string | null;
@@ -50,6 +53,8 @@ export function AppShell({
   onSaveAvailability,
   runDays,
   onSaveRunDays,
+  raceSetup,
+  onGeneratePlan,
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
@@ -102,6 +107,8 @@ export function AppShell({
             onSaveAvailability={onSaveAvailability}
             runDays={runDays}
             onSaveRunDays={onSaveRunDays}
+            raceSetup={raceSetup}
+            onGeneratePlan={onGeneratePlan}
           />
         )}
       </main>
