@@ -48,6 +48,7 @@ interface BuildScreenProps {
   onPlacingChange?: (runLogId: string | null) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
+  syncToken?: string | null;
 }
 
 export function BuildScreen({
@@ -60,6 +61,7 @@ export function BuildScreen({
   placingRunLogId = null,
   onPlacingChange = () => undefined,
   today = todayLocalDate(),
+  syncToken,
 }: BuildScreenProps) {
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
@@ -211,6 +213,7 @@ export function BuildScreen({
       {detailBlock && (
         <BlockDetailSheet
           block={detailBlock}
+          syncToken={syncToken}
           onMoveBlock={
             detailBlock.canMove
               ? () => startPlacing(detailBlock.runLog.id)

@@ -42,7 +42,7 @@ UI-8 may not ship import until the first six concepts above are understood well 
 |---|---|---|---|---|
 | Average HR | `average_heartrate` | Expected | UI-9 | bpm. |
 | Max HR | `max_heartrate` | Expected | UI-9 | bpm. |
-| Average cadence | `average_cadence` | Expected | UI-9 | **Verify running cadence semantics/units before displaying.** |
+| Average cadence | `average_cadence` | Expected | UI-9 | **Verify running cadence semantics/units before displaying. UI-9 deliberately omits it while this remains Expected.** |
 | Elevation gain | `total_elevation_gain` | Expected | UI-9 | Expected meters; convert to feet for current UI. |
 | Training load | `icu_training_load` | Expected | UI-9 | Intervals-derived; label plainly as Training Load. |
 | HR zone times | `icu_hr_zone_times` or current API equivalent | Expected | UI-9 | Verify array order/count against athlete zones. |
@@ -72,7 +72,7 @@ Intervals.icu documents `icu_intervals` entries that may include:
 | Concept | Status | UI phase | Rule |
 |---|---|---|---|
 | `icu_intervals` exists on HealthFit run | Expected | UI-9 | Verify on a structured Apple Watch workout, not necessarily June 10 if it was an easy run. |
-| Work/rest intervals are useful | Expected | UI-9 | Only show when the source grouping is understandable. |
+| Work/rest intervals are useful | Expected | UI-9 | UI-9's mock fixture verifies named/timed-row handling; real HealthFit grouping is still required. Only explicitly named, positively timed groups are shown. |
 | Apple workout laps survive sync | Expected | UI-9 | Verify with an interval session. |
 
 Do not fetch detail for every activity during normal list sync.

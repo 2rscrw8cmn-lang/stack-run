@@ -160,7 +160,13 @@ describe("loadAppState", () => {
     const loaded = loadAppState();
     expect(loaded.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(loaded.runLogs).toEqual([
-      { ...version1.runLogs[0], activityType: "easy" },
+      {
+        ...version1.runLogs[0],
+        activityType: "easy",
+        source: "manual",
+        externalSource: null,
+        importedMetrics: null,
+      },
     ]);
     expect(loaded.blockPlacements).toEqual([]);
 

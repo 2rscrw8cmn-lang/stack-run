@@ -397,3 +397,28 @@ cannot be performed in the secret-free repository environment. UI-8 must not
 be marked complete until those checks are recorded in
 `docs/CONNECTED_DATA_FIELDS.md`; no raw activity or location payload belongs
 in the repository.
+
+## UI-9 — Connected Run Detail
+
+`src/features/workout-detail/RunResultDetail.tsx` is the shared actual-run
+presentation used by both scheduled workout detail and Build block detail. It
+keeps date, distance, duration, effort, notes, and planned/extra context,
+derives pace from the stored STACK distance and duration, and progressively
+adds present imported HR, elevation, training-load, and HR-zone values. Missing
+metrics do not produce placeholder zeroes. Cadence remains deliberately hidden
+until its HealthFit → Intervals semantics and units are recorded as Verified in
+`docs/CONNECTED_DATA_FIELDS.md`.
+
+An imported run with a locally stored sync token offers **View intervals**.
+Only that explicit action calls the already-whitelisted activity-detail proxy;
+normal activity sync still makes no detail requests. The browser normalizer
+keeps only explicitly named, positively timed groups and drops the rest of the
+upstream activity object. Detail arrays are held only in component memory and
+are never added to AppState/localStorage. Failure and rate-limit responses stay
+retryable without hiding the saved run facts.
+
+HR zones use a text list containing zone name, duration, and percentage, not a
+chart-only encoding. Structured interval rows likewise include readable names
+and durations, with distance and average HR only when present. No cadence,
+wellness, trends, maps, raw streams, FIT parsing, chart dependency, persistence
+migration, or upstream write was added.

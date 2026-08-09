@@ -16,8 +16,22 @@ export interface IntervalsCandidate {
   metrics: ImportedRunMetrics;
 }
 
+export interface IntervalsActivityInterval {
+  label: string;
+  distanceMiles?: number;
+  durationSeconds: number;
+  averageHeartRate?: number;
+}
+
+export interface IntervalsActivityDetail {
+  intervals: IntervalsActivityInterval[];
+}
+
 function positive(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+function nonnegative(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 function date(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -51,10 +65,38 @@ export function normalizeIntervalsActivity(raw: unknown): IntervalsCandidate | n
   if (trainingLoad) metrics.trainingLoad = trainingLoad;
   if (moving && elapsed) metrics.elapsedTimeSeconds = Math.round(elapsed);
   if (Array.isArray(activity.icu_hr_zone_times)) {
-    const zones = activity.icu_hr_zone_times.map(positive);
-    if (zones.every((zone): zone is number => zone !== undefined)) metrics.hrZoneSeconds = zones;
+    const zones = activity.icu_hr_zone_times.map(nonnegative);
+    if (zones.length > 0 && zones.every((zone): zone is number => zone !== undefined) && zones.some((zone) => zone > 0)) metrics.hrZoneSeconds = zones;
   }
   return { externalId, sourceType, completedDate, distanceMiles: meters / METERS_PER_MILE, durationSeconds: Math.round(moving ?? elapsed!), sourceUpdatedAt: typeof activity.updated === "string" ? activity.updated : null, metrics };
+}
+
+/**
+ * Detail is deliberately much narrower than the upstream response. A row is
+ * useful only when Intervals supplies an explicit, human-readable grouping
+ * and a positive duration; detected fragments without a name stay omitted.
+ */
+export function normalizeIntervalsActivityDetail(raw: unknown): IntervalsActivityDetail {
+  if (!raw || typeof raw !== "object") return { intervals: [] };
+  const source = (raw as Record<string, unknown>).icu_intervals;
+  if (!Array.isArray(source)) return { intervals: [] };
+  const intervals = source.flatMap((value): IntervalsActivityInterval[] => {
+    if (!value || typeof value !== "object") return [];
+    const item = value as Record<string, unknown>;
+    const labelValue = item.name ?? item.label;
+    const label = typeof labelValue === "string" ? labelValue.trim() : "";
+    const duration = positive(item.moving_time) ?? positive(item.elapsed_time);
+    if (!label || !duration) return [];
+    const distanceMeters = positive(item.distance);
+    const averageHeartRate = positive(item.average_heartrate);
+    return [{
+      label,
+      durationSeconds: Math.round(duration),
+      ...(distanceMeters ? { distanceMiles: distanceMeters / METERS_PER_MILE } : {}),
+      ...(averageHeartRate ? { averageHeartRate } : {}),
+    }];
+  });
+  return { intervals };
 }
 
 export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
@@ -99,4 +141,16 @@ export async function fetchIntervals(resource: "status" | "activities", token: s
   const response = await fetch(`/api/intervals?${params}`, { headers: { "X-Stack-Sync-Token": token }, cache: "no-store" });
   if (!response.ok) throw new Error(response.status === 401 ? "That sync token was not accepted." : response.status === 429 ? "Intervals.icu is rate limiting sync. Try again later." : "Run Data could not be reached.");
   return response.json();
+}
+
+
+export async function fetchIntervalsActivityDetail(activityId: string, token: string): Promise<IntervalsActivityDetail> {
+  const params = new URLSearchParams({ resource: "activity", id: activityId, intervals: "true" });
+  const response = await fetch(`/api/intervals?${params}`, { headers: { "X-Stack-Sync-Token": token }, cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(response.status === 429
+      ? "Intervals.icu is rate limiting detail requests. Try again later."
+      : "Run detail could not be loaded.");
+  }
+  return normalizeIntervalsActivityDetail(await response.json());
 }

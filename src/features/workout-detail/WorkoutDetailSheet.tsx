@@ -7,9 +7,8 @@ import {
   type BlockState,
 } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
-import { formatDurationSeconds } from "../../domain/duration";
 import type { RunLog, Workout } from "../../domain/types";
-import { EFFORT_LABEL } from "../../domain/workout";
+import { RunResultDetail } from "./RunResultDetail";
 
 interface WorkoutDetailSheetProps {
   workout: Workout;
@@ -23,6 +22,7 @@ interface WorkoutDetailSheetProps {
   onEditWorkout?: () => void;
   onMoveWorkout?: () => void;
   onChangeToRest?: () => void;
+  syncToken?: string | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -45,6 +45,7 @@ export function WorkoutDetailSheet({
   onEditWorkout,
   onMoveWorkout,
   onChangeToRest,
+  syncToken,
   isOpen,
   onClose,
 }: WorkoutDetailSheetProps) {
@@ -90,27 +91,7 @@ export function WorkoutDetailSheet({
         {runLog && (
           <div className="workout-detail__result">
             <h3 className="workout-detail__result-title">Actual result</h3>
-            <dl className="workout-detail__facts">
-              <div>
-                <dt>Distance</dt>
-                <dd>{runLog.distanceMiles} mi</dd>
-              </div>
-              <div>
-                <dt>Duration</dt>
-                <dd>{formatDurationSeconds(runLog.durationSeconds)}</dd>
-              </div>
-              <div>
-                <dt>Effort</dt>
-                <dd>{EFFORT_LABEL[runLog.effort]}</dd>
-              </div>
-              <div>
-                <dt>Logged for</dt>
-                <dd>{formatDateLabel(runLog.completedDate)}</dd>
-              </div>
-            </dl>
-            {runLog.notes && (
-              <p className="workout-detail__notes">{runLog.notes}</p>
-            )}
+            <RunResultDetail run={runLog} syncToken={syncToken} />
           </div>
         )}
 

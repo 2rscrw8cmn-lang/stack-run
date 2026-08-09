@@ -118,6 +118,7 @@ export function AppShell({
             onPlaceBlock={onPlaceBlock}
             placingRunLogId={placingRunLogId}
             onPlacingChange={onPlacingChange}
+            syncToken={syncToken}
           />
         )}
         {activeTab === "plan" && (
@@ -135,6 +136,7 @@ export function AppShell({
             onSaveRunDays={onSaveRunDays}
             raceSetup={raceSetup}
             onGeneratePlan={onGeneratePlan}
+            syncToken={syncToken}
           />
         )}
       </main>

@@ -50,7 +50,7 @@ Known external setup before implementation:
 | Phase | Name | Status | Branch / PR | Primary outcome |
 |---:|---|---|---|---|
 | 8 | Connected Data Foundation | **Implementation complete; validation pending** | `work` | Protected read proxy, schema 9, sync/dedupe, match/extra/attach import implemented. Vercel/iPhone real-field discovery remains required before the phase can be marked Complete. |
-| 9 | Connected Run Detail | Not started |  | Pace + verified HR/cadence/elevation/load/zones/interval detail. |
+| 9 | Connected Run Detail | **Implementation complete; real-field validation pending** | `work` | Shared scheduled/extra detail, derived pace, optional HR/elevation/load/zones, and on-demand named interval rows implemented. Cadence remains omitted. Real HealthFit field/structured-workout verification and responsive device smoke test remain required before Complete. |
 | 10 | Connected Today + Week | Not started |  | Run-found state, stale-aware sync, weekly actual mileage/time/longest. |
 | 11 | Training Trends | Not started |  | Mileage, long-run progression, consistency, Easy pace/HR trends in secondary view. |
 | 12 | Wellness / Recovery Context | Blocked on field verification |  | HRV/resting HR/sleep only if real HealthFit → Intervals coverage is verified. |
@@ -72,6 +72,16 @@ Automated code/tests must **not** require either secret. Preview/Production secr
 The first deployed sync must query far enough back to include the known June 10 HealthFit-originated activity and then update `docs/CONNECTED_DATA_FIELDS.md` with the actual source fields/units present.
 
 Do not commit the raw personal API response.
+
+## UI-9 validation state
+
+The secret-free automated suite covers minimum imported/manual runs, absent and
+present optional metrics, accessible HR-zone text, on-demand detail success,
+failure and rate limiting, and a conservative named structured-interval
+fixture. The repository environment cannot establish that the owner's real
+HealthFit activity supplies HR zones or understandable structured groups.
+Cadence is therefore not rendered, and UI-9 is not marked Complete until the
+real-data and 320/390/desktop preview checks are recorded.
 
 ## Update format
 
