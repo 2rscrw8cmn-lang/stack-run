@@ -14,6 +14,11 @@ import {
   saveRunDays,
   saveRunLog,
   StorageLoadError,
+  acceptIntervalsRun,
+  attachIntervalsRun,
+  saveIntervalsSync,
+  ignoreIntervalsActivity,
+  clearIgnoredIntervalsActivities,
 } from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
@@ -21,6 +26,7 @@ import { StorageRecoveryScreen } from "../features/recovery/StorageRecoveryScree
 import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
 import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
+import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
 
 export type TabId = "today" | "build" | "plan";
 
@@ -52,6 +58,7 @@ export function App() {
   const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
   const [boot, setBoot] = useState<BootState>(readBootState);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [syncToken, setSyncToken] = useState<string | null>(() => { try { return loadIntervalsSyncToken(); } catch { return null; } });
 
   const appState = boot.kind === "ready" ? boot.state : null;
 
@@ -117,11 +124,20 @@ export function App() {
             id: runLogId,
             workoutId: workout?.id ?? null,
             ...values,
+            source: "manual",
+            externalSource: null,
+            importedMetrics: null,
           }),
         )
       }
       onDeleteRun={(runLogId) =>
-        setAppState((current) => deleteRunLog(current, runLogId))
+        setAppState((current) => {
+          const run = current.runLogs.find((item) => item.id === runLogId);
+          const next = run?.externalSource?.provider === "intervals" && window.confirm("Keep this synced activity ignored so it does not return on the next sync?")
+            ? ignoreIntervalsActivity(current, run.externalSource.activityId)
+            : current;
+          return deleteRunLog(next, runLogId);
+        })
       }
       availability={boot.state.availability}
       onSaveAvailability={saveCalendar}
@@ -140,6 +156,15 @@ export function App() {
       }
       placingRunLogId={placingRunLogId}
       onPlacingChange={setPlacingRunLogId}
+      appState={boot.state}
+      syncToken={syncToken}
+      onConnectIntervals={(token) => { try { saveIntervalsSyncToken(token); setSyncToken(token); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be saved."); } }}
+      onForgetIntervals={() => { try { forgetIntervalsSyncToken(); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
+      onIntervalsSynced={(at) => setAppState((current) => saveIntervalsSync(current, at))}
+      onImportIntervals={(candidate, workoutId, type, effort, notes) => setAppState((current) => acceptIntervalsRun(current, candidate, workoutId, type, effort, notes))}
+      onAttachIntervals={(candidate, runLogId) => setAppState((current) => attachIntervalsRun(current, candidate, runLogId))}
+      onIgnoreIntervals={(id) => setAppState((current) => ignoreIntervalsActivity(current, id))}
+      onClearIgnoredIntervals={() => setAppState(clearIgnoredIntervalsActivities)}
     />
   );
 }

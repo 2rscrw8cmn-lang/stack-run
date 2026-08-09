@@ -367,3 +367,33 @@ After each implemented phase, update this file with:
 - Features intentionally deferred
 - Tests added
 - Known product/technical limitations
+
+## UI-8 — Connected Data Foundation
+
+UI-8 adds a narrow `api/intervals.ts` GET proxy. It accepts only status,
+bounded activity/wellness ranges, and validated activity detail ids; requires
+the separate `X-Stack-Sync-Token`; keeps the Intervals personal key on the
+server; and returns private responses with `Cache-Control: no-store`.
+
+`src/connected/intervals.ts` owns the browser client, raw-response
+normalization, meters-to-miles boundary, optional metric validation, external
+id/ignored-id suppression, and deterministic scheduled/manual match helpers.
+Raw Intervals objects do not enter React or AppState.
+
+Schema 9 adds manual/imported source metadata and optional normalized metrics
+to run logs plus `intervalsSync` activity-sync/ignored-id state. Migration 8 →
+9 is additive. The local proxy token is deliberately outside AppState at
+`stack.intervals.sync-token.v1`, through
+`src/storage/intervalsTokenRepository.ts`.
+
+The existing three-tab shell now opens a secondary **Run Data** sheet. It can
+test/connect, perform 90-day first sync and 14-day normal sync, review planned
+or extra imports, attach data to a likely manual run without changing its id,
+ignore candidates, clear ignored ids, and forget only the connection token.
+Manual run entry and the availability-calendar route remain independent.
+
+The deployed Vercel/iPhone smoke test and June 10 real-field catalog update
+cannot be performed in the secret-free repository environment. UI-8 must not
+be marked complete until those checks are recorded in
+`docs/CONNECTED_DATA_FIELDS.md`; no raw activity or location payload belongs
+in the repository.

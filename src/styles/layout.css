@@ -8,6 +8,9 @@
   padding: max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
     var(--space-4);
 }
+.app-shell__header { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 640px; margin-inline: auto; }
+.app-shell__header > .brand { margin: 0; width: auto; }
+.run-data-trigger { min-height: 44px; }
 
 /* The header, the content and the nav share one column on a wide screen. */
 .app-shell__header > .brand,

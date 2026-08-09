@@ -24,7 +24,7 @@ These were built outside the numbered UI-0–UI-7 sequence and are now formal de
 | Preferred run days | Implemented | D-031 | Explicit user-triggered plan reshaping; never autonomous. |
 | Availability calendar | Implemented | D-032 | Calendar can identify conflicts/propose moves; user accepts every plan change. Uses `api/calendar.ts` when CORS requires it. |
 
-Current AppState on main after these additions is **schema version 8**.
+Current AppState on the UI-8 branch is **schema version 9**.
 
 ## Connected Training program
 
@@ -49,7 +49,7 @@ Known external setup before implementation:
 
 | Phase | Name | Status | Branch / PR | Primary outcome |
 |---:|---|---|---|---|
-| 8 | Connected Data Foundation | **Not started** |  | Protected read proxy, schema 9, real field discovery, sync/dedupe, match/extra/attach import. |
+| 8 | Connected Data Foundation | **Implementation complete; validation pending** | `work` | Protected read proxy, schema 9, sync/dedupe, match/extra/attach import implemented. Vercel/iPhone real-field discovery remains required before the phase can be marked Complete. |
 | 9 | Connected Run Detail | Not started |  | Pace + verified HR/cadence/elevation/load/zones/interval detail. |
 | 10 | Connected Today + Week | Not started |  | Run-found state, stale-aware sync, weekly actual mileage/time/longest. |
 | 11 | Training Trends | Not started |  | Mileage, long-run progression, consistency, Easy pace/HR trends in secondary view. |
