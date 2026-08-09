@@ -461,3 +461,41 @@ Imported distance is also now rounded to two decimals where it enters STACK —
 `src/domain/distance.ts` formats what is already stored — because a converted
 distance is a fifteen-decimal float and every screen, including the edit
 sheet's text field, prints the stored number directly.
+
+## UI-10 — Connected Today + Week
+
+Sync stops being an errand. `src/features/connected/useConnectedSync.ts` owns
+one sync for the whole app: it runs when the app opens and when it comes back
+to the front, and only when the last successful sync is older than thirty
+minutes. Between those moments STACK asks Intervals nothing at all — there is
+no polling anywhere in the app. Returning to a phone app fires `focus` and
+`visibilitychange` together, and again when a sheet closes, so an in-flight
+guard and a five-minute floor between automatic attempts keep that from
+becoming a request storm. `Sync Now` is unconditional, because there the user
+asked.
+
+The lookback is deliberately not "everything newer than the last sync": the
+first sync reaches back ninety days, and every later one re-reads a rolling
+fourteen. HealthFit can deliver an activity days after the run happened, and a
+window anchored to the last sync would step over a late upload permanently.
+
+Candidates now live above both screens rather than inside the Run Data sheet,
+so Today and Run Data cannot show different answers. Today renders at most one:
+`selectRunFound` takes the newest candidate within three days, preferring one
+that matches a scheduled workout. `RunFoundCard` states the objective facts —
+distance, duration, derived pace, average HR when present — and offers the one
+judgement a watch cannot make. Neither action imports anything by itself; both
+open the same review UI-8 already had, which is where effort, notes and the
+earned block are settled. `Not now` hides a run for the session and the next
+sync offers it again; `Ignore this run` writes it to the persisted ignored
+list.
+
+`selectWeekActuals` adds actual miles, total run time and the longest run to
+This Week. These sit below the progress bar rather than inside it, and count
+every run in the week by the date it was run: an extra run is real mileage but
+it still cannot tick off a workout the plan never scheduled, so "1 of 4 runs"
+is computed exactly as before.
+
+A failed sync stays quiet. The plan, the manual log and the Build are all still
+true without Intervals, so a failure sets a retry line low on Today and gets
+out of the way — and says nothing at all while there is a run to offer.

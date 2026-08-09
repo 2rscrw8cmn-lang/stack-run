@@ -142,6 +142,48 @@ export function suggestScheduledMatches(candidate: IntervalsCandidate, plan: Tra
   });
 }
 
+/**
+ * How recent a synced run has to be before Today offers to deal with it.
+ *
+ * Today is a dashboard for now, not an inbox for everything sync found. A run
+ * from last week is real and still waiting in Run Data; putting it above the
+ * workout the user is about to do would be answering a question nobody asked.
+ */
+const RUN_FOUND_WITHIN_DAYS = 3;
+
+export interface RunFound {
+  candidate: IntervalsCandidate;
+  /** The scheduled workout it most likely belongs to, when there is one. */
+  workout: Workout | null;
+}
+
+/**
+ * The one synced run Today should offer, if any.
+ *
+ * The newest candidate wins, and a run that matches a scheduled workout wins
+ * over one that does not on the same day — confirming a match is the move that
+ * completes the plan, and it is the one more likely to be right.
+ */
+export function selectRunFound(
+  candidates: readonly IntervalsCandidate[],
+  plan: TrainingPlan,
+  runLogs: readonly RunLog[],
+  today: string,
+): RunFound | null {
+  const recent = candidates
+    .filter((candidate) => {
+      const age = daysBetweenLocalDates(candidate.completedDate, today);
+      return age >= 0 && age <= RUN_FOUND_WITHIN_DAYS;
+    })
+    .map((candidate) => ({ candidate, workout: suggestScheduledMatches(candidate, plan, runLogs)[0] ?? null }))
+    .sort((a, b) =>
+      b.candidate.completedDate.localeCompare(a.candidate.completedDate) ||
+      Number(Boolean(b.workout)) - Number(Boolean(a.workout)) ||
+      a.candidate.externalId.localeCompare(b.candidate.externalId));
+
+  return recent[0] ?? null;
+}
+
 export function likelyManualMatches(candidate: IntervalsCandidate, runLogs: readonly RunLog[]): RunLog[] {
   return runLogs.filter((run) => run.source === "manual" && Math.abs(daysBetweenLocalDates(run.completedDate, candidate.completedDate)) <= 1 && Math.abs(run.distanceMiles - candidate.distanceMiles) <= Math.max(0.5, candidate.distanceMiles * 0.1));
 }

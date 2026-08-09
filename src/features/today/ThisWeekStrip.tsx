@@ -4,12 +4,17 @@ import type { BlockedDay } from "../../domain/availability";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { Section } from "../../components/ui/Section";
 import { formatDateLabel } from "../../domain/dates";
+import { formatMiles } from "../../domain/distance";
+import { formatDurationSeconds } from "../../domain/duration";
 import { PLAN_DAY_STATUS_LABEL, type PlanWeekViewModel } from "../../domain/plan";
+import type { WeekActuals } from "../../domain/weekActuals";
 
 interface ThisWeekStripProps {
   week: PlanWeekViewModel;
   /** Days an imported calendar says the user cannot run. */
   blocked?: Map<string, BlockedDay>;
+  /** What was actually run this week, scheduled or not. */
+  actuals?: WeekActuals;
   onViewPlan: () => void;
 }
 
@@ -20,10 +25,13 @@ interface ThisWeekStripProps {
  *
  * Extra runs are counted beside the scheduled progress, never inside it: an
  * unplanned run is real mileage but it does not tick off a scheduled workout.
+ * For the same reason what was actually run sits below the bar rather than in
+ * it — the bar answers "how much of the plan?", these answer "how much?".
  */
 export function ThisWeekStrip({
   week,
   blocked = new Map(),
+  actuals,
   onViewPlan,
 }: ThisWeekStripProps) {
   return (
@@ -45,6 +53,23 @@ export function ThisWeekStrip({
         max={week.scheduledRuns}
         label={`Week ${week.weekNumber} scheduled runs complete`}
       />
+
+      {actuals && actuals.runCount > 0 && (
+        <dl className="this-week__actuals" role="group" aria-label={`Week ${week.weekNumber} actual totals`}>
+          <div>
+            <dt>Miles</dt>
+            <dd>{formatMiles(actuals.distanceMiles)}</dd>
+          </div>
+          <div>
+            <dt>Run time</dt>
+            <dd>{formatDurationSeconds(actuals.durationSeconds)}</dd>
+          </div>
+          <div>
+            <dt>Longest</dt>
+            <dd>{formatMiles(actuals.longestRunMiles)} mi</dd>
+          </div>
+        </dl>
+      )}
 
       <ol className="this-week__days" aria-label={`Week ${week.weekNumber} days`}>
         {week.days.map((day) => {

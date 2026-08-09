@@ -218,8 +218,9 @@ describe("App", () => {
 
     // The run survived: Today shows it completed, with its own values, and
     // its block is already built rather than waiting to be placed again.
-    expect(screen.getByText("2.1 mi")).toBeInTheDocument();
-    expect(screen.getByText("20:30")).toBeInTheDocument();
+    const summary = within(screen.getByRole("group", { name: "Completed run" }));
+    expect(summary.getByText("2.1 mi")).toBeInTheDocument();
+    expect(summary.getByText("20:30")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Place Block" }),
     ).not.toBeInTheDocument();

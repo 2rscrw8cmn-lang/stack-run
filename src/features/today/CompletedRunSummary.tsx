@@ -44,7 +44,7 @@ export function CompletedRunSummary({
         complete
       </p>
       <p className="today-workout-card__title">{workout.title}</p>
-      <dl className="completed-run-summary__stats">
+      <dl className="completed-run-summary__stats" role="group" aria-label="Completed run">
         <div>
           <dt>Distance</dt>
           <dd>{formatMiles(runLog.distanceMiles)} mi</dd>
