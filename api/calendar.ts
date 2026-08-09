@@ -23,7 +23,12 @@
 /** A roster is tens of kilobytes. This is a ceiling, not a target. */
 const MAX_BYTES = 2_000_000;
 const MAX_REDIRECTS = 3;
-/** Rostering systems are not fast. Fifteen seconds is what works in practice. */
+/**
+ * Rostering systems are not fast. Fifteen seconds is what works in practice —
+ * and it is the budget for the *whole* read, not for each hop of it. Per hop,
+ * three redirects could spend three times as long as the platform allows the
+ * function, and being killed mid-read tells the page nothing.
+ */
 const TIMEOUT_MS = 15_000;
 
 /**
@@ -126,7 +131,7 @@ async function readCapped(response: Response): Promise<string | null> {
   return new TextDecoder().decode(joined);
 }
 
-export default async function handler(request: Request): Promise<Response> {
+export async function readCalendar(request: Request): Promise<Response> {
   if (request.method !== "POST") {
     // Worded to be read by a person: opening this path in a browser is the
     // one-tap way to find out whether the reader is deployed at all, and
@@ -158,16 +163,22 @@ export default async function handler(request: Request): Promise<Response> {
 
   // Redirects are followed by hand so every hop is checked, not just the first.
   let current = target;
+  const deadline = Date.now() + TIMEOUT_MS;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     if (isPrivateAddress(current.hostname)) {
       return plain(400, "That link does not point at a public calendar host.");
+    }
+
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      return plain(504, "That calendar host took too long to answer.");
     }
 
     let response: Response;
     try {
       response = await fetch(current, {
         redirect: "manual",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(remaining),
         headers: {
           Accept: "text/calendar, text/plain;q=0.9, */*;q=0.5",
           "User-Agent": USER_AGENT,
@@ -219,4 +230,81 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   return plain(502, "That link redirected too many times.");
+}
+
+/**
+ * The shape of a Node response, described here rather than imported.
+ *
+ * Only the three members used below, so this needs no `@types/node` for a
+ * function that may never be called this way.
+ */
+interface NodeResponse {
+  statusCode: number;
+  setHeader(name: string, value: string): void;
+  end(body?: string): void;
+}
+
+interface NodeRequest {
+  method?: string;
+  url?: string;
+  body?: unknown;
+  on(event: string, listener: (chunk?: unknown) => void): void;
+}
+
+function isNodeResponse(value: unknown): value is NodeResponse {
+  return typeof (value as NodeResponse | null | undefined)?.end === "function";
+}
+
+/** The request body, however the platform chose to hand it over. */
+async function nodeBody(request: NodeRequest): Promise<string | undefined> {
+  if (request.method !== "POST") {
+    return undefined;
+  }
+  if (typeof request.body === "string") {
+    return request.body;
+  }
+  if (request.body && typeof request.body === "object") {
+    // Already parsed for us, which some versions of the bridge do.
+    return JSON.stringify(request.body);
+  }
+  return new Promise((resolve) => {
+    let raw = "";
+    request.on("data", (chunk) => {
+      raw += String(chunk);
+    });
+    request.on("end", () => resolve(raw));
+  });
+}
+
+/**
+ * The entry point, deliberately indifferent to how it is called.
+ *
+ * A Node runtime accepts two shapes of handler: the web-standard one that
+ * takes a `Request` and returns a `Response`, and the older pair where you
+ * write to a response object and return nothing. Guessing wrong is not a
+ * visible error — the response is simply never sent, the invocation runs until
+ * the platform kills it, and the dashboard reports a timeout with no error to
+ * go with it. That is a miserable thing to debug from a phone, and the whole
+ * class of it disappears for twenty lines, so: handle both.
+ */
+export default async function handler(
+  first: unknown,
+  second?: unknown,
+): Promise<Response | void> {
+  if (!isNodeResponse(second)) {
+    return readCalendar(first as Request);
+  }
+
+  const request = first as NodeRequest;
+  const response = await readCalendar(
+    new Request(`https://reader.invalid${request.url ?? "/api/calendar"}`, {
+      method: request.method ?? "GET",
+      headers: { "Content-Type": "application/json" },
+      body: await nodeBody(request),
+    }),
+  );
+
+  second.statusCode = response.status;
+  response.headers.forEach((value, name) => second.setHeader(name, value));
+  second.end(await response.text());
 }
