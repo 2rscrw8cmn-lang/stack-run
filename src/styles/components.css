@@ -1689,6 +1689,37 @@ textarea.run-input {
   width: 100%;
 }
 
+.run-result-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.run-result-detail__source,
+.run-result-detail__empty,
+.run-result-detail__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.run-result-detail__error { color: var(--long); }
+.run-result-detail__request .button { width: 100%; }
+.run-result-detail__zones,
+.run-result-detail__intervals { display: grid; gap: var(--space-2); }
+.run-result-detail__zones ol,
+.run-result-detail__intervals ol { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.run-result-detail__zones li,
+.run-result-detail__intervals li { display: flex; justify-content: space-between; gap: var(--space-3); font-size: 13px; }
+.run-result-detail__zones li span:last-child,
+.run-result-detail__intervals li span { color: var(--text-muted); text-align: right; }
+
+@media (max-width: 360px) {
+  .workout-detail__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .run-result-detail__intervals li { flex-direction: column; gap: 2px; }
+  .run-result-detail__intervals li span { text-align: left; }
+}
+
 /* Plan */
 
 .plan-screen {

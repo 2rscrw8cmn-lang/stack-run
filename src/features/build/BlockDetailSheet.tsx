@@ -2,8 +2,7 @@ import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
 import { WORKOUT_TYPE_LABEL, type PlacedBlock } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
-import { formatDurationSeconds } from "../../domain/duration";
-import { EFFORT_LABEL } from "../../domain/workout";
+import { RunResultDetail } from "../workout-detail/RunResultDetail";
 
 interface BlockDetailSheetProps {
   block: PlacedBlock;
@@ -11,6 +10,7 @@ interface BlockDetailSheetProps {
   onMoveBlock?: () => void;
   /** Opens the run behind the block for correction or removal. */
   onEditRun?: () => void;
+  syncToken?: string | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -24,6 +24,7 @@ export function BlockDetailSheet({
   block,
   onMoveBlock,
   onEditRun,
+  syncToken,
   isOpen,
   onClose,
 }: BlockDetailSheetProps) {
@@ -44,24 +45,7 @@ export function BlockDetailSheet({
           })}
         </p>
 
-        <dl className="workout-detail__facts">
-          <div>
-            <dt>Distance</dt>
-            <dd>{runLog.distanceMiles} mi</dd>
-          </div>
-          <div>
-            <dt>Duration</dt>
-            <dd>{formatDurationSeconds(runLog.durationSeconds)}</dd>
-          </div>
-          <div>
-            <dt>Effort</dt>
-            <dd>{EFFORT_LABEL[runLog.effort]}</dd>
-          </div>
-        </dl>
-
-        {runLog.notes && (
-          <p className="workout-detail__notes">{runLog.notes}</p>
-        )}
+        <RunResultDetail run={runLog} syncToken={syncToken} />
 
         <div className="workout-detail__result">
           <h3 className="workout-detail__result-title">

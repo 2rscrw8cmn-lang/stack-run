@@ -80,6 +80,7 @@ interface PlanScreenProps {
   onSaveRunDays?: (runDays: Weekday[], plan: TrainingPlan) => void;
   /** Overridable so tests do not depend on the network. */
   fetchIcs?: (url: string) => Promise<string>;
+  syncToken?: string | null;
 }
 
 /**
@@ -118,6 +119,7 @@ export function PlanScreen({
   runDays = null,
   onSaveRunDays = () => undefined,
   raceSetup = null,
+  syncToken,
   onGeneratePlan = () => undefined,
   fetchIcs,
 }: PlanScreenProps) {
@@ -326,6 +328,7 @@ export function PlanScreen({
           workout={detailDay.workout}
           state={detailDay.status}
           runLog={detailDay.runLog}
+          syncToken={syncToken}
           isOpen={isDetailOpen}
           onClose={() => {
             setDetailOpen(false);
