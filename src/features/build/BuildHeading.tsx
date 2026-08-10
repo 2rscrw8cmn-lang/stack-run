@@ -17,6 +17,7 @@ interface BuildHeadingProps {
 export function BuildHeading({ metrics }: BuildHeadingProps) {
   return (
     <div className="build-heading">
+      <p className="build-heading__label machine-label">Build</p>
       <h1 className="build-heading__hero">
         <span className="build-heading__value data-value">{metrics.totalActualMiles}</span>{" "}
         <span className="build-heading__unit machine-label">

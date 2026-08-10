@@ -17,19 +17,24 @@ function renderZones(zones: number[]) {
 describe("DonutChart", () => {
   it.each([
     [[600], 1],
-    [[0, 600, 1200, 600, 0], 5],
-    [[0, 600, 1200, 600, 0, 0, 0], 7],
+    [[0, 600, 1200, 600, 0], 3],
+    [[0, 600, 1200, 600, 0, 0, 0], 3],
   ])("supports a dynamic %i-zone source", (zones, expected) => {
     renderZones(zones);
     const legend = screen.getByRole("list", { name: "Heart rate zone distribution" });
     expect(within(legend).getAllByRole("listitem")).toHaveLength(expected);
   });
 
-  it("keeps source zero zones in text while giving them no visible arc", () => {
-    const { container } = renderZones([0, 600, 1200, 0, 0, 0, 0]);
+  it("suppresses zero zones without renumbering visible source zones", () => {
+    const { container } = renderZones([0, 600, 0, 1200, 600, 0, 0]);
     const legend = screen.getByRole("list", { name: "Heart rate zone distribution" });
-    expect(within(legend).getAllByRole("listitem")[0]).toHaveTextContent("0:00 · 0%");
-    expect(container.querySelectorAll(".donut__arc")).toHaveLength(2);
+    expect(within(legend).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(legend).getByText("Zone 2")).toBeInTheDocument();
+    expect(within(legend).getByText("Zone 4")).toBeInTheDocument();
+    expect(within(legend).getByText("Zone 5")).toBeInTheDocument();
+    expect(within(legend).queryByText("Zone 1")).not.toBeInTheDocument();
+    expect(within(legend).queryByText("Zone 3")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".donut__arc")).toHaveLength(3);
   });
 
   it("renders nothing for an all-zero source", () => {

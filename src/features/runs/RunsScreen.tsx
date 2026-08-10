@@ -2,6 +2,7 @@ import { History, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { Section } from "../../components/ui/Section";
 import { earnedBlockPhrase, totalActualMiles } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
@@ -201,19 +202,25 @@ export function RunsScreen({
           scheduled or extra. Log one and it earns a block.
         </EmptyState>
       ) : (
-        <ul className="runs-screen__list">
-          {history.map((entry) => (
-            <RunRow
-              key={entry.runLog.id}
-              entry={entry}
-              onOpen={() => {
-                returnToSignal.current = false;
-                setDetailRunLogId(entry.runLog.id);
-                setDetailOpen(true);
-              }}
-            />
-          ))}
-        </ul>
+        <Section
+          className="runs-recent"
+          icon={<History size={15} strokeWidth={2} />}
+          title="Recent Runs"
+        >
+          <ul className="runs-screen__list">
+            {history.map((entry) => (
+              <RunRow
+                key={entry.runLog.id}
+                entry={entry}
+                onOpen={() => {
+                  returnToSignal.current = false;
+                  setDetailRunLogId(entry.runLog.id);
+                  setDetailOpen(true);
+                }}
+              />
+            ))}
+          </ul>
+        </Section>
       )}
 
       <p className="visually-hidden" aria-live="polite">

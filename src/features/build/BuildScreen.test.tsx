@@ -681,9 +681,8 @@ describe("mileage on the blocks", () => {
       today: "2026-08-10",
     });
 
-    // A width-1 face is too narrow to read, so it stays bare. Width 2 takes
-    // the number alone; width 3 has room for the unit as well.
-    expect(labels()).toEqual(["4.2", "6.4MI"]);
+    // Width 1 and 2 take the compact number; width 3 has room for the unit.
+    expect(labels()).toEqual(["2.1", "4.2", "6.4MI"]);
   });
 
   it("rounds a converted distance to something a brick can hold", () => {
@@ -703,9 +702,8 @@ describe("mileage on the blocks", () => {
       today: "2026-08-10",
     });
 
-    // Nothing is written on this block, so the name carries everything —
-    // including the exact distance the rounded label would have lost.
-    expect(labels()).toEqual([]);
+    // The compact face rounds, while the name keeps the exact distance.
+    expect(labels()).toEqual(["2.1"]);
     expect(within(tower()).getByRole("button")).toHaveAccessibleName(
       "Tuesday, August 4, Easy, 2.14 miles, week 1, course 0, column 1",
     );

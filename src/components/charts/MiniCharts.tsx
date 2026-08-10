@@ -7,15 +7,20 @@ interface MiniBarsProps {
 
 /** Compact factual columns for a Training Signal card. Card copy is authoritative. */
 export function MiniBars({ values, tone = "accent" }: MiniBarsProps) {
-  const peak = Math.max(...values.map((value) => value ?? 0), 1);
+  const visibleValues = values.filter((value): value is number => value !== null && value > 0);
+  if (visibleValues.length === 0) return null;
+  const peak = Math.max(...visibleValues, 1);
 
   return (
-    <span className={`mini-bars mini-chart mini-chart--${tone}`} aria-hidden="true">
-      {values.map((value, index) => (
+    <span
+      className={`mini-bars mini-chart mini-chart--${tone}`}
+      data-points={Math.min(visibleValues.length, 4)}
+      aria-hidden="true"
+    >
+      {visibleValues.map((value, index) => (
         <i
           key={index}
-          data-empty={!value || value <= 0 ? "true" : undefined}
-          style={{ "--mini-value": `${Math.max(((value ?? 0) / peak) * 100, 4)}%` } as CSSProperties}
+          style={{ "--mini-value": `${Math.max((value / peak) * 100, 8)}%` } as CSSProperties}
         />
       ))}
     </span>
@@ -46,7 +51,11 @@ export function MiniSparkline({ values, invert = false }: MiniSparklineProps) {
     <span className="mini-sparkline mini-chart" aria-hidden="true">
       <svg viewBox={`0 0 ${width} ${height}`} focusable="false">
         <line x1="0" x2={width} y1={height - 1} y2={height - 1} />
-        {values.length > 1 ? <polyline points={points.join(" ")} /> : <circle cx={width / 2} cy={height / 2} r="3" />}
+        {values.length > 1 ? (
+          <polyline points={points.join(" ")} />
+        ) : (
+          <rect className="mini-sparkline__single" x={width * 0.39} y={height / 2 - 5} width={width * 0.22} height="10" />
+        )}
       </svg>
     </span>
   );

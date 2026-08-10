@@ -122,15 +122,21 @@ Implementation verification (2026-08-10):
   without a runtime network font request;
 - Runs/Training Signals now leads with a four-stat instrument panel and every
   visible signal has a distinct factual mini visualization with accessible text;
+- the final composition pass makes that summary a full-width four-cell strip,
+  compacts signal cards to 116px at 390px, removes fake empty history slots,
+  balances odd card rows, and introduces the matching Recent Runs hierarchy;
 - Weekly Mileage has a rebuilt chart-first selected-week hierarchy, while Run
   Detail has a substantial primary/secondary metric, HR-zone, and intervals
   redesign;
 - Today is a concise mission briefing, Build retains its exact geometry/storage,
   and Plan remains the calm schedule surface; cards, controls, sheets, and rows
   use the approved more-angular component language;
+- zero-value donut legend rows are hidden without renumbering source HR zones;
+  Build has a grounded technical field and width-1 mileage stamps; active nav,
+  current-week, and today-row styling are quieter and more precise;
 - New Longest Run and Miles Built thresholds are transient derived moments;
   nothing is persisted and no badge/game economy was added;
-- `npm run check` passes: lint, 51 test files / 791 tests, and production build;
+- `npm run check` passes: lint, 51 test files / 792 tests, and production build;
 - browser QA passed Today, Runs/Training Signals plus Weekly Mileage detail,
   Build, and Plan at 320×800, 390×844, and 1200×900 with no horizontal
   overflow or browser warnings/errors;

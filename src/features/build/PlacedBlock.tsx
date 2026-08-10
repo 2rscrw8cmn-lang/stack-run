@@ -39,12 +39,9 @@ function blockLabel(block: PlacedBlockData): string {
 /**
  * The running story written on the brick, per D-045.
  *
- * A width-1 face measures 32 CSS pixels at 320px and `2.1` needs 19 of them,
- * so a label would fit there. It stays bare anyway, because width 1 is the
- * commonest brick in a plan and numbering all of them turns the tower into a
- * spreadsheet — the size and colour are the block's identity at that scale,
- * and the full facts are one tap away. That is a judgement, not a constraint:
- * relaxing it is a change to D-045, not to this file.
+ * A width-1 face measures about 32 CSS pixels at 320px, enough for the compact
+ * mileage number without its unit. That small stamp makes the earliest Build
+ * artifact factual while the accessible name continues to carry exact miles.
  *
  * The `MI` unit joins the number from width 3, where the face is wide enough
  * that measuring it would be theatre.
@@ -57,9 +54,6 @@ function faceLabel(
   block: PlacedBlockData,
 ): { text: string; unit: boolean } | null {
   const { runLog, placement } = block;
-  if (placement.width === 1) {
-    return null;
-  }
   if (runLog.activityType === "race") {
     return { text: "RACE", unit: false };
   }

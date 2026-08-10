@@ -5,8 +5,14 @@ import { MiniBars, MiniDonut, MiniMatrix, MiniSparkline } from "./MiniCharts";
 describe("Training Signal mini charts", () => {
   it("draws one factual bar per supplied point and keeps the graphic decorative", () => {
     const { container } = render(<MiniBars values={[0, 2, 4, 3]} />);
-    expect(container.querySelectorAll(".mini-bars i")).toHaveLength(4);
+    expect(container.querySelectorAll(".mini-bars i")).toHaveLength(3);
     expect(container.querySelector(".mini-bars")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("uses only positive history and marks a deliberate single-point state", () => {
+    const { container } = render(<MiniBars values={[null, 0, 4.2]} />);
+    expect(container.querySelectorAll(".mini-bars i")).toHaveLength(1);
+    expect(container.querySelector(".mini-bars")).toHaveAttribute("data-points", "1");
   });
 
   it("keeps the pace sparkline unsmoothed and reversible", () => {

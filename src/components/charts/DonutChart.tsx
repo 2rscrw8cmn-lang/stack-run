@@ -20,9 +20,9 @@ interface DonutChartProps {
 /**
  * A compact composition graphic with an authoritative text legend.
  *
- * Zero-value segments stay in the legend when the caller supplies them, but
- * never receive an SVG arc. The SVG is hidden from assistive technology
- * because the ordered list carries every label, value and percentage.
+ * Zero-value segments are absent from both the arcs and visible legend.
+ * Source labels stay attached to their segments, so filtering Zone 1 never
+ * renumbers Zone 2. The ordered list is the accessible authority.
  */
 export function DonutChart({
   segments,
@@ -32,11 +32,11 @@ export function DonutChart({
 }: DonutChartProps) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
   if (total <= 0) return null;
+  const visibleSegments = segments.filter((segment) => segment.value > 0);
 
-  const arcs = segments.reduce<
+  const arcs = visibleSegments.reduce<
     Array<DonutSegment & { index: number; length: number; offset: number }>
   >((result, segment, index) => {
-    if (segment.value <= 0) return result;
     const length = (segment.value / total) * CIRCUMFERENCE;
     const offset = result.reduce((sum, arc) => sum + arc.length, 0);
     return [...result, { ...segment, index, length, offset }];
@@ -77,7 +77,7 @@ export function DonutChart({
         </svg>
       </div>
       <ol className="donut__legend" aria-label={label}>
-        {segments.map((segment, index) => (
+        {visibleSegments.map((segment, index) => (
           <li key={`${segment.label}-${index}`} className="donut__legend-row">
             <span
               className="donut__swatch"

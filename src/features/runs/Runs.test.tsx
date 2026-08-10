@@ -70,6 +70,7 @@ describe("Runs", () => {
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("2 runs");
     expect(screen.getByText("5.5 miles run")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
   });
 
   it("lists scheduled, extra, typed in and synced runs together, newest first", () => {

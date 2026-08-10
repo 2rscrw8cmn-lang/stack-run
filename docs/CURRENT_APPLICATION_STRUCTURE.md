@@ -737,21 +737,34 @@ The screen treatment follows D-052 rather than creating a second UI shell:
   `MiniMatrix`; the adjacent text remains the accessible authority. Confident
   per-signal accents, larger tabular facts, square/block-inspired columns,
   crisp line points, and explicit selected states make Runs the strongest
-  expression while run history remains calmer below it.
+  expression while run history remains calmer below a matching **Recent Runs**
+  section heading. The instrument strip uses four equal full-width cells, with
+  a 2x2 fallback at 320px. Signal cards use compact 116px composition at 390px;
+  sparse one-to-three-point histories consume only factual points and use
+  deliberate block states instead of placeholder zero slots.
 - **Weekly Mileage detail** is rebuilt around a larger plan-versus-actual chart,
   compact current/average/plan/delta facts, an explicit selection instruction,
   and the selected week's underlying run list.
 - **Run Detail** is rebuilt around a date/activity header, three primary result
   facts, a compact secondary imported-metric bank, a larger colored HR-zone
   donut and legend, and a columnar interval list. Schedule context and editing
-  remain lower in the sheet, and absent health fields remain omitted.
+  remain lower in the sheet, and absent health fields remain omitted. Donut
+  legends suppress zero-value segments while preserving original source-zone
+  identities, so Zone 2 never becomes Zone 1 merely because Zone 1 is empty.
 - **Today** adds a concise machine-date/race line and stronger workout/Run
   Found result hierarchy without adding analytics or changing the daily order.
 - **Build** adds a local technical stage grid, stronger block edges, and
   stamped mono mileage while preserving the deterministic eight-column
-  geometry, placement behavior, and storage contract exactly.
+  geometry, placement behavior, and storage contract exactly. Its centered
+  miles-built lead, lower horizon/glow, technical corner brackets, stronger
+  piece faces, and compact width-1 mileage stamps make early Builds intentional
+  without shrinking the field.
 - **Plan** uses machine week/date/status facts and thin workout-color edge
-  accents while keeping the schedule rows and body copy restrained.
+  accents while keeping the schedule rows and body copy restrained. The current
+  week chip is angular and today's row uses a quiet edge/background rather than
+  a fluorescent selection box. Persistent bottom-nav selection is now an icon,
+  label, subtle background, and top rule; keyboard focus remains distinct
+  without surrounding the whole cell with a neon rectangle.
 
 Cards, buttons, selected controls, sheets, run rows, and schedule rows use the
 approved squarer, more angular shape language. The approved Performance Arcade
@@ -770,15 +783,15 @@ persistent achievement ledger to claim completeness.
 
 UI-17 verification on 2026-08-10:
 
-- `npm run check` passes: lint, 51 test files / 791 tests, and the production
+- `npm run check` passes: lint, 51 test files / 792 tests, and the production
   Vite build;
 - in-app browser QA passed Today, Runs/Training Signals, Weekly Mileage detail,
   Build, and Plan at 320×800, 390×844, and 1200×900;
 - every reviewed viewport had `scrollWidth === clientWidth` and no browser
   warning/error output;
 - new small label/data contrast measured 7.0:1–17.2:1 on instrument surfaces,
-  focused controls retained the 2px lime outline, and Training Signal targets
-  measured 112px high at 390px;
+  focus remained visibly distinct, and Training Signal targets measured 116px
+  high at 390px;
 - all seven zone tokens resolved and labels remain authoritative; reduced
   motion rules remain active;
 - no schema migration, router/state-library, canvas/WebGL,
