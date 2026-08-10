@@ -8,6 +8,8 @@ import { formatMiles } from "../../domain/distance";
 import type { RunLog, TrainingPlan } from "../../domain/types";
 import {
   describeDirection,
+  DIRECTION_WORD,
+  PHYSIOLOGICAL_SIGNIFICANCE,
   selectTrainingTrends,
   TREND_MINIMUM_RUNS,
   type CoveredTrend,
@@ -21,14 +23,6 @@ interface TrendsSheetProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const DIRECTION_WORD = { rising: "climbing", falling: "coming down", steady: "holding steady" } as const;
-/**
- * Pace and heart rate are not mileage. Two percent is twelve seconds a mile or
- * three beats a minute — plenty for a runner to notice, where the same
- * percentage of a training week is a rounding error.
- */
-const PHYSIOLOGICAL_SIGNIFICANCE = 0.02;
 
 function pace(secondsPerMile: number): string {
   return `${Math.floor(secondsPerMile / 60)}:${String(Math.round(secondsPerMile) % 60).padStart(2, "0")} /mi`;
@@ -53,7 +47,8 @@ function needMore(trend: CoveredTrend, subject: string, empty: string): string {
 /**
  * Training Trends: whether the work is accumulating, in five plain answers.
  *
- * A secondary view rather than a fourth tab, opened from Today and Plan. Each
+ * A secondary view rather than a tab of its own, opened from the trend cards
+ * on Runs and from Today's quiet link. Each
  * measure gets one drawing, one sentence and its own numbers as a table, and
  * every one of them is about *this* plan and *these* runs. What is deliberately
  * absent: any score, any readiness verdict, any projection of a finishing time.

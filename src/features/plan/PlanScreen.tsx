@@ -1,4 +1,4 @@
-import { CalendarDays, TrendingUp } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useState } from "react";
 import {
   blockedDates,
@@ -55,8 +55,6 @@ interface PlanScreenProps {
    * it rules out and offers to move the runs that land on them.
    */
   availability?: AvailabilityCalendar | null;
-  /** Opens the secondary Training Trends view. */
-  onViewTrends?: () => void;
   syncToken?: string | null;
 }
 
@@ -87,7 +85,6 @@ export function PlanScreen({
   onEditPlan = () => undefined,
   availability = null,
   syncToken,
-  onViewTrends,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     currentWeekNumber(plan, today),
@@ -250,20 +247,9 @@ export function PlanScreen({
         ))}
       </ul>
 
-      {/* The plan's settings moved to the bottom bar. What is left here is the
-          one thing that is about the training rather than about the setup. */}
-      {onViewTrends && (
-        <div className="plan-screen__quiet-actions">
-          <button
-            type="button"
-            className="plan-screen__quiet-action"
-            onClick={onViewTrends}
-          >
-            <TrendingUp size={16} strokeWidth={2} aria-hidden="true" />
-            Training Trends
-          </button>
-        </div>
-      )}
+      {/* Nothing hangs off the foot of the schedule now: the plan's settings
+          are in the header gear, and Training Trends is on Runs, next to the
+          actual runs it is a reading of. */}
 
       <p className="visually-hidden" aria-live="polite">
         {announcement}

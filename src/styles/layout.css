@@ -12,12 +12,30 @@
 }
 
 /* The header, the content and the nav share one column on a wide screen. */
-.app-shell__header > .brand,
+.app-shell__header-row,
 .app-shell__main,
 .bottom-nav {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+}
+
+/*
+ * The brand on the left, the gear hard against the right edge of the same
+ * column the content uses, so it lines up with the screen below it rather
+ * than floating off the side of a wide window.
+ */
+.app-shell__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* The gear's 44px target is larger than the gear; pull the padding back off
+   the edge so the icon sits where the eye expects it, not the box. */
+.app-shell__header-row > .icon-button {
+  margin-right: calc(var(--space-2) * -1);
 }
 
 .app-shell__main {

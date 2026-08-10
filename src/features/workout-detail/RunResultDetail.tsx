@@ -5,13 +5,16 @@ import { fetchIntervalsActivityDetail, type IntervalsActivityDetail } from "../.
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
+import { formatPace } from "../../domain/runs";
 import type { RunLog } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
 
-function pace(run: RunLog): string {
-  const seconds = Math.round(run.durationSeconds / run.distanceMiles);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /mi`;
-}
+/**
+ * How far apart moving and elapsed time have to be before both are worth
+ * saying. Under half a minute is a traffic light, and printing the same run
+ * twice under two labels teaches the reader that the distinction is noise.
+ */
+const ELAPSED_SIGNIFICANCE_SECONDS = 30;
 
 function rounded(value: number): string {
   return Math.round(value).toLocaleString();
@@ -20,6 +23,17 @@ function rounded(value: number): string {
 export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: string | null }) {
   const metrics = run.importedMetrics;
   const imported = run.externalSource?.provider === "intervals";
+  const pace = formatPace(run.distanceMiles, run.durationSeconds);
+  /**
+   * A synced run knows how long it took and how long the runner was moving.
+   * Both are facts about the same run, and which one a runner means by "my
+   * time" depends entirely on the run — so when they genuinely differ, say
+   * both and label them.
+   */
+  const elapsed = metrics?.elapsedTimeSeconds;
+  const showElapsed =
+    elapsed !== undefined &&
+    Math.abs(elapsed - run.durationSeconds) >= ELAPSED_SIGNIFICANCE_SECONDS;
   const zoneTotal = metrics?.hrZoneSeconds?.reduce((sum, seconds) => sum + seconds, 0) ?? 0;
   const [detail, setDetail] = useState<IntervalsActivityDetail | null>(null);
   const [detailState, setDetailState] = useState<"idle" | "loading" | "error">("idle");
@@ -44,8 +58,9 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: s
       <dl className="workout-detail__facts">
         <div><dt>Date</dt><dd>{formatDateLabel(run.completedDate)}</dd></div>
         <div><dt>Distance</dt><dd>{formatMiles(run.distanceMiles)} mi</dd></div>
-        <div><dt>Duration</dt><dd>{formatDurationSeconds(run.durationSeconds)}</dd></div>
-        <div><dt>Pace</dt><dd>{pace(run)}</dd></div>
+        <div><dt>{showElapsed ? "Moving" : "Duration"}</dt><dd>{formatDurationSeconds(run.durationSeconds)}</dd></div>
+        {showElapsed && <div><dt>Elapsed</dt><dd>{formatDurationSeconds(elapsed)}</dd></div>}
+        {pace && <div><dt>Pace</dt><dd>{pace}</dd></div>}
         <div><dt>Effort</dt><dd>{EFFORT_LABEL[run.effort]}</dd></div>
         {metrics?.averageHeartRate !== undefined && <div><dt>Average HR</dt><dd>{rounded(metrics.averageHeartRate)} bpm</dd></div>}
         {metrics?.maxHeartRate !== undefined && <div><dt>Max HR</dt><dd>{rounded(metrics.maxHeartRate)} bpm</dd></div>}

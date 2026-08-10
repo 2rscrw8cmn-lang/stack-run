@@ -63,7 +63,7 @@ Recommended lead:
 
 - `N runs` as the `h1`;
 - total actual miles as quiet secondary context;
-- optional `View Training Trends` action;
+- Training Trends — shipped as a swipeable row of trend cards per D-047, rather than the `View Training Trends` action originally written here;
 - chronological list.
 
 A compact `Log Run` action is allowed here and remains available on Today. Do not remove the Today fallback.
@@ -109,7 +109,7 @@ Plan and Build may continue to expose contextual run detail/edit affordances whe
 
 Training Trends remains a secondary view rather than its own tab.
 
-Runs becomes its canonical home. A `View Training Trends` action belongs naturally near the Runs summary/list. Contextual links from Today may remain if they stay quiet; Plan does not need to carry a Trends action once Runs provides a clear home.
+Runs becomes its canonical home. D-047 settles the form: a swipeable row of trend cards between the Runs summary and the list, each card opening the full sheet. Contextual links from Today may remain if they stay quiet; Plan does not need to carry a Trends action once Runs provides a clear home.
 
 ## Decision B — Settings returns to the header
 

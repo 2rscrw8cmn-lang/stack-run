@@ -80,11 +80,46 @@ D-038 remains the safety contract if recovery is revisited later:
 - no automatic plan changes;
 - runner-relative neutral context only.
 
+## D-047 — Training Trends lives on Runs as swipeable cards, not as another link
+
+**Decision:** Runs carries Training Trends as a horizontally swipeable row of
+summary cards at the top of the screen, above the run list. Each card is one
+measure and is a button into the existing full `TrendsSheet`.
+
+This replaces the `View Training Trends` action `docs/RUNS_AND_BUILD_REVISION.md`
+and `docs/RUNS_AND_BUILD_IMPLEMENTATION.md` originally specified for Runs.
+
+**Reason:** Trends had accumulated three entry points — Today, Plan, and a
+proposed third on Runs — none of which showed anything. A runner arriving at
+Runs is asking whether the work is adding up, and a link is a worse answer than
+the numbers. Cards put the answer on the screen and keep the full view one tap
+away, which also makes Runs the canonical home D-044 asked for rather than
+merely another door to the same sheet.
+
+Rules:
+
+- Values come from `selectTrainingTrends`, the same selector the sheet reads.
+  Nothing is stored, persisted or computed a second way.
+- One measure per card. No new chart library and no new derived measures.
+- A measure with nothing recorded for it has no card; a runner with no runs at
+  all gets no strip.
+- The strip is a native `overflow-x` scroll container with CSS snap points.
+  Cards are focusable buttons, so keyboard users reach them by tabbing and the
+  container needs no tab stop of its own.
+- Charts inside a card are `aria-hidden`; the card's accessible name carries
+  the measure, the value and the phrase under it.
+- Plan's dedicated Training Trends footer action is removed. Today keeps its
+  quiet contextual link.
+
+**Revises:** the Trends presentation on Runs in D-044's implementation, not
+D-044 itself. Trends remains a secondary view rather than a tab.
+
 ## Active implementation order after D-046
 
 Implemented/accepted:
 
 - UI-0 through UI-11
+- UI-13 (D-044, D-047)
 - D-018 through D-043 as applicable
 
 Deferred/skipped:
@@ -93,8 +128,7 @@ Deferred/skipped:
 
 Next approved:
 
-1. **UI-13 — Runs Pillar + Navigation Revision** (D-044)
-2. **UI-14 — Build Reward Revision** (D-045)
+1. **UI-14 — Build Reward Revision** (D-045)
 
 Deferred investigation only:
 

@@ -278,8 +278,8 @@ describe("App", () => {
 
     await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    // Reset lives in Settings now, reached from the bottom bar rather than
-    // from the foot of the Plan screen.
+    // Reset lives in Settings, reached from the header gear rather than from
+    // the foot of the Plan screen.
     await user.click(screen.getByRole("button", { name: "Settings" }));
     await user.click(screen.getByRole("button", { name: /^Reset Plan/ }));
 
@@ -327,5 +327,103 @@ describe("App", () => {
         "button",
       ),
     ).toHaveLength(1);
+  });
+  it("offers four destinations and opens Settings from the header instead", async () => {
+    const user = setupUser();
+    render(<App />);
+
+    const bar = within(screen.getByRole("navigation", { name: "Primary" }));
+    expect(bar.getAllByRole("button").map((tab) => tab.textContent)).toEqual([
+      "Today",
+      "Build",
+      "Runs",
+      "Plan",
+    ]);
+    expect(
+      bar.queryByRole("button", { name: "Settings" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Runs" }));
+    expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    // The gear opens a sheet over the tab, and closing it leaves you on the
+    // same tab rather than moving the app somewhere.
+    const gear = screen.getByRole("button", { name: "Settings" });
+    expect(gear).not.toHaveAttribute("aria-current");
+    await user.click(gear);
+    expect(
+      within(screen.getByRole("dialog")).getByRole("heading", {
+        name: "Settings",
+      }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("finds a run logged on Today from Runs, without going through Plan or Build", async () => {
+    const user = setupUser();
+    render(<App />);
+
+    await logTodaysRun(user);
+    await user.click(screen.getByRole("button", { name: "Runs" }));
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("1 run");
+    expect(screen.getByText("2.1 miles run")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Easy. Tuesday, August 4. 2.1 mi, 20:30, 9:46 /mi",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a scheduled run attached to its day when it is edited from Runs", async () => {
+    const user = setupUser();
+    render(<App />);
+
+    await logTodaysRun(user);
+    await user.click(screen.getByRole("button", { name: "Runs" }));
+    await user.click(screen.getByRole("button", { name: /^Easy\. Tuesday/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.clear(screen.getByLabelText(/Distance/));
+    await user.type(screen.getByLabelText(/Distance/), "2.6");
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    // The day is still complete: editing what happened never edits the plan,
+    // and never quietly turns a scheduled run into an extra one.
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.runLogs).toHaveLength(1);
+    expect(stored.runLogs[0].workoutId).toBe("workout-002");
+    expect(stored.runLogs[0].distanceMiles).toBe(2.6);
+  });
+
+  it("deletes a run from Runs and takes its block out of the tower", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = setupUser();
+    render(<App />);
+
+    await logTodaysRun(user);
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+
+    await user.click(screen.getByRole("button", { name: "Runs" }));
+    await user.click(screen.getByRole("button", { name: /^Easy\. Tuesday/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Delete Run" }));
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "No runs yet",
+    );
+    const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
+    expect(stored.runLogs).toEqual([]);
+    expect(stored.blockPlacements).toEqual([]);
+    confirm.mockRestore();
   });
 });

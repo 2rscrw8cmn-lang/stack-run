@@ -29,7 +29,7 @@ import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
 import { useConnectedSync } from "../features/connected/useConnectedSync";
 
-export type TabId = "today" | "build" | "plan";
+export type TabId = "today" | "build" | "runs" | "plan";
 
 /**
  * Either an app, or the reason there isn't one.
@@ -138,18 +138,25 @@ export function App() {
             id: runLogId,
             workoutId: workout?.id ?? null,
             ...values,
-            source: "manual",
-            externalSource: null,
-            importedMetrics: null,
+            // Source, the external link and the imported metrics are the
+            // repository's to keep. Sending them from here overwrote them: a
+            // corrected synced run came back marked `manual`, which put it
+            // back in the pool of runs a *different* activity could be
+            // attached to.
           }),
         )
       }
       onDeleteRun={(runLogId) =>
         setAppState((current) => {
           const run = current.runLogs.find((item) => item.id === runLogId);
-          const next = run?.externalSource?.provider === "intervals" && window.confirm("Keep this synced activity ignored so it does not return on the next sync?")
-            ? ignoreIntervalsActivity(current, run.externalSource.activityId)
-            : current;
+          // Deleting a synced run is a statement about that activity, so it is
+          // ignored without a second question. Asking, and treating Cancel as
+          // "sync it again", meant the run the user had just deleted came back
+          // on the next sync. Run Data still offers Clear ignored.
+          const next =
+            run?.externalSource?.provider === "intervals"
+              ? ignoreIntervalsActivity(current, run.externalSource.activityId)
+              : current;
           return deleteRunLog(next, runLogId);
         })
       }

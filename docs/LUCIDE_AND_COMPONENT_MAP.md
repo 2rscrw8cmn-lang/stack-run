@@ -182,17 +182,18 @@ No Settings item. No badge counts in the first Runs release.
 - `StorageWriteBanner`
 - `AppErrorBoundary`
 
-## UI-13 expected component direction
+## UI-13 components, as shipped
 
-Prefer the smallest readable set, likely:
+- `src/features/runs/RunsScreen.tsx`
+- `src/features/runs/RunRow.tsx`
+- `src/features/runs/RunDetailSheet.tsx` — a wrapper around `RunResultDetail`,
+  not a second metric rendering tree
+- `src/features/runs/TrendCards.tsx` — the swipeable Trends strip (D-047),
+  built from `Section`, `TrendColumns`, `TrendLine` and `ProgressBar`
+- `src/domain/runs.ts` — `runHistory` and `formatPace`
 
-- `RunsScreen`
-- `RunHistoryRow`
-- one Runs-owned detail-sheet wrapper that reuses `RunResultDetail`
-
-Do not create a duplicate metric rendering tree.
-
-The existing `SettingsSheet` remains; only its trigger moves into the header.
+The existing `SettingsSheet` is unchanged; only its trigger moved into the
+header, where it reuses `IconButton` for the 44 x 44 target.
 
 ## UI-14 expected component direction
 

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement";
 import { moveWorkout } from "../domain/planEdit";
+import { likelyManualMatches, normalizeActivityList } from "../connected/intervals";
 import {
+  acceptIntervalsRun,
   deleteRunLog,
   loadAppState,
   onStorageWriteError,
@@ -11,6 +13,7 @@ import {
   saveAppState,
   savePlan,
   saveRunLog,
+  ignoreIntervalsActivity,
   StorageLoadError,
   StorageWriteError,
 } from "./appStateRepository";
@@ -614,5 +617,90 @@ describe("placeBlock", () => {
     });
 
     expect(after.runLogs).toEqual(before.runLogs);
+  });
+});
+
+describe("editing an actual run", () => {
+  const accepted = {
+    externalId: "i-77",
+    sourceType: "Run",
+    completedDate: "2026-08-04",
+    distanceMiles: 6.2,
+    durationSeconds: 3141,
+    sourceUpdatedAt: null,
+    metrics: { averageHeartRate: 151, elapsedTimeSeconds: 3300 },
+  };
+
+  it("never moves the run to another workout, or off the plan entirely", () => {
+    const saved = saveRunLog(loadAppState(), scheduledRun);
+    const runLogId = saved.runLogs[0].id;
+
+    // What Build and Runs hand back: they hold a run, not a workout, so the
+    // link has to survive an edit that says nothing about it.
+    const edited = saveRunLog(saved, {
+      ...scheduledRun,
+      id: runLogId,
+      workoutId: null,
+      distanceMiles: 2.6,
+    });
+
+    expect(edited.runLogs).toHaveLength(1);
+    expect(edited.runLogs[0].workoutId).toBe("workout-002");
+    expect(edited.runLogs[0].distanceMiles).toBe(2.6);
+  });
+
+  it("keeps a synced run synced, with everything that came with it", () => {
+    const imported = acceptIntervalsRun(
+      loadAppState(),
+      accepted,
+      "workout-002",
+      "easy",
+      "solid",
+      "",
+    );
+    const runLogId = imported.runLogs[0].id;
+
+    const edited = saveRunLog(imported, {
+      ...scheduledRun,
+      id: runLogId,
+      distanceMiles: 6.4,
+      notes: "Watch paused at the lights.",
+    });
+
+    const [runLog] = edited.runLogs;
+    expect(runLog.distanceMiles).toBe(6.4);
+    expect(runLog.notes).toBe("Watch paused at the lights.");
+    // A correction is a local edit of a synced run, not a different run: the
+    // imported metrics, the link and the source all stand.
+    expect(runLog.source).toBe("intervals");
+    expect(runLog.externalSource?.activityId).toBe("i-77");
+    expect(runLog.importedMetrics?.averageHeartRate).toBe(151);
+    // Marked manual, it would have gone back into the pool of runs another
+    // activity could be attached to.
+    expect(likelyManualMatches({ ...accepted, externalId: "i-78" }, edited.runLogs)).toEqual([]);
+  });
+
+  it("keeps a deleted synced activity out of the next sync", () => {
+    const imported = acceptIntervalsRun(
+      loadAppState(),
+      accepted,
+      null,
+      "easy",
+      "solid",
+      "",
+    );
+    const runLogId = imported.runLogs[0].id;
+
+    const ignored = ignoreIntervalsActivity(imported, "i-77");
+    const deleted = deleteRunLog(ignored, runLogId);
+
+    expect(deleted.runLogs).toEqual([]);
+    // The activity is still sitting in Intervals, and a sync reads it again.
+    const offered = normalizeActivityList(
+      [{ id: "i-77", type: "Run", start_date_local: "2026-08-04T07:00:00", distance: 10000, moving_time: 3141 }],
+      deleted.runLogs,
+      deleted.intervalsSync.ignoredActivityIds,
+    );
+    expect(offered).toEqual([]);
   });
 });
