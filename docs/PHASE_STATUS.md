@@ -2,151 +2,104 @@
 
 ## Original product program
 
-| Phase | Name | Status | Branch / PR | Notes |
-|---:|---|---|---|---|
-| 0 | Repository foundation | Complete | `feature/phase-0-foundation` | Foundation delivered. |
-| 1 | App shell | Complete | `feature/ui-1-shell` | Three-tab shell/design system delivered. |
-| 2 | Today | Complete | `feature/ui-2-today` | Delivered and later revised by UI-5.5/UI-7. |
-| 3 | Manual run entry | Complete | `claude/ui3-log-modal-spacing-k0pwgp` | Delivered and later revised for extra runs/date. |
-| 4 | Build | Complete | `claude/ui-4-stack-viz-wb437s` | Earn/place/tower foundation delivered and later revised to current 8-column model. |
-| 5 | Plan review | Complete | PR #8 | Week-by-week review/logging delivered. |
-| 5.5 | Core Loop Revision | Complete | `claude/ui55-core-loop-revision` | Extra runs, actual date, Today dashboard, simplified Build, streak correction. |
-| 6 | Plan adjustment | Complete | `claude/ui6-plan-adjustment` | Editable schedule, cross-week moves, Rest/run conversion, guarded reset. |
-| 7 | Polish and release | **Complete** | PR #24 / `claude/stack-production-readiness-qxaxaa` | Merged Aug 9, 2026. UI hierarchy/brand polish, Sections/icons, installability, storage recovery, error handling, no DevDataPanel. PR checks reported 510 tests + build. |
+| Phase | Name | Status | Notes |
+|---:|---|---|---|
+| 0 | Repository foundation | Complete | Foundation delivered. |
+| 1 | App shell | Complete | Original shell/design system delivered. |
+| 2 | Today | Complete | Delivered and revised later. |
+| 3 | Manual run entry | Complete | Delivered and revised for extra runs/date. |
+| 4 | Build | Complete | Earn/place/tower foundation delivered and revised later. |
+| 5 | Plan review | Complete | Week-by-week review/logging delivered. |
+| 5.5 | Core Loop Revision | Complete | Extra runs, actual date, Today dashboard, simpler Build, streak correction. |
+| 6 | Plan adjustment | Complete | Editable schedule, cross-week moves, Rest/run conversion, guarded reset. |
+| 7 | Polish and release | Complete | PR #24. Brand hierarchy, Sections/icons, installability, storage recovery, error handling. |
 
 ## Implemented owner-requested additions
 
-These were built outside the numbered UI-0–UI-7 sequence and are now formal decisions D-030 through D-032.
-
 | Capability | Status | Decision | Notes |
 |---|---|---|---|
-| Generated active race plan | Implemented | D-030 | One active race/plan, deterministic template generation; recorded runs survive regeneration. |
-| Preferred run days | Implemented | D-031 | Explicit user-triggered plan reshaping; never autonomous. |
-| Availability calendar | Implemented | D-032 | Calendar can identify conflicts/propose moves; user accepts every plan change. Uses `api/calendar.ts` when CORS requires it. |
-| Settings sheet in the bottom bar | Implemented | D-041 | Race, Run Days, Availability, Run Data and Reset Plan in one place. Not a fourth destination. |
-| Chosen plan start date | Implemented | D-042 | Optional `RacePlanSetup.startDate`; absent still derives the start from the race, so no migration. |
-| Plan load safety rules | Implemented | D-043 | Weekly volume is the progression; capped week-on-week load, spaced hard days, honest warnings about what a rebuild costs. |
+| Generated active race plan | Implemented | D-030 | One active race/plan; deterministic generation; recorded runs survive regeneration. |
+| Preferred run days | Implemented | D-031 | Explicit user-triggered reshape; never autonomous. |
+| Availability calendar | Implemented | D-032 | Calendar identifies conflicts/proposes moves; user accepts every plan change. |
+| Grouped Settings sheet | Implemented | D-041 | Race, Run Days, Availability, Run Data, Reset Plan in one sheet. Current main still opens it from bottom nav until UI-13. |
+| Chosen plan start date | Implemented | D-042 | Optional start date; absent derives from race. |
+| Plan load safety rules | Implemented | D-043 | Weekly-volume progression, bounded load increases, spaced hard days, honest rebuild warnings. |
 
-Current AppState on the UI-8 branch is **schema version 9**.
+Current AppState: **schema version 9**.
 
 ## Connected Training program
 
-Documentation branch:
+Working path:
 
 ```text
-docs/connected-training-v2
+Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
+
+| Phase | Name | Status | Primary outcome |
+|---:|---|---|---|
+| 8 | Connected Data Foundation | **Complete** | Protected read proxy, schema 9, sync/dedupe, planned/extra/attach import; real HealthFit run verified on iPhone. |
+| 9 | Connected Run Detail | **Complete** | Shared rich run detail with verified HR/elevation/load/zones and on-demand interval detail; optional fields omitted safely. |
+| 10 | Connected Today + Week | **Complete** | Stale-aware quiet sync, Run Found, weekly actual miles/time/longest. |
+| 11 | Training Trends | **Complete** | Weekly mileage, long-run progression, consistency, Easy pace and Easy HR with accessible summaries/low-data states. |
+| 12 | Wellness / Recovery Context | **Deferred / intentionally skipped** | D-046. Not part of active product roadmap. D-038 safety rules remain if revisited later. |
+
+Connected Training is considered complete for the current product through UI-11.
+
+Known source limitations remain non-blocking:
+
+- cadence has not been promoted because real source semantics/coverage were not fully verified;
+- structured interval groups depend on a structured Apple Watch workout;
+- missing optional metrics remain omitted rather than guessed.
+
+## Post-connected product revision
 
 Approved source of truth:
 
-- `docs/CONNECTED_TRAINING.md`
-- `docs/INTERVALS_INTEGRATION.md`
-- `docs/CONNECTED_DATA_FIELDS.md`
+- `docs/RUNS_AND_BUILD_REVISION.md`
+- `docs/RUNS_AND_BUILD_IMPLEMENTATION.md`
+- `docs/DECISION_LOG_ADDENDUM.md`
 
-Known external setup before implementation:
-
-- HealthFit connected to Intervals.icu.
-- HealthFit-originated June 10, 2026 run visible in Intervals.icu.
-- Personal Intervals.icu API key generated.
-- API key is not stored in repository/docs.
-
-| Phase | Name | Status | Branch / PR | Primary outcome |
+| Phase | Name | Status | Decision | Primary outcome |
 |---:|---|---|---|---|
-| 8 | Connected Data Foundation | **Complete** | `claude/stack-sync-token-connection-txwds5` | Protected read proxy, schema 9, sync/dedupe, match/extra/attach import. Verified on the production deployment Aug 9, 2026: a real HealthFit activity synced, matched and imported on iPhone. |
-| 9 | Connected Run Detail | **Complete, with two fields still unverified** | `claude/stack-sync-token-connection-txwds5` | Shared scheduled/extra detail, derived pace, HR/elevation/load/zones and on-demand interval rows, verified against the real Aug 9 activity. Cadence stays omitted; structured intervals still need a structured Apple Watch workout. |
-| 10 | Connected Today + Week | **Implementation complete; deployed check pending** | `claude/stack-sync-token-connection-txwds5` | Stale-aware quiet sync on open/focus, Run Found on Today, weekly actual miles/time/longest. |
-| 11 | Training Trends | **Implementation complete; deployed check pending** | `claude/stack-sync-token-connection-txwds5` | Secondary Trends sheet from Today and Plan: weekly mileage, long-run progression, consistency, Easy pace and Easy HR, each with a summary, a table view and a low-data state. HR zones on run detail are now a chart. |
-| 12 | Wellness / Recovery Context | Blocked on field verification |  | HRV/resting HR/sleep only if real HealthFit → Intervals coverage is verified. |
-| 13 | Optional Plan Export Investigation | **Deferred** |  | No code authorization. Possible STACK Plan → Intervals → HealthFit write path requires separate decision. |
+| 13 | Runs Pillar + Navigation Revision | **Not started — next approved** | D-044 | Bottom nav Today / Build / Runs / Plan; Settings moves to top-right gear; Runs becomes chronological actual-history home; Trends canonical from Runs. |
+| 14 | Build Reward Revision | **Not started** | D-045 | Object-first Build, mileage on blocks, direct release-to-place touch path, restrained placement payoff, earned Race capstone. |
+| 15 | Optional Plan Export Investigation | **Deferred** | D-040 | No code authorization. Any STACK → Intervals write path requires a separate decision/security design. |
 
-## UI-8 prerequisites outside the repository
+## Important current-versus-next distinction
 
-Before a real-data UI-8 preview smoke test, Vercel needs:
+Current `main` after PR #30 still has the Settings control in the bottom bar and no Runs primary tab.
 
-```text
-INTERVALS_API_KEY
-STACK_SYNC_TOKEN
-```
+That is expected until UI-13 is implemented.
 
-Automated code/tests must **not** require either secret. Preview/Production secrets are for deployed real-data verification only.
+Do not treat the existing four-item bar as the approved final navigation. D-044 supersedes D-041's bottom-bar entry point when UI-13 ships.
 
-## UI-8 field-discovery gate
+Current Build still includes the existing heading stats and current placement behavior.
 
-The first deployed sync must query far enough back to include the known June 10 HealthFit-originated activity and then update `docs/CONNECTED_DATA_FIELDS.md` with the actual source fields/units present.
+That is expected until UI-14. D-045 changes presentation/interaction emphasis without changing the existing schema-9 block geometry model.
 
-Do not commit the raw personal API response.
+## UI-13 exit recording
 
-## UI-10 validation state
+When UI-13 is reviewed, record:
 
-Branch `claude/stack-sync-token-connection-txwds5`. `npm run check` passes
-(574 tests). The whole loop was driven at 320px against a stubbed proxy —
-quiet sync on open, Run Found, Confirm Match, the existing review, the earned
-Long Run block, and This Week's actual totals — with no tap needed to start the
-sync. What remains is the same thing every connected phase ends with: the owner
-running it on the deployed app after a real HealthFit sync.
-
-Deliberately not built, per the phase boundaries: no fourth tab, no trends, no
-wellness, no automatic plan edits, and no polling of any kind.
-
-## UI-11 validation state
-
-Branch `claude/stack-sync-token-connection-txwds5`. `npm run check` passes
-(597 tests). Every chart was rendered at 320px against six weeks of seeded
-runs and read back from the screenshots, which is what caught two real
-defects: a one-column week-one chart that said less than the number does, and
-a stale rule that collapsed the new zone bars to nothing.
-
-No chart dependency was added — all five drawings are inline SVG or CSS. What
-was deliberately not built: no fourth tab, no readiness score, no CTL/ATL, no
-race prediction, no coaching language, and nothing that changes the plan.
-
-Known limitation: weekly mileage buckets by plan week, so runs recorded before
-the plan's first week are counted nowhere in that chart. The summary sentence
-says so rather than leaving the reader to notice a gap.
-
-## Connection repair after the UI-8/UI-9 merges
-
-Branch `claude/stack-sync-token-connection-txwds5`. The first real connection
-attempt failed with "Run Data could not be reached" on a correct sync token.
-Fixed on this branch:
-
-- `resource=status` no longer probes an athlete endpoint outside the integration
-  contract; it runs a one-day query against the activity endpoint sync uses;
-- `api/intervals.ts` answers both serverless calling conventions;
-- the sync token is compared in constant time and both secrets are trimmed;
-- the upstream read carries a 15s timeout and returns `504 upstream_timeout`;
-- the browser maps every reader error code to an actionable message instead of
-  one generic sentence, and names the missing variable on `503`;
-- imported distance is rounded where it enters STACK.
-
-`npm run check` passes (547 tests). The deployed real-data smoke test still
-belongs to the owner: it needs `INTERVALS_API_KEY` and `STACK_SYNC_TOKEN` set
-in Vercel **and a redeploy**, which the repository environment cannot do.
-`docs/DEPLOYMENT.md` carries the message-by-message troubleshooting table.
-
-## UI-9 validation state
-
-The secret-free automated suite covers minimum imported/manual runs, absent and
-present optional metrics, accessible HR-zone text, on-demand detail success,
-failure and rate limiting, and a conservative named structured-interval
-fixture.
-
-Recorded Aug 9, 2026 on the production deployment: a real HealthFit activity
-imported with average HR, max HR, elevation gain, training load and seven HR
-zone times all present. `docs/CONNECTED_DATA_FIELDS.md` marks those Verified.
-Two things stay unverified and stay out of the UI: cadence, whose semantics
-were never confirmed, and structured interval groups, which need a structured
-Apple Watch workout rather than the easy run that was tested.
-
-## Update format
-
-When changing a connected phase status, record:
-
-- branch name;
-- PR number;
+- branch/PR;
 - latest commit;
 - `npm run check` result;
-- responsive/manual verification;
-- real-data smoke-test result when applicable;
-- fields newly marked Verified/Missing;
-- remaining blocker/known limitation.
+- 320/390/desktop visual result;
+- keyboard/focus result;
+- Runs chronological/history/edit/delete checks;
+- Settings header-return behavior;
+- confirmation that no schema migration or new persistence model was added unless explicitly approved.
+
+## UI-14 exit recording
+
+When UI-14 is reviewed, record:
+
+- branch/PR;
+- latest commit;
+- `npm run check` result;
+- 320/390/desktop tower result;
+- pointer/touch release placement result;
+- tap/keyboard placement result;
+- reduced-motion result;
+- mileage-label and Race-capstone result;
+- confirmation that geometry/storage/rendering dependencies did not change unexpectedly.
