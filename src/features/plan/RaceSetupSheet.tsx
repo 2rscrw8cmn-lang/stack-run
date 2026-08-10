@@ -5,11 +5,15 @@ import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDateLabel } from "../../domain/dates";
 import {
+  countQualitySessions,
   DISTANCE_PROFILES,
   generateTrainingPlan,
+  inferRunnerLevel,
+  longRunLadder,
   mondayOf,
   plannedWeeks,
   planStartDate,
+  weeklyMileageLadder,
   RACE_DISTANCE_ORDER,
   RUNNER_LEVEL_BLURB,
   RUNNER_LEVEL_LABEL,
@@ -59,7 +63,12 @@ export function RaceSetupSheet({
   const [distance, setDistance] = useState<RaceDistance>(
     setup?.distance ?? "half",
   );
-  const [level, setLevel] = useState<RunnerLevel>(setup?.level ?? "novice");
+  // Not "novice" when nothing is saved: the plan on screen already says what
+  // level it is written at, and defaulting to the lowest one silently strips
+  // the speed work out of a plan that has some.
+  const [level, setLevel] = useState<RunnerLevel>(
+    setup?.level ?? inferRunnerLevel(plan, setup?.distance ?? "half"),
+  );
   /**
    * Null while the runner has not said, so the suggested start keeps following
    * the distance and the race date. The moment they pick one it stops moving
@@ -103,6 +112,30 @@ export function RaceSetupSheet({
   // Every recorded run survives a rebuild, scheduled or extra, so the count
   // that matters here is all of them.
   const recorded = runLogs.length;
+
+  /**
+   * The hard sessions the plan on screen has, and how many of them the level
+   * being chosen would keep. Rebuilding a plan with speed work in it at a
+   * level that has none is a real loss and it used to happen silently.
+   */
+  const existing = countQualitySessions(plan);
+  const existingQuality = existing.intervals + existing.simulation;
+  const keeps = profile.levels[level].quality;
+  const losesIntervals = existing.intervals > 0 && keeps < 1;
+  const losesRacePace = existing.simulation > 0 && keeps < 2;
+  const dropsQuality = losesIntervals || losesRacePace;
+
+  // What the plan can actually build to in the weeks it has. A squeezed plan
+  // no longer jumps to the template's peak; it climbs as far as it safely can.
+  const reachableLong = startDate
+    ? Math.max(...longRunLadder(distance, level, weeks))
+    : profile.levels[level].peakLongMiles;
+  const shortOfPeak = reachableLong < profile.levels[level].peakLongMiles;
+  // Stated because the level is really a choice about how much running this
+  // is, and the long run alone does not say that.
+  const biggestWeek = startDate
+    ? Math.max(...weeklyMileageLadder(distance, level, weeks))
+    : profile.levels[level].peakWeeklyMiles;
 
   function generate() {
     const chosen: RacePlanSetup = {
@@ -221,8 +254,8 @@ export function RaceSetupSheet({
             <p className="race-setup__summary">
               {`${weeks} ${weeks === 1 ? "week" : "weeks"}, ${formatDateLabel(startDate)} to ${formatDateLabel(date)}: `}
               {`${profile.levels[level].runsPerWeek} runs a week, building to a `}
-              {`${profile.levels[level].peakLongMiles}-mile long run, then a `}
-              {`${profile.taperWeeks}-week taper.`}
+              {`${reachableLong}-mile long run and ${biggestWeek} miles in the `}
+              {`biggest week, then a ${profile.taperWeeks}-week taper.`}
             </p>
 
             {startsLater && !chosenStart && (
@@ -241,7 +274,35 @@ export function RaceSetupSheet({
               <p className="race-setup__warning">
                 <TriangleAlert size={16} strokeWidth={2} aria-hidden="true" />
                 <span>
-                  {`A ${profile.label.toLowerCase()} usually wants at least ${profile.minWeeks} weeks. This plan will be built anyway — it is your race — but it starts closer to the peak than it should.`}
+                  {`A ${profile.label.toLowerCase()} usually wants at least ${profile.minWeeks} weeks. This plan will be built anyway — it is your race — but ${
+                    shortOfPeak
+                      ? `in ${weeks} it can only climb to a ${reachableLong}-mile long run, not the ${profile.levels[level].peakLongMiles} the distance asks for. It will not build the mileage that race needs.`
+                      : "there is no room in it for anything to go wrong."
+                  }`}
+                </span>
+              </p>
+            )}
+
+            {/*
+              Rebuilding at a level with less speed work than the plan already
+              has is a real loss, and it used to happen without a word.
+            */}
+            {dropsQuality && (
+              <p className="race-setup__warning">
+                <TriangleAlert size={16} strokeWidth={2} aria-hidden="true" />
+                <span>
+                  {`Your plan has ${existingQuality} hard ${existingQuality === 1 ? "session" : "sessions"} in it — `}
+                  {[
+                    existing.intervals > 0
+                      ? `${existing.intervals} interval`
+                      : null,
+                    existing.simulation > 0
+                      ? `${existing.simulation} race pace`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" and ")}
+                  {`. A ${RUNNER_LEVEL_LABEL[level].toLowerCase()} plan has ${keeps === 0 ? "none" : "no race-pace runs"}, so rebuilding replaces ${keeps === 0 ? "them" : "those"} with easy running.`}
                 </span>
               </p>
             )}

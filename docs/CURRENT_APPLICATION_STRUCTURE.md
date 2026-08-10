@@ -162,7 +162,7 @@ Pure functions over a plan, returning a new one. Nothing here touches storage, r
 
 ### What the generator is, and is not
 
-It is arithmetic over a template. The distance and level pick runs per week, where the long run starts and finishes, and how long the taper is; the weeks between today and race day decide the rest. The long run climbs to its peak the week before the taper, drops about a third every fourth week, and comes down through the taper; race week is two shakeouts and the race.
+It is arithmetic over a template. The distance and level pick runs per week, where the long run starts and finishes, how many miles the first and biggest weeks hold, and how long the taper is; the weeks between the start and race day decide the rest. **Weekly volume is the primary progression and the long run is a share of it** — see "The load rules" below, which is the part of this that keeps somebody in one piece. Race week is two shakeouts and the race.
 
 It is **not** coaching. It reads no logged run, knows nothing about how last Tuesday went, and will not adapt if it went badly. It produces a starting point, which every other screen then lets you edit. That is the line D-021 draws and this stays on the right side of it.
 
@@ -171,6 +171,89 @@ It is **not** coaching. It reads no logged run, knows nothing about how last Tue
 - Too close for the distance is a **warning, not a refusal** — it is the runner's race. A date already past is refused, because there is nothing to plan.
 - Runs land only on the days `runDays` allows, spread across the week with the long run last. Race day is exempt: the race is when the race is.
 - Every date holds exactly one workout, so plan editing, moving, and the run-day reshape all work on a generated plan exactly as on the seeded one.
+
+### The load rules (D-043)
+
+The first version of this generator made every run in a week a fixed fraction
+of that week's long run. That one decision produced most of what was wrong with
+it: cutting the long run by a third on a down week cut *the whole week* by a
+third, and returning to the ramp put the whole week back up by half. Half and
+marathon plans had week-on-week rises of **+65% and +70%**, repeatedly, and the
+week-on-week rise is not even the metric that matters — measured properly, four
+to seven build weeks per plan exceeded the biggest week already run by more than
+a tenth, by as much as 18%.
+
+Weekly volume is now the thing that progresses, and the runs are budgeted out of
+it. Five rules, all asserted over every distance × level × {min, ideal, max}
+weeks in `racePlan.test.ts`:
+
+1. **No week exceeds the biggest week so far by more than a tenth**, or two
+   miles, whichever is larger. Measured against the biggest week *already run*,
+   not against last week — a down week is a step back on purpose, so the rebound
+   off one says nothing about load. The two-mile floor is there because ten
+   percent of a six-mile week is a rule about nothing.
+   This is enforced on the **scheduled miles**, not on the ladder: every run is
+   rounded to the half mile, and on a small week three of those roundings add a
+   tenth on their own. `runsForWeek` takes a cap and shaves half a mile at a
+   time off the longest easy run until the week fits. The long run and the
+   quality sessions are never trimmed; the easy miles are what is negotiable.
+2. **A down week is a fifth off the week before it**, not a third off the ramp
+   ahead, and the long run comes off harder than the week does (0.7 against 0.8)
+   because easing the long run is what a down week is for.
+3. **The long run grows by miles, not by percent** — at most 1 mile a step for a
+   5K or 10K, 1.5 for a half, 2 for a marathon. A percentage is the wrong model:
+   a mile is a third of the way up from three and a twentieth of the way up from
+   twenty. These ceilings do not bind on a full-length plan. They exist so a
+   squeezed one climbs as far as it safely can rather than opening at the peak —
+   a four-week marathon used to prescribe a twenty-miler in week one.
+4. **Hard days are spaced.** The week's runs are built in the order they will be
+   run, and the two quality sessions of an advanced week take slots 0 and 2, so
+   they are never consecutive and neither lands the day before the long run. An
+   advanced marathon block used to run intervals on Monday and race pace on
+   Tuesday for 21 of its 24 weeks.
+5. **A taper cuts distance, not frequency.** Dropping a run while keeping three
+   quarters of the volume concentrated what was left — taper weeks were
+   scheduling easy runs longer than any in the block they were resting from.
+
+Two smaller things went with them. Easy runs in a week are no longer identical:
+they descend (`EASY_SHARES`) so the day before the long run is the gentlest, and
+no easy run may outgrow the long run. And race week's shakeouts are chosen from
+the days that actually **precede** race day — picking two weekdays and then
+deleting whatever fell after the race silently cost the second shakeout on every
+race that was not on a Sunday.
+
+### Sessions that say what the session is
+
+`Intervals: 4 Miles` used to carry the sentence "Warm up, then repeats at a hard
+but controlled effort with easy jogging between" — no count, no rep length, no
+recovery, which is the entire part of the session that is a decision. The seed
+plan STACK ships with has always said `4 × 30 seconds hard with 60 seconds
+rest`; a generated one now says `6 × 800 m at 5K effort with 2 minutes of easy
+jogging between`, with the rep length and the effort taken from the race
+distance and the count from the session's own mileage. Race-pace runs say how
+many of their miles are at race pace.
+
+### Reading the level off the plan (D-043)
+
+`RaceSetupSheet` used to open on **Novice** whenever no race setup was saved —
+which is exactly the state the plan STACK ships with is in. That plan has 15
+interval sessions and 4 race-pace runs; a novice plan has none. So opening Race
+for any reason at all, including to set a start date, and pressing the button
+replaced every one of them with an easy run, silently.
+
+`inferRunnerLevel(plan, distance)` reads the level off the plan instead, and
+weights **how often it runs at ten times what it runs**. The shipped plan runs
+four days a week *and* has speed work, a combination none of the three levels
+expresses; reading it as Advanced because of the speed work would hand the
+runner a plan with 60% more mileage in its biggest week. Frequency is the honest
+proxy for load, so frequency decides and the quality content only breaks ties —
+the shipped plan reads as Novice.
+
+That makes the default safe rather than silent, so the sheet also says what the
+choice costs: it names the hard sessions the current plan holds and states that
+the chosen level will replace them, and the summary line now gives **the biggest
+week in miles** as well as the peak long run, because how much running this is
+was the part of the choice the sheet never mentioned.
 
 ### Regenerating never costs a run
 

@@ -216,6 +216,68 @@ describe("setting up the race", () => {
     expect(screen.getByLabelText("Start training")).toHaveValue("2026-08-10");
   });
 
+  /**
+   * The sheet used to open on Novice whenever no race had been saved, which is
+   * the state the shipped plan is in — so opening Race for any reason at all
+   * and pressing the button replaced its nineteen hard sessions with easy
+   * running, and said nothing.
+   */
+  it("opens on the level the plan is written at, not on the lowest one", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+
+    // Four days a week: the shipped plan's frequency, which is what governs
+    // load, rather than the speed work, which would read as Advanced and hand
+    // the runner half again as many miles.
+    expect(screen.getByRole("button", { name: /Novice/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("says what rebuilding would do to the speed work already in the plan", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+
+    expect(screen.getByText(/15 interval and 4 race pace/)).toBeInTheDocument();
+    expect(screen.getByText(/replaces them with easy running/)).toBeInTheDocument();
+  });
+
+  it("stops warning once a level that keeps the hard sessions is chosen", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: /Advanced/ }));
+
+    expect(screen.queryByText(/replaces them with easy running/)).not.toBeInTheDocument();
+  });
+
+  it("says how big the biggest week would be, because that is the real choice", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    expect(screen.getByText(/25 miles in the biggest week/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Advanced/ }));
+    expect(screen.getByText(/40 miles in the biggest week/)).toBeInTheDocument();
+  });
+
+  it("says what a plan too short for the distance can actually build to", async () => {
+    const { user } = renderPlan({ today: "2026-11-16" });
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: "Marathon" }));
+
+    expect(screen.getByText(/usually wants at least 12 weeks/)).toBeInTheDocument();
+    // Not "it starts closer to the peak than it should" — it no longer does,
+    // and what it will not do is get you there.
+    expect(
+      screen.getByText(/not the 20 the distance asks for/),
+    ).toBeInTheDocument();
+  });
+
   it("says what will happen to the runs already recorded", async () => {
     const { user } = renderPlan({
       runLogs: [runLogFor("workout-002", "2026-08-04")],

@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { earnsBlock } from "./build";
+import { daysBetweenLocalDates, formatLocalDate } from "./dates";
 import {
+  countQualitySessions,
   DISTANCE_PROFILES,
   generateTrainingPlan,
+  inferRunnerLevel,
   longRunLadder,
   mondayOf,
   plannedWeeks,
   planStartDate,
+  RACE_DISTANCE_ORDER,
   RacePlanError,
+  RUNNER_LEVEL_ORDER,
   spreadDays,
   weeksAvailable,
   type RaceDistance,
@@ -15,6 +20,7 @@ import {
   type RunnerLevel,
 } from "./racePlan";
 import { weekdayOf, type Weekday } from "./runDays";
+import { loadSeedPlan } from "../seed/loadSeedPlan";
 import type { TrainingPlan } from "./types";
 
 function setupFor(overrides: Partial<RacePlanSetup> = {}): RacePlanSetup {
@@ -298,5 +304,217 @@ describe("generateTrainingPlan", () => {
     expect(() =>
       generateTrainingPlan(setupFor(), { today: "2026-12-20" }),
     ).toThrow(RacePlanError);
+  });
+});
+
+/**
+ * The rules that keep a generated plan from hurting somebody.
+ *
+ * These are asserted over every distance, every level and three plan lengths,
+ * because the failure they replaced was not in one combination — it was in the
+ * arithmetic, and it turned up wherever the arithmetic did.
+ */
+describe("what every generated plan owes the runner", () => {
+  const COMBINATIONS = RACE_DISTANCE_ORDER.flatMap((distance) =>
+    RUNNER_LEVEL_ORDER.flatMap((level) =>
+      [
+        DISTANCE_PROFILES[distance].minWeeks,
+        DISTANCE_PROFILES[distance].idealWeeks,
+        DISTANCE_PROFILES[distance].maxWeeks,
+      ].map((weeks) => ({ distance, level, weeks })),
+    ),
+  );
+
+  const RACE_DATE = "2028-01-15";
+
+  function planOf(distance: RaceDistance, level: RunnerLevel, weeks: number) {
+    const start = new Date(`${RACE_DATE}T00:00:00`);
+    start.setDate(start.getDate() - (weeks - 1) * 7);
+    return generateTrainingPlan(
+      { name: "Race", date: RACE_DATE, distance, level },
+      { today: formatLocalDate(start) },
+    );
+  }
+
+  function weeklyMiles(plan: TrainingPlan, distance: RaceDistance): number[] {
+    return plan.weeks.map((week) =>
+      week.workouts
+        .filter((workout) => workout.type !== "rest")
+        .reduce(
+          (total, workout) =>
+            total +
+            (workout.type === "race"
+              ? DISTANCE_PROFILES[distance].miles
+              : Number(workout.targetDistanceMiles ?? 0)),
+          0,
+        ),
+    );
+  }
+
+  it.each(COMBINATIONS)(
+    "never asks $distance/$level over $weeks weeks for a week more than a tenth bigger than its biggest so far",
+    ({ distance, level, weeks }) => {
+      const plan = planOf(distance, level, weeks);
+      const totals = weeklyMiles(plan, distance);
+      // The taper is a deliberate descent and race week is sized by the race.
+      const build = totals.slice(0, totals.length - DISTANCE_PROFILES[distance].taperWeeks);
+
+      let biggest = 0;
+      for (const total of build) {
+        if (biggest > 0) {
+          // Ten percent, or two miles on the very small weeks where a
+          // percentage is a rule about nothing.
+          expect(total).toBeLessThanOrEqual(Math.max(biggest * 1.1, biggest + 2) + 0.001);
+        }
+        biggest = Math.max(biggest, total);
+      }
+    },
+  );
+
+  it.each(COMBINATIONS)(
+    "keeps every easy run inside the long run for $distance/$level over $weeks weeks",
+    ({ distance, level, weeks }) => {
+      for (const week of planOf(distance, level, weeks).weeks) {
+        const long = week.workouts.find((workout) => workout.type === "long");
+        if (!long) continue;
+        const longMiles = Number(long.targetDistanceMiles);
+        for (const workout of week.workouts.filter((w) => w.type === "easy")) {
+          expect(Number(workout.targetDistanceMiles)).toBeLessThanOrEqual(longMiles);
+        }
+      }
+    },
+  );
+
+  it.each(COMBINATIONS)(
+    "never puts two hard sessions on consecutive days for $distance/$level over $weeks weeks",
+    ({ distance, level, weeks }) => {
+      for (const week of planOf(distance, level, weeks).weeks) {
+        const hard = week.workouts
+          .filter((workout) => workout.type === "intervals" || workout.type === "simulation")
+          .map((workout) => workout.date);
+        for (let at = 1; at < hard.length; at += 1) {
+          expect(daysBetweenLocalDates(hard[at - 1], hard[at])).toBeGreaterThan(1);
+        }
+      }
+    },
+  );
+
+  it("varies the easy runs instead of scheduling the same one three times", () => {
+    const week = planOf("half", "novice", 20).weeks[12];
+    const easy = week.workouts
+      .filter((workout) => workout.type === "easy")
+      .map((workout) => Number(workout.targetDistanceMiles));
+
+    expect(easy.length).toBeGreaterThan(2);
+    expect(new Set(easy).size).toBeGreaterThan(1);
+    // Descending, so the day before the long run is the gentlest of them.
+    expect([...easy].sort((a, b) => b - a)).toEqual(easy);
+  });
+
+  it("steps back on a down week and comes back no higher than it had been", () => {
+    const totals = weeklyMiles(planOf("marathon", "novice", 24), "marathon");
+
+    // Week 4 is the first down week: a real cut, not a collapse.
+    expect(totals[3]).toBeLessThan(totals[2] * 0.9);
+    expect(totals[3]).toBeGreaterThan(totals[2] * 0.7);
+    // And the week after it is barely above the week before it, not half as
+    // much again — which is what the old ladder did.
+    expect(totals[4]).toBeLessThanOrEqual(Math.max(totals[2] * 1.1, totals[2] + 2) + 0.001);
+  });
+
+  it("tapers by running the same days shorter, not by dropping a day", () => {
+    const plan = planOf("half", "novice", 20);
+    const runsIn = (week: (typeof plan.weeks)[number]) =>
+      week.workouts.filter((workout) => workout.type !== "rest").length;
+
+    expect(runsIn(plan.weeks[18])).toBe(runsIn(plan.weeks[17]));
+    const totals = weeklyMiles(plan, "half");
+    expect(totals[18]).toBeLessThan(totals[17] * 0.85);
+  });
+
+  it("climbs as far as a squeezed plan safely can, rather than opening at the peak", () => {
+    // Four weeks is not a marathon plan and the sheet says so. What it must
+    // not do is prescribe the twenty-miler in week one.
+    const plan = planOf("marathon", "novice", 4);
+    const longs = plan.weeks
+      .flatMap((week) => week.workouts)
+      .filter((workout) => workout.type === "long")
+      .map((workout) => Number(workout.targetDistanceMiles));
+
+    expect(longs[0]).toBe(DISTANCE_PROFILES.marathon.levels.novice.startLongMiles);
+    expect(Math.max(...longs)).toBeLessThan(
+      DISTANCE_PROFILES.marathon.levels.novice.peakLongMiles,
+    );
+  });
+
+  /**
+   * Race week used to pick two weekdays and then delete whichever landed after
+   * the race, so a Saturday race silently lost its second shakeout. The days
+   * are now chosen from the ones that actually precede race day — of which a
+   * Tuesday race has exactly one.
+   */
+  it.each([
+    ["2028-01-11", "Tuesday", 1],
+    ["2028-01-13", "Thursday", 2],
+    ["2028-01-15", "Saturday", 2],
+    ["2028-01-16", "Sunday", 2],
+  ])("fits the race-week shakeouts before a %s race", (date, _weekday, expected) => {
+    const plan = generateTrainingPlan(
+      { name: "Race", date, distance: "half", level: "novice" },
+      { today: "2027-09-01" },
+    );
+    const raceWeek = plan.weeks.at(-1)!;
+    const shakeouts = raceWeek.workouts.filter((workout) => workout.type === "easy");
+
+    expect(shakeouts).toHaveLength(expected);
+    for (const shakeout of shakeouts) {
+      expect(shakeout.date < date).toBe(true);
+    }
+    // With room to choose, the last one is not the day before the race.
+    if (expected === 2) {
+      expect(daysBetweenLocalDates(shakeouts[1].date, date)).toBeGreaterThan(1);
+    }
+  });
+
+  it("writes an interval session with intervals in it", () => {
+    const plan = planOf("10k", "advanced", 14);
+    const session = plan.weeks
+      .flatMap((week) => week.workouts)
+      .find((workout) => workout.type === "intervals")!;
+
+    // The count, the length and the recovery are the session; leaving them out
+    // left the runner to invent the only part that is a decision.
+    expect(session.details).toMatch(/\d+ × 800 m/);
+    expect(session.details).toMatch(/2 minutes of easy jogging between/);
+    expect(session.details).toMatch(/warm up/);
+  });
+
+  it("writes a race-pace run that says how much of it is at race pace", () => {
+    const plan = planOf("marathon", "advanced", 24);
+    const session = plan.weeks
+      .flatMap((week) => week.workouts)
+      .find((workout) => workout.type === "simulation")!;
+
+    expect(session.details).toMatch(/at goal marathon pace/);
+  });
+});
+
+describe("reading a plan's level off the plan", () => {
+  it("reads the shipped plan by how often it runs, not by its speed work", () => {
+    // Four days a week with intervals in it is a combination no level has.
+    // Reading it as Advanced because of the speed work would hand the runner
+    // sixty percent more mileage in the biggest week.
+    const seed = loadSeedPlan();
+    expect(countQualitySessions(seed).intervals).toBeGreaterThan(0);
+    expect(inferRunnerLevel(seed, "half")).toBe("novice");
+  });
+
+  it("recognises a plan it generated itself", () => {
+    for (const level of RUNNER_LEVEL_ORDER) {
+      const plan = generateTrainingPlan(setupFor({ level }), {
+        today: "2026-08-09",
+      });
+      expect(inferRunnerLevel(plan, "half")).toBe(level);
+    }
   });
 });

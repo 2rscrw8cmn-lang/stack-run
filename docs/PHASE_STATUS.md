@@ -25,6 +25,7 @@ These were built outside the numbered UI-0–UI-7 sequence and are now formal de
 | Availability calendar | Implemented | D-032 | Calendar can identify conflicts/propose moves; user accepts every plan change. Uses `api/calendar.ts` when CORS requires it. |
 | Settings sheet in the bottom bar | Implemented | D-041 | Race, Run Days, Availability, Run Data and Reset Plan in one place. Not a fourth destination. |
 | Chosen plan start date | Implemented | D-042 | Optional `RacePlanSetup.startDate`; absent still derives the start from the race, so no migration. |
+| Plan load safety rules | Implemented | D-043 | Weekly volume is the progression; capped week-on-week load, spaced hard days, honest warnings about what a rebuild costs. |
 
 Current AppState on the UI-8 branch is **schema version 9**.
 
