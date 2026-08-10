@@ -1,26 +1,49 @@
 # STACK — Start Here
 
-This repository is the source of truth for **STACK**, a small mobile-first running plan app.
+This repository is the source of truth for **STACK**, a mobile-first running plan app with the tagline **Build your race.**
 
 ## Current project state
 
-The original product roadmap through **UI-7 — Polish and release** is implemented.
+Implemented/accepted:
 
-The Connected Training program through **UI-11 — Training Trends** is also complete/accepted. The working data path is:
+- original product UI-0 through UI-7;
+- Connected Training UI-8 through UI-11;
+- UI-13 Runs Pillar + Navigation;
+- UI-14 Build Reward Revision.
+
+Intentionally skipped/deferred:
+
+- UI-12 Wellness / Recovery Context;
+- UI-15 Optional Plan Export Investigation.
+
+Current connected-data path:
 
 > Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 
-PR #30 also merged the current Settings sheet/polish work and chosen plan-start support.
+Current primary destinations:
 
-The active next product revision is now:
+> **Today / Build / Runs / Plan**
 
-> **Runs as a primary pillar + a stronger, more rewarding Build experience.**
+Settings is an icon-only top-right gear.
+
+## Active next product program
+
+The next approved program is:
+
+1. **UI-16 — Trends 2.0**
+2. **UI-17 — Performance Arcade Design Pass**
+3. **UI-18 — Race Crew Architecture Gate**
+
+Race Crew production implementation is **not** authorized in UI-18. UI-18 is the architecture/security/product gate required before multi-user code.
 
 Read these first:
 
 ```text
-docs/RUNS_AND_BUILD_REVISION.md
-docs/RUNS_AND_BUILD_IMPLEMENTATION.md
+docs/NEXT_PRODUCT_PROGRAM.md
+docs/TRENDS_2_0.md
+docs/ARCADE_DESIGN_PASS.md
+docs/RACE_CREW.md
+docs/NEXT_PRODUCT_IMPLEMENTATION.md
 docs/DECISION_LOG_ADDENDUM.md
 ```
 
@@ -29,81 +52,115 @@ docs/DECISION_LOG_ADDENDUM.md
 When documents conflict, use this order:
 
 1. `docs/PRODUCT_AND_SCOPE.md`
-2. `docs/RUNS_AND_BUILD_REVISION.md`
-3. `docs/CONNECTED_TRAINING.md`
-4. `docs/INTERVALS_INTEGRATION.md` for connected-data engineering
-5. `docs/UX_PRODUCT_SPEC.md`
-6. `docs/DATA_AND_STORAGE.md`
-7. `docs/DECISION_LOG_ADDENDUM.md`
-8. `docs/DECISION_LOG.md`
-9. `docs/ENGINEERING_STANDARDS.md`
-10. `docs/IMPLEMENTATION_ROADMAP.md`
-11. `docs/RUNS_AND_BUILD_IMPLEMENTATION.md` for UI-13/UI-14
-12. `docs/UI_IMPLEMENTATION_PLAN.md` for older phases
-13. `docs/AGENT_PROMPTS.md` for older connected prompts
-14. Existing code
+2. `docs/NEXT_PRODUCT_PROGRAM.md`
+3. active phase document:
+   - `docs/TRENDS_2_0.md`
+   - `docs/ARCADE_DESIGN_PASS.md`
+   - `docs/RACE_CREW.md`
+4. `docs/RUNS_AND_BUILD_REVISION.md`
+5. `docs/CONNECTED_TRAINING.md`
+6. `docs/INTERVALS_INTEGRATION.md` for connected-data engineering
+7. `docs/CONNECTED_DATA_FIELDS.md` for verified external-field availability
+8. `docs/UX_PRODUCT_SPEC.md`
+9. `docs/DATA_AND_STORAGE.md`
+10. `docs/DECISION_LOG_ADDENDUM.md`
+11. `docs/DECISION_LOG.md`
+12. `docs/ENGINEERING_STANDARDS.md`
+13. `docs/IMPLEMENTATION_ROADMAP.md`
+14. `docs/NEXT_PRODUCT_IMPLEMENTATION.md`
+15. older phase implementation docs
+16. existing code
 
-`docs/CONNECTED_DATA_FIELDS.md` records verified source-field availability and wins over guesses about what HealthFit/Intervals data happens to contain.
+Newer approved product documents win over older historical requirements.
 
-Existing code is evidence of current behavior. It is not permission to violate newer locked product decisions.
+Existing code is evidence of current behavior. It is not permission to preserve behavior explicitly superseded by the new program.
 
 ## Core product architecture
 
-The approved persistent destinations are now:
+### Today
 
-- **Today** — what matters now
-- **Build** — the visual reward and physical representation of the training
-- **Runs** — what actually happened
-- **Plan** — what is supposed to happen
+What matters now:
 
-Settings is not a fifth content pillar. The existing Settings sheet moves to an icon-only gear in the top-right header when UI-13 ships.
+- today's scheduled workout;
+- Run Found from Connected Training;
+- This Week;
+- next workout;
+- Build preview.
 
-The core loop remains:
+UI-16 removes the generic extra `Log Run` button from Today. Scheduled Mark Complete remains. Manual extra logging remains on Runs.
 
-> See the run → run → record/confirm it → earn a block → place the block → see the build grow.
+### Build
 
-Connected data makes `record/confirm it` faster. Runs gives completed activity a factual home. Build remains the emotional reward.
+The emotional reward and physical representation of actual training.
 
-## Connected setup already complete
+Build remains one block per actual run with the current deterministic 8-column model.
 
-The owner has:
+### Runs
 
-- HealthFit installed;
-- HealthFit connected to Intervals.icu;
-- real HealthFit-originated activity successfully synced/imported into STACK;
-- a personal Intervals.icu API key configured server-side;
-- a separate STACK sync token configured for the read proxy.
+The factual history and analytics home.
 
-Do **not** ask for either secret in chat, an issue, a PR, a source file or a screenshot.
+Runs owns:
 
-## Active implementation order
+- chronological actual history;
+- manual Log Run;
+- run detail/edit/delete;
+- Training Signals and their detailed views;
+- later, Race Crew through a YOU | CREW context if/when the social program ships.
 
-1. **UI-13 — Runs Pillar + Navigation Revision**
-   - bottom nav becomes Today / Build / Runs / Plan;
-   - Settings moves to the top-right gear;
-   - chronological actual-run history becomes a primary screen;
-   - existing rich run detail/edit/delete is reused;
-   - Training Trends gets a natural canonical home from Runs.
+### Plan
 
-2. **UI-14 — Build Reward Revision**
-   - object-first Build screen;
-   - only `miles built` leads;
-   - mileage labels on blocks when space permits;
-   - simpler direct placement with pointer release commit after deliberate snapped drag;
-   - tap/keyboard remain complete alternatives;
-   - restrained placement payoff;
-   - earned Race block gets a capstone treatment.
+The future schedule and explicit plan editing surface.
 
-3. **UI-15 — Optional Plan Export Investigation** remains deferred and has no code authorization.
+## Connected setup
 
-## Intentionally deferred
+The current owner already has a working HealthFit → Intervals.icu → STACK connection and real imported activity data.
 
-**UI-12 — Wellness / Recovery Context** is intentionally skipped for the current product. Do not build HRV/sleep/readiness UI unless a future owner decision reactivates it.
+Never ask for or expose:
 
-The older D-038 recovery safety rules still apply if that idea is ever revisited.
+- `INTERVALS_API_KEY`;
+- `STACK_SYNC_TOKEN`;
+- private raw activity payloads.
+
+The current personal API-key architecture is single-user only. If implementing Race Crew, UI-18 must design per-user authorization first.
+
+## Active phase rules
+
+### UI-16
+
+Use the copy/paste prompt in `docs/NEXT_PRODUCT_IMPLEMENTATION.md`.
+
+Core outcomes:
+
+- one focused detail per Training Signal;
+- richer graphs and plan-vs-actual context;
+- accessible HR-zone donut/pie;
+- remove generic Today Log Run;
+- no schema migration expected;
+- no social code;
+- no global Arcade restyle yet.
+
+### UI-17
+
+Apply the approved **modern training computer with arcade DNA** design direction.
+
+Do not implement literal Game Boy/CRT/pixel-art styling or a game economy.
+
+### UI-18
+
+Research/docs architecture gate only.
+
+Do not merge production auth/database/social code.
+
+The phase must end with owner decisions required to unlock UI-19.
+
+## TRNRBOI reference
+
+`drewwest289/TRNRBOI-8000` is design/product inspiration only.
+
+Do not copy its code, assets, Strava implementation, backend, Game Boy shell, Tailwind/Recharts choices or calculations.
 
 ## Delivery rule
 
 Use one branch and one PR per implementation phase unless the product owner explicitly says otherwise.
 
-For UI-13 and UI-14, use the copy/paste prompts in `docs/RUNS_AND_BUILD_IMPLEMENTATION.md` rather than the older connected-phase prompts.
+For UI-16, UI-17 and UI-18, use `docs/NEXT_PRODUCT_IMPLEMENTATION.md` rather than older agent prompts.
