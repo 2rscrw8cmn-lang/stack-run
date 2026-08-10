@@ -1,196 +1,485 @@
-import { compareLocalDates, isAfterLocalDate } from "./dates";
-import { currentWeekNumber, formatWeekRange } from "./plan";
-import type { RunLog, TrainingPlan } from "./types";
-import { selectWeekActuals } from "./weekActuals";
+import {
+  addDaysToLocalDate,
+  compareLocalDates,
+  isAfterLocalDate,
+  isBeforeLocalDate,
+} from "./dates";
+import { formatWeekRange } from "./plan";
+import type {
+  RunActivityType,
+  RunLog,
+  TrainingPlan,
+  TrainingWeek,
+  Workout,
+} from "./types";
 
-/**
- * How many runs a trend needs before STACK will draw a line through them.
- *
- * Three easy runs can say anything — a hot day, a hilly route and a good one
- * make a "trend" pointing in whichever direction the middle run happened to
- * fall. Below this the points are still shown as a list; what is withheld is
- * the line and the sentence claiming a direction.
- */
 export const TREND_MINIMUM_RUNS = 4;
-
-/**
- * How many weeks of mileage the chart carries.
- *
- * An eighteen-week plan is eighteen columns, which at 320px is a column
- * narrower than the gap beside it. The recent weeks are the ones a runner is
- * asking about; the range label says which weeks these are.
- */
 export const TREND_WEEK_WINDOW = 12;
+export const RECENT_ZONE_DAYS = 28;
+export const RUN_MIX_DAYS = 28;
 
-/** What a direction is called on screen. Three words, and never a verdict. */
-export const DIRECTION_WORD = {
-  rising: "climbing",
-  falling: "coming down",
-  steady: "holding steady",
-} as const;
-
-/**
- * Pace and heart rate are not mileage. Two percent is twelve seconds a mile or
- * three beats a minute — plenty for a runner to notice, where the same
- * percentage of a training week is a rounding error.
- */
-export const PHYSIOLOGICAL_SIGNIFICANCE = 0.02;
-
-export interface WeeklyMileagePoint {
-  weekNumber: number;
-  startDate: string;
-  endDate: string;
-  miles: number;
-  isCurrentWeek: boolean;
-}
+export type TrainingSignalId =
+  | "weekly-mileage"
+  | "long-run"
+  | "easy-pace"
+  | "hr-zones"
+  | "training-load"
+  | "consistency"
+  | "run-mix";
 
 export interface DatedPoint {
   date: string;
   value: number;
 }
 
+export interface WeeklyMileagePoint {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  actualMiles: number;
+  plannedMiles: number | null;
+  isCurrentWeek: boolean;
+  isPartial: boolean;
+  runs: RunLog[];
+}
+
+export interface LongRunPoint extends DatedPoint {
+  runLogId: string;
+}
+
+export interface PlannedLongRunPoint extends DatedPoint {
+  weekNumber: number;
+}
+
+export interface EasyRunPoint {
+  runLogId: string;
+  date: string;
+  paceSecondsPerMile: number;
+  averageHeartRate: number | null;
+}
+
+export interface EasyPeriod {
+  runs: EasyRunPoint[];
+  medianPace: number;
+  medianHeartRate: number | null;
+  heartRateCoverage: number;
+}
+
+export interface HeartRateZoneTrend {
+  startDate: string;
+  endDate: string;
+  zoneSeconds: number[];
+  coveredRuns: number;
+  eligibleRuns: number;
+}
+
+export interface TrainingLoadRun {
+  runLogId: string;
+  date: string;
+  activityType: RunActivityType;
+  value: number;
+}
+
+export interface TrainingLoadWeek {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  total: number | null;
+  coveredRuns: number;
+  eligibleRuns: number;
+  runs: TrainingLoadRun[];
+  isCurrentWeek: boolean;
+  isPartial: boolean;
+}
+
+export interface ConsistencyWeek {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  due: number;
+  completed: number;
+  missed: number;
+  extraRuns: number;
+  isCompleteWeek: boolean;
+}
+
 export interface ConsistencyTrend {
-  /** Scheduled runs that have a recorded run, out of those already due. */
   completed: number;
   due: number;
-  /** Null until the plan has asked for something; a percentage of nothing lies. */
   percentage: number | null;
+  currentFullWeekStreak: number;
+  bestFullWeekStreak: number;
+  weeks: ConsistencyWeek[];
 }
 
-export interface CoveredTrend {
-  points: DatedPoint[];
-  /** Runs of the right kind that exist at all, whether or not they carry the value. */
-  eligibleRuns: number;
-  /** True once there are enough points to describe a direction. */
-  hasEnoughCoverage: boolean;
+export interface RunMixSlice {
+  activityType: RunActivityType;
+  miles: number;
+  runCount: number;
+  share: number;
 }
 
-export interface TrainingTrends {
+export interface RunMixTrend {
+  startDate: string;
+  endDate: string;
+  totalMiles: number;
+  slices: RunMixSlice[];
+}
+
+export interface TrainingSignals {
   weeklyMileage: WeeklyMileagePoint[];
   weekRangeLabel: string | null;
-  longRuns: DatedPoint[];
+  longRuns: LongRunPoint[];
+  plannedLongRuns: PlannedLongRunPoint[];
+  nextLongRunTarget: PlannedLongRunPoint | null;
+  easyRuns: EasyRunPoint[];
+  recentEasy: EasyPeriod | null;
+  previousEasy: EasyPeriod | null;
+  heartRateZones: HeartRateZoneTrend;
+  trainingLoad: TrainingLoadWeek[];
+  hasUsefulTrainingLoad: boolean;
   consistency: ConsistencyTrend;
-  /** Seconds per mile, so lower is faster. */
-  easyPace: CoveredTrend;
-  /** Beats per minute, only from runs whose source actually carried it. */
-  easyHeartRate: CoveredTrend;
+  runMix: RunMixTrend;
 }
 
-function byDate(a: DatedPoint, b: DatedPoint): number {
-  return compareLocalDates(a.date, b.date);
+function inRange(date: string, startDate: string, endDate: string): boolean {
+  return !isBeforeLocalDate(date, startDate) && !isAfterLocalDate(date, endDate);
+}
+
+function activeHistoryEnd(plan: TrainingPlan, today: string): string {
+  return isAfterLocalDate(today, plan.endDate) ? plan.endDate : today;
+}
+
+function roundMiles(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+function runsInRange(
+  runLogs: readonly RunLog[],
+  startDate: string,
+  endDate: string,
+): RunLog[] {
+  return runLogs
+    .filter((run) => inRange(run.completedDate, startDate, endDate))
+    .sort(
+      (a, b) =>
+        compareLocalDates(a.completedDate, b.completedDate) ||
+        a.createdAt.localeCompare(b.createdAt) ||
+        a.id.localeCompare(b.id),
+    );
 }
 
 /**
- * Everything the trends view plots, derived from recorded runs and the plan.
- *
- * Two rules run through all of it. Runs are placed by the date they were
- * actually run, never by the date of the workout they were matched to — a
- * Sunday long run confirmed against Saturday's slot is Sunday's mileage. And a
- * run is a run: an imported activity and a typed one are the same thing here,
- * because by the time it is recorded STACK owns the numbers either way.
- *
- * Consistency is the one measure that stays about the plan, so extra runs are
- * excluded from it by construction — they have no workout to complete.
+ * A target may be a single mileage or a range. A range contributes its
+ * midpoint; if any scheduled run has no understandable target, the week's
+ * planned total is unavailable rather than a misleading partial sum.
  */
-export function selectTrainingTrends(
-  plan: TrainingPlan,
-  runLogs: readonly RunLog[],
-  today: string,
-): TrainingTrends {
-  const started = plan.weeks
-    .filter((week) => !isAfterLocalDate(week.startDate, today))
-    .sort((a, b) => a.weekNumber - b.weekNumber);
-  const thisWeek = currentWeekNumber(plan, today);
+export function plannedTargetMiles(workout: Workout): number | null {
+  const value = workout.targetDistanceMiles?.trim();
+  if (!value) return null;
+  const match = /^(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?$/.exec(value);
+  if (!match) return null;
+  const low = Number(match[1]);
+  const high = Number(match[2] ?? match[1]);
+  if (!(low > 0) || high < low) return null;
+  return roundMiles((low + high) / 2);
+}
 
-  const weeklyMileage = started.slice(-TREND_WEEK_WINDOW).map((week) => ({
-    weekNumber: week.weekNumber,
-    startDate: week.startDate,
-    endDate: week.endDate,
-    miles: selectWeekActuals(runLogs, week.startDate, week.endDate).distanceMiles,
-    isCurrentWeek: week.weekNumber === thisWeek,
-  }));
-  const weekRangeLabel = weeklyMileage.length
-    ? formatWeekRange(weeklyMileage[0].startDate, weeklyMileage[weeklyMileage.length - 1].endDate)
+function plannedWeekMiles(week: TrainingWeek): number | null {
+  const scheduled = week.workouts.filter((workout) => workout.type !== "rest");
+  const targets = scheduled.map(plannedTargetMiles);
+  if (targets.length === 0 || targets.some((target) => target === null)) return null;
+  return roundMiles(targets.reduce<number>((sum, target) => sum + (target ?? 0), 0));
+}
+
+export function medianValues(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+export function meanValues(values: readonly number[]): number | null {
+  return values.length
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
     : null;
+}
 
-  const longRuns = runLogs
-    .filter((runLog) => runLog.activityType === "long")
-    .map((runLog) => ({ date: runLog.completedDate, value: runLog.distanceMiles }))
-    .sort(byDate);
-
-  // Only workouts whose day has arrived: a plan is not inconsistent for not
-  // having happened yet.
-  const due = plan.weeks
-    .flatMap((week) => week.workouts)
-    .filter((workout) => workout.type !== "rest" && !isAfterLocalDate(workout.date, today));
-  const recorded = new Set(runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])));
-  const completed = due.filter((workout) => recorded.has(workout.id)).length;
-
-  const easyRuns = runLogs.filter((runLog) => runLog.activityType === "easy" && runLog.distanceMiles > 0);
-  const easyPacePoints = easyRuns
-    .map((runLog) => ({ date: runLog.completedDate, value: Math.round(runLog.durationSeconds / runLog.distanceMiles) }))
-    .sort(byDate);
-  // A run without heart rate is left out, never counted as zero: an absent
-  // value is not a slow heart, and averaging one in would invent a dip.
-  const easyHeartRatePoints = easyRuns
-    .flatMap((runLog) => {
-      const bpm = runLog.importedMetrics?.averageHeartRate;
-      return bpm ? [{ date: runLog.completedDate, value: bpm }] : [];
-    })
-    .sort(byDate);
-
+function easyPeriod(runs: EasyRunPoint[]): EasyPeriod {
+  const heartRates = runs.flatMap((run) =>
+    run.averageHeartRate === null ? [] : [run.averageHeartRate],
+  );
   return {
-    weeklyMileage,
-    weekRangeLabel,
-    longRuns,
-    consistency: {
-      completed,
-      due: due.length,
-      percentage: due.length ? Math.round((completed / due.length) * 100) : null,
-    },
-    easyPace: {
-      points: easyPacePoints,
-      eligibleRuns: easyRuns.length,
-      hasEnoughCoverage: easyPacePoints.length >= TREND_MINIMUM_RUNS,
-    },
-    easyHeartRate: {
-      points: easyHeartRatePoints,
-      eligibleRuns: easyRuns.length,
-      hasEnoughCoverage: easyHeartRatePoints.length >= TREND_MINIMUM_RUNS,
-    },
+    runs,
+    medianPace: medianValues(runs.map((run) => run.paceSecondsPerMile)) ?? 0,
+    medianHeartRate: medianValues(heartRates),
+    heartRateCoverage: heartRates.length,
   };
 }
 
-/**
- * Describes a series as one of three words, or nothing.
- *
- * Deliberately blunt: STACK says a number went up, down or held steady over the
- * period shown, and never what that means for race day. The threshold keeps
- * ordinary variation from being reported as a direction — comparing the first
- * and last halves rather than the endpoints, so one good day does not become a
- * trend.
- */
-export function describeDirection(points: readonly DatedPoint[], significance = 0.05): "rising" | "falling" | "steady" | null {
-  if (points.length < TREND_MINIMUM_RUNS) return null;
-  const half = Math.floor(points.length / 2);
-  const first = median(points.slice(0, half));
-  const last = median(points.slice(points.length - half));
-  if (!first) return "steady";
-  const change = (last - first) / first;
-  if (change > significance) return "rising";
-  if (change < -significance) return "falling";
-  return "steady";
+function aggregateZones(
+  runs: readonly RunLog[],
+  startDate: string,
+  endDate: string,
+): HeartRateZoneTrend {
+  const eligible = runsInRange(runs, startDate, endDate);
+  const covered = eligible.flatMap((run) => {
+    const zones = run.importedMetrics?.hrZoneSeconds;
+    return zones && zones.reduce((sum, seconds) => sum + seconds, 0) > 0
+      ? [zones]
+      : [];
+  });
+  const zoneCount = covered.reduce((count, zones) => Math.max(count, zones.length), 0);
+  const zoneSeconds = Array.from({ length: zoneCount }, (_, index) =>
+    covered.reduce((total, zones) => total + (zones[index] ?? 0), 0),
+  );
+  return {
+    startDate,
+    endDate,
+    zoneSeconds,
+    coveredRuns: covered.length,
+    eligibleRuns: eligible.length,
+  };
 }
 
-/**
- * The middle value, not the average.
- *
- * One 18-mile week among five 10-mile weeks pulls a mean far enough to report
- * "climbing" off a single race entry. The median moves when the group moves,
- * which is the only thing worth calling a direction.
- */
-function median(points: readonly DatedPoint[]): number {
-  const values = points.map((point) => point.value).sort((a, b) => a - b);
-  const middle = Math.floor(values.length / 2);
-  return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+function fullWeekStreaks(weeks: readonly ConsistencyWeek[]): {
+  current: number;
+  best: number;
+} {
+  let best = 0;
+  let running = 0;
+  for (const week of weeks) {
+    if (week.isCompleteWeek) {
+      running += 1;
+      best = Math.max(best, running);
+    } else {
+      running = 0;
+    }
+  }
+  return { current: running, best };
+}
+
+/** Every Trends 2.0 value, derived from schema-9 plan/run snapshots. */
+export function selectTrainingSignals(
+  plan: TrainingPlan,
+  runLogs: readonly RunLog[],
+  today: string,
+): TrainingSignals {
+  const startedWeeks = plan.weeks
+    .filter((week) => !isAfterLocalDate(week.startDate, today))
+    .sort((a, b) => a.weekNumber - b.weekNumber);
+  const displayedWeeks = startedWeeks.slice(-TREND_WEEK_WINDOW);
+
+  const weeklyMileage = displayedWeeks.map((week) => {
+    const runs = runsInRange(runLogs, week.startDate, week.endDate);
+    const isCurrentWeek = inRange(today, week.startDate, week.endDate);
+    return {
+      weekNumber: week.weekNumber,
+      startDate: week.startDate,
+      endDate: week.endDate,
+      actualMiles: roundMiles(
+        runs.reduce((total, run) => total + run.distanceMiles, 0),
+      ),
+      plannedMiles: plannedWeekMiles(week),
+      isCurrentWeek,
+      isPartial: isCurrentWeek && isBeforeLocalDate(today, week.endDate),
+      runs,
+    };
+  });
+
+  const endDate = activeHistoryEnd(plan, today);
+  const activeRuns = isBeforeLocalDate(endDate, plan.startDate)
+    ? []
+    : runsInRange(runLogs, plan.startDate, endDate);
+
+  const longRuns = activeRuns
+    .filter((run) => run.activityType === "long")
+    .map((run) => ({
+      runLogId: run.id,
+      date: run.completedDate,
+      value: run.distanceMiles,
+    }));
+
+  const plannedLongRuns = plan.weeks
+    .flatMap((week) =>
+      week.workouts.flatMap((workout) => {
+        if (workout.type !== "long") return [];
+        const target = plannedTargetMiles(workout);
+        return target === null
+          ? []
+          : [{ weekNumber: week.weekNumber, date: workout.date, value: target }];
+      }),
+    )
+    .sort((a, b) => compareLocalDates(a.date, b.date));
+  const nextLongRunTarget =
+    plannedLongRuns.find((point) => isAfterLocalDate(point.date, today)) ?? null;
+
+  const easyRuns = activeRuns
+    .filter((run) => run.activityType === "easy" && run.distanceMiles > 0)
+    .map((run) => ({
+      runLogId: run.id,
+      date: run.completedDate,
+      paceSecondsPerMile: Math.round(run.durationSeconds / run.distanceMiles),
+      averageHeartRate: run.importedMetrics?.averageHeartRate ?? null,
+    }));
+  const recentEasy =
+    easyRuns.length >= TREND_MINIMUM_RUNS
+      ? easyPeriod(easyRuns.slice(-TREND_MINIMUM_RUNS))
+      : null;
+  const previousEasy =
+    easyRuns.length >= TREND_MINIMUM_RUNS * 2
+      ? easyPeriod(
+          easyRuns.slice(-TREND_MINIMUM_RUNS * 2, -TREND_MINIMUM_RUNS),
+        )
+      : null;
+
+  const recentStart = isAfterLocalDate(
+    addDaysToLocalDate(today, -(RECENT_ZONE_DAYS - 1)),
+    plan.startDate,
+  )
+    ? addDaysToLocalDate(today, -(RECENT_ZONE_DAYS - 1))
+    : plan.startDate;
+  const heartRateZones = isBeforeLocalDate(endDate, recentStart)
+    ? {
+        startDate: recentStart,
+        endDate,
+        zoneSeconds: [],
+        coveredRuns: 0,
+        eligibleRuns: 0,
+      }
+    : aggregateZones(runLogs, recentStart, endDate);
+
+  const trainingLoad = displayedWeeks.map((week) => {
+    const eligibleRuns = runsInRange(runLogs, week.startDate, week.endDate);
+    const runs = eligibleRuns.flatMap((run) => {
+      const value = run.importedMetrics?.trainingLoad;
+      return value === undefined
+        ? []
+        : [{
+            runLogId: run.id,
+            date: run.completedDate,
+            activityType: run.activityType,
+            value,
+          }];
+    });
+    const isCurrentWeek = inRange(today, week.startDate, week.endDate);
+    return {
+      weekNumber: week.weekNumber,
+      startDate: week.startDate,
+      endDate: week.endDate,
+      total: runs.length
+        ? Math.round(runs.reduce((sum, run) => sum + run.value, 0))
+        : null,
+      coveredRuns: runs.length,
+      eligibleRuns: eligibleRuns.length,
+      runs,
+      isCurrentWeek,
+      isPartial: isCurrentWeek && isBeforeLocalDate(today, week.endDate),
+    };
+  });
+  const hasUsefulTrainingLoad =
+    trainingLoad.filter((week) => week.total !== null).length >= 2;
+
+  const recordedWorkoutIds = new Set(
+    runLogs.flatMap((run) => (run.workoutId ? [run.workoutId] : [])),
+  );
+  const consistencyWeeks = startedWeeks.flatMap((week) => {
+    const dueWorkouts = week.workouts.filter(
+      (workout) =>
+        workout.type !== "rest" && !isAfterLocalDate(workout.date, today),
+    );
+    if (dueWorkouts.length === 0) return [];
+    const completed = dueWorkouts.filter((workout) =>
+      recordedWorkoutIds.has(workout.id),
+    ).length;
+    const extras = runsInRange(runLogs, week.startDate, week.endDate).filter(
+      (run) => run.workoutId === null,
+    ).length;
+    return [{
+      weekNumber: week.weekNumber,
+      startDate: week.startDate,
+      endDate: week.endDate,
+      due: dueWorkouts.length,
+      completed,
+      missed: dueWorkouts.length - completed,
+      extraRuns: extras,
+      isCompleteWeek:
+        !isAfterLocalDate(week.endDate, today) && completed === dueWorkouts.length,
+    }];
+  });
+  const due = consistencyWeeks.reduce((sum, week) => sum + week.due, 0);
+  const completed = consistencyWeeks.reduce(
+    (sum, week) => sum + week.completed,
+    0,
+  );
+  const streaks = fullWeekStreaks(
+    consistencyWeeks.filter((week) => !isAfterLocalDate(week.endDate, today)),
+  );
+  const consistency: ConsistencyTrend = {
+    completed,
+    due,
+    percentage: due ? Math.round((completed / due) * 100) : null,
+    currentFullWeekStreak: streaks.current,
+    bestFullWeekStreak: streaks.best,
+    weeks: consistencyWeeks,
+  };
+
+  const mixStartCandidate = addDaysToLocalDate(today, -(RUN_MIX_DAYS - 1));
+  const mixStart = isAfterLocalDate(mixStartCandidate, plan.startDate)
+    ? mixStartCandidate
+    : plan.startDate;
+  const mixRuns = isBeforeLocalDate(endDate, mixStart)
+    ? []
+    : runsInRange(runLogs, mixStart, endDate);
+  const totalMixMiles = roundMiles(
+    mixRuns.reduce((sum, run) => sum + run.distanceMiles, 0),
+  );
+  const activityOrder: RunActivityType[] = [
+    "easy",
+    "intervals",
+    "simulation",
+    "long",
+    "race",
+  ];
+  const slices = activityOrder.flatMap((activityType) => {
+    const runs = mixRuns.filter((run) => run.activityType === activityType);
+    if (runs.length === 0) return [];
+    const miles = roundMiles(
+      runs.reduce((sum, run) => sum + run.distanceMiles, 0),
+    );
+    return [{
+      activityType,
+      miles,
+      runCount: runs.length,
+      share: totalMixMiles > 0 ? miles / totalMixMiles : 0,
+    }];
+  });
+
+  return {
+    weeklyMileage,
+    weekRangeLabel: weeklyMileage.length
+      ? formatWeekRange(
+          weeklyMileage[0].startDate,
+          weeklyMileage[weeklyMileage.length - 1].endDate,
+        )
+      : null,
+    longRuns,
+    plannedLongRuns,
+    nextLongRunTarget,
+    easyRuns,
+    recentEasy,
+    previousEasy,
+    heartRateZones,
+    trainingLoad,
+    hasUsefulTrainingLoad,
+    consistency,
+    runMix: {
+      startDate: mixStart,
+      endDate,
+      totalMiles: totalMixMiles,
+      slices,
+    },
+  };
 }

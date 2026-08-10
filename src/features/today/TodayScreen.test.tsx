@@ -199,31 +199,10 @@ describe("TodayScreen Next", () => {
   });
 });
 
-describe("TodayScreen extra runs", () => {
-  it("always offers Log Run, even on a rest day", async () => {
-    const { user } = renderToday({ today: "2026-08-05" });
-
-    await user.click(screen.getByRole("button", { name: "Log Run" }));
-    expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
-  });
-
-  it("saves an extra run with no scheduled workout behind it", async () => {
-    const { user, onSaveRun } = renderToday({ today: "2026-08-05" });
-
-    await user.click(screen.getByRole("button", { name: "Log Run" }));
-    await user.type(screen.getByLabelText(/Distance/), "3.4");
-    await user.type(screen.getByLabelText(/Duration/), "3400");
-    await user.click(screen.getByRole("button", { name: "Solid" }));
-    await user.click(screen.getByRole("button", { name: "Save Run" }));
-
-    expect(onSaveRun).toHaveBeenCalledTimes(1);
-    const [workout, values] = onSaveRun.mock.calls[0];
-    expect(workout).toBeNull();
-    expect(values).toMatchObject({
-      completedDate: "2026-08-05",
-      activityType: "easy",
-      distanceMiles: 3.4,
-    });
+describe("TodayScreen run entry", () => {
+  it("does not duplicate the generic Log Run action from Runs", () => {
+    renderToday({ today: "2026-08-05" });
+    expect(screen.queryByRole("button", { name: "Log Run" })).not.toBeInTheDocument();
   });
 
   it("saves today's scheduled run against its workout", async () => {

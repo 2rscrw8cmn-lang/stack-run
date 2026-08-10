@@ -28,6 +28,15 @@
   --race: #f6f7f8;
   --danger: #ff6b6b;
 
+  /* UI-16's minimum ordered zone palette. Labels remain authoritative. */
+  --zone-1: #4f7dff;
+  --zone-2: #31c7d9;
+  --zone-3: #8edb45;
+  --zone-4: #f2d14b;
+  --zone-5: #ff9d3d;
+  --zone-6: #ff5d5d;
+  --zone-7: #c86cff;
+
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 22px;

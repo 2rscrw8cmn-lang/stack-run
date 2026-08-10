@@ -58,7 +58,7 @@ describe("Runs", () => {
     // No count of miles that do not exist, and no trends drawn from nothing.
     expect(screen.queryByText(/miles run/)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Training Trends" }),
+      screen.queryByRole("heading", { name: "Training Signals" }),
     ).not.toBeInTheDocument();
   });
 
@@ -244,54 +244,114 @@ describe("Runs", () => {
   });
 });
 
-describe("Runs trend cards", () => {
+describe("Runs Training Signals", () => {
   const week1 = [
     run("a", "2026-08-04", { workoutId: "workout-002", distanceMiles: 2 }),
     run("b", "2026-08-06", { workoutId: "workout-004", distanceMiles: 2 }),
     run("c", "2026-08-09", { activityType: "long", distanceMiles: 4.2 }),
   ];
 
-  it("puts the trends on Runs, one measure to a card", () => {
+  it("puts factual Training Signals on Runs, one measure to a card", () => {
     renderRuns(week1);
 
     expect(
-      screen.getByRole("heading", { name: "Training Trends" }),
+      screen.getByRole("heading", { name: "Training Signals" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^Weekly mileage, 8.2 mi/ }),
+      screen.getByRole("button", { name: /^Weekly Mileage, 8.2 mi/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^Long run, 4.2 mi/ }),
+      screen.getByRole("button", { name: /^Long Run, 4.2 mi/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^Consistency, 50%/ }),
     ).toBeInTheDocument();
   });
 
-  it("names the value on the card, because the drawing itself is hidden", () => {
+  it("names the value and the specific destination on every card", () => {
     renderRuns(week1);
     const card = screen.getByRole("button", { name: /^Consistency/ });
     expect(card).toHaveAccessibleName(
-      "Consistency, 50%, 2 of 4 scheduled runs. Open Training Trends.",
+      "Consistency, 50%, 2 of 4 completed. Open Consistency detail.",
     );
+  });
+
+  it("supports keyboard activation for a signal and its selected week", async () => {
+    const user = userEvent.setup();
+    renderRuns([
+      run("w1", "2026-08-04", { distanceMiles: 3 }),
+      run("w2", "2026-08-11", { distanceMiles: 4 }),
+    ], { today: "2026-08-16" });
+
+    const card = screen.getByRole("button", { name: /^Weekly Mileage,/ });
+    card.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Weekly Mileage");
+
+    const week = screen.getByRole("button", { name: /^Week 1, 3 actual miles/ });
+    week.focus();
+    await user.keyboard("{Enter}");
+    expect(week).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Week 1 runs")).toBeInTheDocument();
   });
 
   it("leaves out a measure nothing has been recorded for", () => {
     renderRuns([run("a", "2026-08-04", { distanceMiles: 2 })]);
     expect(
-      screen.queryByRole("button", { name: /^Long run/ }),
+      screen.queryByRole("button", { name: /^Long Run/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /^Easy heart rate/ }),
+      screen.queryByRole("button", { name: /^HR Zones/ }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Training Load/ })).not.toBeInTheDocument();
   });
 
-  it("opens the full Training Trends view from any card", async () => {
-    const onViewTrends = vi.fn();
+  it("opens a dedicated detail for every available signal", async () => {
     const user = userEvent.setup();
-    renderRuns(week1, { onViewTrends });
+    const richRuns = [
+      run("e1", "2026-08-03", { durationSeconds: 1860, importedMetrics: { averageHeartRate: 150, trainingLoad: 30, hrZoneSeconds: [0, 600, 300, 0, 0, 0, 0] } }),
+      run("e2", "2026-08-04", { durationSeconds: 1830 }),
+      run("e3", "2026-08-05", { durationSeconds: 1800 }),
+      run("e4", "2026-08-06", { durationSeconds: 1770 }),
+      run("l1", "2026-08-09", { activityType: "long", distanceMiles: 5 }),
+      run("e5", "2026-08-10", { durationSeconds: 1740, importedMetrics: { averageHeartRate: 149, trainingLoad: 35, hrZoneSeconds: [0, 300, 600, 0, 0, 0, 0] } }),
+      run("e6", "2026-08-11", { durationSeconds: 1710 }),
+      run("e7", "2026-08-12", { durationSeconds: 1680 }),
+      run("e8", "2026-08-13", { durationSeconds: 1650 }),
+      run("l2", "2026-08-16", { activityType: "long", distanceMiles: 6 }),
+    ];
+    renderRuns(richRuns, { today: "2026-08-16" });
 
-    await user.click(screen.getByRole("button", { name: /^Long run/ }));
-    expect(onViewTrends).toHaveBeenCalledTimes(1);
+    const details = [
+      ["Weekly Mileage", /^Weekly Mileage,/],
+      ["Long Run", /^Long Run,/],
+      ["Easy Pace", /^Easy Pace,/],
+      ["Heart Rate Zones", /^HR Zones,/],
+      ["Training Load", /^Training Load,/],
+      ["Consistency", /^Consistency,/],
+      ["Run Mix", /^Run Mix,/],
+    ] as const;
+
+    for (const [title, cardName] of details) {
+      await user.click(screen.getByRole("button", { name: cardName }));
+      expect(screen.getByRole("dialog")).toHaveAccessibleName(title);
+      await user.click(screen.getByRole("button", { name: "Close" }));
+    }
+  });
+
+  it("selects a mileage week and reaches the underlying existing run detail", async () => {
+    const user = userEvent.setup();
+    renderRuns([
+      run("w1", "2026-08-04", { distanceMiles: 3 }),
+      run("w2", "2026-08-11", { distanceMiles: 4 }),
+    ], { today: "2026-08-16" });
+
+    await user.click(screen.getByRole("button", { name: /^Weekly Mileage,/ }));
+    await user.click(screen.getByRole("button", { name: /^Week 1, 3 actual miles/ }));
+    expect(screen.getByText("Week 1 runs")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Open Easy on .*Aug 4/ }));
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy");
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Weekly Mileage");
   });
 });

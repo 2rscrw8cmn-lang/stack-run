@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
-import { ZoneBars } from "../../components/charts/ZoneBars";
+import { DonutChart } from "../../components/charts/DonutChart";
+import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments";
 import { fetchIntervalsActivityDetail, type IntervalsActivityDetail } from "../../connected/intervals";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
@@ -35,6 +36,10 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: s
     elapsed !== undefined &&
     Math.abs(elapsed - run.durationSeconds) >= ELAPSED_SIGNIFICANCE_SECONDS;
   const zoneTotal = metrics?.hrZoneSeconds?.reduce((sum, seconds) => sum + seconds, 0) ?? 0;
+  const dominantZoneSeconds = metrics?.hrZoneSeconds && zoneTotal > 0
+    ? Math.max(...metrics.hrZoneSeconds)
+    : 0;
+  const dominantZoneIndex = metrics?.hrZoneSeconds?.indexOf(dominantZoneSeconds) ?? -1;
   const [detail, setDetail] = useState<IntervalsActivityDetail | null>(null);
   const [detailState, setDetailState] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
@@ -71,7 +76,12 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: s
       {metrics?.hrZoneSeconds && zoneTotal > 0 && (
         <div className="run-result-detail__zones">
           <h3 className="workout-detail__result-title">Heart rate zones</h3>
-          <ZoneBars zoneSeconds={metrics.hrZoneSeconds} label="Heart rate zone distribution" />
+          <DonutChart
+            segments={zoneDonutSegments(metrics.hrZoneSeconds)}
+            label="Heart rate zone distribution"
+            centerValue={`${Math.round((dominantZoneSeconds / zoneTotal) * 100)}%`}
+            centerLabel={`Zone ${dominantZoneIndex + 1}`}
+          />
         </div>
       )}
       {imported && syncToken && detail === null && (
