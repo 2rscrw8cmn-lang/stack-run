@@ -1,8 +1,8 @@
 # Data and Storage
 
-## Storage model
+## Personal AppState
 
-STACK stores one versioned JSON object in browser `localStorage`.
+STACK's personal training data remains one versioned JSON object in browser `localStorage`.
 
 Key:
 
@@ -10,106 +10,17 @@ Key:
 stack.app-state.v1
 ```
 
-The key names the storage slot and does not change with schema versions. `schemaVersion` inside the object is the version contract.
+Current schema: **9**.
 
-The UI never reads/writes `localStorage` directly. All local mutations go through `src/storage/appStateRepository.ts`.
+UI components never read/write the AppState storage slot directly. Personal state mutations go through `src/storage/appStateRepository.ts`.
 
-## Current implementation — schema version 8
+Race Crew does **not** replace this local-first model.
 
-After UI-7 and the unphased race/run-day/availability work, current `AppState` contains:
+## Current schema-9 shape
 
-```ts
-export interface AppState {
-  schemaVersion: 8;
-  settings: AppSettings;
-  plan: TrainingPlan;
-  runLogs: RunLog[];
-  blockPlacements: BlockPlacement[];
-  availability: AvailabilityCalendar | null;
-  runDays: Weekday[] | null;
-  raceSetup: RacePlanSetup | null;
-}
-```
-
-Current actual run:
+Conceptually:
 
 ```ts
-export interface RunLog {
-  id: string;
-  /** Null means extra/unscheduled. */
-  workoutId: string | null;
-  /** Local date the run actually happened. */
-  completedDate: string;
-  activityType: RunActivityType;
-  distanceMiles: number;
-  durationSeconds: number;
-  effort: "rough" | "solid" | "great";
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-Current placement identity is `runLogId`, so manual and extra runs already behave correctly in Build.
-
-## Connected Training target — schema version 9
-
-UI-8 extends the current run rather than introducing a parallel activity model.
-
-### Source types
-
-```ts
-export type RunSource = "manual" | "intervals";
-
-export interface ImportedRunMetrics {
-  averageHeartRate?: number;
-  maxHeartRate?: number;
-  averageCadence?: number;
-  elevationGainFeet?: number;
-  elapsedTimeSeconds?: number;
-  trainingLoad?: number;
-  hrZoneSeconds?: number[];
-}
-
-export interface ExternalRunSource {
-  provider: "intervals";
-  activityId: string;
-  sourceUpdatedAt: string | null;
-  importedAt: string;
-}
-```
-
-### RunLog version 9 shape
-
-```ts
-export interface RunLog {
-  id: string;
-  workoutId: string | null;
-  completedDate: string;
-  activityType: RunActivityType;
-  distanceMiles: number;
-  durationSeconds: number;
-  effort: Effort;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-
-  source: RunSource;
-  externalSource: ExternalRunSource | null;
-  importedMetrics: ImportedRunMetrics | null;
-}
-```
-
-### Sync state
-
-```ts
-export interface IntervalsSyncState {
-  /** ISO timestamp of the most recent successful remote activity-list sync. */
-  lastSuccessfulActivitySyncAt: string | null;
-  /** Activities explicitly ignored/deleted locally and suppressed on normal sync. */
-  ignoredActivityIds: string[];
-}
-
 export interface AppState {
   schemaVersion: 9;
   settings: AppSettings;
@@ -123,166 +34,37 @@ export interface AppState {
 }
 ```
 
-The local `STACK_SYNC_TOKEN` is **not** stored inside `AppState` because reset/plan migrations should not be responsible for connection credentials. Store it under a separate dedicated local key through a tiny connection-token repository, for example:
-
-```text
-stack.intervals.sync-token.v1
-```
-
-The personal `INTERVALS_API_KEY` is never stored in browser storage at all.
-
-## Schema 8 → 9 migration
-
-Migration must be additive and preserve all existing user work.
-
-For every existing `RunLog`:
+RunLog remains the one actual-activity model.
 
 ```ts
-source = "manual"
-externalSource = null
-importedMetrics = null
-```
-
-Add:
-
-```ts
-intervalsSync = {
-  lastSuccessfulActivitySyncAt: null,
-  ignoredActivityIds: [],
+export interface RunLog {
+  id: string;
+  workoutId: string | null;
+  completedDate: string;
+  activityType: RunActivityType;
+  distanceMiles: number;
+  durationSeconds: number;
+  effort: Effort;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  source: "manual" | "intervals";
+  externalSource: ExternalRunSource | null;
+  importedMetrics: ImportedRunMetrics | null;
 }
 ```
 
-Do not change:
+Placement identity remains `runLogId`.
 
-- run ids;
-- workout links;
-- dates;
-- distance/duration/effort/notes;
-- timestamps;
-- placements;
-- plan edits;
-- availability;
-- run-day preferences;
-- race setup.
+## Existing imported metrics
 
-No run becomes imported merely because UI-8 exists.
-
-## Manual versus imported runs
-
-### Manual
-
-```ts
-source: "manual"
-externalSource: null
-importedMetrics: null
-```
-
-Everything works exactly as it does after UI-7.
-
-### Imported from Intervals
-
-```ts
-source: "intervals"
-externalSource: {
-  provider: "intervals",
-  activityId,
-  sourceUpdatedAt,
-  importedAt,
-}
-```
-
-`importedMetrics` stores only normalized optional metrics STACK actually uses. Do not persist the complete Intervals response.
-
-## Import ownership
-
-Once an Intervals activity is accepted into STACK, it becomes a local snapshot.
-
-Normal sync:
-
-- discovers new external activity ids;
-- does not silently rewrite an accepted run when the upstream activity changes later.
-
-A future explicit `Refresh from source` can be designed separately.
-
-This avoids unexpected changes to run history and Build geometry.
-
-## Objective imported fields
-
-At confirmation time, the imported activity supplies:
-
-- `completedDate` from source local activity date;
-- `distanceMiles` normalized from source meters;
-- `durationSeconds` from positive moving time, falling back to elapsed time;
-- source metadata;
-- optional metrics.
-
-Scheduled import defaults `activityType` from the linked planned workout.
-
-Extra import requires the user to choose/confirm STACK activity type; default Easy.
-
-Effort and notes remain STACK-owned local fields.
-
-## External activity dedupe
-
-The canonical external dedupe key is:
-
-```text
-externalSource.provider + externalSource.activityId
-```
-
-For the current integration the provider is always `intervals`.
-
-Rules:
-
-- one Intervals activity id → at most one RunLog;
-- never dedupe primarily by date/distance;
-- same-day runs are valid;
-- sync may suggest attaching remote data to an existing manual run but must not auto-merge.
-
-## Ignored activities
-
-Normal sync suppresses ids in `intervalsSync.ignoredActivityIds`.
-
-Add an id when:
-
-- the user explicitly chooses `Ignore this activity`; or
-- an imported Intervals run is deleted locally and the user confirms it should remain gone from STACK.
-
-Do not add an id merely because a suggestion was closed/dismissed temporarily.
-
-A low-priority `Clear ignored activities` action makes suppression reversible.
-
-Keep this array deduplicated.
-
-## Attach remote data to an existing manual run
-
-When a remote candidate appears to represent an existing manual RunLog, the user may confirm `Attach synced data`.
-
-Preserve:
-
-- `RunLog.id`;
-- workout link;
-- effort;
-- notes;
-- block placement identity.
-
-After clear confirmation, objective date/distance/duration may update to the remote values and source/metrics are attached.
-
-### Existing placed block edge case
-
-Build placement stores frozen width/height. If attaching remote objective distance would place the run in a different distance width band, UI-8 must not silently repack the tower.
-
-Preserve the existing placement geometry and document the mismatch. Any future `Rebuild block from source` action is a separate decision.
-
-## Imported metrics
-
-All optional.
+Optional normalized imported fields may include:
 
 ```ts
 export interface ImportedRunMetrics {
-  averageHeartRate?: number;    // bpm
-  maxHeartRate?: number;        // bpm
-  averageCadence?: number;      // semantics must be verified before display
+  averageHeartRate?: number;
+  maxHeartRate?: number;
+  averageCadence?: number;
   elevationGainFeet?: number;
   elapsedTimeSeconds?: number;
   trainingLoad?: number;
@@ -290,69 +72,259 @@ export interface ImportedRunMetrics {
 }
 ```
 
-Missing metric means property absent/null after normalization; never store a guessed zero.
+Missing metric is absent, never an invented zero.
 
-Pace is derived from `distanceMiles` and `durationSeconds`, so do not persist a duplicate pace field.
+Pace is derived from distance/duration.
 
-## Future interval detail
+## Credentials are outside AppState
 
-UI-9 may fetch Intervals activity detail with interval data on demand.
+Connection/account credentials do not belong inside personal AppState.
 
-Do not store full interval arrays in every RunLog until UI-9 defines the exact persistence need. If run detail can fetch them on demand safely, prefer that to growing local state.
+### Legacy owner proxy token
 
-If interval detail must survive source outages, introduce an explicit bounded normalized type and schema migration in UI-9.
+Current single-owner deployment may still contain:
 
-## Wellness target — later schema, not UI-8
+```text
+stack.intervals.sync-token.v1
+```
 
-Do not add wellness state to schema 9 solely because the API supports it.
+This authorizes the existing protected Vercel proxy.
 
-UI-12 will first verify real HealthFit → Intervals coverage. If persistence is needed, use a bounded cache such as:
+It is legacy/migration infrastructure once UI-18 adds the personal-key mode.
+
+### Race Crew hobby Intervals key
+
+New per-runner hobby mode uses:
+
+```text
+stack.intervals.api-key.v1
+```
+
+through a dedicated credential repository.
+
+Rules:
+
+- outside AppState;
+- never included in backup/export;
+- never sent to Supabase;
+- never included in crew projection;
+- never logged/rendered after save;
+- user can Forget Connection without deleting runs;
+- new/cleared browser requires entering it again.
+
+The Intervals key is a sensitive credential even though the owner has intentionally accepted device-local browser storage for the private hobby release.
+
+### Supabase session
+
+Supabase JS may persist its own authenticated session in browser storage.
+
+STACK does not copy the user's raw PIN into its own repository.
+
+Account session and personal AppState are independent:
+
+- signing out does not delete personal training data;
+- deleting/removing a social account must not silently delete local AppState;
+- a signed-out user can continue using personal STACK.
+
+## Race Crew server storage
+
+Supabase stores only the social identity and narrow crew-safe projection.
+
+Foundation tables:
+
+```text
+profiles
+crews
+crew_members
+crew_invites
+shared_runs
+crew_member_summaries
+```
+
+Reactions are a later phase.
+
+Every exposed table must have Row Level Security.
+
+No full personal AppState is uploaded.
+
+## Shared run contract
+
+Server-safe run row is intentionally small.
+
+Conceptual type:
 
 ```ts
-export interface WellnessDay {
-  date: string;
-  hrv: number | null;
-  restingHeartRate: number | null;
-  sleepSeconds: number | null;
-  steps: number | null;
-  weightKg: number | null;
+export interface CrewSharedRunProjection {
+  localRunId: string;
+  localDate: string;
+  activityType: RunActivityType;
+  distanceMiles: number;
+  durationSeconds: number;
 }
 ```
 
-Recommended retention: most recent 120 days.
+Server also associates authenticated `user_id` and `crew_id`.
 
-Do not accumulate wellness history without bound in localStorage.
+`localRunId` is STACK's local random run identity for update/delete synchronization. It is not the Intervals activity id.
 
-## Activity completion rules
+Derived pace is not persisted.
 
-Scheduled workout completion remains:
+## Shared member summary
 
-> one RunLog references the scheduled workout id.
+Conceptual type:
 
-Source does not matter.
+```ts
+export interface CrewMemberSummaryProjection {
+  weekStart: string;
+  weeklyMiles: number;
+  longestRun28dMiles: number;
+  consistencyCompleted: number;
+  consistencyDue: number;
+  milesBuilt: number;
+}
+```
 
-An imported extra run has `workoutId: null` and never increases scheduled completion.
+Periods:
 
-## Actual date rules
+- Weekly Miles: current Monday–Sunday week using actual local run dates;
+- Longest Run: trailing 28 days;
+- Consistency: most recent up-to-4 plan weeks through today, scheduled workouts only;
+- Miles Built: current local active plan/Build actual miles.
 
-`completedDate` is the local date the run actually happened.
+Extras count actual miles but do not repair Consistency.
 
-Manual defaults:
+## Never send these fields to Race Crew
 
-- scheduled → scheduled workout date;
-- extra → today.
+Do not upload through the crew projection:
 
-Imported:
+- `externalSource.activityId`;
+- Intervals API key;
+- raw Intervals response;
+- GPS/routes/location;
+- exact activity start time;
+- average/max HR;
+- HR zone time;
+- Training Load;
+- wellness data;
+- effort;
+- notes;
+- availability calendar/subscription data;
+- full workout instructions/plan;
+- full Build placement state.
 
-- use source `start_date_local` date.
+If a future feature wants any currently private field, that requires a new explicit sharing decision.
 
-Run dates may not be in the future when recording completed activity.
+## Projection synchronization
 
-## Block geometry
+Race Crew does not require a background server worker.
 
-Unchanged by connected data.
+When signed in and in a crew, safe projection may be upserted after:
 
-### Width from actual distance
+- joining/signing in;
+- accepted imported run;
+- manual run create/edit/delete;
+- stale app open/focus;
+- plan completion changes affecting Consistency.
+
+Avoid constant writes.
+
+Use deterministic upsert identity:
+
+```text
+crew_id + user_id + localRunId
+```
+
+When local run is deleted, delete its matching `shared_runs` row(s) for active crew membership.
+
+## Leave/removal lifecycle
+
+Authorization must remove visibility immediately through RLS.
+
+Preferred cleanup:
+
+- member leaves → delete that member's shared runs/summary for the crew;
+- owner removes member → same cleanup;
+- crew deleted → cascade crew-specific rows;
+- local personal run/plan/Build remain untouched.
+
+The personal data is not owned by Race Crew.
+
+## Account adoption
+
+There is **no AppState migration** required simply because Supabase accounts arrive.
+
+On the current owner's device:
+
+1. existing schema-9 AppState stays exactly where it is;
+2. user creates/signs into optional STACK account;
+3. user creates/joins a crew;
+4. safe projection is derived from local state;
+5. only safe rows are uploaded.
+
+Never upload the entire state as an “account migration.”
+
+## Invite token storage
+
+Raw invite token must not be stored in an exposed DB column.
+
+Preferred:
+
+- 32 random bytes;
+- base64url in link;
+- SHA-256 hash in `crew_invites.token_hash`;
+- default expiration 14 days;
+- revocable;
+- raw token carried in URL fragment `#join=<token>` and pending client state only until redemption.
+
+## Supabase authorization
+
+RLS is the server authority, not hidden UI.
+
+Required:
+
+- unauthenticated reads denied;
+- non-member cannot enumerate/read Crew data;
+- active member can read safe rows for their Crew;
+- user mutates only own projection rows;
+- owner controls crew metadata/invites/member removal;
+- member can leave self;
+- revoked/expired invite cannot create membership.
+
+Avoid recursive membership policies. Use well-scoped security-definer helper functions if needed and index membership/user columns used by policies.
+
+## Derived state remains derived
+
+Do not persist personal totals already derivable from AppState merely because Race Crew exists.
+
+Personal examples:
+
+- total actual miles;
+- pace;
+- weekly actual miles;
+- longest run;
+- consistency;
+- trends;
+- pending Build blocks;
+- tower rendering.
+
+The Race Crew summary table is an intentional projection/cache for sharing, not the new source of truth for the personal app.
+
+## Connected activity semantics remain unchanged
+
+Manual/imported runs continue using existing rules:
+
+- one Intervals activity id maps to at most one local RunLog;
+- user confirms scheduled match/extra/attach;
+- accepted imported activity becomes local snapshot;
+- normal sync does not silently overwrite it;
+- source missing fields are omitted;
+- connected data never auto-edits the plan.
+
+## Block geometry remains local/private behavior
+
+Unchanged:
+
+### Width
 
 | Actual distance | Width |
 |---|---:|
@@ -361,7 +333,7 @@ Unchanged by connected data.
 | `5.0–7.99` mi | 3 |
 | `>= 8.0` mi | 4 |
 
-### Height from STACK activity type
+### Height
 
 | Type | Height |
 |---|---:|
@@ -371,107 +343,24 @@ Unchanged by connected data.
 | Simulation | 2 |
 | Race | 3 |
 
-Heart rate, cadence, training load, pace and wellness never change geometry.
+HR/pace/load/effort never change geometry.
 
-## Derived state
+Mini Builds, when later implemented, should prefer a sanitized social projection rather than uploading full private placement state without need.
 
-Do not persist totals that can be derived:
+## Recovery
 
-- today's planned workout;
-- scheduled completion;
-- next workout;
-- total actual miles;
-- weekly actual miles;
-- total run time;
-- longest run;
-- current scheduled-run streak;
-- pace;
-- consistency percentage;
-- pending earned blocks;
-- valid placement columns;
-- rendered tower;
-- trend series derived from runLogs;
-- recovery comparisons derived from bounded wellness history.
+Personal storage recovery remains independent from Race Crew.
 
-## Streak
+- corrupted AppState follows existing recoverable path;
+- signing in does not “restore” personal training history from Supabase because full personal cloud sync is not implemented;
+- changing phones requires existing STACK backup/restore behavior for personal state and re-entering Intervals key;
+- crew membership can be restored by signing into Supabase account.
 
-Unchanged:
+## Future public upgrade
 
-- scheduled non-rest workouts only;
-- today's unfinished workout does not break the streak during the day;
-- past incomplete breaks;
-- completed today may extend/start;
-- Rest no effect;
-- extra run no effect;
-- imported/manual source no effect.
+Before public/open/commercial Race Crew:
 
-## Plan data ownership
-
-Connected activity sync never edits the plan.
-
-UI-8 through UI-12 do not:
-
-- create planned workouts in Intervals;
-- import Intervals planned calendar into the STACK plan;
-- move workouts;
-- auto-reschedule based on health data.
-
-Plan changes remain explicit local user actions.
-
-## Server data storage
-
-The Vercel Intervals proxy is stateless.
-
-It must not:
-
-- persist activities;
-- persist wellness;
-- persist sync tokens;
-- persist API keys outside environment secrets;
-- log response bodies.
-
-Local browser state remains STACK's source of persisted user data.
-
-## Connection token storage
-
-The separate local `STACK_SYNC_TOKEN` is a bearer credential to the read-only proxy.
-
-Requirements:
-
-- dedicated local key outside AppState;
-- user can forget/remove it without deleting training data;
-- storage failure is surfaced;
-- never include in export/recovery text by accident;
-- never put in URLs.
-
-## Storage recovery and health data
-
-UI-7 recovery behavior remains active.
-
-Once imported metrics/wellness exist, recovery/export wording must acknowledge the damaged local state may contain health/training metrics.
-
-Do not print the raw state into UI by default.
-
-## Validation — imported activity
-
-Minimum accepted normalized candidate:
-
-- non-empty external id;
-- verified running source type;
-- valid local activity date;
-- finite distance > 0;
-- positive moving or elapsed duration.
-
-Optional imported metrics are individually validated and dropped when invalid rather than failing the entire run.
-
-Examples:
-
-- invalid HR → omit HR only;
-- invalid cadence → omit cadence only;
-- missing training load → import run normally.
-
-## Migration/recovery rule
-
-Every schema migration must either return a valid current state or throw into the existing UI-7 recoverable storage path.
-
-Never silently discard actual runs.
+- replace personal-key multi-user shortcut with Intervals OAuth;
+- revisit stronger account authentication and recovery;
+- consider self-service account deletion;
+- decide whether full personal cloud sync is desirable as a separate program.
