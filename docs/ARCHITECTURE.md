@@ -125,7 +125,7 @@ Do not create a global context hierarchy unless prop passing becomes genuinely d
 
 ## Navigation approach
 
-Use internal state for three tabs.
+Use internal state for the four tabs — Today / Build / Runs / Plan (D-044).
 
 No URL router is needed in v1.
 

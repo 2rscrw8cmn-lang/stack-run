@@ -11,19 +11,19 @@ An **availability calendar** was added after UI-6 at the product owner's request
 `src/app/App.tsx`
 
 - Loads one versioned local `AppState` (schema version 9) into a `BootState` that is either an app or the reason there is not one.
-- Owns the active Today / Build / Plan tab.
+- Owns the active Today / Build / Runs / Plan tab.
 - Owns the block-placement handoff, keyed by run-log id rather than workout id.
-- Saves every activity through `appStateRepository.saveRunLog`, passing the workout when there is one and `null` when there is not.
+- Saves every activity through `appStateRepository.saveRunLog`, passing the workout when there is one and `null` when there is not. Source, the external link and the imported metrics are the repository's to keep, not the shell's to resend.
 - Subscribes to failed writes and hands the shell a banner when one happens.
 
 `src/app/AppErrorBoundary.tsx` wraps the app in `main.tsx`. A render fault used to be a white screen with everything still safely in storage and no way to learn that; it now says what happened, in words that can be repeated, and offers a reload.
 
 `src/app/AppShell.tsx`
 
-- Renders the three primary screens and passes plan, run logs, placements, and the save/place callbacks.
-- Bottom navigation is Today / Build / Plan, plus a `Settings` control that opens a sheet and is deliberately not a fourth destination — see **Settings** below.
+- Renders the four primary screens and passes plan, run logs, placements, and the save/place callbacks.
+- Bottom navigation is exactly Today / Build / Runs / Plan (D-044). Every control in the bar is a destination and wears `aria-current` when it is the current one.
 - Owns the three secondary sheets that any screen can reach: Settings, Trends, and Run Data.
-- The header is a small brand lockup — `StackMark` plus the wordmark — and nothing else. It used to be a 34px `STACK` over a tagline, repeated above every screen.
+- The header is a small brand lockup — `StackMark` plus the wordmark — on the left, and one icon-only `Settings` gear on the right. Both sit in `.app-shell__header-row`, which carries the same 640px column the content and the nav use, so the gear lines up with the screen under it.
 
 ## The look, after UI-7
 
@@ -587,9 +587,10 @@ out of the way — and says nothing at all while there is a run to offer.
 ## UI-11 — Training Trends
 
 `src/domain/trends.ts` derives five answers from the plan and the recorded
-runs; `src/features/trends/TrendsSheet.tsx` shows them in a secondary sheet
-opened from This Week on Today and from Plan's quiet actions. There is still
-no fourth tab.
+runs; `src/features/trends/TrendsSheet.tsx` shows them in a secondary sheet.
+Since UI-13 it is opened from the trend cards at the top of Runs and from This
+Week on Today; Plan no longer carries a Trends action. Trends is still not a
+tab of its own.
 
 Two rules run through the selectors. Runs are placed by the date they were
 actually run, never by the date of the workout they satisfied — a Sunday long
@@ -643,10 +644,63 @@ Deliberately absent, and to stay absent: any readiness score, any CTL/ATL or
 form dashboard, any predicted finishing time, and any language that coaches.
 STACK says what happened and which way it is moving.
 
+## UI-13 — Runs, the fourth pillar
+
+`src/features/runs/RunsScreen.tsx`. Actual run history had no home: a run was
+findable through the day it satisfied (Plan), the block it earned (Build), or
+not at all. Runs is the chronological record, and per D-044 it is a real
+destination rather than a view hanging off one.
+
+**No new store, and no migration.** `RunLog[]` has always been the whole actual
+history. `src/domain/runs.ts` joins and sorts it and writes nothing:
+`runHistory(plan, runLogs)` returns every run newest first, scheduled and
+extra, typed in and synced, each with the workout behind it when there was one.
+Ordering is by the date the run actually happened; two runs on one day fall
+back to when they were recorded and then to id, so the list cannot reorder
+itself between renders. Schema stays at 9.
+
+The screen leads with `N runs` and the total actual miles rather than the word
+"Runs", per the UI-7 content-first rule, with a compact `Log Run` beside it —
+Today keeps its own.
+
+**A row is the run.** Activity icon and type, the actual date, distance,
+duration and derived pace, and a quiet `Extra` only where no workout was
+behind it. The whole row is one button with an accessible name that spells the
+same facts out in full. Where a run came from is deliberately not a badge:
+source is implementation context, not the identity of a run.
+
+**Detail is the existing detail.** `RunDetailSheet` is `RunResultDetail` with
+the date above it and the planned workout or `Extra run` below, the same shape
+Build's block detail has. The imported metrics, HR zones and on-demand
+interval detail are UI-9's, not a second renderer. UI-13 added one thing to
+`RunResultDetail`: when a synced run's elapsed time differs from its moving
+time by half a minute or more, both are shown as `Moving` and `Elapsed`.
+Closer than that they are the same fact twice and one `Duration` row stands.
+
+**Editing history never edits the plan.** `saveRunLog` keeps the existing
+run's `workoutId` whenever it is updating a run rather than creating one. An
+edit sheet opened from Runs or Build holds a run, not a workout, and handing
+back `null` used to unlink a scheduled run from its day — the run vanished
+from the week's completion count and reappeared as an extra one. Deleting
+still goes through the existing repository path and repacks the tower, and
+deleting a synced run ignores its activity id so the next sync does not offer
+it back. Focus moves to the list heading afterwards, because the row the
+browser would have returned to has gone with the run.
+
+**Training Trends lives here now** (D-047). Rather than another link, the top
+of Runs carries a swipeable row of trend cards — one measure each, values from
+the same `selectTrainingTrends` the sheet reads, nothing stored. Each card is
+a button into the full view, so the tables, ranges and coverage sentences are
+all still there. The strip is a native `overflow-x` scroller with CSS snap
+points: the swipe is the browser's, and because the cards are focusable
+buttons, tabbing through them scrolls the strip without it needing a tab stop
+of its own. A measure with nothing recorded for it has no card, and a runner
+with no runs at all gets no strip.
+
 ## Settings — one place for everything the plan is built from
 
-`src/features/settings/SettingsSheet.tsx`, opened by a fourth control in the
-bottom bar.
+`src/features/settings/SettingsSheet.tsx`, opened by the gear in the top-right
+of the global header.
 
 Five things were in two wrong places. **Race**, **Run Days**, **Availability**
 and **Reset Plan** were a two-column grid of look-alike buttons under eighteen
@@ -655,11 +709,13 @@ weeks of schedule — which is where a screen ends, not where settings live — 
 next to a brand lockup that was supposed to be the only thing up there. They
 are all settings, and they are all here now.
 
-This is **not a fourth destination** (D-041). The control opens a dialog: it is
+This is **not a destination** (D-041, D-044). The gear opens a dialog: it is
 never `aria-current`, it carries `aria-haspopup="dialog"` and `aria-expanded`,
-and a hairline separates it from Today / Build / Plan, which are still the only
-places the app can be. Closing the sheet leaves the user on whichever of the
-three they were already on.
+and it is not in the bar at all, so Today / Build / Runs / Plan are the only
+places the app can be. Its visible icon is 20px and its target is 44 x 44,
+reusing `IconButton`. Closing the sheet leaves the user on whichever of the
+four they were already on — the tab never changed, so there is nothing to
+restore.
 
 - Each row states **what that setting is currently set to** — the race and its
   date, the run days (falling back to the shape the plan already has, marked as

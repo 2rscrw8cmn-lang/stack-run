@@ -162,28 +162,29 @@ describe("resetting the plan", () => {
 });
 
 describe("the bottom bar", () => {
-  it("offers settings without making it a fourth destination", async () => {
-    const onOpenSettings = vi.fn();
+  it("is four equal destinations, in order, and no longer carries Settings", async () => {
     const onTabChange = vi.fn();
     const user = userEvent.setup();
-    render(
-      <BottomNav
-        activeTab="today"
-        onTabChange={onTabChange}
-        onOpenSettings={onOpenSettings}
-        isSettingsOpen={false}
-      />,
+    render(<BottomNav activeTab="runs" onTabChange={onTabChange} />);
+
+    expect(
+      screen.getAllByRole("button").map((tab) => tab.textContent),
+    ).toEqual(["Today", "Build", "Runs", "Plan"]);
+    // Settings is a gear in the header now: it configures the app rather than
+    // being one of the places the app can be.
+    expect(
+      screen.queryByRole("button", { name: "Settings" }),
+    ).not.toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("button", { name: "Plan" })).not.toHaveAttribute(
+      "aria-current",
     );
 
-    const settings = screen.getByRole("button", { name: "Settings" });
-    // A tab is somewhere the app can be; this opens a sheet over wherever it
-    // already is, so it never claims to be the current page.
-    expect(settings).not.toHaveAttribute("aria-current");
-    expect(settings).toHaveAttribute("aria-haspopup", "dialog");
-    expect(settings).toHaveAttribute("aria-expanded", "false");
-
-    await user.click(settings);
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
-    expect(onTabChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    expect(onTabChange).toHaveBeenCalledWith("plan");
   });
 });

@@ -11,8 +11,8 @@ Read `docs/RUNS_AND_BUILD_REVISION.md` first. Product intent wins over implement
 - UI-10 — Connected Today + Week: complete.
 - UI-11 — Training Trends: complete.
 - UI-12 — Wellness / Recovery Context: intentionally deferred/skipped.
-- UI-13 — Runs Pillar + Navigation Revision: next.
-- UI-14 — Build Reward Revision: after UI-13.
+- UI-13 — Runs Pillar + Navigation Revision: complete. Trends is presented on Runs as swipeable cards per D-047.
+- UI-14 — Build Reward Revision: next.
 - UI-15 — Optional Plan Export Investigation: deferred; no code authorization.
 
 No schema migration is expected for UI-13 or UI-14 unless a real persisted-state requirement is discovered and documented before implementation.
@@ -76,7 +76,7 @@ Recommended screen structure:
 
 1. Content-led summary (`N runs` as `h1`).
 2. Quiet total-actual-miles context.
-3. Quiet `View Training Trends` action when there is enough run data to make the destination useful.
+3. Training Trends. Superseded by D-047: a swipeable row of trend cards at the top of the screen, each card a button into the existing Trends sheet, rather than a `View Training Trends` link.
 4. `Log Run` secondary action.
 5. Newest-first chronological run list.
 
@@ -133,7 +133,7 @@ Do not change plan ownership from this screen.
 
 ### Training Trends relocation
 
-Runs becomes the canonical launch point for `Training Trends`.
+Runs becomes the canonical launch point for `Training Trends`, as swipeable cards per D-047.
 
 - Keep Trends a sheet/secondary surface.
 - Remove Plan's dedicated Training Trends footer action in this phase unless a UX reason is discovered in review.

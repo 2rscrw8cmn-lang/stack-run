@@ -21,7 +21,7 @@
 | Generated active race plan | Implemented | D-030 | One active race/plan; deterministic generation; recorded runs survive regeneration. |
 | Preferred run days | Implemented | D-031 | Explicit user-triggered reshape; never autonomous. |
 | Availability calendar | Implemented | D-032 | Calendar identifies conflicts/proposes moves; user accepts every plan change. |
-| Grouped Settings sheet | Implemented | D-041 | Race, Run Days, Availability, Run Data, Reset Plan in one sheet. Current main still opens it from bottom nav until UI-13. |
+| Grouped Settings sheet | Implemented | D-041, D-044 | Race, Run Days, Availability, Run Data, Reset Plan in one sheet, opened from the top-right header gear. |
 | Chosen plan start date | Implemented | D-042 | Optional start date; absent derives from race. |
 | Plan load safety rules | Implemented | D-043 | Weekly-volume progression, bounded load increases, spaced hard days, honest rebuild warnings. |
 
@@ -61,17 +61,15 @@ Approved source of truth:
 
 | Phase | Name | Status | Decision | Primary outcome |
 |---:|---|---|---|---|
-| 13 | Runs Pillar + Navigation Revision | **Not started — next approved** | D-044 | Bottom nav Today / Build / Runs / Plan; Settings moves to top-right gear; Runs becomes chronological actual-history home; Trends canonical from Runs. |
-| 14 | Build Reward Revision | **Not started** | D-045 | Object-first Build, mileage on blocks, direct release-to-place touch path, restrained placement payoff, earned Race capstone. |
+| 13 | Runs Pillar + Navigation Revision | **Implemented** | D-044, D-047 | Bottom nav Today / Build / Runs / Plan; Settings is a top-right gear; Runs is the chronological actual-history home; Trends canonical from Runs as swipeable cards. No migration — schema stays 9. |
+| 14 | Build Reward Revision | **Not started — next approved** | D-045 | Object-first Build, mileage on blocks, direct release-to-place touch path, restrained placement payoff, earned Race capstone. |
 | 15 | Optional Plan Export Investigation | **Deferred** | D-040 | No code authorization. Any STACK → Intervals write path requires a separate decision/security design. |
 
 ## Important current-versus-next distinction
 
-Current `main` after PR #30 still has the Settings control in the bottom bar and no Runs primary tab.
+Navigation is now the approved four destinations: Today / Build / Runs / Plan. Settings is a gear in the header and is never `aria-current`.
 
-That is expected until UI-13 is implemented.
-
-Do not treat the existing four-item bar as the approved final navigation. D-044 supersedes D-041's bottom-bar entry point when UI-13 ships.
+Build has **not** been revised yet. Its heading still carries Runs Complete and Run Streak, blocks carry no mileage labels, and placement still requires a separate Drop press. That is UI-14, and D-045 governs it.
 
 Current Build still includes the existing heading stats and current placement behavior.
 

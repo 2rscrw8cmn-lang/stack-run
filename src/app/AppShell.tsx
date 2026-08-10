@@ -1,6 +1,8 @@
+import { Settings as SettingsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { BottomNav } from "../components/shared/BottomNav";
 import { StackMark } from "../components/shared/StackMark";
+import { IconButton } from "../components/ui/IconButton";
 import type { AvailabilityCalendar } from "../domain/availability";
 import { todayLocalDate } from "../domain/dates";
 import type { RacePlanSetup } from "../domain/racePlan";
@@ -9,6 +11,7 @@ import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/ty
 import { BuildScreen } from "../features/build/BuildScreen";
 import type { PlacementRequest } from "../features/build/BuildScreen";
 import { PlanScreen } from "../features/plan/PlanScreen";
+import { RunsScreen } from "../features/runs/RunsScreen";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
@@ -106,9 +109,24 @@ export function AppShell({
         wrapped onto two lines on a phone, and it is a setting anyway.
       */}
       <header className="app-shell__header">
-        <div className="brand">
-          <StackMark size={22} />
-          <p className="wordmark">STACK</p>
+        <div className="app-shell__header-row">
+          <div className="brand">
+            <StackMark size={22} />
+            <p className="wordmark">STACK</p>
+          </div>
+          {/*
+            Settings is configuration, not a place the app can be, so it is a
+            gear up here rather than a fifth thing in a bar of destinations. It
+            opens over whatever tab you are on and closes back to it — the tab
+            never changes, so there is nothing to restore.
+          */}
+          <IconButton
+            label="Settings"
+            icon={<SettingsIcon size={20} strokeWidth={1.8} />}
+            aria-haspopup="dialog"
+            aria-expanded={settingsOpen}
+            onClick={() => setSettingsOpen(true)}
+          />
         </div>
       </header>
       {notice}
@@ -153,6 +171,16 @@ export function AppShell({
             syncToken={syncToken}
           />
         )}
+        {activeTab === "runs" && (
+          <RunsScreen
+            plan={plan}
+            runLogs={runLogs}
+            onSaveRun={onSaveRun}
+            onDeleteRun={onDeleteRun}
+            onViewTrends={() => setTrendsOpen(true)}
+            syncToken={syncToken}
+          />
+        )}
         {activeTab === "plan" && (
           <PlanScreen
             plan={plan}
@@ -161,18 +189,12 @@ export function AppShell({
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
             availability={availability}
-            onViewTrends={() => setTrendsOpen(true)}
             syncToken={syncToken}
           />
         )}
       </main>
       <nav className="app-shell__nav" aria-label="Primary">
-        <BottomNav
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          onOpenSettings={() => setSettingsOpen(true)}
-          isSettingsOpen={settingsOpen}
-        />
+        <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
       </nav>
       <SettingsSheet
         isOpen={settingsOpen}

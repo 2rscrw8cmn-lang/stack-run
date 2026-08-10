@@ -259,7 +259,11 @@ export function saveRunLog(state: AppState, input: RunLogInput): AppState {
   // The incoming id only selects which activity to update; the stored id is
   // the existing one, or a freshly minted one below.
   const values: Omit<RunLog, "id" | "createdAt" | "updatedAt"> = {
-    workoutId: input.workoutId,
+    // Correcting an actual run never changes which workout it satisfied. The
+    // plan is edited from Plan, and an edit sheet opened from Runs or Build
+    // has no workout to hand back — taking its answer here would silently turn
+    // a scheduled run into an extra one and leave the day looking unrun.
+    workoutId: existing ? existing.workoutId : input.workoutId,
     completedDate: input.completedDate,
     activityType: input.activityType,
     distanceMiles: input.distanceMiles,

@@ -22,6 +22,20 @@ export const TREND_MINIMUM_RUNS = 4;
  */
 export const TREND_WEEK_WINDOW = 12;
 
+/** What a direction is called on screen. Three words, and never a verdict. */
+export const DIRECTION_WORD = {
+  rising: "climbing",
+  falling: "coming down",
+  steady: "holding steady",
+} as const;
+
+/**
+ * Pace and heart rate are not mileage. Two percent is twelve seconds a mile or
+ * three beats a minute — plenty for a runner to notice, where the same
+ * percentage of a training week is a rounding error.
+ */
+export const PHYSIOLOGICAL_SIGNIFICANCE = 0.02;
+
 export interface WeeklyMileagePoint {
   weekNumber: number;
   startDate: string;
