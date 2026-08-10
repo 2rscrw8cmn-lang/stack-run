@@ -10,6 +10,7 @@ import { formatDurationSeconds } from "../../domain/duration";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
 import { selectTrainingSignals } from "../../domain/trends";
 import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
+import type { IntervalsConnection } from "../../connected/intervals";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { RunDetailSheet } from "./RunDetailSheet";
@@ -29,7 +30,7 @@ interface RunsScreenProps {
   onDeleteRun?: (runLogId: string) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
-  syncToken?: string | null;
+  syncToken?: IntervalsConnection | string | null;
 }
 
 /**

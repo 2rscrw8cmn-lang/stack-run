@@ -147,6 +147,14 @@ The migration must:
 
 After the agent creates the migration, run it in the Supabase SQL Editor or through the Supabase CLI if the project later adopts the CLI.
 
+After applying the migration, run the repeatable transactional isolation check at:
+
+```text
+supabase/tests/0001_race_crew_rls.sql
+```
+
+It creates two temporary test users and crews inside a transaction, verifies member visibility and outsider denial, and rolls the test data back. Run it in a non-production project first, then repeat the same owner/second-account behavior manually in the production app.
+
 ## 5. Intervals credential model for Race Crew
 
 The current single-owner production connection uses:

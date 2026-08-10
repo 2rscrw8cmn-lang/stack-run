@@ -1,4 +1,4 @@
-import { CircleCheck, Database, RefreshCw } from "lucide-react";
+import { CircleCheck, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
@@ -8,11 +8,12 @@ import { earnedBlockPhrase } from "../../domain/build";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import {
-  fetchIntervals,
   likelyManualMatches,
   suggestScheduledMatches,
   type IntervalsCandidate,
+  type IntervalsConnection,
 } from "../../connected/intervals";
+import { RunDataSetup } from "./RunDataSetup";
 
 /** A candidate handed in from Today, already decided as match or extra. */
 export interface RunDataReview {
@@ -25,6 +26,7 @@ interface Props {
   onClose: () => void;
   state: AppState;
   initialToken: string | null;
+  connection?: IntervalsConnection | null;
   /** Sync lives above this sheet now, so Today and Run Data agree on it. */
   candidates: IntervalsCandidate[];
   isSyncing: boolean;
@@ -34,6 +36,8 @@ interface Props {
   initialReview?: RunDataReview | null;
   onConnect: (token: string) => void;
   onForget: () => void;
+  onConnectApiKey?: (apiKey: string) => void;
+  onForgetApiKey?: () => void;
   onImport: (
     candidate: IntervalsCandidate,
     workoutId: string | null,
@@ -59,9 +63,13 @@ function lastSyncLabel(at: string | null): string {
 }
 
 export function RunDataSheet(props: Props) {
-  const [token, setToken] = useState(props.initialToken ?? "");
-  const [connected, setConnected] = useState(Boolean(props.initialToken));
-  const [busy, setBusy] = useState(false);
+  const initialConnection = props.connection ?? (props.initialToken
+    ? { mode: "legacy-proxy" as const, credential: props.initialToken }
+    : null);
+  const [connectionMode, setConnectionMode] = useState<IntervalsConnection["mode"] | null>(
+    initialConnection?.mode ?? null,
+  );
+  const [setupOpen, setSetupOpen] = useState(!initialConnection);
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   // Opened from Today with a run already chosen, or opened cold from Settings.
@@ -91,26 +99,6 @@ export function RunDataSheet(props: Props) {
   function report(text: string, isFailure = false) {
     setMessage(text);
     setFailed(isFailure);
-  }
-
-  /**
-   * Connecting only proves the token. The first sync is left to the quiet one
-   * that starts the moment a connection exists, so there is one path that
-   * fetches activities rather than two that can disagree.
-   */
-  async function connect() {
-    setBusy(true);
-    report("");
-    try {
-      await fetchIntervals("status", token.trim());
-      props.onConnect(token.trim());
-      setConnected(true);
-      report("Intervals.icu connected. Looking for runs…");
-    } catch (error) {
-      report(error instanceof Error ? error.message : "Connection failed.", true);
-    } finally {
-      setBusy(false);
-    }
   }
 
   function review(candidate: IntervalsCandidate) {
@@ -148,41 +136,35 @@ export function RunDataSheet(props: Props) {
     : undefined;
   const status = props.syncError ?? message;
   const isFailure = Boolean(failed || props.syncError);
+  const connected = connectionMode !== null;
 
   return (
     <Sheet title="Run Data" isOpen={props.isOpen} onClose={props.onClose}>
       <div className="run-data">
-        {!connected ? (
-          <>
-            <p className="run-data__copy">
-              Connect STACK's read-only Intervals.icu sync. Enter the STACK sync
-              token — not an Intervals API key.
-            </p>
-            <FormField label="STACK sync token">
-              <input
-                className="run-input"
-                type="password"
-                value={token}
-                autoComplete="off"
-                onChange={(event) => setToken(event.target.value)}
-              />
-            </FormField>
-            <Button
-              disabled={!token.trim()}
-              isLoading={busy}
-              icon={<Database size={18} />}
-              onClick={connect}
-            >
-              Test / Connect
-            </Button>
-          </>
-        ) : (
+        {setupOpen && (
+          <RunDataSetup
+            onConnected={(key) => {
+              if (props.onConnectApiKey) props.onConnectApiKey(key);
+              else props.onConnect(key);
+              setConnectionMode("local-api-key");
+              setSetupOpen(false);
+              report("Intervals.icu connected. Looking for runs…");
+            }}
+            onCancel={connected ? () => setSetupOpen(false) : undefined}
+          />
+        )}
+
+        {connected && (
           <>
             <div className="run-data__status">
               <CircleCheck size={20} strokeWidth={2} aria-hidden="true" />
               <div>
                 <strong>Intervals.icu connected</strong>
                 <p>
+                  {connectionMode === "local-api-key"
+                    ? "Personal key on this device"
+                    : "Legacy owner proxy"}
+                  <br />
                   Last activity sync:{" "}
                   {lastSyncLabel(
                     props.state.intervalsSync.lastSuccessfulActivitySyncAt,
@@ -190,6 +172,12 @@ export function RunDataSheet(props: Props) {
                 </p>
               </div>
             </div>
+
+            {connectionMode === "legacy-proxy" && !setupOpen && (
+              <Button variant="secondary" onClick={() => setSetupOpen(true)}>
+                Set Up Personal API Key
+              </Button>
+            )}
 
             <Button
               variant="secondary"
@@ -379,8 +367,14 @@ export function RunDataSheet(props: Props) {
             <button
               type="button"
               onClick={() => {
-                props.onForget();
-                setConnected(false);
+                if (connectionMode === "local-api-key") {
+                  props.onForgetApiKey?.();
+                  setConnectionMode(props.initialToken ? "legacy-proxy" : null);
+                } else {
+                  props.onForget();
+                  setConnectionMode(null);
+                }
+                setSetupOpen(!props.initialToken);
                 setSelected(null);
               }}
             >

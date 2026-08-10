@@ -2,6 +2,7 @@ import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
 import { WORKOUT_TYPE_LABEL, type PlacedBlock } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
+import type { IntervalsConnection } from "../../connected/intervals";
 import { RunResultDetail } from "../workout-detail/RunResultDetail";
 
 interface BlockDetailSheetProps {
@@ -10,7 +11,7 @@ interface BlockDetailSheetProps {
   onMoveBlock?: () => void;
   /** Opens the run behind the block for correction or removal. */
   onEditRun?: () => void;
-  syncToken?: string | null;
+  syncToken?: IntervalsConnection | string | null;
   isOpen: boolean;
   onClose: () => void;
 }

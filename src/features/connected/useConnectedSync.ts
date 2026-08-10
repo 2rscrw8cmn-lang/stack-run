@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchIntervals, normalizeActivityList, type IntervalsCandidate } from "../../connected/intervals";
+import {
+  fetchIntervals,
+  normalizeActivityList,
+  type IntervalsCandidate,
+  type IntervalsConnection,
+} from "../../connected/intervals";
 import { addDaysToLocalDate, todayLocalDate } from "../../domain/dates";
 import type { AppState } from "../../domain/types";
 
@@ -41,7 +46,9 @@ export interface ConnectedSync {
 }
 
 interface Options {
-  token: string | null;
+  /** Preferred UI-18 shape. `token` remains for legacy callers and tests. */
+  connection?: IntervalsConnection | null;
+  token?: string | null;
   /** Null while storage recovery owns the screen: there is nothing to sync into. */
   state: AppState | null;
   onSynced: (at: string) => void;
@@ -60,7 +67,12 @@ interface Options {
  * Build are all still true when Intervals is unreachable, so a failed quiet
  * sync sets `error` for a screen to offer a retry with and gets out of the way.
  */
-export function useConnectedSync({ token, state, onSynced, read = fetchIntervals }: Options): ConnectedSync {
+export function useConnectedSync({ connection, token = null, state, onSynced, read = fetchIntervals }: Options): ConnectedSync {
+  const activeConnection = connection ?? (token
+    ? { mode: "legacy-proxy" as const, credential: token }
+    : null);
+  const connectionMode = activeConnection?.mode ?? null;
+  const connectionCredential = activeConnection?.credential ?? null;
   const [candidates, setCandidates] = useState<IntervalsCandidate[]>([]);
   const [status, setStatus] = useState<ConnectedSyncStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -68,15 +80,15 @@ export function useConnectedSync({ token, state, onSynced, read = fetchIntervals
 
   // Read through refs: the sync closure must see the newest run logs and
   // ignored ids without the effect below re-subscribing on every state change.
-  const latest = useRef({ state, onSynced, read, token });
+  const latest = useRef({ state, onSynced, read, connection: activeConnection });
   useEffect(() => {
-    latest.current = { state, onSynced, read, token };
+    latest.current = { state, onSynced, read, connection: activeConnection };
   });
   const inFlight = useRef(false);
   const lastAttemptAt = useRef(0);
 
   const run = useCallback(async (quiet: boolean): Promise<void> => {
-    const { state: current, onSynced: synced, read: fetcher, token: credential } = latest.current;
+    const { state: current, onSynced: synced, read: fetcher, connection: credential } = latest.current;
     if (!credential || !current || inFlight.current) return;
 
     const lastSuccess = current.intervalsSync.lastSuccessfulActivitySyncAt;
@@ -105,7 +117,7 @@ export function useConnectedSync({ token, state, onSynced, read = fetchIntervals
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!connectionCredential) return;
 
     // A connection that was just entered has not been tried yet, whatever the
     // previous one did.
@@ -122,7 +134,7 @@ export function useConnectedSync({ token, state, onSynced, read = fetchIntervals
       window.removeEventListener("focus", attempt);
       document.removeEventListener("visibilitychange", attempt);
     };
-  }, [token, run]);
+  }, [connectionCredential, connectionMode, run]);
 
   const sync = useCallback(() => run(false), [run]);
   const dismiss = useCallback((externalId: string) => setDismissed((all) => all.includes(externalId) ? all : [...all, externalId]), []);
@@ -131,9 +143,9 @@ export function useConnectedSync({ token, state, onSynced, read = fetchIntervals
   return {
     // Forgetting the connection takes what it found with it, without a render
     // pass spent clearing state a filter can answer.
-    candidates: token ? candidates.filter((candidate) => !dismissed.includes(candidate.externalId)) : [],
+    candidates: activeConnection ? candidates.filter((candidate) => !dismissed.includes(candidate.externalId)) : [],
     status,
-    error: token ? error : null,
+    error: activeConnection ? error : null,
     sync,
     dismiss,
     settle,

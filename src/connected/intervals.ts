@@ -14,6 +14,24 @@ const MILE_DECIMALS = 2;
 /** Intervals' canonical running activity type. Add source-verified aliases here only. */
 export const VERIFIED_RUNNING_TYPES = new Set(["Run"]);
 
+export type IntervalsConnection =
+  | { mode: "legacy-proxy"; credential: string }
+  | { mode: "local-api-key"; credential: string };
+
+/** Existing callers/tests pass the legacy token as a string. */
+type IntervalsConnectionInput = IntervalsConnection | string;
+
+function connectionFrom(input: IntervalsConnectionInput): IntervalsConnection {
+  return typeof input === "string"
+    ? { mode: "legacy-proxy", credential: input }
+    : input;
+}
+
+/** Exported so the fake-key test can verify the exact Intervals auth contract. */
+export function intervalsBasicAuthorization(apiKey: string): string {
+  return `Basic ${btoa(`API_KEY:${apiKey.trim()}`)}`;
+}
+
 export interface IntervalsCandidate {
   externalId: string;
   sourceType: string;
@@ -289,13 +307,75 @@ async function read(params: URLSearchParams, token: string, context: ReadContext
   }
 }
 
-export async function fetchIntervals(resource: "status" | "activities", token: string, range?: { oldest: string; newest: string }): Promise<unknown> {
-  const params = new URLSearchParams({ resource });
-  if (range) { params.set("oldest", range.oldest); params.set("newest", range.newest); }
-  return read(params, token, "sync");
+function directUrl(
+  resource: "status" | "activities" | "activity",
+  range?: { oldest: string; newest: string },
+  activityId?: string,
+): string {
+  if (resource === "activity") {
+    return `https://intervals.icu/api/v1/activity/${encodeURIComponent(activityId ?? "")}?intervals=true`;
+  }
+  const directRange = range ?? (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return { oldest: today, newest: today };
+  })();
+  const query = new URLSearchParams(directRange);
+  return `https://intervals.icu/api/v1/athlete/0/activities?${query}`;
 }
 
-export async function fetchIntervalsActivityDetail(activityId: string, token: string): Promise<IntervalsActivityDetail> {
+async function readDirect(
+  resource: "status" | "activities" | "activity",
+  apiKey: string,
+  context: ReadContext,
+  range?: { oldest: string; newest: string },
+  activityId?: string,
+): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch(directUrl(resource, range, activityId), {
+      headers: { Authorization: intervalsBasicAuthorization(apiKey) },
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(
+      `${CONTEXT_FAILURE[context]}. Check this device's connection and browser access to Intervals.icu.`,
+    );
+  }
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        "Intervals.icu did not accept that personal API key. Copy a new key from Developer Settings and try again.",
+      );
+    }
+    if (response.status === 429) {
+      throw new Error("Intervals.icu is rate limiting requests. Try again later.");
+    }
+    throw new Error(`${CONTEXT_FAILURE[context]} (HTTP ${response.status}).`);
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(`${CONTEXT_FAILURE[context]}: Intervals.icu returned an unreadable response.`);
+  }
+}
+
+export async function fetchIntervals(resource: "status" | "activities", connectionInput: IntervalsConnectionInput, range?: { oldest: string; newest: string }): Promise<unknown> {
+  const connection = connectionFrom(connectionInput);
+  if (connection.mode === "local-api-key") {
+    return readDirect(resource, connection.credential, "sync", range);
+  }
+  const params = new URLSearchParams({ resource });
+  if (range) { params.set("oldest", range.oldest); params.set("newest", range.newest); }
+  return read(params, connection.credential, "sync");
+}
+
+export async function fetchIntervalsActivityDetail(activityId: string, connectionInput: IntervalsConnectionInput): Promise<IntervalsActivityDetail> {
+  const connection = connectionFrom(connectionInput);
+  if (connection.mode === "local-api-key") {
+    return normalizeIntervalsActivityDetail(
+      await readDirect("activity", connection.credential, "detail", undefined, activityId),
+    );
+  }
   const params = new URLSearchParams({ resource: "activity", id: activityId, intervals: "true" });
-  return normalizeIntervalsActivityDetail(await read(params, token, "detail"));
+  return normalizeIntervalsActivityDetail(await read(params, connection.credential, "detail"));
 }

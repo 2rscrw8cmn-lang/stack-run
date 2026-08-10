@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { DonutChart } from "../../components/charts/DonutChart";
 import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments";
-import { fetchIntervalsActivityDetail, type IntervalsActivityDetail } from "../../connected/intervals";
+import { fetchIntervalsActivityDetail, type IntervalsActivityDetail, type IntervalsConnection } from "../../connected/intervals";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPace } from "../../domain/runs";
@@ -15,7 +15,7 @@ function rounded(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
-export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: string | null }) {
+export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: IntervalsConnection | string | null }) {
   const metrics = run.importedMetrics;
   const imported = run.externalSource?.provider === "intervals";
   const pace = formatPace(run.distanceMiles, run.durationSeconds);

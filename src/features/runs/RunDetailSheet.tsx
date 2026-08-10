@@ -3,13 +3,14 @@ import { Sheet } from "../../components/ui/Sheet";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import type { RunHistoryEntry } from "../../domain/runs";
+import type { IntervalsConnection } from "../../connected/intervals";
 import { RunResultDetail } from "../workout-detail/RunResultDetail";
 
 interface RunDetailSheetProps {
   entry: RunHistoryEntry;
   /** Opens the existing run-entry sheet, which also owns deletion. */
   onEditRun: () => void;
-  syncToken?: string | null;
+  syncToken?: IntervalsConnection | string | null;
   isOpen: boolean;
   onClose: () => void;
 }

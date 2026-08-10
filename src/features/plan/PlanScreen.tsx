@@ -27,6 +27,7 @@ import type {
   TrainingPlan,
   Workout,
 } from "../../domain/types";
+import type { IntervalsConnection } from "../../connected/intervals";
 import { ConflictReviewSheet } from "../availability/ConflictReviewSheet";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
@@ -55,7 +56,7 @@ interface PlanScreenProps {
    * it rules out and offers to move the runs that land on them.
    */
   availability?: AvailabilityCalendar | null;
-  syncToken?: string | null;
+  syncToken?: IntervalsConnection | string | null;
 }
 
 /**
