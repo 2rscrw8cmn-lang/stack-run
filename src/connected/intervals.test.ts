@@ -102,6 +102,19 @@ describe("Run Data failure messages", () => {
     fetchMock.mockRestore();
   });
 
+  it("says the same when a static host answers 200 with the app's own HTML", async () => {
+    // What an undeployed function looks like from the browser: a perfectly
+    // successful response that is not JSON. Reported raw it reached the phone
+    // as "Unexpected token '<'", which names a parser rather than a fix.
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("<!doctype html><html></html>", { status: 200 }));
+    await expect(fetchIntervals("status", "token")).rejects.toThrow(
+      "no /api/intervals reader",
+    );
+    fetchMock.mockRestore();
+  });
+
   it("separates a request that never arrived from an answer that refused it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
     await expect(fetchIntervals("status", "token")).rejects.toThrow("Check this device's connection");

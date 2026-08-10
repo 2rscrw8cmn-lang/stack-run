@@ -393,12 +393,66 @@ STACK Plan → Intervals.icu → HealthFit
 
 That requires explicit ownership/conflict rules, external ids, rollback behavior and a separate security review.
 
+## D-041 — Settings is a sheet in the bottom bar, not a fourth tab
+
+**Decision:** The bottom bar carries a fourth control, `Settings`, which opens a sheet listing Race, Run Days, Availability, Run Data and Reset Plan. Today / Build / Plan remain the only persistent destinations.
+
+**Reason:** Those five things were a grid of look-alike buttons under eighteen weeks of schedule, which is where a screen ends rather than where settings live, and Run Data was a header button that wrapped onto two lines on a phone. The user asked for one place to keep them.
+
+Rules:
+
+- The control opens a dialog. It is never `aria-current`, it carries `aria-haspopup="dialog"` and `aria-expanded`, and a hairline separates it from the three destinations.
+- Nothing in Settings is a new capability: each row opens the sheet that already existed.
+- Each row states what that setting is currently set to, so the list answers most of its own questions without being opened.
+- Dismissing a sheet opened from Settings returns to Settings; committing a change closes both, because the point of the change is to see it.
+
+**Does not revise the three-destination rule.** A sheet is not a destination: it opens over whichever of the three the user is already on, and closing it leaves them there.
+
+## D-042 — The runner may say when training starts
+
+**Decision:** `RacePlanSetup` gains an optional `startDate`. When set, the plan runs from the Monday of that week to race day; when absent, the start is derived from the race exactly as before.
+
+**Reason:** The start was derived only, so a runner who is already mid-training, or who wants a plan to begin on a particular week, could not line the weeks up with their real training.
+
+Rules:
+
+- A chosen date is snapped back to its Monday, because training weeks run Monday to Sunday.
+- A chosen date is taken at its word, over and under the template's week range: the runner said, and the template is a suggestion.
+- A start before today is allowed, and the sheet says the first weeks are already behind you.
+- A start after race week is refused, in the sheet and in `generateTrainingPlan`.
+- The field is prefilled with the derived suggestion and keeps following the distance and the race date until the runner changes it.
+- Absent means "derive it", which is what every stored setup already means, so this needed no schema migration.
+
+## D-043 — A generated plan is governed by weekly load, and says what it costs
+
+**Decision:** Weekly volume is the plan generator's primary progression; the long run and the quality sessions are budgeted out of it. The Race sheet defaults its level from the plan on screen rather than to Novice, and states what rebuilding would change.
+
+**Reason:** Every run in a week used to be a fixed fraction of that week's long run, so a down week cut the whole week by a third and the rebound raised it by half — repeated week-on-week rises of 65–70%, and four to seven build weeks per plan above the safe ceiling measured properly. Separately, the sheet's Novice default silently stripped 19 hard sessions out of the plan STACK ships with.
+
+Load rules, all asserted over every distance × level × {min, ideal, max} weeks:
+
+- No week exceeds the **biggest week already scheduled** by more than 10%, or 2 miles where that is larger. Enforced on scheduled miles rather than on the ladder, by trimming easy miles; the long run and quality sessions are never trimmed.
+- A down week is 20% off the week before it; the long run comes off 30%.
+- The long run grows by an absolute cap per step (1 mile for 5K/10K, 1.5 half, 2 marathon), so a squeezed plan climbs as far as it safely can instead of opening at the peak.
+- Two quality sessions are never on consecutive days, and neither is the day before the long run.
+- A taper cuts distance, not frequency.
+- Easy runs within a week descend and never outgrow the long run.
+- Race-week shakeouts are chosen from days that precede race day.
+
+Honesty rules:
+
+- `inferRunnerLevel(plan, distance)` weights runs-per-week at ten times the quality content, because frequency is the proxy for load and load is what injures people. The shipped plan therefore reads as Novice, not Advanced.
+- The sheet names the hard sessions a rebuild would drop, states the biggest week in miles, and — for a plan too short for its distance — says what long run it can actually reach rather than implying it reaches the template's peak.
+
+**Does not revise D-021.** Nothing here reads a logged run or adapts to one. It is still arithmetic over a template; the arithmetic is now bounded by the rule that keeps the template from hurting somebody.
+
 ## Active implementation order
 
 Implemented:
 
 - UI-0 through UI-7
 - D-018 through D-032
+- D-041, D-042 and D-043
 
 Next approved program:
 

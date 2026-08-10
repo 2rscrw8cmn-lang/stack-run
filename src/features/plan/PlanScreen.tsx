@@ -1,11 +1,4 @@
-import {
-  CalendarCheck,
-  CalendarClock,
-  CalendarDays,
-  Flag,
-  RotateCcw,
-  TrendingUp,
-} from "lucide-react";
+import { CalendarDays, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import {
   blockedDates,
@@ -19,12 +12,6 @@ import {
   currentWeekNumber,
   selectPlanWeekViewModel,
 } from "../../domain/plan";
-import type { RacePlanSetup } from "../../domain/racePlan";
-import {
-  applyRunDays,
-  planRunDayChange,
-  type Weekday,
-} from "../../domain/runDays";
 import {
   addPlannedRun,
   changeToRest,
@@ -36,28 +23,22 @@ import {
   type PlannedRunValues,
 } from "../../domain/planEdit";
 import type {
-  BlockPlacement,
   RunLog,
   TrainingPlan,
   Workout,
 } from "../../domain/types";
-import { AvailabilitySheet } from "../availability/AvailabilitySheet";
 import { ConflictReviewSheet } from "../availability/ConflictReviewSheet";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
 import { EditWorkoutSheet } from "./EditWorkoutSheet";
 import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
-import { RaceSetupSheet } from "./RaceSetupSheet";
-import { ResetPlanDialog } from "./ResetPlanDialog";
-import { RunDaysSheet } from "./RunDaysSheet";
 import { WeekLead } from "./WeekLead";
 import { WorkoutRow } from "./WorkoutRow";
 
 interface PlanScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
-  blockPlacements?: BlockPlacement[];
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (
@@ -68,21 +49,14 @@ interface PlanScreenProps {
   onDeleteRun?: (runLogId: string) => void;
   /** Persists an edited plan. The edit rules produce the whole plan. */
   onEditPlan?: (plan: TrainingPlan) => void;
-  onResetPlan?: () => void;
-  /** The imported calendar of days the user cannot run. */
+  /**
+   * The imported calendar of days the user cannot run. Read-only here: the
+   * calendar itself is edited in Settings, and this screen only marks the days
+   * it rules out and offers to move the runs that land on them.
+   */
   availability?: AvailabilityCalendar | null;
-  onSaveAvailability?: (calendar: AvailabilityCalendar | null) => void;
-  /** The race the plan was generated for, or null for the shipped plan. */
-  raceSetup?: RacePlanSetup | null;
-  onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   /** Opens the secondary Training Trends view. */
   onViewTrends?: () => void;
-  /** The weekdays the runner will run on, or null while they have not said. */
-  runDays?: Weekday[] | null;
-  /** Records the preference and the plan reshaped to match, together. */
-  onSaveRunDays?: (runDays: Weekday[], plan: TrainingPlan) => void;
-  /** Overridable so tests do not depend on the network. */
-  fetchIcs?: (url: string) => Promise<string>;
   syncToken?: string | null;
 }
 
@@ -93,10 +67,6 @@ interface PlanScreenProps {
  */
 type Secondary =
   | { kind: "run-entry" | "edit-workout" | "move-workout"; workoutId: string }
-  | { kind: "reset" }
-  | { kind: "availability" }
-  | { kind: "run-days" }
-  | { kind: "race" }
   | { kind: "conflicts" };
 
 /**
@@ -111,21 +81,13 @@ type Secondary =
 export function PlanScreen({
   plan,
   runLogs,
-  blockPlacements = [],
   today = todayLocalDate(),
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
   onEditPlan = () => undefined,
-  onResetPlan = () => undefined,
   availability = null,
-  onSaveAvailability = () => undefined,
-  runDays = null,
-  onSaveRunDays = () => undefined,
-  raceSetup = null,
   syncToken,
   onViewTrends,
-  onGeneratePlan = () => undefined,
-  fetchIcs,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     currentWeekNumber(plan, today),
@@ -288,50 +250,20 @@ export function PlanScreen({
         ))}
       </ul>
 
-      <div className="plan-screen__quiet-actions">
-        <button
-          type="button"
-          className="plan-screen__quiet-action"
-          onClick={() => openSecondary({ kind: "race" })}
-        >
-          <Flag size={16} strokeWidth={2} aria-hidden="true" />
-          Race
-        </button>
-        <button
-          type="button"
-          className="plan-screen__quiet-action"
-          onClick={() => openSecondary({ kind: "run-days" })}
-        >
-          <CalendarCheck size={16} strokeWidth={2} aria-hidden="true" />
-          Run Days
-        </button>
-        <button
-          type="button"
-          className="plan-screen__quiet-action"
-          onClick={() => openSecondary({ kind: "availability" })}
-        >
-          <CalendarClock size={16} strokeWidth={2} aria-hidden="true" />
-          Availability
-        </button>
-        {onViewTrends && (
+      {/* The plan's settings moved to the bottom bar. What is left here is the
+          one thing that is about the training rather than about the setup. */}
+      {onViewTrends && (
+        <div className="plan-screen__quiet-actions">
           <button
             type="button"
             className="plan-screen__quiet-action"
             onClick={onViewTrends}
           >
             <TrendingUp size={16} strokeWidth={2} aria-hidden="true" />
-            Trends
+            Training Trends
           </button>
-        )}
-        <button
-          type="button"
-          className="plan-screen__quiet-action plan-screen__quiet-action--danger"
-          onClick={() => openSecondary({ kind: "reset" })}
-        >
-          <RotateCcw size={16} strokeWidth={2} aria-hidden="true" />
-          Reset Plan
-        </button>
-      </div>
+        </div>
+      )}
 
       <p className="visually-hidden" aria-live="polite">
         {announcement}
@@ -444,76 +376,6 @@ export function PlanScreen({
         />
       )}
 
-      {secondary?.kind === "availability" && (
-        <AvailabilitySheet
-          key={secondaryVisit}
-          calendar={availability}
-          fetchIcs={fetchIcs}
-          isOpen={isSecondaryOpen}
-          onClose={closeSecondary}
-          onSave={(calendar) => {
-            onSaveAvailability(calendar);
-            setAnnouncement(
-              calendar
-                ? `Calendar saved. ${blockedDates(calendar).size} blocked days.`
-                : "Calendar removed.",
-            );
-            setSecondaryOpen(false);
-          }}
-        />
-      )}
-
-      {secondary?.kind === "race" && (
-        <RaceSetupSheet
-          key={secondaryVisit}
-          plan={plan}
-          setup={raceSetup}
-          runDays={runDays}
-          runLogs={runLogs}
-          today={today}
-          isOpen={isSecondaryOpen}
-          onClose={closeSecondary}
-          onGenerate={(next, generated) => {
-            onGeneratePlan(next, generated);
-            setWeekNumber(currentWeekNumber(generated, today));
-            setAnnouncement(
-              `${generated.weeks.length}-week plan built for ${next.name}.`,
-            );
-            setSecondaryOpen(false);
-          }}
-        />
-      )}
-
-      {secondary?.kind === "run-days" && (
-        <RunDaysSheet
-          key={secondaryVisit}
-          plan={plan}
-          runDays={runDays}
-          runLogs={runLogs}
-          today={today}
-          blocked={new Set(blocked.keys())}
-          isOpen={isSecondaryOpen}
-          onClose={closeSecondary}
-          onApply={(days) => {
-            const reshaped = applyRunDays(plan, days, {
-              today,
-              blocked: new Set(blocked.keys()),
-              runLogs,
-            });
-            const moved = planRunDayChange(plan, days, {
-              today,
-              blocked: new Set(blocked.keys()),
-              runLogs,
-            }).moves.length;
-            onSaveRunDays(days, reshaped);
-            setAnnouncement(
-              `Run days saved. ${moved} ${moved === 1 ? "run" : "runs"} moved.`,
-            );
-            setSecondaryOpen(false);
-          }}
-        />
-      )}
-
       {secondary?.kind === "conflicts" && (
         <ConflictReviewSheet
           key={secondaryVisit}
@@ -527,21 +389,6 @@ export function PlanScreen({
               `${workout?.title ?? "Workout"} moved to ${formatDateLabel(toDate)}.`,
               { close: false },
             );
-          }}
-        />
-      )}
-
-      {secondary?.kind === "reset" && (
-        <ResetPlanDialog
-          key={secondaryVisit}
-          runCount={runLogs.length}
-          blockCount={blockPlacements.length}
-          isOpen={isSecondaryOpen}
-          onClose={closeSecondary}
-          onReset={() => {
-            onResetPlan();
-            setAnnouncement("Plan reset. Everything recorded has been erased.");
-            setSecondaryOpen(false);
           }}
         />
       )}

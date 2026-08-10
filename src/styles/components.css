@@ -130,26 +130,64 @@
 }
 
 .bottom-nav__item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-3) 0;
-  min-height: 44px;
+  min-height: 52px;
   background: none;
   border: none;
   color: var(--text-subtle);
   cursor: pointer;
+  transition: color 120ms ease;
 }
 
 .bottom-nav__item[aria-current="page"] {
   color: var(--accent);
 }
 
+/* A short rule above the current tab, so which one it is survives being
+   glanced at rather than depending on telling two greens apart. */
+.bottom-nav__item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--accent);
+}
+
+/*
+ * Settings is in the bar because that is where a hand already is, and it is
+ * deliberately not a tab: it opens a sheet over whatever screen you are on. A
+ * hairline says so, and it never wears the current-page rule.
+ */
+.bottom-nav__item--settings {
+  flex: 0 0 auto;
+  min-width: 76px;
+  padding-inline: var(--space-2);
+  box-shadow: inset 1px 0 0 var(--border);
+}
+
+.bottom-nav__item--settings[aria-expanded="true"] {
+  color: var(--text);
+}
+
 .bottom-nav__label {
   font-size: 12px;
   font-weight: 600;
+}
+
+@media (max-width: 359px) {
+  .bottom-nav__item--settings {
+    min-width: 64px;
+  }
 }
 
 /* Button */
@@ -359,9 +397,23 @@
   .sheet__panel {
     border-bottom: none;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-top: var(--space-4);
     padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
     box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
     animation: sheet-slide-up 250ms ease-out;
+  }
+
+  /* The grabber every phone sheet has. Decorative — dragging is not a way to
+     close this, and Close and the backdrop both still are. */
+  .sheet__panel::before {
+    content: "";
+    align-self: center;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 4px;
+    margin-bottom: var(--space-3);
+    border-radius: 999px;
+    background: var(--border-strong);
   }
 }
 
@@ -621,14 +673,20 @@
   color: var(--text-subtle);
 }
 
+/* The smallest voice available, but still something a thumb can hit: the type
+   stays 12px and the target grows around it. */
 .today-screen__sync-error button {
+  display: inline-flex;
+  align-items: center;
   flex: none;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: none;
   color: var(--accent);
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 /* Run found */
@@ -2091,11 +2149,10 @@ textarea.run-input {
   outline-offset: 2px;
 }
 
-/* The settings the plan is built from, kept quiet and out of the way of the
-   week itself. Icons make four near-identical text buttons tellable apart. */
+/* What is left at the foot of Plan once the settings moved to the bottom bar:
+   the one action that is about the training rather than about the setup. */
 .plan-screen__quiet-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
   gap: var(--space-2);
   margin-top: var(--space-2);
   padding-top: var(--space-4);
@@ -2104,6 +2161,7 @@ textarea.run-input {
 
 .plan-screen__quiet-action {
   display: flex;
+  flex: 1 1 0;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
@@ -2127,9 +2185,110 @@ textarea.run-input {
   color: var(--text);
 }
 
-.plan-screen__quiet-action--danger:hover,
-.plan-screen__quiet-action--danger:hover svg {
+/* Settings — every answer the plan was built from, and what it is set to now */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings__group-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+}
+
+.settings__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.settings__row:hover {
+  border-color: var(--border-strong);
+}
+
+.settings__row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
+  color: var(--text-muted);
+}
+
+.settings__row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings__row-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* The current answer, so the list says what is set without being opened. */
+.settings__row-value {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.settings__row-chevron {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.settings__row--danger .settings__row-icon {
   color: var(--danger);
+}
+
+.settings__row--danger .settings__row-label {
+  color: var(--danger);
+}
+
+.settings__footer {
+  margin: 0;
+  padding-top: var(--space-2);
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
 }
 
 /* Availability */
@@ -2446,6 +2605,20 @@ textarea.run-input {
 .race-setup__warning svg {
   flex-shrink: 0;
   color: var(--long);
+}
+
+/* Undoing a hand-picked start date, offered only once there is one to undo. */
+.race-setup__reset-start {
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: calc(var(--space-4) * -1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .race-setup__actions .button {
@@ -2802,15 +2975,162 @@ textarea.run-input {
   align-self: flex-start;
 }
 
-.run-data { display: flex; flex-direction: column; gap: var(--space-3); }
-.run-data__copy, .run-data__message, .run-data__status p, .run-data__review p { margin: 0; color: var(--text-muted); line-height: 1.5; }
-.run-data__message--failed { color: var(--danger); }
-.run-data__status { display: flex; gap: var(--space-3); align-items: flex-start; }
-.run-data__status svg { color: var(--accent); flex: none; }
-.run-data__candidate { display: flex; flex-direction: column; gap: 4px; width: 100%; min-height: 58px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); color: var(--text); text-align: left; }
-.run-data__candidate span { color: var(--text-muted); font-size: 13px; }
-.run-data__review { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.run-data__review h3 { margin: 0; }
+/* Run Data — the Intervals.icu connection, and the runs it found */
+
+.run-data {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.run-data__copy,
+.run-data__facts,
+.run-data__note,
+.run-data__message,
+.run-data__status p,
+.run-data__attach p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.run-data__message {
+  font-size: 13px;
+}
+
+.run-data__message--failed {
+  color: var(--danger);
+}
+
+.run-data__heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+}
+
+.run-data__status {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.run-data__status svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.run-data__status p {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.run-data__found,
+.run-data__review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.run-data__review {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.run-data__facts {
+  font-variant-numeric: tabular-nums;
+}
+
+.run-data__candidates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.run-data__candidate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 58px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.run-data__candidate[aria-current] {
+  border-color: var(--accent);
+}
+
+.run-data__candidate strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.run-data__candidate span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Attaching to a manual run is an alternative to importing, so it is set
+   apart from the form rather than sitting in the middle of it. */
+.run-data__attach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+
+.run-data__quiet-actions,
+.run-data__connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.run-data__connection-actions {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.run-data__quiet-actions button,
+.run-data__connection-actions button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.run-data__quiet-actions button:hover:not(:disabled),
+.run-data__connection-actions button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.run-data__connection-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Charts — UI-11
    ------------------------------------------------------------------

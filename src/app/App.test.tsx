@@ -278,7 +278,10 @@ describe("App", () => {
 
     await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    await user.click(screen.getByRole("button", { name: "Reset Plan" }));
+    // Reset lives in Settings now, reached from the bottom bar rather than
+    // from the foot of the Plan screen.
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: /^Reset Plan/ }));
 
     const sheet = screen.getByRole("dialog");
     await user.click(within(sheet).getByRole("button", { name: "Reset Plan" }));

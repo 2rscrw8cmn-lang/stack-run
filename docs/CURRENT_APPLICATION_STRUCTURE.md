@@ -10,7 +10,7 @@ An **availability calendar** was added after UI-6 at the product owner's request
 
 `src/app/App.tsx`
 
-- Loads one versioned local `AppState` (schema version 8) into a `BootState` that is either an app or the reason there is not one.
+- Loads one versioned local `AppState` (schema version 9) into a `BootState` that is either an app or the reason there is not one.
 - Owns the active Today / Build / Plan tab.
 - Owns the block-placement handoff, keyed by run-log id rather than workout id.
 - Saves every activity through `appStateRepository.saveRunLog`, passing the workout when there is one and `null` when there is not.
@@ -21,7 +21,8 @@ An **availability calendar** was added after UI-6 at the product owner's request
 `src/app/AppShell.tsx`
 
 - Renders the three primary screens and passes plan, run logs, placements, and the save/place callbacks.
-- Bottom navigation remains Today / Build / Plan only.
+- Bottom navigation is Today / Build / Plan, plus a `Settings` control that opens a sheet and is deliberately not a fourth destination — see **Settings** below.
+- Owns the three secondary sheets that any screen can reach: Settings, Trends, and Run Data.
 - The header is a small brand lockup — `StackMark` plus the wordmark — and nothing else. It used to be a 34px `STACK` over a tagline, repeated above every screen.
 
 ## The look, after UI-7
@@ -38,7 +39,7 @@ Every screen has exactly one `h1`, and it is content rather than a label.
 
 **Everything was a card.** Five unrelated bands of content carried identical weight, so nothing was the thing to look at first. `src/components/ui/Section.tsx` is the quiet alternative: a hairline, an icon, a name, and the content. The card is kept for the one thing on a screen that can be acted on — the day's workout, and the completed-run summary that replaces it. This Week, Next, the build preview, `Blocks Ready` and the tower are all sections now.
 
-**Almost nothing carried an icon.** `src/components/shared/ActivityIcon.tsx` maps every workout type to one lucide icon — Moon for rest, Footprints for easy, Zap for intervals, Timer for simulation, Mountain for the long run, Flag for the race — used on the day's card, plan rows, the pending tray and Next. Section headers, the four plan settings at the bottom of Plan, and both empty states carry their own.
+**Almost nothing carried an icon.** `src/components/shared/ActivityIcon.tsx` maps every workout type to one lucide icon — Moon for rest, Footprints for easy, Zap for intervals, Timer for simulation, Mountain for the long run, Flag for the race — used on the day's card, plan rows, the pending tray and Next. Section headers, every row of the Settings sheet, and both empty states carry their own.
 
 `src/components/shared/StackMark.tsx` is three courses of a tower, narrowing as they climb, in the piece colours. It is the same geometry `scripts/generate-icons.mjs` renders, so the header mark and the home-screen icon are one mark rather than two that resemble each other.
 
@@ -127,7 +128,7 @@ The last two are how an **extra run** gets corrected or removed: Plan lists sche
 
 ## Plan — the editable schedule
 
-Review is as UI-5 delivered it: current week by default, all 18 weeks reachable, boundaries that stop, the `Current Week` shortcut, seven dated rows, and logging or editing a run from the detail sheet. `PlanWeekViewModel` gained `extraRuns` for Today's week strip. UI-7 merged the stepper and the week description into one `WeekLead`, which is also the screen's `h1`, and gave the four settings at the bottom — `Race`, `Run Days`, `Availability`, `Reset Plan` — icons and a two-column grid, because four identical text buttons in a row were tellable apart only by reading them.
+Review is as UI-5 delivered it: current week by default, all 18 weeks reachable, boundaries that stop, the `Current Week` shortcut, seven dated rows, and logging or editing a run from the detail sheet. `PlanWeekViewModel` gained `extraRuns` for Today's week strip. UI-7 merged the stepper and the week description into one `WeekLead`, which is also the screen's `h1`. The four settings that used to sit at the bottom — `Race`, `Run Days`, `Availability`, `Reset Plan` — have moved to the Settings sheet (D-041); one quiet `Training Trends` action is what is left there.
 
 UI-6 makes the schedule editable. Two kinds of change live on this screen and stay separate: logging or editing a run records what *happened*; editing, moving, or clearing a workout changes what the plan *asks for*. Nothing does both at once, and nothing recommends a change — the plan only moves when the user moves it.
 
@@ -150,18 +151,18 @@ Pure functions over a plan, returning a new one. Nothing here touches storage, r
 - Rest rows are now buttons that open straight into `Add Planned Run` — there is nothing else to say about a day the plan leaves empty.
 - `WorkoutDetailSheet` gained a `Change the plan` group: `Edit Workout`, `Move Workout`, `Change to Rest`. It is absent on race day.
 - A day with a run already logged against it confirms before the plan changes under it, and `Change to Rest` is not offered for one at all.
-- `ResetPlanDialog` is the one action that destroys everything, behind two deliberate presses, with the counts of what will be erased on screen while the user decides. It is reached from a deliberately quiet `Reset Plan` control at the bottom of Plan.
+- `ResetPlanDialog` is the one action that destroys everything, behind two deliberate presses, with the counts of what will be erased on screen while the user decides. It is reached from the `Reset Plan` row at the foot of Settings, which says on the row itself what it erases.
 - `savePlan` in the repository persists an edited plan; run logs and placements are untouched, which is what keeps a completed run attached to its workout across an edit or a move.
 
 ## The race, and the plan built for it
 
-`src/domain/racePlan.ts` and `src/features/plan/RaceSetupSheet.tsx`, reached from `Race` at the bottom of Plan.
+`src/domain/racePlan.ts` and `src/features/plan/RaceSetupSheet.tsx`, reached from `Race` in Settings.
 
-**One race at a time.** A plan is for the thing you are training for, and two of those is two plans. Name, date, distance (5K / 10K / Half / Marathon) and level (Novice / Intermediate / Advanced) are the four answers, and changing any of them rebuilds the schedule.
+**One race at a time.** A plan is for the thing you are training for, and two of those is two plans. Name, date, start date, distance (5K / 10K / Half / Marathon) and level (Novice / Intermediate / Advanced) are the answers, and changing any of them rebuilds the schedule.
 
 ### What the generator is, and is not
 
-It is arithmetic over a template. The distance and level pick runs per week, where the long run starts and finishes, and how long the taper is; the weeks between today and race day decide the rest. The long run climbs to its peak the week before the taper, drops about a third every fourth week, and comes down through the taper; race week is two shakeouts and the race.
+It is arithmetic over a template. The distance and level pick runs per week, where the long run starts and finishes, how many miles the first and biggest weeks hold, and how long the taper is; the weeks between the start and race day decide the rest. **Weekly volume is the primary progression and the long run is a share of it** — see "The load rules" below, which is the part of this that keeps somebody in one piece. Race week is two shakeouts and the race.
 
 It is **not** coaching. It reads no logged run, knows nothing about how last Tuesday went, and will not adapt if it went badly. It produces a starting point, which every other screen then lets you edit. That is the line D-021 draws and this stays on the right side of it.
 
@@ -171,13 +172,96 @@ It is **not** coaching. It reads no logged run, knows nothing about how last Tue
 - Runs land only on the days `runDays` allows, spread across the week with the long run last. Race day is exempt: the race is when the race is.
 - Every date holds exactly one workout, so plan editing, moving, and the run-day reshape all work on a generated plan exactly as on the seeded one.
 
+### The load rules (D-043)
+
+The first version of this generator made every run in a week a fixed fraction
+of that week's long run. That one decision produced most of what was wrong with
+it: cutting the long run by a third on a down week cut *the whole week* by a
+third, and returning to the ramp put the whole week back up by half. Half and
+marathon plans had week-on-week rises of **+65% and +70%**, repeatedly, and the
+week-on-week rise is not even the metric that matters — measured properly, four
+to seven build weeks per plan exceeded the biggest week already run by more than
+a tenth, by as much as 18%.
+
+Weekly volume is now the thing that progresses, and the runs are budgeted out of
+it. Five rules, all asserted over every distance × level × {min, ideal, max}
+weeks in `racePlan.test.ts`:
+
+1. **No week exceeds the biggest week so far by more than a tenth**, or two
+   miles, whichever is larger. Measured against the biggest week *already run*,
+   not against last week — a down week is a step back on purpose, so the rebound
+   off one says nothing about load. The two-mile floor is there because ten
+   percent of a six-mile week is a rule about nothing.
+   This is enforced on the **scheduled miles**, not on the ladder: every run is
+   rounded to the half mile, and on a small week three of those roundings add a
+   tenth on their own. `runsForWeek` takes a cap and shaves half a mile at a
+   time off the longest easy run until the week fits. The long run and the
+   quality sessions are never trimmed; the easy miles are what is negotiable.
+2. **A down week is a fifth off the week before it**, not a third off the ramp
+   ahead, and the long run comes off harder than the week does (0.7 against 0.8)
+   because easing the long run is what a down week is for.
+3. **The long run grows by miles, not by percent** — at most 1 mile a step for a
+   5K or 10K, 1.5 for a half, 2 for a marathon. A percentage is the wrong model:
+   a mile is a third of the way up from three and a twentieth of the way up from
+   twenty. These ceilings do not bind on a full-length plan. They exist so a
+   squeezed one climbs as far as it safely can rather than opening at the peak —
+   a four-week marathon used to prescribe a twenty-miler in week one.
+4. **Hard days are spaced.** The week's runs are built in the order they will be
+   run, and the two quality sessions of an advanced week take slots 0 and 2, so
+   they are never consecutive and neither lands the day before the long run. An
+   advanced marathon block used to run intervals on Monday and race pace on
+   Tuesday for 21 of its 24 weeks.
+5. **A taper cuts distance, not frequency.** Dropping a run while keeping three
+   quarters of the volume concentrated what was left — taper weeks were
+   scheduling easy runs longer than any in the block they were resting from.
+
+Two smaller things went with them. Easy runs in a week are no longer identical:
+they descend (`EASY_SHARES`) so the day before the long run is the gentlest, and
+no easy run may outgrow the long run. And race week's shakeouts are chosen from
+the days that actually **precede** race day — picking two weekdays and then
+deleting whatever fell after the race silently cost the second shakeout on every
+race that was not on a Sunday.
+
+### Sessions that say what the session is
+
+`Intervals: 4 Miles` used to carry the sentence "Warm up, then repeats at a hard
+but controlled effort with easy jogging between" — no count, no rep length, no
+recovery, which is the entire part of the session that is a decision. The seed
+plan STACK ships with has always said `4 × 30 seconds hard with 60 seconds
+rest`; a generated one now says `6 × 800 m at 5K effort with 2 minutes of easy
+jogging between`, with the rep length and the effort taken from the race
+distance and the count from the session's own mileage. Race-pace runs say how
+many of their miles are at race pace.
+
+### Reading the level off the plan (D-043)
+
+`RaceSetupSheet` used to open on **Novice** whenever no race setup was saved —
+which is exactly the state the plan STACK ships with is in. That plan has 15
+interval sessions and 4 race-pace runs; a novice plan has none. So opening Race
+for any reason at all, including to set a start date, and pressing the button
+replaced every one of them with an easy run, silently.
+
+`inferRunnerLevel(plan, distance)` reads the level off the plan instead, and
+weights **how often it runs at ten times what it runs**. The shipped plan runs
+four days a week *and* has speed work, a combination none of the three levels
+expresses; reading it as Advanced because of the speed work would hand the
+runner a plan with 60% more mileage in its biggest week. Frequency is the honest
+proxy for load, so frequency decides and the quality content only breaks ties —
+the shipped plan reads as Novice.
+
+That makes the default safe rather than silent, so the sheet also says what the
+choice costs: it names the hard sessions the current plan holds and states that
+the chosen level will replace them, and the summary line now gives **the biggest
+week in miles** as well as the peak long run, because how much running this is
+was the part of the choice the sheet never mentioned.
+
 ### Regenerating never costs a run
 
 `relinkRunLogs` re-attaches recorded runs to the new plan **by date**: a run keeps its scheduled link when the new plan asks for a run that day, and becomes an extra run when it does not. Nothing is ever discarded — the miles are real and the block is already built — and two runs on one date cannot both satisfy it, so the earlier keeps the link. `saveGeneratedPlan` is the only writer that touches the plan and the run logs together, and it is why offering a rebuild is reasonable at all.
 
 ## Run days — the shape of the week
 
-`src/domain/runDays.ts` and `src/features/plan/RunDaysSheet.tsx`, reached from `Run Days` at the bottom of Plan.
+`src/domain/runDays.ts` and `src/features/plan/RunDaysSheet.tsx`, reached from `Run Days` in Settings.
 
 The plan arrives with a shape — Tuesday, Thursday, Saturday, Sunday — and that shape is a suggestion about spacing, not a fact about anybody's life. Somebody who never runs on Sundays should not have to move eighteen Sundays by hand, one sheet at a time.
 
@@ -386,7 +470,7 @@ to run logs plus `intervalsSync` activity-sync/ignored-id state. Migration 8 →
 `stack.intervals.sync-token.v1`, through
 `src/storage/intervalsTokenRepository.ts`.
 
-The existing three-tab shell now opens a secondary **Run Data** sheet. It can
+The three-tab shell opens a secondary **Run Data** sheet, from Today and from Settings. It can
 test/connect, perform 90-day first sync and 14-day normal sync, review planned
 or extra imports, attach data to a likely manual run without changing its id,
 ignore candidates, clear ignored ids, and forget only the connection token.
@@ -558,3 +642,112 @@ alone. A zone with no time in it keeps its row and shows an empty track.
 Deliberately absent, and to stay absent: any readiness score, any CTL/ATL or
 form dashboard, any predicted finishing time, and any language that coaches.
 STACK says what happened and which way it is moving.
+
+## Settings — one place for everything the plan is built from
+
+`src/features/settings/SettingsSheet.tsx`, opened by a fourth control in the
+bottom bar.
+
+Five things were in two wrong places. **Race**, **Run Days**, **Availability**
+and **Reset Plan** were a two-column grid of look-alike buttons under eighteen
+weeks of schedule — which is where a screen ends, not where settings live — and
+**Run Data** was a header button whose label wrapped onto two lines at 390px,
+next to a brand lockup that was supposed to be the only thing up there. They
+are all settings, and they are all here now.
+
+This is **not a fourth destination** (D-041). The control opens a dialog: it is
+never `aria-current`, it carries `aria-haspopup="dialog"` and `aria-expanded`,
+and a hairline separates it from Today / Build / Plan, which are still the only
+places the app can be. Closing the sheet leaves the user on whichever of the
+three they were already on.
+
+- Each row states **what that setting is currently set to** — the race and its
+  date, the run days (falling back to the shape the plan already has, marked as
+  such, while the runner has not said), the calendar's name and how many days
+  it blocks or that it is switched off, and whether Run Data is connected and
+  when it last synced. The list answers most of its own questions without being
+  opened, and the label and the value are one accessible name.
+- Dismissing a sheet opened from here **comes back here**; committing a change
+  closes both, because the point of the change is to go and see it. Both paths
+  end in the dialog's own `close` event, so which one happened is remembered
+  rather than inferred.
+- `Run Data` is opened by the shell rather than by this sheet, because Today
+  opens the same sheet with a candidate already chosen. The shell remembers
+  which one asked, so dismissing it goes back to the right place.
+
+`PlanScreen` keeps what is about the training rather than the setup: the week,
+the blocked-day banner and its review, run entry and the plan edits, and one
+quiet `Training Trends` action at the foot. It no longer takes `onResetPlan`,
+`onSaveAvailability`, `onGeneratePlan`, `onSaveRunDays`, `raceSetup`, `runDays`
+or `blockPlacements`; `availability` stays, read-only, because marking the days
+it rules out is still Plan's job.
+
+The header is now the brand lockup and nothing else, which is what UI-7
+designed it to be before the Run Data button was added beside it.
+
+## Choosing when the plan starts
+
+`RacePlanSetup.startDate` is optional (D-042). Absent means "derive it from the
+race", which is what every plan built before this field existed did and what
+every stored setup already means — so this needed no schema migration and
+`AppState.schemaVersion` is still 9.
+
+- `plannedWeeks` and `planStartDate` both take the chosen date and take it at
+  its word, over and under the template's range. The template is a suggestion
+  about how long a plan wants to be; the runner saying when they start is a
+  fact about their life.
+- A chosen date is snapped back to **its Monday**, because training weeks run
+  Monday to Sunday and a plan beginning on a Wednesday would have a first week
+  that was not a week. The sheet says which Monday when they differ.
+- A start **before today** is allowed and worth allowing: somebody already six
+  weeks into training wants the weeks to line up with what they have done. The
+  sheet says the first weeks are already behind you.
+- A start **after race week** is refused in the sheet and in
+  `generateTrainingPlan`, because there would be no race in the plan.
+- The field is prefilled with the suggestion and keeps following the distance
+  and the race date until the runner changes it, at which point it stops moving
+  under them. `Use the suggested start` gives it back.
+
+## Two things the polish pass fixed on the way
+
+**The Run Data sheet was the only screen with unstyled native controls.** Its
+token input, its three selects and its notes field carried no class, so on a
+dark panel the token box rendered as a light-grey system input. They use
+`.run-input` like every other field in the app now, the pile of ghost buttons
+became one quiet row per group, and the sheet is written out rather than packed
+onto single lines.
+
+**One control was under the 44px floor.** Today's `Retry`, on the line a failed
+sync leaves behind, measured 14px: it only appears when a sync has failed, which
+is why UI-7's sweep never saw it. The type stays 12px and the target grew around
+it. Every interactive control on every screen and in every sheet — including the
+new ones — measures at least 44px at 320 and 390px, and nothing scrolls
+sideways at 320.
+
+**A 200 that is not JSON reached the phone as `Unexpected token '<'`.** That is
+what a static host answers when `/api/intervals` is not deployed — it rewrites
+the unknown path to the app's own HTML — and it is the same failure the 404
+branch already explains in words. `src/connected/intervals.ts` now says the same
+thing for both: this deployment has no reader, redeploy so the function ships.
+
+## Tests added by the settings and start-date pass
+
+616 tests pass.
+
+- `src/features/settings/Settings.test.tsx` — the rows and the values they
+  state, a calendar that is off saying so rather than counting days, Run Data
+  handing off to the shell, one sheet on screen at a time, coming back to
+  settings when a sheet is dismissed and not when a change is committed, the
+  two-step reset, and the bottom-bar control that is deliberately not a tab.
+- `src/domain/racePlan.test.ts` — a chosen start honoured above and below the
+  template's range, snapping to Monday, a plan that begins before today and
+  still holds one workout per date, and a start after race week refused.
+- `src/features/plan/RaceSetup.test.tsx` — the suggestion following the race
+  until it is changed and then holding still, the Monday a mid-week start
+  really begins on, the refusal, and getting the suggestion back.
+- `src/connected/intervals.test.ts` — a 200 of HTML reported as a missing
+  reader rather than as a parser error.
+- The Race, Run Days, Availability and reset tests now drive the Settings sheet
+  through `src/test/OpenSettings.tsx`, which holds the open state the shell
+  holds. Availability's blocked-day and conflict-review tests still drive
+  `PlanScreen`, because that half of the feature did not move.
