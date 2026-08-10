@@ -6,7 +6,7 @@ STACK helps one runner follow a race training plan, record what they actually ra
 
 ## Product promise
 
-Open the app, know what matters today, confirm what you actually ran, place the block, and see the training accumulate.
+Open the app, know what matters today, confirm what you actually ran, see the factual history, place the block, and watch the training become something you built.
 
 ## Primary user
 
@@ -14,65 +14,84 @@ One runner using a phone-first personal web app for one active race/plan at a ti
 
 ## Primary job to be done
 
-> When I am training for a race, show me what matters today, reduce the friction of recording what I actually did, give me useful context about progress/recovery, and make consistency tangible enough that I want to come back tomorrow.
+> When I am training for a race, show me what matters now, make actual run history easy to understand, keep the future plan editable, and make the work tangible enough that I want to keep building.
 
-## Current implemented product — through UI-7
+## Current implemented product
 
-The user can:
+STACK currently includes:
 
-1. Create/use one race plan at a time.
-2. See today's scheduled workout.
-3. See this week's scheduled progress and next workout.
-4. Log a scheduled run manually.
-5. Log additional/extra runs.
-6. Record actual date, distance, duration, effort, type and notes.
-7. Earn one Build block from every completed run.
-8. Place earned blocks into a growing 8-column structure.
-9. Review and manually edit the dated plan.
-10. Set preferred run days and reshape the plan on request.
-11. Import an availability calendar and review proposed conflicts without automatic plan changes.
-12. Install STACK to a phone home screen.
-13. Recover safely from unreadable local storage.
-14. Refresh/reopen without losing local state on the same browser origin.
+1. One active generated/editable race plan.
+2. Today with planned workout, run-found flow, This Week, next workout, manual Log Run and Build preview.
+3. Scheduled and extra actual runs.
+4. Manual actual date, distance, duration, effort, type and notes.
+5. HealthFit → Intervals.icu → STACK read-only run import.
+6. User-confirmed scheduled matching, extra-run import and attach-to-existing-manual-run behavior.
+7. Verified imported metrics including HR, elevation, training load and HR-zone time when present.
+8. Rich connected run detail and on-demand structured interval detail when understandable.
+9. Weekly actual mileage/time/longest-run context.
+10. Training Trends for weekly mileage, long-run progression, scheduled consistency, Easy pace and Easy HR.
+11. One Build block from every actual run.
+12. Continuous deterministic 8-column Build tower.
+13. Editable plan, preferred run days, imported availability calendar and explicit conflict handling.
+14. Installability, local persistence/recovery and protected Vercel read proxies.
+15. One grouped Settings sheet for Race, Run Days, Availability, Run Data and Reset Plan.
 
-## Next product program — Connected Training
+## Active product revision
 
-The approved next data path is:
+The next approved revision is defined by:
 
-```text
-Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
-```
+- `docs/RUNS_AND_BUILD_REVISION.md`
+- `docs/RUNS_AND_BUILD_IMPLEMENTATION.md`
+- `docs/DECISION_LOG_ADDENDUM.md`
 
-Connected Training adds:
+It adds two product changes without changing the connected-data architecture:
 
-1. Secure read-only connection to the user's Intervals.icu account.
-2. Import of HealthFit-originated runs without retyping objective workout data.
-3. Confirmation/matching of an imported run to a scheduled workout or classification as an extra run.
-4. Attachment of synced metrics to an existing manual run instead of creating duplicates.
-5. Useful run metrics such as pace, HR, cadence, elevation and training load when the source actually contains them.
-6. Weekly actual-mile/time/long-run context.
-7. Race-training trends such as weekly mileage, long-run progression, consistency and easy-run pace/HR trends.
-8. Optional wellness context such as HRV, resting HR and sleep only when HealthFit → Intervals.icu coverage is verified.
-9. Manual logging remaining fully functional as fallback.
+### 1. Runs becomes a primary pillar
 
-See `docs/CONNECTED_TRAINING.md`.
+Persistent bottom navigation becomes exactly:
+
+- Today
+- Build
+- Runs
+- Plan
+
+Runs is the chronological factual home of every actual activity, scheduled or extra, manual or synced.
+
+The existing Settings sheet remains but moves to an icon-only top-right gear.
+
+### 2. Build becomes more object-first and rewarding
+
+Build keeps the existing one-run/one-block model and 8-column geometry, but stops acting like a stats/placement dashboard.
+
+Build should lead with:
+
+- total `miles built`;
+- the tower itself;
+- visible mileage on blocks when space permits;
+- a simpler direct placement experience;
+- a restrained but noticeable placement payoff;
+- a distinct earned Race capstone treatment.
+
+Running is the achievement. Build is the satisfying representation of it.
 
 ## Success criteria
 
 STACK is successful when:
 
 - today's assignment is understood in under five seconds;
-- a manual run can still be logged in under fifteen seconds;
 - a synced run can be confirmed with materially less typing than manual entry;
-- an extra run can be represented without pretending it was planned;
-- the user can understand whether the week is on track without opening a full analytics app;
-- Build feels tactile and understandable, not like a schedule visualization or packing dashboard;
-- connected metrics are useful but do not overwhelm Today/Build/Plan;
-- missing HR/cadence/wellness data never breaks a run;
-- recovery information is contextual, not prescriptive;
-- the full plan remains understandable/editable without becoming a spreadsheet;
-- the personal Intervals API key is never exposed to browser code;
-- manual functionality continues to work when sync is unavailable;
+- manual logging remains available in under fifteen seconds;
+- scheduled and extra runs are never conflated;
+- every actual run has an obvious chronological home in Runs;
+- the user can inspect/correct a run without hunting through Plan or Build;
+- the user can understand whether training is progressing without a generic fitness dashboard;
+- Build feels satisfying and self-explanatory without becoming a game unrelated to running;
+- a larger/longer run visibly contributes a larger/wider piece;
+- pointer placement feels direct while tap/keyboard remain complete alternatives;
+- the Race block feels like an earned capstone rather than a future placeholder;
+- missing imported metrics never appear as invented zero values;
+- the plan remains understandable/editable and never changes automatically from health data;
+- personal Intervals credentials remain protected;
 - the implementation remains understandable end-to-end by one coding agent.
 
 ## Locked product parameters
@@ -85,8 +104,10 @@ STACK is successful when:
 | Active plan | One race/plan at a time |
 | Platforms | Responsive web app; phone first |
 | Theme | Dark only |
-| Persistent navigation | Today, Build, Plan |
+| Persistent navigation | Today, Build, Runs, Plan |
+| Settings | Existing Settings sheet opened by icon-only top-right gear |
 | Run model | Scheduled and extra actual activities |
+| Run history | Runs primary destination, newest-first |
 | Manual data entry | Always supported |
 | Connected source | Intervals.icu read API |
 | Apple bridge | HealthFit |
@@ -97,10 +118,14 @@ STACK is successful when:
 | Connected server code | Narrow Vercel read proxy only |
 | Intervals auth | Personal API key server-side for single-user release |
 | Proxy auth | Separate local `STACK_SYNC_TOKEN` |
-| Upstream writes | None in UI-8 through UI-12 |
+| Upstream writes | None; plan export remains deferred |
 | Training logic | Generated/fixed plan, manually editable; never automatically adapted from health data |
+| Training Trends | Secondary view; canonical home from Runs |
+| Wellness / recovery | Intentionally deferred/skipped |
 | Visual reward | One deterministic CSS block per completed run |
 | Build grid | Continuous 8-column tower |
+| Build geometry | Width from actual distance; height/color from STACK activity type |
+| Build presentation | Object-first trophy + toy; no score/game system |
 | Deployment | Vercel static app + narrowly scoped serverless functions |
 
 ## Product boundaries
@@ -109,51 +134,50 @@ STACK does not replace Apple Fitness, HealthFit, Garmin Connect or Intervals.icu
 
 It does not collect live GPS/workout sensor data itself. It reads already-completed activity summaries from Intervals.icu.
 
-It does not prescribe medically personalized training.
+It does not prescribe medically personalized training or automatically alter the plan from imported health data.
 
-It does not automatically change a training plan because HRV, resting HR, sleep, training load or another imported metric changed.
+The Build interaction is playful, but STACK is not Tetris and has no scoring/failure mechanics.
 
-The Build interaction is playful, but STACK is not a full Tetris/game implementation.
+## Out of scope
 
-## Out of scope for the first Connected Training release
-
-- Authentication/accounts for multiple users
+- Multi-user authentication/accounts
 - Cloud database or cross-device STACK sync
 - Native iOS/Android app
 - Direct HealthKit reads
 - Strava integration
-- Garmin API integration
+- Garmin-specific API integration
 - GPS/live route recording
 - Live timer
 - Full route-map analysis
-- Raw second-by-second stream analysis in UI-8
+- Raw second-by-second stream analytics as a primary UI
 - FIT parsing in the browser
-- Push notifications
-- Email
-- Social features
-- Sharing feeds
+- Push notifications/email/social feeds
 - AI-generated coaching
 - Automatic plan rescheduling from recovery/training data
 - Medical readiness/recovery scoring
-- Opaque proprietary readiness score
-- Upstream Intervals activity/wellness writes
-- Automatic bidirectional calendar/workout sync
+- Wellness / HRV / sleep UI in the active roadmap
+- Intervals activity/wellness writes
+- Automatic bidirectional workout sync
+- Search/filter complexity in the first Runs release
 - Payments/admin tooling
 - Light mode
 - Canvas/WebGL rendering
 - Physics engine
 - Rotation/freeform Tetris gameplay
+- Build scores, combos, levels, coins, tower health or penalties
 
 ## Future, explicitly deferred
 
-Intervals.icu supports planned-workout/calendar writes and current HealthFit versions can read Intervals.icu workout plans. A later approved phase may investigate:
+A later approved phase may investigate:
 
 ```text
 STACK Plan → Intervals.icu → HealthFit
 ```
 
-That is a write integration and is **not** part of UI-8 through UI-12.
+That is a write integration and has no current implementation authorization.
 
-## Active revision
+Wellness/recovery may also be revisited later, but D-038 remains the safety contract and D-046 keeps it outside the active roadmap.
 
-`docs/CONNECTED_TRAINING.md` controls the next implementation program after UI-7.
+## Active revision authority
+
+`docs/RUNS_AND_BUILD_REVISION.md` controls navigation and Build presentation where older documents conflict.
