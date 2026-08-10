@@ -73,7 +73,7 @@ Approved sources:
 | Phase | Name | Status | Decision | Primary outcome |
 |---:|---|---|---|---|
 | 16 | **Trends 2.0** | **Implemented / ready for review** | D-048–D-051 | Seven dedicated Training Signal details, plan-vs-actual, accessible HR/run-mix donuts, Today Log Run cleanup; schema remains 9. |
-| 17 | **Performance Arcade Design Pass** | **Approved after UI-16** | D-052–D-054 | Modern training-computer visual language; stronger data personality without retro cosplay/game economy. |
+| 17 | **Performance Arcade Design Pass** | **Implemented / ready for review** | D-052–D-054 | Modern training-computer visual language; stronger data personality without retro cosplay/game economy; schema remains 9. |
 | 18 | **Race Crew Architecture Gate** | **Approved after UI-17; docs/research only** | D-055–D-057 | Decide auth/database/per-user Intervals/privacy/migration before production social code. |
 | 19 | Account + Crew Foundation | Gated / not authorized | D-057 | Placeholder only until UI-18 owner approval. |
 | 20 | Crew Runs + Comparisons | Gated / not authorized | D-055–D-057 | Placeholder only until UI-19. |
@@ -114,6 +114,47 @@ Implementation verification (2026-08-10):
 - no XP/coins/levels/quests;
 - no Game Boy/device/CRT/pixel-art/sound implementation;
 - expected schema remains 9.
+
+Implementation verification (2026-08-10):
+
+- locally bundled Space Mono/tabular data, machine-label, data-module,
+  technical-grid, chart selection, and seven-zone HR tokens are implemented
+  without a runtime network font request;
+- Runs/Training Signals now leads with a four-stat instrument panel and every
+  visible signal has a distinct factual mini visualization with accessible text;
+- the final composition pass makes that summary a full-width four-cell strip,
+  compacts signal cards to 116px at 390px, removes fake empty history slots,
+  gives an odd final card a deliberate 94px horizontal composition, and
+  introduces the matching Recent Runs hierarchy;
+- Weekly Mileage has a rebuilt chart-first selected-week hierarchy, while Run
+  Detail has a substantial primary/secondary metric, HR-zone, and intervals
+  redesign;
+- Today is a concise mission briefing, Build retains its exact geometry/storage,
+  and Plan remains the calm schedule surface; cards, controls, sheets, and rows
+  use the approved more-angular component language;
+- zero-value donut legend rows are hidden without renumbering source HR zones;
+  Build has a grounded technical field and width-1 mileage stamps; active nav,
+  current-week, and today-row styling are quieter and more precise;
+- final signal polish makes one-to-four fact modules responsive without clipped
+  values, simplifies HR Zones and Run Mix to period/chart/facts, removes repeated
+  signal philosophy copy, quiets the shared sheet close control, and reduces the
+  weight of Today's secondary links;
+- New Longest Run and Miles Built thresholds are transient derived moments;
+  nothing is persisted and no badge/game economy was added;
+- `npm run check` passes: lint, 51 test files / 793 tests, and production build;
+- browser QA passed Today, Runs/Training Signals plus Run Mix detail, Run Detail,
+  Build, and Plan at 320×844, 390×844, an iPhone-equivalent 393×852, and
+  1200×900 with no horizontal overflow or browser warnings/errors;
+- new small-text contrast spot checks measured at least 7.0:1, focus remained
+  visibly outlined, seven zone tokens resolved, and reduced-motion coverage
+  remained present;
+- the approved Performance Arcade mockup was used as the visual-fidelity
+  acceptance artifact at 320px, 390px, and desktop widths;
+- no schema migration, Race Crew/backend code, sound, literal Game Boy/CRT/pixel
+  skin, or copied TRNRBOI source/asset was added; the sole new dependency is the
+  local `@fontsource/space-mono` package;
+- real-device iPhone review remains an owner/deployment check, so the phase is
+  not marked Complete here.
 
 ## UI-18 architecture-gate rule
 

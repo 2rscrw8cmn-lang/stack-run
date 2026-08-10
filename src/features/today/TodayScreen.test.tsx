@@ -332,7 +332,7 @@ describe("TodayScreen run found", () => {
     expect(screen.getByText("20:30")).toBeInTheDocument();
     expect(screen.getByText("9:32 /mi")).toBeInTheDocument();
     expect(screen.getByText("152 bpm")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm Match" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Review Run" })).toBeInTheDocument();
     // Whatever sync found, the day's workout is still the thing on screen.
     expect(screen.getByText("Today’s workout")).toBeInTheDocument();
   });
@@ -341,7 +341,7 @@ describe("TodayScreen run found", () => {
     const onReviewCandidate = vi.fn();
     const { user } = renderToday({ candidates: [candidate], onReviewCandidate });
 
-    await user.click(screen.getByRole("button", { name: "Confirm Match" }));
+    await user.click(screen.getByRole("button", { name: "Review Run" }));
     expect(onReviewCandidate).toHaveBeenCalledWith(candidate, false);
 
     await user.click(screen.getByRole("button", { name: "Extra Run" }));

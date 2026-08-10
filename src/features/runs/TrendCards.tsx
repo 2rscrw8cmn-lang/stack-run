@@ -1,4 +1,7 @@
 import { TrendingUp } from "lucide-react";
+import type { ReactNode } from "react";
+import { MiniBars, MiniDonut, MiniMatrix, MiniSparkline } from "../../components/charts/MiniCharts";
+import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments";
 import { Section } from "../../components/ui/Section";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatMiles } from "../../domain/distance";
@@ -22,13 +25,22 @@ interface SignalCard {
   title: string;
   value: string;
   note: string;
+  visual: ReactNode;
 }
+
+const ACTIVITY_COLORS = {
+  easy: "var(--easy)",
+  intervals: "var(--intervals)",
+  simulation: "var(--simulation)",
+  long: "var(--long)",
+  race: "var(--race)",
+} as const;
 
 function signed(value: number, suffix: string): string {
   return `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value)}${suffix}`;
 }
 
-/** Seven factual summaries, each opening only its own focused detail. */
+/** Seven factual summaries with a distinct graphic built from each card's own data. */
 export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsProps) {
   if (runLogs.length === 0) return null;
   const signals = selectTrainingSignals(plan, runLogs, today);
@@ -52,6 +64,7 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
       note: delta === null
         ? `Week ${latestWeek.weekNumber}${latestWeek.isPartial ? " so far" : ""}`
         : `${signed(delta, "")} mi vs 4wk avg${latestWeek.isPartial ? " · so far" : ""}`,
+      visual: <MiniBars values={signals.weeklyMileage.slice(-8).map((week) => week.actualMiles)} />,
     });
   }
 
@@ -64,6 +77,7 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
       title: "Long Run",
       value: `${formatMiles(latestLong.value)} mi`,
       note: delta === null ? "Most recent" : `${signed(delta, "")} mi from last`,
+      visual: <MiniBars tone="long" values={signals.longRuns.slice(-8).map((run) => run.value)} />,
     });
   }
 
@@ -81,6 +95,7 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
         : comparison === 0
           ? "Same as previous 4"
           : `${Math.abs(comparison)} sec ${comparison > 0 ? "quicker" : "slower"} vs previous 4`,
+      visual: <MiniSparkline values={signals.easyRuns.slice(-8).map((run) => run.paceSecondsPerMile)} invert />,
     });
   }
 
@@ -91,8 +106,13 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
     cards.push({
       id: "hr-zones",
       title: "HR Zones",
-      value: `${Math.round((dominantSeconds / zoneTotal) * 100)}% Zone ${dominantIndex + 1}`,
-      note: `${signals.heartRateZones.coveredRuns} runs with HR zones`,
+      value: `${Math.round((dominantSeconds / zoneTotal) * 100)}%`,
+      note: `Zone ${dominantIndex + 1} · ${signals.heartRateZones.coveredRuns} ${signals.heartRateZones.coveredRuns === 1 ? "run" : "runs"} with HR zones`,
+      visual: (
+        <MiniDonut
+          segments={zoneDonutSegments(signals.heartRateZones.zoneSeconds).map(({ value, color }) => ({ value, color }))}
+        />
+      ),
     });
   }
 
@@ -115,6 +135,7 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
       title: "Training Load",
       value: String(latest.total),
       note: change === null ? `Week ${latest.weekNumber}` : `${signed(change, "%")} vs 4wk avg`,
+      visual: <MiniBars tone="intervals" values={signals.trainingLoad.slice(-8).map((week) => week.total)} />,
     });
   }
 
@@ -124,16 +145,28 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
       title: "Consistency",
       value: `${signals.consistency.percentage}%`,
       note: `${signals.consistency.completed} of ${signals.consistency.due} completed`,
+      visual: <MiniMatrix completed={signals.consistency.completed} due={signals.consistency.due} />,
     });
   }
 
   if (signals.runMix.totalMiles > 0 && signals.runMix.slices.length > 0) {
-    const dominant = signals.runMix.slices.reduce((best, slice) => slice.miles > best.miles ? slice : best, signals.runMix.slices[0]);
+    const dominant = signals.runMix.slices.reduce(
+      (best, slice) => slice.miles > best.miles ? slice : best,
+      signals.runMix.slices[0],
+    );
     cards.push({
       id: "run-mix",
       title: "Run Mix",
-      value: `${Math.round(dominant.share * 100)}% ${WORKOUT_TYPE_LABEL[dominant.activityType]}`,
-      note: "Last 4 weeks",
+      value: `${Math.round(dominant.share * 100)}%`,
+      note: `${WORKOUT_TYPE_LABEL[dominant.activityType]} · last 4 weeks`,
+      visual: (
+        <MiniDonut
+          segments={signals.runMix.slices.map((slice) => ({
+            value: slice.miles,
+            color: ACTIVITY_COLORS[slice.activityType],
+          }))}
+        />
+      ),
     });
   }
 
@@ -145,13 +178,17 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
           <li key={card.id}>
             <button
               type="button"
-              className="trend-cards__card"
+              className="trend-cards__card data-module"
+              data-signal={card.id}
               aria-label={`${card.title}, ${card.value}, ${card.note}. Open ${card.title} detail.`}
               onClick={() => onOpenSignal(card.id)}
             >
-              <span className="trend-cards__title">{card.title}</span>
-              <span className="trend-cards__value">{card.value}</span>
-              <span className="trend-cards__note">{card.note}</span>
+              <span className="trend-cards__title machine-label">{card.title}</span>
+              <span className="trend-cards__reading">
+                <span className="trend-cards__value data-value">{card.value}</span>
+                <span className="trend-cards__note machine-label">{card.note}</span>
+              </span>
+              {card.visual}
             </button>
           </li>
         ))}

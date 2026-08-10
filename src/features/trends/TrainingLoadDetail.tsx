@@ -32,7 +32,7 @@ export function TrainingLoadDetail({
 
   return (
     <div className="signal-detail">
-      <p className="signal-detail__intro">Weekly totals use only Training Load supplied by Intervals.icu. Missing values create gaps, never zeroes.</p>
+      <p className="signal-detail__note">Only runs with imported Training Load are included.</p>
       <PlanActualColumns
         columns={weeks.map((week) => ({
           key: String(week.weekNumber),
@@ -61,7 +61,6 @@ export function TrainingLoadDetail({
           empty="No runs in this week carried Training Load."
         />
       </DetailSection>
-      <p className="signal-detail__footnote">Training Load is an imported activity metric, not a STACK readiness, fitness or form score.</p>
     </div>
   );
 }

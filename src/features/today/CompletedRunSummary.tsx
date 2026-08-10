@@ -39,22 +39,22 @@ export function CompletedRunSummary({
 
   return (
     <Card className="today-workout-card">
-      <p className="today-workout-card__eyebrow" aria-live="polite">
+      <p className="today-workout-card__eyebrow machine-label" aria-live="polite">
         <CircleCheck size={16} strokeWidth={1.8} aria-hidden="true" /> Run
         complete
       </p>
       <p className="today-workout-card__title">{workout.title}</p>
       <dl className="completed-run-summary__stats" role="group" aria-label="Completed run">
         <div>
-          <dt>Distance</dt>
-          <dd>{formatMiles(runLog.distanceMiles)} mi</dd>
+          <dt className="machine-label">Distance</dt>
+          <dd className="data-value">{formatMiles(runLog.distanceMiles)} mi</dd>
         </div>
         <div>
-          <dt>Duration</dt>
-          <dd>{formatDurationSeconds(runLog.durationSeconds)}</dd>
+          <dt className="machine-label">Duration</dt>
+          <dd className="data-value">{formatDurationSeconds(runLog.durationSeconds)}</dd>
         </div>
         <div>
-          <dt>Effort</dt>
+          <dt className="machine-label">Effort</dt>
           <dd>{EFFORT_LABEL[runLog.effort]}</dd>
         </div>
       </dl>

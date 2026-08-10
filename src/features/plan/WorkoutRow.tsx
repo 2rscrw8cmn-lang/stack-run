@@ -103,6 +103,7 @@ export function WorkoutRow({ day, blocked, onSelect }: WorkoutRowProps) {
   return (
     <li
       className={status === "rest" ? "workout-row workout-row--rest" : "workout-row"}
+      data-type={status === "rest" ? undefined : workout.type}
       data-today={day.isToday || undefined}
       data-blocked={isBlocked || undefined}
     >

@@ -1,11 +1,15 @@
 :root {
   color-scheme: dark;
 
-  --bg: #071018;
-  --bg-elevated: #0c1620;
-  --surface: #111c26;
-  --surface-strong: #16222d;
-  --surface-soft: #0e1821;
+  --font-data:
+    "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --bg: #03070a;
+  --bg-elevated: #060c11;
+  --surface: #0a1219;
+  --surface-strong: #101b24;
+  --surface-soft: #080f15;
 
   --text: #f6f7f8;
   --text-muted: #9ca7b1;
@@ -18,27 +22,38 @@
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.15);
 
-  --accent: #b8f13b;
+  /* UI-17: one compact instrument language, shared by Runs, charts and Build. */
+  --data-surface: #060d12;
+  --data-surface-strong: #0a151d;
+  --data-border: rgba(166, 255, 26, 0.34);
+  --technical-grid-line: rgba(93, 140, 168, 0.105);
+  --selected-border: #b9ff35;
+  --selected-glow: rgba(166, 255, 26, 0.24);
+  --chart-actual: var(--accent);
+  --chart-reference: #a7b2bc;
+  --chart-selection: rgba(184, 241, 59, 0.09);
+
+  --accent: #a6ff1a;
   --accent-text: #0a1102;
 
-  --easy: #b8f13b;
-  --intervals: #4f9bff;
-  --simulation: #9b6dff;
-  --long: #ffc53d;
+  --easy: #a6ff1a;
+  --intervals: #287dff;
+  --simulation: #a14cff;
+  --long: #ffd21a;
   --race: #f6f7f8;
   --danger: #ff6b6b;
 
-  /* UI-16's minimum ordered zone palette. Labels remain authoritative. */
-  --zone-1: #4f7dff;
-  --zone-2: #31c7d9;
-  --zone-3: #8edb45;
-  --zone-4: #f2d14b;
-  --zone-5: #ff9d3d;
-  --zone-6: #ff5d5d;
-  --zone-7: #c86cff;
+  /* UI-17's ordered seven-zone palette. Text labels remain authoritative. */
+  --zone-1: #5b82ff;
+  --zone-2: #2bc6d6;
+  --zone-3: #9cdd45;
+  --zone-4: #f4d34f;
+  --zone-5: #ff9f43;
+  --zone-6: #ff6565;
+  --zone-7: #d270ff;
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
   --radius-lg: 22px;
 
   --space-1: 4px;

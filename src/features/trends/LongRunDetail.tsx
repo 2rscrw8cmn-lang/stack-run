@@ -52,7 +52,6 @@ export function LongRunDetail({
       <DetailSection title="Actual Long Runs">
         <TrendRunList runs={actualRuns} onOpenRun={onOpenRun} empty="No Long Runs recorded." />
       </DetailSection>
-      <p className="signal-detail__footnote">This is progression against the plan, not a race-readiness prediction.</p>
     </div>
   );
 }

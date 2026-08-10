@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvailabilityCalendar } from "../domain/availability";
-import type { AppState } from "../domain/types";
+import type { AppState, RunLog } from "../domain/types";
 import {
   deleteRunLog,
   loadAppState,
@@ -28,6 +28,8 @@ import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
 import { useConnectedSync } from "../features/connected/useConnectedSync";
+import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
+import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
 
 export type TabId = "today" | "build" | "runs" | "plan";
 
@@ -60,6 +62,10 @@ export function App() {
   const [boot, setBoot] = useState<BootState>(readBootState);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [syncToken, setSyncToken] = useState<string | null>(() => { try { return loadIntervalsSyncToken(); } catch { return null; } });
+  const [accomplishments, setAccomplishments] = useState<Moment[]>([]);
+  const previousRunLogs = useRef<RunLog[]>(
+    boot.kind === "ready" ? boot.state.runLogs : [],
+  );
 
   const appState = boot.kind === "ready" ? boot.state : null;
 
@@ -72,6 +78,28 @@ export function App() {
   }, []);
 
   useEffect(() => onStorageWriteError((error) => setWriteError(error.message)), []);
+
+  // A newly recorded run may cross a factual threshold. Compare the run-log
+  // transition in memory, show the facts briefly, and never write a badge or
+  // replay marker into schema 9.
+  useEffect(() => {
+    if (!appState) return;
+    const prior = previousRunLogs.current;
+    const priorIds = new Set(prior.map((run) => run.id));
+    const added = appState.runLogs.filter((run) => !priorIds.has(run.id));
+    previousRunLogs.current = appState.runLogs;
+    if (added.length > 0) {
+      setAccomplishments(
+        accomplishmentsForAddedRuns(appState.plan, prior, added),
+      );
+    }
+  }, [appState]);
+
+  useEffect(() => {
+    if (accomplishments.length === 0) return;
+    const timer = window.setTimeout(() => setAccomplishments([]), 4200);
+    return () => window.clearTimeout(timer);
+  }, [accomplishments]);
 
   const saveCalendar = useCallback(
     (calendar: AvailabilityCalendar | null) =>
@@ -119,14 +147,17 @@ export function App() {
     <AppShell
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      notice={
-        writeError && (
-          <StorageWriteBanner
-            message={writeError}
-            onDismiss={() => setWriteError(null)}
-          />
-        )
-      }
+      notice={(writeError || accomplishments.length > 0) ? (
+        <>
+          {writeError && (
+            <StorageWriteBanner
+              message={writeError}
+              onDismiss={() => setWriteError(null)}
+            />
+          )}
+          <AccomplishmentMoment moments={accomplishments} />
+        </>
+      ) : undefined}
       plan={boot.state.plan}
       runLogs={boot.state.runLogs}
       blockPlacements={boot.state.blockPlacements}

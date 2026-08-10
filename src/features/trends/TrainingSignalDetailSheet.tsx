@@ -42,7 +42,7 @@ export function TrainingSignalDetailSheet({
   if (!signal) return null;
 
   return (
-    <Sheet title={TRAINING_SIGNAL_TITLE[signal]} isOpen={isOpen} onClose={onClose}>
+    <Sheet className="sheet--instrument" title={TRAINING_SIGNAL_TITLE[signal]} isOpen={isOpen} onClose={onClose}>
       {signal === "weekly-mileage" && <WeeklyMileageDetail signals={signals} onOpenRun={onOpenRun} />}
       {signal === "long-run" && <LongRunDetail signals={signals} runLogs={runLogs} onOpenRun={onOpenRun} />}
       {signal === "easy-pace" && <EasyPaceDetail signals={signals} runLogs={runLogs} onOpenRun={onOpenRun} />}

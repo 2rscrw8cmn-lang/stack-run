@@ -13,11 +13,11 @@ export interface SignalFact {
 
 export function SignalFacts({ facts }: { facts: SignalFact[] }) {
   return (
-    <dl className="signal-facts">
+    <dl className="signal-facts" data-count={Math.min(facts.length, 4)}>
       {facts.map((fact) => (
-        <div key={fact.label}>
-          <dt>{fact.label}</dt>
-          <dd>{fact.value}</dd>
+        <div key={fact.label} className="signal-facts__item data-module">
+          <dt className="machine-label">{fact.label}</dt>
+          <dd className="data-value">{fact.value}</dd>
         </div>
       ))}
     </dl>
@@ -28,12 +28,12 @@ export function DetailSection({
   title,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="signal-detail__section">
-      <h3>{title}</h3>
+      <h3 className="machine-label">{title}</h3>
       {children}
     </section>
   );

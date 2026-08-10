@@ -33,10 +33,11 @@ export function WeeklyMileageDetail({
     : Number((selected.actualMiles - selected.plannedMiles).toFixed(2));
 
   return (
-    <div className="signal-detail">
-      <p className="signal-detail__intro">
-        Actual miles are grouped by the date they were run. The dashed marker is the scheduled target for each plan week.
-      </p>
+    <div className="signal-detail signal-detail--weekly-mileage">
+      <div className="signal-detail__chart-head">
+        <span className="machine-label">Volume (miles)</span>
+        <span className="machine-label">{weeks.length} week view</span>
+      </div>
       <PlanActualColumns
         columns={weeks.map((week) => ({
           key: String(week.weekNumber),
@@ -51,13 +52,20 @@ export function WeeklyMileageDetail({
       />
       <SignalFacts
         facts={[
-          { label: selected.isPartial ? "Actual so far" : "Actual", value: `${formatMiles(selected.actualMiles)} mi` },
-          ...(recentAverage === null ? [] : [{ label: "Prior 4-week average", value: `${formatMiles(recentAverage)} mi` }]),
-          ...(selected.plannedMiles === null ? [] : [{ label: "Planned", value: `${formatMiles(selected.plannedMiles)} mi` }]),
-          ...(delta === null ? [] : [{ label: "Actual − plan", value: signedMiles(delta) }]),
+          { label: selected.isPartial ? "Actual so far" : "Current", value: `${formatMiles(selected.actualMiles)} mi` },
+          ...(recentAverage === null ? [] : [{ label: "4-week avg", value: `${formatMiles(recentAverage)} mi` }]),
+          ...(selected.plannedMiles === null ? [] : [{ label: "Plan", value: `${formatMiles(selected.plannedMiles)} mi` }]),
+          ...(delta === null ? [] : [{ label: "Delta", value: signedMiles(delta) }]),
         ]}
       />
-      <DetailSection title={`Week ${selected.weekNumber} runs`}>
+      <DetailSection title="Select a week">
+        <p className="signal-detail__intro">
+          Tap a bar or week control to inspect the runs behind it. Solid lime is actual; the dashed marker is plan.
+        </p>
+      </DetailSection>
+      <DetailSection
+        title={<><span>{`Week ${selected.weekNumber} runs`}</span><span>{` · ${formatMiles(selected.actualMiles)} mi`}</span></>}
+      >
         {selected.isPartial && <p className="signal-detail__note">This week is still in progress.</p>}
         <TrendRunList
           runs={selected.runs}

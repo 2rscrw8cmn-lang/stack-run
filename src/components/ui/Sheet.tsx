@@ -9,13 +9,14 @@ interface SheetProps {
   /** Return false to keep the sheet open (e.g. unsaved changes). */
   guardClose?: () => boolean;
   children: ReactNode;
+  className?: string;
 }
 
 /**
  * Mobile bottom sheet and wider-screen dialog in one component, built on the
  * native <dialog> element so focus trapping and Escape handling come for free.
  */
-export function Sheet({ title, isOpen, onClose, guardClose, children }: SheetProps) {
+export function Sheet({ title, isOpen, onClose, guardClose, children, className }: SheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -68,7 +69,7 @@ export function Sheet({ title, isOpen, onClose, guardClose, children }: SheetPro
   return (
     <dialog
       ref={dialogRef}
-      className="sheet"
+      className={["sheet", className].filter(Boolean).join(" ")}
       aria-labelledby={titleId}
       onCancel={(event) => {
         if (guardClose && !guardClose()) {

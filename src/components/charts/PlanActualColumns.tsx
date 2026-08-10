@@ -1,6 +1,7 @@
-const WIDTH = 280;
-const HEIGHT = 104;
-const TICK_BAND = 18;
+const WIDTH = 320;
+const HEIGHT = 168;
+const TICK_BAND = 22;
+const AXIS_GUTTER = 24;
 
 export interface PlanActualColumn {
   key: string;
@@ -27,21 +28,33 @@ export function PlanActualColumns({
     ...columns.flatMap((column) => [column.actual ?? 0, column.planned ?? 0]),
     1,
   );
-  const slot = WIDTH / Math.max(columns.length, 1);
+  const plotWidth = WIDTH - AXIS_GUTTER;
+  const slot = plotWidth / Math.max(columns.length, 1);
   const barWidth = Math.max(Math.min(slot - 4, 20), 4);
-  const y = (value: number) => HEIGHT - (value / peak) * (HEIGHT - 14);
+  const y = (value: number) => HEIGHT - (value / peak) * (HEIGHT - 16);
 
   return (
-    <div className="plan-actual-chart">
+    <div className="plan-actual-chart technical-grid">
       <svg
         className="chart plan-actual-chart__figure"
         viewBox={`0 0 ${WIDTH} ${HEIGHT + TICK_BAND}`}
         aria-hidden="true"
         focusable="false"
       >
-        <line x1="0" y1={HEIGHT} x2={WIDTH} y2={HEIGHT} className="chart__axis" />
+        {[0, 0.5, 1].map((ratio) => {
+          const tickY = HEIGHT - ratio * (HEIGHT - 16);
+          return (
+            <g key={ratio}>
+              <line x1={AXIS_GUTTER} y1={tickY} x2={WIDTH} y2={tickY} className="chart__grid-line" />
+              <text x="18" y={tickY + 3} textAnchor="end" className="chart__tick">
+                {Math.round(peak * ratio)}
+              </text>
+            </g>
+          );
+        })}
+        <line x1={AXIS_GUTTER} y1={HEIGHT} x2={WIDTH} y2={HEIGHT} className="chart__axis" />
         {columns.map((column, index) => {
-          const x = index * slot + slot / 2;
+          const x = AXIS_GUTTER + index * slot + slot / 2;
           const actualY = column.actual === null ? HEIGHT : y(column.actual);
           const plannedY = column.planned === null || column.planned === undefined
             ? null
@@ -51,11 +64,11 @@ export function PlanActualColumns({
               {column.key === selectedKey && (
                 <rect
                   className="plan-actual-chart__selection"
-                  x={index * slot + 1}
+                  x={AXIS_GUTTER + index * slot + 1}
                   y="0"
                   width={Math.max(slot - 2, 1)}
                   height={HEIGHT}
-                  rx="3"
+                  rx="1"
                 />
               )}
               {column.actual !== null && column.actual > 0 && (
@@ -69,7 +82,7 @@ export function PlanActualColumns({
                   y={actualY}
                   width={barWidth}
                   height={HEIGHT - actualY}
-                  rx="3"
+                  rx="1"
                 />
               )}
               {plannedY !== null && (
