@@ -6,7 +6,7 @@ export function ConsistencyDetail({ signals }: { signals: TrainingSignals }) {
   if (consistency.percentage === null) return <p className="signal-detail__empty">The plan has not asked for a run yet.</p>;
   return (
     <div className="signal-detail">
-      <p className="signal-detail__intro">Consistency is scheduled-workout completion. Extra runs are shown separately and never repair a missed plan run.</p>
+      <p className="signal-detail__note">Scheduled-workout completion; extras do not fill missed plan runs.</p>
       <SignalFacts facts={[
         { label: "Plan to date", value: `${consistency.percentage}%` },
         { label: "Completed", value: `${consistency.completed} of ${consistency.due}` },
@@ -25,7 +25,6 @@ export function ConsistencyDetail({ signals }: { signals: TrainingSignals }) {
           </li>
         ))}
       </ol>
-      <p className="signal-detail__footnote">No grades or penalties are assigned to missed workouts.</p>
     </div>
   );
 }

@@ -13,7 +13,7 @@ export interface SignalFact {
 
 export function SignalFacts({ facts }: { facts: SignalFact[] }) {
   return (
-    <dl className="signal-facts">
+    <dl className="signal-facts" data-count={Math.min(facts.length, 4)}>
       {facts.map((fact) => (
         <div key={fact.label} className="signal-facts__item data-module">
           <dt className="machine-label">{fact.label}</dt>

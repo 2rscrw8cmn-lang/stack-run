@@ -739,9 +739,11 @@ The screen treatment follows D-052 rather than creating a second UI shell:
   crisp line points, and explicit selected states make Runs the strongest
   expression while run history remains calmer below a matching **Recent Runs**
   section heading. The instrument strip uses four equal full-width cells, with
-  a 2x2 fallback at 320px. Signal cards use compact 116px composition at 390px;
-  sparse one-to-three-point histories consume only factual points and use
-  deliberate block states instead of placeholder zero slots.
+  a 2x2 fallback at 320px. Signal cards use compact 116px composition at 390px,
+  while an odd final card becomes a deliberate 94px horizontal module with its
+  visualization centered at the right. Sparse one-to-three-point histories
+  consume only factual points and use deliberate block states instead of
+  placeholder zero slots.
 - **Weekly Mileage detail** is rebuilt around a larger plan-versus-actual chart,
   compact current/average/plan/delta facts, an explicit selection instruction,
   and the selected week's underlying run list.
@@ -783,10 +785,19 @@ persistent achievement ledger to claim completeness.
 
 UI-17 verification on 2026-08-10:
 
-- `npm run check` passes: lint, 51 test files / 792 tests, and the production
+- the final polish makes `SignalFacts` adapt to one through four facts: phone
+  layouts use two columns, a third fact spans the final row, four facts form a
+  2x2 grid, and desktop can expand to three or four columns. Values wrap without
+  clipping or horizontal overflow;
+- HR Zones and Run Mix details now lead with a compact period, chart, and facts;
+  redundant coverage/explanatory copy is removed, while incomplete HR coverage
+  keeps one concise factual note. The shared instrument close control is neutral
+  by default and reserves lime for interaction/focus;
+- `npm run check` passes: lint, 51 test files / 793 tests, and the production
   Vite build;
-- in-app browser QA passed Today, Runs/Training Signals, Weekly Mileage detail,
-  Build, and Plan at 320×800, 390×844, and 1200×900;
+- in-app browser QA passed Today, Runs/Training Signals and Run Mix detail, Run
+  Detail, Build, and Plan at 320×844, 390×844, an iPhone-equivalent 393×852,
+  and 1200×900;
 - every reviewed viewport had `scrollWidth === clientWidth` and no browser
   warning/error output;
 - new small label/data contrast measured 7.0:1–17.2:1 on instrument surfaces,

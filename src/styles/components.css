@@ -3318,6 +3318,11 @@ textarea.run-input {
   gap: var(--space-4);
 }
 
+.this-week__links .section__link {
+  font-size: 12px;
+  font-weight: 500;
+}
+
 /* Heart-rate zones
    ------------------------------------------------------------------
    An ordered scale, so one hue that strengthens with intensity rather than
@@ -3792,6 +3797,14 @@ textarea.run-input {
 
 @media (min-width: 700px) {
   .trend-cards__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.signal-detail__period {
+  margin: 0;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* UI-17 — Performance Arcade primitives
@@ -4326,8 +4339,25 @@ textarea.run-input {
 
 .sheet--instrument .icon-button,
 .sheet--run-detail .icon-button {
-  border: 1px solid var(--accent);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.sheet--instrument .icon-button:hover,
+.sheet--instrument .icon-button:active,
+.sheet--run-detail .icon-button:hover,
+.sheet--run-detail .icon-button:active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sheet--instrument .icon-button:focus-visible,
+.sheet--run-detail .icon-button:focus-visible {
+  border-color: var(--border-strong);
+  color: var(--accent);
 }
 
 /* Runs instrument panel */
@@ -4601,6 +4631,40 @@ textarea.run-input {
   .trend-cards__grid > li:last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
+
+  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(52px, 112px);
+    grid-template-rows: auto 1fr;
+    min-height: 94px;
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__title {
+    grid-column: 1 / -1;
+  }
+
+  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__reading {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: none;
+  }
+
+  .trend-cards__grid > li:last-child:nth-child(odd) .mini-chart {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    margin: 0;
+    align-self: center;
+    justify-self: end;
+  }
+
+  .trend-cards__grid > li:last-child:nth-child(odd) .mini-donut {
+    width: 52px;
+    height: 52px;
+  }
 }
 
 @media (min-width: 700px) {
@@ -4692,8 +4756,16 @@ textarea.run-input {
 }
 
 .signal-facts {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+}
+
+.signal-facts[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.signal-facts[data-count="3"] > :last-child {
+  grid-column: 1 / -1;
 }
 
 .signal-facts > div,
@@ -4710,7 +4782,22 @@ textarea.run-input {
 .signal-facts dd {
   font-size: clamp(14px, 4.3vw, 19px);
   line-height: 1.15;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (min-width: 700px) {
+  .signal-facts[data-count="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .signal-facts[data-count="3"] > :last-child {
+    grid-column: auto;
+  }
+
+  .signal-facts[data-count="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .signal-detail__section {

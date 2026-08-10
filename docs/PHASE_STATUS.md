@@ -124,7 +124,8 @@ Implementation verification (2026-08-10):
   visible signal has a distinct factual mini visualization with accessible text;
 - the final composition pass makes that summary a full-width four-cell strip,
   compacts signal cards to 116px at 390px, removes fake empty history slots,
-  balances odd card rows, and introduces the matching Recent Runs hierarchy;
+  gives an odd final card a deliberate 94px horizontal composition, and
+  introduces the matching Recent Runs hierarchy;
 - Weekly Mileage has a rebuilt chart-first selected-week hierarchy, while Run
   Detail has a substantial primary/secondary metric, HR-zone, and intervals
   redesign;
@@ -134,12 +135,16 @@ Implementation verification (2026-08-10):
 - zero-value donut legend rows are hidden without renumbering source HR zones;
   Build has a grounded technical field and width-1 mileage stamps; active nav,
   current-week, and today-row styling are quieter and more precise;
+- final signal polish makes one-to-four fact modules responsive without clipped
+  values, simplifies HR Zones and Run Mix to period/chart/facts, removes repeated
+  signal philosophy copy, quiets the shared sheet close control, and reduces the
+  weight of Today's secondary links;
 - New Longest Run and Miles Built thresholds are transient derived moments;
   nothing is persisted and no badge/game economy was added;
-- `npm run check` passes: lint, 51 test files / 792 tests, and production build;
-- browser QA passed Today, Runs/Training Signals plus Weekly Mileage detail,
-  Build, and Plan at 320×800, 390×844, and 1200×900 with no horizontal
-  overflow or browser warnings/errors;
+- `npm run check` passes: lint, 51 test files / 793 tests, and production build;
+- browser QA passed Today, Runs/Training Signals plus Run Mix detail, Run Detail,
+  Build, and Plan at 320×844, 390×844, an iPhone-equivalent 393×852, and
+  1200×900 with no horizontal overflow or browser warnings/errors;
 - new small-text contrast spot checks measured at least 7.0:1, focus remained
   visibly outlined, seven zone tokens resolved, and reduced-motion coverage
   remained present;

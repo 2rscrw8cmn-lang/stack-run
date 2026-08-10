@@ -35,7 +35,6 @@ export function EasyPaceDetail({
 
   return (
     <div className="signal-detail">
-      <p className="signal-detail__intro">Pace and average heart rate share the same Easy-run dates. Missing heart rate stays missing.</p>
       <SignalFacts
         facts={[
           ...(recentEasy ? [{ label: "Latest 4 median", value: paceLabel(recentEasy.medianPace) }] : [{ label: "Latest", value: paceLabel(easyRuns.at(-1)!.paceSecondsPerMile) }]),
@@ -71,7 +70,6 @@ export function EasyPaceDetail({
           empty="No Easy runs recorded."
         />
       </DetailSection>
-      <p className="signal-detail__footnote">Terrain, weather and route differences can move both pace and heart rate. STACK makes no physiological claim from this comparison.</p>
     </div>
   );
 }

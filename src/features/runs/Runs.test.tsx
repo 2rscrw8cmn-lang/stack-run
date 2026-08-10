@@ -340,6 +340,30 @@ describe("Runs Training Signals", () => {
     }
   });
 
+  it("keeps HR-zone and Run Mix instruments concise with adaptive facts", async () => {
+    const user = userEvent.setup();
+    const richRuns = [
+      run("easy-hr", "2026-08-03", { importedMetrics: { hrZoneSeconds: [0, 300, 900, 0, 0, 0, 0] } }),
+      run("long", "2026-08-09", { activityType: "long", distanceMiles: 5 }),
+    ];
+    renderRuns(richRuns, { today: "2026-08-10" });
+
+    await user.click(screen.getByRole("button", { name: /^HR Zones,/ }));
+    expect(screen.getByText("1 of 2 runs")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 runs had HR-zone data.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Coverage" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/does not label a zone good or bad/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    await user.click(screen.getByRole("button", { name: /^Run Mix,/ }));
+    expect(screen.getByText("Last 4 weeks")).toBeInTheDocument();
+    expect(screen.getByText("2", { selector: ".signal-facts dd" })).toBeInTheDocument();
+    const largestShare = screen.getByText("Largest share").closest("dl");
+    expect(largestShare).toHaveAttribute("data-count", "3");
+    expect(screen.getAllByText(/Long Run ·/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Extra is not an activity type/i)).not.toBeInTheDocument();
+  });
+
   it("selects a mileage week and reaches the underlying existing run detail", async () => {
     const user = userEvent.setup();
     renderRuns([
