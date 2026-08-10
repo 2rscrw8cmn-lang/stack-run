@@ -8,8 +8,6 @@ This addendum records approved decisions made after D-043. Where these decisions
 
 Runs owns chronological actual-run history. Settings remains a grouped sheet opened from an icon-only top-right gear and is not a primary destination.
 
-Runs contains scheduled + extra, manual + synced actual activities and reuses the existing run-detail/edit/delete model.
-
 **Supersedes:** D-002's three-tab count and D-041's bottom-bar Settings entry point.
 
 ## D-045 — Build is an object-first trophy + toy
@@ -23,168 +21,65 @@ Locked boundaries:
 - width from actual distance;
 - height from STACK activity type;
 - deterministic valid landing positions;
-- derived mileage labels on blocks where space permits;
+- mileage labels where space permits;
 - pointer/touch deliberate drag may commit on release;
-- tap/keyboard remain complete alternatives;
-- Race block may receive an earned capstone treatment;
-- restrained CSS placement payoff;
-- no scoring, line clears, combos, levels, coins, tower health, penalties, rotation, physics engine, canvas/WebGL or game loop.
-
-**Revises:** D-024's always-press-Drop requirement for deliberate pointer/touch drag only. Accessibility boundaries remain.
+- tap/keyboard remain alternatives;
+- Race block may receive capstone treatment;
+- no scoring/game economy/physics engine.
 
 ## D-046 — Wellness / Recovery is intentionally deferred
 
 **Decision:** UI-12 Wellness / Recovery Context is not part of the active roadmap.
 
-If revisited later, D-038 remains mandatory:
+## D-047 — Training Trends lives on Runs
 
-- no opaque readiness score;
-- no medical claims;
-- no automatic plan changes;
-- runner-relative neutral context only.
+**Decision:** Runs visibly surfaces training-data summaries above chronological history.
 
-## D-047 — Training Trends lives on Runs as visible Training Signal summaries
-
-**Decision:** Runs visibly surfaces training-data summaries above chronological history instead of hiding analytics behind repeated links.
-
-UI-13 initially implemented these as a horizontal card strip where every card opened the same all-in-one `TrendsSheet`.
-
-**Status:** presentation is implemented but the one-generic-sheet drill-down is superseded by D-048.
+**Status:** superseded in presentation detail by D-048; Runs remains the analytics home.
 
 ## D-048 — Trends 2.0 uses one focused detail per Training Signal
 
-**Decision:** Training-data cards on Runs become **Training Signals** and each opens its own focused expanded view.
+**Decision:** Training Signals are Weekly Mileage, Long Run, Easy Pace, Heart Rate Zones, Training Load, Consistency and Run Mix. Each opens its own focused expanded view.
 
-Approved signals:
-
-1. Weekly Mileage
-2. Long Run
-3. Easy Pace
-4. Heart Rate Zones
-5. Training Load
-6. Consistency
-7. Run Mix
-
-The old all-in-one `TrendsSheet` is retired once no active path depends on it.
-
-The governing interaction is:
+Interaction:
 
 > summary → focused graph → underlying week/run
 
-Where useful, a selected chart datum leads to the actual runs that produced it, then to existing run detail.
-
-**Reason:** the existing generic drill-down repeats information already visible on the card and does not reward exploration.
-
-**Supersedes:** D-047's rule that every card opens the same existing full Trends sheet. D-047's principle that Runs is the canonical analytics home remains.
+The old all-in-one Trends sheet is retired.
 
 ## D-049 — Plan-versus-actual is a primary analytical advantage
 
-**Decision:** Trends 2.0 should compare actual training with the active plan where that comparison answers a useful question.
-
-Required examples:
-
-- Weekly Mileage actual vs planned weekly target;
-- Long Run actual vs planned Long Run target.
-
-Planned/actual trend totals remain derived, not persisted.
-
-Partial current weeks must not be framed as failed or regressing simply because they are incomplete.
-
-**Reason:** STACK owns an editable race plan in addition to actual activity data. Using that relationship creates more value than copying a generic activity dashboard.
+**Decision:** Weekly Mileage and Long Run, and other useful analytics where appropriate, compare actual training with the active plan. Derived trend totals are not persisted.
 
 ## D-050 — Heart-rate zone composition uses donut/pie presentation
 
-**Decision:** Run-detail HR-zone distribution changes from horizontal bars to an accessible donut/pie composition.
+**Decision:** Run-detail and aggregate HR-zone distribution use accessible donut/pie composition with textual duration/percentage legend and dynamic source zone count.
 
-Rules:
-
-- dynamically support however many zones the source supplies;
-- keep a textual legend with zone label, duration and percentage;
-- source zero zones may remain listed as honest zeroes but occupy no donut angle;
-- color is never the only identifier;
-- aggregate HR-zone Training Signal/detail may also use donut composition;
-- no zone is labeled inherently good/bad.
-
-UI-17 formalizes the ordered zone color palette.
-
-**Supersedes:** the UI-11 presentation choice to use one-hue horizontal `ZoneBars`. Data semantics remain unchanged.
+Zero-value zones occupy no donut angle. UI-17 later approved hiding zero-value visible legend rows while preserving source zone identities.
 
 ## D-051 — Generic manual Log Run leaves Today
 
-**Decision:** Remove the standalone generic `Log Run` button/band from Today.
-
-Preserve:
-
-- scheduled Mark Complete/Edit on Today;
-- Run Found on Today;
-- manual `Log Run` on Runs;
-- manual logging as a complete product fallback.
-
-**Reason:** Runs is now a primary pillar and the natural home for generic history entry. Today should remain the daily command center rather than duplicate history actions.
+**Decision:** Generic manual extra logging lives on Runs. Today keeps scheduled completion/edit and Run Found.
 
 ## D-052 — Performance Arcade is the approved visual direction
 
-**Decision:** STACK evolves toward a **modern training computer with arcade DNA**.
+**Decision:** STACK is a modern training computer with arcade DNA.
 
-Target balance:
+Approved cues include stronger data typography, technical grids, block-inspired chart geometry, confident semantic color and restrained factual reward moments.
 
-- ~70% current polished STACK;
-- ~20% performance-arcade/training-computer character;
-- ~10% playful reward moments.
-
-Approved cues:
-
-- stronger data typography;
-- local system-monospace/tabular numerals;
-- short uppercase machine labels;
-- technical grid texture inside data regions;
-- block-inspired chart geometry;
-- brighter/confident use of existing activity colors;
-- factual accomplishment moments;
-- restrained motion.
-
-Rejected cues:
-
-- literal Game Boy/device shell;
-- CRT/scanlines;
-- pixel font across normal UI;
-- pixel icons;
-- D-pad/A-B controls;
-- boot/power metaphor;
-- sound/chiptune;
-- selectable retro palettes;
-- fake terminal commands.
-
-**Reason:** the app should feel like specialized running equipment, not retro cosplay.
+Rejected: literal Game Boy/device shell, CRT/scanlines, pixel UI, hardware controls, sound/chiptune, fake terminal and retro palette gimmicks.
 
 ## D-053 — Arcade influence does not create a second game economy
 
-**Decision:** Running itself remains the achievement.
-
-Approved deterministic accomplishment moments may include:
-
-- New Longest Run;
-- Biggest Week;
-- Four Weeks Consistent;
-- meaningful Miles Built thresholds.
-
-Do not add XP, coins, levels, quests, loot, arbitrary score, streak punishment or other economy mechanics.
-
-Prefer transient derived presentation rather than a persistent badge collection.
+**Decision:** Running itself remains the achievement. No XP, coins, levels, quests, loot or arbitrary score.
 
 ## D-054 — TRNRBOI-8000 is reference material only
 
-**Decision:** `drewwest289/TRNRBOI-8000` may inform product/design exploration but is not an engineering dependency or source to copy.
-
-Do not copy its source, assets, Strava architecture, Game Boy shell, Tailwind/Recharts choices, backend patterns or calculations by default.
-
-STACK implements approved ideas independently using its own design/data/engineering system.
+**Decision:** `drewwest289/TRNRBOI-8000` may inform product/design exploration but its source/assets/backend/Strava architecture/Game Boy shell/calculations are not copied by default.
 
 ## D-055 — Race Crew is an invite-only race-centered social layer inside Runs
 
-**Decision:** Race Crew is approved as a future product program, beginning with an architecture gate.
-
-Race Crew lives inside Runs using:
+**Decision:** Race Crew is private and lives inside Runs as:
 
 ```text
 YOU | CREW
@@ -192,48 +87,27 @@ YOU | CREW
 
 It is not a fifth bottom-nav tab.
 
-Initial product direction:
-
-- invite-only;
-- crew centered on race name/date/distance;
-- no public discovery;
-- no follower/following graph;
-- no DMs;
-- recent crew runs;
-- selected factual comparison metrics;
-- lightweight encouragement later;
-- compact member Build views later.
-
-Approved initial comparison concepts:
+Initial comparison concepts:
 
 - Weekly Miles;
 - Longest Run;
 - Consistency;
 - Miles Built.
 
-Raw pace leaderboard is not part of MVP.
+No public discovery/followers/DMs/raw pace leaderboard.
 
 ## D-056 — Race Crew shares a narrow safe projection, not private health data
 
-**Decision:** Crew members may see a deliberately limited shared run/training summary.
-
-Default shareable run facts:
-
-- display name;
-- local run date;
-- STACK activity type;
-- distance;
-- duration;
-- derived pace.
+**Decision:** Crew-safe run fields are limited to display identity, local date, STACK activity type, distance, duration and derived pace, plus explicitly approved aggregate summaries.
 
 Do not share by default:
 
 - GPS/routes/location;
 - exact start time;
 - HR/max HR;
-- HR-zone data;
+- HR zones;
 - Training Load;
-- wellness data;
+- wellness;
 - effort;
 - notes;
 - Intervals external ids;
@@ -241,61 +115,195 @@ Do not share by default:
 - raw source payloads;
 - private calendar/availability data.
 
-A crew-safe run-detail model must be separate from blindly exposing the owner's complete private Run detail.
+## D-057 — Race Crew requires a deliberate architecture decision before code
 
-## D-057 — Multi-user Race Crew requires an architecture gate before production code
+**Decision:** Race Crew could not simply reuse the single-owner localStorage + server personal API-key architecture.
 
-**Decision:** UI-18 is an explicit Race Crew architecture/research gate.
+**Status:** architecture gate is now resolved by D-058 through D-063. UI-18 is unlocked as a production foundation phase.
 
-Current STACK assumptions cannot be casually extended:
+## D-058 — Race Crew hobby backend is Supabase Auth + Postgres + RLS
 
-- localStorage-only AppState;
-- no account identity;
-- no shared database;
-- one owner's server-side personal `INTERVALS_API_KEY`;
-- one local sync token.
+**Decision:** For the private friend-group release, STACK uses Supabase for optional account identity and narrow crew-safe shared data.
 
-UI-18 must resolve and receive owner approval for:
+Approved:
 
-- managed authentication;
-- shared datastore/authorization;
-- current official Intervals.icu multi-user/OAuth behavior;
-- per-user token handling/revocation;
-- current-owner no-loss migration/adoption;
-- minimal private-to-shared data projection;
-- invite/membership lifecycle;
-- privacy deletion/leave behavior;
-- security tests and operating cost.
+- `@supabase/supabase-js`;
+- browser public config via `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`;
+- Postgres Row Level Security on every exposed Crew table;
+- no Supabase secret/service-role key in browser code;
+- personal STACK remains usable when Supabase is unavailable or signed out.
 
-No production account/social/backend implementation is authorized in UI-18.
+Initial server tables:
 
-**Reason:** Race Crew is valuable, but it changes the app's trust and persistence model. That deserves a deliberate architecture decision rather than incremental hacks around the current personal credential.
+- profiles;
+- crews;
+- crew_members;
+- crew_invites;
+- shared_runs;
+- crew_member_summaries.
+
+Reactions come later.
+
+## D-059 — Hobby STACK accounts use email + 8-digit PIN, not magic-link login
+
+**Decision:** Normal Race Crew authentication is email plus exactly eight numeric digits presented to the user as a `STACK PIN`.
+
+Implementation uses Supabase password authentication underneath.
+
+Rules:
+
+- client validates `/^\d{8}$/`;
+- STACK never stores raw PIN;
+- email confirmation is intentionally disabled for the private hobby release;
+- no normal magic-link login;
+- no self-service forgotten-PIN flow is required initially;
+- Supabase session persists so PIN entry should be infrequent.
+
+**Tradeoff:** An 8-digit numeric PIN is weaker than a strong general password. This is an explicit private-hobby decision for roughly ten known friends and low-sensitivity server data, not the future public auth standard.
+
+Before public/open/commercial launch, stronger account authentication and recovery must be revisited.
+
+## D-060 — Hobby multi-user Intervals uses each runner's device-local personal API key
+
+**Decision:** Race Crew v1 does not require Intervals OAuth registration.
+
+Each runner:
+
+- creates their own Intervals personal API key;
+- pastes it into STACK once;
+- key is stored only on that runner's current browser/device;
+- storage lives outside AppState under a dedicated credential repository;
+- key is never sent to Supabase or another runner;
+- browser calls Intervals `/api/v1/` using Basic auth after real Safari/CORS verification.
+
+Suggested local slot:
+
+```text
+stack.intervals.api-key.v1
+```
+
+The existing owner's Vercel `INTERVALS_API_KEY` + `STACK_SYNC_TOKEN` proxy remains during migration until the new local-key path is proven on production iPhone Safari.
+
+**Important tradeoff:** Intervals.icu's own API guidance recommends OAuth for apps intended for multiple users. The owner has intentionally accepted personal keys as a temporary private-hobby shortcut.
+
+OAuth becomes mandatory to reconsider before public/open signups, strangers, commercial distribution, material scale or server-side user credential storage.
+
+## D-061 — Personal STACK stays local; Supabase receives only crew-safe projections
+
+**Decision:** Race Crew does not introduce full personal cloud sync.
+
+Creating/signing into an account must not upload or replace full:
+
+- plan;
+- RunLogs;
+- imported health metrics;
+- Build placements;
+- availability calendar;
+- AppState.
+
+Current schema-9 personal data remains local.
+
+Shared run projection contains only:
+
+- local STACK run id for synchronization identity;
+- local date;
+- activity type;
+- distance;
+- duration.
+
+Pace is derived.
+
+Shared member summary contains only:
+
+- current-week miles;
+- trailing-28-day longest run;
+- recent up-to-4-plan-week scheduled completion numerator/denominator;
+- miles built.
+
+This narrow projection is the privacy boundary.
+
+## D-062 — Run Data onboarding is a first-class feature
+
+**Decision:** STACK must explain the connected-data chain to friends step by step rather than treating the three-app Apple Watch flow as assumed knowledge.
+
+Apple Watch:
+
+```text
+Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
+```
+
+Other device/services may skip HealthFit when they already sync directly to Intervals.
+
+The setup wizard must explain:
+
+- each service's job;
+- verify one run in Intervals before connecting STACK;
+- how to generate the Intervals key from Settings → Developer Settings;
+- key stays only on current device;
+- what Race Crew can and cannot see.
+
+`docs/RUN_DATA_SETUP.md` controls setup copy/content.
+
+## D-063 — Race Crew delivery sequence is UI-18 foundation, UI-19 Crew, UI-20 Props/Builds
+
+**Decision:** The previous UI-18 docs-only gate is replaced by an implementation sequence.
+
+### UI-18 — Race Crew Foundation
+
+Authorized next code phase:
+
+- Supabase/auth;
+- Account & Crew settings;
+- crew create/join/leave/invite/remove;
+- SQL migration + RLS;
+- local Intervals personal-key mode;
+- setup wizard;
+- safe projection service;
+- current-owner no-loss adoption.
+
+No social feed/comparison UI yet.
+
+### UI-19 — Crew Runs + Comparisons
+
+- YOU | CREW;
+- crew race header;
+- Weekly Miles / Longest Run / Consistency / Miles Built;
+- recent crew runs;
+- crew-safe detail.
+
+### UI-20 — Props + Mini Builds
+
+- lightweight encouragement;
+- read-only member mini Builds;
+- optional member summary.
+
+Comments remain separately reviewable.
 
 ## Active implementation order
 
-Implemented/accepted:
+Complete:
 
 - UI-0 through UI-11
-- UI-13 — Runs Pillar + Navigation
-- UI-14 — Build Reward Revision
+- UI-13
+- UI-14
+- UI-16
+- UI-17
 
 Deferred/skipped:
 
-- UI-12 — Wellness / Recovery Context
-- UI-15 — Optional Plan Export Investigation
+- UI-12 Wellness
+- UI-15 Plan Export Investigation
 
-Next approved program:
+Next:
 
-1. **UI-16 — Trends 2.0** (D-048 through D-051)
-2. **UI-17 — Performance Arcade Design Pass** (D-052 through D-054)
-3. **UI-18 — Race Crew Architecture Gate** (D-055 through D-057; docs/research only)
-
-Race Crew production phases UI-19+ remain gated on UI-18 owner approval.
+1. **UI-18 — Race Crew Foundation** (D-058 through D-063)
+2. **UI-19 — Crew Runs + Comparisons**
+3. **UI-20 — Props + Mini Builds**
 
 See:
 
 - `docs/NEXT_PRODUCT_PROGRAM.md`
-- `docs/TRENDS_2_0.md`
-- `docs/ARCADE_DESIGN_PASS.md`
 - `docs/RACE_CREW.md`
-- `docs/NEXT_PRODUCT_IMPLEMENTATION.md`
+- `docs/RACE_CREW_SETUP.md`
+- `docs/RUN_DATA_SETUP.md`
+- `docs/RACE_CREW_IMPLEMENTATION.md`
