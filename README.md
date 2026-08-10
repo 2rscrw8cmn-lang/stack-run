@@ -12,11 +12,11 @@ The original UI-0 through UI-7 program is implemented.
 
 STACK currently includes:
 
-- three persistent tabs: **Today**, **Build**, **Plan**;
+- three persistent tabs: **Today**, **Build**, **Plan**, plus a **Settings** sheet in the bottom bar that is not a fourth destination;
 - scheduled and extra runs;
 - editable actual run date, distance, duration, effort/type and notes;
 - deterministic 8-column Build tower, one block per actual run;
-- editable/generated one-race plan;
+- editable/generated one-race plan, with a start date the runner can choose;
 - preferred run-day reshaping;
 - optional availability-calendar conflict proposals;
 - browser-local persistence/recovery;

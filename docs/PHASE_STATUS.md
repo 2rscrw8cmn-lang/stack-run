@@ -23,6 +23,8 @@ These were built outside the numbered UI-0–UI-7 sequence and are now formal de
 | Generated active race plan | Implemented | D-030 | One active race/plan, deterministic template generation; recorded runs survive regeneration. |
 | Preferred run days | Implemented | D-031 | Explicit user-triggered plan reshaping; never autonomous. |
 | Availability calendar | Implemented | D-032 | Calendar can identify conflicts/propose moves; user accepts every plan change. Uses `api/calendar.ts` when CORS requires it. |
+| Settings sheet in the bottom bar | Implemented | D-041 | Race, Run Days, Availability, Run Data and Reset Plan in one place. Not a fourth destination. |
+| Chosen plan start date | Implemented | D-042 | Optional `RacePlanSetup.startDate`; absent still derives the start from the race, so no migration. |
 
 Current AppState on the UI-8 branch is **schema version 9**.
 

@@ -6,6 +6,7 @@ import {
   longRunLadder,
   mondayOf,
   plannedWeeks,
+  planStartDate,
   RacePlanError,
   spreadDays,
   weeksAvailable,
@@ -64,6 +65,64 @@ describe("plannedWeeks", () => {
     expect(plannedWeeks("half", "2025-01-01", "2026-12-05")).toBe(
       DISTANCE_PROFILES.half.maxWeeks,
     );
+  });
+
+  it("takes a chosen start date at its word, over and under the template", () => {
+    // The runner said when training begins; that is not a guess to clamp.
+    expect(plannedWeeks("half", "2026-09-07", "2026-12-05", "2026-11-16")).toBe(3);
+    expect(plannedWeeks("half", "2026-09-07", "2026-12-05", "2026-06-01")).toBe(
+      weeksAvailable("2026-06-01", "2026-12-05"),
+    );
+  });
+});
+
+describe("planStartDate", () => {
+  it("derives a Monday from the race when nothing is chosen", () => {
+    expect(planStartDate("half", "2026-08-10", "2026-12-05")).toBe("2026-08-10");
+  });
+
+  it("snaps a chosen date back to the Monday of its week", () => {
+    // Training weeks run Monday to Sunday, so a Wednesday start would give the
+    // plan a first week that was not a week.
+    expect(planStartDate("half", "2026-08-10", "2026-12-05", "2026-09-09")).toBe(
+      "2026-09-07",
+    );
+  });
+});
+
+describe("a plan that starts when the runner says", () => {
+  it("begins on the chosen Monday and still ends on race day", () => {
+    const plan = generateTrainingPlan(
+      setupFor({ startDate: "2026-09-07" }),
+      { today: "2026-08-10" },
+    );
+
+    expect(plan.startDate).toBe("2026-09-07");
+    expect(plan.weeks).toHaveLength(13);
+    expect(plan.weeks.at(-1)!.workouts.some((w) => w.type === "race")).toBe(true);
+  });
+
+  it("can start before today, so a runner mid-training lines the weeks up", () => {
+    const plan = generateTrainingPlan(
+      setupFor({ startDate: "2026-06-01" }),
+      { today: "2026-08-10" },
+    );
+
+    expect(plan.startDate).toBe("2026-06-01");
+    // Every date the plan covers still holds exactly one workout.
+    const dates = plan.weeks.flatMap((week) =>
+      week.workouts.map((workout) => workout.date),
+    );
+    expect(new Set(dates).size).toBe(dates.length);
+    expect(dates.length).toBe(plan.weeks.length * 7);
+  });
+
+  it("refuses a start after race week rather than building a plan without a race", () => {
+    expect(() =>
+      generateTrainingPlan(setupFor({ startDate: "2026-12-14" }), {
+        today: "2026-08-10",
+      }),
+    ).toThrow(RacePlanError);
   });
 });
 

@@ -27,7 +27,7 @@ Older pre-UI-7 documents are historical context where they conflict with the cur
 - Product name: `STACK`
 - Tagline: `Build your race.`
 - Mobile-first and dark-only
-- Three persistent tabs only: Today, Build, Plan
+- Three persistent tabs only: Today, Build, Plan. The bottom bar also carries a `Settings` control, which opens a sheet over whichever tab is current and is never `aria-current` (D-041); that is not a fourth destination and does not license one.
 - One active race/plan at a time
 - Plan is manually editable; no adaptive coaching engine
 - Both scheduled and extra runs are first-class actual activities

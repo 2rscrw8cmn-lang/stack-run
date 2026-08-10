@@ -7,6 +7,7 @@ import { formatDateLabel } from "../../domain/dates";
 import {
   DISTANCE_PROFILES,
   generateTrainingPlan,
+  mondayOf,
   plannedWeeks,
   planStartDate,
   RACE_DISTANCE_ORDER,
@@ -59,17 +60,45 @@ export function RaceSetupSheet({
     setup?.distance ?? "half",
   );
   const [level, setLevel] = useState<RunnerLevel>(setup?.level ?? "novice");
+  /**
+   * Null while the runner has not said, so the suggested start keeps following
+   * the distance and the race date. The moment they pick one it stops moving
+   * under them, which is the whole point of being able to pick one.
+   */
+  const [chosenStart, setChosenStart] = useState<string | null>(
+    setup?.startDate ?? null,
+  );
 
   const profile = DISTANCE_PROFILES[distance];
   const validDate = ISO_DATE.test(date);
   const available = validDate ? weeksAvailable(today, date) : 0;
-  const weeks = validDate ? plannedWeeks(distance, today, date) : 0;
-  const startDate = validDate ? planStartDate(distance, today, date) : "";
-  // A race further out than the template stretches starts later than today.
-  const startsLater = validDate && startDate > today;
   const isPast = validDate && available < 1;
-  const isTight = !isPast && weeks < profile.minWeeks;
-  const canGenerate = validDate && !isPast && name.trim().length > 0;
+
+  const suggestedStart = validDate ? planStartDate(distance, today, date) : "";
+  const validStart = chosenStart === null || ISO_DATE.test(chosenStart);
+  const startField = chosenStart ?? suggestedStart;
+  // Training weeks run Monday to Sunday, so a chosen Wednesday means the
+  // Monday of that week. Say the date the plan will actually begin on.
+  const startsAfterRace =
+    validDate && validStart && !!chosenStart && mondayOf(chosenStart) > mondayOf(date);
+  const startDate =
+    validDate && validStart && !startsAfterRace
+      ? planStartDate(distance, today, date, chosenStart ?? undefined)
+      : "";
+  const weeks = startDate
+    ? plannedWeeks(distance, today, date, chosenStart ?? undefined)
+    : 0;
+
+  // A race further out than the template stretches starts later than today.
+  const startsLater = Boolean(startDate) && startDate > today;
+  const startsInThePast = Boolean(startDate) && startDate < mondayOf(today);
+  const isTight = !isPast && Boolean(startDate) && weeks < profile.minWeeks;
+  const canGenerate =
+    validDate &&
+    !isPast &&
+    validStart &&
+    !startsAfterRace &&
+    name.trim().length > 0;
 
   // Every recorded run survives a rebuild, scheduled or extra, so the count
   // that matters here is all of them.
@@ -81,6 +110,7 @@ export function RaceSetupSheet({
       date,
       distance,
       level,
+      ...(chosenStart ? { startDate: mondayOf(chosenStart) } : {}),
     };
     onGenerate(
       chosen,
@@ -111,6 +141,40 @@ export function RaceSetupSheet({
             onChange={(event) => setDate(event.target.value)}
           />
         </FormField>
+
+        <FormField
+          label="Start training"
+          hint={
+            startDate && startDate !== startField
+              ? `Training weeks run Monday to Sunday, so this plan begins ${formatDateLabel(startDate)}.`
+              : chosenStart
+                ? undefined
+                : "Suggested from the race. Change it to start on a different week."
+          }
+          error={
+            startsAfterRace
+              ? "Training has to start before race day."
+              : undefined
+          }
+        >
+          <input
+            className="run-input"
+            type="date"
+            value={startField}
+            max={date}
+            onChange={(event) => setChosenStart(event.target.value)}
+          />
+        </FormField>
+
+        {chosenStart !== null && chosenStart !== suggestedStart && (
+          <button
+            type="button"
+            className="race-setup__reset-start"
+            onClick={() => setChosenStart(null)}
+          >
+            Use the suggested start
+          </button>
+        )}
 
         <fieldset className="race-setup__group">
           <legend className="race-setup__legend">Distance</legend>
@@ -152,7 +216,7 @@ export function RaceSetupSheet({
           </ul>
         </fieldset>
 
-        {validDate && !isPast && (
+        {validDate && !isPast && startDate && (
           <div className="race-setup__preview">
             <p className="race-setup__summary">
               {`${weeks} ${weeks === 1 ? "week" : "weeks"}, ${formatDateLabel(startDate)} to ${formatDateLabel(date)}: `}
@@ -161,9 +225,15 @@ export function RaceSetupSheet({
               {`${profile.taperWeeks}-week taper.`}
             </p>
 
-            {startsLater && (
+            {startsLater && !chosenStart && (
               <p className="race-setup__kept">
                 {`The race is further out than a ${profile.label.toLowerCase()} plan needs, so training starts ${formatDateLabel(startDate)} rather than now.`}
+              </p>
+            )}
+
+            {startsInThePast && (
+              <p className="race-setup__kept">
+                {`This plan begins before today, so its first weeks are already behind you.`}
               </p>
             )}
 

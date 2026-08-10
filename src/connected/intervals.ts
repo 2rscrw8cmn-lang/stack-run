@@ -205,6 +205,12 @@ const CONTEXT_FAILURE: Record<ReadContext, string> = {
   detail: "Run detail could not be loaded",
 };
 
+/** Said for both the 404 and the 200-that-is-really-the-app's-own-HTML. */
+const NO_READER: Record<ReadContext, string> = {
+  sync: `${CONTEXT_FAILURE.sync}: this deployment has no /api/intervals reader. Redeploy STACK so the Run Data function ships with the app.`,
+  detail: `${CONTEXT_FAILURE.detail}: this deployment has no /api/intervals reader. Redeploy STACK so the Run Data function ships with the app.`,
+};
+
 interface ReaderError {
   error?: unknown;
   message?: unknown;
@@ -257,7 +263,7 @@ async function describeFailure(response: Response, context: ReadContext): Promis
   // No code, so this is not the reader answering. The status is all there is.
   if (response.status === 401) return "That sync token was not accepted. It has to match STACK_SYNC_TOKEN in Vercel exactly.";
   if (response.status === 429) return rateLimited;
-  if (response.status === 404) return `${CONTEXT_FAILURE[context]}: this deployment has no /api/intervals reader. Redeploy STACK so the Run Data function ships with the app.`;
+  if (response.status === 404) return NO_READER[context];
   return `${CONTEXT_FAILURE[context]} (HTTP ${response.status}${text(body?.message) ? `: ${text(body?.message)}` : ""}).`;
 }
 
@@ -270,7 +276,17 @@ async function read(params: URLSearchParams, token: string, context: ReadContext
     throw new Error(`${CONTEXT_FAILURE[context]}. Check this device's connection and try again.`);
   }
   if (!response.ok) throw new Error(await describeFailure(response, context));
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    /**
+     * A 200 that is not JSON is a static host answering `/api/intervals` with
+     * the app's own HTML, which is what an undeployed function looks like from
+     * here. Left alone it reaches the screen as `Unexpected token '<'`, which
+     * names a parser rather than the thing to go and fix.
+     */
+    throw new Error(NO_READER[context]);
+  }
 }
 
 export async function fetchIntervals(resource: "status" | "activities", token: string, range?: { oldest: string; newest: string }): Promise<unknown> {

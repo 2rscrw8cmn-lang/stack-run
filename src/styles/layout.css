@@ -4,13 +4,12 @@
   min-height: 100dvh;
 }
 
+/* Nothing but the brand stands here. The one control that used to share the
+   row wrapped onto two lines on a phone, and it belonged in Settings. */
 .app-shell__header {
   padding: max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
-    var(--space-4);
+    var(--space-3);
 }
-.app-shell__header { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 640px; margin-inline: auto; }
-.app-shell__header > .brand { margin: 0; width: auto; }
-.run-data-trigger { min-height: 44px; }
 
 /* The header, the content and the nav share one column on a wide screen. */
 .app-shell__header > .brand,
@@ -29,8 +28,12 @@
 .app-shell__nav {
   position: sticky;
   bottom: 0;
+  z-index: 1;
   border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
+  /* Slightly translucent over the page, so content scrolling under the bar
+     reads as going behind it rather than stopping at it. */
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  backdrop-filter: blur(12px);
   /* Clear of the iPhone home indicator without floating above it on anything
      that has no inset to report. */
   padding-bottom: env(safe-area-inset-bottom);

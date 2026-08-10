@@ -393,12 +393,43 @@ STACK Plan → Intervals.icu → HealthFit
 
 That requires explicit ownership/conflict rules, external ids, rollback behavior and a separate security review.
 
+## D-041 — Settings is a sheet in the bottom bar, not a fourth tab
+
+**Decision:** The bottom bar carries a fourth control, `Settings`, which opens a sheet listing Race, Run Days, Availability, Run Data and Reset Plan. Today / Build / Plan remain the only persistent destinations.
+
+**Reason:** Those five things were a grid of look-alike buttons under eighteen weeks of schedule, which is where a screen ends rather than where settings live, and Run Data was a header button that wrapped onto two lines on a phone. The user asked for one place to keep them.
+
+Rules:
+
+- The control opens a dialog. It is never `aria-current`, it carries `aria-haspopup="dialog"` and `aria-expanded`, and a hairline separates it from the three destinations.
+- Nothing in Settings is a new capability: each row opens the sheet that already existed.
+- Each row states what that setting is currently set to, so the list answers most of its own questions without being opened.
+- Dismissing a sheet opened from Settings returns to Settings; committing a change closes both, because the point of the change is to see it.
+
+**Does not revise the three-destination rule.** A sheet is not a destination: it opens over whichever of the three the user is already on, and closing it leaves them there.
+
+## D-042 — The runner may say when training starts
+
+**Decision:** `RacePlanSetup` gains an optional `startDate`. When set, the plan runs from the Monday of that week to race day; when absent, the start is derived from the race exactly as before.
+
+**Reason:** The start was derived only, so a runner who is already mid-training, or who wants a plan to begin on a particular week, could not line the weeks up with their real training.
+
+Rules:
+
+- A chosen date is snapped back to its Monday, because training weeks run Monday to Sunday.
+- A chosen date is taken at its word, over and under the template's week range: the runner said, and the template is a suggestion.
+- A start before today is allowed, and the sheet says the first weeks are already behind you.
+- A start after race week is refused, in the sheet and in `generateTrainingPlan`.
+- The field is prefilled with the derived suggestion and keeps following the distance and the race date until the runner changes it.
+- Absent means "derive it", which is what every stored setup already means, so this needed no schema migration.
+
 ## Active implementation order
 
 Implemented:
 
 - UI-0 through UI-7
 - D-018 through D-032
+- D-041 and D-042
 
 Next approved program:
 

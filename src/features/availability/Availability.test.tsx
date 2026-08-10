@@ -6,6 +6,7 @@ import { CalendarFetchError } from "../../domain/calendarSource";
 import { findWorkout } from "../../domain/planEdit";
 import type { TrainingPlan } from "../../domain/types";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
+import { OpenSettings } from "../../test/OpenSettings";
 import { PlanScreen } from "../plan/PlanScreen";
 
 const plan = loadSeedPlan();
@@ -52,8 +53,27 @@ function stubFetch(result: string | Error) {
   });
 }
 
-function renderPlan(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
+/**
+ * Importing a calendar is a setting and lives in Settings; what the imported
+ * days do to the schedule is Plan's, and still lives there. Two surfaces, two
+ * helpers.
+ */
+function renderPlan(props: Partial<Parameters<typeof OpenSettings>[0]> = {}) {
   const onSaveAvailability = vi.fn();
+  const user = userEvent.setup();
+  const utils = render(
+    <OpenSettings
+      plan={plan}
+      runLogs={[]}
+      today="2026-08-01"
+      onSaveAvailability={onSaveAvailability}
+      {...props}
+    />,
+  );
+  return { onSaveAvailability, user, ...utils };
+}
+
+function renderSchedule(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
   const onEditPlan = vi.fn();
   const user = userEvent.setup();
   const utils = render(
@@ -62,18 +82,17 @@ function renderPlan(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
       runLogs={[]}
       today="2026-08-01"
       onEditPlan={onEditPlan}
-      onSaveAvailability={onSaveAvailability}
       {...props}
     />,
   );
-  return { onSaveAvailability, onEditPlan, user, ...utils };
+  return { onEditPlan, user, ...utils };
 }
 
 describe("importing a calendar", () => {
   it("reads a pasted calendar and lists its shifts to choose from", async () => {
     const { user, onSaveAvailability } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.type(screen.getByLabelText(/Calendar link/), ICS);
     await user.click(screen.getByRole("button", { name: "Import" }));
 
@@ -98,7 +117,7 @@ describe("importing a calendar", () => {
   it("explains a file it cannot read instead of failing quietly", async () => {
     const { user, onSaveAvailability } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.type(screen.getByLabelText(/Calendar link/), "just some text");
     await user.click(screen.getByRole("button", { name: "Import" }));
 
@@ -112,7 +131,7 @@ describe("importing a calendar", () => {
     // fallback for the person who has already been let down once.
     const { user, onSaveAvailability } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     const picker = screen.getByLabelText(/choose a downloaded file/);
     expect(picker).not.toHaveAttribute("accept");
 
@@ -133,7 +152,7 @@ describe("importing a calendar", () => {
     const fetchIcs = stubFetch(ICS);
     const { user, onSaveAvailability } = renderPlan({ fetchIcs });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.upload(
       screen.getByLabelText(/choose a downloaded file/),
       new File(["https://app.example.com/ical?key=abc\n"], "text", { type: "" }),
@@ -152,7 +171,7 @@ describe("importing a calendar", () => {
   it("names a chosen file's calendar after the file", async () => {
     const { user, onSaveAvailability } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.upload(
       screen.getByLabelText(/choose a downloaded file/),
       new File([ICS], "Sarah shifts.ics", { type: "text/calendar" }),
@@ -168,7 +187,7 @@ describe("importing a calendar", () => {
     const fetchIcs = stubFetch(ICS);
     const { user, onSaveAvailability } = renderPlan({ fetchIcs });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.type(
       screen.getByLabelText(/Calendar link/),
       "https://app.example.com/ical?key=abc",
@@ -188,7 +207,7 @@ describe("importing a calendar", () => {
     const fetchIcs = stubFetch(ICS);
     const { user } = renderPlan({ fetchIcs });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.type(
       screen.getByLabelText(/Calendar link/),
       "webcal://example.com/x.ics",
@@ -206,7 +225,7 @@ describe("importing a calendar", () => {
     );
     const { user, onSaveAvailability } = renderPlan({ fetchIcs });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.type(
       screen.getByLabelText(/Calendar link/),
       "https://app.example.com/ical?key=abc",
@@ -230,7 +249,7 @@ describe("importing a calendar", () => {
       }),
     });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     expect(
       screen.getByText("https://app.example.com/ical?key=abc"),
     ).toBeInTheDocument();
@@ -250,7 +269,7 @@ describe("importing a calendar", () => {
       }),
     });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.click(screen.getByRole("button", { name: "Forget Link" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -264,7 +283,7 @@ describe("importing a calendar", () => {
       availability: calendarOf(),
     });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.click(screen.getByLabelText("Use this calendar"));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -279,7 +298,7 @@ describe("importing a calendar", () => {
       availability: calendarOf(),
     });
 
-    await user.click(screen.getByRole("button", { name: "Availability" }));
+    await user.click(screen.getByRole("button", { name: /^Availability/ }));
     await user.click(screen.getByRole("button", { name: "Remove Calendar" }));
 
     expect(onSaveAvailability).toHaveBeenCalledWith(null);
@@ -289,7 +308,7 @@ describe("importing a calendar", () => {
 
 describe("blocked days on the schedule", () => {
   it("marks a blocked run day, and shows the hours rather than the shift", () => {
-    renderPlan({
+    renderSchedule({
       availability: calendarOf({
         shifts: [
           { date: "2026-08-04", label: "CCM ORMC APP Day 1R", startTime: "06:00", endTime: "18:00" },
@@ -311,7 +330,7 @@ describe("blocked days on the schedule", () => {
   });
 
   it("says all day when the shift has no hours", () => {
-    renderPlan({ availability: calendarOf() });
+    renderSchedule({ availability: calendarOf() });
 
     expect(screen.getByText("Blocked all day")).toBeInTheDocument();
     // Night Float was not marked as blocking, so Saturday is an ordinary day.
@@ -321,7 +340,7 @@ describe("blocked days on the schedule", () => {
   });
 
   it("leaves rest days unmarked: nothing is owed, so nothing is in the way", () => {
-    renderPlan({
+    renderSchedule({
       availability: calendarOf({
         // Aug 3 and Aug 5 are rest days in week 1; Aug 4 asks for a run.
         shifts: [
@@ -336,7 +355,7 @@ describe("blocked days on the schedule", () => {
   });
 
   it("marks nothing while the calendar is switched off", () => {
-    renderPlan({ availability: calendarOf({ enabled: false }) });
+    renderSchedule({ availability: calendarOf({ enabled: false }) });
 
     expect(
       screen.queryByRole("button", { name: /blocked by/ }),
@@ -347,7 +366,7 @@ describe("blocked days on the schedule", () => {
 
 describe("reviewing blocked days", () => {
   it("proposes a move and applies only the ones accepted", async () => {
-    const { user, onEditPlan } = renderPlan({ availability: calendarOf() });
+    const { user, onEditPlan } = renderSchedule({ availability: calendarOf() });
 
     await user.click(screen.getByText("1 run lands on a blocked day"));
 
@@ -365,7 +384,7 @@ describe("reviewing blocked days", () => {
   });
 
   it("keeps the review open so several conflicts can be worked through", async () => {
-    const { user } = renderPlan({
+    const { user } = renderSchedule({
       availability: calendarOf({ blockingLabels: ["MICU Day", "Night Float"] }),
     });
 
@@ -380,7 +399,7 @@ describe("reviewing blocked days", () => {
   });
 
   it("says so plainly when a week has no free day left", async () => {
-    const { user } = renderPlan({
+    const { user } = renderSchedule({
       availability: calendarOf({
         shifts: [
           // Every rest day in week 1, plus the day of the run itself.
@@ -399,7 +418,7 @@ describe("reviewing blocked days", () => {
   });
 
   it("offers no banner when the blocked days are all rest days anyway", () => {
-    renderPlan({
+    renderSchedule({
       availability: calendarOf({
         shifts: [
           // Monday Aug 3 is already a rest day, so nothing has to move.

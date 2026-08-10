@@ -138,6 +138,14 @@ export interface RacePlanSetup {
   date: string;
   distance: RaceDistance;
   level: RunnerLevel;
+  /**
+   * The day training begins, chosen by the runner.
+   *
+   * Absent means "work it out from the race", which is what every plan built
+   * before this field existed did. A stored setup without one therefore keeps
+   * behaving exactly as it did, which is why this needed no migration.
+   */
+  startDate?: string;
 }
 
 export class RacePlanError extends Error {
@@ -176,12 +184,22 @@ export function weeksAvailable(today: string, raceDate: string): number {
   return Math.round((last - first) / week) + 1;
 }
 
-/** The weeks a plan will actually have: what is available, within the template's range. */
+/**
+ * The weeks a plan will actually have.
+ *
+ * A chosen start date is taken at its word: the runner said when training
+ * begins, and the weeks between that and race day are the plan. Without one it
+ * is what is available from today, within the template's range.
+ */
 export function plannedWeeks(
   distance: RaceDistance,
   today: string,
   raceDate: string,
+  startDate?: string,
 ): number {
+  if (startDate) {
+    return Math.max(1, weeksAvailable(startDate, raceDate));
+  }
   const profile = DISTANCE_PROFILES[distance];
   const available = weeksAvailable(today, raceDate);
   return Math.max(1, Math.min(available, profile.maxWeeks));
@@ -190,15 +208,24 @@ export function plannedWeeks(
 /**
  * The Monday the plan begins on.
  *
- * Not necessarily this week: a race further out than the template stretches
- * starts later, because a 10K eight months away does not want an eight-month
- * 10K plan. The screen that offers this has to say so.
+ * A chosen date is snapped back to its Monday, because training weeks run
+ * Monday to Sunday and a plan that began on a Wednesday would have a first
+ * week that was not a week.
+ *
+ * Without a chosen date this is derived, and not necessarily this week: a race
+ * further out than the template stretches starts later, because a 10K eight
+ * months away does not want an eight-month 10K plan. The screen that offers
+ * this has to say so.
  */
 export function planStartDate(
   distance: RaceDistance,
   today: string,
   raceDate: string,
+  startDate?: string,
 ): string {
+  if (startDate) {
+    return mondayOf(startDate);
+  }
   const weeks = plannedWeeks(distance, today, raceDate);
   return addDaysToLocalDate(mondayOf(raceDate), -7 * (weeks - 1));
 }
@@ -372,10 +399,18 @@ export function generateTrainingPlan(
   options: { today: string; runDays?: readonly Weekday[] },
 ): TrainingPlan {
   const profile = DISTANCE_PROFILES[setup.distance];
-  const weeks = plannedWeeks(setup.distance, options.today, setup.date);
   if (weeksAvailable(options.today, setup.date) < 1) {
     throw new RacePlanError("That race date has already passed.");
   }
+  if (setup.startDate && mondayOf(setup.startDate) > mondayOf(setup.date)) {
+    throw new RacePlanError("Training cannot start after race week.");
+  }
+  const weeks = plannedWeeks(
+    setup.distance,
+    options.today,
+    setup.date,
+    setup.startDate,
+  );
 
   const allowed = [...(options.runDays?.length ? options.runDays : EVERY_DAY)].sort(
     (a, b) => orderOf(a) - orderOf(b),
@@ -384,8 +419,12 @@ export function generateTrainingPlan(
   const taper = taperWeeksFor(setup.distance, weeks);
   const levelNumbers = profile.levels[setup.level];
 
-  const raceMonday = mondayOf(setup.date);
-  const firstMonday = addDaysToLocalDate(raceMonday, -7 * (weeks - 1));
+  const firstMonday = planStartDate(
+    setup.distance,
+    options.today,
+    setup.date,
+    setup.startDate,
+  );
 
   let sequence = 0;
   const nextId = () => `workout-${String(++sequence).padStart(3, "0")}`;

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { relinkRunLogs } from "../../domain/racePlan";
 import type { RunLog, TrainingPlan } from "../../domain/types";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { PlanScreen } from "./PlanScreen";
+import { OpenSettings } from "../../test/OpenSettings";
 
 const plan = loadSeedPlan();
 
@@ -27,11 +27,12 @@ function runLogFor(
   };
 }
 
-function renderPlan(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
+/** Race setup is reached from Settings, which the bottom bar opens. */
+function renderPlan(props: Partial<Parameters<typeof OpenSettings>[0]> = {}) {
   const onGeneratePlan = vi.fn();
   const user = userEvent.setup();
   const utils = render(
-    <PlanScreen
+    <OpenSettings
       plan={plan}
       runLogs={[]}
       today="2026-08-10"
@@ -46,7 +47,7 @@ describe("setting up the race", () => {
   it("opens on the plan's own race and says what a plan would look like", async () => {
     const { user } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
 
     expect(screen.getByLabelText("Race name")).toHaveValue("OUC Half Marathon");
     expect(screen.getByLabelText("Race date")).toHaveValue("2026-12-05");
@@ -63,7 +64,7 @@ describe("setting up the race", () => {
   it("says when a race is so far out that training starts later", async () => {
     const { user } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
     await user.click(screen.getByRole("button", { name: "5K" }));
 
     // A 5K in December does not want a seventeen-week plan.
@@ -73,7 +74,7 @@ describe("setting up the race", () => {
   it("builds a plan that ends on race day", async () => {
     const { user, onGeneratePlan } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
     await user.click(screen.getByRole("button", { name: /Build Plan/ }));
 
     const [setup, generated] = onGeneratePlan.mock.calls[0] as [
@@ -91,7 +92,7 @@ describe("setting up the race", () => {
   it("follows the distance and the level", async () => {
     const { user, onGeneratePlan } = renderPlan();
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
     await user.click(screen.getByRole("button", { name: "Marathon" }));
     await user.click(screen.getByRole("button", { name: /Advanced/ }));
     await user.click(screen.getByRole("button", { name: /Build Plan/ }));
@@ -112,7 +113,7 @@ describe("setting up the race", () => {
   it("only schedules runs on the days the runner said they run", async () => {
     const { user, onGeneratePlan } = renderPlan({ runDays: [1, 3, 5] });
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
     await user.click(screen.getByRole("button", { name: /Build Plan/ }));
 
     const generated = onGeneratePlan.mock.calls[0][1] as TrainingPlan;
@@ -128,7 +129,7 @@ describe("setting up the race", () => {
   it("warns when the race is too close for the distance, without refusing", async () => {
     const { user } = renderPlan({ today: "2026-11-16" });
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
     await user.click(screen.getByRole("button", { name: "Marathon" }));
 
     expect(screen.getByText(/usually wants at least 12 weeks/)).toBeInTheDocument();
@@ -138,10 +139,81 @@ describe("setting up the race", () => {
   it("refuses a date that has already gone", async () => {
     const { user } = renderPlan({ today: "2026-12-20" });
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
 
     expect(screen.getByText("That date has already passed.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Build Plan/ })).toBeDisabled();
+  });
+
+  it("suggests a start date and follows the race until the runner changes it", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    expect(screen.getByLabelText("Start training")).toHaveValue("2026-08-10");
+
+    // A 5K in December starts much later, and the suggestion keeps up.
+    await user.click(screen.getByRole("button", { name: "5K" }));
+    expect(screen.getByLabelText("Start training")).toHaveValue("2026-09-14");
+  });
+
+  it("builds from a chosen start date, and stops suggesting one", async () => {
+    const { user, onGeneratePlan } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.clear(screen.getByLabelText("Start training"));
+    await user.type(screen.getByLabelText("Start training"), "2026-09-07");
+    // Changing the distance no longer moves it: the runner has said.
+    await user.click(screen.getByRole("button", { name: "10K" }));
+    expect(screen.getByLabelText("Start training")).toHaveValue("2026-09-07");
+
+    expect(screen.getByText(/13 weeks, Mon, Sep 7 to Sat, Dec 5/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const [setup, generated] = onGeneratePlan.mock.calls[0] as [
+      { startDate?: string },
+      TrainingPlan,
+    ];
+    expect(setup.startDate).toBe("2026-09-07");
+    expect(generated.startDate).toBe("2026-09-07");
+    expect(generated.weeks).toHaveLength(13);
+  });
+
+  it("says which Monday a mid-week start really begins on", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.clear(screen.getByLabelText("Start training"));
+    await user.type(screen.getByLabelText("Start training"), "2026-09-09");
+
+    expect(
+      screen.getByText(/Training weeks run Monday to Sunday, so this plan begins Mon, Sep 7/),
+    ).toBeInTheDocument();
+  });
+
+  it("refuses a start after race day", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.clear(screen.getByLabelText("Start training"));
+    await user.type(screen.getByLabelText("Start training"), "2026-12-14");
+
+    expect(
+      screen.getByText("Training has to start before race day."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Build Plan/ })).toBeDisabled();
+  });
+
+  it("gives the suggested start back", async () => {
+    const { user } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.clear(screen.getByLabelText("Start training"));
+    await user.type(screen.getByLabelText("Start training"), "2026-09-07");
+    await user.click(
+      screen.getByRole("button", { name: "Use the suggested start" }),
+    );
+
+    expect(screen.getByLabelText("Start training")).toHaveValue("2026-08-10");
   });
 
   it("says what will happen to the runs already recorded", async () => {
@@ -149,7 +221,7 @@ describe("setting up the race", () => {
       runLogs: [runLogFor("workout-002", "2026-08-04")],
     });
 
-    await user.click(screen.getByRole("button", { name: "Race" }));
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
 
     expect(
       screen.getByText(/1 recorded run keeps its miles and its block/),

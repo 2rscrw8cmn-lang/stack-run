@@ -17,8 +17,7 @@ import type { IntervalsCandidate } from "../connected/intervals";
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
 import { TrendsSheet } from "../features/trends/TrendsSheet";
-import { Button } from "../components/ui/Button";
-import { Database } from "lucide-react";
+import { SettingsSheet } from "../features/settings/SettingsSheet";
 import { useState } from "react";
 
 interface AppShellProps {
@@ -86,10 +85,15 @@ export function AppShell({
   const [review, setReview] = useState<RunDataReview | null>(null);
   const [runDataVisit, setRunDataVisit] = useState(0);
   const [trendsOpen, setTrendsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Run Data is reached from Today and from Settings. Dismissing it should go
+  // back wherever it was opened from, so which one that was is remembered.
+  const [runDataFromSettings, setRunDataFromSettings] = useState(false);
 
-  function openRunData(next: RunDataReview | null) {
+  function openRunData(next: RunDataReview | null, fromSettings = false) {
     setReview(next);
     setRunDataVisit((visit) => visit + 1);
+    setRunDataFromSettings(fromSettings);
     setRunDataOpen(true);
   }
   return (
@@ -98,13 +102,14 @@ export function AppShell({
         The brand is a small standing lockup rather than a headline. Each
         screen leads with the thing it is actually about — the date, the miles,
         the week — so nothing on any screen has to be titled with its own name.
+        Nothing else belongs up here: the one action that used to share the row
+        wrapped onto two lines on a phone, and it is a setting anyway.
       */}
       <header className="app-shell__header">
         <div className="brand">
           <StackMark size={22} />
           <p className="wordmark">STACK</p>
         </div>
-        <Button className="run-data-trigger" variant="ghost" icon={<Database size={17}/>} onClick={() => openRunData(null)}>Run Data</Button>
       </header>
       {notice}
       <main className="app-shell__main">
@@ -152,27 +157,66 @@ export function AppShell({
           <PlanScreen
             plan={plan}
             runLogs={runLogs}
-            blockPlacements={blockPlacements}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
-            onResetPlan={onResetPlan}
             availability={availability}
-            onSaveAvailability={onSaveAvailability}
-            runDays={runDays}
-            onSaveRunDays={onSaveRunDays}
-            raceSetup={raceSetup}
-            onGeneratePlan={onGeneratePlan}
             onViewTrends={() => setTrendsOpen(true)}
             syncToken={syncToken}
           />
         )}
       </main>
       <nav className="app-shell__nav" aria-label="Primary">
-        <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          onOpenSettings={() => setSettingsOpen(true)}
+          isSettingsOpen={settingsOpen}
+        />
       </nav>
+      <SettingsSheet
+        isOpen={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        plan={plan}
+        runLogs={runLogs}
+        blockPlacements={blockPlacements}
+        today={todayLocalDate()}
+        raceSetup={raceSetup}
+        onGeneratePlan={onGeneratePlan}
+        runDays={runDays}
+        onSaveRunDays={onSaveRunDays}
+        availability={availability}
+        onSaveAvailability={onSaveAvailability}
+        onResetPlan={onResetPlan}
+        onOpenRunData={() => openRunData(null, true)}
+        isConnected={Boolean(syncToken)}
+        lastSyncedAt={appState.intervalsSync.lastSuccessfulActivitySyncAt}
+      />
       <TrendsSheet plan={plan} runLogs={runLogs} today={todayLocalDate()} isOpen={trendsOpen} onClose={() => setTrendsOpen(false)} />
-      <RunDataSheet key={runDataVisit} isOpen={runDataOpen} onClose={() => setRunDataOpen(false)} state={appState} initialToken={syncToken} initialReview={review} candidates={connectedSync.candidates} isSyncing={connectedSync.status === "syncing"} syncError={connectedSync.error} onSync={connectedSync.sync} onSettle={connectedSync.settle} onConnect={onConnectIntervals} onForget={onForgetIntervals} onImport={onImportIntervals} onAttach={onAttachIntervals} onIgnore={onIgnoreIntervals} onClearIgnored={onClearIgnoredIntervals}/>
+      <RunDataSheet
+        key={runDataVisit}
+        isOpen={runDataOpen}
+        onClose={() => {
+          setRunDataOpen(false);
+          if (runDataFromSettings) {
+            setSettingsOpen(true);
+          }
+        }}
+        state={appState}
+        initialToken={syncToken}
+        initialReview={review}
+        candidates={connectedSync.candidates}
+        isSyncing={connectedSync.status === "syncing"}
+        syncError={connectedSync.error}
+        onSync={connectedSync.sync}
+        onSettle={connectedSync.settle}
+        onConnect={onConnectIntervals}
+        onForget={onForgetIntervals}
+        onImport={onImportIntervals}
+        onAttach={onAttachIntervals}
+        onIgnore={onIgnoreIntervals}
+        onClearIgnored={onClearIgnoredIntervals}
+      />
     </div>
   );
 }

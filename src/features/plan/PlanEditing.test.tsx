@@ -31,7 +31,6 @@ function runLogFor(workoutId: string): RunLog {
 
 function renderPlan(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
   const onEditPlan = vi.fn();
-  const onResetPlan = vi.fn();
   const user = userEvent.setup();
   const utils = render(
     <PlanScreen
@@ -39,11 +38,10 @@ function renderPlan(props: Partial<Parameters<typeof PlanScreen>[0]> = {}) {
       runLogs={[]}
       today="2026-08-06"
       onEditPlan={onEditPlan}
-      onResetPlan={onResetPlan}
       {...props}
     />,
   );
-  return { onEditPlan, onResetPlan, user, ...utils };
+  return { onEditPlan, user, ...utils };
 }
 
 /** The plan handed to onEditPlan by the last call. */
@@ -332,33 +330,5 @@ describe("race day", () => {
   });
 });
 
-describe("resetting the plan", () => {
-  it("needs two deliberate steps", async () => {
-    const { user, onResetPlan } = renderPlan({
-      runLogs: [runLogFor("workout-002")],
-    });
-
-    await user.click(screen.getByRole("button", { name: "Reset Plan" }));
-    const sheet = screen.getByRole("dialog");
-    expect(within(sheet).getByText("1 recorded run")).toBeInTheDocument();
-
-    // The first press only arms it.
-    await user.click(within(sheet).getByRole("button", { name: "Reset Plan" }));
-    expect(onResetPlan).not.toHaveBeenCalled();
-
-    await user.click(
-      within(sheet).getByRole("button", { name: "Yes, Erase Everything" }),
-    );
-    expect(onResetPlan).toHaveBeenCalledTimes(1);
-  });
-
-  it("can be backed out of", async () => {
-    const { user, onResetPlan } = renderPlan();
-
-    await user.click(screen.getByRole("button", { name: "Reset Plan" }));
-    await user.click(screen.getByRole("button", { name: "Keep My Data" }));
-
-    expect(onResetPlan).not.toHaveBeenCalled();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-});
+// Resetting the plan moved to Settings; its tests moved with it, to
+// src/features/settings/Settings.test.tsx.
