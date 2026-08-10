@@ -1,215 +1,156 @@
 import { TrendingUp } from "lucide-react";
-import type { ReactNode } from "react";
-import { ProgressBar } from "../../components/ui/ProgressBar";
 import { Section } from "../../components/ui/Section";
-import { TrendColumns } from "../../components/charts/TrendColumns";
-import { TrendLine } from "../../components/charts/TrendLine";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatMiles } from "../../domain/distance";
-import type { RunLog, TrainingPlan } from "../../domain/types";
 import {
-  describeDirection,
-  DIRECTION_WORD,
-  PHYSIOLOGICAL_SIGNIFICANCE,
-  selectTrainingTrends,
+  meanValues,
+  selectTrainingSignals,
+  type TrainingSignalId,
 } from "../../domain/trends";
+import type { RunLog, TrainingPlan } from "../../domain/types";
+import { paceLabel } from "../trends/trendFormatting";
 
 interface TrendCardsProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
   today: string;
-  /** Opens the full Training Trends view, which every card is a way into. */
-  onViewTrends: () => void;
+  onOpenSignal: (signal: TrainingSignalId) => void;
 }
 
-interface Card {
-  key: string;
+interface SignalCard {
+  id: TrainingSignalId;
   title: string;
-  /** The one number this card is about, already formatted. */
   value: string;
-  /** A short phrase under the number: a period, a direction, a count. */
   note: string;
-  /** The drawing, when there is enough to draw. Always `aria-hidden`. */
-  chart: ReactNode | null;
 }
 
-function pace(secondsPerMile: number): string {
-  return `${Math.floor(secondsPerMile / 60)}:${String(Math.round(secondsPerMile) % 60).padStart(2, "0")} /mi`;
+function signed(value: number, suffix: string): string {
+  return `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value)}${suffix}`;
 }
 
-/**
- * Training Trends at the top of Runs, one measure per card.
- *
- * Runs is where a runner comes to look at what they have actually done, so the
- * trends belong on it rather than behind a link on it — the answer to "is this
- * working" should be visible on arrival. The cards are a swipeable row rather
- * than a stack because five of them stacked would push the run list off the
- * screen, and the list is still what this tab is for.
- *
- * Each card is a real button into the full view: the strip is a summary, and
- * the numbers behind it, the tables and the ranges all still live in the
- * sheet. Nothing here is stored or computed twice — every value comes from
- * `selectTrainingTrends`, the same selector the sheet reads.
- */
-export function TrendCards({ plan, runLogs, today, onViewTrends }: TrendCardsProps) {
-  const { weeklyMileage, longRuns, consistency, easyPace, easyHeartRate } =
-    selectTrainingTrends(plan, runLogs, today);
+/** Seven factual summaries, each opening only its own focused detail. */
+export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsProps) {
+  if (runLogs.length === 0) return null;
+  const signals = selectTrainingSignals(plan, runLogs, today);
+  const cards: SignalCard[] = [];
 
-  // Every card is a reading of actual runs, and consistency would otherwise
-  // open a runner's first visit with a 0%. Nothing recorded, nothing to read.
-  if (runLogs.length === 0) {
-    return null;
-  }
-
-  const cards: Card[] = [];
-
-  /**
-   * The most recent week that actually has miles in it, which early on a
-   * Monday is last week rather than this one. A card leading with `0 mi`
-   * because the week is two days old says nothing about the training.
-   */
-  const latestWeek = [...weeklyMileage].reverse().find((week) => week.miles > 0);
+  const latestWeek = [...signals.weeklyMileage].reverse().find((week) => week.actualMiles > 0);
   if (latestWeek) {
-    // The current week is still filling up, so its direction is read from the
-    // weeks that have finished.
-    const direction = describeDirection(
-      weeklyMileage
-        .filter((week) => !week.isCurrentWeek)
-        .map((week) => ({ date: week.startDate, value: week.miles })),
+    const index = signals.weeklyMileage.indexOf(latestWeek);
+    const baseline = meanValues(
+      signals.weeklyMileage
+        .slice(0, index)
+        .filter((week) => !week.isPartial && week.actualMiles > 0)
+        .slice(-4)
+        .map((week) => week.actualMiles),
     );
+    const delta = baseline === null ? null : Number((latestWeek.actualMiles - baseline).toFixed(1));
     cards.push({
-      key: "weekly-mileage",
-      title: "Weekly mileage",
-      value: `${formatMiles(latestWeek.miles)} mi`,
-      note: `Week ${latestWeek.weekNumber}${latestWeek.isCurrentWeek ? " so far" : ""}${
-        direction ? ` · ${DIRECTION_WORD[direction]}` : ""
-      }`,
-      chart:
-        weeklyMileage.length > 1 ? (
-          <TrendColumns
-            columns={weeklyMileage.map((week) => ({
-              label: String(week.weekNumber),
-              value: week.miles,
-              isPartial: week.isCurrentWeek,
-            }))}
-            formatValue={(value) => formatMiles(value)}
-          />
-        ) : null,
+      id: "weekly-mileage",
+      title: "Weekly Mileage",
+      value: `${formatMiles(latestWeek.actualMiles)} mi`,
+      note: delta === null
+        ? `Week ${latestWeek.weekNumber}${latestWeek.isPartial ? " so far" : ""}`
+        : `${signed(delta, "")} mi vs 4wk avg${latestWeek.isPartial ? " · so far" : ""}`,
     });
   }
 
-  const lastLongRun = longRuns[longRuns.length - 1];
-  if (lastLongRun) {
-    const direction = describeDirection(longRuns);
+  const latestLong = signals.longRuns.at(-1);
+  if (latestLong) {
+    const prior = signals.longRuns.at(-2);
+    const delta = prior ? Number((latestLong.value - prior.value).toFixed(1)) : null;
     cards.push({
-      key: "long-run",
-      title: "Long run",
-      value: `${formatMiles(lastLongRun.value)} mi`,
-      note: `${longRuns.length} recorded${direction ? ` · ${DIRECTION_WORD[direction]}` : ""}`,
-      chart:
-        longRuns.length > 1 ? (
-          <TrendLine
-            points={longRuns}
-            tone="long"
-            formatValue={(value) => `${formatMiles(value)} mi`}
-          />
-        ) : null,
+      id: "long-run",
+      title: "Long Run",
+      value: `${formatMiles(latestLong.value)} mi`,
+      note: delta === null ? "Most recent" : `${signed(delta, "")} mi from last`,
     });
   }
 
-  if (consistency.percentage !== null) {
+  const latestEasy = signals.easyRuns.at(-1);
+  if (latestEasy) {
+    const comparison = signals.recentEasy && signals.previousEasy
+      ? Math.round(signals.previousEasy.medianPace - signals.recentEasy.medianPace)
+      : null;
     cards.push({
-      key: "consistency",
+      id: "easy-pace",
+      title: "Easy Pace",
+      value: paceLabel(signals.recentEasy?.medianPace ?? latestEasy.paceSecondsPerMile),
+      note: comparison === null
+        ? `${signals.easyRuns.length} Easy ${signals.easyRuns.length === 1 ? "run" : "runs"}`
+        : comparison === 0
+          ? "Same as previous 4"
+          : `${Math.abs(comparison)} sec ${comparison > 0 ? "quicker" : "slower"} vs previous 4`,
+    });
+  }
+
+  const zoneTotal = signals.heartRateZones.zoneSeconds.reduce((sum, seconds) => sum + seconds, 0);
+  if (zoneTotal > 0) {
+    const dominantSeconds = Math.max(...signals.heartRateZones.zoneSeconds);
+    const dominantIndex = signals.heartRateZones.zoneSeconds.indexOf(dominantSeconds);
+    cards.push({
+      id: "hr-zones",
+      title: "HR Zones",
+      value: `${Math.round((dominantSeconds / zoneTotal) * 100)}% Zone ${dominantIndex + 1}`,
+      note: `${signals.heartRateZones.coveredRuns} runs with HR zones`,
+    });
+  }
+
+  if (signals.hasUsefulTrainingLoad) {
+    const valued = signals.trainingLoad.filter((week) => week.total !== null);
+    const latest = valued.at(-1)!;
+    const index = signals.trainingLoad.indexOf(latest);
+    const baseline = meanValues(
+      signals.trainingLoad
+        .slice(0, index)
+        .filter((week) => !week.isPartial && week.total !== null)
+        .slice(-4)
+        .map((week) => week.total!),
+    );
+    const change = baseline === null || baseline === 0
+      ? null
+      : Math.round(((latest.total! - baseline) / baseline) * 100);
+    cards.push({
+      id: "training-load",
+      title: "Training Load",
+      value: String(latest.total),
+      note: change === null ? `Week ${latest.weekNumber}` : `${signed(change, "%")} vs 4wk avg`,
+    });
+  }
+
+  if (signals.consistency.percentage !== null) {
+    cards.push({
+      id: "consistency",
       title: "Consistency",
-      value: `${consistency.percentage}%`,
-      note: `${consistency.completed} of ${consistency.due} scheduled runs`,
-      chart: (
-        <ProgressBar
-          value={consistency.completed}
-          max={consistency.due}
-          label="Scheduled runs completed so far"
-        />
-      ),
+      value: `${signals.consistency.percentage}%`,
+      note: `${signals.consistency.completed} of ${signals.consistency.due} completed`,
     });
   }
 
-  const lastPace = easyPace.points[easyPace.points.length - 1];
-  if (lastPace) {
-    const direction = describeDirection(easyPace.points, PHYSIOLOGICAL_SIGNIFICANCE);
+  if (signals.runMix.totalMiles > 0 && signals.runMix.slices.length > 0) {
+    const dominant = signals.runMix.slices.reduce((best, slice) => slice.miles > best.miles ? slice : best, signals.runMix.slices[0]);
     cards.push({
-      key: "easy-pace",
-      title: "Easy pace",
-      value: pace(lastPace.value),
-      note: `${easyPace.points.length} Easy ${easyPace.points.length === 1 ? "run" : "runs"}${
-        direction
-          ? ` · ${direction === "falling" ? "getting quicker" : direction === "rising" ? "getting slower" : "holding steady"}`
-          : ""
-      }`,
-      chart: easyPace.hasEnoughCoverage ? (
-        <TrendLine points={easyPace.points} invert formatValue={pace} />
-      ) : null,
+      id: "run-mix",
+      title: "Run Mix",
+      value: `${Math.round(dominant.share * 100)}% ${WORKOUT_TYPE_LABEL[dominant.activityType]}`,
+      note: "Last 4 weeks",
     });
   }
 
-  const lastHeartRate = easyHeartRate.points[easyHeartRate.points.length - 1];
-  if (lastHeartRate) {
-    const direction = describeDirection(
-      easyHeartRate.points,
-      PHYSIOLOGICAL_SIGNIFICANCE,
-    );
-    cards.push({
-      key: "easy-heart-rate",
-      title: "Easy heart rate",
-      value: `${Math.round(lastHeartRate.value)} bpm`,
-      note: `${easyHeartRate.points.length} Easy ${easyHeartRate.points.length === 1 ? "run" : "runs"} with HR${
-        direction ? ` · ${DIRECTION_WORD[direction]}` : ""
-      }`,
-      chart: easyHeartRate.hasEnoughCoverage ? (
-        <TrendLine
-          points={easyHeartRate.points}
-          tone="intervals"
-          formatValue={(value) => `${Math.round(value)} bpm`}
-        />
-      ) : null,
-    });
-  }
-
-  // Nothing measured yet is not an empty strip with five dashes in it.
-  if (cards.length === 0) {
-    return null;
-  }
-
+  if (cards.length === 0) return null;
   return (
-    <Section
-      className="trend-cards"
-      icon={<TrendingUp size={15} strokeWidth={2} />}
-      title="Training Trends"
-    >
-      {/*
-        A plain overflow-scrolling list: the swipe is the browser's, so it
-        keeps momentum, snapping and every assistive gesture that comes with a
-        real scroll container. The cards are focusable buttons, so tabbing
-        through them scrolls the strip without it needing a tab stop of its own.
-      */}
-      <ul className="trend-cards__track">
+    <Section className="trend-cards" icon={<TrendingUp size={15} strokeWidth={2} />} title="Training Signals">
+      <ul className="trend-cards__grid">
         {cards.map((card) => (
-          <li key={card.key} className="trend-cards__item">
+          <li key={card.id}>
             <button
               type="button"
               className="trend-cards__card"
-              // The drawing is aria-hidden, so the name carries the fact.
-              aria-label={`${card.title}, ${card.value}, ${card.note}. Open Training Trends.`}
-              onClick={onViewTrends}
+              aria-label={`${card.title}, ${card.value}, ${card.note}. Open ${card.title} detail.`}
+              onClick={() => onOpenSignal(card.id)}
             >
               <span className="trend-cards__title">{card.title}</span>
               <span className="trend-cards__value">{card.value}</span>
-              {card.chart && (
-                // Hidden as a whole: the charts already are, and the
-                // consistency meter would otherwise announce a second value
-                // from inside the button that names it.
-                <span className="trend-cards__chart" aria-hidden="true">
-                  {card.chart}
-                </span>
-              )}
               <span className="trend-cards__note">{card.note}</span>
             </button>
           </li>

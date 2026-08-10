@@ -2,7 +2,9 @@
 
 ## Current state
 
-**UI-5.5 Core Loop Revision, UI-6 Plan adjustment, and UI-7 Polish and release are implemented.** Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, the run form records the date the run happened, Build is a simplified eight-column tower with explainable block geometry, the streak no longer fails before the day is over, and the schedule itself is editable. UI-7 gave the app a face, made unreadable storage a state of the app rather than a caught exception, made it installable, and deleted the dev panel outright.
+**UI-16 Trends 2.0 is implemented and ready for owner review.** Runs now carries seven focused Training Signals with dedicated detail modules, plan-versus-actual views, accessible SVG/CSS charts, and deterministic week/run drill-downs. The change is derived entirely from schema-9 plan and run snapshots; it adds no persistence, migration, dependency, or connected-data write.
+
+Earlier core-loop, connected-training, Runs, and Build phases remain implemented as described below. Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, Build is a deterministic eight-column tower, and the schedule itself is editable.
 
 An **availability calendar** was added after UI-6 at the product owner's request. It is not in any phase document, and it contradicts locked decisions that are still on the books — see the section below. Reading a subscription link needs one server-side function, which is the first thing in this repository that is not a static asset.
 
@@ -22,7 +24,7 @@ An **availability calendar** was added after UI-6 at the product owner's request
 
 - Renders the four primary screens and passes plan, run logs, placements, and the save/place callbacks.
 - Bottom navigation is exactly Today / Build / Runs / Plan (D-044). Every control in the bar is a destination and wears `aria-current` when it is the current one.
-- Owns the three secondary sheets that any screen can reach: Settings, Trends, and Run Data.
+- Owns the two global secondary sheets that any screen can reach: Settings and Run Data. Runs owns the focused Training Signal and run-detail sheets because their selection state is local to actual history.
 - The header is a small brand lockup — `StackMark` plus the wordmark — on the left, and one icon-only `Settings` gear on the right. Both sit in `.app-shell__header-row`, which carries the same 640px column the content and the nav use, so the gear lines up with the screen under it.
 
 ## The look, after UI-7
@@ -53,12 +55,11 @@ Every screen has exactly one `h1`, and it is content rather than a label.
 2. The day's workout: `TodayWorkoutCard` for a run or rest day, `CompletedRunSummary` once it is logged, plus the before-plan and after-race states, both of which now use `EmptyState` inside the day's card.
 3. `ThisWeekStrip` — scheduled completion for the current week, the thin progress bar, seven day markers with per-status treatments, and a `View Plan` link. Extra runs appear as a separate `+N extra` chip and never move the scheduled count.
 4. `NextWorkoutCard` — the next scheduled non-rest workout, omitted when the race is the last thing left.
-5. A persistent `+ Log Run` secondary action, available on any day, that opens run entry in extra-run mode. It sits in its own band, because directly under `Next` it read as an action belonging to it.
-6. `BuildPreview` — blocks built, blocks waiting, a crop of the newest bricks, and `View Build`.
+5. `BuildPreview` — blocks built, blocks waiting, a crop of the newest bricks, and `View Build`.
 
-Items 3, 4 and 6 are sections rather than cards; only the day's workout is a card.
+Items 3, 4 and 5 are sections rather than cards; only the day's workout is a card.
 
-The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagree about the week. The `Log First Run` affordance is gone: `+ Log Run` covers logging before the plan starts, as an extra run.
+The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagree about the week. UI-16 removed the generic extra-run action from Today; manual `Log Run` remains on Runs, while scheduled completion and Run Found stay on Today.
 
 ## Run entry — one form for both kinds of run
 
@@ -604,13 +605,12 @@ A failed sync stays quiet. The plan, the manual log and the Build are all still
 true without Intervals, so a failure sets a retry line low on Today and gets
 out of the way — and says nothing at all while there is a run to offer.
 
-## UI-11 — Training Trends
+## UI-11 — Training Trends foundation (superseded by UI-16)
 
-`src/domain/trends.ts` derives five answers from the plan and the recorded
-runs; `src/features/trends/TrendsSheet.tsx` shows them in a secondary sheet.
-Since UI-13 it is opened from the trend cards at the top of Runs and from This
-Week on Today; Plan no longer carries a Trends action. Trends is still not a
-tab of its own.
+UI-11 introduced five derived trend answers and an all-in-one Trends sheet.
+UI-16 retains the useful actual-date and coverage rules from that foundation,
+but the old sheet and its chart components are now deleted. This Week on Today
+switches to Runs; it does not open an analytics overlay.
 
 Two rules run through the selectors. Runs are placed by the date they were
 actually run, never by the date of the workout they satisfied — a Sunday long
@@ -620,45 +620,9 @@ the one measure that stays about the plan, so it counts only scheduled
 workouts whose day has arrived, and extra runs are excluded from it by
 construction.
 
-Coverage is a first-class idea rather than an afterthought. Easy pace and Easy
-heart rate need four runs before a line is drawn or a direction named; below
-that the section says how many more would start it. A run without heart rate
-is left out of the HR series rather than counted as zero, and the summary says
-how many of the Easy runs carried it. `describeDirection` compares the median
-of the first half against the median of the last, so one enormous week is not
-a trend.
-
-`src/components/charts/` holds the drawings: `TrendColumns` for weekly
-mileage, `TrendLine` for the three time series, `TrendSection` for the frame,
-and `ZoneBars` for heart-rate zones. No chart library was added.
-
-The rules they follow are the ones that keep a chart honest rather than
-decorative:
-
-- **One series per chart, so one colour and no legend** — the section title
-  names what is drawn. Where a measure already has a colour in STACK, the
-  chart wears it: long runs are the same amber as their block in the tower.
-- **Text never wears the series colour.** Values and labels use text tokens; a
-  lime number on this surface is unreadable, and the mark beside it already
-  carries the identity.
-- **Selective direct labels.** The last value, and the two ends of the scale.
-  A number on every point is chaos and goes unread.
-- **The surface does the separating** — a 2px gap between columns, a 2px ring
-  on dots, a 2px halo behind an end label — rather than a stroke drawn around
-  every mark.
-- **Pace is drawn with faster at the top**, and both ends of the axis are
-  labelled with real paces so the direction is legible from the chart rather
-  than from knowing the convention.
-- **Every chart carries the same numbers as a table**, visually hidden beside
-  it, plus a summary sentence. The drawing is `aria-hidden`: it is the least
-  useful copy of data that exists in two better forms.
-- **A one-column chart is not a chart.** Week one shows the number instead.
-
-Heart-rate zones on run detail are now `ZoneBars` rather than a plain list.
-Zones are an ordered scale, so they wear one hue that strengthens with
-intensity instead of seven hues that have to be learned, and every row keeps
-its duration and percentage as text — nothing is encoded in colour or length
-alone. A zone with no time in it keeps its row and shows an empty track.
+Coverage remains a first-class rule. Missing HR, zone time, or Training Load is
+omitted rather than converted to zero. Easy Pace compares a latest-four median
+with the previous four only when all eight runs exist.
 
 Deliberately absent, and to stay absent: any readiness score, any CTL/ATL or
 form dashboard, any predicted finishing time, and any language that coaches.
@@ -680,8 +644,8 @@ back to when they were recorded and then to id, so the list cannot reorder
 itself between renders. Schema stays at 9.
 
 The screen leads with `N runs` and the total actual miles rather than the word
-"Runs", per the UI-7 content-first rule, with a compact `Log Run` beside it —
-Today keeps its own.
+"Runs", per the UI-7 content-first rule, with a compact `Log Run` beside it.
+After UI-16, Runs is the only generic manual-entry location.
 
 **A row is the run.** Activity icon and type, the actual date, distance,
 duration and derived pace, and a quiet `Extra` only where no workout was
@@ -707,15 +671,51 @@ deleting a synced run ignores its activity id so the next sync does not offer
 it back. Focus moves to the list heading afterwards, because the row the
 browser would have returned to has gone with the run.
 
-**Training Trends lives here now** (D-047). Rather than another link, the top
-of Runs carries a swipeable row of trend cards — one measure each, values from
-the same `selectTrainingTrends` the sheet reads, nothing stored. Each card is
-a button into the full view, so the tables, ranges and coverage sentences are
-all still there. The strip is a native `overflow-x` scroller with CSS snap
-points: the swipe is the browser's, and because the cards are focusable
-buttons, tabbing through them scrolls the strip without it needing a tab stop
-of its own. A measure with nothing recorded for it has no card, and a runner
-with no runs at all gets no strip.
+**Training Signals lives here now** (D-047–D-051). The top of Runs carries a
+responsive grid of factual signal cards. Every card is a native button into
+its own focused detail. At 360–430px the grid is two columns, at 320px it
+becomes one column, and wider layouts use three. Signals with unavailable
+required imported data are omitted and the grid reflows.
+
+## UI-16 — Trends 2.0
+
+`src/domain/trends.ts` derives one `TrainingSignals` snapshot from the active
+plan, actual run history, and local date. Nothing is persisted and AppState
+remains schema 9.
+
+- **Weekly Mileage** uses the latest 12 started plan weeks. Actual miles use
+  actual run dates and include extras; planned miles use the midpoint of an
+  exact/range target and become unavailable when a scheduled target cannot be
+  interpreted. Solid actual columns and dashed plan markers select a week,
+  whose run list opens existing run detail.
+- **Long Run** compares actual Long Run activity points with scheduled Long Run
+  targets and reports latest, longest, prior delta, and next target. Selecting
+  an actual point opens that run.
+- **Easy Pace** shows actual-date pace points, latest-four versus previous-four
+  medians when eight Easy runs exist, and an aligned average-HR graph only for
+  the runs that carry HR. Its language is descriptive and keeps terrain and
+  weather context explicit.
+- **HR Zones** aggregates the latest 28 days only from runs carrying zone data
+  and states coverage. `DonutChart` also replaces the former `ZoneBars` in run
+  detail. Its SVG is presentational; the ordered text legend is authoritative,
+  supports dynamic source zone counts, and retains honest zero-time zones
+  without drawing zero-angle arcs.
+- **Training Load** uses only the verified imported per-activity metric. Weekly
+  gaps remain unavailable, selected-week run values reconcile to the total,
+  and no fitness/form/readiness score is derived.
+- **Consistency** is a plan-week completion grid. It links only scheduled
+  workout ids, so extra runs are context and cannot repair completion.
+- **Run Mix** is a latest-28-day donut of actual miles by STACK activity type;
+  the legend also carries run count and share, and `Extra` is never an activity
+  type.
+
+`src/features/trends/TrainingSignalDetailSheet.tsx` is a shared sheet
+controller, not a shared analytics dump. It dispatches to seven dedicated
+detail modules. `PlanActualColumns`, `SelectableTrendLine`, and `DonutChart`
+are small reusable SVG/CSS primitives with native 44px selector buttons and
+complete adjacent text equivalents. No chart dependency, canvas, or WebGL was
+added. The retired `TrendsSheet`, `TrendColumns`, `TrendLine`, `TrendSection`,
+and `ZoneBars` files are deleted.
 
 ## Settings — one place for everything the plan is built from
 

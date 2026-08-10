@@ -1,6 +1,5 @@
-import { CalendarPlus, PartyPopper, Plus } from "lucide-react";
+import { CalendarPlus, PartyPopper } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import {
@@ -74,8 +73,7 @@ interface TodayScreenProps {
 
 /** Which run the entry sheet is open for, and what it is about to write. */
 type Entry =
-  | { kind: "scheduled"; workout: Workout; runLog?: RunLog }
-  | { kind: "extra"; runLog?: RunLog };
+  { kind: "scheduled"; workout: Workout; runLog?: RunLog };
 
 /**
  * The daily dashboard. It answers, in order: what do I do today, how is the
@@ -238,18 +236,6 @@ export function TodayScreen({
         </p>
       )}
 
-      {/* Its own band, so it does not read as an action belonging to Next. */}
-      <div className="today-screen__log-band">
-        <Button
-          variant="secondary"
-          className="today-screen__log-extra"
-          icon={<Plus size={18} strokeWidth={2} />}
-          onClick={() => openEntry({ kind: "extra" })}
-        >
-          Log Run
-        </Button>
-      </div>
-
       <BuildPreview
         blocks={build.blocks}
         pendingBlocks={build.pendingBlocks}
@@ -264,7 +250,7 @@ export function TodayScreen({
         <CompleteRunSheet
           key={entryVisit}
           isOpen={isEntryOpen}
-          workout={entry.kind === "scheduled" ? entry.workout : null}
+          workout={entry.workout}
           runLog={entry.runLog}
           today={today}
           onClose={() => {

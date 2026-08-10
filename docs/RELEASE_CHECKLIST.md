@@ -17,7 +17,7 @@ Use a private window or clear site data first.
 - [ ] Today opens on current date/race context.
 - [ ] Build shows its proper empty state rather than a broken-looking empty grid.
 - [ ] Plan opens on the current plan week/date range and can navigate the active plan.
-- [ ] `+ Log Run` opens manual run entry.
+- [ ] Runs → `Log Run` opens manual run entry; Today has no generic Log Run band/button.
 
 ## 3. Manual loop end to end
 
@@ -134,7 +134,7 @@ Known fixture: HealthFit-originated run in Intervals.icu on **June 10, 2026**.
 Temporarily forget/disable connection or simulate an upstream error.
 
 - [ ] Today/Plan/Build still open.
-- [ ] Manual Mark Complete / + Log Run still works.
+- [ ] Scheduled Mark Complete on Today and manual Log Run on Runs still work.
 - [ ] Sync error is understandable/retryable.
 - [ ] No request loop/polling storm.
 
@@ -154,11 +154,19 @@ Temporarily forget/disable connection or simulate an upstream error.
 - [ ] Weekly actual miles/time/longest include actual scheduled + extra runs.
 - [ ] Scheduled N-of-M still excludes extras.
 
-## UI-11 Trends
+## UI-16 Trends 2.0
 
-- [ ] Trend calculations use actual run dates.
-- [ ] Low-data states do not overclaim.
-- [ ] Charts have textual alternatives.
+- [ ] Runs shows Weekly Mileage, Long Run, Easy Pace, HR Zones when covered, Training Load when meaningfully covered, Consistency, and Run Mix.
+- [ ] Every visible signal opens its own focused detail; no universal Trends dump remains.
+- [ ] Weekly Mileage shows 12-week actual versus planned, current/average/plan/delta, and selected-week underlying runs.
+- [ ] Long Run actual point opens the correct run and the detail shows planned progression/next target.
+- [ ] Easy Pace recent-four versus previous-four appears only with eight covered Easy runs; missing HR is omitted.
+- [ ] Run detail and aggregate HR zones use accessible dynamic donuts and text legends; honest zero source zones stay listed.
+- [ ] Training Load uses only imported activity load, exposes coverage/gaps, and adds no readiness/form score.
+- [ ] Consistency ignores extras for scheduled completion.
+- [ ] Run Mix reconciles last-four-week actual miles by STACK activity type; Extra is not a type.
+- [ ] Chart/week/run selection works by touch and keyboard at 320px, with textual equivalents and visible focus.
+- [ ] Trend calculations use actual run dates, low-data states do not overclaim, and missing imported fields are never shown as zero.
 
 ## UI-12 Wellness
 

@@ -12,6 +12,8 @@ import type { ValidRunEntry } from "../run-entry/runValidation";
 import { RunDetailSheet } from "./RunDetailSheet";
 import { RunRow } from "./RunRow";
 import { TrendCards } from "./TrendCards";
+import { TrainingSignalDetailSheet } from "../trends/TrainingSignalDetailSheet";
+import type { TrainingSignalId } from "../../domain/trends";
 
 interface RunsScreenProps {
   plan: TrainingPlan;
@@ -22,8 +24,6 @@ interface RunsScreenProps {
     runLogId?: string,
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
-  /** Opens the full Training Trends view, which the cards lead into. */
-  onViewTrends?: () => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   syncToken?: string | null;
@@ -46,12 +46,14 @@ export function RunsScreen({
   runLogs,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
-  onViewTrends = () => undefined,
   today = todayLocalDate(),
   syncToken,
 }: RunsScreenProps) {
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
+  const [selectedSignal, setSelectedSignal] = useState<TrainingSignalId | null>(null);
+  const [isSignalOpen, setSignalOpen] = useState(false);
+  const returnToSignal = useRef(false);
   /**
    * The run the entry sheet is open for, held rather than looked up.
    *
@@ -102,6 +104,14 @@ export function RunsScreen({
     setEditOpen(true);
   }
 
+  function closeDetail() {
+    setDetailOpen(false);
+    if (returnToSignal.current && selectedSignal) {
+      returnToSignal.current = false;
+      setSignalOpen(true);
+    }
+  }
+
   /** The change was made: leave the sheets behind and show the result. */
   function commit(announce: string) {
     returnToDetail.current = false;
@@ -146,7 +156,10 @@ export function RunsScreen({
         plan={plan}
         runLogs={runLogs}
         today={today}
-        onViewTrends={onViewTrends}
+        onOpenSignal={(signal) => {
+          setSelectedSignal(signal);
+          setSignalOpen(true);
+        }}
       />
 
       {history.length === 0 ? (
@@ -164,6 +177,7 @@ export function RunsScreen({
               key={entry.runLog.id}
               entry={entry}
               onOpen={() => {
+                returnToSignal.current = false;
                 setDetailRunLogId(entry.runLog.id);
                 setDetailOpen(true);
               }}
@@ -182,9 +196,27 @@ export function RunsScreen({
           syncToken={syncToken}
           isOpen={isDetailOpen}
           onEditRun={() => openEntry(selected, true)}
-          onClose={() => setDetailOpen(false)}
+          onClose={closeDetail}
         />
       )}
+
+      <TrainingSignalDetailSheet
+        signal={selectedSignal}
+        plan={plan}
+        runLogs={runLogs}
+        today={today}
+        isOpen={isSignalOpen}
+        onClose={() => {
+          setSignalOpen(false);
+          if (!returnToSignal.current) setSelectedSignal(null);
+        }}
+        onOpenRun={(runLogId) => {
+          returnToSignal.current = true;
+          setSignalOpen(false);
+          setDetailRunLogId(runLogId);
+          setDetailOpen(true);
+        }}
+      />
 
       {(isEditOpen || editing) && (
         <CompleteRunSheet
