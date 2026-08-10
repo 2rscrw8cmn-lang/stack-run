@@ -2,21 +2,9 @@
 
 ## Lucide usage rules
 
-Install:
+Import icons directly from `lucide-react`. Do not use dynamic icon-name imports.
 
-```bash
-npm install lucide-react
-```
-
-Import icons directly:
-
-```tsx
-import { Check, Clock3, X } from "lucide-react";
-```
-
-Do not use dynamic icon-name imports.
-
-Default icon treatment:
+Default treatment:
 
 ```tsx
 size={20}
@@ -26,13 +14,24 @@ aria-hidden="true"
 
 Use `currentColor`.
 
-## Icon map
+## Primary navigation icon map
 
 | Use | Lucide icon |
 |---|---|
-| Today navigation | `House` |
-| Build navigation | `Layers3` |
-| Plan navigation | `ListChecks` |
+| Today | `House` |
+| Build | `Layers3` |
+| Runs | `History` |
+| Plan | `ListChecks` |
+| Settings utility | `Settings` |
+
+`Runs` is a real primary destination after UI-13. Do not reuse `Footprints` for navigation; it already represents Easy activity type.
+
+Settings is icon-only in the top-right header after UI-13. It needs `aria-label="Settings"` and at least a 44 × 44 target.
+
+## Activity and common icon map
+
+| Use | Lucide icon |
+|---|---|
 | Race | `Flag` |
 | Complete | `Check` |
 | Completed status | `CircleCheck` |
@@ -59,11 +58,11 @@ Use `currentColor`.
 | Easy activity | `Footprints` |
 | Intervals activity | `Zap` |
 | Simulation activity | `Timer` |
-| Long run activity | `Mountain` |
+| Long Run activity | `Mountain` |
 | This Week section | `CalendarRange` |
 | Next section | `CalendarClock` |
-| Build section, empty build | `Blocks` |
-| Blocks Ready section | `Boxes` |
+| Build/empty build | `Blocks` |
+| Blocks Ready | `Boxes` |
 | Run streak | `Flame` |
 | Run days | `CalendarCheck` |
 | Plan starts soon | `CalendarPlus` |
@@ -71,107 +70,83 @@ Use `currentColor`.
 
 Do not use a hard-hat icon in the core interface.
 
-Activity icons live in one place, `src/components/shared/ActivityIcon.tsx`, so
-a workout type cannot pick up two different icons on two different screens.
+Activity icons remain centralized in `src/components/shared/ActivityIcon.tsx`.
 
 ## Shared UI primitives
 
-### `Button`
+### Button
 
-Variants:
+Variants remain primary / secondary / ghost / danger.
 
-- primary
-- secondary
-- ghost
-- danger
+### IconButton
 
-Props:
-
-- standard button props
-- `isLoading`
-- optional leading icon
-
-### `IconButton`
-
-For close, overflow, and week navigation.
+Use for Settings, close, overflow and compact navigation controls.
 
 Requirements:
 
-- minimum 44 × 44 px target
-- required accessible label
+- minimum 44 × 44 target;
+- required accessible label;
+- visible focus state.
 
-### `Card`
+### Card
 
-One neutral surface. No variant explosion. Used for the **one** thing on a
-screen the user can act on; everything else is a `Section`.
+Use for the one primary actionable object on a screen. Do not turn Runs or Build into walls of equal cards.
 
-### `Section`
+### Section
 
-A titled band of content: icon, uppercase title, optional right-aligned value,
-and the content under a hairline rule.
+Quiet titled band with icon, title/meta and content.
 
-### `EmptyState`
+### EmptyState
 
-Icon, title, and a sentence saying what would put something here.
+Icon, title and one sentence explaining what creates content here.
 
-### `ProgressBar`
+### ProgressBar
 
-Props:
+Value/max/accessible label.
 
-- value
-- max
-- accessible label
+### Sheet
 
-### `Sheet`
+Shared mobile bottom sheet / wider dialog with close, focus handling, Escape and backdrop.
 
-Mobile bottom sheet and wider-screen dialog behavior in one component.
+### FormField
 
-Required:
+Label/input/hint/error/required relationship.
 
-- title
-- close control
-- focus handling
-- Escape handling
-- backdrop
-- optional guarded close
+### BottomNav
 
-### `FormField`
+After UI-13, exactly four primary items in this order:
 
-Provides:
+1. Today
+2. Build
+3. Runs
+4. Plan
 
-- label
-- input ID relationship
-- hint
-- error
-- required state
+No Settings item. No badge counts in the first Runs release.
 
-### `BottomNav`
-
-Exactly three items:
-
-- Today
-- Build
-- Plan
-
-No badge counts.
-
-## Feature components
-
-This list is what the app actually renders, after UI-5.5, UI-6 and UI-7.
+## Current feature components before UI-13
 
 ### Shell
 
-- `StackMark` — the brand mark, and the geometry the app icons are drawn from
+- `StackMark`
 - `BottomNav`
+- `SettingsSheet`
 
 ### Today
 
-- `TodayHeading` — the date, and the race line under it
+- `TodayHeading`
 - `TodayWorkoutCard`
 - `CompletedRunSummary`
+- `RunFoundCard`
 - `ThisWeekStrip`
 - `NextWorkoutCard`
 - `BuildPreview`
+
+### Connected actual detail
+
+- `RunDataSheet`
+- `RunResultDetail`
+- `TrendsSheet`
+- chart primitives under `src/components/charts/`
 
 ### Run entry
 
@@ -179,7 +154,7 @@ This list is what the app actually renders, after UI-5.5, UI-6 and UI-7.
 
 ### Build
 
-- `BuildHeading` — the miles, and the runs and streak beside them
+- `BuildHeading`
 - `PendingBlocksTray`
 - `BuiltStructure`
 - `PlacedBlock`
@@ -187,9 +162,9 @@ This list is what the app actually renders, after UI-5.5, UI-6 and UI-7.
 - `PlacementBar`
 - `BlockDetailSheet`
 
-### Plan
+### Plan/settings
 
-- `WeekLead` — the week, its phase and dates, its progress, and the stepper
+- `WeekLead`
 - `WorkoutRow`
 - `WorkoutDetailSheet`
 - `EditWorkoutSheet`
@@ -199,38 +174,47 @@ This list is what the app actually renders, after UI-5.5, UI-6 and UI-7.
 - `AvailabilitySheet`
 - `ConflictReviewSheet`
 - `ResetPlanDialog`
+- `SettingsSheet`
 
-### Recovery
+### Recovery/error handling
 
 - `StorageRecoveryScreen`
 - `StorageWriteBanner`
 - `AppErrorBoundary`
 
-Deleted along the way: `RaceSummaryCard`, `BuildLegend`, `BuildWeekRow`,
-`BuildMetrics`, `WeekHeader`, `WeekNavigator`, `RaceContext`, `DevDataPanel`.
+## UI-13 expected component direction
 
-## Stack block API
+Prefer the smallest readable set, likely:
 
-```ts
-interface StackBlockProps {
-  workout: Workout;
-  state: "completed" | "planned" | "missed";
-  isNewest?: boolean;
-  onSelect: (workoutId: string) => void;
-}
-```
+- `RunsScreen`
+- `RunHistoryRow`
+- one Runs-owned detail-sheet wrapper that reuses `RunResultDetail`
 
-The visible block may use CSS variables:
+Do not create a duplicate metric rendering tree.
 
-```tsx
-style={{
-  "--piece-color": `var(--${workout.build.colorKey})`,
-  "--piece-span": workout.build.span,
-} as React.CSSProperties}
-```
+The existing `SettingsSheet` remains; only its trigger moves into the header.
 
-The block wrapper remains keyboard accessible and has an accessible name such as:
+## UI-14 expected component direction
+
+Reuse the current Build components where possible.
+
+Expected edits may include:
+
+- `BuildHeading` → miles-only lead;
+- `PlacedBlock` → derived mileage label + Race capstone presentation;
+- `BuiltStructure` / `LandingSlot` → staged block and deliberate drag-release commit path;
+- `PlacementBar` → tap/keyboard Place/Drop + quiet Auto Place fallback.
+
+Do not replace Build with canvas/WebGL or a game engine.
+
+## Accessibility direction for blocks
+
+The visible mileage label is redundant visual context, never the only label.
+
+A placed block's accessible name should continue to communicate the underlying run, for example:
 
 ```text
-Week 6 Thursday, intervals, 5 to 6 miles, completed
+Saturday, August 8, Long Run, 7.1 miles, extra run
 ```
+
+Placement candidates must continue to expose meaningful semantic button/announcement text even when pointer dragging is available.
