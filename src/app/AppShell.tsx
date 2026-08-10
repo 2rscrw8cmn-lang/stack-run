@@ -19,7 +19,6 @@ import type { AppState, Effort, RunActivityType } from "../domain/types";
 import type { IntervalsCandidate } from "../connected/intervals";
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
-import { TrendsSheet } from "../features/trends/TrendsSheet";
 import { SettingsSheet } from "../features/settings/SettingsSheet";
 import { useState } from "react";
 
@@ -87,7 +86,6 @@ export function AppShell({
   // opens on that run rather than on whatever it was last showing.
   const [review, setReview] = useState<RunDataReview | null>(null);
   const [runDataVisit, setRunDataVisit] = useState(0);
-  const [trendsOpen, setTrendsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Run Data is reached from Today and from Settings. Dismissing it should go
   // back wherever it was opened from, so which one that was is remembered.
@@ -137,7 +135,7 @@ export function AppShell({
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
-            onViewTrends={() => setTrendsOpen(true)}
+            onViewTrends={() => onTabChange("runs")}
             onViewBuild={() => onTabChange("build")}
             onStartPlacing={(runLogId) => {
               onPlacingChange(runLogId);
@@ -177,7 +175,6 @@ export function AppShell({
             runLogs={runLogs}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
-            onViewTrends={() => setTrendsOpen(true)}
             syncToken={syncToken}
           />
         )}
@@ -214,7 +211,6 @@ export function AppShell({
         isConnected={Boolean(syncToken)}
         lastSyncedAt={appState.intervalsSync.lastSuccessfulActivitySyncAt}
       />
-      <TrendsSheet plan={plan} runLogs={runLogs} today={todayLocalDate()} isOpen={trendsOpen} onClose={() => setTrendsOpen(false)} />
       <RunDataSheet
         key={runDataVisit}
         isOpen={runDataOpen}

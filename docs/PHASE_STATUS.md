@@ -72,7 +72,7 @@ Approved sources:
 
 | Phase | Name | Status | Decision | Primary outcome |
 |---:|---|---|---|---|
-| 16 | **Trends 2.0** | **Approved / next** | D-048–D-051 | Dedicated Training Signal details, richer charts, plan-vs-actual, HR donut, Today Log Run cleanup. |
+| 16 | **Trends 2.0** | **Implemented / ready for review** | D-048–D-051 | Seven dedicated Training Signal details, plan-vs-actual, accessible HR/run-mix donuts, Today Log Run cleanup; schema remains 9. |
 | 17 | **Performance Arcade Design Pass** | **Approved after UI-16** | D-052–D-054 | Modern training-computer visual language; stronger data personality without retro cosplay/game economy. |
 | 18 | **Race Crew Architecture Gate** | **Approved after UI-17; docs/research only** | D-055–D-057 | Decide auth/database/per-user Intervals/privacy/migration before production social code. |
 | 19 | Account + Crew Foundation | Gated / not authorized | D-057 | Placeholder only until UI-18 owner approval. |
@@ -91,6 +91,15 @@ Approved sources:
 - chart selection may drill into underlying week/run.
 - generic `Log Run` is removed from Today; manual Log Run remains on Runs.
 - expected schema remains 9.
+
+Implementation verification (2026-08-10):
+
+- dedicated modules exist for all seven signals; the universal Trends sheet and old chart primitives are removed;
+- focused domain/component/screen tests cover plan/actual bucketing, low-data behavior, dynamic 1/5/7-zone donuts, missing imported fields, consistency extras, run mix, and detail/run navigation;
+- `npm run check` passes: lint, 49 test files / 783 tests, and production build;
+- local browser QA passed at 320×800, 390×844, and 1024×900 with no horizontal overflow or console warnings; week selectors measured 44×44px;
+- no schema migration or dependency was added;
+- production iPhone/desktop and real imported-data smoke remain review/deployment checks, so the phase is not marked Complete here.
 
 ## UI-17 approved outcomes
 

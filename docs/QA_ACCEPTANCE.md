@@ -199,6 +199,16 @@ For every interactive chart:
 - Shared selectors/helpers may remain if useful.
 - No duplicate competing analytics UI remains.
 
+### UI-16 implementation verification — 2026-08-10
+
+- Automated coverage includes all derived selectors, dynamic 1/5/7-zone donut behavior, signal visibility, every dedicated detail, week selection, and return navigation through existing run detail.
+- `npm run check` passes: lint, 49 test files / 783 tests, and production build.
+- Local in-app browser checks passed at 320×800, 390×844, and 1024×900 without horizontal overflow or console warnings.
+- Weekly selector buttons measured 44×44px; card and run drill-downs use native semantic buttons and visible selected states.
+- Today has no generic Log Run; Runs retains manual Log Run.
+- No chart dependency, schema migration, connected-data write, wellness, social, coaching, race-prediction, or readiness behavior was introduced.
+- Production iPhone/desktop and real imported HR-zone/Training Load smoke remain required before owner sign-off.
+
 ## UI-17 — Performance Arcade Design Pass
 
 ### Overall identity

@@ -139,6 +139,8 @@ describe("App", () => {
     const user = setupUser();
     render(<App />);
 
+    expect(screen.queryByRole("button", { name: "Log Run" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Runs" }));
     await user.click(screen.getByRole("button", { name: "Log Run" }));
     expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText(/Activity/), "intervals");
@@ -147,7 +149,8 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Great" }));
     await user.click(screen.getByRole("button", { name: "Save Run" }));
 
-    // Today's scheduled easy run is still owed.
+    // Today's scheduled easy run is still owed when we return to Today.
+    await user.click(screen.getByRole("button", { name: "Today" }));
     expect(
       screen.getByRole("button", { name: "Mark Complete" }),
     ).toBeInTheDocument();
