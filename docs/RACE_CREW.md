@@ -1,14 +1,12 @@
-# Race Crew — Product Specification + Architecture Gate
+# Race Crew — Product + Architecture Specification
 
-Status: **Approved product direction. Production implementation is gated behind UI-18 architecture approval.**
-
-## Product idea
+Status: **Approved for implementation after UI-17.**
 
 Race Crew is a small, invite-only social layer for runners training for the same race.
 
-It is not a public social network and not a replacement for Strava.
+It is designed first for roughly ten known friends. It is not a public social network, not a replacement for Strava, and not yet a public/commercial multi-user architecture.
 
-The job is simple:
+## Product job
 
 > Let a few friends training for the same race see that the others are doing the work, compare a few fair training signals, and encourage each other without exposing private health/location data.
 
@@ -18,7 +16,7 @@ Race Crew does **not** become a fifth bottom-navigation destination.
 
 Runs remains the factual training/history pillar.
 
-When Race Crew exists, Runs gains a top-level segmented context:
+When the social UI ships, Runs gains:
 
 ```text
 YOU | CREW
@@ -40,78 +38,256 @@ Private group experience:
 - crew race/header;
 - selected training comparisons;
 - recent crew runs;
-- lightweight encouragement;
-- later, compact member Build views.
+- lightweight encouragement later;
+- compact member Build views later.
 
-Switching between YOU and CREW does not change the persistent bottom-nav destination; Runs remains active.
+Runs remains the active bottom-nav destination in both contexts.
+
+## Approved hobby architecture
+
+The owner has intentionally chosen the smallest practical architecture for a private friend group.
+
+```text
+PERSONAL RUN DATA
+
+Apple Watch
+    ↓
+Apple Health
+    ↓
+HealthFit
+    ↓
+Intervals.icu
+    ↓ personal API key stored on that runner's browser/device
+STACK
+
+CREW DATA
+
+STACK
+    ↓ narrow crew-safe projection
+Supabase Auth + Postgres + Row Level Security
+    ↓
+Race Crew
+```
+
+Locked architecture decisions:
+
+- Supabase provides account identity and crew-safe shared storage.
+- Normal STACK login uses email + exactly 8 numeric digits presented as a PIN.
+- No normal magic-link login.
+- Email confirmation is intentionally disabled for the private hobby release.
+- Personal plan/runs/Build remain local AppState; Race Crew does not cloud-sync the whole app.
+- Every runner owns their own Intervals personal API key.
+- The Intervals key is stored only on that runner's device, outside AppState.
+- The key is never stored in Supabase or shared with crew members.
+- New multi-user hobby setup uses Intervals `/api/v1/` directly from the browser after real Safari verification.
+- The current owner's existing Vercel proxy remains available during migration and is not removed until the new path is proven.
+- Only explicitly approved crew-safe projections are uploaded.
+
+See:
+
+- `docs/RACE_CREW_SETUP.md`
+- `docs/RUN_DATA_SETUP.md`
+- `docs/RACE_CREW_IMPLEMENTATION.md`
+
+## Important Intervals policy tradeoff
+
+Intervals.icu's API guide states that apps intended for more than one person should use OAuth.
+
+The owner has explicitly accepted personal API keys as a temporary private-hobby compromise for a very small group of known friends because it eliminates application registration and per-user OAuth token infrastructure.
+
+This exception is **not** permission to use personal keys as the architecture for a public product.
+
+OAuth must be reconsidered before:
+
+- public/open signups;
+- strangers rather than known friends;
+- commercial distribution;
+- a materially larger user base;
+- server-side persistence of user Intervals credentials.
+
+## Account model
+
+Race Crew account is optional for personal STACK.
+
+Personal STACK must continue to work signed out.
+
+Account fields:
+
+- display name;
+- email used for login;
+- 8-digit numeric PIN.
+
+Implementation uses Supabase password auth, but STACK presents the credential as a PIN.
+
+Rules:
+
+- PIN is exactly 8 digits;
+- STACK never stores the raw PIN itself;
+- Supabase persists the signed-in session normally;
+- no magic-link login in normal use;
+- sophisticated password/PIN recovery is intentionally deferred for the hobby release.
+
+If STACK grows publicly, stronger authentication should replace this hobby policy.
 
 ## Crew model
 
-Race Crew is centered on a race, not on public following.
+Race Crew is centered on a race, not public following.
 
-MVP assumptions:
+MVP:
 
-- crew has a name;
-- crew has race metadata (name, date, distance);
-- crew is invite-only;
-- one owner/admin creates the crew;
-- members join through a private invite link/code;
-- a runner can participate without the crew changing their personal training plan;
-- if the member's active race does not match crew race date/distance, STACK warns but does not silently rewrite anything.
+- crew has name;
+- race name/date/distance;
+- invite-only;
+- one owner creates/manages crew;
+- members join through private high-entropy invite token;
+- owner can revoke invites/remove members;
+- members can leave;
+- joining does not change personal training plan;
+- race mismatch warns but never silently rewrites local race/plan.
 
-The first intended real-world use is a few friends preparing for the same OUC Half Marathon.
+Initial real crew may be the OUC Half Marathon group.
 
-## What crew members may see
+## Invite security
 
-Default shared run summary:
+Preferred invite:
 
-- display name;
+```text
+https://<stack-host>/#join=<raw-token>
+```
+
+Use URL fragment so raw token is not normally sent in HTTP request/access logs.
+
+Token requirements:
+
+- 32 random bytes or equivalent high entropy;
+- base64url for transport;
+- database stores SHA-256 hash only;
+- default expiration 14 days;
+- owner can revoke;
+- successful redemption creates active membership and clears raw token from local pending state.
+
+No public crew discovery.
+
+## Crew-safe shared run
+
+Default shared run fields:
+
+- display name via account/profile;
 - local run date;
 - STACK activity type;
 - distance;
 - duration;
-- derived pace;
-- whether it was a Race activity when applicable.
+- derived pace.
 
-Potential shared training summary:
+The shared row may use local STACK `runLog.id` as a synchronization identity within the owner/crew pair. This is not the Intervals external id and carries no upstream credential.
 
-- this-week actual miles;
-- recent longest run;
-- scheduled consistency percentage;
-- total miles built;
-- compact Build snapshot in a later phase.
+Pace is derived from distance/duration and does not need a separate persisted column.
+
+## Crew member summary
+
+Approved comparison facts:
+
+- **Weekly Miles** — actual miles in current Monday–Sunday week;
+- **Longest Run** — longest actual run in trailing 28 days;
+- **Consistency** — scheduled completion across the most recent up-to-4 plan weeks through today;
+- **Miles Built** — total actual miles represented in the runner's current local plan/Build history.
+
+These summaries are derived locally and uploaded as safe factual numbers.
+
+No overall score combines them.
 
 ## Private by default
 
-Do **not** share through Race Crew by default:
+Do **not** upload/share through Race Crew by default:
 
+- Intervals API key;
+- Intervals external activity id;
+- raw upstream response;
 - GPS coordinates;
 - route/map;
 - exact home/work location;
-- exact activity start time unless explicitly justified later;
+- exact activity start time;
 - average/max heart rate;
 - HR-zone distribution;
 - training load;
 - sleep/HRV/resting HR;
 - effort selection;
 - freeform notes;
-- Intervals external id;
-- Intervals API/OAuth credentials;
-- raw upstream activity payload;
-- calendar availability data;
-- plan conflict/calendar subscription details.
+- availability calendar;
+- calendar subscription URLs/credentials;
+- full plan/AppState;
+- full Build placement state unless a later mini-Build projection explicitly requires a sanitized subset.
 
-The fact that STACK can see a metric does not mean a crew member should see it.
+The fact that personal STACK can see a metric never makes it crew-shareable automatically.
 
-## Crew home
+## Personal data remains local
 
-The CREW view should feel compact and encouraging.
+Race Crew does not introduce general cloud sync.
+
+Current personal AppState remains browser-local schema 9.
+
+Creating a STACK account must not:
+
+- replace local plan;
+- upload all RunLogs;
+- upload imported health metrics;
+- upload full Build placements;
+- force a reset;
+- duplicate runs/blocks.
+
+The account attaches social identity to the device. Shared projection is generated separately.
+
+A future full cloud-sync program would be a different product decision.
+
+## Per-device Intervals credential
+
+New hobby mode stores:
+
+```text
+stack.intervals.api-key.v1
+```
+
+through a dedicated repository outside AppState.
+
+Rules:
+
+- key remains on current device/browser;
+- no backup/export inclusion;
+- no Supabase upload;
+- no logs/errors/screenshots after save;
+- user can Forget Connection without deleting local runs;
+- new phone/browser requires entering key again;
+- if compromised, regenerate key in Intervals and reconnect.
+
+Current owner legacy proxy path may coexist temporarily during migration.
+
+## Run-data onboarding is part of Race Crew quality
+
+The three-app Apple Watch path is acceptable only if STACK explains it clearly.
+
+Apple Watch:
+
+```text
+Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
+```
+
+Other supported device/service:
+
+```text
+watch/service → Intervals.icu → STACK
+```
+
+HealthFit is not required when the runner's device/service already syncs directly to Intervals.
+
+STACK should include a guided setup wizard and clear `Why do I need this?` explanations.
+
+See `docs/RUN_DATA_SETUP.md`.
+
+## CREW experience — UI-19
 
 Recommended order:
 
 ### 1. Crew race header
-
-Example:
 
 ```text
 OUC HALF CREW
@@ -119,39 +295,22 @@ DEC 5 · HALF MARATHON
 5 RUNNERS
 ```
 
-Keep it factual. No public member count/follower language.
-
 ### 2. Comparison module
 
-Selectable comparison metrics may include:
+Selectable:
 
-- **Weekly Miles** — actual miles in the current local plan/race week;
-- **Longest Run** — longest actual run over a clearly labeled recent period;
-- **Consistency** — scheduled completion percentage over a clearly defined period;
-- **Miles Built** — total actual miles represented in STACK Build for the active plan.
+- Weekly Miles;
+- Longest Run;
+- Consistency;
+- Miles Built.
 
-The product is encouragement-first, not competition-first.
+Encouragement-first, not competition-first.
 
-Do not ship an overall rank/score combining metrics.
-
-### Pace leaderboard
-
-Do not include raw/faster-is-better pace leaderboard in the initial Race Crew release.
-
-Reasons:
-
-- ability levels differ;
-- workout purposes differ;
-- faster pace is not always better training;
-- it can incentivize running Easy days incorrectly.
-
-A future carefully normalized personal-improvement comparison may be investigated separately.
+No raw/faster-is-better pace leaderboard.
 
 ### 3. Recent Crew Runs
 
-Newest shared runs from crew members.
-
-Each row/card:
+Example:
 
 ```text
 DREW
@@ -159,326 +318,167 @@ LONG RUN · AUG 9
 6.1 MI · 58:42 · 9:37 /MI
 ```
 
-Tap opens a **crew-safe** activity detail, not the owner's private `RunResultDetail` wholesale.
+Tap opens a crew-safe detail, never another runner's full private `RunResultDetail`.
 
-Crew-safe detail may show only fields approved for sharing.
+### 4. Later lightweight encouragement
 
-### 4. Lightweight encouragement
+UI-20 may add one simple `Props`-style reaction.
 
-Initial direction: one lightweight reaction system rather than full social mechanics.
+No public likes/popularity algorithm.
 
-Use a normal Lucide icon and text label; do not use emoji as the only UI.
+Comments remain separate/deferred.
 
-Possible label: `Props` or similar final owner-approved wording.
+## Crew-safe detail
 
-A member can react once/toggle reaction on a shared run.
+May show only:
 
-Do not add follower counts, public likes, popularity scores or algorithms.
+- member display name;
+- local date;
+- activity type;
+- distance;
+- duration;
+- derived pace.
 
-### Comments
+Do not expose private metrics merely because the owner can see them locally.
 
-Comments are valuable but add moderation, deletion and notification complexity.
+## Mini Builds — later
 
-Treat comments as a separately approved follow-up within the Race Crew program, not a requirement for the first social release.
-
-## Member summary
-
-Tapping a crew member may later show a simple private-crew profile:
-
-- display name/initials or optional avatar;
-- this-week miles;
-- recent longest run;
-- consistency;
-- recent shared runs;
-- small Build visualization when that feature is approved.
-
-No follower/following model.
-
-## Mini Builds
-
-STACK has a unique social artifact TRNRBOI does not: the Build tower.
-
-A later Race Crew phase may show each member's compact Build.
+UI-20 may show read-only compact Build identity.
 
 Rules:
 
-- read-only to other members;
-- no placement manipulation of another member's tower;
+- no manipulation of another runner's tower;
 - no ranking by tower shape;
-- may show miles built + simplified block structure;
-- shared geometry must not require sharing private health metrics.
-
-A collective Crew Build is an interesting future concept but **not MVP**.
+- miles built is okay;
+- simplified/sanitized block structure may be shared only if it can be produced without exposing private health/source data;
+- collective Crew Build remains future, not MVP.
 
 ## Social boundaries
 
-Race Crew explicitly does not become:
+Race Crew does not become:
 
 - public profiles;
 - public race discovery;
 - follower/following graph;
 - direct messages;
-- open comments from strangers;
-- social feed ranking algorithm;
+- strangers commenting;
+- ranked social feed;
 - public leaderboard;
 - public location sharing;
 - challenges/XP/coins;
 - betting/wagers;
 - coaching comparison engine.
 
-## Race Crew + Performance Arcade
+## Supabase data model
 
-Race Crew should use the approved Performance Arcade language after UI-17:
+Conceptual production tables:
 
-- compact mono data;
-- strong member/metric modules;
-- clear selected comparison mode;
-- factual labels such as `THIS WEEK`, `LONGEST RUN`, `MILES BUILT`;
-- restrained celebratory states.
-
-Do not make social competition visually louder than personal training.
-
-## Why UI-18 is an architecture gate
-
-Current STACK is intentionally single-user:
-
-- AppState is localStorage;
-- there is no account identity;
-- there is no shared database;
-- the Vercel Intervals proxy uses one owner's server-side personal API key;
-- the browser holds a separate local STACK sync token.
-
-That architecture cannot simply be expanded to multiple friends.
-
-Race Crew requires an explicit trust/identity design before production code.
-
-## UI-18 required decisions
-
-UI-18 is docs/research/spike work and must resolve the following before UI-19 starts.
-
-### 1. Authentication provider
-
-Choose a simple managed account system suitable for a small private app.
-
-Evaluation must cover:
-
-- email/magic-link or similarly low-friction login;
-- session handling in a Vercel web app;
-- account deletion;
-- user identity for database authorization;
-- local-development/testing path;
-- cost at a small number of users;
-- minimal operational burden.
-
-Do not build custom password authentication.
-
-### 2. Shared data store
-
-Choose the smallest managed database pattern that supports:
-
-- users;
-- crews;
-- membership/invites;
-- shared run summaries;
-- reactions;
-- later optional comments/build summaries;
-- row/user authorization.
-
-A provider with strong row-level authorization may be attractive, but no provider is locked by this product spec.
-
-### 3. Per-user Intervals authorization
-
-The existing server environment variable `INTERVALS_API_KEY` is a personal single-user credential and **must not become the credential for every Race Crew member**.
-
-Before coding multi-user sync, UI-18 must verify and design the supported Intervals.icu multi-user authorization path.
-
-Investigate:
-
-- OAuth 2.0 support and current official flow requirements;
-- token storage/refresh behavior;
-- scopes/capabilities;
-- whether PKCE is supported/needed;
-- server-side exchange requirements;
-- revocation/disconnect;
-- how athlete identity maps to STACK user identity.
-
-Do not assume the current personal API-key proxy can be reused unchanged.
-
-### 4. Personal AppState ownership
-
-Decide whether Race Crew introduces full cloud sync of personal STACK AppState or keeps personal plan/history local while sharing a narrow server projection.
-
-Preferred starting principle:
-
-> **Share the minimum crew projection, not the entire private AppState.**
-
-A likely MVP approach is:
-
-- personal plan/Build/run detail remains owned by the user;
-- server stores only crew-safe shared summaries required for social features;
-- private imported health metrics stay outside crew records.
-
-But UI-18 must verify how account/device behavior remains coherent.
-
-### 5. Existing owner's migration
-
-Design a zero-loss path for the current owner when accounts arrive.
-
-Requirements:
-
-- existing schema-9 local AppState is never silently discarded;
-- first authenticated session can adopt/link current local data or explicitly keep it local;
-- no duplicate runs/blocks;
-- no forced reset to join Race Crew.
-
-### 6. Invite security
-
-Decide:
-
-- invite link/code format;
-- expiration/revocation;
-- whether invite tokens are stored hashed;
-- who can invite/remove members;
-- how leaving/removal immediately revokes crew access.
-
-### 7. Authorization model
-
-Every shared-data endpoint/query must enforce membership server-side/database-side.
-
-Never rely only on hidden UI.
-
-A user may read:
-
-- their own account data;
-- crews they actively belong to;
-- shared run summaries from active members of those crews.
-
-### 8. Privacy lifecycle
-
-Define behavior when:
-
-- a user leaves a crew;
-- owner removes a member;
-- a shared run is deleted locally;
-- a user deletes their account;
-- a crew is deleted.
-
-Preferred principle: removed membership immediately removes visibility of that runner's crew-shared data.
-
-## Proposed logical data model for architecture review
-
-This is conceptual, not a locked database schema.
-
-```ts
-User {
-  id
-  displayName
-  createdAt
-}
-
-Crew {
-  id
-  ownerUserId
-  name
-  raceName
-  raceDate
-  raceDistanceMiles
-  createdAt
-}
-
-CrewMember {
-  crewId
-  userId
-  role // owner | member
-  joinedAt
-}
-
-SharedRun {
-  id
-  userId
-  crewId
-  localDate
-  activityType
-  distanceMiles
-  durationSeconds
-  createdAt
-  updatedAt
-}
-
-CrewReaction {
-  sharedRunId
-  userId
-  kind
-  createdAt
-}
+```text
+profiles
+crews
+crew_members
+crew_invites
+shared_runs
+crew_member_summaries
 ```
 
-Derived pace is not necessarily stored.
+Reactions are later.
 
-Private health metrics are intentionally absent.
+RLS is mandatory on every exposed table.
 
-## Post-gate implementation outline
+A user can read only active crews they belong to and crew-safe rows for active co-members.
 
-### UI-19 — Account + Crew Foundation
+Users mutate only their own projection rows. Crew owner controls invite/removal operations.
 
-Only after UI-18 owner approval.
+No service-role key belongs in browser code.
 
-Expected outcomes:
+## Projection lifecycle
 
-- authentication;
-- account identity;
-- create/join/leave crew;
-- invite flow;
-- race metadata/mismatch warning;
-- narrow shared-run projection pipeline;
-- security tests;
-- migration/adoption path for current owner's local data.
+No background server process is needed.
 
-No leaderboard/reactions until foundation is proven.
+Update crew-safe projection after meaningful local events:
 
-### UI-20 — Crew Runs + Comparisons
+- sign-in/join;
+- run import/accept;
+- manual run create/edit/delete;
+- stale app open/focus;
+- completion changes affecting Consistency.
 
-Expected outcomes:
+Use quiet stale checks rather than constant writes.
 
-- `YOU | CREW` switch inside Runs;
-- weekly miles / longest run / consistency / miles built selectors;
+Deleting a local run removes its crew-shared projection.
+
+Leaving/removal must immediately remove visibility through RLS; preferred cleanup deletes crew-specific rows as well.
+
+## Failure behavior
+
+Race Crew is optional.
+
+If Supabase is unavailable, misconfigured, signed out or paused:
+
+- Today works;
+- Build works;
+- personal Runs works;
+- Plan works;
+- local manual logging works;
+- local Connected Training works when its credential/source is available.
+
+Social failure never makes the personal training app unusable.
+
+## Implementation sequence
+
+### UI-18 — Race Crew Foundation
+
+Approved next production phase:
+
+- Supabase client/auth;
+- email + 8-digit PIN;
+- Account & Crew settings;
+- DB migration + RLS;
+- create/join/leave/invite/member lifecycle;
+- local Intervals personal-key mode;
+- guided Run Data setup;
+- safe projection service;
+- current owner no-loss adoption;
+- no social feed/comparisons yet.
+
+### UI-19 — Crew Runs + Comparisons
+
+- `YOU | CREW` inside Runs;
+- crew race header;
+- Weekly Miles / Longest Run / Consistency / Miles Built;
 - recent crew runs;
-- crew-safe run detail;
-- empty/loading/error states;
-- no comments yet.
+- crew-safe detail;
+- empty/loading/error/stale states.
 
-### UI-21 — Crew Reactions + Mini Builds
-
-Expected outcomes:
+### UI-20 — Props + Mini Builds
 
 - lightweight one-tap encouragement;
-- read-only member mini Build/miles-built treatment;
-- optional member summary;
-- comments remain a separately reviewable addition if still desired.
+- read-only member mini Builds/miles built;
+- optional compact member summary;
+- comments still separately reviewable.
 
-## Testing/security expectations for future Race Crew code
+See `docs/RACE_CREW_IMPLEMENTATION.md` for implementation detail and agent prompt.
 
-Before any production social release:
+## Hobby-to-public upgrade triggers
 
-- users cannot enumerate/read crews they do not belong to;
-- invite tokens are not guessable/leaked in logs;
-- one member cannot read another member's private health fields;
-- shared run endpoints cannot return source payloads/GPS/notes/HR;
-- removed member loses access immediately;
-- account/crew deletion behavior is tested;
-- current personal run/Build data survives account adoption;
-- no server secret/token reaches built client JS;
-- automated tests use fake users/activities;
-- manual single-user mode failure/recovery is explicitly decided rather than accidentally broken.
+Before STACK becomes a public product, deliberately revisit:
 
-## Product acceptance for Race Crew
+- Intervals OAuth instead of copied personal API keys;
+- stronger password/passkey/auth policy;
+- email verification/account recovery;
+- self-service account deletion;
+- full operational monitoring/backups;
+- privacy/legal disclosures;
+- possible personal cloud sync.
 
-Race Crew is successful when a small group training for the same race can answer:
+Do not accidentally drift a hobby shortcut into a public security model.
 
-- Who ran this week?
-- How much work are we each putting in?
-- What was everyone's recent long run?
-- How is each person progressing against their own plan?
-- Can I give a friend a quick bit of encouragement?
+## Verified external facts behind this architecture
 
-without turning STACK into a public social network or exposing data that belongs in a private training/health view.
+- Intervals `/api/v1/` endpoints support CORS; older internal non-v1 endpoints do not.
+- Personal Intervals API auth uses Basic auth with literal username `API_KEY` and the user's key as password.
+- Intervals API documentation recommends OAuth for apps intended for more than one person.
+- Supabase supports email/password authentication, persistent browser sessions, publishable client keys and Postgres Row Level Security.
+- Supabase hosted projects allow email confirmation to be configured on/off.
+- Supabase recommends minimum password length of at least 8; the owner's numeric PIN choice is an explicit hobby tradeoff rather than Supabase's general best-practice recommendation.
