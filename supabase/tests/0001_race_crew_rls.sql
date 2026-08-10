@@ -1,5 +1,5 @@
 -- Repeatable UI-18 membership/RLS authorization verification.
--- Run after 0001_race_crew_foundation.sql in a disposable/local Supabase DB.
+-- Run after 20260810212106_race_crew_foundation.sql in a disposable/local Supabase DB.
 -- The transaction always rolls back fake users and crew data.
 
 begin;

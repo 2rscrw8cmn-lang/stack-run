@@ -118,10 +118,11 @@ Never commit `.env.local`.
 
 UI-18 implementation must add a reproducible SQL migration to the repository rather than asking the owner to create tables manually one at a time.
 
-Expected first migration location:
+Applied migration locations:
 
 ```text
-supabase/migrations/0001_race_crew_foundation.sql
+supabase/migrations/20260810212106_race_crew_foundation.sql
+supabase/migrations/20260810212506_race_crew_function_grants.sql
 ```
 
 The migration should create and secure:

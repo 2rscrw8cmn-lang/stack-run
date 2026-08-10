@@ -123,12 +123,13 @@ The implementation keeps personal AppState at schema 9 and does not alter local 
 
 Repository verification on 2026-08-10:
 
-- `npm run check` passes: lint, 60 test files / 821 tests, TypeScript and the production Vite build;
+- `npm run check` passes: lint, 60 test files / 822 tests, TypeScript and the production Vite build;
 - in-app browser QA passed Settings, unconfigured Account & Crew, and the guided Apple Watch Run Data path at 320×844, 390×844 and 1200×900;
 - reviewed sheets had no horizontal overflow and all visible interactive targets measured at least 44px;
-- the repository ships the RLS transaction script, but no local Supabase database was available to execute it (`supabase status` found no running Docker-backed stack).
+- migrations `20260810212106_race_crew_foundation` and `20260810212506_race_crew_function_grants` are applied to the active `stack-run` Supabase project; all six tables report RLS enabled with their expected policies, the remote shared-run columns match the safe allowlist, and only high-entropy invite preview retains anonymous function execution;
+- the repeatable two-user/two-crew/outsider RLS transaction passes against the remote project and rolls its fake identities/data back; no local Docker-backed Supabase database was available.
 
-Owner-only production acceptance remains open until the migration is applied to the real Supabase project, an owner and second real account complete the membership/isolation smoke test, and direct Intervals sync succeeds in production iPhone Safari. The legacy proxy remains available until that Safari check passes.
+Owner-only production acceptance remains open until an owner and second real account complete the membership/isolation smoke test and direct Intervals sync succeeds in production iPhone Safari. The legacy proxy remains available until that Safari check passes.
 
 ## Active source documents
 

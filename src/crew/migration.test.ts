@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import migration from "../../supabase/migrations/0001_race_crew_foundation.sql?raw";
+import migration from "../../supabase/migrations/20260810212106_race_crew_foundation.sql?raw";
+import functionGrants from "../../supabase/migrations/20260810212506_race_crew_function_grants.sql?raw";
 import verification from "../../supabase/tests/0001_race_crew_rls.sql?raw";
 
 const TABLES = [
@@ -38,5 +39,20 @@ describe("Race Crew SQL foundation", () => {
     expect(verification).toMatch(/outsider can enumerate crews/);
     expect(verification).toMatch(/outsider inserted a projection/);
     expect(verification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+
+  it("removes inherited anon execution except for invite preview", () => {
+    expect(functionGrants).toMatch(
+      /revoke all on function public\.create_crew\(text, text, date, numeric\) from public, anon/i,
+    );
+    expect(functionGrants).toMatch(
+      /revoke all on function public\.handle_new_user\(\) from public, anon, authenticated/i,
+    );
+    expect(functionGrants).toMatch(
+      /grant execute on function public\.preview_crew_invite\(text\) to anon, authenticated/i,
+    );
+    expect(functionGrants).not.toMatch(
+      /grant execute on function public\.(?:create_crew|redeem_crew_invite).*\bto anon\b/i,
+    );
   });
 });
