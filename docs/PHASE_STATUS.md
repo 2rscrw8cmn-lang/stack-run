@@ -117,22 +117,31 @@ Implementation verification (2026-08-10):
 
 Implementation verification (2026-08-10):
 
-- local mono/tabular data, machine-label, data-module, technical-grid, chart
-  selection, and seven-zone HR tokens are implemented without a network font;
-- Runs/Training Signals carries the strongest instrument treatment, Today is a
-  concise mission briefing, Build retains its exact geometry/storage, and Plan
-  remains the calm schedule surface;
+- locally bundled Space Mono/tabular data, machine-label, data-module,
+  technical-grid, chart selection, and seven-zone HR tokens are implemented
+  without a runtime network font request;
+- Runs/Training Signals now leads with a four-stat instrument panel and every
+  visible signal has a distinct factual mini visualization with accessible text;
+- Weekly Mileage has a rebuilt chart-first selected-week hierarchy, while Run
+  Detail has a substantial primary/secondary metric, HR-zone, and intervals
+  redesign;
+- Today is a concise mission briefing, Build retains its exact geometry/storage,
+  and Plan remains the calm schedule surface; cards, controls, sheets, and rows
+  use the approved more-angular component language;
 - New Longest Run and Miles Built thresholds are transient derived moments;
   nothing is persisted and no badge/game economy was added;
-- `npm run check` passes: lint, 50 test files / 787 tests, and production build;
+- `npm run check` passes: lint, 51 test files / 791 tests, and production build;
 - browser QA passed Today, Runs/Training Signals plus Weekly Mileage detail,
   Build, and Plan at 320×800, 390×844, and 1200×900 with no horizontal
   overflow or browser warnings/errors;
 - new small-text contrast spot checks measured at least 7.0:1, focus remained
   visibly outlined, seven zone tokens resolved, and reduced-motion coverage
   remained present;
-- no schema migration, dependency, Race Crew/backend code, sound, literal
-  Game Boy/CRT/pixel skin, or copied TRNRBOI source/asset was added;
+- the approved Performance Arcade mockup was used as the visual-fidelity
+  acceptance artifact at 320px, 390px, and desktop widths;
+- no schema migration, Race Crew/backend code, sound, literal Game Boy/CRT/pixel
+  skin, or copied TRNRBOI source/asset was added; the sole new dependency is the
+  local `@fontsource/space-mono` package;
 - real-device iPhone review remains an owner/deployment check, so the phase is
   not marked Complete here.
 

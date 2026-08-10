@@ -53,6 +53,7 @@ export function RunRow({ entry, onOpen }: RunRowProps) {
       <button
         type="button"
         className="run-row"
+        data-type={runLog.activityType}
         aria-label={name}
         onClick={onOpen}
       >

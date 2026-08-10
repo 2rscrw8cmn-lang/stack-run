@@ -43,36 +43,35 @@ export function RunFoundCard({ found, today, onConfirmMatch, onAddAsExtra, onDis
         <Database size={16} strokeWidth={1.8} aria-hidden="true" />
         Run found
       </p>
-      <p className="run-found__headline data-value">{formatMiles(candidate.distanceMiles)} mi</p>
-      <dl className="run-found__facts">
+      <dl className="run-found__primary" aria-label="Found run facts">
         <div>
-          <dt>Date</dt>
-          <dd>{formatDateLabel(candidate.completedDate, { weekday: "short", month: "short", day: "numeric" })}</dd>
+          <dd className="data-value">{formatMiles(candidate.distanceMiles)} mi</dd>
+          <dt className="machine-label">Distance</dt>
         </div>
         <div>
-          <dt>Duration</dt>
-          <dd>{formatDurationSeconds(candidate.durationSeconds)}</dd>
+          <dd className="data-value">{formatDurationSeconds(candidate.durationSeconds)}</dd>
+          <dt className="machine-label">Time</dt>
         </div>
         <div>
-          <dt>Pace</dt>
-          <dd>{pace(candidate.distanceMiles, candidate.durationSeconds)}</dd>
+          <dd className="data-value">{pace(candidate.distanceMiles, candidate.durationSeconds)}</dd>
+          <dt className="machine-label">Avg pace</dt>
         </div>
-        {heartRate !== undefined && (
-          <div>
-            <dt>Average HR</dt>
-            <dd>{Math.round(heartRate)} bpm</dd>
-          </div>
-        )}
       </dl>
+      <p className="run-found__meta machine-label">
+        {formatDateLabel(candidate.completedDate, { weekday: "short", month: "short", day: "numeric" })}
+        {heartRate !== undefined && (
+          <><span aria-hidden="true"> · </span><span>{Math.round(heartRate)} bpm</span><span> avg</span></>
+        )}
+      </p>
       {workout && (
-        <p className="run-found__match">
+        <p className="run-found__match machine-label">
           {workout.date === today
-            ? `Looks like today's ${workout.title}.`
-            : `Looks like ${workout.title}, scheduled ${formatDateLabel(workout.date, { weekday: "long" })}.`}
+            ? `Matches today · ${workout.title}`
+            : `Matches ${formatDateLabel(workout.date, { weekday: "long" })} · ${workout.title}`}
         </p>
       )}
       <div className="run-found__actions">
-        {workout && <Button onClick={onConfirmMatch}>Confirm Match</Button>}
+        {workout && <Button onClick={onConfirmMatch}>Review Run</Button>}
         <Button variant={workout ? "secondary" : "primary"} onClick={onAddAsExtra}>
           {workout ? "Extra Run" : "Add as Extra Run"}
         </Button>

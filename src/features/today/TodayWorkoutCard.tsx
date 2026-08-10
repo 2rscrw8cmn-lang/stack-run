@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { ActivityIcon } from "../../components/shared/ActivityIcon";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import type { Workout } from "../../domain/types";
 
 interface TodayWorkoutCardProps {
@@ -47,6 +48,9 @@ export function TodayWorkoutCard({
           aria-hidden="true"
         />
         <div>
+          <p className="today-workout-card__type machine-label">
+            {WORKOUT_TYPE_LABEL[workout.type]}
+          </p>
           {distanceHeadline && (
             <p className="today-workout-card__distance data-value">{distanceHeadline}</p>
           )}

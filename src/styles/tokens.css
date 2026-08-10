@@ -2,14 +2,14 @@
   color-scheme: dark;
 
   --font-data:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    monospace;
+    "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
 
-  --bg: #071018;
-  --bg-elevated: #0c1620;
-  --surface: #111c26;
-  --surface-strong: #16222d;
-  --surface-soft: #0e1821;
+  --bg: #03070a;
+  --bg-elevated: #060c11;
+  --surface: #0a1219;
+  --surface-strong: #101b24;
+  --surface-soft: #080f15;
 
   --text: #f6f7f8;
   --text-muted: #9ca7b1;
@@ -23,23 +23,23 @@
   --border-strong: rgba(255, 255, 255, 0.15);
 
   /* UI-17: one compact instrument language, shared by Runs, charts and Build. */
-  --data-surface: #0a151f;
-  --data-surface-strong: #0d1b27;
-  --data-border: rgba(184, 241, 59, 0.24);
-  --technical-grid-line: rgba(198, 216, 230, 0.055);
-  --selected-border: #c8ff4f;
-  --selected-glow: rgba(184, 241, 59, 0.18);
+  --data-surface: #060d12;
+  --data-surface-strong: #0a151d;
+  --data-border: rgba(166, 255, 26, 0.34);
+  --technical-grid-line: rgba(93, 140, 168, 0.105);
+  --selected-border: #b9ff35;
+  --selected-glow: rgba(166, 255, 26, 0.24);
   --chart-actual: var(--accent);
   --chart-reference: #a7b2bc;
   --chart-selection: rgba(184, 241, 59, 0.09);
 
-  --accent: #b8f13b;
+  --accent: #a6ff1a;
   --accent-text: #0a1102;
 
-  --easy: #b8f13b;
-  --intervals: #4f9bff;
-  --simulation: #9b6dff;
-  --long: #ffc53d;
+  --easy: #a6ff1a;
+  --intervals: #287dff;
+  --simulation: #a14cff;
+  --long: #ffd21a;
   --race: #f6f7f8;
   --danger: #ff6b6b;
 
@@ -52,8 +52,8 @@
   --zone-6: #ff6565;
   --zone-7: #d270ff;
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
   --radius-lg: 22px;
 
   --space-1: 4px;

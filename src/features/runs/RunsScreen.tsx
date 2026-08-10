@@ -5,7 +5,9 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { earnedBlockPhrase, totalActualMiles } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
+import { formatDurationSeconds } from "../../domain/duration";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
+import { selectTrainingSignals } from "../../domain/trends";
 import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
@@ -82,6 +84,9 @@ export function RunsScreen({
   const selected =
     history.find((entry) => entry.runLog.id === detailRunLogId) ?? null;
   const miles = totalActualMiles(runLogs);
+  const totalTime = runLogs.reduce((sum, run) => sum + run.durationSeconds, 0);
+  const activeWeeks = selectTrainingSignals(plan, runLogs, today).weeklyMileage
+    .filter((week) => week.actualMiles > 0).length;
 
   /**
    * A deleted run takes its own row — the thing the browser would have
@@ -94,7 +99,7 @@ export function RunsScreen({
       pendingFocus.current = false;
       headingRef.current?.focus();
     }
-  }, [isEditOpen, isDetailOpen]);
+  }, [isEditOpen, isDetailOpen, history.length]);
 
   function openEntry(entry: RunHistoryEntry | null, fromDetail: boolean) {
     returnToDetail.current = fromDetail;
@@ -132,24 +137,49 @@ export function RunsScreen({
   return (
     <div className="runs-screen">
       <div className="runs-screen__lead">
-        <div className="runs-screen__summary">
-          <h1 className="runs-screen__count data-value" ref={headingRef} tabIndex={-1}>
-            {history.length === 0
-              ? "No runs yet"
-              : `${history.length} ${history.length === 1 ? "run" : "runs"}`}
+        <div className="runs-screen__title-row">
+          <h1 className="runs-screen__screen-title data-value" ref={headingRef} tabIndex={-1}>
+            Runs
+            <span className="visually-hidden">
+              {history.length === 0
+                ? " · No runs yet"
+                : ` · ${history.length} ${history.length === 1 ? "run" : "runs"}`}
+            </span>
           </h1>
-          {history.length > 0 && (
-            <p className="runs-screen__miles machine-label">{formatMiles(miles)} miles run</p>
-          )}
+          <Button
+            variant="secondary"
+            className="runs-screen__log"
+            icon={<Plus size={18} strokeWidth={2} />}
+            onClick={() => openEntry(null, false)}
+          >
+            Log Run
+          </Button>
         </div>
-        <Button
-          variant="secondary"
-          className="runs-screen__log"
-          icon={<Plus size={18} strokeWidth={2} />}
-          onClick={() => openEntry(null, false)}
-        >
-          Log Run
-        </Button>
+        {history.length === 0 ? (
+          <p className="runs-screen__count data-value">No runs yet</p>
+        ) : (
+          <>
+            <dl className="runs-screen__instrument" aria-label="Running history summary">
+              <div>
+                <dd className="data-value">{history.length}</dd>
+                <dt className="machine-label">{history.length === 1 ? "run" : "runs"}</dt>
+              </div>
+              <div>
+                <dd className="data-value">{formatMiles(miles)}</dd>
+                <dt className="machine-label">Total mi</dt>
+              </div>
+              <div>
+                <dd className="data-value">{formatDurationSeconds(totalTime)}</dd>
+                <dt className="machine-label">Total time</dt>
+              </div>
+              <div>
+                <dd className="data-value">{activeWeeks}</dd>
+                <dt className="machine-label">Weeks</dt>
+              </div>
+            </dl>
+            <p className="visually-hidden">{formatMiles(miles)} miles run</p>
+          </>
+        )}
       </div>
 
       <TrendCards

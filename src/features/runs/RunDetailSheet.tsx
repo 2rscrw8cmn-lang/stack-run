@@ -36,19 +36,25 @@ export function RunDetailSheet({
 
   return (
     <Sheet
-      title={WORKOUT_TYPE_LABEL[runLog.activityType]}
+      className="sheet--run-detail"
+      title="Run Detail"
       isOpen={isOpen}
       onClose={onClose}
     >
       <div className="workout-detail">
-        <p className="workout-detail__status" data-state="completed">
-          {formatDateLabel(runLog.completedDate, {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </p>
+        <div className="run-detail__context">
+          <p className="machine-label">
+            {formatDateLabel(runLog.completedDate, {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
+          <span className="run-detail__type machine-label" data-type={runLog.activityType}>
+            {WORKOUT_TYPE_LABEL[runLog.activityType]}
+          </span>
+        </div>
 
         <RunResultDetail run={runLog} syncToken={syncToken} />
 

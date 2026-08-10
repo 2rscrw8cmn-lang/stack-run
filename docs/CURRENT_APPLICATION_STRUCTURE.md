@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-17 Performance Arcade Design Pass is implemented and ready for owner review.** STACK keeps its existing Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps now share a local system-monospace/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways. AppState remains schema 9 and no dependency, backend, or connected-data behavior changed.
+**UI-17 Performance Arcade Design Pass is implemented and ready for owner review.** STACK keeps its existing Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps now share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways. AppState remains schema 9 and no backend or connected-data behavior changed. The only new production dependency is `@fontsource/space-mono`, which makes the approved display face deterministic and avoids a runtime font request.
 
 UI-16 Trends 2.0 remains implemented beneath this presentation pass. Runs carries seven focused Training Signals with dedicated detail modules, plan-versus-actual views, accessible SVG/CSS charts, and deterministic week/run drill-downs. The analytics remain derived entirely from schema-9 plan and run snapshots.
 
@@ -722,7 +722,7 @@ and `ZoneBars` files are deleted.
 ## UI-17 — Performance Arcade Design Pass
 
 `src/styles/tokens.css` now owns one small presentation vocabulary for the
-phase: the local system-monospace data stack, instrument surfaces/borders,
+phase: the locally bundled Space Mono data stack, instrument surfaces/borders,
 technical-grid line, chart actual/reference/selection treatments, and the
 ordered seven-zone HR palette. `src/styles/components.css` exposes the opt-in
 `.data-value`, `.machine-label`, `.data-module`, and `.technical-grid`
@@ -731,17 +731,33 @@ remain on the system sans stack in `base.css`.
 
 The screen treatment follows D-052 rather than creating a second UI shell:
 
-- **Runs/Training Signals** uses compact grid-backed instrument modules,
-  confident per-signal accents, larger tabular facts, square/block-inspired
-  columns, crisp line points, explicit selected states, and stronger donut
-  composition. Run history remains calmer below it.
+- **Runs/Training Signals** leads with a four-stat instrument panel and compact
+  grid-backed modules. Every visible signal now carries its own factual mini
+  visualization through `MiniBars`, `MiniSparkline`, `MiniDonut`, or
+  `MiniMatrix`; the adjacent text remains the accessible authority. Confident
+  per-signal accents, larger tabular facts, square/block-inspired columns,
+  crisp line points, and explicit selected states make Runs the strongest
+  expression while run history remains calmer below it.
+- **Weekly Mileage detail** is rebuilt around a larger plan-versus-actual chart,
+  compact current/average/plan/delta facts, an explicit selection instruction,
+  and the selected week's underlying run list.
+- **Run Detail** is rebuilt around a date/activity header, three primary result
+  facts, a compact secondary imported-metric bank, a larger colored HR-zone
+  donut and legend, and a columnar interval list. Schedule context and editing
+  remain lower in the sheet, and absent health fields remain omitted.
 - **Today** adds a concise machine-date/race line and stronger workout/Run
-  Found data hierarchy without adding a card or changing the daily order.
+  Found result hierarchy without adding analytics or changing the daily order.
 - **Build** adds a local technical stage grid, stronger block edges, and
   stamped mono mileage while preserving the deterministic eight-column
   geometry, placement behavior, and storage contract exactly.
 - **Plan** uses machine week/date/status facts and thin workout-color edge
   accents while keeping the schedule rows and body copy restrained.
+
+Cards, buttons, selected controls, sheets, run rows, and schedule rows use the
+approved squarer, more angular shape language. The approved Performance Arcade
+mockup is the visual-fidelity acceptance artifact for this revision; it guides
+hierarchy, density, data emphasis, and color without importing its source or
+assets.
 
 `src/domain/accomplishments.ts` derives two session-only factual moments when a
 new run is recorded: **New Longest Run** within the active-plan period (after a
@@ -754,7 +770,7 @@ persistent achievement ledger to claim completeness.
 
 UI-17 verification on 2026-08-10:
 
-- `npm run check` passes: lint, 50 test files / 787 tests, and the production
+- `npm run check` passes: lint, 51 test files / 791 tests, and the production
   Vite build;
 - in-app browser QA passed Today, Runs/Training Signals, Weekly Mileage detail,
   Build, and Plan at 320×800, 390×844, and 1200×900;
@@ -765,7 +781,7 @@ UI-17 verification on 2026-08-10:
   measured 112px high at 390px;
 - all seven zone tokens resolved and labels remain authoritative; reduced
   motion rules remain active;
-- no schema migration, dependency, router/state-library, canvas/WebGL,
+- no schema migration, router/state-library, canvas/WebGL,
   Race Crew/backend, sound, pixel/CRT/device-shell, or copied external asset was
   added.
 

@@ -240,7 +240,7 @@ describe("Runs", () => {
     expect(screen.getByRole("heading", { name: "Edit Run" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("heading", { name: "Easy" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Run Detail" })).toBeInTheDocument();
   });
 });
 
@@ -350,7 +350,7 @@ describe("Runs Training Signals", () => {
     await user.click(screen.getByRole("button", { name: /^Week 1, 3 actual miles/ }));
     expect(screen.getByText("Week 1 runs")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Open Easy on .*Aug 4/ }));
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Weekly Mileage");
   });

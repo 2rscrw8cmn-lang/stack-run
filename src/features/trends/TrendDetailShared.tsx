@@ -28,7 +28,7 @@ export function DetailSection({
   title,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
 }) {
   return (

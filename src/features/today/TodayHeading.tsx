@@ -21,12 +21,13 @@ export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) 
 
   return (
     <div className="today-heading">
-      <h1 className="today-heading__date data-value">
+      <h1 className="today-heading__date machine-label">
+        <span className="today-heading__day">
+          {formatDateLabel(today, { month: "short", day: "numeric" })}
+        </span>
+        <span aria-hidden="true"> · </span>
         <span className="today-heading__weekday">
           {formatDateLabel(today, { weekday: "long" })}
-        </span>{" "}
-        <span className="today-heading__day">
-          {formatDateLabel(today, { month: "long", day: "numeric" })}
         </span>
       </h1>
 
@@ -36,7 +37,7 @@ export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) 
         <span className="race-context__separator" aria-hidden="true">
           ·
         </span>
-        <span className="race-context__days">
+        <span className="race-context__days data-value">
           {days === 0 ? "Race day" : `${days} ${days === 1 ? "day" : "days"}`}
         </span>
         <span className="visually-hidden">
