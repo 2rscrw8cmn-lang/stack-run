@@ -1,195 +1,276 @@
 # STACK — Next Product Program
 
-Status: **Approved product direction after UI-14.**
+Status: **UI-16 and UI-17 complete; Race Crew Foundation is the active next program.**
 
-This document is the top-level source of truth for the next era of STACK. It defines three approved product initiatives:
+STACK's current product foundation is:
 
-1. **Trends 2.0** — richer, focused training-data exploration.
-2. **Performance Arcade design pass** — a modern training-computer visual language with restrained arcade DNA.
-3. **Race Crew** — an optional invite-only social layer for runners training for the same race.
+```text
+Today / Build / Runs / Plan
+```
 
-The existing core product remains intact:
+Settings remains a top-right gear. Personal AppState remains local schema 9. HealthFit → Intervals.icu remains the Apple Watch connected-data path.
 
-> Today / Build / Runs / Plan
-
-Settings remains a top-right gear. HealthFit → Intervals.icu remains the connected run-data path. Build remains one block per actual run.
-
-## Why this program exists
-
-UI-13 and UI-14 completed the primary information architecture and made Build substantially stronger. STACK now has a coherent foundation, but two areas can carry much more value:
-
-- training data can be explored more deeply and visually;
-- the app can have more character without becoming a novelty retro game.
-
-A third opportunity is now intentionally documented: several runners may train for the same race and benefit from a small private crew experience.
-
-## Approved implementation sequence
-
-### UI-15 — Optional Plan Export Investigation
-
-Remains **deferred** under D-040. It is not part of this program and has no code authorization.
+## Completed next-program initiatives
 
 ### UI-16 — Trends 2.0
 
-Approved next implementation.
+Complete.
 
-Primary outcomes:
+Delivered:
 
-- each Training Signal opens its own focused expanded view;
-- the old all-in-one Trends sheet is retired;
-- richer signals and graphs use existing plan/run/imported data;
-- actual-versus-planned becomes a core analytical advantage;
-- heart-rate zone distribution becomes a donut/pie treatment;
-- Today loses the generic extra `Log Run` button; manual extra logging lives on Runs;
-- no readiness score, race prediction or coaching engine.
+- seven focused Training Signals;
+- one dedicated expanded view per signal;
+- plan-versus-actual analytics;
+- HR-zone/run-mix donuts;
+- richer graphs/drill-down;
+- generic Log Run removed from Today.
 
-See `docs/TRENDS_2_0.md`.
+See `docs/TRENDS_2_0.md` for product history/current behavior.
 
 ### UI-17 — Performance Arcade Design Pass
 
-Approved after UI-16.
+Complete via merged PR #34.
 
-Primary outcomes:
+Delivered:
 
-- preserve current STACK structure and readability;
-- make data surfaces feel like a purpose-built training computer;
-- use stronger data typography, technical grids, block-inspired chart geometry and brighter accent usage;
-- add restrained factual achievement moments;
-- do not implement a literal Game Boy/CRT/pixel-art costume.
+- modern training-computer visual language;
+- Space Mono data/machine typography;
+- angular modules/controls;
+- technical grids;
+- mini signal charts;
+- stronger Run Detail;
+- thematic Build treatment;
+- restrained factual accomplishment moments;
+- no retro-device cosplay or game economy.
 
 See `docs/ARCADE_DESIGN_PASS.md`.
 
-### UI-18 — Race Crew Architecture Gate
+## Active next initiative — Race Crew
 
-Approved as **design/architecture work first**, not as permission to immediately add production accounts/social/backend code.
+The architecture gate has now been resolved by owner decision.
 
-Race Crew changes fundamental assumptions:
+Race Crew v1 is intentionally designed for a **private hobby group of roughly ten known friends**, not a public commercial product.
 
-- one local user → multiple authenticated users;
-- no server persistence → shared server data;
-- one owner Intervals credential → per-runner connected-data authorization;
-- private local activity → explicitly shared crew activity summaries.
+### Approved architecture
 
-UI-18 must resolve those boundaries and receive owner approval before production Race Crew implementation begins.
+```text
+PERSONAL RUN DATA
 
-See `docs/RACE_CREW.md`.
+watch → Intervals.icu → personal API key on runner's device → STACK
 
-Potential post-gate implementation is intentionally broken into later phases rather than one giant PR:
+Apple Watch specifically:
+Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 
-- **UI-19 — Account + Crew Foundation** — gated on UI-18 approval.
-- **UI-20 — Crew Runs + Leaderboards** — gated on UI-19.
-- **UI-21 — Crew Reactions + Mini Builds** — gated on UI-20; comments remain separately reviewable.
+CREW DATA
 
-Phase names/numbers after UI-18 may be revised by the owner after the architecture gate.
+STACK → narrow safe projection → Supabase Auth/Postgres/RLS → Crew
+```
 
-## Product hierarchy after these changes
+Locked choices:
+
+- Supabase Auth + Postgres + RLS for social identity/shared data;
+- email + exactly 8 numeric digits presented as STACK PIN;
+- no normal magic-link login;
+- email confirmation intentionally disabled for hobby release;
+- personal plan/runs/Build stay local;
+- no full personal cloud sync;
+- each runner's personal Intervals API key stays only on their device;
+- no Intervals key in Supabase;
+- direct `/api/v1/` browser connection for new hobby users after real Safari/CORS verification;
+- current owner Vercel proxy remains during migration until the new mode is proven;
+- only explicit crew-safe run/summary fields go to Supabase.
+
+### Intervals policy tradeoff
+
+Intervals.icu officially recommends OAuth for apps intended for more than one person.
+
+The owner has accepted personal API keys as a temporary private-hobby shortcut for a very small group of friends.
+
+This architecture must be revisited before public/open/commercial/stranger onboarding or material scale.
+
+## Active implementation sequence
+
+### UI-18 — Race Crew Foundation
+
+**Next approved code phase.**
+
+Primary outcomes:
+
+- optional STACK account identity;
+- Supabase setup/client/auth;
+- email + 8-digit PIN;
+- Account & Crew Settings UI;
+- crew create/join/leave/invite/member lifecycle;
+- Supabase SQL migration + RLS;
+- per-device Intervals personal-key connection mode;
+- polished run-data onboarding instructions;
+- narrow shared-run/member-summary projection service;
+- no-loss adoption of existing local owner data;
+- no Crew feed/comparison presentation yet.
+
+See:
+
+- `docs/RACE_CREW.md`
+- `docs/RACE_CREW_SETUP.md`
+- `docs/RUN_DATA_SETUP.md`
+- `docs/RACE_CREW_IMPLEMENTATION.md`
+
+### UI-19 — Crew Runs + Comparisons
+
+After UI-18 is accepted:
+
+- `YOU | CREW` inside Runs;
+- crew race header;
+- Weekly Miles;
+- Longest Run;
+- Consistency;
+- Miles Built;
+- recent crew runs;
+- crew-safe run detail;
+- strong empty/loading/stale/error states.
+
+No overall score and no raw pace leaderboard.
+
+### UI-20 — Props + Mini Builds
+
+After UI-19:
+
+- one lightweight encouragement reaction;
+- read-only member mini Build / miles-built treatment;
+- optional compact member summary.
+
+Comments remain separately reviewable and are not required.
+
+## Run-data onboarding is now a first-class product requirement
+
+The Apple Watch pipeline requires several services, so STACK must explain it rather than assuming users understand it.
+
+Apple Watch:
+
+```text
+Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
+```
+
+Other devices/services already connected directly to Intervals can skip HealthFit.
+
+`docs/RUN_DATA_SETUP.md` is the content source of truth for the in-app setup wizard.
+
+The setup flow must explain:
+
+- what each app/service does;
+- which pieces are Apple-Watch-specific;
+- how to verify a run has reached Intervals before connecting STACK;
+- how to generate the Intervals personal API key;
+- that the key stays only on the current device;
+- what Race Crew can and cannot see.
+
+## Race Crew product placement
+
+Race Crew stays inside Runs:
+
+```text
+YOU | CREW
+```
+
+It does not become a fifth bottom-nav tab.
+
+### YOU
+
+Personal Training Signals, run history/detail, Log Run.
+
+### CREW
+
+Private race group, comparisons, recent runs and later encouragement/mini Builds.
+
+## Race Crew privacy boundary
+
+Crew-safe by default:
+
+- display name;
+- run local date;
+- STACK activity type;
+- distance;
+- duration;
+- derived pace;
+- Weekly Miles;
+- trailing-28-day Longest Run;
+- recent scheduled Consistency;
+- Miles Built.
+
+Private by default:
+
+- Intervals key;
+- Intervals external ids/raw payloads;
+- route/GPS/location;
+- exact start time;
+- HR/max HR;
+- HR zones;
+- Training Load;
+- wellness;
+- effort;
+- notes;
+- private calendar/availability;
+- complete AppState.
+
+## Product hierarchy
 
 ### Today
 
-The daily command center.
-
-Answers:
-
-- What am I supposed to do today?
-- Did STACK find the run I just did?
-- How is this week going?
-- What comes next?
-
-Today is not the manual history-entry screen and not the full analytics screen.
+Daily command center.
 
 ### Build
 
-The emotional reward.
-
-Answers:
-
-- What have I built by doing the work?
-- What block did this run earn?
+Emotional reward / physical training artifact.
 
 ### Runs
 
-The factual history + training-data home.
-
-Answers:
-
-- What did I actually run?
-- What is changing across my training?
-- What do the underlying runs behind a trend look like?
-- Later, what is my Race Crew doing?
+Actual history + Training Signals + optional Race Crew context.
 
 ### Plan
 
-The future schedule.
+Future schedule and explicit editing.
 
-Answers:
+## Product personality
 
-- What is coming?
-- What can I move/edit?
-- How does actual training compare with what was planned?
+Keep the approved Performance Arcade direction from UI-17.
 
-## Product personality target
-
-STACK should evolve from a polished dark utility into a **modern training computer with arcade DNA**.
-
-Target balance:
-
-- ~70% current polished STACK;
-- ~20% performance-arcade/training-computer character;
-- ~10% playful reward moments.
-
-The reference feeling is specialized running equipment, not a retro-game emulator.
+Race Crew uses the same training-computer language, but social comparison should not become louder than personal training.
 
 ## TRNRBOI-8000 reference boundary
 
-`drewwest289/TRNRBOI-8000` is an **external product/design reference only**.
+`drewwest289/TRNRBOI-8000` remains design/product inspiration only.
 
-Useful ideas to study include:
-
-- richer data exploration;
-- pace/HR/volume visualization;
-- run-detail charts;
-- private-team leaderboards/recent runs;
-- stronger arcade/training-computer personality.
-
-Do **not**:
-
-- copy source code;
-- copy backend/auth engineering by default;
-- import its assets/pixel icons;
-- copy its Strava architecture;
-- copy its Game Boy device shell;
-- add Tailwind/Recharts merely because that project uses them;
-- treat its calculations as authoritative.
-
-STACK implements approved concepts independently using STACK's own data model, design system and engineering standards.
+Do not copy its code/assets/backend/Strava architecture/Game Boy shell/calculations.
 
 ## Cross-program guardrails
 
-All three initiatives must preserve:
+Preserve:
 
 - phone-first usability at 320px;
 - dark-only design;
-- Today / Build / Runs / Plan navigation;
-- Settings as top-right utility;
+- Today / Build / Runs / Plan;
+- Settings top-right utility;
 - manual logging fallback;
-- HealthFit → Intervals.icu connected-data path unless Race Crew architecture explicitly revises multi-user authorization;
 - user-confirmed run matching;
 - no automatic plan mutation from health data;
 - no wellness/readiness program;
 - accessible non-color alternatives;
 - reduced-motion support;
-- understandable implementation for a small codebase.
+- personal STACK fully usable while signed out or Supabase is unavailable;
+- smallest understandable implementation for the hobby project.
 
 ## Authority
 
-Where older documents conflict with this program, use this order:
+Where older documents conflict with this program, use:
 
 1. `docs/PRODUCT_AND_SCOPE.md`
 2. `docs/NEXT_PRODUCT_PROGRAM.md`
-3. phase-specific document (`TRENDS_2_0.md`, `ARCADE_DESIGN_PASS.md`, `RACE_CREW.md`)
-4. `docs/RUNS_AND_BUILD_REVISION.md`
-5. `docs/CONNECTED_TRAINING.md`
-6. connected-data engineering docs
-7. older UX/roadmap/decision documents
+3. `docs/RACE_CREW.md` for the active program
+4. `docs/RACE_CREW_IMPLEMENTATION.md`
+5. `docs/RACE_CREW_SETUP.md`
+6. `docs/RUN_DATA_SETUP.md`
+7. `docs/DATA_AND_STORAGE.md`
+8. connected-data engineering docs for personal import behavior
+9. older program/history docs
 
-`docs/CONNECTED_DATA_FIELDS.md` remains authoritative for what the real HealthFit → Intervals pipeline has actually verified.
+`docs/CONNECTED_DATA_FIELDS.md` remains authoritative for real imported field availability.
