@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { BottomNav } from "../components/shared/BottomNav";
 import { StackMark } from "../components/shared/StackMark";
 import type { AvailabilityCalendar } from "../domain/availability";
+import { todayLocalDate } from "../domain/dates";
 import type { RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
 import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
@@ -13,7 +14,9 @@ import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
 import type { AppState, Effort, RunActivityType } from "../domain/types";
 import type { IntervalsCandidate } from "../connected/intervals";
-import { RunDataSheet } from "../features/connected/RunDataSheet";
+import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
+import type { ConnectedSync } from "../features/connected/useConnectedSync";
+import { TrendsSheet } from "../features/trends/TrendsSheet";
 import { Button } from "../components/ui/Button";
 import { Database } from "lucide-react";
 import { useState } from "react";
@@ -48,7 +51,9 @@ interface AppShellProps {
   placingRunLogId: string | null;
   onPlacingChange: (runLogId: string | null) => void;
   appState: AppState; syncToken: string | null;
-  onConnectIntervals: (token: string) => void; onForgetIntervals: () => void; onIntervalsSynced: (at: string) => void;
+  /** The one sync every screen reads from, so none of them disagree. */
+  connectedSync: ConnectedSync;
+  onConnectIntervals: (token: string) => void; onForgetIntervals: () => void;
   onImportIntervals: (candidate: IntervalsCandidate, workoutId: string | null, type: RunActivityType, effort: Effort, notes: string) => void;
   onAttachIntervals: (candidate: IntervalsCandidate, runLogId: string) => void; onIgnoreIntervals: (id: string) => void; onClearIgnoredIntervals: () => void;
 }
@@ -73,9 +78,20 @@ export function AppShell({
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
-  appState, syncToken, onConnectIntervals, onForgetIntervals, onIntervalsSynced, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
+  appState, syncToken, connectedSync, onConnectIntervals, onForgetIntervals, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
 }: AppShellProps) {
   const [runDataOpen, setRunDataOpen] = useState(false);
+  // A review handed in from Today, and a counter that remounts the sheet so it
+  // opens on that run rather than on whatever it was last showing.
+  const [review, setReview] = useState<RunDataReview | null>(null);
+  const [runDataVisit, setRunDataVisit] = useState(0);
+  const [trendsOpen, setTrendsOpen] = useState(false);
+
+  function openRunData(next: RunDataReview | null) {
+    setReview(next);
+    setRunDataVisit((visit) => visit + 1);
+    setRunDataOpen(true);
+  }
   return (
     <div className="app-shell">
       {/*
@@ -88,7 +104,7 @@ export function AppShell({
           <StackMark size={22} />
           <p className="wordmark">STACK</p>
         </div>
-        <Button className="run-data-trigger" variant="ghost" icon={<Database size={17}/>} onClick={() => setRunDataOpen(true)}>Run Data</Button>
+        <Button className="run-data-trigger" variant="ghost" icon={<Database size={17}/>} onClick={() => openRunData(null)}>Run Data</Button>
       </header>
       {notice}
       <main className="app-shell__main">
@@ -98,6 +114,7 @@ export function AppShell({
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
+            onViewTrends={() => setTrendsOpen(true)}
             onViewBuild={() => onTabChange("build")}
             onStartPlacing={(runLogId) => {
               onPlacingChange(runLogId);
@@ -106,6 +123,16 @@ export function AppShell({
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             availability={availability}
+            candidates={connectedSync.candidates}
+            onReviewCandidate={(candidate, asExtra) => openRunData({ candidate, asExtra })}
+            onDismissCandidate={connectedSync.dismiss}
+            onIgnoreCandidate={(externalId) => {
+              onIgnoreIntervals(externalId);
+              connectedSync.settle(externalId);
+            }}
+            syncError={connectedSync.error}
+            onRetrySync={connectedSync.sync}
+            isSyncing={connectedSync.status === "syncing"}
           />
         )}
         {activeTab === "build" && (
@@ -136,6 +163,7 @@ export function AppShell({
             onSaveRunDays={onSaveRunDays}
             raceSetup={raceSetup}
             onGeneratePlan={onGeneratePlan}
+            onViewTrends={() => setTrendsOpen(true)}
             syncToken={syncToken}
           />
         )}
@@ -143,7 +171,8 @@ export function AppShell({
       <nav className="app-shell__nav" aria-label="Primary">
         <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
       </nav>
-      <RunDataSheet isOpen={runDataOpen} onClose={() => setRunDataOpen(false)} state={appState} initialToken={syncToken} onConnect={onConnectIntervals} onForget={onForgetIntervals} onSynced={onIntervalsSynced} onImport={onImportIntervals} onAttach={onAttachIntervals} onIgnore={onIgnoreIntervals} onClearIgnored={onClearIgnoredIntervals}/>
+      <TrendsSheet plan={plan} runLogs={runLogs} today={todayLocalDate()} isOpen={trendsOpen} onClose={() => setTrendsOpen(false)} />
+      <RunDataSheet key={runDataVisit} isOpen={runDataOpen} onClose={() => setRunDataOpen(false)} state={appState} initialToken={syncToken} initialReview={review} candidates={connectedSync.candidates} isSyncing={connectedSync.status === "syncing"} syncError={connectedSync.error} onSync={connectedSync.sync} onSettle={connectedSync.settle} onConnect={onConnectIntervals} onForget={onForgetIntervals} onImport={onImportIntervals} onAttach={onAttachIntervals} onIgnore={onIgnoreIntervals} onClearIgnored={onClearIgnoredIntervals}/>
     </div>
   );
 }

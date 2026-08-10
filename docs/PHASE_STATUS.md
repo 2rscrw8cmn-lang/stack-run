@@ -49,10 +49,10 @@ Known external setup before implementation:
 
 | Phase | Name | Status | Branch / PR | Primary outcome |
 |---:|---|---|---|---|
-| 8 | Connected Data Foundation | **Implementation complete; validation pending** | `work` | Protected read proxy, schema 9, sync/dedupe, match/extra/attach import implemented. Vercel/iPhone real-field discovery remains required before the phase can be marked Complete. |
-| 9 | Connected Run Detail | **Implementation complete; real-field validation pending** | `work` | Shared scheduled/extra detail, derived pace, optional HR/elevation/load/zones, and on-demand named interval rows implemented. Cadence remains omitted. Real HealthFit field/structured-workout verification and responsive device smoke test remain required before Complete. |
-| 10 | Connected Today + Week | Not started |  | Run-found state, stale-aware sync, weekly actual mileage/time/longest. |
-| 11 | Training Trends | Not started |  | Mileage, long-run progression, consistency, Easy pace/HR trends in secondary view. |
+| 8 | Connected Data Foundation | **Complete** | `claude/stack-sync-token-connection-txwds5` | Protected read proxy, schema 9, sync/dedupe, match/extra/attach import. Verified on the production deployment Aug 9, 2026: a real HealthFit activity synced, matched and imported on iPhone. |
+| 9 | Connected Run Detail | **Complete, with two fields still unverified** | `claude/stack-sync-token-connection-txwds5` | Shared scheduled/extra detail, derived pace, HR/elevation/load/zones and on-demand interval rows, verified against the real Aug 9 activity. Cadence stays omitted; structured intervals still need a structured Apple Watch workout. |
+| 10 | Connected Today + Week | **Implementation complete; deployed check pending** | `claude/stack-sync-token-connection-txwds5` | Stale-aware quiet sync on open/focus, Run Found on Today, weekly actual miles/time/longest. |
+| 11 | Training Trends | **Implementation complete; deployed check pending** | `claude/stack-sync-token-connection-txwds5` | Secondary Trends sheet from Today and Plan: weekly mileage, long-run progression, consistency, Easy pace and Easy HR, each with a summary, a table view and a low-data state. HR zones on run detail are now a chart. |
 | 12 | Wellness / Recovery Context | Blocked on field verification |  | HRV/resting HR/sleep only if real HealthFit → Intervals coverage is verified. |
 | 13 | Optional Plan Export Investigation | **Deferred** |  | No code authorization. Possible STACK Plan → Intervals → HealthFit write path requires separate decision. |
 
@@ -72,6 +72,34 @@ Automated code/tests must **not** require either secret. Preview/Production secr
 The first deployed sync must query far enough back to include the known June 10 HealthFit-originated activity and then update `docs/CONNECTED_DATA_FIELDS.md` with the actual source fields/units present.
 
 Do not commit the raw personal API response.
+
+## UI-10 validation state
+
+Branch `claude/stack-sync-token-connection-txwds5`. `npm run check` passes
+(574 tests). The whole loop was driven at 320px against a stubbed proxy —
+quiet sync on open, Run Found, Confirm Match, the existing review, the earned
+Long Run block, and This Week's actual totals — with no tap needed to start the
+sync. What remains is the same thing every connected phase ends with: the owner
+running it on the deployed app after a real HealthFit sync.
+
+Deliberately not built, per the phase boundaries: no fourth tab, no trends, no
+wellness, no automatic plan edits, and no polling of any kind.
+
+## UI-11 validation state
+
+Branch `claude/stack-sync-token-connection-txwds5`. `npm run check` passes
+(597 tests). Every chart was rendered at 320px against six weeks of seeded
+runs and read back from the screenshots, which is what caught two real
+defects: a one-column week-one chart that said less than the number does, and
+a stale rule that collapsed the new zone bars to nothing.
+
+No chart dependency was added — all five drawings are inline SVG or CSS. What
+was deliberately not built: no fourth tab, no readiness score, no CTL/ATL, no
+race prediction, no coaching language, and nothing that changes the plan.
+
+Known limitation: weekly mileage buckets by plan week, so runs recorded before
+the plan's first week are counted nowhere in that chart. The summary sentence
+says so rather than leaving the reader to notice a gap.
 
 ## Connection repair after the UI-8/UI-9 merges
 
@@ -98,10 +126,14 @@ in Vercel **and a redeploy**, which the repository environment cannot do.
 The secret-free automated suite covers minimum imported/manual runs, absent and
 present optional metrics, accessible HR-zone text, on-demand detail success,
 failure and rate limiting, and a conservative named structured-interval
-fixture. The repository environment cannot establish that the owner's real
-HealthFit activity supplies HR zones or understandable structured groups.
-Cadence is therefore not rendered, and UI-9 is not marked Complete until the
-real-data and 320/390/desktop preview checks are recorded.
+fixture.
+
+Recorded Aug 9, 2026 on the production deployment: a real HealthFit activity
+imported with average HR, max HR, elevation gain, training load and seven HR
+zone times all present. `docs/CONNECTED_DATA_FIELDS.md` marks those Verified.
+Two things stay unverified and stay out of the UI: cadence, whose semantics
+were never confirmed, and structured interval groups, which need a structured
+Apple Watch workout rather than the easy run that was tested.
 
 ## Update format
 

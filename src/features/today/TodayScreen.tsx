@@ -28,6 +28,9 @@ import type {
   TrainingPlan,
   Workout,
 } from "../../domain/types";
+import { selectWeekActuals } from "../../domain/weekActuals";
+import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals";
+import { RunFoundCard } from "../connected/RunFoundCard";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { selectTodayViewModel } from "../../domain/workout";
@@ -43,6 +46,8 @@ interface TodayScreenProps {
   runLogs: RunLog[];
   blockPlacements?: BlockPlacement[];
   onViewPlan: () => void;
+  /** Opens the secondary Training Trends view. */
+  onViewTrends?: () => void;
   onViewBuild?: () => void;
   /** Hands the earned block to Build, which is where placing happens. */
   onStartPlacing?: (runLogId: string) => void;
@@ -55,6 +60,16 @@ interface TodayScreenProps {
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
   availability?: AvailabilityCalendar | null;
+  /** Unimported synced runs, newest first once Run Data is connected. */
+  candidates?: IntervalsCandidate[];
+  /** Opens the existing import review, optionally forced to an extra run. */
+  onReviewCandidate?: (candidate: IntervalsCandidate, asExtra: boolean) => void;
+  onDismissCandidate?: (externalId: string) => void;
+  onIgnoreCandidate?: (externalId: string) => void;
+  /** The last quiet sync failure, if there is one worth offering a retry for. */
+  syncError?: string | null;
+  onRetrySync?: () => void;
+  isSyncing?: boolean;
 }
 
 /** Which run the entry sheet is open for, and what it is about to write. */
@@ -72,12 +87,20 @@ export function TodayScreen({
   runLogs,
   blockPlacements = [],
   onViewPlan,
+  onViewTrends,
   onViewBuild = () => undefined,
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
   availability = null,
+  candidates = [],
+  onReviewCandidate = () => undefined,
+  onDismissCandidate = () => undefined,
+  onIgnoreCandidate = () => undefined,
+  syncError = null,
+  onRetrySync = () => undefined,
+  isSyncing = false,
 }: TodayScreenProps) {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [isEntryOpen, setEntryOpen] = useState(false);
@@ -93,6 +116,8 @@ export function TodayScreen({
     today,
   );
   const next = nextScheduledWorkout(plan, today);
+  const actuals = selectWeekActuals(runLogs, week.startDate, week.endDate);
+  const found = selectRunFound(candidates, plan, runLogs, today);
   const build = selectBuildViewModel(plan, runLogs, blockPlacements, today);
 
   // The completed run on screen, if today's scheduled workout has been logged.
@@ -175,13 +200,43 @@ export function TodayScreen({
         />
       )}
 
+      {found && (
+        <RunFoundCard
+          found={found}
+          today={today}
+          onConfirmMatch={() => onReviewCandidate(found.candidate, false)}
+          onAddAsExtra={() => onReviewCandidate(found.candidate, true)}
+          onDismiss={() => onDismissCandidate(found.candidate.externalId)}
+          onIgnore={() => onIgnoreCandidate(found.candidate.externalId)}
+        />
+      )}
+
       <ThisWeekStrip
         week={week}
         blocked={blockedDates(availability)}
+        actuals={actuals}
         onViewPlan={onViewPlan}
+        // Nothing to trend before the first run, and an empty view invites a
+        // tap that answers nothing.
+        onViewTrends={onViewTrends && runLogs.length > 0 ? onViewTrends : undefined}
       />
 
       {next && <NextWorkoutCard workout={next} />}
+
+      {/*
+        A failed sync is worth saying and not worth interrupting for: the plan,
+        the log and the Build are all still true without it. So it sits down
+        here, below the workout and the week, with the retry the user would
+        otherwise have to go into Run Data to find.
+      */}
+      {syncError && !found && (
+        <p className="today-screen__sync-error">
+          <span>{syncError}</span>
+          <button type="button" onClick={onRetrySync} disabled={isSyncing}>
+            {isSyncing ? "Syncing…" : "Retry"}
+          </button>
+        </p>
+      )}
 
       {/* Its own band, so it does not read as an action belonging to Next. */}
       <div className="today-screen__log-band">

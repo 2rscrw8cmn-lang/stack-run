@@ -461,3 +461,100 @@ Imported distance is also now rounded to two decimals where it enters STACK —
 `src/domain/distance.ts` formats what is already stored — because a converted
 distance is a fifteen-decimal float and every screen, including the edit
 sheet's text field, prints the stored number directly.
+
+## UI-10 — Connected Today + Week
+
+Sync stops being an errand. `src/features/connected/useConnectedSync.ts` owns
+one sync for the whole app: it runs when the app opens and when it comes back
+to the front, and only when the last successful sync is older than thirty
+minutes. Between those moments STACK asks Intervals nothing at all — there is
+no polling anywhere in the app. Returning to a phone app fires `focus` and
+`visibilitychange` together, and again when a sheet closes, so an in-flight
+guard and a five-minute floor between automatic attempts keep that from
+becoming a request storm. `Sync Now` is unconditional, because there the user
+asked.
+
+The lookback is deliberately not "everything newer than the last sync": the
+first sync reaches back ninety days, and every later one re-reads a rolling
+fourteen. HealthFit can deliver an activity days after the run happened, and a
+window anchored to the last sync would step over a late upload permanently.
+
+Candidates now live above both screens rather than inside the Run Data sheet,
+so Today and Run Data cannot show different answers. Today renders at most one:
+`selectRunFound` takes the newest candidate within three days, preferring one
+that matches a scheduled workout. `RunFoundCard` states the objective facts —
+distance, duration, derived pace, average HR when present — and offers the one
+judgement a watch cannot make. Neither action imports anything by itself; both
+open the same review UI-8 already had, which is where effort, notes and the
+earned block are settled. `Not now` hides a run for the session and the next
+sync offers it again; `Ignore this run` writes it to the persisted ignored
+list.
+
+`selectWeekActuals` adds actual miles, total run time and the longest run to
+This Week. These sit below the progress bar rather than inside it, and count
+every run in the week by the date it was run: an extra run is real mileage but
+it still cannot tick off a workout the plan never scheduled, so "1 of 4 runs"
+is computed exactly as before.
+
+A failed sync stays quiet. The plan, the manual log and the Build are all still
+true without Intervals, so a failure sets a retry line low on Today and gets
+out of the way — and says nothing at all while there is a run to offer.
+
+## UI-11 — Training Trends
+
+`src/domain/trends.ts` derives five answers from the plan and the recorded
+runs; `src/features/trends/TrendsSheet.tsx` shows them in a secondary sheet
+opened from This Week on Today and from Plan's quiet actions. There is still
+no fourth tab.
+
+Two rules run through the selectors. Runs are placed by the date they were
+actually run, never by the date of the workout they satisfied — a Sunday long
+run confirmed against Saturday's slot is Sunday's mileage. And a run is a run:
+a typed one and a synced one are the same thing once recorded. Consistency is
+the one measure that stays about the plan, so it counts only scheduled
+workouts whose day has arrived, and extra runs are excluded from it by
+construction.
+
+Coverage is a first-class idea rather than an afterthought. Easy pace and Easy
+heart rate need four runs before a line is drawn or a direction named; below
+that the section says how many more would start it. A run without heart rate
+is left out of the HR series rather than counted as zero, and the summary says
+how many of the Easy runs carried it. `describeDirection` compares the median
+of the first half against the median of the last, so one enormous week is not
+a trend.
+
+`src/components/charts/` holds the drawings: `TrendColumns` for weekly
+mileage, `TrendLine` for the three time series, `TrendSection` for the frame,
+and `ZoneBars` for heart-rate zones. No chart library was added.
+
+The rules they follow are the ones that keep a chart honest rather than
+decorative:
+
+- **One series per chart, so one colour and no legend** — the section title
+  names what is drawn. Where a measure already has a colour in STACK, the
+  chart wears it: long runs are the same amber as their block in the tower.
+- **Text never wears the series colour.** Values and labels use text tokens; a
+  lime number on this surface is unreadable, and the mark beside it already
+  carries the identity.
+- **Selective direct labels.** The last value, and the two ends of the scale.
+  A number on every point is chaos and goes unread.
+- **The surface does the separating** — a 2px gap between columns, a 2px ring
+  on dots, a 2px halo behind an end label — rather than a stroke drawn around
+  every mark.
+- **Pace is drawn with faster at the top**, and both ends of the axis are
+  labelled with real paces so the direction is legible from the chart rather
+  than from knowing the convention.
+- **Every chart carries the same numbers as a table**, visually hidden beside
+  it, plus a summary sentence. The drawing is `aria-hidden`: it is the least
+  useful copy of data that exists in two better forms.
+- **A one-column chart is not a chart.** Week one shows the number instead.
+
+Heart-rate zones on run detail are now `ZoneBars` rather than a plain list.
+Zones are an ordered scale, so they wear one hue that strengthens with
+intensity instead of seven hues that have to be learned, and every row keeps
+its duration and percentage as text — nothing is encoded in colour or length
+alone. A zone with no time in it keeps its row and shows an empty track.
+
+Deliberately absent, and to stay absent: any readiness score, any CTL/ATL or
+form dashboard, any predicted finishing time, and any language that coaches.
+STACK says what happened and which way it is moving.

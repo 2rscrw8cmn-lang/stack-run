@@ -27,6 +27,7 @@ import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
 import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
+import { useConnectedSync } from "../features/connected/useConnectedSync";
 
 export type TabId = "today" | "build" | "plan";
 
@@ -82,6 +83,19 @@ export function App() {
   // are as current as the calendar rather than as current as the last time
   // anybody tapped Refresh. Quiet on failure; the stored roster stands.
   useRosterRefresh(appState?.availability ?? null, saveCalendar);
+
+  const recordSync = useCallback(
+    (at: string) => setAppState((current) => saveIntervalsSync(current, at)),
+    [setAppState],
+  );
+
+  // One sync for the whole app: Today offers what it found, Run Data reviews
+  // the rest, and neither can be looking at a different answer than the other.
+  const connectedSync = useConnectedSync({
+    token: syncToken,
+    state: appState,
+    onSynced: recordSync,
+  });
 
   if (boot.kind === "recovering") {
     return (
@@ -158,9 +172,9 @@ export function App() {
       onPlacingChange={setPlacingRunLogId}
       appState={boot.state}
       syncToken={syncToken}
+      connectedSync={connectedSync}
       onConnectIntervals={(token) => { try { saveIntervalsSyncToken(token); setSyncToken(token); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be saved."); } }}
       onForgetIntervals={() => { try { forgetIntervalsSyncToken(); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
-      onIntervalsSynced={(at) => setAppState((current) => saveIntervalsSync(current, at))}
       onImportIntervals={(candidate, workoutId, type, effort, notes) => setAppState((current) => acceptIntervalsRun(current, candidate, workoutId, type, effort, notes))}
       onAttachIntervals={(candidate, runLogId) => setAppState((current) => attachIntervalsRun(current, candidate, runLogId))}
       onIgnoreIntervals={(id) => setAppState((current) => ignoreIntervalsActivity(current, id))}

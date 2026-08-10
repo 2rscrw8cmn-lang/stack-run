@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
+import { ZoneBars } from "../../components/charts/ZoneBars";
 import { fetchIntervalsActivityDetail, type IntervalsActivityDetail } from "../../connected/intervals";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
@@ -55,12 +56,7 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: s
       {metrics?.hrZoneSeconds && zoneTotal > 0 && (
         <div className="run-result-detail__zones">
           <h3 className="workout-detail__result-title">Heart rate zones</h3>
-          <ol aria-label="Heart rate zone distribution">
-            {metrics.hrZoneSeconds.map((seconds, index) => {
-              const percent = Math.round((seconds / zoneTotal) * 100);
-              return <li key={index}><span>Zone {index + 1}</span><span>{formatDurationSeconds(seconds)} · {percent}%</span></li>;
-            })}
-          </ol>
+          <ZoneBars zoneSeconds={metrics.hrZoneSeconds} label="Heart rate zone distribution" />
         </div>
       )}
       {imported && syncToken && detail === null && (

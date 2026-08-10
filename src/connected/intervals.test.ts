@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
-import { fetchIntervals, fetchIntervalsActivityDetail, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, suggestScheduledMatches } from "./intervals";
+import { addDaysToLocalDate } from "../domain/dates";
+import { fetchIntervals, fetchIntervalsActivityDetail, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, selectRunFound, suggestScheduledMatches } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
 describe("Intervals normalization", () => {
@@ -25,6 +26,26 @@ describe("Intervals normalization", () => {
     const state = createInitialAppState(); const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
     const candidate = normalizeIntervalsActivity({ ...activity, start_date_local: `${workout.date}T08:00:00` })!;
     expect(suggestScheduledMatches(candidate, state.plan, [])[0]?.id).toBe(workout.id);
+  });
+  it("offers Today the newest recent run, preferring one that completes the plan", () => {
+    const state = createInitialAppState();
+    const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
+    const matched = normalizeIntervalsActivity({ ...activity, id: "matched", start_date_local: `${workout.date}T08:00:00` })!;
+    const unmatched = normalizeIntervalsActivity({ ...activity, id: "unmatched", start_date_local: `${workout.date}T18:00:00` })!;
+    const older = normalizeIntervalsActivity({ ...activity, id: "older", start_date_local: `${addDaysToLocalDate(workout.date, -2)}T08:00:00` })!;
+
+    const found = selectRunFound([older, unmatched, matched], state.plan, [], workout.date);
+    expect(found?.candidate.externalId).toBe("matched");
+    expect(found?.workout?.id).toBe(workout.id);
+  });
+  it("leaves a stale candidate to Run Data rather than to Today", () => {
+    const state = createInitialAppState();
+    const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
+    const old = normalizeIntervalsActivity({ ...activity, start_date_local: `${addDaysToLocalDate(workout.date, -9)}T08:00:00` })!;
+    expect(selectRunFound([old], state.plan, [], workout.date)).toBeNull();
+    // Nor does it offer something dated after today, which is not a run yet.
+    const future = normalizeIntervalsActivity({ ...activity, start_date_local: `${addDaysToLocalDate(workout.date, 1)}T08:00:00` })!;
+    expect(selectRunFound([future], state.plan, [], workout.date)).toBeNull();
   });
   it("keeps only explicitly labelled, timed interval groups", () => {
     expect(normalizeIntervalsActivityDetail({ icu_intervals: [

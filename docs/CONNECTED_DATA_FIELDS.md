@@ -11,6 +11,22 @@ The first real fixture is the Apple Watch run that HealthFit successfully synced
 
 UI-8 must fetch that activity through the deployed STACK proxy and update this file with the actual result.
 
+### Verified on the deployed app, August 9, 2026
+
+An Apple Watch → HealthFit → Intervals.icu run was synced, matched to a
+scheduled Long Run and imported on the production deployment. Everything marked
+`Verified` below was verified this way: STACK's normalizer reads one specific
+field name for each value and drops anything absent or non-numeric, so a value
+rendered in the app is a field that was present in the real response.
+
+`icu_hr_zone_times` arrived with **seven** entries, four of them zero — real
+zeroes from the source, not gaps. Cadence stayed `Expected`: STACK does not
+render it, so this run says nothing about whether it was there. The activity
+had no named interval groups, which is the expected result for an unstructured
+run rather than evidence about structured ones.
+
+No raw response, and no personal or location metadata, is recorded here.
+
 Do not paste the full raw API response into this repository: it can contain personal health/location metadata. Record field names, presence, units/semantics, and a harmless example shape only.
 
 ## Status values
@@ -24,13 +40,13 @@ Do not paste the full raw API response into this repository: it can contain pers
 
 | STACK concept | Intervals candidate | Status | Notes |
 |---|---|---|---|
-| External activity id | `id` | Expected | Opaque dedupe key. |
-| Local start date/time | `start_date_local` | Expected | Use local date for matching. |
+| External activity id | `id` | Verified | Opaque dedupe key. |
+| Local start date/time | `start_date_local` | Verified | Use local date for matching. |
 | UTC start | `start_date` | Expected | Preserve only if useful for diagnostics. |
-| Source activity type | `type` | Expected | Record exact Apple Watch/HealthFit running value before building allowlist. |
+| Source activity type | `type` | Verified | `Run` on the August 9 HealthFit activity, which is the one value the allowlist carries. |
 | Name | `name` | Expected | Display optional. |
-| Distance | `distance` | Expected | Expected meters; verify. |
-| Moving time | `moving_time` | Expected | Preferred STACK duration when positive. |
+| Distance | `distance` | Verified | Meters. 9,012 m read back as 5.6 mi. |
+| Moving time | `moving_time` | Verified | Preferred STACK duration when positive. |
 | Elapsed time | `elapsed_time` | Expected | Fallback duration / detail. |
 | Source updated time | `updated` or equivalent | Expected | Do not depend on until verified. |
 
@@ -40,12 +56,12 @@ UI-8 may not ship import until the first six concepts above are understood well 
 
 | STACK metric | Intervals candidate | Status | UI phase | Notes |
 |---|---|---|---|---|
-| Average HR | `average_heartrate` | Expected | UI-9 | bpm. |
-| Max HR | `max_heartrate` | Expected | UI-9 | bpm. |
+| Average HR | `average_heartrate` | Verified | UI-9 | bpm. |
+| Max HR | `max_heartrate` | Verified | UI-9 | bpm. |
 | Average cadence | `average_cadence` | Expected | UI-9 | **Verify running cadence semantics/units before displaying. UI-9 deliberately omits it while this remains Expected.** |
-| Elevation gain | `total_elevation_gain` | Expected | UI-9 | Expected meters; convert to feet for current UI. |
-| Training load | `icu_training_load` | Expected | UI-9 | Intervals-derived; label plainly as Training Load. |
-| HR zone times | `icu_hr_zone_times` or current API equivalent | Expected | UI-9 | Verify array order/count against athlete zones. |
+| Elevation gain | `total_elevation_gain` | Verified | UI-9 | Meters; converted to feet for the current UI. |
+| Training load | `icu_training_load` | Verified | UI-9 | Intervals-derived; labelled plainly as Training Load. |
+| HR zone times | `icu_hr_zone_times` | Verified | UI-9 | Seven entries, seconds, zone 1 first. Zeroes are real; STACK shows every zone rather than guessing which are meaningful. |
 | Average speed | `average_speed` | Expected | Deferred | STACK derives pace from distance/duration; use only if needed for diagnostics. |
 | Perceived exertion / Apple effort | source-dependent | Expected | Deferred | Do not map into Rough/Solid/Great until actual semantics are verified. |
 
@@ -71,7 +87,7 @@ Intervals.icu documents `icu_intervals` entries that may include:
 
 | Concept | Status | UI phase | Rule |
 |---|---|---|---|
-| `icu_intervals` exists on HealthFit run | Expected | UI-9 | Verify on a structured Apple Watch workout, not necessarily June 10 if it was an easy run. |
+| `icu_intervals` exists on HealthFit run | Expected | UI-9 | The August 9 run returned no named groups, as an unstructured run should. Still needs a structured Apple Watch workout to verify. |
 | Work/rest intervals are useful | Expected | UI-9 | UI-9's mock fixture verifies named/timed-row handling; real HealthFit grouping is still required. Only explicitly named, positively timed groups are shown. |
 | Apple workout laps survive sync | Expected | UI-9 | Verify with an interval session. |
 

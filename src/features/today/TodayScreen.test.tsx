@@ -110,9 +110,11 @@ describe("TodayScreen workout states", () => {
   it("shows the completed state using the existing run log", () => {
     renderToday({ runLogs: [completedEasyRun] });
 
-    expect(screen.getByText("2.1 mi")).toBeInTheDocument();
-    expect(screen.getByText("20:30")).toBeInTheDocument();
-    expect(screen.getByText("Solid")).toBeInTheDocument();
+    // Scoped: the week's actual totals repeat these numbers by design.
+    const summary = within(screen.getByRole("group", { name: "Completed run" }));
+    expect(summary.getByText("2.1 mi")).toBeInTheDocument();
+    expect(summary.getByText("20:30")).toBeInTheDocument();
+    expect(summary.getByText("Solid")).toBeInTheDocument();
     expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
   });
 
@@ -152,6 +154,26 @@ describe("TodayScreen This Week", () => {
 
     expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
     expect(screen.getByText("+1 extra")).toBeInTheDocument();
+  });
+
+  it("adds up what was actually run without touching scheduled completion", () => {
+    renderToday({
+      runLogs: [completedEasyRun, extraRun],
+      today: "2026-08-06",
+    });
+
+    // Scheduled progress is still one of four; the totals below it count both
+    // runs, because the legs do not know which one the plan asked for.
+    expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
+    const totals = within(screen.getByRole("group", { name: "Week 1 actual totals" }));
+    expect(totals.getByText("5.5")).toBeInTheDocument();
+    expect(totals.getByText("41:00")).toBeInTheDocument();
+    expect(totals.getByText("3.4 mi")).toBeInTheDocument();
+  });
+
+  it("says nothing about totals in a week with nothing in it", () => {
+    renderToday({ today: "2026-08-06" });
+    expect(screen.queryByRole("group", { name: /actual totals/ })).not.toBeInTheDocument();
   });
 
   it("links through to the full schedule", async () => {
@@ -309,5 +331,75 @@ describe("TodayScreen earned block", () => {
     expect(onSaveRun).toHaveBeenCalledTimes(1);
     expect(onSaveRun.mock.calls[0][1]).toMatchObject({ distanceMiles: 2.6 });
     expect(onSaveRun.mock.calls[0][2]).toBe("run-workout-002");
+  });
+});
+
+const candidate = {
+  externalId: "i1",
+  sourceType: "Run",
+  completedDate: "2026-08-04",
+  distanceMiles: 2.15,
+  durationSeconds: 1230,
+  sourceUpdatedAt: null,
+  metrics: { averageHeartRate: 152 },
+};
+
+describe("TodayScreen run found", () => {
+  it("offers a synced run against the workout it looks like", () => {
+    renderToday({ candidates: [candidate] });
+
+    expect(screen.getByText("Run found")).toBeInTheDocument();
+    expect(screen.getByText("2.15 mi")).toBeInTheDocument();
+    expect(screen.getByText("20:30")).toBeInTheDocument();
+    expect(screen.getByText("9:32 /mi")).toBeInTheDocument();
+    expect(screen.getByText("152 bpm")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm Match" })).toBeInTheDocument();
+    // Whatever sync found, the day's workout is still the thing on screen.
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+  });
+
+  it("continues into the existing review rather than importing behind the user", async () => {
+    const onReviewCandidate = vi.fn();
+    const { user } = renderToday({ candidates: [candidate], onReviewCandidate });
+
+    await user.click(screen.getByRole("button", { name: "Confirm Match" }));
+    expect(onReviewCandidate).toHaveBeenCalledWith(candidate, false);
+
+    await user.click(screen.getByRole("button", { name: "Extra Run" }));
+    expect(onReviewCandidate).toHaveBeenLastCalledWith(candidate, true);
+  });
+
+  it("separates putting a run away from refusing it for good", async () => {
+    const onDismissCandidate = vi.fn();
+    const onIgnoreCandidate = vi.fn();
+    const { user } = renderToday({ candidates: [candidate], onDismissCandidate, onIgnoreCandidate });
+
+    await user.click(screen.getByRole("button", { name: "Not now" }));
+    expect(onDismissCandidate).toHaveBeenCalledWith("i1");
+
+    await user.click(screen.getByRole("button", { name: "Ignore this run" }));
+    expect(onIgnoreCandidate).toHaveBeenCalledWith("i1");
+  });
+
+  it("leaves an older synced run to Run Data rather than putting it on Today", () => {
+    renderToday({ candidates: [{ ...candidate, completedDate: "2026-07-28" }] });
+    expect(screen.queryByText("Run found")).not.toBeInTheDocument();
+  });
+
+  it("reports a failed sync quietly and keeps the day's workout in place", async () => {
+    const onRetrySync = vi.fn();
+    const { user } = renderToday({ syncError: "Intervals.icu could not be reached.", onRetrySync });
+
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark Complete" })).toBeInTheDocument();
+    expect(screen.getByText("Intervals.icu could not be reached.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetrySync).toHaveBeenCalled();
+  });
+
+  it("does not talk about sync while it has a run to offer", () => {
+    renderToday({ candidates: [candidate], syncError: "Intervals.icu could not be reached." });
+    expect(screen.queryByText("Intervals.icu could not be reached.")).not.toBeInTheDocument();
   });
 });
