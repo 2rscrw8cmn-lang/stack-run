@@ -21,7 +21,7 @@ export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) 
 
   return (
     <div className="today-heading">
-      <h1 className="today-heading__date">
+      <h1 className="today-heading__date data-value">
         <span className="today-heading__weekday">
           {formatDateLabel(today, { weekday: "long" })}
         </span>{" "}
@@ -30,7 +30,7 @@ export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) 
         </span>
       </h1>
 
-      <p className="race-context">
+      <p className="race-context machine-label">
         <Flag size={14} strokeWidth={2} aria-hidden="true" />
         <span className="race-context__name">{race.name}</span>
         <span className="race-context__separator" aria-hidden="true">

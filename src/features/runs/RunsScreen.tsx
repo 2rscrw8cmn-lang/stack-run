@@ -133,13 +133,13 @@ export function RunsScreen({
     <div className="runs-screen">
       <div className="runs-screen__lead">
         <div className="runs-screen__summary">
-          <h1 className="runs-screen__count" ref={headingRef} tabIndex={-1}>
+          <h1 className="runs-screen__count data-value" ref={headingRef} tabIndex={-1}>
             {history.length === 0
               ? "No runs yet"
               : `${history.length} ${history.length === 1 ? "run" : "runs"}`}
           </h1>
           {history.length > 0 && (
-            <p className="runs-screen__miles">{formatMiles(miles)} miles run</p>
+            <p className="runs-screen__miles machine-label">{formatMiles(miles)} miles run</p>
           )}
         </div>
         <Button

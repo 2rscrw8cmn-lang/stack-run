@@ -18,8 +18,8 @@ export function BuildHeading({ metrics }: BuildHeadingProps) {
   return (
     <div className="build-heading">
       <h1 className="build-heading__hero">
-        <span className="build-heading__value">{metrics.totalActualMiles}</span>{" "}
-        <span className="build-heading__unit">
+        <span className="build-heading__value data-value">{metrics.totalActualMiles}</span>{" "}
+        <span className="build-heading__unit machine-label">
           {metrics.totalActualMiles === 1 ? "mile built" : "miles built"}
         </span>
       </h1>

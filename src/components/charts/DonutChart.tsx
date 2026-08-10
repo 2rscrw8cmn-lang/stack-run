@@ -44,7 +44,7 @@ export function DonutChart({
 
   return (
     <div className="donut">
-      <div className="donut__figure" aria-hidden="true">
+      <div className="donut__figure technical-grid" aria-hidden="true">
         <svg viewBox="0 0 112 112" focusable="false">
           <circle className="donut__track" cx="56" cy="56" r={RADIUS} />
           {arcs.map((arc) => (

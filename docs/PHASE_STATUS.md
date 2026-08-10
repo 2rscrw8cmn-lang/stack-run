@@ -73,7 +73,7 @@ Approved sources:
 | Phase | Name | Status | Decision | Primary outcome |
 |---:|---|---|---|---|
 | 16 | **Trends 2.0** | **Implemented / ready for review** | D-048–D-051 | Seven dedicated Training Signal details, plan-vs-actual, accessible HR/run-mix donuts, Today Log Run cleanup; schema remains 9. |
-| 17 | **Performance Arcade Design Pass** | **Approved after UI-16** | D-052–D-054 | Modern training-computer visual language; stronger data personality without retro cosplay/game economy. |
+| 17 | **Performance Arcade Design Pass** | **Implemented / ready for review** | D-052–D-054 | Modern training-computer visual language; stronger data personality without retro cosplay/game economy; schema remains 9. |
 | 18 | **Race Crew Architecture Gate** | **Approved after UI-17; docs/research only** | D-055–D-057 | Decide auth/database/per-user Intervals/privacy/migration before production social code. |
 | 19 | Account + Crew Foundation | Gated / not authorized | D-057 | Placeholder only until UI-18 owner approval. |
 | 20 | Crew Runs + Comparisons | Gated / not authorized | D-055–D-057 | Placeholder only until UI-19. |
@@ -114,6 +114,27 @@ Implementation verification (2026-08-10):
 - no XP/coins/levels/quests;
 - no Game Boy/device/CRT/pixel-art/sound implementation;
 - expected schema remains 9.
+
+Implementation verification (2026-08-10):
+
+- local mono/tabular data, machine-label, data-module, technical-grid, chart
+  selection, and seven-zone HR tokens are implemented without a network font;
+- Runs/Training Signals carries the strongest instrument treatment, Today is a
+  concise mission briefing, Build retains its exact geometry/storage, and Plan
+  remains the calm schedule surface;
+- New Longest Run and Miles Built thresholds are transient derived moments;
+  nothing is persisted and no badge/game economy was added;
+- `npm run check` passes: lint, 50 test files / 787 tests, and production build;
+- browser QA passed Today, Runs/Training Signals plus Weekly Mileage detail,
+  Build, and Plan at 320×800, 390×844, and 1200×900 with no horizontal
+  overflow or browser warnings/errors;
+- new small-text contrast spot checks measured at least 7.0:1, focus remained
+  visibly outlined, seven zone tokens resolved, and reduced-motion coverage
+  remained present;
+- no schema migration, dependency, Race Crew/backend code, sound, literal
+  Game Boy/CRT/pixel skin, or copied TRNRBOI source/asset was added;
+- real-device iPhone review remains an owner/deployment check, so the phase is
+  not marked Complete here.
 
 ## UI-18 architecture-gate rule
 

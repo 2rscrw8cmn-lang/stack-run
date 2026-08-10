@@ -32,7 +32,7 @@ export function PlanActualColumns({
   const y = (value: number) => HEIGHT - (value / peak) * (HEIGHT - 14);
 
   return (
-    <div className="plan-actual-chart">
+    <div className="plan-actual-chart technical-grid">
       <svg
         className="chart plan-actual-chart__figure"
         viewBox={`0 0 ${WIDTH} ${HEIGHT + TICK_BAND}`}
@@ -55,7 +55,7 @@ export function PlanActualColumns({
                   y="0"
                   width={Math.max(slot - 2, 1)}
                   height={HEIGHT}
-                  rx="3"
+                  rx="1"
                 />
               )}
               {column.actual !== null && column.actual > 0 && (
@@ -69,7 +69,7 @@ export function PlanActualColumns({
                   y={actualY}
                   width={barWidth}
                   height={HEIGHT - actualY}
-                  rx="3"
+                  rx="1"
                 />
               )}
               {plannedY !== null && (

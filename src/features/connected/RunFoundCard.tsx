@@ -39,11 +39,11 @@ export function RunFoundCard({ found, today, onConfirmMatch, onAddAsExtra, onDis
 
   return (
     <Card className="run-found">
-      <p className="run-found__eyebrow">
+      <p className="run-found__eyebrow machine-label">
         <Database size={16} strokeWidth={1.8} aria-hidden="true" />
         Run found
       </p>
-      <p className="run-found__headline">{formatMiles(candidate.distanceMiles)} mi</p>
+      <p className="run-found__headline data-value">{formatMiles(candidate.distanceMiles)} mi</p>
       <dl className="run-found__facts">
         <div>
           <dt>Date</dt>

@@ -145,12 +145,13 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
           <li key={card.id}>
             <button
               type="button"
-              className="trend-cards__card"
+              className="trend-cards__card data-module"
+              data-signal={card.id}
               aria-label={`${card.title}, ${card.value}, ${card.note}. Open ${card.title} detail.`}
               onClick={() => onOpenSignal(card.id)}
             >
-              <span className="trend-cards__title">{card.title}</span>
-              <span className="trend-cards__value">{card.value}</span>
+              <span className="trend-cards__title machine-label">{card.title}</span>
+              <span className="trend-cards__value data-value">{card.value}</span>
               <span className="trend-cards__note">{card.note}</span>
             </button>
           </li>

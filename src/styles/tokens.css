@@ -1,6 +1,10 @@
 :root {
   color-scheme: dark;
 
+  --font-data:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+
   --bg: #071018;
   --bg-elevated: #0c1620;
   --surface: #111c26;
@@ -18,6 +22,17 @@
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.15);
 
+  /* UI-17: one compact instrument language, shared by Runs, charts and Build. */
+  --data-surface: #0a151f;
+  --data-surface-strong: #0d1b27;
+  --data-border: rgba(184, 241, 59, 0.24);
+  --technical-grid-line: rgba(198, 216, 230, 0.055);
+  --selected-border: #c8ff4f;
+  --selected-glow: rgba(184, 241, 59, 0.18);
+  --chart-actual: var(--accent);
+  --chart-reference: #a7b2bc;
+  --chart-selection: rgba(184, 241, 59, 0.09);
+
   --accent: #b8f13b;
   --accent-text: #0a1102;
 
@@ -28,14 +43,14 @@
   --race: #f6f7f8;
   --danger: #ff6b6b;
 
-  /* UI-16's minimum ordered zone palette. Labels remain authoritative. */
-  --zone-1: #4f7dff;
-  --zone-2: #31c7d9;
-  --zone-3: #8edb45;
-  --zone-4: #f2d14b;
-  --zone-5: #ff9d3d;
-  --zone-6: #ff5d5d;
-  --zone-7: #c86cff;
+  /* UI-17's ordered seven-zone palette. Text labels remain authoritative. */
+  --zone-1: #5b82ff;
+  --zone-2: #2bc6d6;
+  --zone-3: #9cdd45;
+  --zone-4: #f4d34f;
+  --zone-5: #ff9f43;
+  --zone-6: #ff6565;
+  --zone-7: #d270ff;
 
   --radius-sm: 10px;
   --radius-md: 16px;

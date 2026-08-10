@@ -55,7 +55,7 @@ export function SelectableTrendLine({
   const reference = referencePoints.map((point) => ({ ...point, ...plot(point) }));
 
   return (
-    <div className={`selectable-line chart--${tone}`}>
+    <div className={`selectable-line technical-grid chart--${tone}`}>
       <svg className="chart selectable-line__figure" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} aria-hidden="true" focusable="false">
         <line x1="0" y1={HEIGHT - 1} x2={WIDTH} y2={HEIGHT - 1} className="chart__axis" />
         {reference.length > 1 && (

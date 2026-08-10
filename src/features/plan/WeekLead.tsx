@@ -36,11 +36,11 @@ export function WeekLead({
         />
 
         <div className="week-lead__identity">
-          <h1 className="week-lead__title">
+          <h1 className="week-lead__title data-value">
             Week {week.weekNumber}
             <span className="week-lead__of"> of {totalWeeks}</span>
           </h1>
-          <p className="week-lead__meta">
+          <p className="week-lead__meta machine-label">
             <span className="week-lead__phase">{week.phase}</span>
             <span className="week-lead__dot" aria-hidden="true">
               ·
@@ -58,7 +58,7 @@ export function WeekLead({
       </div>
 
       <div className="week-lead__progress">
-        <p className="week-lead__count">
+        <p className="week-lead__count data-value">
           {week.completedRuns} of {week.scheduledRuns} runs complete
         </p>
         {week.isCurrentWeek ? (

@@ -2,7 +2,9 @@
 
 ## Current state
 
-**UI-16 Trends 2.0 is implemented and ready for owner review.** Runs now carries seven focused Training Signals with dedicated detail modules, plan-versus-actual views, accessible SVG/CSS charts, and deterministic week/run drill-downs. The change is derived entirely from schema-9 plan and run snapshots; it adds no persistence, migration, dependency, or connected-data write.
+**UI-17 Performance Arcade Design Pass is implemented and ready for owner review.** STACK keeps its existing Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps now share a local system-monospace/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways. AppState remains schema 9 and no dependency, backend, or connected-data behavior changed.
+
+UI-16 Trends 2.0 remains implemented beneath this presentation pass. Runs carries seven focused Training Signals with dedicated detail modules, plan-versus-actual views, accessible SVG/CSS charts, and deterministic week/run drill-downs. The analytics remain derived entirely from schema-9 plan and run snapshots.
 
 Earlier core-loop, connected-training, Runs, and Build phases remain implemented as described below. Today is a daily dashboard, an actual run is an activity that may or may not satisfy the plan, Build is a deterministic eight-column tower, and the schedule itself is editable.
 
@@ -716,6 +718,56 @@ are small reusable SVG/CSS primitives with native 44px selector buttons and
 complete adjacent text equivalents. No chart dependency, canvas, or WebGL was
 added. The retired `TrendsSheet`, `TrendColumns`, `TrendLine`, `TrendSection`,
 and `ZoneBars` files are deleted.
+
+## UI-17 — Performance Arcade Design Pass
+
+`src/styles/tokens.css` now owns one small presentation vocabulary for the
+phase: the local system-monospace data stack, instrument surfaces/borders,
+technical-grid line, chart actual/reference/selection treatments, and the
+ordered seven-zone HR palette. `src/styles/components.css` exposes the opt-in
+`.data-value`, `.machine-label`, `.data-module`, and `.technical-grid`
+primitives. Body copy, instructions, notes, forms, and ordinary reading text
+remain on the system sans stack in `base.css`.
+
+The screen treatment follows D-052 rather than creating a second UI shell:
+
+- **Runs/Training Signals** uses compact grid-backed instrument modules,
+  confident per-signal accents, larger tabular facts, square/block-inspired
+  columns, crisp line points, explicit selected states, and stronger donut
+  composition. Run history remains calmer below it.
+- **Today** adds a concise machine-date/race line and stronger workout/Run
+  Found data hierarchy without adding a card or changing the daily order.
+- **Build** adds a local technical stage grid, stronger block edges, and
+  stamped mono mileage while preserving the deterministic eight-column
+  geometry, placement behavior, and storage contract exactly.
+- **Plan** uses machine week/date/status facts and thin workout-color edge
+  accents while keeping the schedule rows and body copy restrained.
+
+`src/domain/accomplishments.ts` derives two session-only factual moments when a
+new run is recorded: **New Longest Run** within the active-plan period (after a
+prior run exists), and the highest newly crossed **Miles Built** threshold
+(50/100/150/200, then each 100). `AccomplishmentMoment` presents them briefly
+and stores nothing. Reloading cannot replay them, edits cannot masquerade as a
+new run, and there is no badge collection, score, XP, level, coin, or quest.
+Biggest Week and Four Weeks Consistent were not added; UI-17 does not need a
+persistent achievement ledger to claim completeness.
+
+UI-17 verification on 2026-08-10:
+
+- `npm run check` passes: lint, 50 test files / 787 tests, and the production
+  Vite build;
+- in-app browser QA passed Today, Runs/Training Signals, Weekly Mileage detail,
+  Build, and Plan at 320×800, 390×844, and 1200×900;
+- every reviewed viewport had `scrollWidth === clientWidth` and no browser
+  warning/error output;
+- new small label/data contrast measured 7.0:1–17.2:1 on instrument surfaces,
+  focused controls retained the 2px lime outline, and Training Signal targets
+  measured 112px high at 390px;
+- all seven zone tokens resolved and labels remain authoritative; reduced
+  motion rules remain active;
+- no schema migration, dependency, router/state-library, canvas/WebGL,
+  Race Crew/backend, sound, pixel/CRT/device-shell, or copied external asset was
+  added.
 
 ## Settings — one place for everything the plan is built from
 

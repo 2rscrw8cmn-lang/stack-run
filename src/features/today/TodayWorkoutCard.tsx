@@ -20,7 +20,7 @@ export function TodayWorkoutCard({
   if (workout.type === "rest") {
     return (
       <Card className="today-workout-card today-workout-card--rest">
-        <p className="today-workout-card__eyebrow">
+        <p className="today-workout-card__eyebrow machine-label">
           <ActivityIcon type="rest" size={16} />
           Rest Day
         </p>
@@ -36,7 +36,7 @@ export function TodayWorkoutCard({
 
   return (
     <Card className="today-workout-card">
-      <p className="today-workout-card__eyebrow">
+      <p className="today-workout-card__eyebrow machine-label">
         <ActivityIcon type={workout.type} size={16} />
         Today&rsquo;s workout
       </p>
@@ -48,7 +48,7 @@ export function TodayWorkoutCard({
         />
         <div>
           {distanceHeadline && (
-            <p className="today-workout-card__distance">{distanceHeadline}</p>
+            <p className="today-workout-card__distance data-value">{distanceHeadline}</p>
           )}
           {showTitle && (
             <p className="today-workout-card__title">{workout.title}</p>
