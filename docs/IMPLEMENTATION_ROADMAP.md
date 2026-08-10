@@ -2,214 +2,158 @@
 
 ## Delivery model
 
-Build vertically in small phases.
+Build vertically in small phases. Each phase must leave the app working and reviewable.
 
-Each phase must deliver complete, reviewable behavior and leave the app working. One phase equals one branch and one pull request unless the product owner explicitly says otherwise.
+One phase equals one branch and one pull request unless the product owner explicitly says otherwise.
 
-## Original product program — implemented
+## Completed product programs
+
+### Original product
 
 | Phase | Outcome | Status |
 |---:|---|---|
-| 0 | Repository foundation | Implemented |
-| 1 | App shell/design system | Implemented |
-| 2 | Today | Implemented; revised later |
-| 3 | Manual run entry | Implemented; revised later |
-| 4 | Build | Implemented; revised later |
-| 5 | Plan review | Implemented |
-| 5.5 | Core Loop Revision | Implemented |
-| 6 | Plan adjustment | Implemented |
-| 7 | Polish/installability/recovery | Implemented in merged PR #24 |
+| 0 | Repository foundation | Complete |
+| 1 | App shell/design system | Complete |
+| 2 | Today | Complete; revised later |
+| 3 | Manual run entry | Complete; revised later |
+| 4 | Build | Complete; revised later |
+| 5 | Plan review | Complete |
+| 5.5 | Core Loop Revision | Complete |
+| 6 | Plan adjustment | Complete |
+| 7 | Polish/installability/recovery | Complete |
 
-Additional owner-requested features are also implemented and recorded in D-030 through D-032:
+### Connected Training
 
-- one active generated race plan;
-- run-day preferences and explicit plan reshaping;
-- availability calendar import/proposals.
+| Phase | Outcome | Status |
+|---:|---|---|
+| 8 | Connected Data Foundation | Complete |
+| 9 | Connected Run Detail | Complete |
+| 10 | Connected Today + Week | Complete |
+| 11 | Training Trends | Complete |
 
-## Connected Training program
-
-Source of truth:
-
-- `docs/CONNECTED_TRAINING.md`
-- `docs/INTERVALS_INTEGRATION.md`
-- `docs/CONNECTED_DATA_FIELDS.md`
-
-The data path is:
+The working data path remains:
 
 ```text
 Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
 
-Manual logging remains a full fallback through every connected phase.
+Manual logging remains a full fallback.
 
-## Phase 8 — UI-8 Connected Data Foundation
+## Intentionally deferred phase
+
+### UI-12 — Wellness / Recovery Context
+
+**Status: Deferred / intentionally skipped.**
+
+Do not implement HRV, sleep, resting-HR or readiness UI as part of the active roadmap.
+
+D-038 remains the safety contract if recovery is reconsidered in the future, but D-046 keeps it out of the current product.
+
+## Active post-connected program
+
+Source of truth:
+
+- `docs/RUNS_AND_BUILD_REVISION.md`
+- `docs/RUNS_AND_BUILD_IMPLEMENTATION.md`
+- `docs/DECISION_LOG_ADDENDUM.md`
+
+## Phase 13 — UI-13 Runs Pillar + Navigation Revision
 
 ### Goal
 
-Prove the secure real-data path and let the user import/attach a HealthFit-originated run without retyping objective data.
+Give actual run history a first-class home and align the navigation with the product's four real content jobs.
 
 ### Deliver
 
-- `api/intervals.ts` read-only Vercel proxy.
-- Server-only `INTERVALS_API_KEY`.
-- Separate `STACK_SYNC_TOKEN` protection.
-- Connection token local repository/sheet.
-- Schema 8 → 9 migration.
-- Intervals activity-list client + normalizer.
-- Real June 10 field discovery.
-- First 90-day bounded backfill.
-- Rolling 14-day normal sync.
-- External-id dedupe.
-- Ignored external ids.
-- Suggested plan matching.
-- `Add as Extra Run`.
-- `Attach synced data` to existing manual run.
-- User-confirmed effort/notes/type as required.
-- Imported snapshot persistence.
-- Manual entry unchanged.
+- Persistent bottom nav exactly Today / Build / Runs / Plan.
+- Runs becomes a real active tab.
+- Existing Settings sheet moves out of bottom nav.
+- Icon-only top-right Settings gear with accessible 44px+ target.
+- Newest-first actual-run history using existing RunLog data.
+- Scheduled + extra, manual + synced runs in one factual history.
+- Run rows with type/icon, date, distance, duration, pace and Extra marker where appropriate.
+- Reuse existing rich run detail for imported metrics, zones and intervals.
+- Show moving + elapsed time when both exist and differ.
+- Actual-run Edit/Delete from Runs using existing repository rules.
+- Log Run action remains on Today and may also live compactly on Runs.
+- Training Trends gets its canonical launch point from Runs.
+- Remove Plan's dedicated Trends footer action unless review identifies a strong reason to keep it.
 
 ### Do not include
 
-- wellness UI;
-- detailed HR-zone/interval charts;
-- training trends;
-- upstream writes;
-- webhooks/OAuth;
-- a fourth tab.
+- wellness/recovery;
+- Intervals writes;
+- search/filter/pagination;
+- a second run-history persistence model;
+- Build visual revision;
+- new analytics beyond the already-implemented Trends sheet.
 
 ### Exit gate
 
-- Known June 10 HealthFit activity is returned through the proxy.
-- It can be accepted as a STACK run without manual distance/time entry.
-- Re-sync does not duplicate it.
-- API key never reaches the browser/Git history.
-- Proxy rejects missing/wrong sync token.
-- Existing schema-8 user state survives migration exactly except additive connected fields.
-- Manual mode works with no connection.
-- `docs/CONNECTED_DATA_FIELDS.md` is updated from real data.
-- `npm run check` passes without secrets.
-- Deployed iPhone smoke test passes with secrets configured.
+- Four primary destinations are legible and usable at 320px.
+- Settings reads as utility, not a fifth pillar.
+- Every actual run can be found chronologically without using Plan/Build.
+- Manual and imported runs share the same history/detail model.
+- Editing/deleting preserves plan and sync invariants.
+- No schema migration unless separately justified/documented.
+- `npm run check` passes.
+- `CURRENT_APPLICATION_STRUCTURE` and `PHASE_STATUS` updated.
 
-## Phase 9 — UI-9 Connected Run Detail
+## Phase 14 — UI-14 Build Reward Revision
 
 ### Goal
 
-Make imported run data useful without recreating Intervals.icu.
+Make Build the distinctive emotional reward of STACK: a tower the runner made, not a packing dashboard or puzzle game.
 
 ### Deliver
 
-- pace derived from local distance/duration;
-- average/max HR when verified/present;
-- cadence when verified/present;
-- elevation gain;
-- training load;
-- HR-zone distribution when verified;
-- on-demand activity detail;
-- interval/lap rows for structured sessions when verified;
-- quiet source label;
-- graceful omission of missing metrics.
+- Build heading reduced to total `miles built` only.
+- Remove Runs Complete and Run Streak from Build heading.
+- Make the tower the dominant visual object.
+- Keep current 8-column geometry and footprint rules.
+- Add derived mileage labels to sufficiently wide placed blocks.
+- Width-1 blocks may stay unlabeled.
+- Earned Race block gets a distinct capstone treatment only after the actual race is completed/placed.
+- Keep pending blocks compact.
+- Stage an earned block immediately above the tower in placement mode.
+- Pointer/touch drag snaps among existing deterministic valid candidates.
+- After a deliberate drag, release over the snapped valid candidate commits placement.
+- Tap/keyboard retain full select + semantic Place/Drop flow.
+- Auto Place remains secondary.
+- Add a restrained 220–400ms CSS placement payoff and brief newest-block highlight.
+- Reduced-motion path commits immediately without translation/bounce.
+
+### Do not include
+
+- new footprint/geometry logic;
+- scoring;
+- line clears;
+- combos/levels/coins;
+- tower health or penalties;
+- freeform positions/rotation;
+- physics/collision libraries;
+- canvas/WebGL;
+- confetti for ordinary runs;
+- new analytics dashboard;
+- wellness;
+- Intervals writes.
 
 ### Exit gate
 
-- No optional field is required to open/run detail.
-- Missing fields never render as zero.
-- Detailed endpoint is fetched on demand rather than for every activity list sync.
-- Structured workout detail is tested with a fixture whose interval semantics are understood.
+- The first visual reaction on Build is the tower, not metrics.
+- Mileage makes the running story visible on the structure where space permits.
+- Touch placement feels direct while tap/keyboard remain complete alternatives.
+- Placement payoff is noticeable but restrained.
+- Race capstone is earned, never pre-rendered.
+- No new schema/rendering dependency.
 - `npm run check` passes.
+- `CURRENT_APPLICATION_STRUCTURE` and `PHASE_STATUS` updated.
 
-## Phase 10 — UI-10 Connected Today + Week
+## Phase 15 — Optional Plan Export Investigation
 
-### Goal
+**Status: Deferred. No implementation authorization.**
 
-Make the connection feel native to daily use rather than like a separate import tool.
-
-### Deliver
-
-- `Run found` suggestion in Today's actionable area;
-- quiet stale-aware sync on app open/focus;
-- `Sync Now` / retry state;
-- weekly actual mileage;
-- weekly total run time;
-- longest run;
-- planned versus actual summary kept visually restrained;
-- extra-run distinction maintained;
-- Build reward immediately after confirmation.
-
-### Exit gate
-
-- Today remains understandable in under five seconds.
-- Sync failure never blocks manual completion.
-- No continuous polling.
-- Extra runs never increase scheduled completion.
-- Today at 320px remains free of horizontal overflow/dashboard clutter.
-- `npm run check` passes.
-
-## Phase 11 — UI-11 Training Trends
-
-### Goal
-
-Show whether race training is accumulating/progressing, not generic fitness analytics.
-
-### Deliver
-
-A secondary Trends view, not a persistent navigation tab:
-
-- weekly actual mileage;
-- long-run distance progression;
-- scheduled consistency percentage;
-- Easy-run average pace trend;
-- Easy-run average-HR trend when coverage is adequate;
-- textual summaries/low-data states;
-- accessible CSS/inline-SVG visuals.
-
-### Exit gate
-
-- Trend calculations are deterministic and unit-tested.
-- Low-data states do not overclaim.
-- Charts have text alternatives.
-- No chart library unless separately approved.
-- No race-time prediction or AI coaching.
-- `npm run check` passes.
-
-## Phase 12 — UI-12 Wellness / Recovery Context
-
-### Goal
-
-Use verified HealthFit → Intervals wellness data as quiet context.
-
-### Precondition
-
-Before implementation, `docs/CONNECTED_DATA_FIELDS.md` must confirm actual coverage for at least one useful wellness field. If HealthFit is not populating wellness, fix/understand the source setup before building empty UI.
-
-### Deliver
-
-Depending on verified coverage:
-
-- HRV;
-- resting heart rate;
-- sleep duration;
-- optional steps/weight only if useful;
-- bounded recent local cache if needed;
-- runner-relative baseline comparisons;
-- clear insufficient-history behavior.
-
-### Exit gate
-
-- No readiness score.
-- No medical claims.
-- No automatic plan changes.
-- Missing days/fields degrade cleanly.
-- Baseline language requires enough observations and is tested.
-- Wellness storage is bounded.
-- `npm run check` passes.
-
-## Phase 13 — Optional Plan Export Investigation
-
-**Status: deferred. Do not implement with UI-8 through UI-12.**
-
-Investigate only after the read path is stable.
-
-Potential path:
+Potential future path:
 
 ```text
 STACK Plan → Intervals.icu → HealthFit
@@ -225,34 +169,36 @@ Before any code, decide:
 - API scopes/credentials;
 - what HealthFit actually receives.
 
-Any write integration gets its own phase/PR.
+D-040 remains in force.
 
 ## Phase status rules
 
 A phase is:
 
-- `Not started`
-- `In progress`
-- `Blocked`
-- `Ready for review`
-- `Complete`
-- `Deferred`
+- Not started
+- In progress
+- Blocked
+- Ready for review
+- Complete
+- Deferred
 
-Only the product owner marks reviewed phases `Complete`.
+Only the product owner marks reviewed phases Complete.
 
-## Connected release definition
+## Next release definition
 
-The connected release is ready when:
+The post-connected revision is ready when:
 
-- a HealthFit-originated run can be found and confirmed in STACK;
-- planned match versus extra run is explicit;
-- existing manual runs can be enriched rather than duplicated;
-- repeat sync is idempotent;
-- manual entry works with sync absent/down;
-- useful imported metrics display only when verified/present;
-- weekly/trend stats answer race-training questions;
-- recovery data is optional and non-prescriptive;
-- no secret is committed/exposed;
-- server proxy is read-only and protected;
-- all automated checks pass without credentials;
-- each connected phase passes a real deployed iPhone smoke test.
+- bottom nav is Today / Build / Runs / Plan;
+- Settings is a top-right icon utility;
+- Runs is the obvious chronological home for actual activity;
+- existing run detail/edit/delete behavior is available from Runs;
+- Training Trends has a natural home from Runs;
+- Build is object-first and visually dominated by the tower;
+- block mileage is visible when space permits;
+- pointer placement can complete naturally on release after deliberate snapped drag;
+- tap/keyboard placement remains complete;
+- placement reward feels satisfying without becoming a separate game;
+- Race gets an earned capstone treatment;
+- UI-12 wellness remains absent;
+- no Intervals write path is introduced;
+- all checks pass at supported widths/accessibility modes.
