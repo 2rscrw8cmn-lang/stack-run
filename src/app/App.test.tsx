@@ -165,9 +165,9 @@ describe("App", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "5 miles built",
     );
-    expect(screen.getByText("Runs Complete").parentElement).toHaveTextContent(
-      "0 / 71",
-    );
+    // Build leads with the miles and stops there: no runs-complete, no streak.
+    expect(screen.queryByText("Runs Complete")).not.toBeInTheDocument();
+    expect(screen.queryByText("Run Streak")).not.toBeInTheDocument();
     expect(
       within(screen.getByRole("list", { name: "Blocks ready to place" })).getAllByRole(
         "listitem",
@@ -313,7 +313,7 @@ describe("App", () => {
     ).getAllByRole("button");
     expect(placed).toHaveLength(1);
     expect(placed[0]).toHaveAccessibleName(
-      "Tuesday, August 4, Easy, week 1, course 0, column 1",
+      "Tuesday, August 4, Easy, 2.1 miles, week 1, course 0, column 1",
     );
     expect(
       screen.queryByRole("list", { name: "Blocks ready to place" }),

@@ -2,8 +2,14 @@ import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
 import type { PlacementOption } from "../../domain/placement";
 
 /**
- * What the hovering block would do if dropped, for the live region. Screen
- * reader users get the same information the tower shows visually.
+ * Where the hovering block would go, for the live region. Screen reader users
+ * get the same information the tower shows visually.
+ *
+ * It used to add the course it would land on and how many cells it would arch
+ * over. That is the packing engine talking: the row is not a choice being
+ * offered, the arches are a consequence nobody is asked to weigh, and D-045
+ * says the machinery stays hidden. The column is the choice, so the column is
+ * what this says.
  */
 export function describeCandidate(
   block: EarnedBlock,
@@ -16,9 +22,5 @@ export function describeCandidate(
     candidate.columnStart === candidate.columnEnd
       ? `column ${candidate.columnStart}`
       : `columns ${candidate.columnStart} to ${candidate.columnEnd}`;
-  const support =
-    candidate.opened === 0
-      ? "resting flat"
-      : `arching over ${candidate.opened} ${candidate.opened === 1 ? "cell" : "cells"}`;
-  return `${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block over ${columns}, landing on course ${candidate.row}, ${support}.`;
+  return `${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block over ${columns}.`;
 }

@@ -32,7 +32,7 @@ Three things made the app read as generic, and all three were structural rather 
 **The screens led with their own names.** A large wordmark and tagline on every screen, then `Build`, then `Plan` — the app introducing itself in the space where it should be telling the runner something. The tab that got you here already said which screen it was. Each screen now leads with what it is *about*:
 
 - Today: the date (`Thursday September 10`) as the `h1`, with the race line under it. `RaceContext` is folded into `src/features/today/TodayHeading.tsx`.
-- Build: the miles the tower is made of, as a hero number, with runs and streak beside it. `BuildMetrics` is replaced by `src/features/build/BuildHeading.tsx`.
+- Build: the miles the tower is made of, as a hero number. `BuildMetrics` is replaced by `src/features/build/BuildHeading.tsx`. UI-7 kept runs and streak beside the miles; UI-14 removed them, and `BuildSummaryMetrics` is now the single `totalActualMiles`.
 - Plan: the week. `WeekNavigator` and `WeekHeader` — a stepper card above a description card — are one `src/features/plan/WeekLead.tsx`, which is also the screen's heading.
 
 Every screen has exactly one `h1`, and it is content rather than a label.
@@ -109,7 +109,27 @@ The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagr
 
 ### Placement is tactile without becoming a game
 
-Per D-024 the chosen landing slot is draggable: `BuiltStructure.dragToColumn` maps pointer x to a column against the tower's own bounding box and snaps to the nearest **valid** option, which is the same list tapping and the steppers walk. `LandingSlot` captures the pointer when the browser supports it and only tracks movement while a button or finger is down. `Drop` still commits, `Auto Place` is still the deterministic escape hatch, and tests cover drag, non-drag pointer movement, and tap plus keyboard placement side by side.
+Per D-024 the chosen landing slot is draggable: `BuiltStructure.dragToColumn` maps pointer x to a column against the tower's own bounding box and snaps to the nearest **valid** option, which is the same list tapping and the steppers walk. `Drop` still commits, `Auto Place` is still the deterministic escape hatch, and tests cover drag, non-drag pointer movement, and tap plus keyboard placement side by side.
+
+## Build after UI-14 — a trophy you can pick up
+
+D-045 changed what Build leads with and how it feels to place a block. It changed no geometry: eight columns, width from distance, height from activity type, the same `placementOptions`/gravity, the same `BlockPlacement`, the same repack on delete, still one block per actual run.
+
+**The heading is one number.** `BuildHeading` renders `XX.X miles built` and nothing else, and `selectBuildViewModel` no longer computes completed runs, planned runs or the streak for Build. `currentRunStreak` remains exported and tested for the screens that do report it. Nothing replaced the two figures — the point was to stop opening Build on statistics.
+
+**The tower comes before the queue.** `BuildScreen` renders `BuiltStructure` above `PendingBlocksTray`, which had been pushing the object itself off the fold whenever a backlog built up. The tray is capped at `30vh` instead of `45vh`, and the stage carries a `44vh` floor so a six-block tower stands in a sky rather than hugging the heading.
+
+**The blocks say what they are.** `PlacedBlock.faceLabel` derives a label from the RunLog: nothing at width 1, a one-decimal mileage at width 2, mileage plus `MI` from width 3, and `RACE` on the race whatever its distance. Nothing is stored — `formatCompactMiles` in `src/domain/distance.ts` rounds for display only, and the block's accessible name still carries the exact distance the rounding drops. The ink is `--bg` and the label sits centred, where the front face's gradient is light enough for every piece colour to clear 4.5:1; the darkest band at the very bottom of a Simulation brick does not.
+
+**The race is a capstone once it is earned.** `data-capstone` is set from the activity type of a *placed* block, so there is nothing to draw until the race has been run and built in. The treatment is a brighter top face and an accent hairline under the top edge — existing colour, existing footprint.
+
+**Release places it.** `BuiltStructure` holds a drag session: pressing any landing brings the block there and takes hold of it, movement past 8px makes it a drag, and letting go after a drag commits. A press and release without that movement is a tap — it selects, and `Drop` commits, so the tap and keyboard paths stay complete on their own. The move and release handlers sit on the tower rather than the slot because the slot that was grabbed stops being the chosen one as soon as the drag reaches the next column; the handlers were on the slot before, which is why a drag only ever moved one column. Landings overlap heavily — a 3-wide block has six of them — so gating the grab on "this is the chosen slot" meant a press in most of the tower started no drag at all.
+
+**The payoff is CSS and it ends.** A 200ms settle with an impact at the end, a glow that has faded by 340ms, and a transient `X miles added · Y miles built` line that removes itself after 2.6s. The glow used to be permanent on the newest block, which made it a badge rather than a moment. `prefers-reduced-motion` drops both animations and marks the new brick with a static ring instead; nothing animates from JavaScript, which is what lets the media query switch the whole thing off. None of it touches persisted state.
+
+**The placement copy stopped describing the packer.** No courses, no arches, no support counts — the placement bar says `Column 5`, a landing is named `Place Easy block in column 5`, and the live region says which columns the block is over. The block's own accessible name keeps its position, because that is how a non-visual user finds a brick in the tower.
+
+While a block is in hand, `.build-screen[data-placing="true"]` drops the stage's sky floor and reserves 230px at the bottom. The placement bar is fixed over the last ~230px of a 320 x 640 screen, which is exactly where the ground line of a new tower sits, and without this the block being placed was behind it.
 
 ## Deleting a run
 

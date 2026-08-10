@@ -12,7 +12,7 @@ Read `docs/RUNS_AND_BUILD_REVISION.md` first. Product intent wins over implement
 - UI-11 — Training Trends: complete.
 - UI-12 — Wellness / Recovery Context: intentionally deferred/skipped.
 - UI-13 — Runs Pillar + Navigation Revision: complete. Trends is presented on Runs as swipeable cards per D-047.
-- UI-14 — Build Reward Revision: next.
+- UI-14 — Build Reward Revision: complete.
 - UI-15 — Optional Plan Export Investigation: deferred; no code authorization.
 
 No schema migration is expected for UI-13 or UI-14 unless a real persisted-state requirement is discovered and documented before implementation.

@@ -16,3 +16,15 @@ const MILE_DECIMALS = 2;
 export function formatMiles(distanceMiles: number): string {
   return String(Number(distanceMiles.toFixed(MILE_DECIMALS)));
 }
+
+/**
+ * The same distance, short enough to sit on a brick.
+ *
+ * A block face is between about 60 and 130 CSS pixels wide, so `10.25` costs
+ * width the tower cannot spare and precision nobody reads at that size. One
+ * decimal is the compact form D-045 asks for: `3.2`, `10.3`, and a flat `5`
+ * for a run entered as five miles.
+ */
+export function formatCompactMiles(distanceMiles: number): string {
+  return String(Number(distanceMiles.toFixed(1)));
+}

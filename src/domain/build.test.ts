@@ -347,7 +347,7 @@ describe("selectBuildViewModel", () => {
     expect(movable[0].runLog.id).toBe("run-workout-004");
   });
 
-  it("summarises completed runs, total miles, and the current streak", () => {
+  it("summarises the miles built, and nothing else", () => {
     const runLogs = [
       runLogFor("workout-002", { distanceMiles: 2.1 }),
       runLogFor("workout-004", { distanceMiles: 2.35, completedDate: "2026-08-06" }),
@@ -355,13 +355,12 @@ describe("selectBuildViewModel", () => {
 
     const { metrics } = selectBuildViewModel(plan, runLogs, [], "2026-08-06");
 
-    expect(metrics.completedRuns).toBe(2);
-    expect(metrics.plannedRuns).toBe(71);
-    expect(metrics.totalActualMiles).toBe(4.5);
-    expect(metrics.currentStreak).toBe(2);
+    // D-045 leaves Build one accumulated fact. Completed runs and the streak
+    // are not merely hidden here — they are no longer computed for Build.
+    expect(metrics).toEqual({ totalActualMiles: 4.5 });
   });
 
-  it("counts an extra run's miles but not its completion", () => {
+  it("counts an extra run's miles", () => {
     const runLogs = [
       runLogFor("workout-002", { distanceMiles: 2 }),
       extraRun("run-extra-1", { distanceMiles: 3, completedDate: "2026-08-05" }),
@@ -369,7 +368,6 @@ describe("selectBuildViewModel", () => {
 
     const { metrics } = selectBuildViewModel(plan, runLogs, [], "2026-08-05");
 
-    expect(metrics.completedRuns).toBe(1);
     expect(metrics.totalActualMiles).toBe(5);
   });
 

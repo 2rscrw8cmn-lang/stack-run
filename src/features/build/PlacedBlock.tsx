@@ -1,11 +1,14 @@
 import type { CSSProperties } from "react";
 import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
+import { formatCompactMiles, formatMiles } from "../../domain/distance";
 
 interface PlacedBlockProps {
   block: PlacedBlockData;
   /** Courses drawn in the grid, needed to flip row into a grid line. */
   courses: number;
+  /** True for the block this placement session just committed, briefly. */
+  isJustPlaced?: boolean;
   onSelect: (runLogId: string) => void;
 }
 
@@ -24,6 +27,9 @@ function blockLabel(block: PlacedBlockData): string {
       day: "numeric",
     }),
     WORKOUT_TYPE_LABEL[runLog.activityType],
+    // The visible face carries a rounded mileage at best and nothing at all on
+    // a narrow brick, so the accessible name carries the real distance.
+    `${formatMiles(runLog.distanceMiles)} miles`,
     workout ? `week ${workout.weekNumber}` : "extra run",
     `course ${placement.row}`,
     columns,
@@ -31,17 +37,57 @@ function blockLabel(block: PlacedBlockData): string {
 }
 
 /**
+ * The running story written on the brick, per D-045.
+ *
+ * A width-1 face is about 32 CSS pixels across at 320px, which is not enough
+ * for a number anyone would want to read, so it stays bare — the block's size
+ * and colour are its identity there, and the full facts are one tap away. The
+ * `MI` unit only joins the number from width 3, where the face is wide enough
+ * that measuring it would be theatre.
+ *
+ * The race says `RACE` instead of its distance: it is the one block whose
+ * mileage the runner already knows, and the word is what makes it read as the
+ * capstone rather than another wide brick.
+ */
+function faceLabel(
+  block: PlacedBlockData,
+): { text: string; unit: boolean } | null {
+  const { runLog, placement } = block;
+  if (placement.width === 1) {
+    return null;
+  }
+  if (runLog.activityType === "race") {
+    return { text: "RACE", unit: false };
+  }
+  return {
+    text: formatCompactMiles(runLog.distanceMiles),
+    unit: placement.width >= 3,
+  };
+}
+
+/**
  * One brick in the tower. The front face always draws; the top and right faces
  * only draw where nothing abuts, which is what makes the structure read as a
  * solid mass rather than a stack of separate cards.
  */
-export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
-  const { runLog, placement, isNewest, topFace, rightFace, depth } = block;
+export function PlacedBlock({
+  block,
+  courses,
+  isJustPlaced = false,
+  onSelect,
+}: PlacedBlockProps) {
+  const { runLog, placement, topFace, rightFace, depth } = block;
+  const label = faceLabel(block);
+  const isRace = runLog.activityType === "race";
 
   return (
     <li
       className="placed-block"
-      data-newest={isNewest ? "true" : undefined}
+      // Earned, never anticipated: a block only exists here once its run has
+      // been logged and its placement committed, so there is no capstone to
+      // show before the race has been run.
+      data-capstone={isRace ? "true" : undefined}
+      data-just-placed={isJustPlaced ? "true" : undefined}
       style={
         {
           gridColumn: `${placement.columnStart} / span ${placement.width}`,
@@ -58,7 +104,16 @@ export function PlacedBlock({ block, courses, onSelect }: PlacedBlockProps) {
       >
         <span className="visually-hidden">{blockLabel(block)}</span>
         <span className="placed-block__brick" aria-hidden="true">
-          <span className="placed-block__face placed-block__face--front" />
+          <span className="placed-block__face placed-block__face--front">
+            {label && (
+              <span className="placed-block__label">
+                {label.text}
+                {label.unit && (
+                  <span className="placed-block__unit">MI</span>
+                )}
+              </span>
+            )}
+          </span>
           {/*
             One segment per grid cell along each edge, so a face stops exactly
             where a neighbour begins instead of sliding out from under it.

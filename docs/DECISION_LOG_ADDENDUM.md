@@ -120,19 +120,16 @@ Implemented/accepted:
 
 - UI-0 through UI-11
 - UI-13 (D-044, D-047)
+- UI-14 (D-045)
 - D-018 through D-043 as applicable
 
 Deferred/skipped:
 
 - UI-12 — Wellness / Recovery Context
 
-Next approved:
-
-1. **UI-14 — Build Reward Revision** (D-045)
-
 Deferred investigation only:
 
-3. **UI-15 — Optional Plan Export Investigation** (D-040)
+1. **UI-15 — Optional Plan Export Investigation** (D-040)
 
 See:
 
