@@ -2,60 +2,71 @@
 
 ## Experience principles
 
-### 1. One useful answer per screen
+### 1. One useful answer per primary screen
 
-- Today: what matters today and this week
-- Build: what the user has actually built
-- Plan: the editable dated schedule
+- **Today:** what matters now and this week.
+- **Build:** what the user has physically built from completed running.
+- **Runs:** what actually happened, newest first.
+- **Plan:** what is supposed to happen.
 
 ### 2. Completion earns something
 
-Finishing any run earns one block. Connected data may remove typing, but it does not remove the placement reward.
+Every actual run earns one Build block. Connected data may remove typing, but it does not remove the placement reward.
 
 ### 3. Playful, not complicated
 
-Build feels like a small digital construction toy. The user should not need to understand packing rules or sports-science models.
+Build should feel like a small digital construction toy/trophy. The user should never need to understand packing rules, courses, support math, void scoring or sports-science models.
 
-### 4. Actual running matters more than the original plan
+### 4. Actual running is first-class
 
-The plan is guidance. Extra runs and the actual date/run metrics belong to the runner even when the plan did not ask for them.
+The plan is guidance. Extra runs and actual dates/metrics belong to the runner even when the plan did not ask for them.
 
 ### 5. Quiet interface
 
-Use restrained hierarchy. A card is for the one actionable thing; other bands use Sections. Connected data is progressive disclosure, not a wall of metrics.
+Use restrained hierarchy. Cards are for the one actionable thing; other bands use Sections. Connected metrics use progressive disclosure.
 
 ### 6. Source data may be incomplete
 
-Heart rate, cadence, elevation, load, HRV and sleep are optional. Omit unavailable metrics. Never render a missing health metric as zero.
+Heart rate, cadence, elevation, load and interval detail are optional. Omit unavailable metrics. Never render missing imported data as zero.
 
 ## Information architecture
 
-Persistent bottom navigation remains exactly:
+Persistent bottom navigation is exactly:
 
-- Today
-- Build
-- Plan
+1. Today
+2. Build
+3. Runs
+4. Plan
 
-No persistent Stats, Profile, Sync or Settings tab.
+`Runs` is a real destination.
 
-Secondary surfaces may include:
+Settings is utility, not a fifth destination. It opens from an icon-only gear in the top-right header.
 
-- Run Data connection sheet
-- Run detail
-- Training Trends
-- Plan settings/edit sheets
+Secondary surfaces include:
 
-## Global header / screen lead
+- Settings sheet;
+- Run Data connection sheet;
+- Run detail;
+- Training Trends;
+- plan edit/settings sheets;
+- Build placement state.
 
-UI-7 established the visual hierarchy:
+## Global header
 
-- small STACK brand lockup, not a headline;
-- each screen has exactly one `h1` containing the thing the screen is about;
-- Today leads with date;
-- Build leads with the miles/runs that made the tower;
-- Plan leads with the week.
+The header contains:
 
-Connected Training must preserve this hierarchy.
+- small STACK mark + wordmark on the left;
+- icon-only Lucide `Settings` button on the right.
+
+The Settings control must have:
+
+- `aria-label="Settings"`;
+- at least a 44 × 44 CSS-pixel target;
+- no visible text label.
+
+Opening/closing Settings keeps the user on the same active primary destination.
+
+Each primary screen still has exactly one content-led `h1`.
 
 ## Today
 
@@ -64,164 +75,383 @@ Today is the daily command center.
 Order:
 
 1. Date + race context.
-2. Today's planned workout / completion state / run-found state.
+2. Today's planned workout / completed state / run-found state.
 3. This Week.
 4. Next workout.
-5. `+ Log Run` manual fallback.
+5. `Log Run` manual fallback.
 6. Build preview.
-7. Quiet connection/sync affordance where it does not compete with the workout.
-
-### Today's planned run — no synced candidate
-
-Show the existing scheduled card:
-
-- type/icon/color;
-- target;
-- instructions;
-- `Mark Complete` for manual entry.
-
-Connected data must not remove manual entry.
+7. Quiet sync failure/retry when relevant.
 
 ### Run found
 
-When sync returns an unimported running activity that is a likely match for today's/recent planned workout, the actionable card becomes a run-found confirmation.
+When sync returns an unimported running activity that is a likely match for a recent planned workout, surface one useful candidate without turning Today into an inbox.
 
 Show:
 
-- `Run found`
-- actual distance
-- actual duration
-- derived pace
-- average HR if present
-- activity date when it differs from today
-- proposed planned-workout match
+- actual distance;
+- duration;
+- derived pace;
+- average HR if present;
+- actual activity date when useful;
+- proposed scheduled match.
 
 Actions:
 
-- `Confirm Match`
-- `Extra Run`
-- `Not This Run` / dismiss without ignoring permanently
+- Confirm Match;
+- Add as Extra Run;
+- temporary dismiss;
+- explicit ignore.
 
-Example:
-
-```text
-RUN FOUND
-3.21 mi · 31:42
-9:53 /mi · 146 avg HR
-
-Likely match
-Tuesday · 3 mi Easy
-
-[ Confirm Match ]
-[ Extra Run ]
-```
-
-Never silently create the link.
-
-### Confirm imported run
-
-For a scheduled match, do not ask the user to type date/distance/duration again.
-
-Ask only:
-
-- Rough / Solid / Great
-- optional note
-
-Default STACK activity type from the planned workout.
-
-For an extra run, also ask for activity type:
-
-- Easy (default)
-- Intervals
-- Simulation
-- Long Run
-- Race only when appropriate/explicit; do not infer Race from distance.
-
-On save:
-
-- create/attach the local RunLog;
-- preserve imported source metrics;
-- earn one block;
-- surface `Place Block`.
-
-### Existing manual run + remote match
-
-When a remote activity appears to represent a manual run already in STACK, show `Attach synced data`, not another completed run.
-
-The confirmation must make objective differences visible before replacing local objective values.
-
-Keep:
-
-- existing local run id;
-- plan link;
-- effort;
-- notes;
-- block identity/placement.
+Never silently attach a remote activity to a planned workout.
 
 ### This Week
 
-Show scheduled completion separately from actual activity.
+Keep scheduled completion separate from actual running.
 
 Required:
 
 - scheduled runs complete / scheduled runs;
-- day strip/status;
-- actual miles this week after UI-10;
-- extra-run count when non-zero.
-
-Possible UI-10 additions, kept compact:
-
+- seven-day status strip;
+- extra-run count when non-zero;
+- actual miles;
 - total run time;
 - longest run.
 
-Do not let extra runs inflate `N of M scheduled runs complete`.
+Extra runs contribute to actual totals but do not inflate scheduled completion.
 
-### Next
+### Trends from Today
 
-Show next scheduled non-rest workout:
+A quiet contextual `View Trends` action may remain when data exists, but Runs is the canonical home for Training Trends after UI-13.
 
-- day/date
-- target
-- type
+## Runs — primary actual-history screen
 
-Omit when there is nothing left before the race.
+Runs answers:
 
-### Sync status
+> What have I actually done?
 
-Do not add a large connection card to Today.
+It is factual history, not another Plan and not a generic analytics dashboard.
 
-Use a quiet control/state such as:
+### Screen lead
 
-- `Synced 2m ago`
-- `Sync`
-- `Sync failed · Retry`
+Use a content-led summary such as:
 
-Connection setup opens a secondary `Run Data` sheet.
+- `N runs` as the `h1`;
+- total actual miles as quiet secondary context.
 
-## Run Data connection sheet
+Do not lead with the word `Runs` merely because that is the tab label.
 
-Access from a low-priority Today/Plan action. It is not a persistent tab.
+### Actions
 
-Disconnected state:
+Allowed near the screen lead:
 
-- explain `HealthFit → Intervals.icu → STACK` in one sentence;
-- field for the local `STACK_SYNC_TOKEN` only;
-- `Connect` / `Test Connection`;
-- never ask for the Intervals API key in the browser UI.
+- quiet `View Training Trends`;
+- compact `Log Run`.
 
-Connected state:
+Today keeps its own Log Run action as a manual fallback.
 
-- `Intervals.icu · Connected`
-- last successful activity sync
-- `Sync Now`
-- recent sync error if any
-- `Forget Connection` (removes local sync token, not imported runs)
-- `Clear ignored activities` as a low-priority action
-- later, wellness sync status when UI-12 exists
+### Run list
 
-No API key display.
+Newest actual date first.
 
-## Manual Log Run sheet
+Include every RunLog:
+
+- scheduled and extra;
+- manual and Intervals-imported.
+
+Each row should show:
+
+- ActivityIcon + STACK activity type;
+- actual date;
+- distance;
+- duration;
+- derived pace;
+- quiet `Extra` marker only for `workoutId === null`.
+
+Average HR is optional only if the row stays visually calm. Do not show source as a prominent badge.
+
+The entire row is a semantic button with a useful accessible name.
+
+### Runs empty state
+
+If no actual run exists:
+
+- say that recorded runs will appear here;
+- offer `Log Run`;
+- do not show fake sample rows or a large analytics empty dashboard.
+
+### Run detail
+
+Reuse the existing rich run-detail presentation.
+
+Required:
+
+- actual date;
+- distance;
+- moving duration;
+- pace;
+- effort;
+- notes;
+- planned-workout relationship or `Extra run`;
+- verified imported metrics when present;
+- HR-zone distribution when present;
+- on-demand structured intervals when present;
+- quiet source label for synced runs.
+
+If imported elapsed time exists and differs materially from moving duration, show both:
+
+- Moving
+- Elapsed
+
+Do not show the same time twice under different labels.
+
+### Edit/delete
+
+Runs becomes the canonical history-management surface.
+
+- `Edit Run` uses existing run-entry/edit rules.
+- Editing actual data does not edit the plan.
+- A scheduled link remains unless a separate plan action changes it.
+- Accepted synced runs are local snapshots; normal sync does not overwrite local edits.
+- `Delete Run` uses existing repository behavior and removes/re-packs the Build block.
+- Imported deletion must preserve ignore/dedupe behavior so sync does not resurrect it immediately.
+
+Plan/Build may keep contextual detail/edit affordances, but neither should contain unique history-management behavior that Runs lacks.
+
+## Training Trends
+
+Training Trends remains secondary, not a fifth tab.
+
+Canonical entry point: Runs.
+
+The first trend set remains:
+
+- weekly actual mileage;
+- long-run progression;
+- scheduled consistency;
+- Easy-run pace trend;
+- Easy-run average-HR trend when coverage is adequate.
+
+Charts remain simple CSS/inline SVG with textual summaries and low-data states. No race-time prediction, readiness score, CTL/ATL dashboard or AI coaching.
+
+Plan no longer needs a dedicated Trends footer action once Runs provides a clear home. A quiet Today link may remain.
+
+## Build
+
+Build answers:
+
+> What has all this running become?
+
+Its job is emotional reward + physical representation of completed work.
+
+It is not a stats dashboard and not a puzzle game.
+
+### Heading
+
+Lead with only:
+
+- `XX.X miles built`
+
+Remove Runs Complete and Run Streak from Build's heading. Do not replace them with other metric cards.
+
+The tower should be the dominant visual object.
+
+### Pending blocks
+
+Pending blocks remain supported because a runner may save a run and place its block later.
+
+Keep the tray compact. It must not visually compete with the tower.
+
+Each pending item may show:
+
+- activity icon/type;
+- actual date;
+- miles;
+- compact footprint preview;
+- Place action.
+
+### Existing geometry remains locked
+
+- continuous 8-column tower;
+- one block per actual run;
+- width from actual distance;
+- height from STACK activity type;
+- color from STACK activity type;
+- deterministic valid landing positions;
+- no future blueprint.
+
+Width:
+
+- `< 3.0 mi` → 1
+- `3.0–4.99 mi` → 2
+- `5.0–7.99 mi` → 3
+- `>= 8.0 mi` → 4
+
+Height:
+
+- Easy → 1
+- Long Run → 1
+- Intervals → 2
+- Simulation → 2
+- Race → 3
+
+### Mileage on placed blocks
+
+Show actual mileage directly on a block when there is enough room.
+
+Recommended:
+
+- width 1: blank;
+- width 2: compact number, e.g. `3.2`;
+- width 3–4: `6.2` or `6.2 MI` depending on measured space.
+
+The label is derived from RunLog and is never separately persisted.
+
+The label is visual reinforcement only; accessible block labels continue to expose full run facts.
+
+### Race capstone
+
+The actual Race run's block may receive a distinct capstone treatment after it is earned/placed:
+
+- existing Race white piece color;
+- stronger top/highlight treatment;
+- `RACE` or flag mark when space permits;
+- slightly more pronounced but still restrained placement highlight.
+
+Do not show a future empty race placeholder.
+
+### Placement entry
+
+After a run is saved/confirmed:
+
+1. show the earned block;
+2. `Place Block` opens Build directly in placement mode;
+3. stage the block visually above the tower.
+
+Pending placement remains allowed.
+
+### Pointer/touch placement
+
+The domain still decides valid candidates and gravity.
+
+The UI should hide that machinery:
+
+- drag horizontally;
+- snap among valid landing columns only;
+- while deliberately dragging, release over the snapped valid candidate commits placement.
+
+Do not expose rows/courses/packing language in normal user copy.
+
+### Tap/keyboard placement
+
+Direct manipulation is never the only interaction path.
+
+- Tap a valid landing to select it.
+- Semantic Place/Drop commits.
+- Keyboard can step through valid candidates and commit.
+- Auto Place remains a quiet secondary fallback.
+- Live announcements remain useful.
+
+A simple tap should not accidentally commit before the expected confirmation path.
+
+### Placement payoff
+
+Build may carry more motion/personality than the rest of STACK.
+
+Target ordinary placement sequence: roughly 220–400 ms.
+
+- settle/drop into place;
+- subtle impact/settle motion;
+- brief newest-block glow/highlight;
+- mileage label resolves;
+- optional transient status such as `7.1 miles added · 52.4 miles built`.
+
+No confetti for ordinary runs. No sound/haptic dependency.
+
+Reduced motion:
+
+- immediate placement;
+- no translation/bounce;
+- static highlight/status announcement.
+
+### Build detail
+
+Tapping a block still opens the underlying actual run detail. The physical object must stay connected to the run that earned it.
+
+Build should not become the only place to edit/delete history once Runs exists.
+
+### Explicitly rejected game mechanics
+
+Do not add:
+
+- line clearing;
+- score;
+- combo;
+- levels;
+- coins;
+- tower health;
+- placement penalties;
+- arbitrary rotation;
+- freeform coordinates;
+- physics/collision library;
+- game loop;
+- canvas/WebGL.
+
+Running is the achievement.
+
+## Plan
+
+Plan remains the complete editable dated schedule.
+
+Connected data affects completion, not plan ownership.
+
+Plan owns:
+
+- week navigation;
+- scheduled workout detail;
+- edit/move/change-to-Rest/add-on-Rest;
+- availability conflict review;
+- actual completion status.
+
+A linked imported run is completed exactly like a linked manual run.
+
+Plan should not duplicate the entire Runs history.
+
+## Settings sheet
+
+The grouped Settings content from PR #30 remains:
+
+- Race / start date;
+- Run Days;
+- Availability;
+- Run Data;
+- Reset Plan.
+
+Only the entry point moves from the bottom bar to the top-right gear in UI-13.
+
+Dismissing a child opened from Settings returns to Settings. Committing a change may close Settings to show the result, consistent with current behavior.
+
+## Run Data connection
+
+The protected Intervals.icu path remains unchanged.
+
+Disconnected:
+
+- explain HealthFit → Intervals.icu → STACK briefly;
+- ask only for STACK sync token;
+- never ask for the personal Intervals API key in browser UI.
+
+Connected:
+
+- connection status;
+- last successful sync;
+- Sync Now;
+- actionable errors;
+- Forget Connection;
+- Clear Ignored Activities.
+
+No wellness UI is added.
+
+## Manual run entry
 
 Manual mode remains available for scheduled and extra runs.
 
@@ -234,250 +464,69 @@ Fields:
 5. Effort
 6. Notes
 
-Rules from the current product stay intact.
-
-For an imported run, use a separate confirmation form/state rather than pretending imported objective fields are ordinary editable text inputs.
-
-## Build
-
-Build remains what was actually constructed.
-
-Connected data does not add charts/HR zones to the tower.
-
-### Heading
-
-Keep UI-7's content-first Build heading:
-
-- actual miles
-- runs
-- streak
-
-### Blocks Ready
-
-Imported and manual runs are indistinguishable as blocks except for optional source context in detail.
-
-Show:
-
-- activity icon/type
-- date
-- miles
-- block footprint
-- `Place`
-
-### Tower
-
-- continuous 8 columns
-- only placed blocks
-- no future blueprint
-- width from actual distance
-- height from STACK activity type
-- newest placement glow only
-- direct/tap/keyboard placement paths preserved
-
-### Block/run detail
-
-Primary:
-
-- date
-- distance
-- duration
-- pace
-- effort
-- notes
-- planned-workout context or `Extra run`
-
-Imported secondary metrics when present:
-
-- avg/max HR
-- cadence
-- elevation gain
-- training load
-- HR-zone summary
-
-Source label may say `Synced via Intervals.icu` quietly.
-
-Do not show unavailable rows.
-
-## Plan
-
-Plan remains the complete editable schedule.
-
-Connected data affects completion, not plan ownership.
-
-### Week lead
-
-Keep UI-7 merged week lead:
-
-- week number/date range/phase
-- scheduled completion
-- previous/next/current controls
-
-After UI-10, weekly actual mileage may appear as a secondary fact if it fits without crowding.
-
-### Workout row/detail
-
-A linked imported run is completed exactly like a linked manual run.
-
-Detail may show imported metrics under `Actual run`.
-
-Sync never moves, edits or creates planned workouts in UI-8 through UI-12.
-
-## Training Trends — secondary view, UI-11
-
-Do not add a fourth bottom-navigation item.
-
-Open from Today with a secondary `View Trends` action after there is enough data.
-
-First trend set:
-
-- weekly actual mileage;
-- long-run distance progression;
-- scheduled-workout consistency percentage;
-- Easy-run average pace;
-- Easy-run average HR when coverage is adequate.
-
-Charts:
-
-- accessible text summary accompanies each visual;
-- simple CSS or inline SVG is preferred;
-- no chart-library dependency without approval;
-- no dual-axis spaghetti charts on a phone;
-- empty/low-data states say what is needed for a trend.
-
-## Connected Run Detail — UI-9
-
-Primary row:
-
-```text
-5.12 MI     49:08     9:36 /MI
-```
-
-Secondary metric grid when present:
-
-```text
-AVG HR      148
-MAX HR      164
-CADENCE     169
-GAIN        121 ft
-LOAD         62
-```
-
-### HR zones
-
-If verified zone-time data exists, show a simple horizontal distribution with labels and durations/percentages.
-
-Do not invent zone values if the source does not provide them.
-
-### Intervals/laps
-
-For structured sessions, activity detail may show work/rest rows from verified Intervals `icu_intervals` data.
-
-Only show when grouping makes sense. An easy run does not need a fake interval table.
-
-## Wellness / Recovery — UI-12
-
-Build only after `docs/CONNECTED_DATA_FIELDS.md` confirms real data coverage.
-
-Today may show a small Recovery section:
-
-- HRV
-- resting HR
-- sleep
-- optional steps/weight if useful
-
-Use runner-relative context, not population grades.
-
-Example:
-
-```text
-RECOVERY
-HRV       48 ms      near recent baseline
-Rest HR   54 bpm     +2 vs recent baseline
-Sleep     7h 21m
-```
-
-Rules:
-
-- require enough historical observations before writing baseline language;
-- raw value is always acceptable when history is insufficient;
-- neutral wording only;
-- no red `bad recovery` score;
-- no readiness number;
-- no automatic plan edits;
-- no medical diagnosis/advice.
-
-## Imported-data missing states
-
-Examples:
-
-- no HR → omit HR rows;
-- no cadence → omit cadence;
-- no wellness for today → show no Recovery section or a quiet `No recovery data` state, depending on context;
-- sync offline/error → manual app remains functional.
-
-Never fill missing data with `0`, `--` in a dense dashboard, or a guessed value.
+Imported confirmation does not require retyping objective source values.
 
 ## Matching behavior
 
-Matching suggests, user decides.
+Matching suggests; user decides.
 
-Candidate window:
+Candidate window remains recent unmatched scheduled non-rest workouts around the actual date, with deterministic date/distance ranking.
 
-- unmatched scheduled non-rest workouts within ±2 calendar days.
-
-Ranking:
-
-1. exact/closest date;
-2. best safely parsed distance fit;
-3. deterministic tie-break.
-
-Show both actual and planned dates when they differ.
-
-If no suitable match exists, offer `Extra Run`.
-
-## Ignore behavior
-
-Closing a suggestion is temporary.
-
-An explicit `Ignore this activity` prevents it from returning on normal sync.
-
-Ignored activities can be restored by clearing the ignored list from Run Data settings.
-
-Deleting an already imported Intervals run should add the external activity id to the ignored list so normal sync does not resurrect it.
+If no suitable match exists, Extra Run remains available.
 
 ## Sync behavior
 
-- first connect/backfill: up to 90 days;
-- normal sync: rolling 14-day lookback;
-- quiet sync on open/focus when stale;
-- manual `Sync Now`;
+Keep current behavior:
+
+- 90-day first backfill;
+- 14-day rolling lookback;
+- stale-aware open/focus sync;
+- explicit Sync Now;
 - no continuous polling;
-- honor rate limiting;
-- manual entry remains usable during errors.
+- manual entry works during failures.
+
+## Wellness / Recovery
+
+UI-12 is intentionally deferred/skipped.
+
+Do not add HRV/sleep/resting-HR/readiness UI in UI-13 or UI-14.
+
+D-038 remains the safety contract if recovery is revisited later.
 
 ## Accessibility
 
-Existing UI-7 accessibility requirements remain.
-
-Connected additions:
-
-- imported metrics have text labels, not color-only meaning;
-- sync status announced appropriately without repeated noisy live-region updates;
-- charts have textual summaries;
-- drag remains optional and never the only block-placement method;
-- connection errors are readable and actionable;
-- health trend arrows/symbols always include words/values.
+- Every primary nav item has text + icon and visible active state.
+- Settings gear has an accessible name and 44px target.
+- Run rows are semantic buttons with meaningful names.
+- Imported metrics have text labels.
+- Missing imported values are omitted, not represented as zero.
+- Trend visuals keep text summaries.
+- Drag is optional and never the only placement method.
+- Build status is not color-only.
+- `prefers-reduced-motion` is respected.
+- 320px remains a required supported width.
 
 ## Active implementation order
 
-The original UI-0 through UI-7 program is implemented.
+Implemented/accepted:
+
+- UI-0 through UI-11.
+
+Intentionally deferred:
+
+- UI-12 Wellness / Recovery Context.
 
 Next:
 
-1. UI-8 Connected Data Foundation
-2. UI-9 Connected Run Detail
-3. UI-10 Connected Today + Week
-4. UI-11 Training Trends
-5. UI-12 Wellness / Recovery Context
+1. UI-13 — Runs Pillar + Navigation Revision.
+2. UI-14 — Build Reward Revision.
 
-Source of truth: `docs/CONNECTED_TRAINING.md` and `docs/INTERVALS_INTEGRATION.md`.
+Deferred investigation only:
+
+3. UI-15 — Optional Plan Export.
+
+Source of truth for the next two phases:
+
+- `docs/RUNS_AND_BUILD_REVISION.md`
+- `docs/RUNS_AND_BUILD_IMPLEMENTATION.md`
+- `docs/DECISION_LOG_ADDENDUM.md`
