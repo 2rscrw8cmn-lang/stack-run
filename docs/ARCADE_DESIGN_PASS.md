@@ -16,6 +16,8 @@ The approved balance is approximately:
 
 The design goal is specialized running equipment: a machine built for one job.
 
+ docs/reference/stack-performance-arcade-approved.png This image is the approved visual direction. Match its design language and hierarchy, but adapt components responsively and do not treat every pixel as a literal specification.
+
 ## Relationship to the approved mockup
 
 The owner approved the exploratory concept showing:
