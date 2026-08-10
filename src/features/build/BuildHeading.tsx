@@ -1,4 +1,3 @@
-import { CircleCheck, Flame } from "lucide-react";
 import type { BuildSummaryMetrics } from "../../domain/build";
 
 interface BuildHeadingProps {
@@ -6,12 +5,14 @@ interface BuildHeadingProps {
 }
 
 /**
- * What Build leads with.
+ * What Build leads with: one number, and then the tower.
  *
- * It used to be the word "Build" over a card of three equal numbers, which
- * told a runner opening the screen nothing they did not already know from the
- * tab they tapped. The miles are the number the whole tower is made of, so
- * they are the headline; runs and streak are the context beside it.
+ * It used to be the word "Build" over a card of three equal figures, and then
+ * — after UI-7 — the miles with Runs Complete and Run Streak beside them. Both
+ * versions made the screen open on statistics. D-045 settles it: the miles are
+ * what the tower is made of and are the only accumulated fact here; the runs
+ * and the streak are Today's, Plan's and Trends' to report, and nothing takes
+ * their place. Everything below this line is the object itself.
  */
 export function BuildHeading({ metrics }: BuildHeadingProps) {
   return (
@@ -22,32 +23,6 @@ export function BuildHeading({ metrics }: BuildHeadingProps) {
           {metrics.totalActualMiles === 1 ? "mile built" : "miles built"}
         </span>
       </h1>
-
-      <dl className="build-heading__stats">
-        <div className="build-heading__stat">
-          <dt>
-            <CircleCheck size={14} strokeWidth={2} aria-hidden="true" />
-            Runs Complete
-          </dt>
-          <dd>
-            {metrics.completedRuns}
-            <span className="build-heading__of"> / {metrics.plannedRuns}</span>
-          </dd>
-        </div>
-        <div className="build-heading__stat">
-          <dt>
-            <Flame size={14} strokeWidth={2} aria-hidden="true" />
-            Run Streak
-          </dt>
-          <dd>
-            {metrics.currentStreak}
-            <span className="build-heading__of">
-              {" "}
-              {metrics.currentStreak === 1 ? "day" : "days"}
-            </span>
-          </dd>
-        </div>
-      </dl>
     </div>
   );
 }

@@ -97,13 +97,18 @@ export interface PlacedBlock {
   depth: number;
 }
 
+/**
+ * The one accumulated fact Build leads with, per D-045.
+ *
+ * Runs Complete and Run Streak used to sit beside it. They were not wrong,
+ * they were a dashboard: two more numbers competing with the object the screen
+ * exists to show, both of which already have better homes on Today, Plan and
+ * Trends. `currentRunStreak` is still exported for those screens — it is no
+ * longer computed for this one.
+ */
 export interface BuildSummaryMetrics {
-  /** Scheduled workouts satisfied. Extra runs are deliberately excluded. */
-  completedRuns: number;
-  plannedRuns: number;
   /** Every mile actually run, extra runs included. */
   totalActualMiles: number;
-  currentStreak: number;
 }
 
 /** An empty cell with tower above it: an opening the structure bridges. */
@@ -361,19 +366,9 @@ export function selectBuildViewModel(
     }
   }
 
-  const plannedRuns = scheduledRuns(plan);
-  const satisfiedWorkoutIds = new Set(
-    runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
-  );
-
   return {
     metrics: {
-      completedRuns: plannedRuns.filter((workout) =>
-        satisfiedWorkoutIds.has(workout.id),
-      ).length,
-      plannedRuns: plannedRuns.length,
       totalActualMiles: totalActualMiles(runLogs),
-      currentStreak: currentRunStreak(plan, runLogs, today),
     },
     pendingBlocks: earned.filter(
       (block) => !placedRunLogIds.has(block.runLog.id),

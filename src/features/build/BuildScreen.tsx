@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   earnedBlocks,
   findPlacementForRunLog,
   selectBuildViewModel,
 } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
+import { formatMiles } from "../../domain/distance";
 import {
   autoPlaceOption,
   placementOptions,
@@ -19,6 +20,21 @@ import { BuiltStructure } from "./BuiltStructure";
 import { PendingBlocksTray } from "./PendingBlocksTray";
 import { describeCandidate } from "./describeCandidate";
 import { PlacementBar } from "./PlacementBar";
+
+/**
+ * How long the placement confirmation stays on screen before the tower is
+ * quiet again. The settle and the glow are CSS and last well under half a
+ * second; this is only the sentence beside them, which needs long enough to
+ * be read and short enough that it never becomes part of the furniture.
+ */
+const PAYOFF_MS = 2600;
+
+/** The block this session just committed, and what to say about it. */
+interface Payoff {
+  runLogId: string;
+  /** Empty when a block was moved rather than newly built: nothing was added. */
+  message: string;
+}
 
 export interface PlacementRequest {
   runLogId: string;
@@ -70,6 +86,17 @@ export function BuildScreen({
   const [isEditOpen, setEditOpen] = useState(false);
   const [editVisit, setEditVisit] = useState(0);
   const [announcement, setAnnouncement] = useState("");
+  const [payoff, setPayoff] = useState<Payoff | null>(null);
+
+  // The payoff is presentation and nothing else: it is held here, never in
+  // AppState, and it expires on its own whether or not the user is looking.
+  useEffect(() => {
+    if (!payoff) {
+      return;
+    }
+    const timer = setTimeout(() => setPayoff(null), PAYOFF_MS);
+    return () => clearTimeout(timer);
+  }, [payoff]);
 
   const viewModel = selectBuildViewModel(plan, runLogs, blockPlacements, today);
   const allEarned = earnedBlocks(plan, runLogs);
@@ -121,19 +148,38 @@ export function BuildScreen({
     }
   }
 
+  /**
+   * Commits the chosen candidate — from `Drop`, from the keyboard, or from
+   * letting go after a deliberate drag. The request carries the exact option
+   * the placement domain produced, so every path writes a position the packer
+   * would have chosen itself.
+   */
   function drop() {
     if (!placingBlock || !candidate) {
       return;
     }
+    const { runLog, footprint } = placingBlock;
+    const isMove =
+      findPlacementForRunLog(blockPlacements, runLog.id) !== undefined;
+
     onPlaceBlock({
-      runLogId: placingBlock.runLog.id,
+      runLogId: runLog.id,
       row: candidate.row,
       columnStart: candidate.columnStart,
-      width: placingBlock.footprint.width,
-      height: placingBlock.footprint.height,
+      width: footprint.width,
+      height: footprint.height,
     });
+
+    // The run was logged before its block could be placed, so the total the
+    // heading already shows is the total this block completes.
+    const added = formatMiles(runLog.distanceMiles);
+    const message = isMove
+      ? ""
+      : `${added} ${runLog.distanceMiles === 1 ? "mile" : "miles"} added · ${viewModel.metrics.totalActualMiles} miles built`;
+
+    setPayoff({ runLogId: runLog.id, message });
     setAnnouncement(
-      `Block dropped down column ${candidate.columnStart}, landing on course ${candidate.row}.`,
+      message || `Block moved to column ${candidate.columnStart}.`,
     );
     stopPlacing();
   }
@@ -160,6 +206,47 @@ export function BuildScreen({
   return (
     <div className="build-screen" data-placing={placingBlock ? "true" : undefined}>
       <BuildHeading metrics={viewModel.metrics} />
+
+      {/*
+        The tower comes before everything the screen says about it. Blocks
+        waiting to be placed used to sit above it and, with a backlog, pushed
+        the object itself off the fold — which is the dashboard-first order
+        D-045 rejected.
+      */}
+      <BuiltStructure
+        blocks={viewModel.blocks}
+        courses={viewModel.courses}
+        voids={viewModel.voids}
+        justPlacedRunLogId={payoff?.runLogId ?? null}
+        onSelectBlock={(runLogId) => {
+          setDetailRunLogId(runLogId);
+          setDetailOpen(true);
+        }}
+        placing={
+          placingBlock
+            ? {
+                block: placingBlock,
+                options,
+                candidate,
+                onChoose: choose,
+                onCommit: drop,
+              }
+            : undefined
+        }
+      />
+
+      {payoff?.message && (
+        // The live region below carries the same sentence, so this is the
+        // sighted half of one announcement rather than a second one.
+        <p className="build-payoff" aria-hidden="true">
+          {payoff.message}
+        </p>
+      )}
+
+      <p className="visually-hidden" aria-live="polite">
+        {placingBlock ? describeCandidate(placingBlock, candidate) : announcement}
+      </p>
+
       {!placingBlock && (
         <PendingBlocksTray
           blocks={viewModel.pendingBlocks}
@@ -167,24 +254,6 @@ export function BuildScreen({
           onEditRun={startEditing}
         />
       )}
-      <BuiltStructure
-        blocks={viewModel.blocks}
-        courses={viewModel.courses}
-        voids={viewModel.voids}
-        onSelectBlock={(runLogId) => {
-          setDetailRunLogId(runLogId);
-          setDetailOpen(true);
-        }}
-        placing={
-          placingBlock
-            ? { block: placingBlock, options, candidate, onChoose: choose }
-            : undefined
-        }
-      />
-
-      <p className="visually-hidden" aria-live="polite">
-        {placingBlock ? describeCandidate(placingBlock, candidate) : announcement}
-      </p>
 
       {placingBlock && (
         <PlacementBar

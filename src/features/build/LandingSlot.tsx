@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent } from "react";
 import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
 import type { PlacementOption } from "../../domain/placement";
 
@@ -9,8 +9,8 @@ interface LandingSlotProps {
   courses: number;
   isChosen: boolean;
   onChoose: (option: PlacementOption) => void;
-  /** Pointer drag, snapped by the caller to the same valid columns. */
-  onDragTo?: (clientX: number) => void;
+  /** Takes hold of the block here. The tower handles the drag from there. */
+  onGrab?: (event: PointerEvent<HTMLElement>, option: PlacementOption) => void;
 }
 
 function columnPhrase(option: PlacementOption): string {
@@ -25,8 +25,12 @@ function columnPhrase(option: PlacementOption): string {
  * column and the tab order walks precisely the real options.
  *
  * The chosen slot also draws the block itself, so the user sees the shape
- * they are about to commit at the height it will actually come to rest — and
- * it is the slot you can drag, because it is the block in your hands.
+ * they are about to commit at the height it will actually come to rest.
+ * Pressing any of them brings the block there and takes hold of it.
+ *
+ * The name says the column and nothing else. Which course a block lands on is
+ * gravity's business, not a choice being offered, and naming it here made the
+ * option list read as a packing readout.
  */
 export function LandingSlot({
   option,
@@ -34,7 +38,7 @@ export function LandingSlot({
   courses,
   isChosen,
   onChoose,
-  onDragTo,
+  onGrab,
 }: LandingSlotProps) {
   const { width, height } = block.footprint;
 
@@ -55,29 +59,10 @@ export function LandingSlot({
         type="button"
         className="built-tower__slot-button"
         onClick={() => onChoose(option)}
-        onPointerDown={
-          isChosen && onDragTo
-            ? (event) => {
-                // Capture so the block keeps following a finger that slides
-                // off it. Feature-detected: it is a convenience, and the drag
-                // works without it.
-                event.currentTarget.setPointerCapture?.(event.pointerId);
-              }
-            : undefined
-        }
-        onPointerMove={
-          isChosen && onDragTo
-            ? (event) => {
-                // Only while a button or finger is actually down.
-                if (event.buttons !== 0) {
-                  onDragTo(event.clientX);
-                }
-              }
-            : undefined
-        }
+        onPointerDown={onGrab ? (event) => onGrab(event, option) : undefined}
       >
         <span className="visually-hidden">
-          {`Drop ${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block down ${columnPhrase(option)}, landing on course ${option.row}`}
+          {`Place ${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block in ${columnPhrase(option)}`}
         </span>
       </button>
     </li>

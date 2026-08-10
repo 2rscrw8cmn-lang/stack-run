@@ -18,9 +18,15 @@ interface PlacementBarProps {
 }
 
 /**
- * The controls for a block that is hovering over the tower. Sliding and
- * dropping are separate, so the block is always seen in position before it
- * lands — which is the point of placing on the structure instead of in a sheet.
+ * The controls for a block that is hovering over the tower.
+ *
+ * A deliberate drag on the tower now commits on release, so these are the tap
+ * and keyboard path: step the block along with the arrows, see it in position,
+ * and commit with `Drop`. Both paths are complete on their own.
+ *
+ * The readout names the column and stops there. The course it will land on is
+ * gravity's answer rather than a choice, and saying it turned this into a
+ * packing readout.
  */
 export function PlacementBar({
   block,
@@ -54,7 +60,7 @@ export function PlacementBar({
           </p>
           <p className="placement-bar__position">
             {candidate
-              ? `Column ${candidate.columnStart} · lands on course ${candidate.row}`
+              ? `Column ${candidate.columnStart}`
               : "No room left in the tower"}
           </p>
         </div>

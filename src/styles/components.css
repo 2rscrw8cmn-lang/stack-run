@@ -1043,6 +1043,27 @@ textarea.run-input {
   gap: var(--space-4);
 }
 
+/*
+ * The placement bar is fixed over the bottom of the screen, so while a block
+ * is in hand the screen has to end well above it — far enough that the page
+ * can scroll the landing out from under it, not merely far enough for the
+ * caption to clear. On a 320 x 640 screen the bar and the nav below it cover
+ * the bottom 230-odd pixels, which is exactly where the ground line of a new
+ * tower sits.
+ */
+.build-screen[data-placing="true"] {
+  padding-bottom: calc(230px + env(safe-area-inset-bottom));
+}
+
+/*
+ * The sky is the first thing to give while placing. A tower two courses tall
+ * does not need half a viewport of it to read as an object, and on a short
+ * screen that sky is what pushes the block being placed down behind the bar.
+ */
+.build-screen[data-placing="true"] .build-site__stage {
+  min-height: 0;
+}
+
 /* Build opens on the miles the tower is made of. */
 
 .build-heading {
@@ -1074,42 +1095,36 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
-.build-heading__stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+/*
+ * What a placement says, briefly: "7.1 miles added · 52.4 miles built". It
+ * fades in under the tower and takes itself away again — the screen it leaves
+ * behind is the quiet one.
+ */
+.build-payoff {
   margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border);
-}
-
-.build-heading__stat {
-  min-width: 0;
-}
-
-.build-heading__stat dt {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-subtle);
-}
-
-.build-heading__stat dd {
-  margin: var(--space-1) 0 0;
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 1.1;
-  overflow-wrap: anywhere;
-}
-
-.build-heading__of {
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  align-self: center;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  animation: build-payoff-in 220ms ease-out;
+}
+
+@keyframes build-payoff-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .build-payoff {
+    animation: none;
+  }
 }
 
 /* The build site: ground, sky, tower, and the height still to climb */
@@ -1134,6 +1149,13 @@ textarea.run-input {
   display: flex;
   align-items: stretch;
   gap: var(--space-2);
+  /*
+   * The tower is what Build is for, so it gets the fold. A six-block tower
+   * stands at the bottom of a tall sky rather than hugging the heading, and a
+   * tall one simply grows past this and scrolls — the floor never becomes a
+   * ceiling.
+   */
+  min-height: 44vh;
   padding: var(--space-5) var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   background:
@@ -1247,6 +1269,10 @@ textarea.run-input {
 }
 
 .placed-block__face--front {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   background: var(--piece-color);
   background: linear-gradient(
     180deg,
@@ -1255,6 +1281,46 @@ textarea.run-input {
     color-mix(in srgb, var(--piece-color) 80%, black)
   );
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * The mileage written on the brick.
+ *
+ * Ink is the page background rather than pure black, and it sits in the middle
+ * of the face on purpose: the front is a gradient from a whitened piece colour
+ * down to a darkened one, and the darkest band at the very bottom measures
+ * about 4.1:1 against near-black. Centred, the worst of the five piece colours
+ * — Simulation, the darkest — measures about 5:1, and Easy, Long and Race are
+ * far lighter than that. Every colour clears WCAG AA for body text without a
+ * plate behind the number, which would have put a second rectangle on every
+ * block.
+ *
+ * The label is decoration either way: it duplicates facts the block's
+ * accessible name already carries in full, so it is hidden from assistive
+ * technology with the rest of the brick.
+ */
+.placed-block__label {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 0 2px;
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  /* Never let a number force the brick wider than its footprint. */
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.placed-block__unit {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
 }
 
 /*
@@ -1305,34 +1371,92 @@ textarea.run-input {
   outline-offset: 3px;
 }
 
-/* The block just placed drops into the tower and carries the only glow. */
-.placed-block[data-newest="true"] .placed-block__brick {
-  animation: placed-block-drop 280ms cubic-bezier(0.3, 0.9, 0.4, 1);
+/*
+ * The race, once it has been run.
+ *
+ * No new geometry and no new colour: this is the existing white Race block,
+ * three courses tall and as wide as the distance earned, with a brighter top
+ * edge and a hairline of accent under it so the top of the tower reads as
+ * finished. Nothing draws it until the run is logged and its block placed —
+ * there is no empty capstone waiting to be filled in.
+ */
+.placed-block[data-capstone="true"] .placed-block__face--top {
+  background: color-mix(in srgb, var(--piece-color) 30%, white);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
-.placed-block[data-newest="true"] .placed-block__face--front {
+.placed-block[data-capstone="true"] .placed-block__face--front {
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.45),
-    0 0 16px color-mix(in srgb, var(--piece-color) 70%, transparent);
+    inset 0 2px 0 color-mix(in srgb, var(--accent) 70%, white);
 }
 
-@keyframes placed-block-drop {
+.placed-block[data-capstone="true"] .placed-block__label {
+  letter-spacing: 0.08em;
+}
+
+/*
+ * The payoff: the block settles into place, lands, and glows for a moment.
+ *
+ * Roughly 340ms end to end — a 200ms drop with a short squash at the impact,
+ * and a glow that has faded by 340ms. It is the newest brick only, it plays
+ * once, and it leaves nothing behind: the tower a second later looks exactly
+ * as it will tomorrow. The glow used to be permanent, which made "newest" a
+ * badge rather than a moment.
+ */
+.placed-block[data-just-placed="true"] .placed-block__brick {
+  animation: placed-block-settle 200ms cubic-bezier(0.3, 0.9, 0.4, 1);
+}
+
+.placed-block[data-just-placed="true"] .placed-block__face--front {
+  animation: placed-block-glow 340ms ease-out;
+}
+
+@keyframes placed-block-settle {
   from {
-    transform: translateY(-18px);
+    transform: translateY(-20px);
     opacity: 0.4;
   }
-  to {
+  80% {
     transform: translateY(0);
     opacity: 1;
   }
+  /* The impact: the brick takes the landing and comes back. */
+  90% {
+    transform: scaleY(0.94);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 
+@keyframes placed-block-glow {
+  from {
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+      0 0 20px color-mix(in srgb, var(--piece-color) 85%, transparent);
+  }
+  to {
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+      0 0 0 color-mix(in srgb, var(--piece-color) 0%, transparent);
+  }
+}
+
+/*
+ * Reduced motion: the block is simply there, already placed. No drop, no
+ * impact, no fading glow — a static ring marks which brick is new, and the
+ * live region says what was added.
+ */
 @media (prefers-reduced-motion: reduce) {
-  .placed-block[data-newest="true"] .placed-block__brick {
+  .placed-block[data-just-placed="true"] .placed-block__brick {
     animation: none;
   }
 
-  .placed-block[data-newest="true"] .placed-block__face--front {
+  .placed-block[data-just-placed="true"] .placed-block__face--front {
+    animation: none;
     box-shadow:
       inset 0 0 0 1px rgba(0, 0, 0, 0.45),
       inset 0 0 0 2px var(--accent);
@@ -1357,6 +1481,8 @@ textarea.run-input {
   border: 1px dashed color-mix(in srgb, var(--text) 22%, transparent);
   border-radius: 2px;
   background: color-mix(in srgb, var(--text) 5%, transparent);
+  /* Sideways is the block's to move; up and down stays the page's to scroll. */
+  touch-action: pan-y;
   cursor: pointer;
 }
 
@@ -1484,13 +1610,6 @@ textarea.run-input {
   cursor: pointer;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .built-course__hover {
-    animation: none;
-    transform: translateY(-20px);
-  }
-}
-
 /* Blocks Ready tray */
 
 .pending-tray__count {
@@ -1501,12 +1620,16 @@ textarea.run-input {
   font-size: 11px;
 }
 
-/* A long backlog scrolls in place instead of pushing the build away. */
+/*
+ * A long backlog scrolls in place instead of pushing the build away. The tray
+ * now sits below the tower and is capped shorter than it was: it is a queue of
+ * things to do, not the thing the screen is about.
+ */
 .pending-tray__list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  max-height: 45vh;
+  max-height: 30vh;
   margin: 0;
   padding: 0;
   overflow-y: auto;

@@ -62,31 +62,25 @@ Approved source of truth:
 | Phase | Name | Status | Decision | Primary outcome |
 |---:|---|---|---|---|
 | 13 | Runs Pillar + Navigation Revision | **Implemented** | D-044, D-047 | Bottom nav Today / Build / Runs / Plan; Settings is a top-right gear; Runs is the chronological actual-history home; Trends canonical from Runs as swipeable cards. No migration — schema stays 9. |
-| 14 | Build Reward Revision | **Not started — next approved** | D-045 | Object-first Build, mileage on blocks, direct release-to-place touch path, restrained placement payoff, earned Race capstone. |
+| 14 | Build Reward Revision | **Implemented** | D-045 | Object-first Build, mileage on blocks, direct release-to-place touch path, restrained placement payoff, earned Race capstone. No migration — schema stays 9. |
 | 15 | Optional Plan Export Investigation | **Deferred** | D-040 | No code authorization. Any STACK → Intervals write path requires a separate decision/security design. |
 
 ## Important current-versus-next distinction
 
 Navigation is now the approved four destinations: Today / Build / Runs / Plan. Settings is a gear in the header and is never `aria-current`.
 
-Build has **not** been revised yet. Its heading still carries Runs Complete and Run Streak, blocks carry no mileage labels, and placement still requires a separate Drop press. That is UI-14, and D-045 governs it.
+Build has now been revised. Its heading carries only `miles built`, blocks wide enough to hold one carry a derived mileage label, a deliberate drag commits on release, and the race block is a capstone once it has been run and placed. D-045 changed presentation and interaction emphasis only: the schema-9 block geometry model — eight columns, width from distance, height from activity type, deterministic landings, one block per run — is untouched.
 
-Current Build still includes the existing heading stats and current placement behavior.
+## UI-14 exit recording
 
-That is expected until UI-14. D-045 changes presentation/interaction emphasis without changing the existing schema-9 block geometry model.
+Branch `claude/ui-14-docs-review-3k4773`.
 
-## UI-13 exit recording
-
-When UI-13 is reviewed, record:
-
-- branch/PR;
-- latest commit;
-- `npm run check` result;
-- 320/390/desktop visual result;
-- keyboard/focus result;
-- Runs chronological/history/edit/delete checks;
-- Settings header-return behavior;
-- confirmation that no schema migration or new persistence model was added unless explicitly approved.
+- `npm run check`: passes — lint clean, 791 tests, production build.
+- 320 / 390 / desktop: no horizontal overflow at any width; mileage labels legible on all five piece colours; tower is the first thing on the screen.
+- Pointer: mouse drag and one-finger touch drag both snap through valid candidates and commit on release; a plain click and a plain tap both leave the block in hand.
+- Reduced motion: computed `animation-name` is `none` on the settled brick and the block is present immediately.
+- Payoff: 200ms settle + 340ms glow, inside the 220–400ms budget; transient status clears itself.
+- No schema migration and no new persistence: `placeBlock` still receives geometry only, asserted by exact equality.
 
 ## UI-14 exit recording
 

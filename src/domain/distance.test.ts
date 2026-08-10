@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMiles } from "./distance";
+import { formatCompactMiles, formatMiles } from "./distance";
 
 describe("formatMiles", () => {
   it("keeps a typed distance exactly as it reads", () => {
@@ -11,5 +11,18 @@ describe("formatMiles", () => {
   it("stops a converted distance from printing its conversion", () => {
     expect(formatMiles(5000 / 1609.344)).toBe("3.11");
     expect(formatMiles(3.1068559611866697)).toBe("3.11");
+  });
+});
+
+describe("formatCompactMiles", () => {
+  it("fits a distance onto a brick without inventing precision", () => {
+    expect(formatCompactMiles(5)).toBe("5");
+    expect(formatCompactMiles(3.2)).toBe("3.2");
+    expect(formatCompactMiles(10.25)).toBe("10.3");
+    expect(formatCompactMiles(13.11)).toBe("13.1");
+  });
+
+  it("drops a converted distance to the same one decimal", () => {
+    expect(formatCompactMiles(3.1068559611866697)).toBe("3.1");
   });
 });
