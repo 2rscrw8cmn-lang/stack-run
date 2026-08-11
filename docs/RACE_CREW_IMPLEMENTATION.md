@@ -1,6 +1,6 @@
 # Race Crew — Implementation Plan
 
-Status: **Approved implementation sequence after UI-17.**
+Status: **UI-18 accepted; UI-19 implemented with live manual QA pending.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
 
@@ -610,6 +610,21 @@ Handle:
 - signed-out session.
 
 Personal Runs remains usable through every failure state.
+
+## Implemented UI-19 details
+
+- Runs uses a local accessible `YOU | CREW` tab control; `YOU` stays the default and keeps the existing personal Runs contract.
+- `src/crew/dashboard.ts` reads current membership/display names, existing member summaries and at most 20 newest shared runs. No database migration was needed.
+- Comparison rows use only the UI-18 summary semantics. Equal facts remain in membership order; zero-due consistency is unavailable rather than 0%.
+- The metric selector is a keyboard-operable four-option Performance Arcade control. Numeric labels remain visible beside proportional bars; Consistency uses its factual percentage and Miles Built a restrained segmented strip.
+- Deterministic member accents are identity cues only. Lime is reserved mainly for active/current-user state, and fresh projection timestamps remain hidden.
+- Recent rows and `CrewRunDetailSheet` use the narrow `CrewSharedRun` contract and derive pace from distance/duration.
+- Manual/edit run entry and extra imported-run confirmation reuse `ActivityTypePicker`; scheduled imports still inherit the linked plan type and extra imports still default to Easy.
+- Crew data refreshes on stale Crew entry/foreground and explicit Refresh. There is no polling or Realtime subscription.
+- Signed-out, no-crew, one-member, loading, no-runs and unavailable/retry states are present; Crew failures do not affect `YOU`.
+- UI-20 reactions, comments, member profiles and mini Builds were not added.
+
+Automated UI-19 acceptance coverage is implemented. Live two-account Supabase and responsive browser smoke checks remain the final manual acceptance items.
 
 ---
 

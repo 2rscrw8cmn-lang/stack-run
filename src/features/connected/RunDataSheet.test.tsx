@@ -60,7 +60,25 @@ describe("RunDataSheet", () => {
     renderSheet({ initialReview: { candidate, asExtra: true } });
 
     expect(screen.getByLabelText("Match")).toHaveValue("");
+    expect(screen.getByRole("radio", { name: "Easy" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Add as Extra Run" })).toBeInTheDocument();
+  });
+
+  it("lets an extra imported run use the shared STACK activity picker", async () => {
+    const { user, onImport } = renderSheet({
+      initialReview: { candidate, asExtra: true },
+    });
+
+    await user.click(screen.getByRole("radio", { name: "Long Run" }));
+    await user.click(screen.getByRole("button", { name: "Add as Extra Run" }));
+
+    expect(onImport).toHaveBeenCalledWith(candidate, null, "long", "solid", "");
+    expect(
+      screen.queryByRole("combobox", { name: "STACK activity type" }),
+    ).not.toBeInTheDocument();
   });
 
   it("imports the run and says what it earned", async () => {

@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-18 Race Crew Foundation is implemented, with owner-only production smoke checks still pending.** Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The production foundation adds optional Supabase Auth/Postgres/RLS crew membership, narrow safe projections, email + eight-digit STACK PIN account flows, and a per-device Intervals personal-key connection while retaining the owner proxy during migration. It does not add a Crew feed, comparisons, reactions, comments, mini Builds, public discovery, full personal cloud sync or Intervals OAuth.
+**UI-19 Crew Runs + Comparisons is implemented on top of the accepted UI-18 foundation, with live two-account/responsive browser smoke checks still pending.** Runs now switches locally between the unchanged personal `YOU` experience and a private `CREW` view with race identity, the four approved comparisons, a bounded recent-run list and a separate crew-safe run detail. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-19 adds no migration, reaction, comment, mini Build, public discovery, full personal cloud sync or Intervals OAuth.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -28,7 +28,7 @@ An **availability calendar** was added after UI-6 at the product owner's request
 
 - Renders the four primary screens and passes plan, run logs, placements, and the save/place callbacks.
 - Bottom navigation is exactly Today / Build / Runs / Plan (D-044). Every control in the bar is a destination and wears `aria-current` when it is the current one.
-- Owns the global Settings sheet and its Account & Crew and Run Data child sheets. Runs owns the focused Training Signal and run-detail sheets because their selection state is local to actual history.
+- Owns the global Settings sheet and its Account & Crew and Run Data child sheets. Runs owns its local `YOU | CREW` context, focused Training Signal and personal/crew-safe run-detail sheets. Crew empty states can open the existing Account & Crew settings without creating another destination.
 - The header is a small brand lockup — `StackMark` plus the wordmark — on the left, and one icon-only `Settings` gear on the right. Both sit in `.app-shell__header-row`, which carries the same 640px column the content and the nav use, so the gear lines up with the screen under it.
 
 ## The look, after UI-7
@@ -858,6 +858,20 @@ restore.
 Intervals credentials remain outside AppState in `src/storage/intervalsCredentialRepository.ts` under `stack.intervals.api-key.v1`. `src/connected/intervals.ts` supports direct browser calls using `Authorization: Basic base64("API_KEY:<personal key>")`; the existing `/api/intervals` owner proxy remains a separate supported connection mode. The existing normalization, review/match confirmation, dedupe, snapshot and manual fallback paths remain shared by both modes. `RunDataSetup.tsx` implements the Apple Watch/HealthFit and Garmin/COROS/other-device paths from the setup guide.
 
 The only UI-18 production dependency is `@supabase/supabase-js`. No local AppState migration was introduced.
+
+## UI-19 — Crew Runs + Comparisons
+
+`src/features/runs/RunsScreen.tsx` now owns an accessible, keyboard-operable `YOU | CREW` tab control. It defaults to `YOU`, keeps the existing personal summary, Training Signals, Recent Runs, Log Run and private detail behavior in that panel, and changes no bottom navigation or route. `CREW` swaps only the content inside Runs and keeps personal Runs available when account or network state fails.
+
+`src/crew/dashboard.ts` is the UI-19 read boundary. It first loads current `crew_members`, resolves only `profiles.display_name`, then reads the existing `crew_member_summaries` columns and at most 20 `shared_runs`, ordered by local date and creation time newest first. The shared-run select is limited to id/user/date/activity/distance/duration/timestamps. No personal `RunLog`, Intervals id/source, exact start time, HR/zones/load, effort, note, route or plan detail is requested or mapped.
+
+`useRaceCrew` keeps this dashboard independent from personal AppState. Entering Crew performs a stale-aware read, a manual Refresh forces one, foreground refresh is allowed after five minutes, and no polling or Realtime subscription exists. Projection updates invalidate the local Crew read cache so a later Crew entry can show the runner's newly projected work. Membership removal and display-name changes force a safe refresh.
+
+`src/features/crew/CrewRunsView.tsx` renders a quiet crew/race/member identity surface and makes the approved Weekly Miles, Longest Run, Consistency and Miles Built comparison the primary visual object. A keyboard-operable four-option metric control replaces the native select. Every row keeps its numeric fact visible beside an honest proportional bar; consistency stays on its natural 0–100 scale and Miles Built uses a restrained segmented strip. Equal values retain membership order rather than inventing tie-breakers. Consistency shows percentage plus completed/due, while zero due is the neutral `—`. Stable hashed member colors are identity cues only; the current account receives a quiet `YOU` marker and lime edge rather than a podium treatment. Normal freshness timestamps are hidden and stale projections use a relative label. One-member, signed-out, no-crew, unavailable and no-shared-run states are intentional.
+
+`CrewRunRow.tsx` and `CrewRunDetailSheet.tsx` consume only `CrewSharedRun`. Pace is derived from shared distance/duration. Member markers strengthen identity and the existing STACK activity icon/color remains the semantic run-type cue. Even the current runner's row opens the same crew-safe detail, with no edit/delete/private-data actions. `ActivityTypePicker.tsx` is the reusable icon-card control used by manual/edit run entry and extra imported-run confirmation; imported scheduled matches still take the linked planned type, and unscheduled imports still default to Easy. UI-20 reactions, comments, member profiles and mini Builds remain deferred.
+
+UI-19 introduces no database migration, AppState migration, router, global state, Realtime subscription or new production dependency.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

@@ -1,0 +1,115 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it, vi } from "vitest";
+import { loadCrewDashboard } from "./dashboard";
+
+interface QueryCall {
+  table: string;
+  operation: string;
+  value: unknown;
+}
+
+function fakeClient(calls: QueryCall[]): SupabaseClient {
+  const data: Record<string, unknown[]> = {
+    crew_members: [
+      { user_id: "user-1", role: "owner", joined_at: "2026-08-01T00:00:00Z" },
+    ],
+    profiles: [{ id: "user-1", display_name: "Runner" }],
+    crew_member_summaries: [
+      {
+        user_id: "user-1",
+        week_start: "2026-08-10",
+        weekly_miles: 10,
+        longest_run_28d_miles: 8,
+        consistency_completed: 3,
+        consistency_due: 4,
+        miles_built: 80,
+        updated_at: "2026-08-10T00:00:00Z",
+      },
+    ],
+    shared_runs: [
+      {
+        id: "run-1",
+        user_id: "user-1",
+        local_date: "2026-08-09",
+        activity_type: "long",
+        distance_miles: 6.1,
+        duration_seconds: 3522,
+        created_at: "2026-08-09T12:00:00Z",
+        updated_at: "2026-08-09T12:00:00Z",
+      },
+    ],
+  };
+
+  return {
+    from: vi.fn((table: string) => {
+      const builder = {
+        select(columns: string) {
+          calls.push({ table, operation: "select", value: columns });
+          return builder;
+        },
+        eq(column: string, value: unknown) {
+          calls.push({ table, operation: `eq:${column}`, value });
+          return builder;
+        },
+        in(column: string, value: unknown) {
+          calls.push({ table, operation: `in:${column}`, value });
+          return builder;
+        },
+        order(column: string, options?: unknown) {
+          calls.push({ table, operation: `order:${column}`, value: options });
+          return builder;
+        },
+        limit(value: number) {
+          calls.push({ table, operation: "limit", value });
+          return builder;
+        },
+        then<TResult1 = { data: unknown[]; error: null }>(
+          onfulfilled?: ((value: { data: unknown[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+        ) {
+          return Promise.resolve({ data: data[table] ?? [], error: null }).then(onfulfilled);
+        },
+      };
+      return builder;
+    }),
+  } as unknown as SupabaseClient;
+}
+
+describe("Crew dashboard query", () => {
+  it("uses only approved tables/columns and bounds newest shared runs to 20", async () => {
+    const calls: QueryCall[] = [];
+    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1");
+
+    expect(new Set(calls.map((call) => call.table))).toEqual(
+      new Set(["crew_members", "profiles", "crew_member_summaries", "shared_runs"]),
+    );
+    const runSelect = calls.find(
+      (call) => call.table === "shared_runs" && call.operation === "select",
+    );
+    expect(runSelect?.value).toBe(
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,created_at,updated_at",
+    );
+    expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
+    expect(calls).toContainEqual({
+      table: "shared_runs",
+      operation: "order:local_date",
+      value: { ascending: false },
+    });
+    expect(calls).toContainEqual({
+      table: "shared_runs",
+      operation: "order:created_at",
+      value: { ascending: false },
+    });
+    expect(calls).toContainEqual({ table: "shared_runs", operation: "limit", value: 20 });
+    expect(loaded.runs[0]).toEqual({
+      id: "run-1",
+      userId: "user-1",
+      displayName: "Runner",
+      localDate: "2026-08-09",
+      activityType: "long",
+      distanceMiles: 6.1,
+      durationSeconds: 3522,
+      createdAt: "2026-08-09T12:00:00Z",
+      updatedAt: "2026-08-09T12:00:00Z",
+    });
+  });
+});

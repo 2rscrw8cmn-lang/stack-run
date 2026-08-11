@@ -122,7 +122,10 @@ describe("CompleteRunSheet", () => {
       />,
     );
     expect(screen.getByLabelText(/Date/)).toHaveValue(workout.date);
-    expect(screen.getByLabelText(/Activity/)).toHaveValue(workout.type);
+    expect(screen.getByRole("radio", { name: "Easy" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     unmount();
 
     render(
@@ -136,7 +139,10 @@ describe("CompleteRunSheet", () => {
     );
     expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
     expect(screen.getByLabelText(/Date/)).toHaveValue(TODAY);
-    expect(screen.getByLabelText(/Activity/)).toHaveValue("easy");
+    expect(screen.getByRole("radio", { name: "Easy" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 
   it("saves an extra run with its own date and activity type", async () => {
@@ -154,7 +160,7 @@ describe("CompleteRunSheet", () => {
 
     await user.clear(screen.getByLabelText(/Date/));
     await user.type(screen.getByLabelText(/Date/), "2026-08-05");
-    await user.selectOptions(screen.getByLabelText(/Activity/), "intervals");
+    await user.click(screen.getByRole("radio", { name: "Intervals" }));
     await user.type(screen.getByLabelText(/Distance/), "5");
     await user.type(screen.getByLabelText(/Duration/), "4000");
     await user.click(screen.getByRole("button", { name: "Solid" }));
@@ -168,6 +174,31 @@ describe("CompleteRunSheet", () => {
       effort: "solid",
       notes: "",
     });
+  });
+
+  it("supports arrow-key activity selection and keeps one selected option", async () => {
+    const user = userEvent.setup();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={null}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    const easy = screen.getByRole("radio", { name: "Easy" });
+    easy.focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(screen.getByRole("radio", { name: "Intervals" })).toHaveFocus();
+    expect(screen.getByRole("radio", { name: "Intervals" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getAllByRole("radio")).toHaveLength(5);
+    expect(screen.queryByRole("combobox", { name: "Activity" })).not.toBeInTheDocument();
   });
 
   it("refuses a run dated after today", async () => {

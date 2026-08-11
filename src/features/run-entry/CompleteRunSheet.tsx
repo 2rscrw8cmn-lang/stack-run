@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
-import { ACTIVITY_TYPES, WORKOUT_TYPE_LABEL } from "../../domain/build";
+import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
@@ -155,21 +155,11 @@ export function CompleteRunSheet({
           />
         </FormField>
 
-        <FormField label="Activity" required>
-          <select
-            className="run-input"
-            value={values.activityType}
-            onChange={(event) =>
-              updateValue("activityType", event.target.value as RunActivityType)
-            }
-          >
-            {ACTIVITY_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {WORKOUT_TYPE_LABEL[type]}
-              </option>
-            ))}
-          </select>
-        </FormField>
+        <ActivityTypePicker
+          value={values.activityType}
+          required
+          onChange={(activityType) => updateValue("activityType", activityType)}
+        />
 
         <FormField label="Distance (miles)" required error={errors.distance}>
           <input

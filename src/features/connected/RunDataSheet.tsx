@@ -1,6 +1,7 @@
 import { CircleCheck, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
+import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import type { AppState, Effort, RunActivityType } from "../../domain/types";
@@ -49,14 +50,6 @@ interface Props {
   onIgnore: (id: string) => void;
   onClearIgnored: () => void;
 }
-
-const ACTIVITY_OPTIONS: { value: RunActivityType; label: string }[] = [
-  { value: "easy", label: "Easy" },
-  { value: "long", label: "Long Run" },
-  { value: "intervals", label: "Intervals" },
-  { value: "simulation", label: "Simulation" },
-  { value: "race", label: "Race" },
-];
 
 function lastSyncLabel(at: string | null): string {
   return at ? new Date(at).toLocaleString() : "Not yet";
@@ -302,21 +295,11 @@ export function RunDataSheet(props: Props) {
             )}
 
             {!workoutId && (
-              <FormField label="STACK activity type">
-                <select
-                  className="run-input"
-                  value={type}
-                  onChange={(event) =>
-                    setType(event.target.value as RunActivityType)
-                  }
-                >
-                  {ACTIVITY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
+              <ActivityTypePicker
+                label="STACK activity type"
+                value={type}
+                onChange={setType}
+              />
             )}
 
             <FormField label="How did it feel?">
