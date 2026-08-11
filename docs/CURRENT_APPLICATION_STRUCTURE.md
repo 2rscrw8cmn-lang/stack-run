@@ -2,7 +2,9 @@
 
 ## Current state
 
-**UI-17 Performance Arcade Design Pass is implemented and ready for owner review.** STACK keeps its existing Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps now share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways. AppState remains schema 9 and no backend or connected-data behavior changed. The only new production dependency is `@fontsource/space-mono`, which makes the approved display face deterministic and avoids a runtime font request.
+**UI-18 Race Crew Foundation is implemented, with owner-only production smoke checks still pending.** Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The production foundation adds optional Supabase Auth/Postgres/RLS crew membership, narrow safe projections, email + eight-digit STACK PIN account flows, and a per-device Intervals personal-key connection while retaining the owner proxy during migration. It does not add a Crew feed, comparisons, reactions, comments, mini Builds, public discovery, full personal cloud sync or Intervals OAuth.
+
+UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
 UI-16 Trends 2.0 remains implemented beneath this presentation pass. Runs carries seven focused Training Signals with dedicated detail modules, plan-versus-actual views, accessible SVG/CSS charts, and deterministic week/run drill-downs. The analytics remain derived entirely from schema-9 plan and run snapshots.
 
@@ -26,7 +28,7 @@ An **availability calendar** was added after UI-6 at the product owner's request
 
 - Renders the four primary screens and passes plan, run logs, placements, and the save/place callbacks.
 - Bottom navigation is exactly Today / Build / Runs / Plan (D-044). Every control in the bar is a destination and wears `aria-current` when it is the current one.
-- Owns the two global secondary sheets that any screen can reach: Settings and Run Data. Runs owns the focused Training Signal and run-detail sheets because their selection state is local to actual history.
+- Owns the global Settings sheet and its Account & Crew and Run Data child sheets. Runs owns the focused Training Signal and run-detail sheets because their selection state is local to actual history.
 - The header is a small brand lockup — `StackMark` plus the wordmark — on the left, and one icon-only `Settings` gear on the right. Both sit in `.app-shell__header-row`, which carries the same 640px column the content and the nav use, so the gear lines up with the screen under it.
 
 ## The look, after UI-7
@@ -814,6 +816,8 @@ UI-17 verification on 2026-08-10:
 `src/features/settings/SettingsSheet.tsx`, opened by the gear in the top-right
 of the global header.
 
+UI-18 adds an **Account & Crew** row without making accounts mandatory. It opens `src/features/crew/AccountCrewSheet.tsx`, which presents graceful unconfigured state, account create/sign-in/sign-out, display-name editing, crew create/join/leave, and owner invite/member controls. Closing it returns to Settings. Joining a crew whose race differs from the local race requires explicit confirmation and never edits the local race or plan.
+
 Five things were in two wrong places. **Race**, **Run Days**, **Availability**
 and **Reset Plan** were a two-column grid of look-alike buttons under eighteen
 weeks of schedule — which is where a screen ends, not where settings live — and
@@ -842,6 +846,18 @@ restore.
 - `Run Data` is opened by the shell rather than by this sheet, because Today
   opens the same sheet with a candidate already chosen. The shell remembers
   which one asked, so dismissing it goes back to the right place.
+
+## UI-18 — Race Crew production foundation
+
+`src/crew/` contains the optional cloud boundary. `supabaseClient.ts` reads only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; absent values produce an unavailable controller rather than an app failure. `auth.ts` enforces `/^\d{8}$/` before passing the PIN to Supabase Auth and never persists it in STACK. `invites.ts` generates 32 random bytes, places the raw token in `#join=`, hashes it with SHA-256 for database calls, and clears the fragment after capture. `crewService.ts` wraps the membership/invite RPCs and table reads, while `useRaceCrew.ts` coordinates the authenticated session and stale-aware projection uploads.
+
+`src/crew/projection.ts` is the only local-to-crew projection boundary. A shared run is assembled field by field from local data and contains only local run id, local date, STACK activity type, distance and duration; pace is derived by readers. The member summary derives current-week miles, trailing-28-day longest run, up to four current/prior plan weeks of completed/due consistency, and total miles built. It never spreads or serializes `RunLog`, so external ids, routes, exact start time, heart data, Training Load, effort, notes and source payloads cannot cross this boundary. Projection writes occur after authentication/crew changes, local run changes, and stale open/focus events; there is no polling loop.
+
+`supabase/migrations/20260810212106_race_crew_foundation.sql` creates `profiles`, `crews`, `crew_members`, `crew_invites`, `shared_runs`, and `crew_member_summaries`, enables RLS on every table, and exposes constrained security-definer RPCs for create/invite/preview/redeem/revoke/leave/remove operations. `20260810212506_race_crew_function_grants.sql` removes Supabase's inherited anonymous function grants everywhere except the deliberately public high-entropy invite preview. The database stores only invite hashes. `supabase/tests/0001_race_crew_rls.sql` is a repeatable transactional two-user/two-crew/outsider isolation check for the deployed project.
+
+Intervals credentials remain outside AppState in `src/storage/intervalsCredentialRepository.ts` under `stack.intervals.api-key.v1`. `src/connected/intervals.ts` supports direct browser calls using `Authorization: Basic base64("API_KEY:<personal key>")`; the existing `/api/intervals` owner proxy remains a separate supported connection mode. The existing normalization, review/match confirmation, dedupe, snapshot and manual fallback paths remain shared by both modes. `RunDataSetup.tsx` implements the Apple Watch/HealthFit and Garmin/COROS/other-device paths from the setup guide.
+
+The only UI-18 production dependency is `@supabase/supabase-js`. No local AppState migration was introduced.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

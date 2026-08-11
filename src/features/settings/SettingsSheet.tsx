@@ -5,6 +5,7 @@ import {
   Database,
   Flag,
   RotateCcw,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -53,6 +54,8 @@ interface SettingsSheetProps {
   /** Whether a sync token is stored, for the row's status line. */
   isConnected?: boolean;
   lastSyncedAt?: string | null;
+  onOpenAccountCrew?: () => void;
+  accountCrewValue?: string;
 }
 
 /** Which sheet this one handed off to, if any. */
@@ -157,6 +160,8 @@ export function SettingsSheet({
   onOpenRunData = () => undefined,
   isConnected = false,
   lastSyncedAt = null,
+  onOpenAccountCrew = () => undefined,
+  accountCrewValue = "Not signed in",
 }: SettingsSheetProps) {
   const [child, setChild] = useState<Child | null>(null);
   const [isChildOpen, setChildOpen] = useState(false);
@@ -230,6 +235,21 @@ export function SettingsSheet({
                 label="Availability"
                 value={availabilityValue(availability)}
                 onClick={() => openChild("availability")}
+              />
+            </ul>
+          </section>
+
+          <section className="settings__group">
+            <h3 className="settings__group-title">Account</h3>
+            <ul className="settings__rows">
+              <SettingsRow
+                Icon={Users}
+                label="Account & Crew"
+                value={accountCrewValue}
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenAccountCrew();
+                }}
               />
             </ul>
           </section>

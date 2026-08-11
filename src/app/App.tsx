@@ -30,6 +30,12 @@ import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToke
 import { useConnectedSync } from "../features/connected/useConnectedSync";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
 import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
+import { useRaceCrew } from "../crew/useRaceCrew";
+import {
+  forgetIntervalsApiKey,
+  loadIntervalsApiKey,
+  saveIntervalsApiKey,
+} from "../storage/intervalsCredentialRepository";
 
 export type TabId = "today" | "build" | "runs" | "plan";
 
@@ -62,12 +68,16 @@ export function App() {
   const [boot, setBoot] = useState<BootState>(readBootState);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [syncToken, setSyncToken] = useState<string | null>(() => { try { return loadIntervalsSyncToken(); } catch { return null; } });
+  const [intervalsApiKey, setIntervalsApiKey] = useState<string | null>(() => {
+    try { return loadIntervalsApiKey(); } catch { return null; }
+  });
   const [accomplishments, setAccomplishments] = useState<Moment[]>([]);
   const previousRunLogs = useRef<RunLog[]>(
     boot.kind === "ready" ? boot.state.runLogs : [],
   );
 
   const appState = boot.kind === "ready" ? boot.state : null;
+  const raceCrew = useRaceCrew(appState);
 
   const setAppState = useCallback((next: (current: AppState) => AppState) => {
     setBoot((current) =>
@@ -120,7 +130,11 @@ export function App() {
   // One sync for the whole app: Today offers what it found, Run Data reviews
   // the rest, and neither can be looking at a different answer than the other.
   const connectedSync = useConnectedSync({
-    token: syncToken,
+    connection: intervalsApiKey
+      ? { mode: "local-api-key", credential: intervalsApiKey }
+      : syncToken
+        ? { mode: "legacy-proxy", credential: syncToken }
+        : null,
     state: appState,
     onSynced: recordSync,
   });
@@ -210,7 +224,31 @@ export function App() {
       onPlacingChange={setPlacingRunLogId}
       appState={boot.state}
       syncToken={syncToken}
+      intervalsConnection={
+        intervalsApiKey
+          ? { mode: "local-api-key", credential: intervalsApiKey }
+          : syncToken
+            ? { mode: "legacy-proxy", credential: syncToken }
+            : null
+      }
       connectedSync={connectedSync}
+      raceCrew={raceCrew}
+      onConnectIntervalsApiKey={(apiKey) => {
+        try {
+          saveIntervalsApiKey(apiKey);
+          setIntervalsApiKey(apiKey.trim());
+        } catch (error) {
+          setWriteError(error instanceof Error ? error.message : "Connection could not be saved.");
+        }
+      }}
+      onForgetIntervalsApiKey={() => {
+        try {
+          forgetIntervalsApiKey();
+          setIntervalsApiKey(null);
+        } catch (error) {
+          setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten.");
+        }
+      }}
       onConnectIntervals={(token) => { try { saveIntervalsSyncToken(token); setSyncToken(token); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be saved."); } }}
       onForgetIntervals={() => { try { forgetIntervalsSyncToken(); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
       onImportIntervals={(candidate, workoutId, type, effort, notes) => setAppState((current) => acceptIntervalsRun(current, candidate, workoutId, type, effort, notes))}

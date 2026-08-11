@@ -8,6 +8,7 @@ import {
 } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import type { RunLog, Workout } from "../../domain/types";
+import type { IntervalsConnection } from "../../connected/intervals";
 import { RunResultDetail } from "./RunResultDetail";
 
 interface WorkoutDetailSheetProps {
@@ -22,7 +23,7 @@ interface WorkoutDetailSheetProps {
   onEditWorkout?: () => void;
   onMoveWorkout?: () => void;
   onChangeToRest?: () => void;
-  syncToken?: string | null;
+  syncToken?: IntervalsConnection | string | null;
   isOpen: boolean;
   onClose: () => void;
 }

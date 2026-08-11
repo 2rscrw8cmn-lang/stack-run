@@ -118,10 +118,11 @@ Never commit `.env.local`.
 
 UI-18 implementation must add a reproducible SQL migration to the repository rather than asking the owner to create tables manually one at a time.
 
-Expected first migration location:
+Applied migration locations:
 
 ```text
-supabase/migrations/0001_race_crew_foundation.sql
+supabase/migrations/20260810212106_race_crew_foundation.sql
+supabase/migrations/20260810212506_race_crew_function_grants.sql
 ```
 
 The migration should create and secure:
@@ -146,6 +147,14 @@ The migration must:
 - never require a browser service-role/secret key.
 
 After the agent creates the migration, run it in the Supabase SQL Editor or through the Supabase CLI if the project later adopts the CLI.
+
+After applying the migration, run the repeatable transactional isolation check at:
+
+```text
+supabase/tests/0001_race_crew_rls.sql
+```
+
+It creates two temporary test users and crews inside a transaction, verifies member visibility and outsider denial, and rolls the test data back. Run it in a non-production project first, then repeat the same owner/second-account behavior manually in the production app.
 
 ## 5. Intervals credential model for Race Crew
 

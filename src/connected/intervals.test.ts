@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
 import { addDaysToLocalDate } from "../domain/dates";
-import { fetchIntervals, fetchIntervalsActivityDetail, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, selectRunFound, suggestScheduledMatches } from "./intervals";
+import { fetchIntervals, fetchIntervalsActivityDetail, intervalsBasicAuthorization, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, selectRunFound, suggestScheduledMatches } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
 describe("Intervals normalization", () => {
@@ -70,6 +70,36 @@ describe("Intervals activity detail request", () => {
   it.each([[500, "could not be loaded"], [429, "rate limiting"]])("describes detail error %s", async (status, message) => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status }));
     await expect(fetchIntervalsActivityDetail("activity-1", "token")).rejects.toThrow(message);
+    fetchMock.mockRestore();
+  });
+});
+
+describe("direct personal-key requests", () => {
+  it("formats Basic auth as literal API_KEY colon personal key", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify([])));
+
+    await fetchIntervals(
+      "activities",
+      { mode: "local-api-key", credential: "  fake-personal-key  " },
+      { oldest: "2026-08-01", newest: "2026-08-10" },
+    );
+
+    expect(intervalsBasicAuthorization("fake-personal-key")).toBe(
+      `Basic ${btoa("API_KEY:fake-personal-key")}`,
+    );
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://intervals.icu/api/v1/athlete/0/activities?oldest=2026-08-01&newest=2026-08-10",
+    );
+    expect(
+      new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Authorization"),
+    ).toBe(`Basic ${btoa("API_KEY:fake-personal-key")}`);
+    expect(
+      new Headers(fetchMock.mock.calls[0]?.[1]?.headers).has(
+        "X-Stack-Sync-Token",
+      ),
+    ).toBe(false);
     fetchMock.mockRestore();
   });
 });

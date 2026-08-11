@@ -16,11 +16,13 @@ import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { TodayScreen } from "../features/today/TodayScreen";
 import type { TabId } from "./App";
 import type { AppState, Effort, RunActivityType } from "../domain/types";
-import type { IntervalsCandidate } from "../connected/intervals";
+import type { IntervalsCandidate, IntervalsConnection } from "../connected/intervals";
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
 import { SettingsSheet } from "../features/settings/SettingsSheet";
 import { useState } from "react";
+import type { RaceCrewController } from "../crew/useRaceCrew";
+import { AccountCrewSheet } from "../features/crew/AccountCrewSheet";
 
 interface AppShellProps {
   activeTab: TabId;
@@ -52,9 +54,13 @@ interface AppShellProps {
   placingRunLogId: string | null;
   onPlacingChange: (runLogId: string | null) => void;
   appState: AppState; syncToken: string | null;
+  intervalsConnection: IntervalsConnection | null;
   /** The one sync every screen reads from, so none of them disagree. */
   connectedSync: ConnectedSync;
   onConnectIntervals: (token: string) => void; onForgetIntervals: () => void;
+  onConnectIntervalsApiKey: (apiKey: string) => void;
+  onForgetIntervalsApiKey: () => void;
+  raceCrew: RaceCrewController;
   onImportIntervals: (candidate: IntervalsCandidate, workoutId: string | null, type: RunActivityType, effort: Effort, notes: string) => void;
   onAttachIntervals: (candidate: IntervalsCandidate, runLogId: string) => void; onIgnoreIntervals: (id: string) => void; onClearIgnoredIntervals: () => void;
 }
@@ -79,7 +85,7 @@ export function AppShell({
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
-  appState, syncToken, connectedSync, onConnectIntervals, onForgetIntervals, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
+  appState, syncToken, intervalsConnection, connectedSync, onConnectIntervals, onForgetIntervals, onConnectIntervalsApiKey, onForgetIntervalsApiKey, raceCrew, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
 }: AppShellProps) {
   const [runDataOpen, setRunDataOpen] = useState(false);
   // A review handed in from Today, and a counter that remounts the sheet so it
@@ -87,6 +93,7 @@ export function AppShell({
   const [review, setReview] = useState<RunDataReview | null>(null);
   const [runDataVisit, setRunDataVisit] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountCrewOpen, setAccountCrewOpen] = useState(false);
   // Run Data is reached from Today and from Settings. Dismissing it should go
   // back wherever it was opened from, so which one that was is remembered.
   const [runDataFromSettings, setRunDataFromSettings] = useState(false);
@@ -166,7 +173,7 @@ export function AppShell({
             onPlaceBlock={onPlaceBlock}
             placingRunLogId={placingRunLogId}
             onPlacingChange={onPlacingChange}
-            syncToken={syncToken}
+            syncToken={intervalsConnection}
           />
         )}
         {activeTab === "runs" && (
@@ -175,7 +182,7 @@ export function AppShell({
             runLogs={runLogs}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
-            syncToken={syncToken}
+            syncToken={intervalsConnection}
           />
         )}
         {activeTab === "plan" && (
@@ -186,7 +193,7 @@ export function AppShell({
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
             availability={availability}
-            syncToken={syncToken}
+            syncToken={intervalsConnection}
           />
         )}
       </main>
@@ -208,8 +215,25 @@ export function AppShell({
         onSaveAvailability={onSaveAvailability}
         onResetPlan={onResetPlan}
         onOpenRunData={() => openRunData(null, true)}
-        isConnected={Boolean(syncToken)}
+        isConnected={Boolean(intervalsConnection)}
         lastSyncedAt={appState.intervalsSync.lastSuccessfulActivitySyncAt}
+        onOpenAccountCrew={() => setAccountCrewOpen(true)}
+        accountCrewValue={
+          raceCrew.status !== "signed-in"
+            ? "Not signed in"
+            : raceCrew.account?.crew
+              ? `${raceCrew.account.profile.displayName} · ${raceCrew.account.crew.name}`
+              : `${raceCrew.account?.profile.displayName ?? "Runner"} · No crew`
+        }
+      />
+      <AccountCrewSheet
+        isOpen={accountCrewOpen}
+        onClose={() => {
+          setAccountCrewOpen(false);
+          setSettingsOpen(true);
+        }}
+        crew={raceCrew}
+        localRace={plan.race}
       />
       <RunDataSheet
         key={runDataVisit}
@@ -222,6 +246,7 @@ export function AppShell({
         }}
         state={appState}
         initialToken={syncToken}
+        connection={intervalsConnection}
         initialReview={review}
         candidates={connectedSync.candidates}
         isSyncing={connectedSync.status === "syncing"}
@@ -230,6 +255,8 @@ export function AppShell({
         onSettle={connectedSync.settle}
         onConnect={onConnectIntervals}
         onForget={onForgetIntervals}
+        onConnectApiKey={onConnectIntervalsApiKey}
+        onForgetApiKey={onForgetIntervalsApiKey}
         onImport={onImportIntervals}
         onAttach={onAttachIntervals}
         onIgnore={onIgnoreIntervals}

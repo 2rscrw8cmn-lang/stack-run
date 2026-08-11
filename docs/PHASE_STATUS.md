@@ -40,7 +40,7 @@ Current personal AppState: **schema 9**.
 |---:|---|---|---|
 | 16 | Trends 2.0 | **Complete** | Seven focused Training Signals, plan-vs-actual, richer charts, Today cleanup. |
 | 17 | Performance Arcade Design Pass | **Complete** | Merged PR #34; modern training-computer visual language and final polish. |
-| 18 | Race Crew Foundation | **Approved — next code phase** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
+| 18 | Race Crew Foundation | **Implemented — owner smoke pending** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
 | 19 | Crew Runs + Comparisons | Gated on UI-18 | YOU / CREW, comparisons, recent crew runs, safe detail. |
 | 20 | Props + Mini Builds | Gated on UI-19 | Lightweight encouragement + read-only mini Builds. |
 
@@ -105,6 +105,31 @@ Intervals officially recommends OAuth for apps intended for multiple users. Pers
 - signed-out personal app remains fully usable.
 
 UI-18 does not include the social Crew feed/comparison presentation, Props, mini Builds, comments, public discovery, full cloud sync or Intervals OAuth.
+
+## UI-18 implementation status
+
+Implemented on `codex/ui-18-race-crew-foundation`:
+
+- optional Supabase client configuration that leaves signed-out and unconfigured personal STACK fully usable;
+- email + exactly-eight-digit STACK PIN account flows, local profile naming, crew create/join/leave, owner invites, revocation and member removal;
+- reproducible schema/RLS migration plus a transactional two-user/two-crew/outsider verification script;
+- high-entropy fragment invites whose database representation is SHA-256 only, with 14-day default expiry and explicit revocation;
+- a dedicated local Intervals key repository at `stack.intervals.api-key.v1`, direct Basic-auth `/api/v1` mode, and the unchanged legacy owner proxy fallback;
+- guided Apple Watch and other-device Run Data setup;
+- explicit shared-run and member-summary projections, uploaded on relevant local changes, authentication/crew changes, and stale open/focus events without polling;
+- privacy, PIN, direct-auth-format, projection, account/crew, setup, migration, and existing connected-training regression coverage.
+
+The implementation keeps personal AppState at schema 9 and does not alter local plan, run or Build data during account creation or crew joining. UI-19 social presentation has not started.
+
+Repository verification on 2026-08-10:
+
+- `npm run check` passes: lint, 60 test files / 822 tests, TypeScript and the production Vite build;
+- in-app browser QA passed Settings, unconfigured Account & Crew, and the guided Apple Watch Run Data path at 320×844, 390×844 and 1200×900;
+- reviewed sheets had no horizontal overflow and all visible interactive targets measured at least 44px;
+- migrations `20260810212106_race_crew_foundation` and `20260810212506_race_crew_function_grants` are applied to the active `stack-run` Supabase project; all six tables report RLS enabled with their expected policies, the remote shared-run columns match the safe allowlist, and only high-entropy invite preview retains anonymous function execution;
+- the repeatable two-user/two-crew/outsider RLS transaction passes against the remote project and rolls its fake identities/data back; no local Docker-backed Supabase database was available.
+
+Owner-only production acceptance remains open until an owner and second real account complete the membership/isolation smoke test and direct Intervals sync succeeds in production iPhone Safari. The legacy proxy remains available until that Safari check passes.
 
 ## Active source documents
 

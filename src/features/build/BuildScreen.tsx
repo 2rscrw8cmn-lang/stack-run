@@ -12,6 +12,7 @@ import {
   type PlacementOption,
 } from "../../domain/placement";
 import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
+import type { IntervalsConnection } from "../../connected/intervals";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { BlockDetailSheet } from "./BlockDetailSheet";
@@ -64,7 +65,7 @@ interface BuildScreenProps {
   onPlacingChange?: (runLogId: string | null) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
-  syncToken?: string | null;
+  syncToken?: IntervalsConnection | string | null;
 }
 
 export function BuildScreen({
