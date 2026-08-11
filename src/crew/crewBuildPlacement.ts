@@ -1,12 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const CREW_BUILD_PLACEMENT_CONFLICT = "crew_build_placement_conflict";
+export const CREW_BUILD_PLACEMENT_UNSUPPORTED = "crew_build_placement_unsupported";
+export const CREW_BUILD_SUPPORTING_BLOCK = "crew_build_supporting_block";
 
 export class CrewBuildPlacementError extends Error {
-  readonly kind: "conflict" | "rejected";
+  readonly kind: "conflict" | "unsupported" | "supporting" | "rejected";
 
   constructor(
-    kind: "conflict" | "rejected",
+    kind: "conflict" | "unsupported" | "supporting" | "rejected",
     message: string,
   ) {
     super(message);
@@ -28,6 +30,12 @@ export async function placeCrewBuildBlock(
   if (!result.error) return;
   if (result.error.message.includes(CREW_BUILD_PLACEMENT_CONFLICT)) {
     throw new CrewBuildPlacementError("conflict", CREW_BUILD_PLACEMENT_CONFLICT);
+  }
+  if (result.error.message.includes(CREW_BUILD_PLACEMENT_UNSUPPORTED)) {
+    throw new CrewBuildPlacementError("unsupported", CREW_BUILD_PLACEMENT_UNSUPPORTED);
+  }
+  if (result.error.message.includes(CREW_BUILD_SUPPORTING_BLOCK)) {
+    throw new CrewBuildPlacementError("supporting", CREW_BUILD_SUPPORTING_BLOCK);
   }
   throw new CrewBuildPlacementError("rejected", result.error.message);
 }

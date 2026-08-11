@@ -44,7 +44,30 @@ Current personal AppState: **schema 9**.
 | 19 | Crew Runs + Comparisons | **Complete / accepted** | YOU / CREW, comparisons, recent crew runs, safe detail. |
 | 20 | Props + Mini Builds | **Complete / accepted** | Binary Props + sanitized read-only Mini Builds. |
 | 21 | Crew Destination + Shared Crew Build | **Complete / owner-accepted — merged PR #38** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
-| 22 | Final Product Polish + Onboarding | **Implemented / in review** | Product-wide consistency pass plus lightweight local conceptual onboarding. |
+| 22 | Final Product Polish + Onboarding | **Complete / merged PR #39** | Product-wide consistency pass plus lightweight local conceptual onboarding. |
+
+## Post-UI-22 hotfix — Crew cross-device data integrity
+
+Status: **Implemented / owner review pending.** This is a data-integrity
+correction, not UI-23.
+
+- normal Crew projection is non-destructive across blank and partial devices;
+- explicit deletion targets exactly one Crew contribution and retries from a
+  minimal device-local tombstone without blocking personal deletion;
+- shared-row upsert identity, Props, Crew placement and unknown Member Build
+  placement are preserved;
+- Weekly Miles, Longest Run and Miles Built derive from cloud shared runs;
+  incomplete devices preserve last-known Consistency;
+- Intervals remains per-device and Settings states that directly;
+- the forward-only Crew placement RPC migration rejects floating blocks and
+  support-breaking moves while retaining collision/concurrency protection;
+- same-Intervals-activity cross-device local-id divergence is confirmed and
+  documented as a separate canonical-identity migration problem;
+- full personal AppState/cloud sync remains out of scope.
+
+Required owner acceptance still includes applying/verifying the new migration
+and same-account Device A ↔ Device B QA on desktop/iPhone Safari. Do not merge
+until those checks pass.
 
 ## UI-17 acceptance
 
@@ -211,7 +234,7 @@ UI-21 does not implement a pace leaderboard, ranking, podium, comments, notifica
 
 ## UI-22 implementation status
 
-**UI-22 — Final Product Polish + Onboarding** is the final planned product phase and is in review on `agent/ui-22-final-polish-onboarding`.
+**UI-22 — Final Product Polish + Onboarding** is the final planned product phase and is complete in merged PR #39.
 
 Implemented:
 

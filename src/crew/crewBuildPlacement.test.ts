@@ -24,4 +24,16 @@ describe("Crew Build placement RPC client", () => {
       placeCrewBuildBlock(client, { sharedRunId: "run-1", row: 0, columnStart: 1 }),
     ).rejects.toMatchObject({ kind: "conflict" });
   });
+
+  it.each([
+    ["crew_build_placement_unsupported", "unsupported"],
+    ["crew_build_supporting_block", "supporting"],
+  ] as const)("classifies %s as %s", async (message, kind) => {
+    const client = {
+      rpc: vi.fn(async () => ({ error: { message } })),
+    } as unknown as SupabaseClient;
+    await expect(
+      placeCrewBuildBlock(client, { sharedRunId: "run-1", row: 2, columnStart: 1 }),
+    ).rejects.toMatchObject({ kind });
+  });
 });

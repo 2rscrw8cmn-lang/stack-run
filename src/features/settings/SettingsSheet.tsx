@@ -125,11 +125,11 @@ function runDataValue(
   if (!isConnected) {
     return "Not connected";
   }
-  if (!lastSyncedAt) return "Connected · no sync yet";
+  if (!lastSyncedAt) return "Connected on this device · no sync yet";
   const age = Date.now() - new Date(lastSyncedAt).getTime();
   return age >= 2 * 60 * 60_000
-    ? `Connected · ${formatUpdatedAgo(lastSyncedAt) ?? "sync date unavailable"}`
-    : "Connected";
+    ? `Connected on this device · ${formatUpdatedAgo(lastSyncedAt) ?? "sync date unavailable"}`
+    : "Connected on this device";
 }
 
 /**

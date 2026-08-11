@@ -234,7 +234,36 @@ Use deterministic upsert identity:
 crew_id + user_id + localRunId
 ```
 
-When local run is deleted, delete its matching `shared_runs` row(s) for active crew membership.
+Normal projection is non-destructive. Absence from one local device is never
+evidence that a Crew contribution was deleted. Local runs upsert safe facts by
+`crew_id + user_id + localRunId`; a missing personal placement omits Member
+Build coordinates instead of writing null, and Crew Build coordinates are
+never part of projection writes.
+
+Only an explicit personal run deletion may delete its matching `shared_runs`
+row. The local delete completes first. If Crew cleanup fails, a minimal
+device-local tombstone under `stack.crew-delete-tombstones.v1` retains only
+crew/user/local-run identity and retries later; it is removed after success.
+
+Weekly Miles, trailing-28-day Longest Run and Miles Built are recomputed from
+the authenticated runner's cloud `shared_runs` union, so a blank or partial
+device cannot zero them. Consistency remains the last known valid value unless
+the projecting device contains every shared run currently stored for that
+runner and has relevant local run history. The personal plan remains private.
+
+Intervals credentials and sync state remain per-device. Settings describes a
+working connection as `Connected on this device`.
+
+### Known cross-device import identity limitation
+
+Investigation confirmed that the same Intervals activity can receive different
+local `RunLog.id` values when two devices have different same-day extra-run
+histories (`run-extra-<date>` versus a suffixed id). Crew still uses the locked
+local-run identity tuple. This hotfix does not upload the raw Intervals id or
+introduce a new hashed identity because existing shared rows, Props and both
+placement coordinate systems would require a deliberate forward migration and
+collision policy. Duplicate projection of that edge case remains a documented
+limitation for a separate architecture decision.
 
 ## Leave/removal lifecycle
 

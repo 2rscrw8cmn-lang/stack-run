@@ -67,6 +67,7 @@ function controller(
     joinPendingInvite: action,
     leaveCrew: action,
     removeMember: action,
+    deleteRunContribution: action,
     refreshCrewData: action,
     toggleProps: action,
     placeCrewBuildBlock: vi.fn(async () => true),

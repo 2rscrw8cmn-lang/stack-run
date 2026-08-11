@@ -95,6 +95,15 @@ describe("the settings list", () => {
     expect(onOpenRunData).toHaveBeenCalledTimes(1);
   });
 
+  it("labels an Intervals connection as device-local", () => {
+    renderSettings({ isConnected: true });
+    expect(
+      screen.getByRole("button", {
+        name: "Intervals.icu Connected on this device · no sync yet",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("offers the app tour as a quiet replay action", async () => {
     const onReplayTour = vi.fn();
     const { user } = renderSettings({ onReplayTour });
