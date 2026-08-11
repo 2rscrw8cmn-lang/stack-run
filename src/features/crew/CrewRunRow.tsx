@@ -6,13 +6,27 @@ import { formatDurationSeconds } from "../../domain/duration";
 import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
+import { PropsButton } from "./PropsButton";
 
 interface CrewRunRowProps {
   run: CrewSharedRun;
   onOpen: () => void;
+  currentUserId: string;
+  propsPending: boolean;
+  propsError: string | null;
+  propsAvailable: boolean;
+  onToggleProps: () => void;
 }
 
-export function CrewRunRow({ run, onOpen }: CrewRunRowProps) {
+export function CrewRunRow({
+  run,
+  onOpen,
+  currentUserId,
+  propsPending,
+  propsError,
+  propsAvailable,
+  onToggleProps,
+}: CrewRunRowProps) {
   const activity = WORKOUT_TYPE_LABEL[run.activityType];
   const distance = `${formatMiles(run.distanceMiles)} mi`;
   const duration = formatDurationSeconds(run.durationSeconds);
@@ -20,12 +34,11 @@ export function CrewRunRow({ run, onOpen }: CrewRunRowProps) {
   const facts = [distance, duration, pace].filter(Boolean).join(" · ");
 
   return (
-    <li>
+    <li className="crew-run-item" data-member-color={crewMemberAccent(run.userId)}>
       <button
         type="button"
         className="crew-run-row"
         data-type={run.activityType}
-        data-member-color={crewMemberAccent(run.userId)}
         aria-label={`${run.displayName}. ${activity}. ${formatDateLabel(run.localDate, {
           weekday: "long",
           month: "long",
@@ -47,6 +60,18 @@ export function CrewRunRow({ run, onOpen }: CrewRunRowProps) {
           <span className="crew-run-row__facts data-value">{facts}</span>
         </span>
       </button>
+      <div className="crew-run-item__props">
+        <PropsButton
+          runOwnerName={run.displayName}
+          count={run.propsCount}
+          pressed={run.viewerHasPropped}
+          pending={propsPending}
+          isOwnRun={run.userId === currentUserId}
+          available={propsAvailable}
+          onToggle={onToggleProps}
+        />
+      </div>
+      {propsError && <p className="crew-props__error" role="status">{propsError}</p>}
     </li>
   );
 }

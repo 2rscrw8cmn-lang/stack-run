@@ -1,6 +1,6 @@
 # Race Crew — Implementation Plan
 
-Status: **UI-18 accepted; UI-19 implemented with live manual QA pending.**
+Status: **UI-18 and UI-19 accepted; UI-20 implemented with live UI/manual QA pending.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
 
@@ -624,7 +624,7 @@ Personal Runs remains usable through every failure state.
 - Signed-out, no-crew, one-member, loading, no-runs and unavailable/retry states are present; Crew failures do not affect `YOU`.
 - UI-20 reactions, comments, member profiles and mini Builds were not added.
 
-Automated UI-19 acceptance coverage is implemented. Live two-account Supabase and responsive browser smoke checks remain the final manual acceptance items.
+UI-19 is complete and accepted via merged PR #36.
 
 ---
 
@@ -663,6 +663,26 @@ No one can manipulate another runner's Build.
 ### Comments
 
 Still deferred unless separately approved.
+
+## Implemented UI-20 details
+
+- `crew_reactions` is the single binary Props model. Its primary key prevents more than one Prop per user/run, a composite foreign key enforces same-crew run identity, RLS is active-member-only and self-Props are denied.
+- Props appears inline inside the Recent Crew Run card and in crew-safe Run Detail using Lucide `ThumbsUp`, text, total count, `aria-pressed`, a 44px target, immediate optimistic state, rapid-repeat suppression and narrow rollback/error handling. The main run control and Props are siblings, never nested. Self-Props remain non-interactive; reaction failure reports unavailable rather than a false zero.
+- Props never changes chronological feed or comparison ordering. There is no reaction type/text, picker, ranking, algorithm, Realtime subscription, notification or comment surface.
+- One generously bounded shared-run query supplies the newest 20 Recent rows and up to 128 placed blocks per member for a normal full training cycle. One crew-scoped reaction query covers those runs. There are no N+1 reads.
+- A new forward-only migration adds nullable `build_row` and `build_column_start` to `shared_runs`, with nonnegative/eight-column constraints and inherited RLS. The already-applied Props migration remains unchanged.
+- `CrewMiniBuild` uses the runner's sanitized real row/column coordinates. Width derives from distance; height and activity color derive from type. Missing coordinates produce no invented placement.
+- Each Mini Build card is a real keyboard-accessible control opening a full read-only Member Build sheet. The full stage uses the same geometry, and its blocks open the existing crew-safe Run Detail.
+- Full-history `Miles Built` remains the approved member-summary number and uses one decimal consistently. Complete `blockPlacements`, placement timestamps/internal state and the rest of AppState stay private.
+- `THE CREW` keeps the current account first and otherwise preserves membership order. It uses compact horizontal cards so approximately ten members remain practical at phone width. Member accent identifies the runner; activity color retains training meaning.
+- Missing shared-run data leaves comparisons intact and says Recent runs/Mini Builds are unavailable. Missing reaction data leaves the run feed intact and marks Props unavailable.
+- Comments, notifications, member profiles, public discovery, full personal cloud sync and Intervals OAuth remain outside UI-20.
+
+The owner applied the reaction migration and the repeatable deployed RLS transaction passed on 2026-08-11; that migration was not modified. The new placement migration must be applied and verified separately. Live two-account reaction behavior and responsive/iPhone Safari smoke checks remain acceptance requirements. Do not mark UI-20 complete until those checks pass.
+
+UI-20 does not add a combined/shared Crew Build, communal placement, a fifth bottom-navigation destination or UI-21 code.
+
+No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
 ---
 

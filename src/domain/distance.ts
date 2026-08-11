@@ -28,3 +28,8 @@ export function formatMiles(distanceMiles: number): string {
 export function formatCompactMiles(distanceMiles: number): string {
   return String(Number(distanceMiles.toFixed(1)));
 }
+
+/** Aggregate Build mileage always carries one decimal for cross-screen consistency. */
+export function formatMilesBuilt(distanceMiles: number): string {
+  return distanceMiles.toFixed(1);
+}

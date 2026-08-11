@@ -8,7 +8,9 @@ import type {
   CrewSharedRun,
 } from "./types";
 
-const RUN_PAGE_SIZE = 20;
+const RECENT_RUN_LIMIT = 20;
+const MEMBER_BUILD_RUNS_PER_MEMBER = 128;
+const MAX_SHARED_RUN_READ = 1280;
 
 type Row = Record<string, unknown>;
 
@@ -40,6 +42,14 @@ function requiredNumber(source: Row, key: string): number {
   return parsed;
 }
 
+function nullableInteger(source: Row, key: string): number | null {
+  const value = source[key];
+  if (value === null || value === undefined) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed)) throw new Error(`Race Crew returned invalid ${key}.`);
+  return parsed;
+}
+
 function roleFrom(value: unknown): CrewRole {
   if (value === "owner" || value === "member") return value;
   throw new Error("Race Crew returned an invalid member role.");
@@ -59,12 +69,14 @@ function activityTypeFrom(value: unknown): RunActivityType {
 }
 
 /**
- * Loads only the five UI-19 tables allowed by the Crew privacy contract.
- * `profiles` is queried solely for display names, and shared runs stay bounded.
+ * Loads only the safe Race Crew tables allowed by the privacy contract.
+ * `profiles` is queried solely for display names, shared runs stay generously bounded,
+ * and reactions contain only the run/member relationship used for Props.
  */
 export async function loadCrewDashboard(
   client: SupabaseClient,
   crewId: string,
+  viewerUserId: string,
 ): Promise<CrewDashboardData> {
   const membership = await client
     .from("crew_members")
@@ -76,8 +88,21 @@ export async function loadCrewDashboard(
   const memberRows = rows(membership.data);
   const userIds = memberRows.map((item) => requiredString(item, "user_id"));
   if (userIds.length === 0) {
-    return { members: [], summaries: [], runs: [], loadedAt: new Date().toISOString() };
+    return {
+      members: [],
+      summaries: [],
+      runs: [],
+      miniBuildRuns: [],
+      sharedRunsAvailable: true,
+      propsAvailable: true,
+      loadedAt: new Date().toISOString(),
+    };
   }
+
+  const sharedRunReadLimit = Math.min(
+    MAX_SHARED_RUN_READ,
+    Math.max(RECENT_RUN_LIMIT, userIds.length * MEMBER_BUILD_RUNS_PER_MEMBER),
+  );
 
   const [profileResult, summaryResult, runResult] = await Promise.all([
     client.from("profiles").select("id,display_name").in("id", userIds),
@@ -91,18 +116,18 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,created_at,updated_at",
+        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,created_at,updated_at",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
       .order("local_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(RUN_PAGE_SIZE),
+      .limit(sharedRunReadLimit),
   ]);
 
   if (profileResult.error) throw new Error(profileResult.error.message);
   if (summaryResult.error) throw new Error(summaryResult.error.message);
-  if (runResult.error) throw new Error(runResult.error.message);
+  const sharedRunsAvailable = !runResult.error;
 
   const names = new Map(
     rows(profileResult.data).map((item) => [
@@ -137,7 +162,7 @@ export async function loadCrewDashboard(
     };
   });
 
-  const runs: CrewSharedRun[] = rows(runResult.data).map((item) => {
+  const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).map((item) => {
     const userId = requiredString(item, "user_id");
     return {
       id: requiredString(item, "id"),
@@ -149,8 +174,53 @@ export async function loadCrewDashboard(
       durationSeconds: requiredNumber(item, "duration_seconds"),
       createdAt: requiredString(item, "created_at"),
       updatedAt: requiredString(item, "updated_at"),
+      buildRow: nullableInteger(item, "build_row"),
+      buildColumnStart: nullableInteger(item, "build_column_start"),
+      propsCount: 0,
+      viewerHasPropped: false,
     };
   });
 
-  return { members, summaries, runs, loadedAt: new Date().toISOString() };
+  const reactionResult = !sharedRunsAvailable || allRuns.length === 0
+    ? { data: [], error: null }
+    : await client
+      .from("crew_reactions")
+      .select("shared_run_id,user_id")
+      .eq("crew_id", crewId);
+  const propsAvailable = sharedRunsAvailable && !reactionResult.error;
+
+  const propsCounts = new Map<string, number>();
+  const viewerProps = new Set<string>();
+  for (const item of rows(propsAvailable ? reactionResult.data : [])) {
+    const runId = requiredString(item, "shared_run_id");
+    const userId = requiredString(item, "user_id");
+    propsCounts.set(runId, (propsCounts.get(runId) ?? 0) + 1);
+    if (userId === viewerUserId) viewerProps.add(runId);
+  }
+
+  const runs = allRuns.map((run) => ({
+    ...run,
+    propsCount: propsCounts.get(run.id) ?? 0,
+    viewerHasPropped: viewerProps.has(run.id),
+  }));
+
+  const miniBuildRuns = allRuns.map((run) => ({
+    id: run.id,
+    userId: run.userId,
+    localDate: run.localDate,
+    activityType: run.activityType,
+    distanceMiles: run.distanceMiles,
+    buildRow: run.buildRow,
+    buildColumnStart: run.buildColumnStart,
+  }));
+
+  return {
+    members,
+    summaries,
+    runs,
+    miniBuildRuns,
+    sharedRunsAvailable,
+    propsAvailable,
+    loadedAt: new Date().toISOString(),
+  };
 }

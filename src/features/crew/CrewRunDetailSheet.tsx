@@ -7,11 +7,17 @@ import { formatDurationSeconds } from "../../domain/duration";
 import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
+import { PropsButton } from "./PropsButton";
 
 interface CrewRunDetailSheetProps {
   run: CrewSharedRun | null;
   isOpen: boolean;
   onClose: () => void;
+  currentUserId: string;
+  propsPending: boolean;
+  propsError: string | null;
+  propsAvailable: boolean;
+  onToggleProps: () => void;
 }
 
 /** UI-19's deliberately complete crew-safe detail contract. */
@@ -19,6 +25,11 @@ export function CrewRunDetailSheet({
   run,
   isOpen,
   onClose,
+  currentUserId,
+  propsPending,
+  propsError,
+  propsAvailable,
+  onToggleProps,
 }: CrewRunDetailSheetProps) {
   if (!run) return null;
   const pace = formatPace(run.distanceMiles, run.durationSeconds);
@@ -62,6 +73,28 @@ export function CrewRunDetailSheet({
             </div>
           )}
         </dl>
+
+        <section className="crew-run-detail__props" aria-labelledby="crew-run-props-title">
+          <div>
+            <p id="crew-run-props-title" className="machine-label">Props</p>
+            <p className="crew-run-detail__props-count data-value">
+              {propsAvailable
+                ? `${run.propsCount} ${run.propsCount === 1 ? "crew member" : "crew members"}`
+                : "Props unavailable"}
+            </p>
+          </div>
+          <PropsButton
+            runOwnerName={run.displayName}
+            count={run.propsCount}
+            pressed={run.viewerHasPropped}
+            pending={propsPending}
+            isOwnRun={run.userId === currentUserId}
+            available={propsAvailable}
+            detail
+            onToggle={onToggleProps}
+          />
+          {propsError && <p className="crew-props__error" role="status">{propsError}</p>}
+        </section>
       </div>
     </Sheet>
   );

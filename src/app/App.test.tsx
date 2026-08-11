@@ -166,7 +166,7 @@ describe("App", () => {
     // The block it earned is waiting in Build, and its miles are counted.
     await user.click(screen.getByRole("button", { name: "Build" }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "5 miles built",
+      "5.0 miles built",
     );
     // Build leads with the miles and stops there: no runs-complete, no streak.
     expect(screen.queryByText("Runs Complete")).not.toBeInTheDocument();

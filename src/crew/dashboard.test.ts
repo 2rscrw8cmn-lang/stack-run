@@ -8,7 +8,7 @@ interface QueryCall {
   value: unknown;
 }
 
-function fakeClient(calls: QueryCall[]): SupabaseClient {
+function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
   const data: Record<string, unknown[]> = {
     crew_members: [
       { user_id: "user-1", role: "owner", joined_at: "2026-08-01T00:00:00Z" },
@@ -34,9 +34,15 @@ function fakeClient(calls: QueryCall[]): SupabaseClient {
         activity_type: "long",
         distance_miles: 6.1,
         duration_seconds: 3522,
+        build_row: 4,
+        build_column_start: 2,
         created_at: "2026-08-09T12:00:00Z",
         updated_at: "2026-08-09T12:00:00Z",
       },
+    ],
+    crew_reactions: [
+      { shared_run_id: "run-1", user_id: "user-1" },
+      { shared_run_id: "run-1", user_id: "user-2" },
     ],
   };
 
@@ -63,10 +69,13 @@ function fakeClient(calls: QueryCall[]): SupabaseClient {
           calls.push({ table, operation: "limit", value });
           return builder;
         },
-        then<TResult1 = { data: unknown[]; error: null }>(
-          onfulfilled?: ((value: { data: unknown[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+        then<TResult1 = { data: unknown[]; error: { message: string } | null }>(
+          onfulfilled?: ((value: { data: unknown[]; error: { message: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
         ) {
-          return Promise.resolve({ data: data[table] ?? [], error: null }).then(onfulfilled);
+          return Promise.resolve({
+            data: data[table] ?? [],
+            error: table === failingTable ? { message: `${table} unavailable` } : null,
+          }).then(onfulfilled);
         },
       };
       return builder;
@@ -75,18 +84,24 @@ function fakeClient(calls: QueryCall[]): SupabaseClient {
 }
 
 describe("Crew dashboard query", () => {
-  it("uses only approved tables/columns and bounds newest shared runs to 20", async () => {
+  it("uses only approved tables/columns and a generous full-Build read bound", async () => {
     const calls: QueryCall[] = [];
-    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1");
+    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1", "user-1");
 
     expect(new Set(calls.map((call) => call.table))).toEqual(
-      new Set(["crew_members", "profiles", "crew_member_summaries", "shared_runs"]),
+      new Set([
+        "crew_members",
+        "profiles",
+        "crew_member_summaries",
+        "shared_runs",
+        "crew_reactions",
+      ]),
     );
     const runSelect = calls.find(
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,created_at,updated_at",
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,created_at,updated_at",
     );
     expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
     expect(calls).toContainEqual({
@@ -99,7 +114,7 @@ describe("Crew dashboard query", () => {
       operation: "order:created_at",
       value: { ascending: false },
     });
-    expect(calls).toContainEqual({ table: "shared_runs", operation: "limit", value: 20 });
+    expect(calls).toContainEqual({ table: "shared_runs", operation: "limit", value: 128 });
     expect(loaded.runs[0]).toEqual({
       id: "run-1",
       userId: "user-1",
@@ -110,6 +125,32 @@ describe("Crew dashboard query", () => {
       durationSeconds: 3522,
       createdAt: "2026-08-09T12:00:00Z",
       updatedAt: "2026-08-09T12:00:00Z",
+      buildRow: 4,
+      buildColumnStart: 2,
+      propsCount: 2,
+      viewerHasPropped: true,
     });
+    expect(loaded.miniBuildRuns).toEqual([
+      {
+        id: "run-1",
+        userId: "user-1",
+        localDate: "2026-08-09",
+        activityType: "long",
+        distanceMiles: 6.1,
+        buildRow: 4,
+        buildColumnStart: 2,
+      },
+    ]);
+  });
+
+  it("preserves members and comparisons when shared runs are unavailable", async () => {
+    const loaded = await loadCrewDashboard(fakeClient([], "shared_runs"), "crew-1", "user-1");
+
+    expect(loaded.members).toHaveLength(1);
+    expect(loaded.summaries).toHaveLength(1);
+    expect(loaded.runs).toEqual([]);
+    expect(loaded.miniBuildRuns).toEqual([]);
+    expect(loaded.sharedRunsAvailable).toBe(false);
+    expect(loaded.propsAvailable).toBe(false);
   });
 });

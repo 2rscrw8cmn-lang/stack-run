@@ -41,8 +41,8 @@ Current personal AppState: **schema 9**.
 | 16 | Trends 2.0 | **Complete** | Seven focused Training Signals, plan-vs-actual, richer charts, Today cleanup. |
 | 17 | Performance Arcade Design Pass | **Complete** | Merged PR #34; modern training-computer visual language and final polish. |
 | 18 | Race Crew Foundation | **Complete / accepted** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
-| 19 | Crew Runs + Comparisons | **Implemented — manual QA pending** | YOU / CREW, comparisons, recent crew runs, safe detail. |
-| 20 | Props + Mini Builds | Gated on UI-19 | Lightweight encouragement + read-only mini Builds. |
+| 19 | Crew Runs + Comparisons | **Complete / accepted** | YOU / CREW, comparisons, recent crew runs, safe detail. |
+| 20 | Props + Mini Builds | **Implemented — live UI QA pending** | Binary Props + sanitized read-only Mini Builds. |
 
 ## UI-17 acceptance
 
@@ -119,7 +119,7 @@ Accepted before UI-19 began. Implemented on `codex/ui-18-race-crew-foundation`:
 - explicit shared-run and member-summary projections, uploaded on relevant local changes, authentication/crew changes, and stale open/focus events without polling;
 - privacy, PIN, direct-auth-format, projection, account/crew, setup, migration, and existing connected-training regression coverage.
 
-The implementation keeps personal AppState at schema 9 and does not alter local plan, run or Build data during account creation or crew joining. UI-19 social presentation has not started.
+The implementation keeps personal AppState at schema 9 and does not alter local plan, run or Build data during account creation or crew joining.
 
 Repository verification on 2026-08-10:
 
@@ -133,7 +133,7 @@ The legacy owner proxy remains available until direct Intervals production-Safar
 
 ## UI-19 implementation status
 
-Implemented on `agent/ui-19-crew-runs-comparisons`:
+Complete and accepted via merged PR #36. Implemented on `agent/ui-19-crew-runs-comparisons`:
 
 - accessible local `YOU | CREW` Runs context with no router and no fifth navigation item;
 - unchanged personal Runs content under `YOU`;
@@ -148,7 +148,32 @@ Implemented on `agent/ui-19-crew-runs-comparisons`:
 - stale-aware entry/foreground/manual refresh without polling or Supabase Realtime;
 - no database/AppState migration and no UI-20 scope.
 
-Automated verification covers context switching, preserved personal Runs, all state variants and metrics, sorting/ties, honest chart scaling, consistency numerator/denominator, stable identity cues, stale-only freshness, keyboard selectors, activity-type persistence, bounded safe queries, newest-first rows, derived pace and crew-detail privacy. Live two-account Supabase and 320/390/desktop browser QA remain pending because the implementation environment had neither local Supabase configuration nor an available in-app browser.
+Automated verification covers context switching, preserved personal Runs, all state variants and metrics, sorting/ties, honest chart scaling, consistency numerator/denominator, stable identity cues, stale-only freshness, keyboard selectors, activity-type persistence, bounded safe queries, newest-first rows, derived pace and crew-detail privacy.
+
+## UI-20 implementation status
+
+Implemented on `agent/ui-20-props-mini-builds`:
+
+- one crew-private binary Props reaction with optimistic add/remove, count, rollback, per-run duplicate guard and unchanged chronological ordering;
+- self-Props disabled in UI and RLS;
+- `crew_reactions` migration with composite same-crew run foreign key, active-member read/insert/delete policies and leave/removal cleanup;
+- repeatable reaction RLS verification covering two members, outsider, duplicates, own/other delete, self-Props and removal access loss;
+- a generously bounded shared-run read plus one crew-scoped reaction read, with no N+1 member/run queries;
+- a new forward-only `shared_runs` placement migration adding only nullable, constrained `build_row` and `build_column_start`; the applied Props migration is unchanged;
+- exact shared personal placement in Mini Builds, with width from distance, height/color from activity type, no invented placement for legacy rows and a 128-block per-member safety ceiling;
+- keyboard-focusable compact `THE CREW` cards opening full read-only Member Build sheets whose blocks open crew-safe Run Detail;
+- inline sibling Props controls using Lucide `ThumbsUp`, quiet non-interactive self counts and no false factual zero when reactions are unavailable;
+- one-decimal aggregate Miles Built formatting across personal Build, comparison, Mini Build and Member Build;
+- stable identity accents, current-user marker and honest zero-run states;
+- explicit partial-failure behavior that preserves comparisons when shared-run/Mini Build data is unavailable and preserves runs when only Props is unavailable;
+- privacy tests proving no private RunLog fields or personal placement state reach Mini Build output;
+- no comments, notifications, profiles, ranking, Realtime, AppState migration or new dependency.
+
+On 2026-08-11 the owner applied `20260810230000_crew_reactions.sql` and the updated transactional `0002_crew_reactions_rls.sql` passed; the applied migration was not modified. Final polish repository verification passes lint, 67 test files / 882 tests, TypeScript and the production build. The new `20260811090000_shared_run_build_placement.sql` migration and `0003_shared_run_build_placement_rls.sql` verification are ready for separate owner application. The 320/390/desktop/iPhone Safari visual acceptance remains required before UI-20 may be marked complete/accepted.
+
+UI-20 does not implement one shared Crew tower, communal mileage/placement, a fifth navigation item or UI-21 code.
+
+No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
 ## Active source documents
 

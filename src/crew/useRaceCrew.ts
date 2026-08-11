@@ -27,6 +27,11 @@ import {
   syncCrewProjection,
 } from "./projection";
 import { loadCrewDashboard } from "./dashboard";
+import {
+  commitOptimisticCrewProps,
+  setCrewReaction,
+  withDashboardPropsState,
+} from "./reactions";
 import { CREW_DASHBOARD_STALE_MS } from "./freshness";
 import { getSupabaseAvailability } from "./supabaseClient";
 import type {
@@ -64,6 +69,8 @@ export interface RaceCrewController {
   crewData: CrewDashboardData | null;
   crewDataStatus: "idle" | "loading" | "ready" | "error";
   crewDataError: string | null;
+  propsPendingRunIds: readonly string[];
+  propsErrors: Readonly<Record<string, string>>;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -75,6 +82,7 @@ export interface RaceCrewController {
   leaveCrew: () => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
   refreshCrewData: (force?: boolean) => Promise<void>;
+  toggleProps: (runId: string) => Promise<void>;
   clearMessage: () => void;
 }
 
@@ -107,10 +115,13 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     RaceCrewController["crewDataStatus"]
   >("idle");
   const [crewDataError, setCrewDataError] = useState<string | null>(null);
+  const [propsPendingRunIds, setPropsPendingRunIds] = useState<readonly string[]>([]);
+  const [propsErrors, setPropsErrors] = useState<Readonly<Record<string, string>>>({});
   const latest = useRef({ appState, user, account });
   const lastProjection = useRef({ fingerprint: "", syncedAt: 0 });
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
   const dashboardInFlight = useRef<Promise<void> | null>(null);
+  const propsInFlight = useRef(new Set<string>());
 
   useEffect(() => {
     latest.current = { appState, user, account };
@@ -213,7 +224,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (!availability.configured) return;
     const current = latest.current;
     const crewId = current.account?.crew?.id;
-    if (!current.user || !crewId) return;
+    const userId = current.user?.id;
+    if (!userId || !crewId) return;
     const fresh =
       lastDashboard.current.crewId === crewId &&
       Date.now() - lastDashboard.current.loadedAt < CREW_DASHBOARD_STALE_MS;
@@ -224,10 +236,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setCrewDataStatus("loading");
       setCrewDataError(null);
       try {
-        const loaded = await loadCrewDashboard(availability.client, crewId);
+        const loaded = await loadCrewDashboard(availability.client, crewId, userId);
         if (latest.current.account?.crew?.id !== crewId) return;
         setCrewData(loaded);
         setCrewDataStatus("ready");
+        setPropsErrors({});
         lastDashboard.current = { crewId, loadedAt: Date.now() };
       } catch (reason) {
         setCrewDataError(messageOf(reason));
@@ -248,6 +261,9 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
+    setPropsPendingRunIds([]);
+    setPropsErrors({});
+    propsInFlight.current.clear();
     lastDashboard.current = { crewId, loadedAt: 0 };
   }, [account?.crew?.id]);
 
@@ -298,6 +314,55 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }
   }
 
+  async function toggleProps(runId: string): Promise<void> {
+    const currentUser = user;
+    const crewId = account?.crew?.id;
+    const run = crewData?.runs.find((item) => item.id === runId);
+    if (
+      !availability.configured ||
+      !currentUser ||
+      !crewId ||
+      !run ||
+      !crewData?.propsAvailable ||
+      run.userId === currentUser.id ||
+      propsInFlight.current.has(runId)
+    ) {
+      return;
+    }
+
+    const nextState = !run.viewerHasPropped;
+    propsInFlight.current.add(runId);
+    setPropsPendingRunIds((current) => [...current, runId]);
+    setPropsErrors((current) => {
+      const next = { ...current };
+      delete next[runId];
+      return next;
+    });
+    try {
+      await commitOptimisticCrewProps({
+        nextState,
+        apply: (viewerHasPropped) => setCrewData((current) =>
+          current
+            ? withDashboardPropsState(current, runId, viewerHasPropped)
+            : current,
+        ),
+        persist: () => setCrewReaction(availability.client, {
+          crewId,
+          sharedRunId: runId,
+          userId: currentUser.id,
+          active: nextState,
+        }),
+        onFailure: () => setPropsErrors((current) => ({
+          ...current,
+          [runId]: "Props could not be saved. Try again.",
+        })),
+      });
+    } finally {
+      propsInFlight.current.delete(runId);
+      setPropsPendingRunIds((current) => current.filter((id) => id !== runId));
+    }
+  }
+
   return {
     configured: availability.configured,
     unavailableReason: availability.configured ? null : availability.reason,
@@ -313,6 +378,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     crewData,
     crewDataStatus,
     crewDataError,
+    propsPendingRunIds,
+    propsErrors,
     createAccount: (input) => operate(async () => {
       if (!availability.configured) return;
       const nextUser = await createStackAccount(availability.client, input);
@@ -336,6 +403,9 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setCrewData(null);
       setCrewDataStatus("idle");
       setCrewDataError(null);
+      setPropsPendingRunIds([]);
+      setPropsErrors({});
+      propsInFlight.current.clear();
       lastDashboard.current = { crewId: "", loadedAt: 0 };
     }, "Signed out. Personal STACK is still available."),
     saveDisplayName: (displayName) => operate(async () => {
@@ -380,6 +450,9 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setCrewData(null);
       setCrewDataStatus("idle");
       setCrewDataError(null);
+      setPropsPendingRunIds([]);
+      setPropsErrors({});
+      propsInFlight.current.clear();
       lastDashboard.current = { crewId: "", loadedAt: 0 };
     }, "You left the crew. Personal STACK was not changed."),
     removeMember: (userId) => operate(async () => {
@@ -390,6 +463,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       await refreshCrewData(true);
     }, "Crew member removed."),
     refreshCrewData,
+    toggleProps,
     clearMessage: () => {
       setError(null);
       setMessage(null);
