@@ -8,7 +8,9 @@ import type {
   CrewSharedRun,
 } from "./types";
 
-const RUN_PAGE_SIZE = 20;
+const RECENT_RUN_LIMIT = 20;
+const MINI_BUILD_RUNS_PER_MEMBER = 16;
+const MAX_SHARED_RUN_READ = 200;
 
 type Row = Record<string, unknown>;
 
@@ -59,12 +61,14 @@ function activityTypeFrom(value: unknown): RunActivityType {
 }
 
 /**
- * Loads only the five UI-19 tables allowed by the Crew privacy contract.
- * `profiles` is queried solely for display names, and shared runs stay bounded.
+ * Loads only the safe Race Crew tables allowed by the privacy contract.
+ * `profiles` is queried solely for display names, shared runs stay bounded,
+ * and reactions contain only the run/member relationship used for Props.
  */
 export async function loadCrewDashboard(
   client: SupabaseClient,
   crewId: string,
+  viewerUserId: string,
 ): Promise<CrewDashboardData> {
   const membership = await client
     .from("crew_members")
@@ -76,8 +80,21 @@ export async function loadCrewDashboard(
   const memberRows = rows(membership.data);
   const userIds = memberRows.map((item) => requiredString(item, "user_id"));
   if (userIds.length === 0) {
-    return { members: [], summaries: [], runs: [], loadedAt: new Date().toISOString() };
+    return {
+      members: [],
+      summaries: [],
+      runs: [],
+      miniBuildRuns: [],
+      sharedRunsAvailable: true,
+      propsAvailable: true,
+      loadedAt: new Date().toISOString(),
+    };
   }
+
+  const sharedRunReadLimit = Math.min(
+    MAX_SHARED_RUN_READ,
+    Math.max(RECENT_RUN_LIMIT, userIds.length * MINI_BUILD_RUNS_PER_MEMBER),
+  );
 
   const [profileResult, summaryResult, runResult] = await Promise.all([
     client.from("profiles").select("id,display_name").in("id", userIds),
@@ -97,12 +114,12 @@ export async function loadCrewDashboard(
       .in("user_id", userIds)
       .order("local_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(RUN_PAGE_SIZE),
+      .limit(sharedRunReadLimit),
   ]);
 
   if (profileResult.error) throw new Error(profileResult.error.message);
   if (summaryResult.error) throw new Error(summaryResult.error.message);
-  if (runResult.error) throw new Error(runResult.error.message);
+  const sharedRunsAvailable = !runResult.error;
 
   const names = new Map(
     rows(profileResult.data).map((item) => [
@@ -137,7 +154,7 @@ export async function loadCrewDashboard(
     };
   });
 
-  const runs: CrewSharedRun[] = rows(runResult.data).map((item) => {
+  const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).map((item) => {
     const userId = requiredString(item, "user_id");
     return {
       id: requiredString(item, "id"),
@@ -149,8 +166,52 @@ export async function loadCrewDashboard(
       durationSeconds: requiredNumber(item, "duration_seconds"),
       createdAt: requiredString(item, "created_at"),
       updatedAt: requiredString(item, "updated_at"),
+      propsCount: 0,
+      viewerHasPropped: false,
     };
   });
 
-  return { members, summaries, runs, loadedAt: new Date().toISOString() };
+  const recentRuns = allRuns.slice(0, RECENT_RUN_LIMIT);
+  const recentRunIds = recentRuns.map((run) => run.id);
+  const reactionResult = !sharedRunsAvailable || recentRunIds.length === 0
+    ? { data: [], error: null }
+    : await client
+      .from("crew_reactions")
+      .select("shared_run_id,user_id")
+      .eq("crew_id", crewId)
+      .in("shared_run_id", recentRunIds);
+  const propsAvailable = sharedRunsAvailable && !reactionResult.error;
+
+  const propsCounts = new Map<string, number>();
+  const viewerProps = new Set<string>();
+  for (const item of rows(propsAvailable ? reactionResult.data : [])) {
+    const runId = requiredString(item, "shared_run_id");
+    const userId = requiredString(item, "user_id");
+    propsCounts.set(runId, (propsCounts.get(runId) ?? 0) + 1);
+    if (userId === viewerUserId) viewerProps.add(runId);
+  }
+
+  const runs = recentRuns.map((run) => ({
+    ...run,
+    propsCount: propsCounts.get(run.id) ?? 0,
+    viewerHasPropped: viewerProps.has(run.id),
+  }));
+
+  const miniBuildRuns = allRuns.map((run) => ({
+    id: run.id,
+    userId: run.userId,
+    localDate: run.localDate,
+    activityType: run.activityType,
+    distanceMiles: run.distanceMiles,
+  }));
+
+  return {
+    members,
+    summaries,
+    runs,
+    miniBuildRuns,
+    sharedRunsAvailable,
+    propsAvailable,
+    loadedAt: new Date().toISOString(),
+  };
 }

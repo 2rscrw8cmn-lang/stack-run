@@ -55,11 +55,21 @@ function sharedRun(
     durationSeconds: 2352,
     createdAt: `${localDate}T14:00:00Z`,
     updatedAt: `${localDate}T14:00:00Z`,
+    propsCount: 0,
+    viewerHasPropped: false,
     ...values,
   };
 }
 
 function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardData {
+  const runs = [
+    sharedRun("new", "drew", "2026-08-09", {
+      activityType: "long",
+      distanceMiles: 6.1,
+      durationSeconds: 3522,
+    }),
+    sharedRun("old", "travis", "2026-08-08"),
+  ];
   return {
     members,
     summaries: [
@@ -85,14 +95,16 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
         milesBuilt: 98,
       }),
     ],
-    runs: [
-      sharedRun("new", "drew", "2026-08-09", {
-        activityType: "long",
-        distanceMiles: 6.1,
-        durationSeconds: 3522,
-      }),
-      sharedRun("old", "travis", "2026-08-08"),
-    ],
+    runs,
+    miniBuildRuns: runs.map(({ id, userId, localDate, activityType, distanceMiles }) => ({
+      id,
+      userId,
+      localDate,
+      activityType,
+      distanceMiles,
+    })),
+    sharedRunsAvailable: true,
+    propsAvailable: true,
     loadedAt: "2026-08-10T14:00:00Z",
     ...overrides,
   };
@@ -128,6 +140,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     crewData: dashboard(),
     crewDataStatus: "ready",
     crewDataError: null,
+    propsPendingRunIds: [],
+    propsErrors: {},
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -139,6 +153,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     leaveCrew: action,
     removeMember: action,
     refreshCrewData: action,
+    toggleProps: action,
     clearMessage: vi.fn(),
     ...overrides,
   };
@@ -246,6 +261,23 @@ describe("Runs You / Crew context", () => {
     await user.click(screen.getByRole("tab", { name: "You" }));
     expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
     expect(screen.queryByText("Private personal note")).not.toBeInTheDocument();
+  });
+
+  it("keeps comparisons available when only shared-run/Mini Build loading fails", async () => {
+    await openCrew(
+      controller({
+        crewData: dashboard({
+          runs: [],
+          miniBuildRuns: [],
+          sharedRunsAvailable: false,
+          propsAvailable: false,
+        }),
+      }),
+    );
+
+    expect(screen.getByRole("list", { name: "Weekly Miles comparison" })).toBeInTheDocument();
+    expect(screen.getByText("Recent crew runs unavailable.")).toBeInTheDocument();
+    expect(screen.getByText("Mini Builds unavailable.")).toBeInTheDocument();
   });
 });
 
@@ -369,6 +401,48 @@ describe("Crew comparisons and runs", () => {
     expect(runButtons[0]).toHaveTextContent("9:37 /mi");
   });
 
+  it("shows one binary Props action, count and pressed state while disabling self-Props", async () => {
+    const toggleProps = vi.fn(async () => undefined);
+    const crewRuns = [
+      sharedRun("teammate", "drew", "2026-08-09", {
+        propsCount: 3,
+        viewerHasPropped: true,
+      }),
+      sharedRun("self", "zack", "2026-08-08", { propsCount: 2 }),
+    ];
+    const user = await openCrew(
+      controller({
+        crewData: dashboard({ runs: crewRuns }),
+        toggleProps,
+      }),
+    );
+
+    const removeProps = screen.getByRole("button", { name: "Remove Props from Drew" });
+    expect(removeProps).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("3 Props")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Props.*Zack|Zack.*Props/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/2 Props. Props are for encouraging teammates/)).toBeInTheDocument();
+
+    await user.click(removeProps);
+    expect(toggleProps).toHaveBeenCalledWith("teammate");
+  });
+
+  it("renders stable member-ordered Mini Builds from activity-colored shared blocks", async () => {
+    await openCrew();
+    const rail = screen.getByRole("list", { name: "Crew Mini Builds" });
+    const cards = within(rail).getAllByRole("listitem");
+
+    expect(cards).toHaveLength(3);
+    expect(cards[0]).toHaveTextContent("Zack");
+    expect(cards[0]).toHaveTextContent("You");
+    expect(cards[0]).toHaveTextContent("122 MI BUILT");
+    expect(cards[0]).toHaveTextContent("No blocks yet.");
+    expect(cards[1]).toHaveTextContent("Drew");
+    expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
+    expect(cards[1]).toHaveAttribute("data-member-color");
+    expect(screen.getByText(/Personal block placements stay private/)).toBeInTheDocument();
+  });
+
   it("opens a crew-safe detail and never exposes personal/private fields", async () => {
     const unsafe = {
       ...sharedRun("unsafe", "drew", "2026-08-09", {
@@ -392,6 +466,8 @@ describe("Crew comparisons and runs", () => {
     expect(detail.getByText("6.1 MI")).toBeInTheDocument();
     expect(detail.getByText("58:42")).toBeInTheDocument();
     expect(detail.getByText("9:37 /MI")).toBeInTheDocument();
+    expect(detail.getByText("0 crew members")).toBeInTheDocument();
+    expect(detail.getByRole("button", { name: "Give Props to Drew" })).toBeInTheDocument();
     expect(detail.queryByText(/heart|155|load|72|effort|great/i)).not.toBeInTheDocument();
     expect(detail.queryByText("Private crew note")).not.toBeInTheDocument();
     expect(detail.queryByText("intervals-secret-id")).not.toBeInTheDocument();

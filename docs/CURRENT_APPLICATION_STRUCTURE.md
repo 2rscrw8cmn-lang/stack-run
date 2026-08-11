@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-19 Crew Runs + Comparisons is implemented on top of the accepted UI-18 foundation, with live two-account/responsive browser smoke checks still pending.** Runs now switches locally between the unchanged personal `YOU` experience and a private `CREW` view with race identity, the four approved comparisons, a bounded recent-run list and a separate crew-safe run detail. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-19 adds no migration, reaction, comment, mini Build, public discovery, full personal cloud sync or Intervals OAuth.
+**UI-20 Props + Mini Builds is implemented on top of the accepted UI-18/UI-19 Race Crew experience, with live migration/RLS and responsive browser checks still pending.** Crew runs now carry one binary, crew-private Props action and each member has a compact read-only Build derived only from bounded safe shared-run facts. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-20 adds no comments, notifications, profiles, public discovery, full personal cloud sync or Intervals OAuth.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -863,7 +863,7 @@ The only UI-18 production dependency is `@supabase/supabase-js`. No local AppSta
 
 `src/features/runs/RunsScreen.tsx` now owns an accessible, keyboard-operable `YOU | CREW` tab control. It defaults to `YOU`, keeps the existing personal summary, Training Signals, Recent Runs, Log Run and private detail behavior in that panel, and changes no bottom navigation or route. `CREW` swaps only the content inside Runs and keeps personal Runs available when account or network state fails.
 
-`src/crew/dashboard.ts` is the UI-19 read boundary. It first loads current `crew_members`, resolves only `profiles.display_name`, then reads the existing `crew_member_summaries` columns and at most 20 `shared_runs`, ordered by local date and creation time newest first. The shared-run select is limited to id/user/date/activity/distance/duration/timestamps. No personal `RunLog`, Intervals id/source, exact start time, HR/zones/load, effort, note, route or plan detail is requested or mapped.
+`src/crew/dashboard.ts` is the Crew read boundary. It first loads current `crew_members`, resolves only `profiles.display_name`, then reads the existing `crew_member_summaries` columns and a bounded set of newest `shared_runs`, ordered by local date and creation time newest first. UI-20 raises the safe shared-run ceiling according to crew size (maximum 200) so the same read can feed Recent Runs and bounded Mini Builds. The shared-run select remains limited to id/user/date/activity/distance/duration/timestamps. No personal `RunLog`, Intervals id/source, exact start time, HR/zones/load, effort, note, route or plan detail is requested or mapped.
 
 `useRaceCrew` keeps this dashboard independent from personal AppState. Entering Crew performs a stale-aware read, a manual Refresh forces one, foreground refresh is allowed after five minutes, and no polling or Realtime subscription exists. Projection updates invalidate the local Crew read cache so a later Crew entry can show the runner's newly projected work. Membership removal and display-name changes force a safe refresh.
 
@@ -872,6 +872,26 @@ The only UI-18 production dependency is `@supabase/supabase-js`. No local AppSta
 `CrewRunRow.tsx` and `CrewRunDetailSheet.tsx` consume only `CrewSharedRun`. Pace is derived from shared distance/duration. Member markers strengthen identity and the existing STACK activity icon/color remains the semantic run-type cue. Even the current runner's row opens the same crew-safe detail, with no edit/delete/private-data actions. `ActivityTypePicker.tsx` is the reusable icon-card control used by manual/edit run entry and extra imported-run confirmation; imported scheduled matches still take the linked planned type, and unscheduled imports still default to Easy. UI-20 reactions, comments, member profiles and mini Builds remain deferred.
 
 UI-19 introduces no database migration, AppState migration, router, global state, Realtime subscription or new production dependency.
+
+## UI-20 — Props + Mini Builds
+
+`supabase/migrations/20260810230000_crew_reactions.sql` adds one narrow `crew_reactions` table with primary key `(shared_run_id, user_id)`. The table contains only crew, shared-run, member and creation-time relationships. A composite foreign key prevents attaching a reaction to a run in another crew. RLS limits reads to active members, inserts to the authenticated member's own id and a teammate's run, and deletes to the member's own Prop. Leaving or removal cleans Props the former member gave; run deletion cascades reactions attached to that run. `supabase/tests/0002_crew_reactions_rls.sql` transactionally covers member add/read/remove, duplicate rejection, self-Prop denial, another member's delete denial, outsider denial and removal cleanup.
+
+`src/crew/reactions.ts` owns the idempotent reaction upsert/delete and optimistic state transition. `useRaceCrew` prevents concurrent mutations for the same run, changes the button/count immediately, rolls only that run back on failure and leaves the chronological run array in place. Dashboard refresh remains stale/manual with no polling or Realtime. Reaction read failure leaves shared runs visible with Props unavailable; shared-run failure leaves comparisons intact and renders explicit Recent/Mini Build unavailable states.
+
+`src/crew/dashboard.ts` still makes one bounded shared-run read, now capped at 200 based on crew size. Its newest 20 rows feed Recent Runs and its safe subset feeds up to 16 recent blocks per member. One batched `crew_reactions` query covers those visible run ids; there are no per-run or per-member queries.
+
+`src/crew/miniBuild.ts` is the sanitized social Build boundary. Its input contains only shared-run id, member id, local date, STACK activity type and distance. It reuses the personal Build's width bands, activity heights, eight-column grid and deterministic auto-placement, but never reads or uploads personal `blockPlacements`. The result intentionally represents recent shared training rather than reproducing a runner's manually arranged tower.
+
+`CrewMiniBuild.tsx` renders the derived blocks as a decorative, aria-hidden SVG beside authoritative member name, `YOU`, miles-built and recent-run-count text. Activity type controls lime/blue/yellow/purple/white block color; the stable member accent remains an identity marker only. `THE CREW` is a compact horizontal, touch/keyboard-scrollable card rail so a ten-person crew does not produce excessive page length. Members with zero runs remain visible with `No blocks yet.`
+
+`PropsButton.tsx` uses the restrained Lucide `Sparkles` icon plus `PROPS`/`PROPPED`, a 44px target and `aria-pressed`. Props appears on Recent Crew Run rows and crew-safe Run Detail. Self-Props are omitted as an action and denied by RLS. Counts never affect feed or comparison order. The default Recent list shows six of the existing newest-20 read with a simple opt-in `Show more` action so Mini Builds remain reachable on phones.
+
+UI-20 adds no AppState migration or production dependency. Personal placement data, complete `RunLog` objects, Intervals ids/credentials, exact start times, routes, HR/zones/load, effort and notes remain outside the UI-20 query and rendering contracts.
+
+UI-20 automated verification on 2026-08-10 passes: `npm run check` completed lint, 67 test files / 869 tests, TypeScript and the production Vite build. Live Supabase migration/RLS and responsive browser checks remain pending because this environment has no project credentials, local Docker database or connected in-app browser.
+
+No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

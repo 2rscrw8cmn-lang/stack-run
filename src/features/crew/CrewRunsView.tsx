@@ -23,7 +23,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { CrewMemberSummary, CrewSharedRun } from "../../crew/types";
+import type { CrewMemberSummary } from "../../crew/types";
 import {
   comparisonBarPercent,
   comparisonValue,
@@ -36,6 +36,13 @@ import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
+import { CrewMiniBuild } from "./CrewMiniBuild";
+import {
+  deriveCrewMiniBuild,
+  orderedMiniBuildMembers,
+} from "../../crew/miniBuild";
+
+const DEFAULT_RECENT_RUNS = 6;
 
 const METRIC_LABEL: Record<ComparisonMetric, string> = {
   "weekly-miles": "Weekly Miles",
@@ -110,7 +117,8 @@ function CrewAccessState({
 
 export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
   const [metric, setMetric] = useState<ComparisonMetric>("weekly-miles");
-  const [selectedRun, setSelectedRun] = useState<CrewSharedRun | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
@@ -197,10 +205,20 @@ export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
     );
   }
 
-  const members = crew.crewData.members;
-  const comparisonRows = orderedComparisonRows(metric, members, crew.crewData.summaries);
+  const dashboardData = crew.crewData;
+  const members = dashboardData.members;
+  const comparisonRows = orderedComparisonRows(metric, members, dashboardData.summaries);
   const currentUserId = crew.account?.profile.id;
-  const freshness = crewFreshness(crew.crewData.summaries);
+  const freshness = crewFreshness(dashboardData.summaries);
+  const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
+  const recentRuns = showAllRecentRuns
+    ? dashboardData.runs
+    : dashboardData.runs.slice(0, DEFAULT_RECENT_RUNS);
+  const hiddenRecentRunCount = dashboardData.runs.length - recentRuns.length;
+  const miniBuildMembers = orderedMiniBuildMembers(members, currentUserId);
+  const summariesByUserId = new Map(
+    dashboardData.summaries.map((summary) => [summary.userId, summary] as const),
+  );
   const maxDisplayedValue = comparisonRows.reduce((maximum, row) => {
     const value = comparisonValue(metric, row.summary);
     return value === null ? maximum : Math.max(maximum, value);
@@ -357,21 +375,88 @@ export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
         icon={<History size={15} strokeWidth={2} />}
         title="Recent Crew Runs"
       >
-        {crew.crewData.runs.length === 0 ? (
+        {!dashboardData.sharedRunsAvailable ? (
+          <p className="crew-recent__empty">Recent crew runs unavailable.</p>
+        ) : dashboardData.runs.length === 0 ? (
           <p className="crew-recent__empty">No crew runs yet.</p>
         ) : (
           <ul className="crew-recent__list">
-            {crew.crewData.runs.map((run) => (
-              <CrewRunRow key={run.id} run={run} onOpen={() => setSelectedRun(run)} />
+            {recentRuns.map((run) => (
+              <CrewRunRow
+                key={run.id}
+                run={run}
+                currentUserId={currentUserId ?? ""}
+                propsPending={crew.propsPendingRunIds.includes(run.id)}
+                propsError={crew.propsErrors[run.id] ?? null}
+                propsAvailable={dashboardData.propsAvailable}
+                onOpen={() => setSelectedRunId(run.id)}
+                onToggleProps={() => void crew.toggleProps(run.id)}
+              />
             ))}
           </ul>
         )}
+        {hiddenRecentRunCount > 0 && (
+          <Button variant="ghost" onClick={() => setShowAllRecentRuns(true)}>
+            Show {hiddenRecentRunCount} more
+          </Button>
+        )}
+      </Section>
+
+      <Section
+        className="crew-builds"
+        icon={<Layers3 size={15} strokeWidth={2} />}
+        title="The Crew"
+      >
+        <p className="crew-builds__intro">
+          Recent shared runs, automatically built. Personal block placements stay private.
+        </p>
+        {!dashboardData.sharedRunsAvailable ? (
+          <p className="crew-builds__unavailable">Mini Builds unavailable.</p>
+        ) : <ul className="crew-builds__rail" aria-label="Crew Mini Builds">
+          {miniBuildMembers.map((member) => {
+            const summary = summariesByUserId.get(member.userId) ?? null;
+            const model = deriveCrewMiniBuild(dashboardData.miniBuildRuns, member.userId);
+            const isYou = member.userId === currentUserId;
+            return (
+              <li
+                key={member.userId}
+                className="crew-build-card technical-grid"
+                data-member-color={crewMemberAccent(member.userId)}
+                data-you={isYou || undefined}
+              >
+                <div className="crew-build-card__heading">
+                  <p className="crew-build-card__name">
+                    <span className="crew-member-marker" aria-hidden="true" />
+                    <span>{member.displayName}</span>
+                    {isYou && <span className="crew-build-card__you machine-label">You</span>}
+                  </p>
+                  <p className="crew-build-card__miles data-value">
+                    {formatMiles(summary?.milesBuilt ?? 0)} MI <span>BUILT</span>
+                  </p>
+                </div>
+                <CrewMiniBuild model={model} />
+                {model.sourceRunCount > 0 && (
+                  <p className="crew-build-card__context machine-label">
+                    {model.sourceRunCount} recent shared {model.sourceRunCount === 1 ? "run" : "runs"}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>}
       </Section>
 
       <CrewRunDetailSheet
         run={selectedRun}
         isOpen={selectedRun !== null}
-        onClose={() => setSelectedRun(null)}
+        currentUserId={currentUserId ?? ""}
+        propsPending={selectedRun ? crew.propsPendingRunIds.includes(selectedRun.id) : false}
+        propsError={selectedRun ? crew.propsErrors[selectedRun.id] ?? null : null}
+        propsAvailable={dashboardData.propsAvailable}
+        onToggleProps={() => {
+          if (selectedRun) void crew.toggleProps(selectedRun.id);
+        }}
+        onClose={() => setSelectedRunId(null)}
       />
     </div>
   );

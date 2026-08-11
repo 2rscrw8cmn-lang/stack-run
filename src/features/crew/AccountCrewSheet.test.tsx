@@ -23,6 +23,8 @@ function controller(
     crewData: null,
     crewDataStatus: "idle",
     crewDataError: null,
+    propsPendingRunIds: [],
+    propsErrors: {},
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -34,6 +36,7 @@ function controller(
     leaveCrew: action,
     removeMember: action,
     refreshCrewData: action,
+    toggleProps: action,
     clearMessage: vi.fn(),
     ...overrides,
   };

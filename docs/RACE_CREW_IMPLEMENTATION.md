@@ -1,6 +1,6 @@
 # Race Crew — Implementation Plan
 
-Status: **UI-18 accepted; UI-19 implemented with live manual QA pending.**
+Status: **UI-18 and UI-19 accepted; UI-20 implemented with live migration/manual QA pending.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
 
@@ -624,7 +624,7 @@ Personal Runs remains usable through every failure state.
 - Signed-out, no-crew, one-member, loading, no-runs and unavailable/retry states are present; Crew failures do not affect `YOU`.
 - UI-20 reactions, comments, member profiles and mini Builds were not added.
 
-Automated UI-19 acceptance coverage is implemented. Live two-account Supabase and responsive browser smoke checks remain the final manual acceptance items.
+UI-19 is complete and accepted via merged PR #36.
 
 ---
 
@@ -663,6 +663,22 @@ No one can manipulate another runner's Build.
 ### Comments
 
 Still deferred unless separately approved.
+
+## Implemented UI-20 details
+
+- `crew_reactions` is the single binary Props model. Its primary key prevents more than one Prop per user/run, a composite foreign key enforces same-crew run identity, RLS is active-member-only and self-Props are denied.
+- Props appears on Recent Crew Run and crew-safe Run Detail using Lucide `Sparkles`, text, total count, `aria-pressed`, a 44px target, immediate optimistic state, rapid-repeat suppression and narrow rollback/error handling.
+- Props never changes chronological feed or comparison ordering. There is no reaction type/text, picker, ranking, algorithm, Realtime subscription, notification or comment surface.
+- One bounded shared-run query supplies the newest 20 Recent rows and the safe input for up to 16 recent blocks per member. One batched reaction query covers visible runs. There are no N+1 reads.
+- `CrewMiniBuild` is a dedicated CSS/SVG eight-column miniature. Width and height reuse existing STACK geometry; deterministic auto-placement uses only shared id/member/date/type/distance.
+- Full-history `Miles Built` remains the approved member-summary number. The miniature is a sanitized recent shared-training representation and does not reproduce or upload personal manual block placements.
+- `THE CREW` keeps the current account first and otherwise preserves membership order. It uses compact horizontal cards so approximately ten members remain practical at phone width. Member accent identifies the runner; activity color retains training meaning.
+- Missing shared-run data leaves comparisons intact and says Recent runs/Mini Builds are unavailable. Missing reaction data leaves the run feed intact and marks Props unavailable.
+- Comments, notifications, member profiles, public discovery, full personal cloud sync and Intervals OAuth remain outside UI-20.
+
+Live application of the migration, the repeatable deployed RLS transaction, two-account reaction behavior and responsive/iPhone Safari smoke checks remain acceptance requirements. Do not mark UI-20 complete until those checks pass.
+
+No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
 ---
 

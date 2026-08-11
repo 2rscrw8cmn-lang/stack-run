@@ -73,11 +73,28 @@ export interface CrewSharedRun {
   durationSeconds: number;
   createdAt: string;
   updatedAt: string;
+  propsCount: number;
+  viewerHasPropped: boolean;
+}
+
+/**
+ * The only run facts a Crew Mini Build can consume. Duration and every
+ * personal/private RunLog field are deliberately absent from this contract.
+ */
+export interface CrewMiniBuildRun {
+  id: string;
+  userId: string;
+  localDate: string;
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  distanceMiles: number;
 }
 
 export interface CrewDashboardData {
   members: CrewMember[];
   summaries: CrewMemberSummary[];
   runs: CrewSharedRun[];
+  miniBuildRuns: CrewMiniBuildRun[];
+  sharedRunsAvailable: boolean;
+  propsAvailable: boolean;
   loadedAt: string;
 }

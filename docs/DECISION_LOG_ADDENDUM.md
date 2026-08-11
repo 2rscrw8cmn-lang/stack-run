@@ -279,6 +279,30 @@ No social feed/comparison UI yet.
 
 Comments remain separately reviewable.
 
+## D-064 — Props is one crew-private binary reaction; Mini Builds are sanitized derivations
+
+**Decision:** UI-20 adds exactly one encouragement reaction, `Props`, and one compact read-only Build representation per member.
+
+Props rules:
+
+- one row per shared run/member and no reaction type, emoji, text or notification state;
+- active Crew membership gates all reads and writes through RLS;
+- a member toggles only their own Prop;
+- self-Props are disabled;
+- counts never rank or reorder Crew runs;
+- no comments, notifications, profiles or popularity surfaces.
+
+Mini Build rules:
+
+- derives from bounded safe shared-run id/member/date/activity-type/distance facts only;
+- reuses the existing distance width, activity height, eight-column and deterministic placement rules;
+- uses activity color for training meaning and member accent only for identity;
+- full-history Miles Built stays a separate approved member summary;
+- never uploads or reproduces personal manual `blockPlacements`;
+- no manipulation, ranking or invented placeholder blocks.
+
+UI-20 is the last currently authorized Race Crew phase. No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
+
 ## Active implementation order
 
 Complete:
@@ -288,17 +312,18 @@ Complete:
 - UI-14
 - UI-16
 - UI-17
+- UI-18
+- UI-19
 
 Deferred/skipped:
 
 - UI-12 Wellness
 - UI-15 Plan Export Investigation
 
-Next:
+Current acceptance:
 
-1. **UI-18 — Race Crew Foundation** (D-058 through D-063)
-2. **UI-19 — Crew Runs + Comparisons**
-3. **UI-20 — Props + Mini Builds**
+- **UI-20 — Props + Mini Builds** is implemented; live migration/RLS and responsive/manual QA remain before it is complete.
+- No later phase is authorized.
 
 See:
 
