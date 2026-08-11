@@ -141,6 +141,20 @@ describe("Crew dashboard query", () => {
         buildColumnStart: 2,
       },
     ]);
+    // The communal tower's own contract: personal placement is dropped rather
+    // than carried along and ignored later.
+    expect(loaded.crewBuildRuns).toEqual([
+      {
+        id: "run-1",
+        userId: "user-1",
+        displayName: "Runner",
+        localDate: "2026-08-09",
+        activityType: "long",
+        distanceMiles: 6.1,
+        createdAt: "2026-08-09T12:00:00Z",
+      },
+    ]);
+    expect(loaded.sharedRunsTruncated).toBe(false);
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {
@@ -150,7 +164,9 @@ describe("Crew dashboard query", () => {
     expect(loaded.summaries).toHaveLength(1);
     expect(loaded.runs).toEqual([]);
     expect(loaded.miniBuildRuns).toEqual([]);
+    expect(loaded.crewBuildRuns).toEqual([]);
     expect(loaded.sharedRunsAvailable).toBe(false);
+    expect(loaded.sharedRunsTruncated).toBe(false);
     expect(loaded.propsAvailable).toBe(false);
   });
 });

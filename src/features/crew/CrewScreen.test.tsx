@@ -8,11 +8,8 @@ import type {
   CrewMemberSummary,
   CrewSharedRun,
 } from "../../crew/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import type { RunLog } from "../../domain/types";
-import { RunsScreen } from "../runs/RunsScreen";
+import { CrewScreen } from "./CrewScreen";
 
-const plan = loadSeedPlan();
 const TODAY = "2026-08-10";
 
 const members: CrewMember[] = [
@@ -64,7 +61,7 @@ function sharedRun(
 }
 
 function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardData {
-  const runs = [
+  const runs = overrides.runs ?? [
     sharedRun("new", "drew", "2026-08-09", {
       activityType: "long",
       distanceMiles: 6.1,
@@ -97,7 +94,8 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
         milesBuilt: 98,
       }),
     ],
-    runs,
+    // Both derived views default to the same safe rows the loader builds them
+    // from, so a test that changes the runs changes every view of them.
     miniBuildRuns: runs.map(({ id, userId, localDate, activityType, distanceMiles, buildRow, buildColumnStart }) => ({
       id,
       userId,
@@ -107,10 +105,21 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
+    crewBuildRuns: runs.map(({ id, userId, displayName, localDate, activityType, distanceMiles, createdAt }) => ({
+      id,
+      userId,
+      displayName,
+      localDate,
+      activityType,
+      distanceMiles,
+      createdAt,
+    })),
     sharedRunsAvailable: true,
+    sharedRunsTruncated: false,
     propsAvailable: true,
     loadedAt: "2026-08-10T14:00:00Z",
     ...overrides,
+    runs,
   };
 }
 
@@ -163,69 +172,20 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
   };
 }
 
-function personalRun(): RunLog {
-  return {
-    id: "private-run",
-    workoutId: null,
-    completedDate: "2026-08-09",
-    activityType: "easy",
-    distanceMiles: 5,
-    durationSeconds: 2700,
-    effort: "great",
-    notes: "Private personal note",
-    createdAt: "2026-08-09T12:00:00Z",
-    updatedAt: "2026-08-09T12:00:00Z",
-    importedMetrics: { averageHeartRate: 155, trainingLoad: 72 },
-  };
-}
-
-async function openCrew(crew = controller(), runLogs: RunLog[] = [personalRun()]) {
+function openCrew(crew = controller()) {
   const user = userEvent.setup();
-  render(
-    <RunsScreen
-      plan={plan}
-      runLogs={runLogs}
-      today={TODAY}
-      raceCrew={crew}
-      onOpenAccountCrew={vi.fn()}
-    />,
-  );
-  await user.click(screen.getByRole("tab", { name: "Crew" }));
+  render(<CrewScreen crew={crew} onOpenAccountCrew={vi.fn()} today={TODAY} />);
   return user;
 }
 
-describe("Runs You / Crew context", () => {
-  it("defaults to You, preserves personal Runs, and switches locally with tab semantics", async () => {
-    const user = userEvent.setup();
-    render(
-      <RunsScreen plan={plan} runLogs={[personalRun()]} today={TODAY} raceCrew={controller()} />,
-    );
-
-    expect(screen.getByRole("tab", { name: "You" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("heading", { name: "Training Signals" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Log Run" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Crew" }));
-    expect(screen.queryByRole("heading", { name: "Training Signals" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Log Run" })).not.toBeInTheDocument();
-    expect(screen.getByText("OUC Half Crew")).toBeInTheDocument();
-
-    const crewTab = screen.getByRole("tab", { name: "Crew" });
-    crewTab.focus();
-    await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("tab", { name: "You" })).toHaveFocus();
-    expect(screen.getByRole("heading", { name: "Training Signals" })).toBeInTheDocument();
-  });
-
-  it("shows the intentional signed-out state", async () => {
-    const signedOut = controller({ status: "signed-out", account: null, crewData: null });
-    await openCrew(signedOut, []);
+describe("Crew destination states", () => {
+  it("shows the intentional signed-out state", () => {
+    openCrew(controller({ status: "signed-out", account: null, crewData: null }));
     expect(screen.getByText("Sign in to see your crew.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Account & Crew" })).toBeInTheDocument();
   });
 
-  it("shows the intentional no-crew state", async () => {
+  it("shows the intentional no-crew state", () => {
     const noCrew = controller({
       account: {
         profile: { id: "zack", displayName: "Zack" },
@@ -236,43 +196,40 @@ describe("Runs You / Crew context", () => {
       },
       crewData: null,
     });
-    await openCrew(noCrew, []);
+    openCrew(noCrew);
     expect(screen.getByText("Join or create a crew to train with friends.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Account & Crew" })).toBeInTheDocument();
   });
 
-  it("shows a retryable unavailable state when Supabase is not configured", async () => {
-    await openCrew(
+  it("shows a retryable unavailable state when Supabase is not configured", () => {
+    openCrew(
       controller({
         configured: false,
         status: "unconfigured",
         account: null,
         crewData: null,
       }),
-      [],
     );
     expect(screen.getByText("Crew data unavailable")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try Again" })).toBeInTheDocument();
   });
 
-  it("keeps You usable when the Crew query fails", async () => {
-    const user = await openCrew(
+  it("offers a retry when the crew query fails and leaves personal STACK alone", () => {
+    openCrew(
       controller({ crewData: null, crewDataStatus: "error", crewDataError: "Network down" }),
     );
     expect(screen.getByText("Crew data unavailable")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try Again" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "You" }));
-    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
-    expect(screen.queryByText("Private personal note")).not.toBeInTheDocument();
+    expect(screen.getByText("Race Crew could not be reached. Personal STACK is unaffected.")).toBeInTheDocument();
   });
 
-  it("keeps comparisons available when only shared-run/Mini Build loading fails", async () => {
-    await openCrew(
+  it("keeps comparisons available when only shared-run loading fails", () => {
+    openCrew(
       controller({
         crewData: dashboard({
           runs: [],
           miniBuildRuns: [],
+          crewBuildRuns: [],
           sharedRunsAvailable: false,
           propsAvailable: false,
         }),
@@ -280,8 +237,9 @@ describe("Runs You / Crew context", () => {
     );
 
     expect(screen.getByRole("list", { name: "Weekly Miles comparison" })).toBeInTheDocument();
+    expect(screen.getByText("Crew Build unavailable.")).toBeInTheDocument();
     expect(screen.getByText("Recent crew runs unavailable.")).toBeInTheDocument();
-    expect(screen.getByText("Mini Builds unavailable.")).toBeInTheDocument();
+    expect(screen.getByText("Member Builds unavailable.")).toBeInTheDocument();
   });
 });
 
@@ -310,9 +268,9 @@ describe("Crew comparisons and runs", () => {
             members: expandedMembers,
             summaries: expandedSummaries,
             runs: [],
+            crewBuildRuns: [],
           }),
         }),
-        [],
       );
 
       const comparison = screen.getByRole("list", {
@@ -323,24 +281,48 @@ describe("Crew comparisons and runs", () => {
     },
   );
 
-  it("shows crew identity, member count, one-member encouragement, and empty runs", async () => {
+  it("leads with crew identity, the race and a live countdown", () => {
+    openCrew();
+
+    expect(screen.getByRole("heading", { level: 1, name: "OUC Half Crew" })).toBeInTheDocument();
+    expect(screen.getByText("Dec 5 · Half Marathon")).toBeInTheDocument();
+    expect(screen.getByText("117 days to race")).toBeInTheDocument();
+    // The crew name is stated once, not repeated by every module below it.
+    expect(screen.getAllByText("OUC Half Crew")).toHaveLength(1);
+  });
+
+  it("builds a one-member crew's tower and invites the rest", () => {
     const solo = members.slice(0, 1);
-    await openCrew(
+    const soloRun = sharedRun("solo", "zack", "2026-08-09", { distanceMiles: 5.5 });
+    openCrew(
       controller({
         account: {
           ...controller().account!,
           members: solo,
         },
-        crewData: dashboard({ members: solo, summaries: [summary("zack")], runs: [] }),
+        crewData: dashboard({
+          members: solo,
+          summaries: [summary("zack")],
+          runs: [soloRun],
+          miniBuildRuns: [],
+          crewBuildRuns: [
+            {
+              id: soloRun.id,
+              userId: soloRun.userId,
+              displayName: soloRun.displayName,
+              localDate: soloRun.localDate,
+              activityType: soloRun.activityType,
+              distanceMiles: soloRun.distanceMiles,
+              createdAt: soloRun.createdAt,
+            },
+          ],
+        }),
       }),
-      [],
     );
 
-    expect(
-      screen.getByText("Dec 5 · Half Marathon · 13.1 MI · 1 runner"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Invite your crew to start comparing training.")).toBeInTheDocument();
-    expect(screen.getByText("No crew runs yet.")).toBeInTheDocument();
+    expect(screen.getByText("miles built").parentElement).toHaveTextContent(/^5\.5/);
+    expect(screen.getByText("1 block · 1 runner")).toBeInTheDocument();
+    expect(screen.getByText("Invite your crew to build together.")).toBeInTheDocument();
   });
 
   it("switches all four metrics, sorts descending, keeps ties stable, and marks You quietly", async () => {
@@ -431,9 +413,9 @@ describe("Crew comparisons and runs", () => {
     expect(toggleProps).toHaveBeenCalledWith("teammate");
   });
 
-  it("renders stable member-ordered Mini Builds from activity-colored shared blocks", async () => {
+  it("renders stable member-ordered Member Builds from activity-colored shared blocks", async () => {
     await openCrew();
-    const rail = screen.getByRole("list", { name: "Crew Mini Builds" });
+    const rail = screen.getByRole("list", { name: "Member Builds" });
     const cards = within(rail).getAllByRole("listitem");
 
     expect(cards).toHaveLength(3);
@@ -444,7 +426,7 @@ describe("Crew comparisons and runs", () => {
     expect(cards[1]).toHaveTextContent("Drew");
     expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
     expect(cards[1]).toHaveAttribute("data-member-color");
-    expect(screen.getByText("Each runner's shared Build.")).toBeInTheDocument();
+    expect(screen.getByText("Each runner's own Build.")).toBeInTheDocument();
   });
 
   it("opens an exact read-only Member Build and resolves its block to crew-safe Run Detail", async () => {
@@ -554,5 +536,163 @@ describe("Crew comparisons and runs", () => {
     expect(detail.queryByText("Private crew note")).not.toBeInTheDocument();
     expect(detail.queryByText("intervals-secret-id")).not.toBeInTheDocument();
     expect(detail.queryByRole("button", { name: /Edit|Delete|Intervals/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Shared Crew Build", () => {
+  const buildRuns = [
+    sharedRun("first", "zack", "2026-08-05", {
+      distanceMiles: 4,
+      createdAt: "2026-08-05T12:00:00Z",
+    }),
+    sharedRun("second", "drew", "2026-08-06", {
+      activityType: "long",
+      distanceMiles: 8,
+      createdAt: "2026-08-06T12:00:00Z",
+    }),
+    sharedRun("third", "travis", "2026-08-07", {
+      activityType: "intervals",
+      distanceMiles: 5,
+      createdAt: "2026-08-07T12:00:00Z",
+    }),
+  ];
+
+  function crewWithBuild(overrides: Partial<CrewDashboardData> = {}) {
+    return controller({ crewData: dashboard({ runs: buildRuns, ...overrides }) });
+  }
+
+  it("leads with miles built, block count and runner count", () => {
+    openCrew(crewWithBuild());
+
+    expect(screen.getByText("Crew Build")).toBeInTheDocument();
+    expect(screen.getByText("17.0")).toBeInTheDocument();
+    expect(screen.getByText("miles built")).toBeInTheDocument();
+    expect(screen.getByText("3 blocks · 3 runners")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Crew Build blocks" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(3);
+  });
+
+  it("draws every member's run into one tower in contribution order", () => {
+    openCrew(crewWithBuild());
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+    const blocks = within(tower).getAllByRole("listitem");
+
+    expect(blocks.map((block) => block.getAttribute("data-type"))).toEqual([
+      "easy",
+      "long",
+      "intervals",
+    ]);
+    // The oldest contribution is on the ground; the tower grows upward.
+    expect(blocks[0]).toHaveAttribute("data-row", "0");
+  });
+
+  it("marks identity separately from activity color", () => {
+    openCrew(crewWithBuild());
+    const blocks = within(
+      screen.getByRole("list", { name: "Crew Build blocks" }),
+    ).getAllByRole("listitem");
+
+    const colors = blocks.map((block) => block.getAttribute("data-member-color"));
+    expect(colors.every(Boolean)).toBe(true);
+    // Two runners, two accents, and neither replaces the activity color.
+    expect(blocks[0].getAttribute("data-member-color")).not.toBe(
+      blocks[1].getAttribute("data-member-color"),
+    );
+    expect(blocks[0].getAttribute("data-type")).toBe("easy");
+    expect(blocks[0].querySelector(".crew-build__cap")).toBeInTheDocument();
+  });
+
+  it("names each block for a screen reader without exposing its decoration", () => {
+    openCrew(crewWithBuild());
+    const block = screen.getByRole("button", { name: "Drew, Long Run, 8 miles, August 6" });
+
+    expect(block).toBeInTheDocument();
+    expect(block.querySelectorAll("[aria-hidden='true']").length).toBeGreaterThan(0);
+    // One interactive target per block, not one per drawn face.
+    expect(block.closest("li")?.querySelectorAll("button")).toHaveLength(1);
+  });
+
+  it("opens the crew-safe Run Detail for the tapped block, whoever ran it", async () => {
+    const user = openCrew(crewWithBuild());
+    await user.click(screen.getByRole("button", { name: "Drew, Long Run, 8 miles, August 6" }));
+
+    const detail = within(screen.getByRole("dialog", { name: "Run Detail" }));
+    expect(detail.getByText("Drew")).toBeInTheDocument();
+    expect(detail.getByText("8 MI")).toBeInTheDocument();
+    expect(detail.queryByRole("button", { name: /Edit|Delete|Intervals/i })).not.toBeInTheDocument();
+  });
+
+  it("activates a block from the keyboard", async () => {
+    const user = openCrew(crewWithBuild());
+    const block = screen.getByRole("button", {
+      name: "Travis, Intervals, 5 miles, August 7",
+    });
+    block.focus();
+    expect(block).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+  });
+
+  it("lists the crew's runners as a compact legend rather than a leaderboard", () => {
+    openCrew(crewWithBuild());
+    const legend = within(screen.getByRole("list", { name: "Crew Build runners" }));
+
+    expect(legend.getAllByRole("listitem")).toHaveLength(3);
+    expect(legend.getByText("Zack")).toBeInTheDocument();
+    expect(legend.getByText("Drew")).toBeInTheDocument();
+  });
+
+  it("ignores personal Member Build placement when building the shared tower", () => {
+    const moved = buildRuns.map((item) => ({
+      ...item,
+      buildRow: 7,
+      buildColumnStart: 6,
+    }));
+    openCrew(crewWithBuild({ runs: moved }));
+
+    const blocks = within(
+      screen.getByRole("list", { name: "Crew Build blocks" }),
+    ).getAllByRole("listitem");
+    expect(blocks[0]).toHaveAttribute("data-row", "0");
+    expect(blocks[0]).toHaveAttribute("data-column-start", "1");
+  });
+
+  it("shows an honest empty field before the first shared run", () => {
+    openCrew(controller({ crewData: dashboard({ runs: [] }) }));
+
+    expect(screen.getByText("0.0")).toBeInTheDocument();
+    expect(screen.getByText("0 blocks · 3 runners")).toBeInTheDocument();
+    expect(screen.getByText("The first shared run starts the build.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Crew Build blocks" })).not.toBeInTheDocument();
+  });
+
+  it("says the Crew Build is unavailable rather than showing an empty tower", () => {
+    openCrew(
+      controller({
+        crewData: dashboard({ runs: [], sharedRunsAvailable: false }),
+      }),
+    );
+
+    expect(screen.getByText("Crew Build unavailable.")).toBeInTheDocument();
+    expect(screen.queryByText("The first shared run starts the build.")).not.toBeInTheDocument();
+  });
+
+  it("says so quietly when the safe read hit its ceiling", () => {
+    openCrew(crewWithBuild({ sharedRunsTruncated: true }));
+    expect(screen.getByText("Showing the most recent 3 shared runs.")).toBeInTheDocument();
+  });
+
+  it("keeps the tower in a scrollable viewport rather than shrinking its blocks", () => {
+    openCrew(crewWithBuild());
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+
+    expect(tower.parentElement).toHaveClass("crew-build__viewport");
+    // The field is told how many courses to draw, so a tall tower keeps its
+    // block size and scrolls instead of being squeezed into a fixed box.
+    expect(Number(tower.style.getPropertyValue("--crew-build-courses"))).toBeGreaterThan(0);
   });
 });

@@ -93,7 +93,9 @@ export async function loadCrewDashboard(
       summaries: [],
       runs: [],
       miniBuildRuns: [],
+      crewBuildRuns: [],
       sharedRunsAvailable: true,
+      sharedRunsTruncated: false,
       propsAvailable: true,
       loadedAt: new Date().toISOString(),
     };
@@ -214,12 +216,29 @@ export async function loadCrewDashboard(
     buildColumnStart: run.buildColumnStart,
   }));
 
+  // The communal tower's own contract. Personal placement is dropped here
+  // rather than merely ignored downstream, so it cannot reach the Crew Build.
+  const crewBuildRuns = allRuns.map((run) => ({
+    id: run.id,
+    userId: run.userId,
+    displayName: run.displayName,
+    localDate: run.localDate,
+    activityType: run.activityType,
+    distanceMiles: run.distanceMiles,
+    createdAt: run.createdAt,
+  }));
+
   return {
     members,
     summaries,
     runs,
     miniBuildRuns,
+    crewBuildRuns,
     sharedRunsAvailable,
+    // The read is generously bounded rather than unlimited. Filling it exactly
+    // is the one case where the visible tower may not be the whole crew, and
+    // the Crew screen says so instead of implying completeness.
+    sharedRunsTruncated: sharedRunsAvailable && allRuns.length >= sharedRunReadLimit,
     propsAvailable,
     loadedAt: new Date().toISOString(),
   };

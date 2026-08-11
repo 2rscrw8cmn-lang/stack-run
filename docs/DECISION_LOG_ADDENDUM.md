@@ -310,6 +310,49 @@ UI-20 does not create one shared Crew Build, communal placement/mileage, a fifth
 
 UI-20 is the last currently authorized Race Crew phase. No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
+## D-065 — Crew is a conditional fifth destination, because it owns one shared communal Build
+
+**Decision:** UI-21 promotes Race Crew from a context inside Runs to a top-level STACK destination, on the strength of a mechanic no other surface has: every crew member's shared runs contribute blocks to **one shared Crew Build**.
+
+This supersedes the earlier "Race Crew stays `YOU | CREW` inside Runs; no fifth tab" boundary. That boundary was correct while Crew was a feed and a comparison; it stopped being correct once the crew had a tower of its own.
+
+Navigation:
+
+- an active member of a crew sees `Today | Build | Runs | Crew | Plan`;
+- everybody else — signed out, or signed in with no crew — sees the original `Today | Build | Runs | Plan`;
+- Crew uses Lucide `UsersRound`; never `Trophy`, `Crown` or `Medal`, because a crew is collaboration and the Crew Build is a thing nobody wins;
+- losing membership while Crew is open falls back to Runs immediately, and an invalid Crew selection is never persisted;
+- no router is introduced; local screen state still holds the destination.
+
+Runs returns to being purely personal. The `YOU | CREW` switch is removed and nothing social is duplicated there.
+
+**Three Build models, never mixed:**
+
+- **Personal Build** — private, manually arranged by the runner;
+- **Member Build** — a crew-safe read-only reproduction of that runner's real shared personal arrangement;
+- **Crew Build** — an automatic combined tower derived from every safe shared run in the crew.
+
+Crew Build rules:
+
+- consumes only crew-safe `shared_runs` facts already approved: id, user, local date, activity type, distance, `created_at`;
+- **ignores** the personal `build_row` / `build_column_start` coordinates; those are Member-Build-only data and are dropped at the read boundary rather than passed along;
+- contribution order is `created_at` ascending, then shared-run `id` ascending, and never local device time, query arrival order, personal placement or randomness;
+- ordered blocks then run through the repository's existing deterministic auto-placement primitive, so the tower is identical on every device viewing the same runs;
+- the derived tower is **not persisted**: no communal coordinates, no widened `shared_runs`, **no migration**;
+- nobody owns it and nobody can move a block in it — the running is the contribution;
+- width from distance and height/color from activity type are unchanged, so activity color still means training type everywhere; member identity is a small separate cue in the existing stable member accent;
+- every block is one interactive target with a real accessible name and opens the existing crew-safe Run Detail, whoever ran it;
+- totals are miles built, blocks and runners only — no ranking, pace, fastest runner, score or XP;
+- a departed member's runs are deleted, so their blocks leave the tower and it reflows; access removal outranks tower permanence.
+
+The UI-19 comparison, UI-20 Recent Crew Runs with Props, and UI-20 Member Builds all move into Crew, unchanged in behavior and visually secondary to the Crew Build. `CREW BUILD` is our combined tower; `THE CREW` is each runner's individual Build.
+
+Account and crew management stays in Settings → Account & Crew.
+
+UI-21 does not add Realtime, a router, a global state library, comments, notifications, profiles, ranking, a pace leaderboard, a podium or a database migration.
+
+UI-21 is the last currently authorized Race Crew phase. No UI-22 is authorized. After UI-21, perform a whole-product review before defining additional phases.
+
 ## Active implementation order
 
 Complete:
@@ -321,6 +364,7 @@ Complete:
 - UI-17
 - UI-18
 - UI-19
+- UI-20
 
 Deferred/skipped:
 
@@ -329,7 +373,8 @@ Deferred/skipped:
 
 Current acceptance:
 
-- **UI-20 — Props + Mini Builds** is implemented and its deployed migration/RLS verification passed; live two-account and responsive/manual QA remain before it is complete.
+- **UI-20 — Props + Mini Builds** is complete and accepted (merged PR #37).
+- **UI-21 — Crew Destination + Shared Crew Build** is implemented; live two-account and responsive/manual QA remain before it is complete.
 - No later phase is authorized.
 
 See:

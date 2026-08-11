@@ -173,7 +173,33 @@ On 2026-08-11 the owner applied `20260810230000_crew_reactions.sql` and the upda
 
 UI-20 does not implement one shared Crew tower, communal mileage/placement, a fifth navigation item or UI-21 code.
 
-No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
+UI-20 is complete and accepted via merged PR #37.
+
+## UI-21 implementation status
+
+Implemented on `claude/ui-21-crew-destination-p9jxv8`:
+
+- Crew promoted to a conditional fifth destination for a signed-in active crew member: `Today | Build | Runs | Crew | Plan`, using Lucide `UsersRound`, with the original four destinations for everybody else and no router;
+- immediate fallback to Runs when membership or the session disappears while Crew is open, with no invalid Crew selection persisted;
+- the `YOU | CREW` switch removed from Runs, which is personal-only again with no duplicate crew surface;
+- one shared **Crew Build** derived from every safe shared run in the crew, with communal contribution order `shared_runs.created_at` ASC then `shared_runs.id` ASC, replayed through the repository's existing deterministic `placementOptions` / `autoPlaceOption` primitive;
+- personal `build_row` / `build_column_start` dropped at the read boundary so the communal tower cannot read Member-Build placement;
+- the derived tower never persisted — no communal coordinates, no widened `shared_runs`, **no migration**;
+- unchanged block semantics: width from distance, height and color from activity type, with member identity as a thin top-edge cap in the existing stable accent plus a compact legend;
+- the Crew Build as the hero: `X.X MILES BUILT`, `X BLOCKS · X RUNNERS`, a grounded eight-column technical field, usable block sizes and an internally scrollable viewport anchored on the newest courses for tall towers;
+- every block one keyboard-activatable interactive target with a real accessible name, opening the existing crew-safe Run Detail regardless of whose run it is;
+- crew header reduced to crew name, race line and a locally derived `N DAYS TO RACE` / `RACE DAY` / `RACE COMPLETE` countdown;
+- UI-19 comparisons, UI-20 Recent Crew Runs with Props and UI-20 Member Builds moved into Crew unchanged in behavior and visually secondary to the tower, with the crew name, runner count and Miles Built each stated once;
+- honest empty, one-member, unavailable and safety-ceiling states, including a quiet notice rather than silently presenting a truncated tower as complete;
+- one bounded crew dashboard payload feeding the Crew Build, comparisons, recent runs, Props and Member Builds, with no N+1 query, no Realtime and unchanged stale-aware/foreground/manual refresh.
+
+Automated verification covers conditional four/five destination navigation and order, Crew tab entry, Runs having no crew context or second crew surface, membership-loss and sign-out fallback with sign-in restore, one block per safe shared run, distance width and activity height rules, retained activity color, ignored personal placement, order-independent identical layout, `createdAt`→`id` contribution ordering, deterministic growth and post-removal reflow, correct totals, no private field in the derived model, hero totals, legend, one-member and no-run crews, unavailable shared-run state, block-to-detail resolution, keyboard activation, the separate member identity cue, tall-build container behavior and the truncation notice.
+
+Repository verification passes `npm run check`: lint, 70 test files / 921 tests, TypeScript and the production build. Rendered 320px / 390px / desktop verification passed with no horizontal overflow, five readable nav destinations at 320px and a legible tall tower. Live two-account and real iPhone Safari QA remain before UI-21 may be marked complete/accepted.
+
+UI-21 does not implement a pace leaderboard, ranking, podium, comments, notifications, profiles, Realtime, a router, a global state library, a new dependency, an AppState migration or a database migration.
+
+No UI-22 is currently authorized. After UI-21, perform a whole-product review before defining additional phases.
 
 ## Active source documents
 

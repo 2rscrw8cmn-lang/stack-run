@@ -33,7 +33,9 @@ function dashboard(runs: CrewSharedRun[]): CrewDashboardData {
     summaries: [],
     runs,
     miniBuildRuns: [],
+    crewBuildRuns: [],
     sharedRunsAvailable: true,
+    sharedRunsTruncated: false,
     propsAvailable: true,
     loadedAt: "now",
   };

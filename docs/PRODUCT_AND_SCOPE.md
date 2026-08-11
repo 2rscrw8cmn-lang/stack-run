@@ -115,13 +115,15 @@ Intervals officially recommends OAuth for apps intended for multiple users. The 
 
 ## Race Crew product direction
 
-Race Crew lives inside Runs as:
+Race Crew began inside Runs as a `YOU | CREW` context, explicitly not a fifth tab. **UI-21 changed that (D-065.)** Once every runner's shared runs contribute blocks to one communal Crew Build, Race Crew owns a mechanic no other screen has, and it became a destination:
 
 ```text
-YOU | CREW
+Today | Build | Runs | Crew | Plan
 ```
 
-Not a fifth tab.
+Crew is conditional: it appears only for a signed-in active member of a crew. Everybody else keeps the original `Today | Build | Runs | Plan`, and Runs is personal-only again.
+
+The Crew Build is the crew's own tower. It is derived from safe shared runs, deterministically arranged, never persisted, and it ignores each runner's personal Build placement — which belongs to Member Builds only. Nobody places a block in it and nobody can move one: the running is the contribution.
 
 Crew:
 
@@ -228,6 +230,13 @@ No social Crew feed/comparison screen yet.
 
 Comments separately reviewable.
 
+### UI-21 — Crew Destination + Shared Crew Build
+
+- Crew as a conditional fifth destination;
+- one shared communal Crew Build, derived and not persisted;
+- `YOU | CREW` removed from Runs;
+- comparisons, recent crew runs, Props and Member Builds moved into Crew.
+
 ## Success criteria
 
 STACK is successful when:
@@ -257,7 +266,7 @@ STACK is successful when:
 | Active plan | One race/plan at a time per personal device/user |
 | Platforms | Responsive web app; phone first |
 | Theme | Dark only |
-| Navigation | Today, Build, Runs, Plan |
+| Navigation | Today, Build, Runs, Plan — plus Crew for an active crew member |
 | Settings | Top-right gear |
 | Personal persistence | Browser localStorage schema 9 |
 | Social backend | Supabase Auth + Postgres + RLS |

@@ -18,8 +18,6 @@ import { RunRow } from "./RunRow";
 import { TrendCards } from "./TrendCards";
 import { TrainingSignalDetailSheet } from "../trends/TrainingSignalDetailSheet";
 import type { TrainingSignalId } from "../../domain/trends";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { CrewRunsView } from "../crew/CrewRunsView";
 
 interface RunsScreenProps {
   plan: TrainingPlan;
@@ -33,8 +31,6 @@ interface RunsScreenProps {
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   syncToken?: IntervalsConnection | string | null;
-  raceCrew?: RaceCrewController;
-  onOpenAccountCrew?: () => void;
 }
 
 /**
@@ -48,6 +44,11 @@ interface RunsScreenProps {
  *
  * The screen leads with the count rather than the word "Runs", per the UI-7
  * content-first rule: the tab already said what this is.
+ *
+ * Runs is personal again, and only personal. UI-19 borrowed this screen for a
+ * local `YOU | CREW` switch while Race Crew had no destination of its own.
+ * UI-21 gave the crew its own tower and its own tab, so the social surface
+ * moved there rather than existing in two places at once.
  */
 export function RunsScreen({
   plan,
@@ -56,12 +57,7 @@ export function RunsScreen({
   onDeleteRun = () => undefined,
   today = todayLocalDate(),
   syncToken,
-  raceCrew,
-  onOpenAccountCrew = () => undefined,
 }: RunsScreenProps) {
-  const [context, setContext] = useState<"you" | "crew">("you");
-  const youTabRef = useRef<HTMLButtonElement>(null);
-  const crewTabRef = useRef<HTMLButtonElement>(null);
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<TrainingSignalId | null>(null);
@@ -152,210 +148,146 @@ export function RunsScreen({
           <h1 className="runs-screen__screen-title data-value" ref={headingRef} tabIndex={-1}>
             Runs
             <span className="visually-hidden">
-              {context === "crew"
-                ? " · Crew"
-                : history.length === 0
+              {history.length === 0
                 ? " · No runs yet"
                 : ` · ${history.length} ${history.length === 1 ? "run" : "runs"}`}
             </span>
           </h1>
-          {context === "you" && (
-            <Button
-              variant="secondary"
-              className="runs-screen__log"
-              icon={<Plus size={18} strokeWidth={2} />}
-              onClick={() => openEntry(null, false)}
-            >
-              Log Run
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            className="runs-screen__log"
+            icon={<Plus size={18} strokeWidth={2} />}
+            onClick={() => openEntry(null, false)}
+          >
+            Log Run
+          </Button>
         </div>
 
-        <div className="runs-context" role="tablist" aria-label="Runs context">
-          <button
-            ref={youTabRef}
-            id="runs-context-you"
-            type="button"
-            role="tab"
-            aria-selected={context === "you"}
-            aria-controls="runs-you-panel"
-            tabIndex={context === "you" ? 0 : -1}
-            onClick={() => setContext("you")}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                setContext("crew");
-                crewTabRef.current?.focus();
-              }
-            }}
-          >
-            You
-          </button>
-          <button
-            ref={crewTabRef}
-            id="runs-context-crew"
-            type="button"
-            role="tab"
-            aria-selected={context === "crew"}
-            aria-controls="runs-crew-panel"
-            tabIndex={context === "crew" ? 0 : -1}
-            onClick={() => setContext("crew")}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                setContext("you");
-                youTabRef.current?.focus();
-              }
-            }}
-          >
-            Crew
-          </button>
-        </div>
-
-        {context === "you" &&
-          (history.length === 0 ? (
-            <p className="runs-screen__count data-value">No runs yet</p>
-          ) : (
-            <>
-              <dl className="runs-screen__instrument" aria-label="Running history summary">
-                <div>
-                  <dd className="data-value">{history.length}</dd>
-                  <dt className="machine-label">{history.length === 1 ? "run" : "runs"}</dt>
-                </div>
-                <div>
-                  <dd className="data-value">{formatMiles(miles)}</dd>
-                  <dt className="machine-label">Total mi</dt>
-                </div>
-                <div>
-                  <dd className="data-value">{formatDurationSeconds(totalTime)}</dd>
-                  <dt className="machine-label">Total time</dt>
-                </div>
-                <div>
-                  <dd className="data-value">{activeWeeks}</dd>
-                  <dt className="machine-label">Weeks</dt>
-                </div>
-              </dl>
-              <p className="visually-hidden">{formatMiles(miles)} miles run</p>
-            </>
-          ))}
+        {history.length === 0 ? (
+          <p className="runs-screen__count data-value">No runs yet</p>
+        ) : (
+          <>
+            <dl className="runs-screen__instrument" aria-label="Running history summary">
+              <div>
+                <dd className="data-value">{history.length}</dd>
+                <dt className="machine-label">{history.length === 1 ? "run" : "runs"}</dt>
+              </div>
+              <div>
+                <dd className="data-value">{formatMiles(miles)}</dd>
+                <dt className="machine-label">Total mi</dt>
+              </div>
+              <div>
+                <dd className="data-value">{formatDurationSeconds(totalTime)}</dd>
+                <dt className="machine-label">Total time</dt>
+              </div>
+              <div>
+                <dd className="data-value">{activeWeeks}</dd>
+                <dt className="machine-label">Weeks</dt>
+              </div>
+            </dl>
+            <p className="visually-hidden">{formatMiles(miles)} miles run</p>
+          </>
+        )}
       </div>
 
-      {context === "you" ? (
-        <div
-          id="runs-you-panel"
-          className="runs-context__panel"
-          role="tabpanel"
-          aria-labelledby="runs-context-you"
+      <TrendCards
+        plan={plan}
+        runLogs={runLogs}
+        today={today}
+        onOpenSignal={(signal) => {
+          setSelectedSignal(signal);
+          setSignalOpen(true);
+        }}
+      />
+
+      {history.length === 0 ? (
+        <EmptyState
+          icon={<History size={24} strokeWidth={1.6} />}
+          title="Nothing recorded yet"
         >
-          <TrendCards
-            plan={plan}
-            runLogs={runLogs}
-            today={today}
-            onOpenSignal={(signal) => {
-              setSelectedSignal(signal);
-              setSignalOpen(true);
-            }}
-          />
-
-          {history.length === 0 ? (
-            <EmptyState
-              icon={<History size={24} strokeWidth={1.6} />}
-              title="Nothing recorded yet"
-            >
-              Every run you complete or sync shows up here, newest first —
-              scheduled or extra. Log one and it earns a block.
-            </EmptyState>
-          ) : (
-            <Section
-              className="runs-recent"
-              icon={<History size={15} strokeWidth={2} />}
-              title="Recent Runs"
-            >
-              <ul className="runs-screen__list">
-                {history.map((entry) => (
-                  <RunRow
-                    key={entry.runLog.id}
-                    entry={entry}
-                    onOpen={() => {
-                      returnToSignal.current = false;
-                      setDetailRunLogId(entry.runLog.id);
-                      setDetailOpen(true);
-                    }}
-                  />
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          <p className="visually-hidden" aria-live="polite">
-            {announcement}
-          </p>
-
-          {selected && (
-            <RunDetailSheet
-              entry={selected}
-              syncToken={syncToken}
-              isOpen={isDetailOpen}
-              onEditRun={() => openEntry(selected, true)}
-              onClose={closeDetail}
-            />
-          )}
-
-          <TrainingSignalDetailSheet
-            signal={selectedSignal}
-            plan={plan}
-            runLogs={runLogs}
-            today={today}
-            isOpen={isSignalOpen}
-            onClose={() => {
-              setSignalOpen(false);
-              if (!returnToSignal.current) setSelectedSignal(null);
-            }}
-            onOpenRun={(runLogId) => {
-              returnToSignal.current = true;
-              setSignalOpen(false);
-              setDetailRunLogId(runLogId);
-              setDetailOpen(true);
-            }}
-          />
-
-          {(isEditOpen || editing) && (
-            <CompleteRunSheet
-              key={editVisit}
-              isOpen={isEditOpen}
-              workout={editing?.workout ?? null}
-              runLog={editing?.runLog}
-              today={today}
-              onClose={entryClosed}
-              onDelete={
-                editing
-                  ? () => {
-                      onDeleteRun(editing.runLog.id);
-                      pendingFocus.current = true;
-                      commit("Run deleted. Its block came out of the tower.");
-                    }
-                  : undefined
-              }
-              onSave={(workout, values) => {
-                onSaveRun(workout, values, editing?.runLog.id);
-                commit(
-                  editing
-                    ? "Run updated."
-                    : `Run saved. You earned ${earnedBlockPhrase(values.activityType)}.`,
-                );
-              }}
-            />
-          )}
-        </div>
+          Every run you complete or sync shows up here, newest first —
+          scheduled or extra. Log one and it earns a block.
+        </EmptyState>
       ) : (
-        <div
-          id="runs-crew-panel"
-          className="runs-context__panel"
-          role="tabpanel"
-          aria-labelledby="runs-context-crew"
+        <Section
+          className="runs-recent"
+          icon={<History size={15} strokeWidth={2} />}
+          title="Recent Runs"
         >
-          <CrewRunsView crew={raceCrew ?? null} onOpenAccountCrew={onOpenAccountCrew} />
-        </div>
+          <ul className="runs-screen__list">
+            {history.map((entry) => (
+              <RunRow
+                key={entry.runLog.id}
+                entry={entry}
+                onOpen={() => {
+                  returnToSignal.current = false;
+                  setDetailRunLogId(entry.runLog.id);
+                  setDetailOpen(true);
+                }}
+              />
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      <p className="visually-hidden" aria-live="polite">
+        {announcement}
+      </p>
+
+      {selected && (
+        <RunDetailSheet
+          entry={selected}
+          syncToken={syncToken}
+          isOpen={isDetailOpen}
+          onEditRun={() => openEntry(selected, true)}
+          onClose={closeDetail}
+        />
+      )}
+
+      <TrainingSignalDetailSheet
+        signal={selectedSignal}
+        plan={plan}
+        runLogs={runLogs}
+        today={today}
+        isOpen={isSignalOpen}
+        onClose={() => {
+          setSignalOpen(false);
+          if (!returnToSignal.current) setSelectedSignal(null);
+        }}
+        onOpenRun={(runLogId) => {
+          returnToSignal.current = true;
+          setSignalOpen(false);
+          setDetailRunLogId(runLogId);
+          setDetailOpen(true);
+        }}
+      />
+
+      {(isEditOpen || editing) && (
+        <CompleteRunSheet
+          key={editVisit}
+          isOpen={isEditOpen}
+          workout={editing?.workout ?? null}
+          runLog={editing?.runLog}
+          today={today}
+          onClose={entryClosed}
+          onDelete={
+            editing
+              ? () => {
+                  onDeleteRun(editing.runLog.id);
+                  pendingFocus.current = true;
+                  commit("Run deleted. Its block came out of the tower.");
+                }
+              : undefined
+          }
+          onSave={(workout, values) => {
+            onSaveRun(workout, values, editing?.runLog.id);
+            commit(
+              editing
+                ? "Run updated."
+                : `Run saved. You earned ${earnedBlockPhrase(values.activityType)}.`,
+            );
+          }}
+        />
       )}
     </div>
   );

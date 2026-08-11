@@ -2,9 +2,9 @@
 
 ## Current state
 
-**UI-20 Props + Mini Builds is implemented on top of the accepted UI-18/UI-19 Race Crew experience, with live UI/responsive browser checks still pending.** Crew runs now carry one binary, crew-private Props action and each member has a compact read-only Build derived only from bounded safe shared-run facts. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-20 adds no comments, notifications, profiles, public discovery, full personal cloud sync or Intervals OAuth.
+**UI-21 Crew Destination + Shared Crew Build is implemented on top of the accepted UI-18/UI-19/UI-20 Race Crew experience, with live two-account and responsive browser checks still pending.** Race Crew now owns a mechanic no other surface has: every crew member's shared runs contribute blocks to one communal tower, the **Crew Build**. That earned Crew its own conditional destination, so the `YOU | CREW` switch left Runs, Runs is personal again, and comparisons, Recent Crew Runs, Props and Member Builds all moved into Crew. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-21 adds no database migration, comments, notifications, profiles, public discovery, ranking, full personal cloud sync or Intervals OAuth.
 
-UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
+UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure — plus Crew for an active crew member — and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
 UI-16 Trends 2.0 remains implemented beneath this presentation pass. Runs carries seven focused Training Signals with dedicated detail modules, plan-versus-actual views, accessible SVG/CSS charts, and deterministic week/run drill-downs. The analytics remain derived entirely from schema-9 plan and run snapshots.
 
@@ -17,7 +17,7 @@ An **availability calendar** was added after UI-6 at the product owner's request
 `src/app/App.tsx`
 
 - Loads one versioned local `AppState` (schema version 9) into a `BootState` that is either an app or the reason there is not one.
-- Owns the active Today / Build / Runs / Plan tab.
+- Owns the active Today / Build / Runs / Crew / Plan tab, and derives whether Crew is a destination at all from the Race Crew controller: signed in *and* an active member of a crew. When that stops being true while Crew is open, the correction to Runs happens during render, so an inaccessible Crew screen is never painted and an invalid selection is never held.
 - Owns the block-placement handoff, keyed by run-log id rather than workout id.
 - Saves every activity through `appStateRepository.saveRunLog`, passing the workout when there is one and `null` when there is not. Source, the external link and the imported metrics are the repository's to keep, not the shell's to resend.
 - Subscribes to failed writes and hands the shell a banner when one happens.
@@ -26,9 +26,9 @@ An **availability calendar** was added after UI-6 at the product owner's request
 
 `src/app/AppShell.tsx`
 
-- Renders the four primary screens and passes plan, run logs, placements, and the save/place callbacks.
-- Bottom navigation is exactly Today / Build / Runs / Plan (D-044). Every control in the bar is a destination and wears `aria-current` when it is the current one.
-- Owns the global Settings sheet and its Account & Crew and Run Data child sheets. Runs owns its local `YOU | CREW` context, focused Training Signal and personal/crew-safe run-detail sheets. Crew empty states can open the existing Account & Crew settings without creating another destination.
+- Renders the primary screens and passes plan, run logs, placements, and the save/place callbacks.
+- Bottom navigation is Today / Build / Runs / Plan (D-044), with Crew inserted between Runs and Plan for an active crew member only (D-065). Every control in the bar is a destination and wears `aria-current` when it is the current one. Five destinations still fit a 320px bar at 64px each with no horizontal scrolling.
+- Owns the global Settings sheet and its Account & Crew and Run Data child sheets. Runs owns its focused Training Signal and personal run-detail sheets; Crew owns the crew-safe run detail and Member Build sheets. Crew empty states can open the existing Account & Crew settings, which is still where account and crew management lives.
 - The header is a small brand lockup — `StackMark` plus the wordmark — on the left, and one icon-only `Settings` gear on the right. Both sit in `.app-shell__header-row`, which carries the same 640px column the content and the nav use, so the gear lines up with the screen under it.
 
 ## The look, after UI-7
@@ -861,17 +861,17 @@ The only UI-18 production dependency is `@supabase/supabase-js`. No local AppSta
 
 ## UI-19 — Crew Runs + Comparisons
 
-`src/features/runs/RunsScreen.tsx` now owns an accessible, keyboard-operable `YOU | CREW` tab control. It defaults to `YOU`, keeps the existing personal summary, Training Signals, Recent Runs, Log Run and private detail behavior in that panel, and changes no bottom navigation or route. `CREW` swaps only the content inside Runs and keeps personal Runs available when account or network state fails.
+`src/features/runs/RunsScreen.tsx` owned an accessible, keyboard-operable `YOU | CREW` tab control that defaulted to `YOU` and swapped only the content inside Runs. **UI-21 removed that control**: Crew is its own destination now, and Runs is the personal summary, Training Signals, Recent Runs, Log Run and private detail again, with nothing social on it. The rest of this section describes behavior that still exists, in Crew.
 
 `src/crew/dashboard.ts` is the Crew read boundary. It first loads current `crew_members`, resolves only `profiles.display_name`, then reads the existing `crew_member_summaries` columns and a generously bounded set of newest `shared_runs`, ordered by local date and creation time newest first. UI-20 allows up to 128 shared blocks per member (maximum 1,280 rows for the private ten-person crew) so a normal full training-cycle Build is not silently reduced to a recent sample. The shared-run select remains limited to id/user/date/activity/distance/duration/sanitized placement/timestamps. No personal `RunLog`, placement timestamp/internal state, Intervals id/source, exact start time, HR/zones/load, effort, note, route or plan detail is requested or mapped.
 
 `useRaceCrew` keeps this dashboard independent from personal AppState. Entering Crew performs a stale-aware read, a manual Refresh forces one, foreground refresh is allowed after five minutes, and no polling or Realtime subscription exists. Projection updates invalidate the local Crew read cache so a later Crew entry can show the runner's newly projected work. Membership removal and display-name changes force a safe refresh.
 
-`src/features/crew/CrewRunsView.tsx` renders a quiet crew/race/member identity surface and makes the approved Weekly Miles, Longest Run, Consistency and Miles Built comparison the primary visual object. A keyboard-operable four-option metric control replaces the native select. Every row keeps its numeric fact visible beside an honest proportional bar; consistency stays on its natural 0–100 scale and Miles Built uses a restrained segmented strip. Equal values retain membership order rather than inventing tie-breakers. Consistency shows percentage plus completed/due, while zero due is the neutral `—`. Stable hashed member colors are identity cues only; the current account receives a quiet `YOU` marker and lime edge rather than a podium treatment. Normal freshness timestamps are hidden and stale projections use a relative label. One-member, signed-out, no-crew, unavailable and no-shared-run states are intentional.
+`src/features/crew/CrewScreen.tsx` (UI-19's `CrewRunsView.tsx`, moved and re-led in UI-21) renders a quiet crew/race identity surface and makes the approved Weekly Miles, Longest Run, Consistency and Miles Built comparison the primary visual object. A keyboard-operable four-option metric control replaces the native select. Every row keeps its numeric fact visible beside an honest proportional bar; consistency stays on its natural 0–100 scale and Miles Built uses a restrained segmented strip. Equal values retain membership order rather than inventing tie-breakers. Consistency shows percentage plus completed/due, while zero due is the neutral `—`. Stable hashed member colors are identity cues only; the current account receives a quiet `YOU` marker and lime edge rather than a podium treatment. Normal freshness timestamps are hidden and stale projections use a relative label. One-member, signed-out, no-crew, unavailable and no-shared-run states are intentional.
 
 `CrewRunRow.tsx` and `CrewRunDetailSheet.tsx` consume only `CrewSharedRun`. Pace is derived from shared distance/duration. Member markers strengthen identity and the existing STACK activity icon/color remains the semantic run-type cue. Even the current runner's row opens the same crew-safe detail, with no edit/delete/private-data actions. `ActivityTypePicker.tsx` is the reusable icon-card control used by manual/edit run entry and extra imported-run confirmation; imported scheduled matches still take the linked planned type, and unscheduled imports still default to Easy. UI-20 reactions, comments, member profiles and mini Builds remain deferred.
 
-UI-19 introduces no database migration, AppState migration, router, global state, Realtime subscription or new production dependency.
+UI-19 introduced no database migration, AppState migration, router, global state, Realtime subscription or new production dependency. UI-21 kept every one of those boundaries.
 
 ## UI-20 — Props + Mini Builds
 
@@ -895,7 +895,58 @@ The owner applied the Props migration and its deployed transactional RLS verific
 
 UI-20 still does not add a combined Crew Build, communal placement logic, fifth Crew navigation destination, comments, notifications, profiles, ranking, Realtime or full AppState sync.
 
-No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
+## UI-21 — Crew destination + shared Crew Build
+
+The whole-product review after UI-20 found that Race Crew had become more than "Runs with friends": STACK's defining mechanic is BUILD, and a crew that builds one tower together owns something no other screen does. UI-21 authorizes Crew as a **conditional fifth destination** on that basis (D-065), and nothing weaker — Crew is absent for a runner who is signed out or in no crew.
+
+### Three Build models, deliberately distinct
+
+| Model | Arrangement | Who arranges it | Where it lives |
+| --- | --- | --- | --- |
+| **Personal Build** | manual, private | the runner | Build |
+| **Member Build** | read-only reproduction of that runner's real shared personal arrangement | the runner, reproduced | Crew → `THE CREW` |
+| **Crew Build** | automatic communal arrangement of everybody's shared runs | nobody | Crew, as the hero |
+
+These are never mixed. The Crew Build **ignores** the personal `build_row` / `build_column_start` coordinates UI-20 added; those describe one runner's private tower and have no meaning in a grid the whole crew contributes to. `src/crew/dashboard.ts` drops them from `crewBuildRuns` rather than passing them along to be ignored downstream, so the separation is structural.
+
+### Communal placement
+
+`src/crew/crewBuild.ts` derives the tower. Contribution order is:
+
+1. `shared_runs.created_at` ascending — when the run entered the shared Crew record, which gives the tower append-like behavior without exposing the workout's start time;
+2. `shared_runs.id` ascending as a stable tie-breaker.
+
+The ordered blocks then run through the repository's existing deterministic placement primitive — `placementOptions` + `autoPlaceOption` from `src/domain/placement.ts`, the same rule Auto Place and every grid migration use. Width comes from distance and height from activity type via `src/domain/footprint.ts`, unchanged. Nothing consults local device time, query arrival order, personal placement or randomness, so every device viewing the same set of Crew runs constructs the identical tower.
+
+The derived tower is **never persisted**. There are no communal coordinates in the database, `shared_runs` was not widened, and **UI-21 adds no migration**. When crew data refreshes, the Crew Build is recomputed from scratch inside one `useMemo`.
+
+Because a member's removal deletes their shared rows, their blocks leave the Crew Build and the tower deterministically reflows. That is correct: privacy and access removal outrank tower permanence, and no departed member's activity is retained server-side to preserve a shape.
+
+### The Crew Build on screen
+
+`src/features/crew/CrewBuild.tsx` is the largest object on the screen: `X.X` miles built as the hero number, `X BLOCKS · X RUNNERS` under it, then a grounded eight-column technical field in the approved Build/Performance Arcade language. Totals are honest — miles are summed from the blocks actually in the tower, blocks are the blocks rendered, runners are the active crew members. There is no ranking, average pace, fastest runner, score or XP.
+
+A block keeps its **activity color**, because activity color means training type everywhere in STACK. Whose run it was is a separate, smaller cue: a thin cap along the block's top edge in that runner's existing stable member accent, with a compact `● NAME` legend under the field. Identity never fills or obscures a block.
+
+Every block is one semantic interactive target with a real accessible name (`Test Turco, Long Run, 8 miles, August 11`); the drawn cap and face are `aria-hidden` decoration on it, and keyboard activation opens the same crew-safe Run Detail as a tap, whoever ran it.
+
+A Crew Build can outgrow a personal one, so it is not shrunk until blocks stop being readable. Courses stay at a usable 30px (26px at 320px, 38px on desktop) and the field scrolls internally, anchored on the newest, topmost courses, with a caption saying so. No pinch-zoom, canvas or WebGL.
+
+### Bounded reads and honesty
+
+The Crew Build consumes the existing generously bounded `shared_runs` read — up to 128 rows per member and 1,280 overall, one query, no N+1. `sharedRunsTruncated` is set when that ceiling is exactly filled, and `CREW_BUILD_BLOCK_LIMIT` bounds the derivation itself; either one surfaces a quiet factual notice rather than presenting a partial tower as the whole crew. Empty and unavailable states are equally explicit: `The first shared run starts the build.` for a crew with no shared runs, `Crew Build unavailable.` when the safe read failed, and never an invented placeholder block.
+
+### What moved, and what did not
+
+`CrewScreen.tsx` orders the destination deliberately: crew identity and race countdown, the Crew Build, comparison, Recent Crew Runs, then `THE CREW`. The UI-19 comparison (Weekly Miles, Longest Run, Consistency, Miles Built), its custom keyboard selector and charts, the UI-20 compact run rows with inline Props, and the UI-20 Member Build cards and sheet all moved here unchanged in behavior and are now visually secondary to the tower. Each is stated once — the crew name, the runner count and Miles Built are not repeated by every module.
+
+The race countdown (`src/crew/raceCountdown.ts`) is derived locally from the crew race date already stored in UI-18: `116 DAYS TO RACE`, `RACE DAY`, `RACE COMPLETE`.
+
+Account and crew management stays in Settings → Account & Crew. Crew is not where a user creates an account, changes a PIN, pastes an Intervals key or manages Supabase.
+
+UI-21 adds no database migration, AppState migration, router, global state library, Realtime subscription, new production dependency, pace leaderboard, ranking, podium, comments, notifications or profiles. Refresh behavior is unchanged: stale-aware entry, foreground and manual only.
+
+No UI-22 is authorized. Perform a whole-product review before defining additional phases.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

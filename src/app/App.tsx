@@ -37,7 +37,7 @@ import {
   saveIntervalsApiKey,
 } from "../storage/intervalsCredentialRepository";
 
-export type TabId = "today" | "build" | "runs" | "plan";
+export type TabId = "today" | "build" | "runs" | "crew" | "plan";
 
 /**
  * Either an app, or the reason there isn't one.
@@ -78,6 +78,23 @@ export function App() {
 
   const appState = boot.kind === "ready" ? boot.state : null;
   const raceCrew = useRaceCrew(appState);
+  /**
+   * Crew is a destination only while there is a crew to be in. Membership is
+   * the account's to lose — signing out, leaving, or being removed all take it
+   * away — so the tab is derived from it rather than remembered.
+   */
+  const crewAvailable =
+    raceCrew.status === "signed-in" && Boolean(raceCrew.account?.crew);
+
+  // Losing access while standing in the room has to put you somewhere real,
+  // and Runs is the personal history the signed-out app has always had. The
+  // correction happens during render rather than in an effect so the invalid
+  // selection is never painted, and it is a real state change rather than a
+  // derived override so signing back in restores the destination without
+  // restoring the screen the user was thrown off.
+  if (activeTab === "crew" && !crewAvailable) {
+    setActiveTab("runs");
+  }
 
   const setAppState = useCallback((next: (current: AppState) => AppState) => {
     setBoot((current) =>
@@ -161,6 +178,7 @@ export function App() {
     <AppShell
       activeTab={activeTab}
       onTabChange={setActiveTab}
+      crewAvailable={crewAvailable}
       notice={(writeError || accomplishments.length > 0) ? (
         <>
           {writeError && (

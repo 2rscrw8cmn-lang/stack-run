@@ -23,10 +23,13 @@ import { SettingsSheet } from "../features/settings/SettingsSheet";
 import { useState } from "react";
 import type { RaceCrewController } from "../crew/useRaceCrew";
 import { AccountCrewSheet } from "../features/crew/AccountCrewSheet";
+import { CrewScreen } from "../features/crew/CrewScreen";
 
 interface AppShellProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  /** True only for a signed-in active member of a crew. */
+  crewAvailable: boolean;
   /** Something the whole app needs to say, shown under the brand bar. */
   notice?: ReactNode;
   plan: TrainingPlan;
@@ -68,6 +71,7 @@ interface AppShellProps {
 export function AppShell({
   activeTab,
   onTabChange,
+  crewAvailable,
   notice,
   plan,
   runLogs,
@@ -183,7 +187,11 @@ export function AppShell({
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             syncToken={intervalsConnection}
-            raceCrew={raceCrew}
+          />
+        )}
+        {activeTab === "crew" && crewAvailable && (
+          <CrewScreen
+            crew={raceCrew}
             onOpenAccountCrew={() => {
               setSettingsOpen(false);
               setAccountCrewOpen(true);
@@ -203,7 +211,11 @@ export function AppShell({
         )}
       </main>
       <nav className="app-shell__nav" aria-label="Primary">
-        <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          showCrew={crewAvailable}
+        />
       </nav>
       <SettingsSheet
         isOpen={settingsOpen}
