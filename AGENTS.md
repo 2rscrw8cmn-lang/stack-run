@@ -43,9 +43,9 @@ Older Trends/Arcade/original phase docs are historical/current-behavior referenc
 
 ## Current implementation phase
 
-UI-18 through UI-21 are complete and owner-accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction are implemented in PR #38, which is awaiting merge. The deployed migration/RLS verification, two-account QA, and 320px/390px/desktop/real iPhone Safari visual review passed on 2026-08-11. See `docs/PHASE_STATUS.md`.
+UI-18 through UI-21 are complete and owner-accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction merged in PR #38. The deployed migration/RLS verification, two-account QA, and 320px/390px/desktop/real iPhone Safari visual review passed on 2026-08-11.
 
-No UI-22 is authorized. Perform a whole-product review before defining additional phases.
+**UI-22 — Final Product Polish + Onboarding** is the final planned product phase and is in review. It is a consistency and introduction pass only: compact Runs hierarchy, normalized controls/copy/formatting/sheets, 320px-through-desktop QA, and lightweight local onboarding for genuinely new users. Existing AppState users must migrate quietly; App Tour remains replayable from Settings. No UI-23 is planned. See `docs/PHASE_STATUS.md` and D-067.
 
 The sections below record the locked UI-18 architecture, which still governs auth, projection, RLS and secret handling. Where an older Race Crew product boundary conflicts with a later decision, `docs/DECISION_LOG_ADDENDUM.md` wins.
 

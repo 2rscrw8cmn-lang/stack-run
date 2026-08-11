@@ -1,13 +1,22 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { createInitialAppState } from "../storage/migrations";
+
+const COMPLETED_ONBOARDING = JSON.stringify({
+  version: 1,
+  introSeen: true,
+  coreTourCompleted: true,
+  crewTourSeen: true,
+});
 
 // App reads the real local date, and the plan only offers a run to log on days
 // that schedule one. Pin the clock to a week 1 run day so these tests do not
 // depend on when they happen to run.
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem("stack.onboarding.v1", COMPLETED_ONBOARDING);
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(new Date("2026-08-04T09:00:00"));
 });
@@ -34,6 +43,45 @@ async function logTodaysRun(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("App", () => {
+  it("welcomes a brand-new user, then teaches Plan before the rest of the app", async () => {
+    localStorage.clear();
+    const user = setupUser();
+    render(<App />);
+
+    const welcome = screen.getByRole("dialog", { name: "STACK" });
+    expect(within(welcome).getByText("Build your race.")).toBeInTheDocument();
+    expect(within(welcome).getByText(/Every completed run earns a block/)).toBeInTheDocument();
+
+    await user.click(within(welcome).getByRole("button", { name: "Get Started" }));
+    expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("dialog", { name: "Plan" })).toHaveTextContent("1 of 4");
+  });
+
+  it("does not force an existing local user through first-run onboarding", async () => {
+    localStorage.removeItem("stack.onboarding.v1");
+    localStorage.setItem("stack.app-state.v1", JSON.stringify(createInitialAppState()));
+    render(<App />);
+
+    expect(screen.queryByRole("dialog", { name: "STACK" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem("stack.onboarding.v1") ?? "{}")).toMatchObject({
+        introSeen: true,
+        coreTourCompleted: true,
+      }),
+    );
+  });
+
+  it("replays and dismisses the tour from Settings", async () => {
+    const user = setupUser();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: /^App Tour/ }));
+    expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-current", "page");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Plan" })).not.toBeInTheDocument();
+  });
+
   it("shows the real Today screen, seeded from the training plan, by default", () => {
     render(<App />);
     expect(screen.getByText("OUC Half Marathon")).toBeInTheDocument();
@@ -256,7 +304,7 @@ describe("App", () => {
         name: "Monday, August 3, Rest. Add a planned run",
       }),
     );
-    await user.selectOptions(screen.getByLabelText(/Type/), "intervals");
+    await user.click(screen.getByRole("radio", { name: "Intervals" }));
     await user.type(screen.getByLabelText(/Name/), "6 x 400m");
     await user.type(screen.getByLabelText(/Target/), "5");
     await user.click(screen.getByRole("button", { name: "Add Planned Run" }));
@@ -383,11 +431,11 @@ describe("App", () => {
     await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Runs" }));
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("1 run");
+    expect(screen.getByLabelText("Running history summary")).toHaveTextContent("1run");
     expect(screen.getByText("2.1 miles run")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Easy. Tuesday, August 4. 2.1 mi, 20:30, 9:46 /mi",
+        name: "Easy. Tuesday, August 4. 2.1 mi, 20:30, 9:46 /MI",
       }),
     ).toBeInTheDocument();
   });
@@ -428,9 +476,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.click(screen.getByRole("button", { name: "Delete Run" }));
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "No runs yet",
-    );
+    expect(screen.getByText("No runs yet")).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
     expect(stored.runLogs).toEqual([]);
     expect(stored.blockPlacements).toEqual([]);

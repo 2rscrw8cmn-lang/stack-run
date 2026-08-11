@@ -330,7 +330,7 @@ describe("TodayScreen run found", () => {
     expect(screen.getByText("Run found")).toBeInTheDocument();
     expect(screen.getByText("2.15 mi")).toBeInTheDocument();
     expect(screen.getByText("20:30")).toBeInTheDocument();
-    expect(screen.getByText("9:32 /mi")).toBeInTheDocument();
+    expect(screen.getByText("9:32 /MI")).toBeInTheDocument();
     expect(screen.getByText("152 bpm")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review Run" })).toBeInTheDocument();
     // Whatever sync found, the day's workout is still the thing on screen.

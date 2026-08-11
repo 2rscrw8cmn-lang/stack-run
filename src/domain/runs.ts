@@ -50,7 +50,7 @@ export function runHistory(
 }
 
 /**
- * Derived pace, as "8:24 /mi".
+ * Derived pace, as "8:24 /MI".
  *
  * Null rather than a guess when there is no distance to divide by: a pace of
  * infinity is not a fact about a run, and every caller would rather leave the
@@ -63,6 +63,11 @@ export function formatPace(
   if (!(distanceMiles > 0) || !Number.isFinite(durationSeconds)) {
     return null;
   }
-  const seconds = Math.round(durationSeconds / distanceMiles);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /mi`;
+  return formatPaceSeconds(durationSeconds / distanceMiles);
+}
+
+/** Pace when a caller already has seconds per mile. */
+export function formatPaceSeconds(secondsPerMile: number): string {
+  const seconds = Math.round(secondsPerMile);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /MI`;
 }

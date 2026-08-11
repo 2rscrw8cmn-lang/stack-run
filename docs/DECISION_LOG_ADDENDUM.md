@@ -375,6 +375,25 @@ The Crew Build remains an eight-column object-first tower. It shows at least six
 
 Live migration application, the repeatable SQL verification, two-account placement/collision/permission testing, and 320px/390px/desktop/real iPhone Safari visual acceptance remain owner-run checks. UI-21 must not be marked complete until they pass.
 
+## D-067 — UI-22 is final polish and local conceptual onboarding
+
+**Decision:** UI-22 is the final planned product phase. It resolves product-wide hierarchy, selector, copy, formatting, accessibility and responsive inconsistencies without adding a new product capability.
+
+Runs keeps a real accessible heading but removes the oversized visible title. Its top row becomes a compact factual summary with Log Run immediately available. Training Signals and Recent Runs remain unchanged in ownership and purpose.
+
+Selector ownership is locked:
+
+- small finite choices use segmented/button controls;
+- longer lists use the shared styled native `StackSelect`;
+- dates remain native/specialized date controls;
+- activity type and effort always use their shared pickers.
+
+Sheets focus their title on open and share one quiet 44px Close treatment. Shared domain formatters own pace/date/freshness presentation. Fresh status stays hidden; stale age is relative. Repetitive implementation-era instructions are removed when state, label and action already communicate the behavior.
+
+New-user onboarding is conceptual, optional and device-local: welcome, then Plan → Run → Build → Today. It does not walk every control, block the underlying app or write to AppState. `stack.onboarding.v1` stores only completion/progress preferences. Existing AppState users are migrated quietly to completed onboarding. A new eligible Crew member receives one contextual Crew-Build explanation on first opening Crew. Settings can replay the core tour.
+
+UI-22 adds no backend behavior, database migration, AppState migration, production dependency, router, global state, new social surface or new connected-data behavior. No UI-23 is planned; later work requires a new product decision.
+
 ## Active implementation order
 
 Complete:
@@ -387,6 +406,7 @@ Complete:
 - UI-18
 - UI-19
 - UI-20
+- UI-21
 
 Deferred/skipped:
 
@@ -396,8 +416,9 @@ Deferred/skipped:
 Current acceptance:
 
 - **UI-20 — Props + Mini Builds** is complete and accepted (merged PR #37).
-- **UI-21 — Crew Destination + Shared Crew Build** is implemented; live two-account and responsive/manual QA remain before it is complete.
-- No later phase is authorized.
+- **UI-21 — Crew Destination + Shared Crew Build** is complete and accepted (merged PR #38).
+- **UI-22 — Final Product Polish + Onboarding** is the final planned phase and is in review.
+- No later phase is planned or authorized.
 
 See:
 

@@ -538,9 +538,6 @@ export function CrewScreen({
         icon={<Layers3 size={15} strokeWidth={2} />}
         title="The Crew"
       >
-        <p className="crew-builds__intro">
-          Each runner's own Build.
-        </p>
         {members.length === 1 && (
           <p className="crew-builds__invite-note">Invite your crew to build together.</p>
         )}

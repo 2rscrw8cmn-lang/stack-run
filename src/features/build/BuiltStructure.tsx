@@ -197,8 +197,7 @@ export function BuiltStructure({
           icon={<Blocks size={26} strokeWidth={1.6} />}
           title="Nothing built yet"
         >
-          Every run you log earns a block — wide for the distance, tall for the
-          kind of session. Place the first one and the tower starts here.
+          Your first completed run earns the first block.
         </EmptyState>
       </Section>
     );
@@ -272,11 +271,11 @@ export function BuiltStructure({
         </div>
       </div>
 
-      <p className="build-site__caption">
-        {placing
-          ? "Drag and let go, or tap a spot then Drop."
-          : "Tap a block to see the run behind it."}
-      </p>
+      {placing && (
+        <p className="build-site__caption">
+          Drag and let go, or tap a spot then Drop.
+        </p>
+      )}
     </Section>
   );
 }

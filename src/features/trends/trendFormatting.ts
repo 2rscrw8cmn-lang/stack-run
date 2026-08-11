@@ -1,8 +1,8 @@
 import { formatMiles } from "../../domain/distance";
+import { formatPaceSeconds } from "../../domain/runs";
 
 export function paceLabel(secondsPerMile: number): string {
-  const seconds = Math.round(secondsPerMile);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /mi`;
+  return formatPaceSeconds(secondsPerMile);
 }
 
 export function signedMiles(value: number): string {

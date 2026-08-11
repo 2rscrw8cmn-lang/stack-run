@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in PR #38, which is awaiting merge.** The deployed migration/RLS transaction, two-account placement/permission/collision/persistence checks, coordinate-independence checks, and 320px/390px/desktop/real iPhone Safari visual acceptance passed on 2026-08-11. Every safe shared run earns one READY Crew block. Its runner chooses where it joins the communal tower and may later move it; teammates cannot place or move it. Crew placement is persisted independently from personal/Member Build placement through a collision-safe Supabase RPC. Crew remains the conditional fifth destination, Runs remains personal, and comparisons, Recent Crew Runs, Props, and Member Builds live in Crew. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account.
+**UI-22 Final Product Polish + Onboarding is implemented and in review as the final planned product phase.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure — plus Crew for an active crew member — and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -931,7 +931,42 @@ The existing bounded dashboard payload still feeds the Crew Build, comparisons, 
 
 Crew remains conditional. When the session or active membership disappears while Crew is selected, `App.tsx` performs the fallback to Runs in an effect rather than setting state during render. No router is introduced. The UI-19 comparison and UI-20 social surfaces remain visually secondary and behaviorally unchanged. Refresh stays stale-aware entry, foreground, manual, and post-placement only; there is no polling or Realtime.
 
-UI-21 adds a database migration and RPC, but no AppState migration, router, global state library, Realtime subscription, new production dependency, pace leaderboard, ranking, podium, comments, notifications, or profiles. On 2026-08-11 the owner confirmed the deployed migration/RLS verification, two-account placement and permission QA, and 320px/390px/desktop/real iPhone Safari acceptance all passed. No UI-22 is authorized.
+UI-21 adds a database migration and RPC, but no AppState migration, router, global state library, Realtime subscription, new production dependency, pace leaderboard, ranking, podium, comments, notifications, or profiles. On 2026-08-11 the owner confirmed the deployed migration/RLS verification, two-account placement and permission QA, and 320px/390px/desktop/real iPhone Safari acceptance all passed. PR #38 is merged.
+
+## UI-22 — final product polish + onboarding
+
+UI-22 is a whole-product consistency pass, not a new feature phase. The persistent destinations and all personal/social data boundaries remain unchanged.
+
+### Runs and interaction hierarchy
+
+`RunsScreen` keeps an accessible visually hidden page heading, but no longer spends the first mobile viewport on a decorative `RUNS` title. A compact summary of run count, total miles and active weeks now shares the entry row with the existing Log Run action; Training Signals and Recent Runs remain the primary content below it.
+
+Sheets now focus their title when opened instead of applying the focus ring to Close. Their top-right close control uses one neutral 44px treatment across settings, setup, run detail and editing flows. Settings is grouped by Training, Run Data, Account & Crew and App so ownership follows the product model rather than the order features were implemented.
+
+### Selector taxonomy
+
+The current control rules are explicit:
+
+- use a segmented or button group for a small finite choice that benefits from seeing every option, including activity type, effort and Crew comparison metric;
+- use `StackSelect`, a styled native select, for a longer list such as matching an imported run to a planned workout;
+- use native date inputs for dates and the existing specialized calendar interaction for availability;
+- never create a one-off native select for activity type or effort.
+
+`ActivityTypePicker` is shared by manual completion, imported-extra review and planned-workout editing. `EffortPicker` is shared by manual and imported run review. The raw `<select>` element is owned only by `StackSelect`.
+
+### Copy, formatting and freshness
+
+Steady-state Build and Crew screens no longer repeat placement instructions when nothing is being placed. Empty states explain the next useful action once. Run Data still explains the Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK path and privacy boundary, but setup steps use direct product language rather than implementation narration.
+
+Shared domain formatters own miles, duration, pace and relative update age. Display pace uses uppercase `/MI`; connected-data and Crew freshness is hidden while normal and becomes relative only when it is useful. Imported-run dates use the same human-readable labels as the rest of the app rather than raw ISO dates.
+
+### Local onboarding
+
+`src/storage/onboardingRepository.ts` owns best-effort device-local `stack.onboarding.v1` preferences separately from AppState schema 9. A genuinely new install receives a brief welcome followed by the conceptual loop Plan → Run → Build → Today. The non-modal coachmark preserves access to the app, supports Escape/Skip and persists completion; an interrupted first tour resumes from Plan on the next launch. Settings → App Tour replays it.
+
+Existing stored AppState is migrated quietly to completed onboarding so UI-22 never forces a legacy runner through an introduction. Existing crew members are also marked as having seen the Crew explanation. A genuinely new runner sees the one-time Crew explanation only after becoming eligible for Crew and opening that destination.
+
+UI-22 adds no backend behavior, production dependency, router, global state, database migration or AppState migration. It is the final currently planned product phase.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

@@ -51,9 +51,8 @@ afterEach(() => vi.restoreAllMocks());
 describe("Runs", () => {
   it("says what would put something here before there is anything", () => {
     renderRuns([]);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "No runs yet",
-    );
+    expect(screen.getByRole("heading", { level: 1, name: "Runs" })).toHaveClass("visually-hidden");
+    expect(screen.getByText("No runs yet")).toBeInTheDocument();
     expect(screen.getByText("Nothing recorded yet")).toBeInTheDocument();
     // No count of miles that do not exist, and no trends drawn from nothing.
     expect(screen.queryByText(/miles run/)).not.toBeInTheDocument();
@@ -62,13 +61,15 @@ describe("Runs", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("leads with the count and the miles, not with the word Runs", () => {
+  it("leads with compact facts and Log Run, without a visible Runs title", () => {
     renderRuns([
       run("a", "2026-08-04", { distanceMiles: 2.1 }),
       run("b", "2026-08-06", { distanceMiles: 3.4 }),
     ]);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("2 runs");
+    expect(screen.getByRole("heading", { level: 1, name: "Runs" })).toHaveClass("visually-hidden");
+    expect(screen.getByLabelText("Running history summary")).toHaveTextContent("2runs5.5Total mi");
+    expect(screen.getByRole("button", { name: "Log Run" })).toBeInTheDocument();
     expect(screen.getByText("5.5 miles run")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
   });
@@ -101,7 +102,7 @@ describe("Runs", () => {
 
     const [, scheduled] = rows();
     expect(scheduled).toHaveAccessibleName(
-      "Easy. Tuesday, August 4. 6.2 mi, 52:21, 8:27 /mi",
+      "Easy. Tuesday, August 4. 6.2 mi, 52:21, 8:27 /MI",
     );
     expect(within(scheduled).queryByText("Extra")).not.toBeInTheDocument();
     expect(rows()[0]).toHaveAccessibleName(expect.stringContaining("Extra run"));

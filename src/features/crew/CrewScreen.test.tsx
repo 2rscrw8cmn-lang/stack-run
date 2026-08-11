@@ -394,7 +394,7 @@ describe("Crew comparisons and runs", () => {
     const runButtons = screen.getAllByRole("button", { name: /Open crew-safe run detail/ });
     expect(runButtons[0]).toHaveAccessibleName(expect.stringContaining("Sunday, August 9"));
     expect(runButtons[1]).toHaveAccessibleName(expect.stringContaining("Saturday, August 8"));
-    expect(runButtons[0]).toHaveTextContent("9:37 /mi");
+    expect(runButtons[0]).toHaveTextContent("9:37 /MI");
   });
 
   it("shows one binary Props action, count and pressed state while disabling self-Props", async () => {
@@ -436,7 +436,7 @@ describe("Crew comparisons and runs", () => {
     expect(cards[1]).toHaveTextContent("Drew");
     expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
     expect(cards[1]).toHaveAttribute("data-member-color");
-    expect(screen.getByText("Each runner's own Build.")).toBeInTheDocument();
+    expect(screen.queryByText("Each runner's own Build.")).not.toBeInTheDocument();
   });
 
   it("opens an exact read-only Member Build and resolves its block to crew-safe Run Detail", async () => {

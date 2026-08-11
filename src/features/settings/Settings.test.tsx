@@ -66,7 +66,7 @@ describe("the settings list", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Run Data Not connected" }),
+      screen.getByRole("button", { name: "Intervals.icu Not connected" }),
     ).toBeInTheDocument();
   });
 
@@ -90,9 +90,17 @@ describe("the settings list", () => {
     const onOpenRunData = vi.fn();
     const { user } = renderSettings({ onOpenRunData });
 
-    await user.click(screen.getByRole("button", { name: /^Run Data/ }));
+    await user.click(screen.getByRole("button", { name: /^Intervals\.icu/ }));
 
     expect(onOpenRunData).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the app tour as a quiet replay action", async () => {
+    const onReplayTour = vi.fn();
+    const { user } = renderSettings({ onReplayTour });
+
+    await user.click(screen.getByRole("button", { name: /^App Tour/ }));
+    expect(onReplayTour).toHaveBeenCalledTimes(1);
   });
 });
 

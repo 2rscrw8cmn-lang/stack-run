@@ -16,16 +16,16 @@ interface SetupStep {
 }
 
 const APPLE_STEPS: SetupStep[] = [
-  { label: "1 of 4", title: "HealthFit", copy: "Install HealthFit on iPhone, allow the Apple Health workout access it requests, choose Intervals.icu as a destination, and turn on automatic workout sync." },
-  { label: "2 of 4", title: "Intervals.icu", copy: "Create an Intervals.icu account. It is the workout-data bridge STACK can read; HealthFit has no separate account of its own." },
-  { label: "3 of 4", title: "Check the bridge", copy: "Do not connect STACK yet. First make sure at least one Apple Watch run is visible inside Intervals.icu. If it is not there, check HealthFit's destination and sync status." },
-  { label: "4 of 4", title: "Connect STACK", copy: "In Intervals.icu, open Settings, scroll to Developer Settings, generate your personal API key, then paste it below." },
+  { label: "1 of 4", title: "HealthFit", copy: "HealthFit moves Apple Health workouts from your iPhone to Intervals.icu." },
+  { label: "2 of 4", title: "Intervals.icu", copy: "Intervals.icu is the activity-data bridge STACK reads." },
+  { label: "3 of 4", title: "Check one run", copy: "Make sure one Apple Watch run is visible in Intervals.icu before connecting STACK." },
+  { label: "4 of 4", title: "Connect STACK", copy: "In Intervals.icu Settings, generate a personal API key under Developer Settings and paste it below." },
 ];
 
 const OTHER_STEPS: SetupStep[] = [
-  { label: "1 of 3", title: "Connect Intervals.icu", copy: "Use Intervals.icu's integration settings to connect Garmin, COROS, or your normal training service. HealthFit is only for Apple Health and is not needed here." },
-  { label: "2 of 3", title: "Check the bridge", copy: "Make sure at least one recent run is visible in Intervals.icu before connecting STACK." },
-  { label: "3 of 3", title: "Connect STACK", copy: "In Intervals.icu, open Settings, scroll to Developer Settings, generate your personal API key, then paste it below." },
+  { label: "1 of 3", title: "Connect Intervals.icu", copy: "Connect Garmin, COROS, or your usual service in Intervals.icu. You do not need HealthFit." },
+  { label: "2 of 3", title: "Check one run", copy: "Make sure one recent run is visible in Intervals.icu before connecting STACK." },
+  { label: "3 of 3", title: "Connect STACK", copy: "In Intervals.icu Settings, generate a personal API key under Developer Settings and paste it below." },
 ];
 
 export function RunDataSetup({ onConnected, onCancel }: Props) {

@@ -43,7 +43,8 @@ Current personal AppState: **schema 9**.
 | 18 | Race Crew Foundation | **Complete / accepted** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
 | 19 | Crew Runs + Comparisons | **Complete / accepted** | YOU / CREW, comparisons, recent crew runs, safe detail. |
 | 20 | Props + Mini Builds | **Complete / accepted** | Binary Props + sanitized read-only Mini Builds. |
-| 21 | Crew Destination + Shared Crew Build | **Complete / owner-accepted — PR #38 awaiting merge** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
+| 21 | Crew Destination + Shared Crew Build | **Complete / owner-accepted — merged PR #38** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
+| 22 | Final Product Polish + Onboarding | **Implemented / in review** | Product-wide consistency pass plus lightweight local conceptual onboarding. |
 
 ## UI-17 acceptance
 
@@ -204,11 +205,26 @@ Automated verification covers conditional navigation and effect-driven fallback;
 
 Repository verification passes `npm run check`: lint, 71 test files / 926 tests, TypeScript, and the production build.
 
-On 2026-08-11 the owner applied `20260811150000_crew_build_placement.sql` and the repeatable deployed `0004_crew_build_placement_rpc.sql` transaction passed. The owner also completed live two-account placement, movement, ownership denial, stale-view collision, persistence, coordinate-independence, sign-out fallback, and member-removal checks. Visual acceptance passed at 320px, 390px, desktop, and real iPhone Safari, including five-destination navigation, READY/placement controls, shallow/tall stage behavior, readable block depth, and absence of horizontal overflow. UI-21 is complete and owner-accepted in PR #38, which remains unmerged.
+On 2026-08-11 the owner applied `20260811150000_crew_build_placement.sql` and the repeatable deployed `0004_crew_build_placement_rpc.sql` transaction passed. The owner also completed live two-account placement, movement, ownership denial, stale-view collision, persistence, coordinate-independence, sign-out fallback, and member-removal checks. Visual acceptance passed at 320px, 390px, desktop, and real iPhone Safari, including five-destination navigation, READY/placement controls, shallow/tall stage behavior, readable block depth, and absence of horizontal overflow. UI-21 is complete and owner-accepted; PR #38 is merged.
 
 UI-21 does not implement a pace leaderboard, ranking, podium, comments, notifications, profiles, Realtime, a router, a global state library, a new dependency, or an AppState migration.
 
-No UI-22 is currently authorized. After UI-21, perform a whole-product review before defining additional phases.
+## UI-22 implementation status
+
+**UI-22 — Final Product Polish + Onboarding** is the final planned product phase and is in review on `agent/ui-22-final-polish-onboarding`.
+
+Implemented:
+
+- compact Runs summary/header hierarchy with the oversized title removed and Log Run kept as a clear 44px action;
+- shared `StackSelect`, `ActivityTypePicker` and `EffortPicker` patterns, leaving native date controls as the intentional specialized exception;
+- normalized sheet title focus, 44px close controls, Settings grouping, pace casing, human-readable dates and stale-only relative freshness;
+- reduced repetitive Build/Crew instructions and simplified Run Data setup copy without weakening privacy or setup guidance;
+- separate `stack.onboarding.v1` repository, new-user welcome, Plan → Run → Build → Today tour, one contextual Crew explanation, Settings replay, resume after interruption and quiet existing-user migration;
+- responsive browser review at 320px, 390px and 1200px with no horizontal overflow or undersized interactive targets on the exercised personal screens and setup sheets.
+
+UI-22 adds no new product capability, production dependency, router, global state, database migration or AppState migration. Personal STACK remains usable signed out and onboarding failure cannot block the app.
+
+Repository verification passes `npm run check`: lint, 73 test files / 936 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in five-destination Crew presentation. No later phase is currently planned; additional scope requires a new decision.
 
 ## Active source documents
 
