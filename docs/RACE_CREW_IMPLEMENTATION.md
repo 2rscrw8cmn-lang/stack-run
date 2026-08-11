@@ -1,8 +1,39 @@
 # Race Crew — Implementation Plan
 
-Status: **UI-18 through UI-21 complete and owner-accepted; UI-21 is in PR #38 awaiting merge.**
+Status: **UI-18 through UI-22 complete; the Crew cross-device integrity hotfix is in owner review.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
+
+## Hotfix â€” Crew cross-device data integrity
+
+After UI-22, real same-account multi-device use exposed an unsafe assumption:
+whole-device reconciliation treated a run absent from one browser as deleted.
+The hotfix makes ordinary projection additive/update-only. It never deletes an
+absent local run, never clears Member Build placement when a secondary device
+has no placement, and never sends Crew Build coordinates in a run upsert.
+Stable upsert identity preserves the existing shared row, Props and server-owned
+Crew placement.
+
+Explicit personal deletion is the only client deletion authority. Personal
+storage is saved first, then Crew deletes exactly the active
+`crew_id + user_id + local_run_id`; failed cleanup is retried from the minimal
+device-local `stack.crew-delete-tombstones.v1` list without restoring or
+blocking the personal delete.
+
+Weekly Miles, Longest Run and Miles Built are derived from the cloud shared-run
+union. Consistency stays last-known unless the device proves it holds every
+currently shared run; no plan is uploaded. Intervals stays per-device and the
+Settings status says so.
+
+Forward migration `20260811200000_crew_integrity_support.sql` replaces only the
+placement RPC. Inside the existing Crew advisory lock it now enforces the same
+gravity/support definition as Personal Build, including supported bridges, and
+rejects both floating placements and moves that would strand another block.
+
+The import identity audit confirmed the same Intervals activity can receive a
+different extra-run local id on devices with different same-day history. A safe
+canonical identity retrofit must migrate existing rows without losing Props or
+placement, so it is documented rather than improvised in this hotfix.
 
 Read with:
 

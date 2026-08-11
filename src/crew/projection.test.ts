@@ -4,8 +4,10 @@ import { createInitialAppState } from "../storage/migrations";
 import type { RunLog } from "../domain/types";
 import {
   projectMemberSummary,
+  projectServerBackedSummary,
   projectSharedRun,
   projectionFingerprint,
+  deleteCrewRunProjection,
   syncCrewProjection,
 } from "./projection";
 
@@ -34,6 +36,61 @@ const privateRun: RunLog = {
     hrZoneSeconds: [100, 200],
   },
 };
+
+interface ProjectionCall {
+  table: string;
+  operation: string;
+  value?: unknown;
+  options?: unknown;
+}
+
+function fakeProjectionClient(input: {
+  serverRuns?: unknown[];
+  existingSummary?: unknown;
+  calls: ProjectionCall[];
+}): SupabaseClient {
+  return {
+    from: vi.fn((table: string) => {
+      let operation = "select";
+      const builder = {
+        upsert(value: unknown, options?: unknown) {
+          input.calls.push({ table, operation: "upsert", value, options });
+          return Promise.resolve({ error: null });
+        },
+        select(value: string) {
+          operation = "select";
+          input.calls.push({ table, operation: "select", value });
+          return builder;
+        },
+        delete() {
+          operation = "delete";
+          input.calls.push({ table, operation: "delete" });
+          return builder;
+        },
+        eq(column: string, value: unknown) {
+          input.calls.push({ table, operation: `eq:${column}`, value });
+          return builder;
+        },
+        maybeSingle() {
+          return Promise.resolve({
+            data: input.existingSummary ?? null,
+            error: null,
+          });
+        },
+        then<TResult1 = { data: unknown[]; error: null }>(
+          onfulfilled?: ((value: { data: unknown[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+        ) {
+          const data =
+            operation === "select" && table === "shared_runs"
+              ? (input.serverRuns ?? [])
+              : [];
+          return Promise.resolve({ data, error: null }).then(onfulfilled);
+        },
+      };
+      return builder;
+    }),
+  } as unknown as SupabaseClient;
+}
 
 describe("Race Crew projection", () => {
   it("constructs the exact shared-run allowlist without private fields", () => {
@@ -112,23 +169,15 @@ describe("Race Crew projection", () => {
   });
 
   it("sends only the allowlisted run facts and sanitized coordinates", async () => {
-    const upserts: Array<{ table: string; value: unknown }> = [];
-    const client = {
-      from: vi.fn((table: string) => ({
-        upsert: vi.fn(async (value: unknown) => {
-          upserts.push({ table, value });
-          return { error: null };
-        }),
-        select: vi.fn(() => {
-          const builder = {
-            eq: vi.fn(() => builder),
-            then: (resolve: (result: { data: unknown[]; error: null }) => unknown) =>
-              Promise.resolve({ data: [], error: null }).then(resolve),
-          };
-          return builder;
-        }),
-      })),
-    } as unknown as SupabaseClient;
+    const calls: ProjectionCall[] = [];
+    const client = fakeProjectionClient({
+      calls,
+      serverRuns: [{
+        local_run_id: privateRun.id,
+        local_date: privateRun.completedDate,
+        distance_miles: privateRun.distanceMiles,
+      }],
+    });
     const state = createInitialAppState();
 
     await syncCrewProjection(client, {
@@ -149,7 +198,10 @@ describe("Race Crew projection", () => {
       today: "2026-08-10",
     });
 
-    const shared = upserts.find((item) => item.table === "shared_runs")?.value;
+    const sharedCall = calls.find(
+      (item) => item.table === "shared_runs" && item.operation === "upsert",
+    );
+    const shared = sharedCall?.value;
     expect(shared).toEqual([{
       crew_id: "crew-1",
       user_id: "user-1",
@@ -164,6 +216,173 @@ describe("Race Crew projection", () => {
     expect(JSON.stringify(shared)).not.toMatch(
       /placedAt|blockPlacements|heart|load|effort|notes|source|private-placement-time/i,
     );
+    expect(sharedCall?.options).toEqual({
+      onConflict: "crew_id,user_id,local_run_id",
+      defaultToNull: false,
+    });
+    expect(JSON.stringify(shared)).not.toMatch(/crew_build/i);
+  });
+
+  it("never infers deletion from an empty or partial secondary device", async () => {
+    const serverRuns = ["a", "b", "c"].map((id, index) => ({
+      local_run_id: id,
+      local_date: `2026-08-${10 + index}`,
+      distance_miles: index + 3,
+    }));
+
+    const emptyCalls: ProjectionCall[] = [];
+    await syncCrewProjection(
+      fakeProjectionClient({
+        calls: emptyCalls,
+        serverRuns,
+        existingSummary: {
+          weekly_miles: 12,
+          longest_run_28d_miles: 5,
+          consistency_completed: 3,
+          consistency_due: 4,
+          miles_built: 12,
+        },
+      }),
+      {
+        state: createInitialAppState(),
+        crewId: "crew-1",
+        userId: "user-1",
+        today: "2026-08-12",
+      },
+    );
+
+    expect(emptyCalls.some((call) => call.operation === "delete")).toBe(false);
+    expect(emptyCalls.find(
+      (call) => call.table === "crew_member_summaries" && call.operation === "upsert",
+    )?.value).toMatchObject({
+      weekly_miles: 12,
+      longest_run_28d_miles: 5,
+      miles_built: 12,
+      consistency_completed: 3,
+      consistency_due: 4,
+    });
+
+    const partialCalls: ProjectionCall[] = [];
+    const partial = { ...privateRun, id: "c", distanceMiles: 5 };
+    await syncCrewProjection(
+      fakeProjectionClient({
+        calls: partialCalls,
+        serverRuns,
+        existingSummary: {
+          weekly_miles: 12,
+          longest_run_28d_miles: 5,
+          consistency_completed: 3,
+          consistency_due: 4,
+          miles_built: 12,
+        },
+      }),
+      {
+        state: { ...createInitialAppState(), runLogs: [partial] },
+        crewId: "crew-1",
+        userId: "user-1",
+        today: "2026-08-12",
+      },
+    );
+    expect(partialCalls.some((call) => call.operation === "delete")).toBe(false);
+    expect(partialCalls.find(
+      (call) => call.table === "shared_runs" && call.operation === "upsert",
+    )?.value).toHaveLength(1);
+  });
+
+  it("preserves a meaningful summary on an empty device unless an explicit deletion emptied it", async () => {
+    const existingSummary = {
+      weekly_miles: 10,
+      longest_run_28d_miles: 8,
+      consistency_completed: 3,
+      consistency_due: 4,
+      miles_built: 80,
+    };
+    const preservedCalls: ProjectionCall[] = [];
+    await syncCrewProjection(
+      fakeProjectionClient({ calls: preservedCalls, existingSummary }),
+      {
+        state: createInitialAppState(),
+        crewId: "crew-1",
+        userId: "user-1",
+        today: "2026-08-12",
+      },
+    );
+    expect(preservedCalls.find(
+      (call) => call.table === "crew_member_summaries" && call.operation === "upsert",
+    )?.value).toMatchObject(existingSummary);
+
+    const deletedCalls: ProjectionCall[] = [];
+    await syncCrewProjection(
+      fakeProjectionClient({ calls: deletedCalls, existingSummary }),
+      {
+        state: createInitialAppState(),
+        crewId: "crew-1",
+        userId: "user-1",
+        today: "2026-08-12",
+        authoritativeEmpty: true,
+      },
+    );
+    expect(deletedCalls.find(
+      (call) => call.table === "crew_member_summaries" && call.operation === "upsert",
+    )?.value).toMatchObject({
+      weekly_miles: 0,
+      longest_run_28d_miles: 0,
+      miles_built: 0,
+    });
+  });
+
+  it("does not clear Member Build or Crew placement when this device lacks placement", async () => {
+    const calls: ProjectionCall[] = [];
+    await syncCrewProjection(
+      fakeProjectionClient({
+        calls,
+        serverRuns: [{
+          local_run_id: privateRun.id,
+          local_date: privateRun.completedDate,
+          distance_miles: privateRun.distanceMiles,
+        }],
+      }),
+      {
+        state: { ...createInitialAppState(), runLogs: [privateRun] },
+        crewId: "crew-1",
+        userId: "user-1",
+        today: "2026-08-10",
+      },
+    );
+    const value = calls.find(
+      (call) => call.table === "shared_runs" && call.operation === "upsert",
+    )?.value as Record<string, unknown>[];
+    expect(value[0]).not.toHaveProperty("build_row");
+    expect(value[0]).not.toHaveProperty("build_column_start");
+    expect(value[0]).not.toHaveProperty("crew_build_row");
+    expect(value[0]).not.toHaveProperty("crew_build_column_start");
+  });
+
+  it("deletes only the explicitly named Crew contribution", async () => {
+    const calls: ProjectionCall[] = [];
+    await deleteCrewRunProjection(fakeProjectionClient({ calls }), {
+      crewId: "crew-1",
+      userId: "user-1",
+      localRunId: "b",
+    });
+    expect(calls).toEqual([
+      { table: "shared_runs", operation: "delete" },
+      { table: "shared_runs", operation: "eq:crew_id", value: "crew-1" },
+      { table: "shared_runs", operation: "eq:user_id", value: "user-1" },
+      { table: "shared_runs", operation: "eq:local_run_id", value: "b" },
+    ]);
+  });
+
+  it("derives decreasing time-window metrics from the cloud run union", () => {
+    expect(projectServerBackedSummary([
+      { localRunId: "old", localDate: "2026-07-01", distanceMiles: 20 },
+      { localRunId: "current", localDate: "2026-08-12", distanceMiles: 4 },
+    ], "2026-08-12")).toEqual({
+      weekStart: "2026-08-10",
+      weeklyMiles: 4,
+      longestRun28dMiles: 4,
+      milesBuilt: 24,
+    });
   });
 
   it("calculates the approved factual summary and excludes extras from consistency", () => {

@@ -26,9 +26,16 @@ import {
   clearPendingInvite,
 } from "./invites";
 import {
+  deleteCrewRunProjection,
   projectionFingerprint,
   syncCrewProjection,
 } from "./projection";
+import {
+  addCrewDeleteTombstone,
+  loadCrewDeleteTombstones,
+  removeCrewDeleteTombstone,
+  type CrewDeleteTombstone,
+} from "../storage/crewDeleteTombstoneRepository";
 import { loadCrewDashboard } from "./dashboard";
 import {
   commitOptimisticCrewProps,
@@ -92,6 +99,7 @@ export interface RaceCrewController {
   joinPendingInvite: () => Promise<void>;
   leaveCrew: () => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
+  deleteRunContribution: (localRunId: string) => Promise<void>;
   refreshCrewData: (force?: boolean) => Promise<void>;
   toggleProps: (runId: string) => Promise<void>;
   placeCrewBuildBlock: (runId: string, row: number, columnStart: number) => Promise<boolean>;
@@ -234,12 +242,24 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     const fresh = Date.now() - lastProjection.current.syncedAt < PROJECTION_STALE_MS;
     if (!force && fresh && fingerprint === lastProjection.current.fingerprint) return;
     try {
+      const pendingDeletes = loadCrewDeleteTombstones().filter(
+        (item) =>
+          item.crewId === current.account?.crew?.id &&
+          item.userId === current.user?.id,
+      );
+      for (const tombstone of pendingDeletes) {
+        await deleteCrewRunProjection(availability.client, tombstone);
+      }
       await syncCrewProjection(availability.client, {
         state: current.appState,
         crewId: current.account.crew.id,
         userId: current.user.id,
         today,
+        authoritativeEmpty: pendingDeletes.length > 0,
       });
+      for (const tombstone of pendingDeletes) {
+        removeCrewDeleteTombstone(tombstone);
+      }
       lastProjection.current = { fingerprint, syncedAt: Date.now() };
       lastDashboard.current.loadedAt = 0;
       setProjectionError(null);
@@ -247,6 +267,36 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setProjectionError(messageOf(reason));
     }
   }, [availability]);
+
+  async function deleteRunContribution(localRunId: string): Promise<void> {
+    if (!availability.configured || !user || !account?.crew) return;
+    const tombstone: CrewDeleteTombstone = {
+      crewId: account.crew.id,
+      userId: user.id,
+      localRunId,
+      deletedAt: new Date().toISOString(),
+    };
+
+    let retrySaved = true;
+    try {
+      addCrewDeleteTombstone(tombstone);
+    } catch {
+      retrySaved = false;
+    }
+
+    try {
+      await deleteCrewRunProjection(availability.client, tombstone);
+      lastProjection.current = { fingerprint: "", syncedAt: 0 };
+      lastDashboard.current.loadedAt = 0;
+      setProjectionError(null);
+    } catch {
+      setProjectionError(
+        retrySaved
+          ? "Run deleted here. Crew cleanup will retry when STACK reconnects."
+          : "Run deleted here, but Crew cleanup could not be saved for retry.",
+      );
+    }
+  }
 
   const refreshCrewData = useCallback(async (force = false): Promise<void> => {
     if (!availability.configured) return;
@@ -469,6 +519,16 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         setCrewBuildPlacementError("That space was just taken. Choose another spot.");
         lastDashboard.current.loadedAt = 0;
         await refreshCrewData(true);
+      } else if (
+        reason instanceof CrewBuildPlacementError &&
+        reason.kind === "unsupported"
+      ) {
+        setCrewBuildPlacementError("That block needs support from the Crew Build.");
+      } else if (
+        reason instanceof CrewBuildPlacementError &&
+        reason.kind === "supporting"
+      ) {
+        setCrewBuildPlacementError("That block is supporting part of the Crew Build.");
       } else {
         setCrewBuildPlacementError("Your block could not be placed. Refresh and try again.");
       }
@@ -599,6 +659,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       lastDashboard.current.loadedAt = 0;
       await refreshCrewData(true);
     }, "Crew member removed."),
+    deleteRunContribution,
     refreshCrewData,
     toggleProps,
     placeCrewBuildBlock: placeBlockInCrewBuild,

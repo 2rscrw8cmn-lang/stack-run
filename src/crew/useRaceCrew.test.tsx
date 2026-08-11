@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
+import { loadCrewDeleteTombstones } from "../storage/crewDeleteTombstoneRepository";
 import type { CrewDashboardData, LoadedCrewAccount } from "./types";
 
 const mocks = vi.hoisted(() => {
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => {
     deleteCrew: vi.fn(async () => undefined),
     loadCrewDashboard: vi.fn(),
     syncCrewProjection: vi.fn(async () => undefined),
+    deleteCrewRunProjection: vi.fn(async () => undefined),
   };
 });
 
@@ -52,6 +54,7 @@ vi.mock("./projection", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./projection")>()),
   projectionFingerprint: () => "personal-state-fingerprint",
   syncCrewProjection: mocks.syncCrewProjection,
+  deleteCrewRunProjection: mocks.deleteCrewRunProjection,
 }));
 
 const { useRaceCrew } = await import("./useRaceCrew");
@@ -104,6 +107,7 @@ const dashboard: CrewDashboardData = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   mocks.client.auth.getSession.mockResolvedValue({
     data: { session: { user: mocks.user } },
     error: null,
@@ -112,6 +116,37 @@ beforeEach(() => {
 });
 
 describe("Race Crew owner lifecycle", () => {
+  it("keeps personal deletion independent and retries only its explicit Crew tombstone", async () => {
+    mocks.loadCrewAccount.mockResolvedValue(ownerAccount);
+    mocks.deleteCrewRunProjection
+      .mockRejectedValueOnce(new Error("network unavailable"))
+      .mockResolvedValueOnce(undefined);
+    const { result, rerender } = renderHook(
+      ({ state }) => useRaceCrew(state),
+      { initialProps: { state: null as ReturnType<typeof createInitialAppState> | null } },
+    );
+    await waitFor(() => expect(result.current.account?.crew?.id).toBe("crew-1"));
+
+    await act(async () => {
+      await result.current.deleteRunContribution("run-b");
+    });
+    expect(result.current.projectionError).toContain("cleanup will retry");
+    expect(loadCrewDeleteTombstones()).toHaveLength(1);
+
+    rerender({ state: createInitialAppState() });
+    await waitFor(() => expect(mocks.deleteCrewRunProjection).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(loadCrewDeleteTombstones()).toEqual([]));
+    expect(mocks.deleteCrewRunProjection).toHaveBeenNthCalledWith(
+      2,
+      mocks.client,
+      expect.objectContaining({
+        crewId: "crew-1",
+        userId: "owner-1",
+        localRunId: "run-b",
+      }),
+    );
+  });
+
   it("reloads edited Crew metadata without touching personal AppState", async () => {
     const updatedAccount: LoadedCrewAccount = {
       ...ownerAccount,

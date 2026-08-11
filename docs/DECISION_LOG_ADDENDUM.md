@@ -406,6 +406,35 @@ Plan's clamped week number is navigation behavior only. It may select Week 1 bef
 
 `supabase/tests/0005_crew_owner_management_rls.sql` verifies owner update/delete, member and outsider denial, Crew-row cascades, and Auth/profile survival. No migration is required. UI-22 remains the final planned phase; no UI-23 is created.
 
+## D-069 — Crew projection is non-destructive across personal devices
+
+**Decision:** Personal STACK remains device-local and Crew remains cloud-shared,
+but a browser is never authoritative for runs it does not contain. Ordinary
+Crew projection only upserts safe facts. Absence from one local device is never
+evidence that a Crew contribution was deleted.
+
+Only explicit personal run deletion authorizes client deletion of the matching
+Crew contribution. Local deletion succeeds first; failed Crew cleanup uses a
+minimal device-local tombstone and retries without restoring the personal run.
+Projection preserves the shared row identity, Props, server-owned Crew Build
+coordinates, and existing Member Build coordinates when local placement is
+unknown.
+
+Weekly Miles, Longest Run and Miles Built derive from the cloud shared-run
+union. Consistency is preserved unless the current device can demonstrate a
+complete shared-run view; personal plan data stays local. Intervals credentials
+remain per-device and are labeled `Connected on this device`.
+
+Crew placement retains its Crew-scoped transaction lock and now applies
+Personal Build's gravity/support rule server-side. Supported bridges remain
+valid; floating blocks and moves that leave another block unsupported are
+rejected.
+
+Full personal cloud sync remains out of scope. The confirmed possibility that
+the same Intervals activity receives different extra-run local ids on different
+devices requires a separate canonical-identity migration decision; this hotfix
+does not upload raw Intervals ids or risk recreating existing shared rows.
+
 ## Active implementation order
 
 Complete:

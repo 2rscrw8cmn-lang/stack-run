@@ -152,9 +152,9 @@ begin
 end;
 $$;
 
--- Moving the authenticated runner's own block succeeds.
+-- Re-confirming the authenticated runner's supported ground placement succeeds.
 select public.place_crew_build_block(
-  (select owner_run_id from crew_build_test_ids), 2, 1
+  (select owner_run_id from crew_build_test_ids), 0, 1
 );
 
 do $$
@@ -162,7 +162,7 @@ begin
   if not exists (
     select 1 from public.shared_runs
     where id = (select owner_run_id from crew_build_test_ids)
-      and crew_build_row = 2 and crew_build_column_start = 1
+      and crew_build_row = 0 and crew_build_column_start = 1
   ) then raise exception 'move failure: own block did not move'; end if;
 
   begin

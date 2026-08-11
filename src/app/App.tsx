@@ -281,20 +281,25 @@ export function App() {
           }),
         )
       }
-      onDeleteRun={(runLogId) =>
-        setAppState((current) => {
-          const run = current.runLogs.find((item) => item.id === runLogId);
-          // Deleting a synced run is a statement about that activity, so it is
-          // ignored without a second question. Asking, and treating Cancel as
-          // "sync it again", meant the run the user had just deleted came back
-          // on the next sync. Run Data still offers Clear ignored.
-          const next =
-            run?.externalSource?.provider === "intervals"
-              ? ignoreIntervalsActivity(current, run.externalSource.activityId)
-              : current;
-          return deleteRunLog(next, runLogId);
-        })
-      }
+      onDeleteRun={(runLogId) => {
+        const current = boot.state;
+        const run = current.runLogs.find((item) => item.id === runLogId);
+        // Deleting a synced run is a statement about that activity, so it is
+        // ignored without a second question. Asking, and treating Cancel as
+        // "sync it again", meant the run the user had just deleted came back
+        // on the next sync. Run Data still offers Clear ignored.
+        const next =
+          run?.externalSource?.provider === "intervals"
+            ? ignoreIntervalsActivity(current, run.externalSource.activityId)
+            : current;
+        const deleted = deleteRunLog(next, runLogId);
+        setBoot({ kind: "ready", state: deleted, isNew: boot.isNew });
+        // Personal deletion is already durable above. Crew cleanup is a
+        // separate best-effort projection event and can never restore it.
+        if (deleted !== current) {
+          void raceCrew.deleteRunContribution(runLogId);
+        }
+      }}
       availability={boot.state.availability}
       onSaveAvailability={saveCalendar}
       raceSetup={boot.state.raceSetup}

@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-22 Final Product Polish + Onboarding is implemented and in review as the final planned product phase.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account.
+**UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix described below is implemented for owner review and is not UI-23.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure — plus Crew for an active crew member — and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -981,6 +981,45 @@ Delete lives in a restrained danger area and opens an explicit confirmation view
 `TodayScreen` derives an explicit active-plan state from `rest`, `run` or `completed` and renders `ThisWeekStrip` only for those kinds. Before training it shows Plan Starts Soon, the exact start date, the next scheduled run when one exists, and any real extra-run Build progress without activating Week 1. After the race it shows Race Complete with no final-week `This Week` or fake next workout. Plan still opens the boundary week, labeled `Preview` before start and `Plan complete` after race rather than `This week`.
 
 UI-22 adds no production dependency, router, global state, database migration or AppState migration. It is the final currently planned product phase.
+
+## Hotfix — Crew cross-device data integrity
+
+`src/crew/projection.ts` is now additive/update-only. It no longer compares the
+current browser's run ids with all server ids and never deletes a server row
+because it is absent locally. Upserts keep the unique
+`crew_id + user_id + local_run_id` row identity; omitted personal placement uses
+PostgREST `defaultToNull: false`, so a secondary device cannot clear Member
+Build coordinates. Crew Build coordinates remain absent from the payload and
+RPC-only, preserving placements and Props on the same shared row.
+
+The projection reads the runner's safe cloud run union after upsert and derives
+Weekly Miles, trailing-28-day Longest Run and Miles Built from it. Consistency
+updates only when this device contains every shared run and has local history;
+otherwise the last server value is preserved. A blank device therefore cannot
+publish misleading zeroes, while time-window metrics can still decrease
+legitimately as dates move.
+
+Explicit run deletion is wired from `App.tsx` after the personal repository has
+saved the deletion. `deleteCrewRunProjection` targets one crew/user/local-run
+tuple. `src/storage/crewDeleteTombstoneRepository.ts` stores failed cleanup
+intent separately at `stack.crew-delete-tombstones.v1` and removes it after an
+idempotent retry succeeds. Ordinary absence never creates a tombstone.
+
+`20260811200000_crew_integrity_support.sql` replaces the Crew placement RPC
+without editing the applied UI-21 migration. The existing Crew advisory lock,
+ownership, membership, bounds and collision checks remain. The transaction now
+also requires ground or valid support under a new block and verifies that a
+move leaves every other block supported. Its bridge rule matches Personal
+Build gravity: one highest supporting footprint may carry a wider block across
+intentional voids. The client mirrors these checks for preview only; the server
+remains authoritative.
+
+Intervals status now says `Connected on this device`. The import audit and a
+regression test document that same-day extra-run ordering can give the same
+Intervals activity different local ids across devices. Canonicalizing existing
+Crew identity without recreating rows/Props/placements requires a separate
+forward migration and is not attempted here. Personal AppState, plan, runs,
+Build, onboarding and Intervals credentials remain device-local.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

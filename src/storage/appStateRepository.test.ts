@@ -703,4 +703,38 @@ describe("editing an actual run", () => {
     );
     expect(offered).toEqual([]);
   });
+
+  it("documents that the same Intervals activity can receive different local ids across devices", () => {
+    const blankDevice = acceptIntervalsRun(
+      loadAppState(),
+      accepted,
+      null,
+      "easy",
+      "solid",
+      "",
+    );
+    localStorage.clear();
+    const occupiedDevice = saveRunLog(loadAppState(), {
+      workoutId: null,
+      completedDate: accepted.completedDate,
+      activityType: "easy",
+      distanceMiles: 2,
+      durationSeconds: 1200,
+      effort: "solid",
+      notes: "",
+    });
+    const secondImport = acceptIntervalsRun(
+      occupiedDevice,
+      accepted,
+      null,
+      "easy",
+      "solid",
+      "",
+    );
+
+    expect(blankDevice.runLogs[0].id).toBe("run-extra-2026-08-04");
+    expect(secondImport.runLogs.find(
+      (run) => run.externalSource?.activityId === accepted.externalId,
+    )?.id).toBe("run-extra-2026-08-04-2");
+  });
 });

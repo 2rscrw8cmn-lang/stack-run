@@ -117,7 +117,37 @@ export function crewBuildBlocksOverlap(
   return columnsOverlap && rowsOverlap;
 }
 
-/** Client mirror of the RPC's grid and collision checks. */
+function crewBuildBlocksShareSupport(
+  block: CrewBuildPlacement & { width: BlockWidth },
+  support: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
+): boolean {
+  return (
+    support.row + support.height === block.row &&
+    block.columnStart < support.columnStart + support.width &&
+    support.columnStart < block.columnStart + block.width
+  );
+}
+
+export function isCrewBuildBlockSupported(
+  block: CrewBuildPlacement & { id: string; width: BlockWidth },
+  blocks: readonly CrewBuildBlock[],
+): boolean {
+  return (
+    block.row === 0 ||
+    blocks.some(
+      (support) =>
+        support.id !== block.id && crewBuildBlocksShareSupport(block, support),
+    )
+  );
+}
+
+export function isCrewBuildStructurallyValid(
+  blocks: readonly CrewBuildBlock[],
+): boolean {
+  return blocks.every((block) => isCrewBuildBlockSupported(block, blocks));
+}
+
+/** Client mirror of the RPC's grid, collision, support and move checks. */
 export function canPlaceCrewBuildBlock(
   run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
   placement: CrewBuildPlacement,
@@ -125,10 +155,26 @@ export function canPlaceCrewBuildBlock(
 ): boolean {
   const footprint = crewBuildFootprint(run);
   if (!isCrewBuildPlacementWithinGrid(placement, footprint.width)) return false;
-  return !blocks.some(
+  const others = blocks.filter((block) => block.id !== run.id);
+  if (others.some(
     (block) =>
-      block.id !== run.id &&
       crewBuildBlocksOverlap({ ...placement, ...footprint }, block),
+  )) return false;
+
+  const candidate: CrewBuildBlock = {
+    id: run.id,
+    userId: "",
+    displayName: "",
+    activityType: run.activityType,
+    distanceMiles: run.distanceMiles,
+    localDate: "",
+    ...placement,
+    ...footprint,
+  };
+  const afterMove = [...others, candidate];
+  return (
+    isCrewBuildBlockSupported(candidate, afterMove) &&
+    isCrewBuildStructurallyValid(afterMove)
   );
 }
 

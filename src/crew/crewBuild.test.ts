@@ -105,14 +105,14 @@ describe("collaborative Crew Build", () => {
       run("base", "drew", {
         distanceMiles: 5,
         activityType: "intervals",
-        crewBuildRow: 1,
+        crewBuildRow: 0,
         crewBuildColumnStart: 2,
       }),
     ]).blocks;
     const moving = run("moving", "zack", { distanceMiles: 3, activityType: "long" });
 
     expect(canPlaceCrewBuildBlock(moving, { row: 1, columnStart: 1 }, placed)).toBe(false);
-    expect(canPlaceCrewBuildBlock(moving, { row: 3, columnStart: 2 }, placed)).toBe(true);
+    expect(canPlaceCrewBuildBlock(moving, { row: 2, columnStart: 2 }, placed)).toBe(true);
     expect(canPlaceCrewBuildBlock(moving, { row: 0, columnStart: 8 }, placed)).toBe(false);
     expect(canPlaceCrewBuildBlock(moving, { row: -1, columnStart: 1 }, placed)).toBe(false);
   });
@@ -126,8 +126,44 @@ describe("collaborative Crew Build", () => {
     expect(canPlaceCrewBuildBlock(runs[0], { row: 0, columnStart: 1 }, model.blocks)).toBe(true);
     expect(canPlaceCrewBuildBlock(runs[0], { row: 0, columnStart: 3 }, model.blocks)).toBe(false);
 
-    const moved = deriveCrewBuild([{ ...runs[0], crewBuildRow: 2, crewBuildColumnStart: 5 }, runs[1]]);
-    expect(moved.blocks.find((block) => block.id === "mine")).toMatchObject({ row: 2, columnStart: 5 });
+    expect(canPlaceCrewBuildBlock(runs[0], { row: 1, columnStart: 3 }, model.blocks)).toBe(true);
+  });
+
+  it("matches Personal Build support semantics, including supported bridges", () => {
+    const baseRun = run("base", "drew", {
+      distanceMiles: 3,
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
+    });
+    const base = deriveCrewBuild([baseRun]).blocks;
+    const bridge = run("bridge", "zack", { distanceMiles: 8 });
+
+    expect(canPlaceCrewBuildBlock(bridge, { row: 0, columnStart: 3 }, base)).toBe(true);
+    expect(canPlaceCrewBuildBlock(bridge, { row: 1, columnStart: 1 }, base)).toBe(true);
+    expect(canPlaceCrewBuildBlock(bridge, { row: 2, columnStart: 1 }, base)).toBe(false);
+  });
+
+  it("allows a support-preserving move and rejects moving a support away", () => {
+    const runs = [
+      run("base", "drew", {
+        distanceMiles: 3,
+        crewBuildRow: 0,
+        crewBuildColumnStart: 1,
+      }),
+      run("bridge", "zack", {
+        distanceMiles: 8,
+        crewBuildRow: 1,
+        crewBuildColumnStart: 1,
+      }),
+      run("top", "drew", {
+        distanceMiles: 3,
+        crewBuildRow: 2,
+        crewBuildColumnStart: 2,
+      }),
+    ];
+    const blocks = deriveCrewBuild(runs).blocks;
+    expect(canPlaceCrewBuildBlock(runs[1], { row: 1, columnStart: 2 }, blocks)).toBe(true);
+    expect(canPlaceCrewBuildBlock(runs[1], { row: 0, columnStart: 5 }, blocks)).toBe(false);
   });
 
   it("offers only snapped, in-grid, collision-free client positions", () => {
