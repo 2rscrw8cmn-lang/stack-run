@@ -15,7 +15,7 @@ insert into auth.users (
 
 create temporary table props_test_ids (
   crew_id uuid not null,
-  run_id uuid not null
+  run_id uuid
 );
 grant select, insert on props_test_ids to authenticated;
 
@@ -24,19 +24,26 @@ set local request.jwt.claim.role = 'authenticated';
 
 -- Owner creates a crew, a teammate run target and one invite.
 set local request.jwt.claim.sub = '20000000-0000-0000-0000-000000000001';
-with crew as (
-  select public.create_crew('Props Crew', 'Props Race', '2026-12-05', 13.1) as id
-), run as (
+insert into props_test_ids (crew_id)
+values (public.create_crew('Props Crew', 'Props Race', '2026-12-05', 13.1));
+
+-- Keep crew creation and the first policy-protected write in separate SQL
+-- statements. The create_crew RPC inserts the owner membership; combining it
+-- with this insert in one CTE can leave that membership outside the RLS
+-- statement snapshot and falsely report that the owner is not a member.
+with run as (
   insert into public.shared_runs (
     crew_id, user_id, local_run_id, local_date, activity_type,
     distance_miles, duration_seconds
   )
-  select id, '20000000-0000-0000-0000-000000000001', 'props-run',
-    '2026-08-10', 'long', 8, 4200
-  from crew
-  returning crew_id, id
+  values (
+    (select crew_id from props_test_ids),
+    '20000000-0000-0000-0000-000000000001',
+    'props-run', '2026-08-10', 'long', 8, 4200
+  )
+  returning id
 )
-insert into props_test_ids select crew_id, id from run;
+update props_test_ids set run_id = (select id from run);
 
 select public.create_crew_invite(
   (select crew_id from props_test_ids),

@@ -83,6 +83,9 @@ describe("UI-20 Props SQL", () => {
     expect(reactionVerification).toMatch(/member removed another user Prop/);
     expect(reactionVerification).toMatch(/outsider added Props/);
     expect(reactionVerification).toMatch(/removed member retained reaction access/);
+    expect(reactionVerification).toMatch(
+      /values \(public\.create_crew[\s\S]*?\);[\s\S]*?with run as \([\s\S]*?insert into public\.shared_runs/i,
+    );
     expect(reactionVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });
