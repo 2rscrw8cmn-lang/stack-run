@@ -42,8 +42,8 @@ Current personal AppState: **schema 9**.
 | 17 | Performance Arcade Design Pass | **Complete** | Merged PR #34; modern training-computer visual language and final polish. |
 | 18 | Race Crew Foundation | **Complete / accepted** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
 | 19 | Crew Runs + Comparisons | **Complete / accepted** | YOU / CREW, comparisons, recent crew runs, safe detail. |
-| 20 | Props + Mini Builds | **Implemented — live UI QA pending** | Binary Props + sanitized read-only Mini Builds. |
-| 21 | Crew Destination + Shared Crew Build | **PR #38 updated — owner checks pending** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
+| 20 | Props + Mini Builds | **Complete / accepted** | Binary Props + sanitized read-only Mini Builds. |
+| 21 | Crew Destination + Shared Crew Build | **Complete / owner-accepted — PR #38 awaiting merge** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
 
 ## UI-17 acceptance
 
@@ -202,7 +202,9 @@ Implemented on `claude/ui-21-crew-destination-p9jxv8` in existing PR #38. The fi
 
 Automated verification covers conditional navigation and effect-driven fallback; persisted Crew-coordinate rendering; independent personal coordinates; no automatic placement; READY chronology; all-run totals; distance/activity footprints; client fit, overlap, move-own, and snapped-option geometry; placement RPC parameter and conflict handling; current-user-only placement and movement controls; no write on invalid selection; collision recovery; empty, READY-only, unavailable, one-member, and compact-stage behavior; block detail access; and the existing bounded/privacy-safe dashboard boundary.
 
-Repository verification passes `npm run check`: lint, 71 test files / 926 tests, TypeScript, and the production build. The new migration and `supabase/tests/0004_crew_build_placement_rpc.sql` are ready for owner application against the deployed project, but are not claimed as applied or live-verified here. Two-account ownership/collision/removal QA plus 320px, 390px, desktop, and real iPhone Safari visual acceptance remain required before UI-21 may be marked complete/accepted.
+Repository verification passes `npm run check`: lint, 71 test files / 926 tests, TypeScript, and the production build.
+
+On 2026-08-11 the owner applied `20260811150000_crew_build_placement.sql` and the repeatable deployed `0004_crew_build_placement_rpc.sql` transaction passed. The owner also completed live two-account placement, movement, ownership denial, stale-view collision, persistence, coordinate-independence, sign-out fallback, and member-removal checks. Visual acceptance passed at 320px, 390px, desktop, and real iPhone Safari, including five-destination navigation, READY/placement controls, shallow/tall stage behavior, readable block depth, and absence of horizontal overflow. UI-21 is complete and owner-accepted in PR #38, which remains unmerged.
 
 UI-21 does not implement a pace leaderboard, ranking, podium, comments, notifications, profiles, Realtime, a router, a global state library, a new dependency, or an AppState migration.
 

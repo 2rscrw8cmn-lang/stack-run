@@ -1,6 +1,6 @@
 # Race Crew — Implementation Plan
 
-Status: **UI-18 and UI-19 accepted; UI-20 implemented with live UI/manual QA pending.**
+Status: **UI-18 through UI-21 complete and owner-accepted; UI-21 is in PR #38 awaiting merge.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
 
@@ -774,7 +774,7 @@ Authenticated clients have no direct column grant for Crew coordinates. The RPC 
 - Account and crew management stays in Settings → Account & Crew.
 - Refresh behavior remains stale-aware entry, foreground, manual, and post-placement refresh, with no polling and no Realtime.
 
-The migration must be applied and the repeatable SQL verification must pass before live placement can work. Live two-account ownership/collision/removal behavior plus 320px, 390px, desktop, and real iPhone Safari visual QA remain acceptance requirements. Do not mark UI-21 complete until those checks pass.
+Acceptance completed on 2026-08-11: the owner applied the migration; the repeatable deployed SQL verification passed; live two-account ownership, placement, movement, stale-view collision, persistence, coordinate-independence, sign-out fallback, and removal behavior passed; and 320px, 390px, desktop, and real iPhone Safari visual QA passed. UI-21 is complete and owner-accepted in PR #38, which remains unmerged.
 
 No UI-22 is currently authorized. After UI-21, perform a whole-product review before defining additional phases.
 

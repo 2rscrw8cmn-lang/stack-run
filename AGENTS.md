@@ -43,7 +43,7 @@ Older Trends/Arcade/original phase docs are historical/current-behavior referenc
 
 ## Current implementation phase
 
-UI-18 through UI-20 are complete and accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction are implemented in PR #38; live migration/RLS verification, two-account QA, and owner visual review remain pending. See `docs/PHASE_STATUS.md`.
+UI-18 through UI-21 are complete and owner-accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction are implemented in PR #38, which is awaiting merge. The deployed migration/RLS verification, two-account QA, and 320px/390px/desktop/real iPhone Safari visual review passed on 2026-08-11. See `docs/PHASE_STATUS.md`.
 
 No UI-22 is authorized. Perform a whole-product review before defining additional phases.
 
