@@ -183,6 +183,11 @@ export function AppShell({
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             syncToken={intervalsConnection}
+            raceCrew={raceCrew}
+            onOpenAccountCrew={() => {
+              setSettingsOpen(false);
+              setAccountCrewOpen(true);
+            }}
           />
         )}
         {activeTab === "plan" && (

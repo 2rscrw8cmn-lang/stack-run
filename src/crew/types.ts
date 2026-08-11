@@ -44,3 +44,40 @@ export interface LoadedCrewAccount {
   members: CrewMember[];
   invites: CrewInvite[];
 }
+
+export interface CrewMemberSummary {
+  userId: string;
+  displayName: string;
+  weekStart: string;
+  weeklyMiles: number;
+  longestRun28dMiles: number;
+  consistencyCompleted: number;
+  consistencyDue: number;
+  milesBuilt: number;
+  updatedAt: string;
+}
+
+/**
+ * The complete run contract available to UI-19.
+ *
+ * This intentionally does not resemble a personal RunLog: there is no source,
+ * external id, exact start time, health data, effort, note, route or plan.
+ */
+export interface CrewSharedRun {
+  id: string;
+  userId: string;
+  displayName: string;
+  localDate: string;
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  distanceMiles: number;
+  durationSeconds: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrewDashboardData {
+  members: CrewMember[];
+  summaries: CrewMemberSummary[];
+  runs: CrewSharedRun[];
+  loadedAt: string;
+}

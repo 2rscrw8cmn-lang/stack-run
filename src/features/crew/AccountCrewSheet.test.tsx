@@ -20,6 +20,9 @@ function controller(
     pendingInvite: null,
     latestInviteUrl: null,
     projectionError: null,
+    crewData: null,
+    crewDataStatus: "idle",
+    crewDataError: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -30,6 +33,7 @@ function controller(
     joinPendingInvite: action,
     leaveCrew: action,
     removeMember: action,
+    refreshCrewData: action,
     clearMessage: vi.fn(),
     ...overrides,
   };

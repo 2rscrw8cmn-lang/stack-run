@@ -40,8 +40,8 @@ Current personal AppState: **schema 9**.
 |---:|---|---|---|
 | 16 | Trends 2.0 | **Complete** | Seven focused Training Signals, plan-vs-actual, richer charts, Today cleanup. |
 | 17 | Performance Arcade Design Pass | **Complete** | Merged PR #34; modern training-computer visual language and final polish. |
-| 18 | Race Crew Foundation | **Implemented — owner smoke pending** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
-| 19 | Crew Runs + Comparisons | Gated on UI-18 | YOU / CREW, comparisons, recent crew runs, safe detail. |
+| 18 | Race Crew Foundation | **Complete / accepted** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
+| 19 | Crew Runs + Comparisons | **Implemented — manual QA pending** | YOU / CREW, comparisons, recent crew runs, safe detail. |
 | 20 | Props + Mini Builds | Gated on UI-19 | Lightweight encouragement + read-only mini Builds. |
 
 ## UI-17 acceptance
@@ -108,7 +108,7 @@ UI-18 does not include the social Crew feed/comparison presentation, Props, mini
 
 ## UI-18 implementation status
 
-Implemented on `codex/ui-18-race-crew-foundation`:
+Accepted before UI-19 began. Implemented on `codex/ui-18-race-crew-foundation`:
 
 - optional Supabase client configuration that leaves signed-out and unconfigured personal STACK fully usable;
 - email + exactly-eight-digit STACK PIN account flows, local profile naming, crew create/join/leave, owner invites, revocation and member removal;
@@ -129,7 +129,24 @@ Repository verification on 2026-08-10:
 - migrations `20260810212106_race_crew_foundation` and `20260810212506_race_crew_function_grants` are applied to the active `stack-run` Supabase project; all six tables report RLS enabled with their expected policies, the remote shared-run columns match the safe allowlist, and only high-entropy invite preview retains anonymous function execution;
 - the repeatable two-user/two-crew/outsider RLS transaction passes against the remote project and rolls its fake identities/data back; no local Docker-backed Supabase database was available.
 
-Owner-only production acceptance remains open until an owner and second real account complete the membership/isolation smoke test and direct Intervals sync succeeds in production iPhone Safari. The legacy proxy remains available until that Safari check passes.
+The legacy owner proxy remains available until direct Intervals production-Safari behavior is deliberately deprecated in a later cleanup.
+
+## UI-19 implementation status
+
+Implemented on `agent/ui-19-crew-runs-comparisons`:
+
+- accessible local `YOU | CREW` Runs context with no router and no fifth navigation item;
+- unchanged personal Runs content under `YOU`;
+- crew/race/member header from existing UI-18 records;
+- Weekly Miles, Long Run, Consistency and Miles Built comparisons from `crew_member_summaries` only;
+- neutral zero-due consistency, stable equal-value ordering and a quiet current-user marker;
+- active-member, newest-first, 20-row-bounded reads from `shared_runs`;
+- derived pace and a dedicated crew-safe detail with no personal/private fields or edit actions;
+- signed-out, no-crew, one-member, loading, empty-run and unavailable/retry states;
+- stale-aware entry/foreground/manual refresh without polling or Supabase Realtime;
+- no database/AppState migration and no UI-20 scope.
+
+Automated verification covers context switching, preserved personal Runs, all state variants and metrics, sorting/ties, consistency numerator/denominator, current-user marking, bounded safe queries, newest-first rows, derived pace and crew-detail privacy. Live two-account Supabase and 320/390/desktop browser QA remain pending because the implementation environment had neither local Supabase configuration nor an available in-app browser.
 
 ## Active source documents
 

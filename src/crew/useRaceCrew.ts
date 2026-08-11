@@ -26,10 +26,16 @@ import {
   projectionFingerprint,
   syncCrewProjection,
 } from "./projection";
+import { loadCrewDashboard } from "./dashboard";
 import { getSupabaseAvailability } from "./supabaseClient";
-import type { CrewInvitePreview, LoadedCrewAccount } from "./types";
+import type {
+  CrewDashboardData,
+  CrewInvitePreview,
+  LoadedCrewAccount,
+} from "./types";
 
 const PROJECTION_STALE_MS = 30 * 60_000;
+const DASHBOARD_STALE_MS = 5 * 60_000;
 
 export type RaceCrewSessionStatus =
   | "unconfigured"
@@ -55,6 +61,9 @@ export interface RaceCrewController {
   pendingInvite: PendingCrewInvite | null;
   latestInviteUrl: string | null;
   projectionError: string | null;
+  crewData: CrewDashboardData | null;
+  crewDataStatus: "idle" | "loading" | "ready" | "error";
+  crewDataError: string | null;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -65,6 +74,7 @@ export interface RaceCrewController {
   joinPendingInvite: () => Promise<void>;
   leaveCrew: () => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
+  refreshCrewData: (force?: boolean) => Promise<void>;
   clearMessage: () => void;
 }
 
@@ -92,8 +102,15 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   );
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
+  const [crewData, setCrewData] = useState<CrewDashboardData | null>(null);
+  const [crewDataStatus, setCrewDataStatus] = useState<
+    RaceCrewController["crewDataStatus"]
+  >("idle");
+  const [crewDataError, setCrewDataError] = useState<string | null>(null);
   const latest = useRef({ appState, user, account });
   const lastProjection = useRef({ fingerprint: "", syncedAt: 0 });
+  const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
+  const dashboardInFlight = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     latest.current = { appState, user, account };
@@ -185,11 +202,54 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         today,
       });
       lastProjection.current = { fingerprint, syncedAt: Date.now() };
+      lastDashboard.current.loadedAt = 0;
       setProjectionError(null);
     } catch (reason) {
       setProjectionError(messageOf(reason));
     }
   }, [availability]);
+
+  const refreshCrewData = useCallback(async (force = false): Promise<void> => {
+    if (!availability.configured) return;
+    const current = latest.current;
+    const crewId = current.account?.crew?.id;
+    if (!current.user || !crewId) return;
+    const fresh =
+      lastDashboard.current.crewId === crewId &&
+      Date.now() - lastDashboard.current.loadedAt < DASHBOARD_STALE_MS;
+    if (!force && fresh) return;
+    if (dashboardInFlight.current) return dashboardInFlight.current;
+
+    const request = (async () => {
+      setCrewDataStatus("loading");
+      setCrewDataError(null);
+      try {
+        const loaded = await loadCrewDashboard(availability.client, crewId);
+        if (latest.current.account?.crew?.id !== crewId) return;
+        setCrewData(loaded);
+        setCrewDataStatus("ready");
+        lastDashboard.current = { crewId, loadedAt: Date.now() };
+      } catch (reason) {
+        setCrewDataError(messageOf(reason));
+        setCrewDataStatus("error");
+      }
+    })();
+    dashboardInFlight.current = request;
+    try {
+      await request;
+    } finally {
+      if (dashboardInFlight.current === request) dashboardInFlight.current = null;
+    }
+  }, [availability]);
+
+  useEffect(() => {
+    const crewId = account?.crew?.id ?? "";
+    if (lastDashboard.current.crewId === crewId) return;
+    setCrewData(null);
+    setCrewDataStatus("idle");
+    setCrewDataError(null);
+    lastDashboard.current = { crewId, loadedAt: 0 };
+  }, [account?.crew?.id]);
 
   const fingerprint = appState ? projectionFingerprint(appState, todayLocalDate()) : "";
   useEffect(() => {
@@ -210,6 +270,19 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [account?.crew, syncProjection, user]);
+
+  useEffect(() => {
+    if (!account?.crew || !user) return;
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") void refreshCrewData(false);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [account?.crew, refreshCrewData, user]);
 
   async function operate(action: () => Promise<void>, success?: string): Promise<void> {
     setBusy(true);
@@ -237,6 +310,9 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     pendingInvite,
     latestInviteUrl,
     projectionError,
+    crewData,
+    crewDataStatus,
+    crewDataError,
     createAccount: (input) => operate(async () => {
       if (!availability.configured) return;
       const nextUser = await createStackAccount(availability.client, input);
@@ -257,11 +333,17 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setLatestInviteUrl(null);
       setStatus("signed-out");
       lastProjection.current = { fingerprint: "", syncedAt: 0 };
+      setCrewData(null);
+      setCrewDataStatus("idle");
+      setCrewDataError(null);
+      lastDashboard.current = { crewId: "", loadedAt: 0 };
     }, "Signed out. Personal STACK is still available."),
     saveDisplayName: (displayName) => operate(async () => {
       if (!availability.configured || !user) return;
       await updateDisplayName(availability.client, user.id, displayName);
       await reloadAccount(user);
+      lastDashboard.current.loadedAt = 0;
+      await refreshCrewData(true);
     }, "Display name updated."),
     createCrew: (input) => operate(async () => {
       if (!availability.configured || !user) return;
@@ -295,12 +377,19 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       await reloadAccount(user);
       setLatestInviteUrl(null);
       lastProjection.current = { fingerprint: "", syncedAt: 0 };
+      setCrewData(null);
+      setCrewDataStatus("idle");
+      setCrewDataError(null);
+      lastDashboard.current = { crewId: "", loadedAt: 0 };
     }, "You left the crew. Personal STACK was not changed."),
     removeMember: (userId) => operate(async () => {
       if (!availability.configured || !account?.crew || !user) return;
       await removeCrewMember(availability.client, account.crew.id, userId);
       await reloadAccount(user);
+      lastDashboard.current.loadedAt = 0;
+      await refreshCrewData(true);
     }, "Crew member removed."),
+    refreshCrewData,
     clearMessage: () => {
       setError(null);
       setMessage(null);
