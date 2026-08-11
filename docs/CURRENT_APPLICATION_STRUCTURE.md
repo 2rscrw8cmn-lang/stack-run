@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix described below is implemented for owner review and is not UI-23.
+**UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix and the Run Data review-persistence/plan-matching hotfix described below are implemented for owner review and are not UI-23.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure — plus Crew for an active crew member — and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -1020,6 +1020,65 @@ Intervals activity different local ids across devices. Canonicalizing existing
 Crew identity without recreating rows/Props/placements requires a separate
 forward migration and is not attempted here. Personal AppState, plan, runs,
 Build, onboarding and Intervals credentials remain device-local.
+
+## Hotfix — Run Data review persistence and plan matching
+
+Two bugs in the same feature, fixed together because a user meets them
+together (issues #41 and #40). No AppState migration, no Supabase migration and
+no Crew change: `AppState.schemaVersion` is still 9.
+
+**A read is not the review queue.** `useConnectedSync` used to hand
+`setCandidates` whatever the latest network window returned, so the rolling
+14-day sync silently replaced everything the first 90-day read had found. A run
+discovered on day one and left unreviewed was gone on day two — still in
+Intervals, not imported, not ignored, not dismissed, and unrecoverable short of
+a fresh connection.
+
+`src/storage/intervalsPendingRepository.ts` now holds the unresolved queue at
+`stack.intervals.pending.v1`, outside AppState: normalized `IntervalsCandidate`
+snapshots only, no raw responses and no credential. A successful read merges
+into it by `externalId` (`mergeCandidates`), where the newest network snapshot
+refreshes an existing row in place rather than adding a second one, and
+`unresolvedCandidates` then removes anything imported, attached or ignored. The
+queue is loaded and filtered the same way when the hook initializes, so a
+settled activity is never resurrected even from a stale file. `settle` removes
+from storage as well as from state; `dismiss` stays session-only and
+deliberately leaves the entry where it is. An explicit Forget Connection clears
+the slot from `App.tsx`, because the next key entered on this device may be a
+different runner's; setting up a personal API key over the legacy proxy does
+not, because that is the same runner on the same device.
+
+Run Data offers **Find Older Runs**, which performs the 90-day first-connection
+read regardless of the last successful sync and merges the result. It exists
+for devices that already lost candidates to the old behavior. It imports
+nothing, clears no ignored ids and resets no sync history; ordinary Sync Now
+keeps the rolling window. Today is unchanged: `RUN_FOUND_WITHIN_DAYS` still
+limits it to one recent run, and older ones stay in Settings → Run Data.
+
+Storage failure is honest rather than fatal. An unreadable queue loads as
+empty; a failed write leaves the session fully usable and says the runs waiting
+to be reviewed could not be saved, instead of implying a durability that is not
+there. A failed write during `settle` is quiet, because the load filter settles
+the activity again from the run log or the ignored list regardless.
+
+**Suggestion is not eligibility.** `suggestScheduledMatches` keeps its narrow
+±2-day job: it is what STACK proposes by itself, the Run Found card's match and
+the review sheet's default selection. It was also the entire contents of the
+Match dropdown, which meant a run whose real workout had moved further than two
+days could not be matched at all. `availableScheduledMatches` is the manual
+choice set — every non-rest workout in the active plan not already linked to
+another RunLog, ordered by absolute distance from the actual run date, then
+planned date, then workout id. The dropdown renders `Add as Extra Run`, a
+`Suggested` optgroup and an `Other plan runs` optgroup, with no workout in
+both. A workout another run already satisfies is in neither list: one scheduled
+workout still links to at most one RunLog. Choosing a workout takes its planned
+type and never touches `candidate.completedDate` — the run happened when it
+happened, and the sheet keeps stating both dates when they differ.
+
+`VERIFIED_RUNNING_TYPES` is unchanged. `Run` is still the only Intervals
+running type any fixture, captured payload or document in this repository
+contains, so no alias was invented; the allowlist and its rejections are now
+covered by explicit tests rather than being invisible behavior.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

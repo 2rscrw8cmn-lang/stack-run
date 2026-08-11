@@ -1,4 +1,4 @@
-import { CircleCheck, RefreshCw } from "lucide-react";
+import { CircleCheck, History, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
@@ -12,6 +12,7 @@ import { earnedBlockPhrase } from "../../domain/build";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import {
+  availableScheduledMatches,
   likelyManualMatches,
   suggestScheduledMatches,
   type IntervalsCandidate,
@@ -36,6 +37,8 @@ interface Props {
   isSyncing: boolean;
   syncError: string | null;
   onSync: () => void;
+  /** Resolves to how many runs it added, or null when the read failed. */
+  onFindOlderRuns: () => Promise<number | null>;
   onSettle: (externalId: string) => void;
   initialReview?: RunDataReview | null;
   onConnect: (token: string) => void;
@@ -123,9 +126,20 @@ export function RunDataSheet(props: Props) {
     report(`Run imported. You earned ${earnedBlockPhrase(type)}.`);
   }
 
-  const workouts = selected
+  /**
+   * Two lists, two jobs. `suggested` is what STACK would choose on its own and
+   * drives the default selection; `workouts` is every scheduled run this could
+   * still be, because the plan is not the only thing that decides which
+   * workout a run was. A workout already linked to another run is in neither.
+   */
+  const suggested = selected
     ? suggestScheduledMatches(selected, props.state.plan, props.state.runLogs)
     : [];
+  const workouts = selected
+    ? availableScheduledMatches(selected, props.state.plan, props.state.runLogs)
+    : [];
+  const suggestedIds = new Set(suggested.map((item) => item.id));
+  const others = workouts.filter((item) => !suggestedIds.has(item.id));
   const manual = selected
     ? likelyManualMatches(selected, props.state.runLogs)[0]
     : undefined;
@@ -182,6 +196,23 @@ export function RunDataSheet(props: Props) {
               onClick={props.onSync}
             >
               Sync Now
+            </Button>
+
+            {/* Reaches further back than a normal sync, for runs an earlier
+                release discovered and then dropped. It imports nothing, clears
+                nothing and forgets no ignored activity — it only looks. */}
+            <Button
+              variant="secondary"
+              isLoading={props.isSyncing}
+              icon={<History size={18} />}
+              onClick={() => {
+                void props.onFindOlderRuns().then((added) => {
+                  if (added === null) return;
+                  report(added > 0 ? "Older runs checked." : "No additional runs found.");
+                });
+              }}
+            >
+              Find Older Runs
             </Button>
 
             {/* Runs found but not yet settled. Importing one is a decision, so
@@ -281,11 +312,24 @@ export function RunDataSheet(props: Props) {
                 }}
               >
                 <option value="">Add as Extra Run</option>
-                {workouts.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {formatDateLabel(item.date, { month: "short", day: "numeric" })} — {item.title}
-                  </option>
-                ))}
+                {suggested.length > 0 && (
+                  <optgroup label="Suggested">
+                    {suggested.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {formatDateLabel(item.date, { month: "short", day: "numeric" })} — {item.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {others.length > 0 && (
+                  <optgroup label={suggested.length > 0 ? "Other plan runs" : "Plan runs"}>
+                    {others.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {formatDateLabel(item.date, { month: "short", day: "numeric" })} — {item.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </StackSelect>
             </FormField>
 

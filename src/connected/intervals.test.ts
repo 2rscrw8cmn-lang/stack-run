@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
 import { addDaysToLocalDate } from "../domain/dates";
-import { fetchIntervals, fetchIntervalsActivityDetail, intervalsBasicAuthorization, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, selectRunFound, suggestScheduledMatches } from "./intervals";
+import type { RunLog } from "../domain/types";
+import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_RUNNING_TYPES } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
+
+function runLog(overrides: Partial<RunLog> = {}): RunLog {
+  return { id: "run", workoutId: null, completedDate: "2026-06-10", activityType: "easy", distanceMiles: 3.1, durationSeconds: 1500, effort: "solid", notes: "", createdAt: "now", updatedAt: "now", source: "manual", externalSource: null, importedMetrics: null, ...overrides };
+}
+function importedRun(activityId: string): RunLog {
+  return runLog({ id: `run-${activityId}`, source: "intervals", externalSource: { provider: "intervals", activityId, sourceUpdatedAt: null, importedAt: "now" } });
+}
+const candidateFor = (id: string, date: string, overrides: Record<string, unknown> = {}) =>
+  normalizeIntervalsActivity({ ...activity, id, start_date_local: `${date}T07:00:00`, ...overrides })!;
 describe("Intervals normalization", () => {
   it("converts objective fields and independently omits invalid metrics", () => {
     const run = normalizeIntervalsActivity(activity)!;
@@ -20,7 +30,7 @@ describe("Intervals normalization", () => {
     expect(normalizeIntervalsActivity({ ...activity, type: "Ride" })).toBeNull();
     expect(normalizeActivityList([activity, activity], [], [])).toHaveLength(1);
     expect(normalizeActivityList([activity], [], ["i1"])).toHaveLength(0);
-    expect(normalizeActivityList([activity], [{ id: "run", workoutId: null, completedDate: "2026-06-10", activityType: "easy", distanceMiles: 3.1, durationSeconds: 1500, effort: "solid", notes: "", createdAt: "now", updatedAt: "now", source: "intervals", externalSource: { provider: "intervals", activityId: "i1", sourceUpdatedAt: null, importedAt: "now" }, importedMetrics: null }], [])).toHaveLength(0);
+    expect(normalizeActivityList([activity], [importedRun("i1")], [])).toHaveLength(0);
   });
   it("suggests an unmatched workout within two days deterministically", () => {
     const state = createInitialAppState(); const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
@@ -56,6 +66,107 @@ describe("Intervals normalization", () => {
       { label: "Warm up", durationSeconds: 600, distanceMiles: 1, averageHeartRate: 140 },
       { label: "Rep 1", durationSeconds: 90 },
     ]);
+  });
+});
+
+/**
+ * The allowlist is one entry long on purpose, and the point of these tests is
+ * that the filtering is a decision rather than an accident nobody can see.
+ *
+ * `Run` is the only Intervals running type this repository has ever observed:
+ * every fixture, every captured payload and `docs/INTERVALS_INTEGRATION.md`
+ * agree on it, and the contract says not to guess sport names. Aliases people
+ * reasonably expect — `VirtualRun`, `TrailRun`, `Treadmill` — appear nowhere in
+ * any source STACK has, so they stay out until a real payload shows one, at
+ * which point this list is where it goes and this test is what changes.
+ */
+describe("verified running activity types", () => {
+  it("accepts exactly the source-verified Intervals running type", () => {
+    expect([...VERIFIED_RUNNING_TYPES]).toEqual(["Run"]);
+    expect(normalizeIntervalsActivity(activity)).not.toBeNull();
+  });
+
+  it.each(["VirtualRun", "TrailRun", "Treadmill", "Ride", "VirtualRide", "Swim", "Walk", "Hike", "WeightTraining", "run", "RUN", ""])(
+    "leaves an unverified type %s out of Run Data rather than guessing",
+    (type) => {
+      expect(normalizeIntervalsActivity({ ...activity, type })).toBeNull();
+      expect(normalizeActivityList([{ ...activity, type }], [], [])).toEqual([]);
+    },
+  );
+});
+
+/**
+ * Issue #41. A read answers "what changed lately"; it never answers "what is
+ * still waiting to be reviewed", and the two used to be the same object.
+ */
+describe("unresolved candidate queue", () => {
+  it("keeps a pending run a later, narrower read did not mention", () => {
+    const a = candidateFor("a", "2026-07-01");
+    const b = candidateFor("b", "2026-08-08");
+    const c = candidateFor("c", "2026-08-09");
+
+    expect(mergeCandidates([a, b, c], [b, c]).map((item) => item.externalId)).toEqual(["c", "b", "a"]);
+  });
+
+  it("refreshes a re-read snapshot in place instead of duplicating it", () => {
+    const first = candidateFor("a", "2026-07-01");
+    const corrected = candidateFor("a", "2026-07-01", { moving_time: 2100, distance: 8000, average_heartrate: 148 });
+
+    const merged = mergeCandidates([first], [corrected]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].externalId).toBe("a");
+    expect(merged[0].durationSeconds).toBe(2100);
+    expect(merged[0].metrics.averageHeartRate).toBe(148);
+  });
+
+  it("does not resurrect a run that has since been imported or ignored", () => {
+    const a = candidateFor("a", "2026-07-01");
+    const b = candidateFor("b", "2026-07-02");
+    const c = candidateFor("c", "2026-07-03");
+
+    expect(unresolvedCandidates([a, b, c], [importedRun("b")], ["c"]).map((item) => item.externalId)).toEqual(["a"]);
+    // A queue that somehow holds the same id twice still renders one row.
+    expect(unresolvedCandidates([a, a], [], [])).toHaveLength(1);
+  });
+});
+
+/**
+ * Issue #40. The ±2-day helper is a confidence judgement, and it was also the
+ * entire list the Match dropdown could offer — so a run the plan had moved
+ * away from could not be matched to its workout at all.
+ */
+describe("manual scheduled matches", () => {
+  const state = createInitialAppState();
+  const plan = state.plan;
+  const candidate = candidateFor("i1", "2026-08-04");
+
+  it("suggests only what is within two days", () => {
+    expect(suggestScheduledMatches(candidate, plan, []).map((item) => item.id)).toEqual(["workout-002", "workout-004"]);
+  });
+
+  it("offers every unmatched non-rest workout for a manual match, nearest first", () => {
+    const available = availableScheduledMatches(candidate, plan, []);
+    const ids = available.map((item) => item.id);
+
+    expect(ids.slice(0, 4)).toEqual(["workout-002", "workout-004", "workout-006", "workout-007"]);
+    // Five days out, so never a suggestion — and still the user's to choose.
+    expect(suggestScheduledMatches(candidate, plan, []).map((item) => item.id)).not.toContain("workout-007");
+    expect(ids).toContain("workout-007");
+    expect(ids).toEqual([...new Set(ids)]);
+    expect(available.every((item) => item.type !== "rest")).toBe(true);
+    expect(ids).not.toContain("workout-001");
+  });
+
+  it("never offers a workout another run already satisfies", () => {
+    const logs = [runLog({ id: "other", workoutId: "workout-007" })];
+    expect(availableScheduledMatches(candidate, plan, logs).map((item) => item.id)).not.toContain("workout-007");
+    expect(availableScheduledMatches(candidate, plan, logs).map((item) => item.id)).toContain("workout-006");
+  });
+
+  it("orders equal-distance dates by planned date and then by id", () => {
+    // 2026-08-06 and 2026-08-08 both sit two days from a 2026-08-07 run.
+    const middle = candidateFor("i2", "2026-08-07");
+    expect(availableScheduledMatches(middle, plan, []).slice(0, 2).map((item) => item.id)).toEqual(["workout-004", "workout-006"]);
   });
 });
 

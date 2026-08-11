@@ -128,16 +128,48 @@ export function normalizeIntervalsActivityDetail(raw: unknown): IntervalsActivit
   return { intervals };
 }
 
+/**
+ * The activity ids STACK has already settled: imported, attached or ignored.
+ * Everything else that has ever been discovered is still the user's to review.
+ */
+function settledActivityIds(runLogs: readonly RunLog[], ignoredIds: readonly string[]): Set<string> {
+  return new Set([...ignoredIds, ...runLogs.flatMap((run) => run.externalSource?.provider === "intervals" ? [run.externalSource.activityId] : [])]);
+}
+
+/**
+ * Drops candidates that are no longer anybody's decision to make, and any
+ * duplicate of an external id. Applied to a stored queue as well as a fresh
+ * read, so a run imported on this device never comes back from either.
+ */
+export function unresolvedCandidates(candidates: readonly IntervalsCandidate[], runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
+  const settled = settledActivityIds(runLogs, ignoredIds);
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    if (settled.has(candidate.externalId) || seen.has(candidate.externalId)) return false;
+    seen.add(candidate.externalId);
+    return true;
+  });
+}
+
+/**
+ * The unresolved queue after a read, which is a merge and never a replacement.
+ *
+ * A rolling window says what changed lately; it does not say what is still
+ * waiting. Anything already pending stays pending, a re-read activity refreshes
+ * its snapshot in place under the same external id, and newly discovered runs
+ * join the queue. Newest first, so the review list reads like the run log.
+ */
+export function mergeCandidates(existing: readonly IntervalsCandidate[], fetched: readonly IntervalsCandidate[]): IntervalsCandidate[] {
+  const byId = new Map(existing.map((candidate) => [candidate.externalId, candidate]));
+  // The network snapshot is the newer truth for distance, duration and metrics.
+  for (const candidate of fetched) byId.set(candidate.externalId, candidate);
+  return [...byId.values()].sort((a, b) =>
+    b.completedDate.localeCompare(a.completedDate) || a.externalId.localeCompare(b.externalId));
+}
+
 export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
   if (!Array.isArray(raw)) return [];
-  const unavailable = new Set([...ignoredIds, ...runLogs.flatMap((run) => run.externalSource?.provider === "intervals" ? [run.externalSource.activityId] : [])]);
-  const seen = new Set<string>();
-  return raw.flatMap((item) => {
-    const candidate = normalizeIntervalsActivity(item);
-    if (!candidate || unavailable.has(candidate.externalId) || seen.has(candidate.externalId)) return [];
-    seen.add(candidate.externalId);
-    return [candidate];
-  });
+  return unresolvedCandidates(raw.flatMap((item) => normalizeIntervalsActivity(item) ?? []), runLogs, ignoredIds);
 }
 
 function targetDistance(workout: Workout): { low: number; high: number } | null {
@@ -150,9 +182,45 @@ function targetDistance(workout: Workout): { low: number; high: number } | null 
   return low > 0 && high >= low ? { low, high } : null;
 }
 
+/** How far from the run a planned date can be before a match is a guess. */
+const SUGGESTION_WITHIN_DAYS = 2;
+
+/**
+ * Every scheduled workout this run could legitimately be, ordered by how
+ * likely it is.
+ *
+ * This is the manual choice set, not the automatic one. Plans move: a runner
+ * does Saturday's long run on Thursday, shifts a week around a work trip, or
+ * connects Intervals and imports a month of history into a plan built after
+ * the fact. `suggestScheduledMatches` answers "what would STACK pick", and
+ * outside its two-day window it correctly picks nothing — but the user still
+ * has to be able to say what actually happened, so nothing is hidden here for
+ * merely being unlikely.
+ *
+ * The one thing this does exclude is a workout another run already satisfies.
+ * One scheduled workout links to at most one RunLog, and that stays true.
+ */
+export function availableScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan, runLogs: readonly RunLog[]): Workout[] {
+  const matched = new Set(runLogs.flatMap((run) => run.workoutId ? [run.workoutId] : []));
+  return plan.weeks
+    .flatMap((week) => week.workouts)
+    .filter((workout) => workout.type !== "rest" && !matched.has(workout.id))
+    .sort((a, b) =>
+      Math.abs(daysBetweenLocalDates(a.date, candidate.completedDate)) - Math.abs(daysBetweenLocalDates(b.date, candidate.completedDate)) ||
+      a.date.localeCompare(b.date) ||
+      a.id.localeCompare(b.id));
+}
+
+/**
+ * The workouts STACK is confident enough about to choose for the user.
+ *
+ * Deliberately narrow: this drives the default selection and the match Today
+ * offers on the Run Found card. The full manual list is
+ * `availableScheduledMatches`.
+ */
 export function suggestScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan, runLogs: readonly RunLog[]): Workout[] {
   const matched = new Set(runLogs.flatMap((run) => run.workoutId ? [run.workoutId] : []));
-  return plan.weeks.flatMap((week) => week.workouts).filter((workout) => workout.type !== "rest" && !matched.has(workout.id) && Math.abs(daysBetweenLocalDates(workout.date, candidate.completedDate)) <= 2).sort((a, b) => {
+  return plan.weeks.flatMap((week) => week.workouts).filter((workout) => workout.type !== "rest" && !matched.has(workout.id) && Math.abs(daysBetweenLocalDates(workout.date, candidate.completedDate)) <= SUGGESTION_WITHIN_DAYS).sort((a, b) => {
     const dateDiff = Math.abs(daysBetweenLocalDates(a.date, candidate.completedDate)) - Math.abs(daysBetweenLocalDates(b.date, candidate.completedDate));
     if (dateDiff) return dateDiff;
     const score = (workout: Workout) => { const target = targetDistance(workout); return target ? candidate.distanceMiles < target.low ? target.low - candidate.distanceMiles : candidate.distanceMiles > target.high ? candidate.distanceMiles - target.high : 0 : Number.POSITIVE_INFINITY; };

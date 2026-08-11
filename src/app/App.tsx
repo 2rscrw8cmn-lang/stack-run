@@ -37,6 +37,7 @@ import {
   loadIntervalsApiKey,
   saveIntervalsApiKey,
 } from "../storage/intervalsCredentialRepository";
+import { clearPendingIntervalsCandidates } from "../storage/intervalsPendingRepository";
 import {
   loadOnboarding,
   saveOnboarding,
@@ -339,13 +340,17 @@ export function App() {
       onForgetIntervalsApiKey={() => {
         try {
           forgetIntervalsApiKey();
+          // Forgetting Run Data forgets what Run Data found. The queue holds
+          // one Intervals account's activities, and the next key entered here
+          // may well be a different runner's.
+          clearPendingIntervalsCandidates();
           setIntervalsApiKey(null);
         } catch (error) {
           setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten.");
         }
       }}
       onConnectIntervals={(token) => { try { saveIntervalsSyncToken(token); setSyncToken(token); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be saved."); } }}
-      onForgetIntervals={() => { try { forgetIntervalsSyncToken(); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
+      onForgetIntervals={() => { try { forgetIntervalsSyncToken(); clearPendingIntervalsCandidates(); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
       onImportIntervals={(candidate, workoutId, type, effort, notes) => setAppState((current) => acceptIntervalsRun(current, candidate, workoutId, type, effort, notes))}
       onAttachIntervals={(candidate, runLogId) => setAppState((current) => attachIntervalsRun(current, candidate, runLogId))}
       onIgnoreIntervals={(id) => setAppState((current) => ignoreIntervalsActivity(current, id))}
