@@ -174,9 +174,44 @@ Use a rolling 14-day lookback ending today to avoid missing late HealthFit uploa
 
 - quiet stale-aware sync on app open/focus;
 - explicit Sync Now;
+- explicit Find Older Runs;
 - no continuous polling;
 - detail fetch on demand;
 - honor source failures/rate limiting without hammering.
+
+### Reads never define the review queue
+
+A query window answers *what changed recently*. It does not answer *what
+unresolved activities still exist*.
+
+A successful read therefore merges into the persisted unresolved queue
+(`stack.intervals.pending.v1`) rather than replacing it:
+
+```text
+existing unresolved
++ newly fetched unresolved
+- imported
+- attached
+- ignored
+= current unresolved queue
+```
+
+Identity is `externalId`. A re-read activity updates its stored snapshot in
+place — distance, duration, metrics and `sourceUpdatedAt` — and never adds a
+second row.
+
+Once discovered, an activity stays reviewable until it is imported, attached to
+an existing manual run, explicitly ignored, or the connection is explicitly
+forgotten. A later sync that simply does not include it changes nothing.
+
+### Find Older Runs
+
+Run Data offers one restrained recovery action that performs the 90-day
+first-connection read regardless of the last successful sync, then merges the
+result into the queue.
+
+It imports nothing, clears no imported runs, clears no ignored ids and resets
+no sync history. Ordinary Sync Now keeps the rolling 14-day window.
 
 ## Running activity filter
 
@@ -185,6 +220,13 @@ Only verified running source types belong in the running allowlist.
 Do not broadly guess sport names.
 
 Non-running activities are ignored by the first connected-running flow.
+
+As of the Run Data reliability fix, `Run` remains the only source-verified
+Intervals running type in this repository: no fixture, captured payload or
+document here contains another. Plausible aliases — `VirtualRun`, `TrailRun`,
+`Treadmill` — stay out until a real payload shows one. The allowlist and its
+rejections are covered by explicit tests so the filtering is a decision rather
+than invisible behavior.
 
 ## Normalization boundary
 
@@ -290,18 +332,49 @@ Rules:
 
 Persist ignored activity ids in existing local sync state.
 
-Closing a suggestion is not the same as ignoring.
+Closing a suggestion is not the same as ignoring. Close Suggestion hides a
+candidate for the current session only and leaves it in the persisted queue, so
+a later session offers it again. Ignore removes it from the queue and records
+the id.
 
 Deleting an imported source run may suppress its external id so normal sync does not resurrect it.
 
 ## Matching remains suggestion-only
 
-Candidate scheduled workouts:
+Automatic suggestion and manual eligibility are two different questions.
+
+### Automatic suggestion
+
+`suggestScheduledMatches` — what STACK proposes by itself, and what the Today
+Run Found card offers:
 
 - non-rest;
 - not already completed;
 - near activity date (existing ±2-day rule);
 - distance fit when safely parseable.
+
+The first result is the default selection in the review sheet.
+
+### Manual eligibility
+
+`availableScheduledMatches` — every workout the user is allowed to choose:
+
+- non-rest;
+- not already linked to another RunLog.
+
+There is no date restriction. Plans move: a runner does the long run early,
+shifts a week around a work trip, or imports history into a plan built after
+the fact. ±2 days measures STACK's confidence, not the truth about what a run
+was, so nothing is hidden from the Match dropdown for being unlikely. The list
+is ordered by absolute distance from the actual run date, then planned date,
+then workout id.
+
+One scheduled workout still links to at most one RunLog; a workout another run
+already satisfies appears in neither list.
+
+Choosing a workout sets the STACK activity type from the planned workout and
+never changes the candidate's actual date. The review sheet states both dates
+when they differ.
 
 User sees/accepts the proposed match.
 

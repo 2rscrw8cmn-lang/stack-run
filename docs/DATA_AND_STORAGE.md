@@ -114,6 +114,40 @@ Rules:
 
 The Intervals key is a sensitive credential even though the owner has intentionally accepted device-local browser storage for the private hobby release.
 
+### Unresolved Run Data review queue
+
+Runs discovered by Intervals but not yet reviewed live in:
+
+```text
+stack.intervals.pending.v1
+```
+
+through a dedicated repository, outside AppState.
+
+This slot exists because an Intervals read answers *what changed recently*, not
+*what is still waiting to be reviewed*. Before it, every rolling 14-day sync
+replaced the whole candidate set, so a run found by the first 90-day read
+disappeared the next day without ever being imported, ignored or dismissed.
+
+Rules:
+
+- normalized `IntervalsCandidate` snapshots only — external id, source type,
+  local date, distance, duration, `sourceUpdatedAt` and approved imported
+  metrics — never raw Intervals responses and never a credential;
+- outside AppState, so it is not in backup/export, Supabase or crew projection;
+- a successful read **merges** into this queue by `externalId`; the newest
+  network snapshot replaces an existing one in place rather than duplicating it;
+- entries are removed when the activity is imported, attached to a manual run,
+  or ignored — never because a later query window omitted it;
+- the queue is filtered against imported run logs and `ignoredActivityIds` on
+  load, so a settled activity is never resurrected even from a stale file;
+- Close Suggestion is session-only and deliberately leaves the entry in place;
+- an explicit Forget Connection clears the slot, because the next key entered
+  on this device may belong to a different Intervals account;
+- unreadable storage yields an empty queue rather than a broken app, and a
+  failed write is reported in Run Data rather than being silently treated as
+  persisted.
+
 ### Supabase session
 
 Supabase JS may persist its own authenticated session in browser storage.

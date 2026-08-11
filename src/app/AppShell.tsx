@@ -275,6 +275,7 @@ export function AppShell({
         isSyncing={connectedSync.status === "syncing"}
         syncError={connectedSync.error}
         onSync={connectedSync.sync}
+        onFindOlderRuns={connectedSync.findOlderRuns}
         onSettle={connectedSync.settle}
         onConnect={onConnectIntervals}
         onForget={onForgetIntervals}

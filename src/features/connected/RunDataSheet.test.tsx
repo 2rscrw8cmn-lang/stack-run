@@ -1,12 +1,23 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { IntervalsCandidate } from "../../connected/intervals";
+import type { RunLog } from "../../domain/types";
 import { createInitialAppState } from "../../storage/migrations";
 import { RunDataSheet } from "./RunDataSheet";
 
 const state = createInitialAppState();
-const firstRun = state.plan.weeks.flatMap((week) => week.workouts).find((workout) => workout.type !== "rest")!;
+const workouts = state.plan.weeks.flatMap((week) => week.workouts);
+const firstRun = workouts.find((workout) => workout.type !== "rest")!;
+/** Five days past the run, so it is eligible but never a suggestion. */
+const farLongRun = workouts.find((workout) => workout.type === "long")!;
+const restDay = workouts.find((workout) => workout.type === "rest")!;
+
+function runLog(overrides: Partial<RunLog>): RunLog {
+  return { id: "other", workoutId: null, completedDate: firstRun.date, activityType: "easy", distanceMiles: 3, durationSeconds: 1500, effort: "solid", notes: "", createdAt: "now", updatedAt: "now", source: "manual", externalSource: null, importedMetrics: null, ...overrides };
+}
+const matchOptions = () =>
+  within(screen.getByLabelText("Match")).getAllByRole("option").map((option) => option.textContent ?? "");
 
 const candidate: IntervalsCandidate = {
   externalId: "i1",
@@ -23,6 +34,7 @@ function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
   const onSettle = vi.fn();
   const onIgnore = vi.fn();
   const onSync = vi.fn();
+  const onFindOlderRuns = vi.fn<() => Promise<number | null>>(async () => 0);
   const user = userEvent.setup();
   render(
     <RunDataSheet
@@ -34,6 +46,7 @@ function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
       isSyncing={false}
       syncError={null}
       onSync={onSync}
+      onFindOlderRuns={onFindOlderRuns}
       onSettle={onSettle}
       onConnect={vi.fn()}
       onForget={vi.fn()}
@@ -44,7 +57,7 @@ function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
       {...props}
     />,
   );
-  return { user, onImport, onSettle, onIgnore, onSync };
+  return { user, onImport, onSettle, onIgnore, onSync, onFindOlderRuns };
 }
 
 describe("RunDataSheet", () => {
@@ -101,5 +114,89 @@ describe("RunDataSheet", () => {
   it("says so plainly when a sync found nothing", () => {
     renderSheet({ candidates: [] });
     expect(screen.getByText("No runs are waiting to be reviewed.")).toBeInTheDocument();
+  });
+
+  it("can look further back for runs an older release lost, and says what it found", async () => {
+    const { user, onFindOlderRuns } = renderSheet();
+
+    await user.click(screen.getByRole("button", { name: "Find Older Runs" }));
+    expect(onFindOlderRuns).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("status")).toHaveTextContent("No additional runs found.");
+
+    onFindOlderRuns.mockResolvedValueOnce(2);
+    await user.click(screen.getByRole("button", { name: "Find Older Runs" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Older runs checked.");
+  });
+
+  it("stays quiet about a failed older-runs read, which the sync error already covers", async () => {
+    const { user, onFindOlderRuns } = renderSheet({ syncError: "Run Data could not be reached." });
+    onFindOlderRuns.mockResolvedValueOnce(null);
+
+    await user.click(screen.getByRole("button", { name: "Find Older Runs" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Run Data could not be reached.");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Issue #40. The ±2-day heuristic decides what STACK proposes; it used to
+ * decide what the user was allowed to say, which is a different question. A
+ * plan moves — a long run gets done midweek, history gets imported after the
+ * plan was built — and the workout that run really was has to be reachable.
+ */
+describe("RunDataSheet manual match list", () => {
+  it("still defaults to the suggested workout", () => {
+    renderSheet({ initialReview: { candidate, asExtra: false } });
+    expect(screen.getByLabelText("Match")).toHaveValue(firstRun.id);
+  });
+
+  it("offers every unmatched non-rest workout, grouped and never twice", () => {
+    renderSheet({ initialReview: { candidate, asExtra: false } });
+    const options = matchOptions();
+
+    expect(options[0]).toBe("Add as Extra Run");
+    expect(options).toContain(`${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${farLongRun.date}T00:00:00`))} — ${farLongRun.title}`);
+    expect(options).toEqual([...new Set(options)]);
+    expect(options.some((label) => label.includes("Rest"))).toBe(false);
+    expect(screen.getByRole("group", { name: "Suggested" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Other plan runs" })).toBeInTheDocument();
+    // The suggestion is offered once, in the group that explains why.
+    expect(within(screen.getByRole("group", { name: "Suggested" })).getAllByRole("option").map((option) => option.getAttribute("value"))).toContain(firstRun.id);
+    expect(within(screen.getByRole("group", { name: "Other plan runs" })).getAllByRole("option").map((option) => option.getAttribute("value"))).not.toContain(firstRun.id);
+  });
+
+  it("never offers a rest day or a workout another run already satisfies", () => {
+    renderSheet({
+      initialReview: { candidate, asExtra: false },
+      state: { ...state, runLogs: [runLog({ workoutId: farLongRun.id })] },
+    });
+    const values = within(screen.getByLabelText("Match")).getAllByRole("option").map((option) => option.getAttribute("value"));
+
+    expect(values).not.toContain(farLongRun.id);
+    expect(values).not.toContain(restDay.id);
+    expect(values).toContain(firstRun.id);
+  });
+
+  it("matches a run to a workout well outside the suggestion window", async () => {
+    const { user, onImport } = renderSheet({ initialReview: { candidate, asExtra: false } });
+
+    await user.selectOptions(screen.getByLabelText("Match"), farLongRun.id);
+
+    // The plan link changes and the activity type follows the workout; when
+    // the run happened does not, because that is not a matter of opinion.
+    expect(screen.getByText(/Actual date .*planned date/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm Match" }));
+    expect(onImport).toHaveBeenCalledWith(candidate, farLongRun.id, "long", "solid", "");
+    expect(onImport.mock.calls[0][0].completedDate).toBe(firstRun.date);
+  });
+
+  it("keeps Add as Extra Run available whatever the plan offers", async () => {
+    const { user, onImport } = renderSheet({ initialReview: { candidate, asExtra: false } });
+
+    await user.selectOptions(screen.getByLabelText("Match"), "");
+    expect(screen.getByRole("radio", { name: "Easy" })).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("button", { name: "Add as Extra Run" }));
+    expect(onImport).toHaveBeenCalledWith(candidate, null, "easy", "solid", "");
   });
 });

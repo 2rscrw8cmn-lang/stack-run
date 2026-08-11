@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchIntervals,
+  mergeCandidates,
   normalizeActivityList,
+  unresolvedCandidates,
   type IntervalsCandidate,
   type IntervalsConnection,
 } from "../../connected/intervals";
+import {
+  loadPendingIntervalsCandidates,
+  savePendingIntervalsCandidates,
+} from "../../storage/intervalsPendingRepository";
 import { addDaysToLocalDate, todayLocalDate } from "../../domain/dates";
 import type { AppState } from "../../domain/types";
 
@@ -31,6 +37,12 @@ const ROLLING_LOOKBACK_DAYS = 14;
 
 export type ConnectedSyncStatus = "idle" | "syncing";
 
+/**
+ * `null` when the read failed — `error` already says why. Otherwise how many
+ * runs the read added to the queue that were not already in it.
+ */
+export type OlderRunsResult = number | null;
+
 export interface ConnectedSync {
   /** Unimported, un-ignored, un-dismissed running activities. */
   candidates: IntervalsCandidate[];
@@ -39,9 +51,11 @@ export interface ConnectedSync {
   error: string | null;
   /** A sync the user asked for: it runs whether or not anything is stale. */
   sync: () => Promise<void>;
-  /** Puts a candidate away for this session; the next sync offers it again. */
+  /** The first-connection window again, for runs an old release lost. */
+  findOlderRuns: () => Promise<OlderRunsResult>;
+  /** Puts a candidate away for this session; a later session offers it again. */
   dismiss: (externalId: string) => void;
-  /** Drops a candidate that has just been imported or permanently ignored. */
+  /** Drops a candidate that has just been imported, attached or ignored. */
   settle: (externalId: string) => void;
 }
 
@@ -56,12 +70,19 @@ interface Options {
   read?: typeof fetchIntervals;
 }
 
+type SyncMode = "quiet" | "manual" | "backfill";
+
 /**
  * Keeps synced runs arriving without anybody asking, and without polling.
  *
  * Sync happens when the app opens and when it comes back to the front, which
  * is exactly when a new run could have appeared and the only time the answer
  * can be looked at. Between those moments STACK asks Intervals nothing at all.
+ *
+ * What a read returns is *added to* the review queue, never substituted for it.
+ * The rolling window says what changed lately; the queue — persisted on this
+ * device — says what is still waiting. A run leaves it when it is imported,
+ * attached or ignored, and at no other time.
  *
  * Failure is deliberately quiet here. The stored plan, the manual log and the
  * Build are all still true when Intervals is unreachable, so a failed quiet
@@ -86,16 +107,36 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
   });
   const inFlight = useRef(false);
   const lastAttemptAt = useRef(0);
+  /** The queue a sync merges into, mirrored beside the state that renders it. */
+  const queue = useRef<IntervalsCandidate[]>([]);
 
-  const run = useCallback(async (quiet: boolean): Promise<void> => {
+  const applyQueue = useCallback((next: IntervalsCandidate[]) => {
+    queue.current = next;
+    setCandidates(next);
+  }, []);
+
+  const hasState = state !== null;
+  useEffect(() => {
+    if (!connectionCredential || !hasState) return;
+    // What a previous session discovered and the user never settled. Anything
+    // since imported or ignored is dropped here rather than offered again.
+    const current = latest.current.state;
+    applyQueue(unresolvedCandidates(
+      loadPendingIntervalsCandidates(),
+      current?.runLogs ?? [],
+      current?.intervalsSync.ignoredActivityIds ?? [],
+    ));
+  }, [applyQueue, connectionCredential, hasState]);
+
+  const run = useCallback(async (mode: SyncMode): Promise<OlderRunsResult> => {
     const { state: current, onSynced: synced, read: fetcher, connection: credential } = latest.current;
-    if (!credential || !current || inFlight.current) return;
+    if (!credential || !current || inFlight.current) return null;
 
     const lastSuccess = current.intervalsSync.lastSuccessfulActivitySyncAt;
-    if (quiet) {
-      if (Date.now() - lastAttemptAt.current < QUIET_ATTEMPT_GAP_MS) return;
+    if (mode === "quiet") {
+      if (Date.now() - lastAttemptAt.current < QUIET_ATTEMPT_GAP_MS) return null;
       const fresh = lastSuccess && Date.now() - Date.parse(lastSuccess) < STALE_AFTER_MS;
-      if (fresh) return;
+      if (fresh) return null;
     }
 
     inFlight.current = true;
@@ -103,18 +144,39 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
     setStatus("syncing");
     try {
       const newest = todayLocalDate();
-      const oldest = addDaysToLocalDate(newest, -(lastSuccess ? ROLLING_LOOKBACK_DAYS : FIRST_SYNC_DAYS));
+      // Find Older Runs reaches back the whole first-connection window on
+      // purpose: it exists to recover runs a release with replace-semantics
+      // dropped, which by definition are older than the rolling window.
+      const lookback = mode === "backfill" || !lastSuccess ? FIRST_SYNC_DAYS : ROLLING_LOOKBACK_DAYS;
+      const oldest = addDaysToLocalDate(newest, -lookback);
       const raw = await fetcher("activities", credential, { oldest, newest });
-      setCandidates(normalizeActivityList(raw, current.runLogs, current.intervalsSync.ignoredActivityIds));
-      setError(null);
+      const ignored = current.intervalsSync.ignoredActivityIds;
+      const before = new Set(queue.current.map((candidate) => candidate.externalId));
+      const merged = unresolvedCandidates(
+        mergeCandidates(queue.current, normalizeActivityList(raw, current.runLogs, ignored)),
+        current.runLogs,
+        ignored,
+      );
+      applyQueue(merged);
+      let failure: string | null = null;
+      try {
+        savePendingIntervalsCandidates(merged);
+      } catch (reason) {
+        // The runs are on screen and reviewable; only surviving a reload is
+        // lost, and saying so beats implying a durability that isn't there.
+        failure = reason instanceof Error ? reason.message : "This browser could not save the list of runs waiting to be reviewed.";
+      }
+      setError(failure);
       synced(new Date().toISOString());
+      return merged.filter((candidate) => !before.has(candidate.externalId)).length;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Run Data could not be reached.");
+      return null;
     } finally {
       inFlight.current = false;
       setStatus("idle");
     }
-  }, []);
+  }, [applyQueue]);
 
   useEffect(() => {
     if (!connectionCredential) return;
@@ -125,7 +187,7 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
 
     const attempt = () => {
       if (document.visibilityState === "hidden") return;
-      void run(true);
+      void run("quiet");
     };
     attempt();
     window.addEventListener("focus", attempt);
@@ -136,9 +198,19 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
     };
   }, [connectionCredential, connectionMode, run]);
 
-  const sync = useCallback(() => run(false), [run]);
+  const sync = useCallback(async () => { await run("manual"); }, [run]);
+  const findOlderRuns = useCallback(() => run("backfill"), [run]);
   const dismiss = useCallback((externalId: string) => setDismissed((all) => all.includes(externalId) ? all : [...all, externalId]), []);
-  const settle = useCallback((externalId: string) => setCandidates((all) => all.filter((candidate) => candidate.externalId !== externalId)), []);
+  const settle = useCallback((externalId: string) => {
+    const next = queue.current.filter((candidate) => candidate.externalId !== externalId);
+    applyQueue(next);
+    try {
+      savePendingIntervalsCandidates(next);
+    } catch {
+      // Nothing to tell the user: the run is now imported, attached or ignored,
+      // and the load filter settles it again on the next open regardless.
+    }
+  }, [applyQueue]);
 
   return {
     // Forgetting the connection takes what it found with it, without a render
@@ -147,6 +219,7 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
     status,
     error: activeConnection ? error : null,
     sync,
+    findOlderRuns,
     dismiss,
     settle,
   };

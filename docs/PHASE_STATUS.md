@@ -69,6 +69,36 @@ Required owner acceptance still includes applying/verifying the new migration
 and same-account Device A ↔ Device B QA on desktop/iPhone Safari. Do not merge
 until those checks pass.
 
+## Post-UI-22 hotfix — Run Data review persistence and plan matching
+
+Status: **Implemented / owner review pending.** Bug fix for issues #41 and #40,
+not a new product phase.
+
+- Intervals rolling reads no longer define the unresolved review queue; a read
+  merges into it and never replaces it;
+- discovered unresolved activities persist locally at
+  `stack.intervals.pending.v1`, outside AppState, until they are imported,
+  attached, ignored, or the connection is explicitly forgotten;
+- a re-read activity refreshes its stored snapshot under the same `externalId`
+  rather than duplicating it;
+- Close Suggestion remains session-only and a later session offers the run
+  again;
+- Run Data offers one restrained `Find Older Runs` recovery read for devices
+  that already lost candidates, importing and clearing nothing;
+- Today still shows only the most relevant recent Run Found card;
+- automatic matching remains the ±2-day suggestion;
+- manual matching can choose any unmatched non-rest scheduled workout, with one
+  scheduled workout still linked to at most one run and the actual run date
+  never changed by a match;
+- `Run` remains the only source-verified Intervals running type; the allowlist
+  is unchanged and is now covered by explicit tests;
+- no Supabase migration and no AppState migration; schema 9 is unchanged;
+- no Crew behavior change: cross-device canonical Intervals activity identity
+  remains deferred as recorded for the Crew integrity hotfix.
+
+Repository verification passes `npm run check`: lint, 78 test files / 1008
+tests, TypeScript and the production build.
+
 ## UI-17 acceptance
 
 PR #34 merged on 2026-08-10.
