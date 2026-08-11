@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { formatLocalDate, parseLocalDate } from "../domain/dates";
 import { createInviteToken, hashInviteToken, inviteUrl } from "./invites";
 import type {
   CrewInvite,
@@ -11,6 +12,36 @@ import type {
 } from "./types";
 
 type Row = Record<string, unknown>;
+
+export interface CrewDetailsInput {
+  name: string;
+  raceName: string;
+  raceDate: string;
+  raceDistanceMiles: number;
+}
+
+export function validateCrewDetails(
+  input: CrewDetailsInput,
+): CrewDetailsInput {
+  const name = input.name.trim();
+  const raceName = input.raceName.trim();
+  if (!name) throw new Error("Enter a Crew name.");
+  if (!raceName) throw new Error("Enter a race name.");
+
+  try {
+    if (formatLocalDate(parseLocalDate(input.raceDate)) !== input.raceDate) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error("Enter a valid race date.");
+  }
+
+  if (!Number.isFinite(input.raceDistanceMiles) || input.raceDistanceMiles <= 0) {
+    throw new Error("Enter a valid race distance.");
+  }
+
+  return { name, raceName, raceDate: input.raceDate, raceDistanceMiles: input.raceDistanceMiles };
+}
 
 function row(value: unknown): Row | null {
   return value && typeof value === "object" ? (value as Row) : null;
@@ -198,24 +229,51 @@ export async function updateDisplayName(
 
 export async function createCrew(
   client: SupabaseClient,
-  input: {
-    name: string;
-    raceName: string;
-    raceDate: string;
-    raceDistanceMiles: number;
-  },
+  input: CrewDetailsInput,
 ): Promise<void> {
-  if (!input.name.trim() || !input.raceName.trim() || !input.raceDate) {
-    throw new Error("Enter the crew and race details.");
-  }
-  if (!(input.raceDistanceMiles > 0)) throw new Error("Enter a race distance.");
+  const details = validateCrewDetails(input);
   const result = await client.rpc("create_crew", {
-    p_name: input.name.trim(),
-    p_race_name: input.raceName.trim(),
-    p_race_date: input.raceDate,
-    p_race_distance_miles: input.raceDistanceMiles,
+    p_name: details.name,
+    p_race_name: details.raceName,
+    p_race_date: details.raceDate,
+    p_race_distance_miles: details.raceDistanceMiles,
   });
   if (result.error) throw new Error(result.error.message);
+}
+
+export async function updateCrew(
+  client: SupabaseClient,
+  crewId: string,
+  input: CrewDetailsInput,
+): Promise<void> {
+  const details = validateCrewDetails(input);
+  const result = await client
+    .from("crews")
+    .update({
+      name: details.name,
+      race_name: details.raceName,
+      race_date: details.raceDate,
+      race_distance_miles: details.raceDistanceMiles,
+    })
+    .eq("id", crewId)
+    .select("id")
+    .maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data) throw new Error("Crew could not be updated. Refresh and try again.");
+}
+
+export async function deleteCrew(
+  client: SupabaseClient,
+  crewId: string,
+): Promise<void> {
+  const result = await client
+    .from("crews")
+    .delete()
+    .eq("id", crewId)
+    .select("id")
+    .maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data) throw new Error("Crew could not be deleted. Refresh and try again.");
 }
 
 export async function createCrewInvite(

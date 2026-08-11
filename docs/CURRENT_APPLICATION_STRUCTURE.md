@@ -966,7 +966,21 @@ Shared domain formatters own miles, duration, pace and relative update age. Disp
 
 Existing stored AppState is migrated quietly to completed onboarding so UI-22 never forces a legacy runner through an introduction. Existing crew members are also marked as having seen the Crew explanation. A genuinely new runner sees the one-time Crew explanation only after becoming eligible for Crew and opening that destination.
 
-UI-22 adds no backend behavior, production dependency, router, global state, database migration or AppState migration. It is the final currently planned product phase.
+### Crew owner lifecycle
+
+`AccountCrewSheet.tsx` now completes the existing owner model with owner-only Edit Crew and Delete Crew actions. Edit reuses the Crew-creation fields and validation for Crew name, race name, race date and positive distance. `crewService.updateCrew` performs a narrow direct update on the selected `crews` row; existing RLS returns a row only for its owner. The controller reloads account/dashboard metadata so Crew identity and countdown update without a page reload. Crew race metadata remains independent from every member's local race and training plan.
+
+Delete lives in a restrained danger area and opens an explicit confirmation view. `crewService.deleteCrew` deletes only the selected `crews` row after owner RLS approval. Existing foreign keys cascade `crew_members`, `crew_invites`, `shared_runs`, `crew_member_summaries` and `crew_reactions`; Auth users, profiles and device-local personal STACK data are not deleted. After success the controller keeps the session signed in, reloads to `crew: null`, clears invite/dashboard/Props/placement state, and the existing App effect removes Crew navigation and falls back to Runs. Foreground and dashboard-error refreshes also reload membership so another member resolves a remotely deleted Crew without polling or Realtime.
+
+`supabase/tests/0005_crew_owner_management_rls.sql` is repeatable verification for owner update/delete, member and outsider denial, cascade cleanup, and Auth/profile survival. No migration is required.
+
+### Plan lifecycle semantics
+
+`currentWeekNumber()` still clamps to Week 1 before training and the final week after the race because Plan navigation should remain useful for preview. That clamped selection is not lifecycle truth. `selectPlanWeekViewModel().isCurrentWeek` is true only while `today` is inside that week's actual dates and not after race day.
+
+`TodayScreen` derives an explicit active-plan state from `rest`, `run` or `completed` and renders `ThisWeekStrip` only for those kinds. Before training it shows Plan Starts Soon, the exact start date, the next scheduled run when one exists, and any real extra-run Build progress without activating Week 1. After the race it shows Race Complete with no final-week `This Week` or fake next workout. Plan still opens the boundary week, labeled `Preview` before start and `Plan complete` after race rather than `This week`.
+
+UI-22 adds no production dependency, router, global state, database migration or AppState migration. It is the final currently planned product phase.
 
 `PlanScreen` keeps what is about the training rather than the setup: the week,
 the blocked-day banner and its review, run entry and the plan edits, and one

@@ -220,11 +220,14 @@ Implemented:
 - normalized sheet title focus, 44px close controls, Settings grouping, pace casing, human-readable dates and stale-only relative freshness;
 - reduced repetitive Build/Crew instructions and simplified Run Data setup copy without weakening privacy or setup guidance;
 - separate `stack.onboarding.v1` repository, new-user welcome, Plan → Run → Build → Today tour, one contextual Crew explanation, Settings replay, resume after interruption and quiet existing-user migration;
+- owner-only Edit Crew and confirmed Delete Crew flows using existing owner RLS, with metadata reload, shared-state cleanup, signed-in/no-Crew transition and personal local data preservation;
+- repeatable SQL proof that members/outsiders cannot update or delete a Crew, owner delete cascades Crew rows, and Auth/profile rows survive;
+- pre-plan and post-race Today lifecycle correction: `This Week` renders only while the plan is genuinely active, Plan still previews the clamped boundary week, and `isCurrentWeek` requires the actual week/race date range;
 - responsive browser review at 320px, 390px and 1200px with no horizontal overflow or undersized interactive targets on the exercised personal screens and setup sheets.
 
-UI-22 adds no new product capability, production dependency, router, global state, database migration or AppState migration. Personal STACK remains usable signed out and onboarding failure cannot block the app.
+UI-22 adds no new production dependency, router, global state, database migration or AppState migration. Personal STACK remains usable signed out and onboarding failure or Crew lifecycle errors cannot block the app.
 
-Repository verification passes `npm run check`: lint, 73 test files / 936 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in five-destination Crew presentation. No later phase is currently planned; additional scope requires a new decision.
+Repository verification passes `npm run check`: lint, 75 test files / 950 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in owner Edit/Delete presentation. No later phase is currently planned; additional scope requires a new decision.
 
 ## Active source documents
 

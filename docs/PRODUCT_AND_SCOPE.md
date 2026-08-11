@@ -248,9 +248,13 @@ Final planned product phase, in review:
 - normalized spacing, sheet headers, close controls, terminology, pace/date formatting and freshness treatment;
 - implementation-era and repetitive helper copy removed where the interface already explains itself;
 - lightweight device-local onboarding for genuinely new users: welcome, Plan → Run → Build → Today conceptual tour, one Crew explanation when relevant, and replay from Settings;
-- quiet migration for existing users, with onboarding preferences stored separately from AppState schema 9.
+- quiet migration for existing users, with onboarding preferences stored separately from AppState schema 9;
+- complete owner lifecycle controls: edit Crew name/race metadata and permanently delete a Crew through explicit confirmation;
+- correct plan lifecycle language: clamped Week 1/final-week selection remains available for Plan preview, while Today shows `This Week` only during the active plan and Plan marks a week current only inside its actual dates through race day.
 
-UI-22 adds no new product feature, backend behavior, dependency, router, global state, database migration or AppState migration. It is the end of the currently planned implementation sequence; later work requires a new product decision.
+Crew metadata edits never rewrite a member's local race or plan. Crew deletion cascades shared Crew server data but preserves Auth accounts, profiles, and every runner's local plan, runs, Build and Intervals credential.
+
+UI-22 adds no new product system, dependency, router, global state, database migration or AppState migration. Owner edit/delete use the existing `crews` RLS and cascade architecture. It is the end of the currently planned implementation sequence; later work requires a new product decision.
 
 ## Success criteria
 

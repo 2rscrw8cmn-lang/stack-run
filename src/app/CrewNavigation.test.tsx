@@ -63,6 +63,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signOut: action,
     saveDisplayName: action,
     createCrew: action,
+    updateCrew: vi.fn(async () => true),
+    deleteCrew: vi.fn(async () => true),
     createInvite: action,
     revokeInvite: action,
     joinPendingInvite: action,

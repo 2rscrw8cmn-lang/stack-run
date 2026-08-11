@@ -106,6 +106,10 @@ export function TodayScreen({
   const [saveAnnouncement, setSaveAnnouncement] = useState("");
 
   const viewModel = selectTodayViewModel(plan, runLogs, today);
+  const planIsActive =
+    viewModel.kind === "rest" ||
+    viewModel.kind === "run" ||
+    viewModel.kind === "completed";
   const daysRemaining = daysBetweenLocalDates(today, plan.race.date);
   const week = selectPlanWeekViewModel(
     plan,
@@ -209,15 +213,17 @@ export function TodayScreen({
         />
       )}
 
-      <ThisWeekStrip
-        week={week}
-        blocked={blockedDates(availability)}
-        actuals={actuals}
-        onViewPlan={onViewPlan}
-        // Nothing to trend before the first run, and an empty view invites a
-        // tap that answers nothing.
-        onViewTrends={onViewTrends && runLogs.length > 0 ? onViewTrends : undefined}
-      />
+      {planIsActive && (
+        <ThisWeekStrip
+          week={week}
+          blocked={blockedDates(availability)}
+          actuals={actuals}
+          onViewPlan={onViewPlan}
+          // Nothing to trend before the first run, and an empty view invites a
+          // tap that answers nothing.
+          onViewTrends={onViewTrends && runLogs.length > 0 ? onViewTrends : undefined}
+        />
+      )}
 
       {next && <NextWorkoutCard workout={next} />}
 

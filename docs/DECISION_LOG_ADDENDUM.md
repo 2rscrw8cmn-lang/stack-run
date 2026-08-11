@@ -392,7 +392,19 @@ Sheets focus their title on open and share one quiet 44px Close treatment. Share
 
 New-user onboarding is conceptual, optional and device-local: welcome, then Plan → Run → Build → Today. It does not walk every control, block the underlying app or write to AppState. `stack.onboarding.v1` stores only completion/progress preferences. Existing AppState users are migrated quietly to completed onboarding. A new eligible Crew member receives one contextual Crew-Build explanation on first opening Crew. Settings can replay the core tour.
 
-UI-22 adds no backend behavior, database migration, AppState migration, production dependency, router, global state, new social surface or new connected-data behavior. No UI-23 is planned; later work requires a new product decision.
+UI-22 adds no new backend schema, database migration, AppState migration, production dependency, router, global state, new social surface or new connected-data behavior. No UI-23 is planned; later work requires a new product decision.
+
+## D-068 — Complete Crew ownership and separate Plan navigation from lifecycle truth
+
+**Decision:** The final UI-22 acceptance pass closes two correctness gaps without opening a new phase.
+
+A Crew owner may edit Crew name, race name, race date and positive race distance through Account & Crew. The existing owner-update RLS policy remains authoritative; no policy or schema change is required. Saving reloads Crew account/dashboard metadata but never mutates a member's local race or training plan.
+
+A Crew owner may permanently delete the Crew only after explicit confirmation. The existing owner-delete RLS policy and `ON DELETE CASCADE` relationships remove membership, invites, shared runs, member summaries and Props. Auth accounts and profiles survive, and personal local AppState, Runs, Build, Plan and Intervals credentials are outside the deletion path. The owner stays signed in with no Crew; Crew navigation disappears and an open Crew destination falls back to Runs. Other members resolve the missing membership on account, foreground or manual Crew refresh. No Realtime or ownership transfer is added.
+
+Plan's clamped week number is navigation behavior only. It may select Week 1 before training or the final week after the race so the schedule stays previewable. A week is `isCurrentWeek` only when today is within that week's actual date range and no later than race day. Today renders `This Week` only for active `rest`, `run` or `completed` lifecycle states—never for `before-plan` or `after-race`. Pre-plan extra runs remain real, earn blocks and stay unmatched without activating Week 1.
+
+`supabase/tests/0005_crew_owner_management_rls.sql` verifies owner update/delete, member and outsider denial, Crew-row cascades, and Auth/profile survival. No migration is required. UI-22 remains the final planned phase; no UI-23 is created.
 
 ## Active implementation order
 

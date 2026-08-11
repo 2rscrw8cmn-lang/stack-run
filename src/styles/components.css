@@ -5449,6 +5449,7 @@ textarea.run-input {
 
 .crew-settings__switch,
 .crew-settings__account-actions,
+.crew-settings__form-actions,
 .run-data-setup__nav {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5490,6 +5491,19 @@ textarea.run-input {
 .crew-settings__members,
 .crew-settings__owner-tools,
 .crew-settings__invite-link { display: grid; gap: var(--space-3); }
+
+.crew-settings__danger {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.crew-settings__delete-confirmation {
+  line-height: 1.55;
+}
 
 .crew-settings__members ul,
 .crew-settings__invites {
@@ -5571,7 +5585,8 @@ textarea.run-input {
 
 @media (max-width: 340px) {
   .crew-settings__race-fields,
-  .crew-settings__account-actions { grid-template-columns: 1fr; }
+  .crew-settings__account-actions,
+  .crew-settings__form-actions { grid-template-columns: 1fr; }
 }
 
 /* UI-19 — Race Crew inside Runs. */

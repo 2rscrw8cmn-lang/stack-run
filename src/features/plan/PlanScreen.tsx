@@ -6,7 +6,12 @@ import {
   type AvailabilityCalendar,
 } from "../../domain/availability";
 import { earnedBlockPhrase } from "../../domain/build";
-import { formatDateLabel, todayLocalDate } from "../../domain/dates";
+import {
+  formatDateLabel,
+  isAfterLocalDate,
+  isBeforeLocalDate,
+  todayLocalDate,
+} from "../../domain/dates";
 import {
   clampWeekNumber,
   currentWeekNumber,
@@ -100,6 +105,11 @@ export function PlanScreen({
   const [announcement, setAnnouncement] = useState("");
 
   const week = selectPlanWeekViewModel(plan, runLogs, weekNumber, today);
+  const lifecycle = isBeforeLocalDate(today, plan.startDate)
+    ? "before-plan"
+    : isAfterLocalDate(today, plan.race.date)
+      ? "after-race"
+      : "active";
   const blocked = blockedDates(availability);
   const conflicts = findAvailabilityConflicts(plan, availability, runLogs, today);
   const satisfiedWorkoutIds = new Set(
@@ -208,6 +218,7 @@ export function PlanScreen({
       <WeekLead
         week={week}
         totalWeeks={plan.weeks.length}
+        lifecycle={lifecycle}
         onStep={(direction) => goToWeek(week.weekNumber + direction)}
         onCurrentWeek={() => goToWeek(currentWeekNumber(plan, today))}
       />

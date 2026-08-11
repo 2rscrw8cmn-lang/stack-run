@@ -2,7 +2,35 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
+import type { LoadedCrewAccount } from "../../crew/types";
 import { AccountCrewSheet } from "./AccountCrewSheet";
+
+const ownerAccount: LoadedCrewAccount = {
+  profile: { id: "owner-1", displayName: "Owner" },
+  crew: {
+    id: "crew-1",
+    ownerUserId: "owner-1",
+    name: "OUC Race Crew",
+    raceName: "OUC Half Marathon",
+    raceDate: "2026-12-05",
+    raceDistanceMiles: 13.1,
+  },
+  role: "owner",
+  members: [
+    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
+  ],
+  invites: [],
+};
+
+const memberAccount: LoadedCrewAccount = {
+  ...ownerAccount,
+  profile: { id: "member-1", displayName: "Member" },
+  role: "member",
+  members: [
+    ...ownerAccount.members,
+    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z" },
+  ],
+};
 
 function controller(
   overrides: Partial<RaceCrewController> = {},
@@ -32,6 +60,8 @@ function controller(
     signOut: action,
     saveDisplayName: action,
     createCrew: action,
+    updateCrew: vi.fn(async () => true),
+    deleteCrew: vi.fn(async () => true),
     createInvite: action,
     revokeInvite: action,
     joinPendingInvite: action,
@@ -127,5 +157,114 @@ describe("Account & Crew settings", () => {
       date: "2026-12-12",
       distanceMiles: 13.1,
     });
+  });
+
+  it("shows Crew management only to the owner", () => {
+    const { rerender } = render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Edit Crew" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Crew" })).toBeInTheDocument();
+
+    rerender(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: memberAccount })}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Edit Crew" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete Crew" })).not.toBeInTheDocument();
+  });
+
+  it("prefills and saves valid Crew edits without changing the personal race", async () => {
+    const updateCrew = vi.fn(async () => true);
+    const localRace = { name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 };
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={localRace}
+        crew={controller({ status: "signed-in", account: ownerAccount, updateCrew })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    expect(screen.getByLabelText("Crew name")).toHaveValue("OUC Race Crew");
+    expect(screen.getByLabelText("Race name")).toHaveValue("OUC Half Marathon");
+    expect(screen.getByLabelText("Race date")).toHaveValue("2026-12-05");
+    expect(screen.getByLabelText("Distance (mi)")).toHaveValue(13.1);
+
+    await user.clear(screen.getByLabelText("Crew name"));
+    await user.type(screen.getByLabelText("Crew name"), "Winter Crew");
+    await user.clear(screen.getByLabelText("Race name"));
+    await user.type(screen.getByLabelText("Race name"), "Winter Half");
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(updateCrew).toHaveBeenCalledWith({
+      name: "Winter Crew",
+      raceName: "Winter Half",
+      raceDate: "2026-12-05",
+      raceDistanceMiles: 13.1,
+    });
+    expect(localRace).toEqual({ name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 });
+  });
+
+  it("rejects blank names and invalid distance before calling the backend", async () => {
+    const updateCrew = vi.fn(async () => true);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount, updateCrew })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    await user.clear(screen.getByLabelText("Crew name"));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a Crew name");
+    expect(updateCrew).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Crew name"), "OUC Race Crew");
+    await user.clear(screen.getByLabelText("Distance (mi)"));
+    await user.type(screen.getByLabelText("Distance (mi)"), "0");
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("valid race distance");
+    expect(updateCrew).not.toHaveBeenCalled();
+  });
+
+  it("requires confirmation and supports cancelling Crew deletion", async () => {
+    const deleteCrew = vi.fn(async () => true);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount, deleteCrew })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete Crew" }));
+    expect(screen.getByRole("heading", { name: "Delete OUC Race Crew?" })).toBeInTheDocument();
+    expect(screen.getByText(/shared data for everyone/)).toBeInTheDocument();
+    expect(deleteCrew).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(deleteCrew).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Edit Crew" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Delete Crew" }));
+    await user.click(screen.getByRole("button", { name: "Delete Crew" }));
+    expect(deleteCrew).toHaveBeenCalledOnce();
   });
 });

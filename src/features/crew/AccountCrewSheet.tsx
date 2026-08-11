@@ -2,7 +2,9 @@ import {
   Copy,
   LogIn,
   LogOut,
+  Pencil,
   ShieldCheck,
+  Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -12,7 +14,9 @@ import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDateLabel } from "../../domain/dates";
 import type { Race } from "../../domain/types";
+import { validateCrewDetails } from "../../crew/crewService";
 import { compareCrewRace } from "../../crew/raceMatch";
+import type { RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 
 interface Props {
@@ -185,7 +189,105 @@ function CreateCrewPanel({ crew, localRace }: Pick<Props, "crew" | "localRace">)
   );
 }
 
-function CrewPanel({ crew }: { crew: RaceCrewController }) {
+function EditCrewPanel({
+  crew,
+  raceCrew,
+  onCancel,
+  onSaved,
+}: {
+  crew: RaceCrewController;
+  raceCrew: RaceCrew;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(raceCrew.name);
+  const [raceName, setRaceName] = useState(raceCrew.raceName);
+  const [raceDate, setRaceDate] = useState(raceCrew.raceDate);
+  const [distance, setDistance] = useState(String(raceCrew.raceDistanceMiles));
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  async function save(): Promise<void> {
+    try {
+      const input = validateCrewDetails({
+        name,
+        raceName,
+        raceDate,
+        raceDistanceMiles: Number(distance),
+      });
+      setValidationError(null);
+      if (await crew.updateCrew(input)) onSaved();
+    } catch (reason) {
+      setValidationError(reason instanceof Error ? reason.message : "Check the Crew details.");
+    }
+  }
+
+  return (
+    <section className="crew-settings__section">
+      <FormField label="Crew name">
+        <input className="run-input" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
+      </FormField>
+      <FormField label="Race name">
+        <input className="run-input" value={raceName} maxLength={120} onChange={(event) => setRaceName(event.target.value)} />
+      </FormField>
+      <div className="crew-settings__race-fields">
+        <FormField label="Race date">
+          <input className="run-input" type="date" value={raceDate} onChange={(event) => setRaceDate(event.target.value)} />
+        </FormField>
+        <FormField label="Distance (mi)">
+          <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
+        </FormField>
+      </div>
+      {validationError && <p role="alert" className="crew-settings__message crew-settings__message--error">{validationError}</p>}
+      <div className="crew-settings__form-actions">
+        <Button isLoading={crew.busy} onClick={() => void save()}>Save Changes</Button>
+        <Button variant="secondary" disabled={crew.busy} onClick={onCancel}>Cancel</Button>
+      </div>
+    </section>
+  );
+}
+
+function DeleteCrewPanel({
+  crew,
+  raceCrew,
+  onCancel,
+  onDeleted,
+}: {
+  crew: RaceCrewController;
+  raceCrew: RaceCrew;
+  onCancel: () => void;
+  onDeleted: () => void;
+}) {
+  return (
+    <section className="crew-settings__section crew-settings__delete-confirmation">
+      <h3>Delete {raceCrew.name}?</h3>
+      <p>This removes the Crew and its shared data for everyone. Personal STACK data stays on each runner&apos;s device.</p>
+      <p>This can&apos;t be undone.</p>
+      <div className="crew-settings__form-actions">
+        <Button variant="secondary" disabled={crew.busy} onClick={onCancel}>Cancel</Button>
+        <Button
+          variant="danger"
+          icon={<Trash2 size={18} />}
+          isLoading={crew.busy}
+          onClick={() => void crew.deleteCrew().then((deleted) => {
+            if (deleted) onDeleted();
+          })}
+        >
+          Delete Crew
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function CrewPanel({
+  crew,
+  onEdit,
+  onDelete,
+}: {
+  crew: RaceCrewController;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const account = crew.account;
   const raceCrew = account?.crew;
   if (!account || !raceCrew || !account.role) return null;
@@ -200,6 +302,12 @@ function CrewPanel({ crew }: { crew: RaceCrewController }) {
         {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
         {raceCrew.raceDistanceMiles} mi
       </p>
+
+      {account.role === "owner" && (
+        <Button variant="secondary" icon={<Pencil size={18} />} onClick={onEdit}>
+          Edit Crew
+        </Button>
+      )}
 
       <div className="crew-settings__members">
         <h4>Members</h4>
@@ -222,6 +330,7 @@ function CrewPanel({ crew }: { crew: RaceCrewController }) {
 
       {account.role === "owner" && (
         <div className="crew-settings__owner-tools">
+          <h4>Invites</h4>
           <Button variant="secondary" icon={<UserPlus size={18} />} isLoading={crew.busy} onClick={() => void crew.createInvite()}>
             Create Private Invite
           </Button>
@@ -245,6 +354,12 @@ function CrewPanel({ crew }: { crew: RaceCrewController }) {
               ))}
             </ul>
           )}
+          <div className="crew-settings__danger">
+            <p className="machine-label">Danger zone</p>
+            <Button variant="danger" icon={<Trash2 size={18} />} onClick={onDelete}>
+              Delete Crew
+            </Button>
+          </div>
         </div>
       )}
 
@@ -282,9 +397,41 @@ function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
 
 export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
   const signedIn = crew.status === "signed-in";
+  const [view, setView] = useState<"main" | "edit" | "delete">("main");
+  const raceCrew = crew.account?.crew ?? null;
+  const visibleView = crew.account?.role === "owner" && raceCrew ? view : "main";
+
   return (
-    <Sheet title="Account & Crew" isOpen={isOpen} onClose={onClose} className="crew-settings-sheet">
+    <Sheet
+      title={visibleView === "edit" ? "Edit Crew" : visibleView === "delete" ? "Delete Crew" : "Account & Crew"}
+      isOpen={isOpen}
+      onClose={() => {
+        setView("main");
+        onClose();
+      }}
+      className="crew-settings-sheet"
+    >
       <div className="crew-settings">
+        {visibleView === "edit" && raceCrew && (
+          <EditCrewPanel
+            crew={crew}
+            raceCrew={raceCrew}
+            onCancel={() => setView("main")}
+            onSaved={() => setView("main")}
+          />
+        )}
+
+        {visibleView === "delete" && raceCrew && (
+          <DeleteCrewPanel
+            crew={crew}
+            raceCrew={raceCrew}
+            onCancel={() => setView("main")}
+            onDeleted={() => setView("main")}
+          />
+        )}
+
+        {visibleView === "main" && (
+          <>
         {!crew.configured && (
           <section className="crew-settings__empty">
             <ShieldCheck size={24} aria-hidden="true" />
@@ -309,7 +456,11 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
             <AccountProfilePanel crew={crew} />
             <PendingInvitePanel crew={crew} localRace={localRace} />
             {crew.account?.crew ? (
-              <CrewPanel crew={crew} />
+              <CrewPanel
+                crew={crew}
+                onEdit={() => setView("edit")}
+                onDelete={() => setView("delete")}
+              />
             ) : !crew.pendingInvite ? (
               <CreateCrewPanel crew={crew} localRace={localRace} />
             ) : null}
@@ -321,6 +472,9 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
         {crew.projectionError && (
           <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
         )}
+          </>
+        )}
+        {visibleView !== "main" && crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
       </div>
     </Sheet>
   );
