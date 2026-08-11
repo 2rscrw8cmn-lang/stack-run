@@ -312,6 +312,8 @@ UI-20 is the last currently authorized Race Crew phase. No UI-21 is currently au
 
 ## D-065 — Crew is a conditional fifth destination, because it owns one shared communal Build
 
+> **Placement correction:** D-066 supersedes the automatic-arrangement, non-persisted, nobody-moves, and no-migration statements recorded below. D-065 remains the authority for the conditional Crew destination and screen hierarchy.
+
 **Decision:** UI-21 promotes Race Crew from a context inside Runs to a top-level STACK destination, on the strength of a mechanic no other surface has: every crew member's shared runs contribute blocks to **one shared Crew Build**.
 
 This supersedes the earlier "Race Crew stays `YOU | CREW` inside Runs; no fifth tab" boundary. That boundary was correct while Crew was a feed and a comparison; it stopped being correct once the crew had a tower of its own.
@@ -352,6 +354,26 @@ Account and crew management stays in Settings → Account & Crew.
 UI-21 does not add Realtime, a router, a global state library, comments, notifications, profiles, ranking, a pace leaderboard, a podium or a database migration.
 
 UI-21 is the last currently authorized Race Crew phase. No UI-22 is authorized. After UI-21, perform a whole-product review before defining additional phases.
+
+## D-066 — Crew Build blocks are earned by running and placed by their runner
+
+**Decision:** The final owner review of UI-21 supersedes only D-065's automatic-arrangement, no-owner, non-persisted, and no-migration clauses. D-065's conditional Crew destination, navigation hierarchy, safe-data boundary, and separation of Personal, Member, and Crew Builds remain in force.
+
+Every safe shared run earns one Crew Build block. A newly earned or legacy unplaced block is **READY** and does not appear in the physical tower until its runner chooses an open position. Only that runner may place or later move the block. Teammates can inspect placed blocks and crew-safe run detail, but never place or move them.
+
+The three coordinate systems remain deliberately independent:
+
+- Personal Build coordinates are private and manually arranged;
+- Member Build reproduces the safe shared personal coordinates as read-only Crew context;
+- Crew Build uses nullable `shared_runs.crew_build_row` / `crew_build_column_start` coordinates that never read from or write to personal placement.
+
+Crew placement is persisted through the authenticated `place_crew_build_block` RPC only. The RPC verifies run ownership and active crew membership, derives width from distance and height from activity type, locks placement for the crew, rejects out-of-bounds or overlapping rectangles, and updates only the two Crew coordinates. Direct client updates to those columns are not granted. This requires the forward-only `20260811150000_crew_build_placement.sql` migration and its transactional verification script.
+
+READY order is chronological (`local_date`, `created_at`, `id`). The hero totals count every safe shared run, whether placed or READY; the physical tower renders only placed blocks. The oldest current-user READY block appears near the hero with the full run identity and a prominent placement action. Own placed blocks expose a quiet Move Block action from both the tower and crew-safe Run Detail. A server collision keeps the block READY or in its prior position and asks the runner to choose another space.
+
+The Crew Build remains an eight-column object-first tower. It shows at least six courses when empty or shallow, grows until a phone-height cap, then scrolls internally with the newest/top courses accessible. Empty, one-member, unavailable, and truncated states remain factual. No Realtime, router, ranking, pace leaderboard, score, XP, comments, notifications, profiles, or global state library is added.
+
+Live migration application, the repeatable SQL verification, two-account placement/collision/permission testing, and 320px/390px/desktop/real iPhone Safari visual acceptance remain owner-run checks. UI-21 must not be marked complete until they pass.
 
 ## Active implementation order
 

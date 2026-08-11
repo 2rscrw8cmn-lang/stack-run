@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  CREW_BUILD_BLOCK_LIMIT,
+  canPlaceCrewBuildBlock,
+  crewBuildBlocksOverlap,
   crewBuildContributorIds,
+  crewBuildPlacementOptions,
   deriveCrewBuild,
 } from "./crewBuild";
 import type { CrewBuildRun } from "./types";
@@ -19,268 +21,151 @@ function run(
     activityType: "easy",
     distanceMiles: 4,
     createdAt: "2026-08-09T12:00:00Z",
+    crewBuildRow: null,
+    crewBuildColumnStart: null,
     ...values,
   };
 }
 
-/** A layout signature that ignores everything except where blocks landed. */
-function layout(runs: CrewBuildRun[]): string {
-  return deriveCrewBuild(runs)
-    .blocks.map(
-      (block) =>
-        `${block.id}@${block.row}:${block.columnStart}+${block.width}x${block.height}`,
-    )
-    .join("|");
-}
-
-describe("Crew Build derivation", () => {
-  it("turns every safe shared run into exactly one block", () => {
+describe("collaborative Crew Build", () => {
+  it("uses stored Crew coordinates and never auto-places an unplaced run", () => {
     const model = deriveCrewBuild([
-      run("a", "zack", { createdAt: "2026-08-01T10:00:00Z" }),
-      run("b", "drew", { createdAt: "2026-08-02T10:00:00Z" }),
-      run("c", "zack", { createdAt: "2026-08-03T10:00:00Z" }),
+      run("placed", "zack", { crewBuildRow: 3, crewBuildColumnStart: 4 }),
+      run("ready", "drew", { localDate: "2026-08-10" }),
     ]);
 
-    expect(model.blocks.map((block) => block.id)).toEqual(["a", "b", "c"]);
-    expect(model.blockCount).toBe(3);
-    expect(new Set(model.blocks.map((block) => block.id)).size).toBe(3);
+    expect(model.blocks).toHaveLength(1);
+    expect(model.blocks[0]).toMatchObject({ id: "placed", row: 3, columnStart: 4 });
+    expect(model.readyRuns.map((item) => item.id)).toEqual(["ready"]);
+    expect(model.readyRuns[0]).not.toHaveProperty("row");
+    expect(model.readyRuns[0]).not.toHaveProperty("columnStart");
+    expect(model.placedCount).toBe(1);
+    expect(model.readyCount).toBe(1);
   });
 
-  it("takes width from distance and height from activity type", () => {
+  it("keeps personal Member Build coordinates completely independent", () => {
+    const shared = run("a", "zack", { crewBuildRow: 2, crewBuildColumnStart: 3 });
+    const withPersonalPlacement = {
+      ...shared,
+      buildRow: 99,
+      buildColumnStart: 8,
+    } as CrewBuildRun;
+
+    expect(deriveCrewBuild([withPersonalPlacement]).blocks[0]).toMatchObject({
+      row: 2,
+      columnStart: 3,
+    });
+    expect(deriveCrewBuild([withPersonalPlacement]).blocks[0]).not.toHaveProperty("buildRow");
+  });
+
+  it("orders READY contributions by local date, createdAt, then id", () => {
     const model = deriveCrewBuild([
-      run("short", "zack", { distanceMiles: 2.4, createdAt: "2026-08-01T00:00:00Z" }),
-      run("mid", "zack", { distanceMiles: 4.9, createdAt: "2026-08-02T00:00:00Z" }),
-      run("far", "zack", { distanceMiles: 7.9, createdAt: "2026-08-03T00:00:00Z" }),
-      run("long", "zack", { distanceMiles: 8, createdAt: "2026-08-04T00:00:00Z" }),
-      run("hard", "zack", {
-        distanceMiles: 5,
-        activityType: "intervals",
-        createdAt: "2026-08-05T00:00:00Z",
-      }),
-      run("sim", "zack", {
-        distanceMiles: 5,
-        activityType: "simulation",
-        createdAt: "2026-08-06T00:00:00Z",
-      }),
-      run("race", "zack", {
-        distanceMiles: 13.1,
-        activityType: "race",
-        createdAt: "2026-08-07T00:00:00Z",
-      }),
-      run("easy-long", "zack", {
-        distanceMiles: 9,
-        activityType: "long",
-        createdAt: "2026-08-08T00:00:00Z",
-      }),
+      run("c", "zack", { localDate: "2026-08-11", createdAt: "2026-08-01T00:00:00Z" }),
+      run("b", "zack", { localDate: "2026-08-10", createdAt: "2026-08-02T00:00:00Z" }),
+      run("a", "zack", { localDate: "2026-08-10", createdAt: "2026-08-02T00:00:00Z" }),
+      run("first", "zack", { localDate: "2026-08-10", createdAt: "2026-08-01T00:00:00Z" }),
     ]);
-
-    const byId = new Map(model.blocks.map((block) => [block.id, block] as const));
-    expect(byId.get("short")!.width).toBe(1);
-    expect(byId.get("mid")!.width).toBe(2);
-    expect(byId.get("far")!.width).toBe(3);
-    expect(byId.get("long")!.width).toBe(4);
-    expect(byId.get("short")!.height).toBe(1);
-    expect(byId.get("easy-long")!.height).toBe(1);
-    expect(byId.get("hard")!.height).toBe(2);
-    expect(byId.get("sim")!.height).toBe(2);
-    expect(byId.get("race")!.height).toBe(3);
+    expect(model.readyRuns.map((item) => item.id)).toEqual(["first", "a", "b", "c"]);
   });
 
-  it("keeps the activity type on the block so color still means training type", () => {
+  it("keeps width and height mappings identical to personal STACK", () => {
     const model = deriveCrewBuild([
-      run("a", "zack", { activityType: "intervals" }),
-      run("b", "drew", { activityType: "long", createdAt: "2026-08-09T13:00:00Z" }),
+      run("short", "zack", { distanceMiles: 2.9 }),
+      run("mid", "zack", { distanceMiles: 3 }),
+      run("far", "zack", { distanceMiles: 5 }),
+      run("eight", "zack", { distanceMiles: 8 }),
+      run("intervals", "zack", { activityType: "intervals" }),
+      run("simulation", "zack", { activityType: "simulation" }),
+      run("long", "zack", { activityType: "long" }),
+      run("race", "zack", { activityType: "race" }),
     ]);
-
-    expect(model.blocks.map((block) => block.activityType)).toEqual([
-      "intervals",
-      "long",
-    ]);
-    // Identity travels separately, so a member cue can never replace the color.
-    expect(model.blocks.map((block) => block.userId)).toEqual(["zack", "drew"]);
+    const byId = new Map(model.readyRuns.map((item) => [item.id, item] as const));
+    expect(["short", "mid", "far", "eight"].map((id) => byId.get(id)?.width)).toEqual([1, 2, 3, 4]);
+    expect(["short", "long", "intervals", "simulation", "race"].map((id) => byId.get(id)?.height)).toEqual([1, 1, 2, 2, 3]);
   });
 
-  it("orders contributions by createdAt then id, whatever order they arrive in", () => {
-    const runs = [
-      run("c", "zack", { createdAt: "2026-08-03T00:00:00Z" }),
-      run("a", "drew", { createdAt: "2026-08-01T00:00:00Z" }),
-      run("b2", "zack", { createdAt: "2026-08-02T00:00:00Z" }),
-      // Same instant as b2: the shared-run id is the stable tie-breaker.
-      run("b1", "drew", { createdAt: "2026-08-02T00:00:00Z" }),
-    ];
-
-    expect(deriveCrewBuild(runs).blocks.map((block) => block.id)).toEqual([
-      "a",
-      "b1",
-      "b2",
-      "c",
-    ]);
-  });
-
-  it("produces an identical tower for the same run set in any query order", () => {
-    const runs = [
-      run("a", "zack", { createdAt: "2026-08-01T00:00:00Z", distanceMiles: 3.2 }),
-      run("b", "drew", {
-        createdAt: "2026-08-02T00:00:00Z",
-        distanceMiles: 9,
-        activityType: "long",
-      }),
-      run("c", "zack", {
-        createdAt: "2026-08-03T00:00:00Z",
-        distanceMiles: 5,
-        activityType: "intervals",
-      }),
-      run("d", "drew", { createdAt: "2026-08-04T00:00:00Z", distanceMiles: 2 }),
-      run("e", "zack", {
-        createdAt: "2026-08-05T00:00:00Z",
-        distanceMiles: 13.1,
-        activityType: "race",
-      }),
-    ];
-
-    const forwards = layout(runs);
-    expect(layout([...runs].reverse())).toBe(forwards);
-    expect(layout([runs[2], runs[0], runs[4], runs[1], runs[3]])).toBe(forwards);
-  });
-
-  it("ignores personal Member Build placement entirely", () => {
-    const runs = [
-      run("a", "zack", { createdAt: "2026-08-01T00:00:00Z" }),
-      run("b", "drew", { createdAt: "2026-08-02T00:00:00Z" }),
-    ];
-    const withPersonalPlacement = runs.map((item) => ({
-      ...item,
-      // Fields the Member Build reads. The Crew Build must not see them, and
-      // the derived model must not carry them either.
-      buildRow: 9,
-      buildColumnStart: 7,
-    }));
-
-    expect(layout(withPersonalPlacement as CrewBuildRun[])).toBe(layout(runs));
-    for (const block of deriveCrewBuild(withPersonalPlacement as CrewBuildRun[]).blocks) {
-      expect(block).not.toHaveProperty("buildRow");
-      expect(block).not.toHaveProperty("buildColumnStart");
-      expect(block.row).toBe(0);
-    }
-  });
-
-  it("grows the tower when a later run is shared, without disturbing what is under it", () => {
-    const existing = [
-      run("a", "zack", { createdAt: "2026-08-01T00:00:00Z" }),
-      run("b", "drew", { createdAt: "2026-08-02T00:00:00Z" }),
-    ];
-    const before = deriveCrewBuild(existing);
-    const after = deriveCrewBuild([
-      ...existing,
-      run("c", "zack", { createdAt: "2026-08-03T00:00:00Z", distanceMiles: 6 }),
-    ]);
-
-    expect(after.blockCount).toBe(3);
-    expect(after.blocks.slice(0, 2)).toEqual(before.blocks);
-    expect(after.courses).toBeGreaterThanOrEqual(before.courses);
-  });
-
-  it("recomputes deterministically when a departed member's runs disappear", () => {
-    const all = [
-      run("a", "zack", { createdAt: "2026-08-01T00:00:00Z" }),
-      run("b", "drew", { createdAt: "2026-08-02T00:00:00Z" }),
-      run("c", "zack", { createdAt: "2026-08-03T00:00:00Z" }),
-    ];
-    const remaining = all.filter((item) => item.userId !== "drew");
-
-    expect(layout(remaining)).toBe(layout([...remaining].reverse()));
-    expect(deriveCrewBuild(remaining).blocks.map((block) => block.id)).toEqual([
-      "a",
-      "c",
-    ]);
-    expect(deriveCrewBuild(remaining).milesBuilt).toBeCloseTo(8, 5);
-  });
-
-  it("totals miles, blocks and contributing runners from the tower itself", () => {
+  it("counts all shared miles and runs while only stored blocks occupy the tower", () => {
     const model = deriveCrewBuild([
-      run("a", "zack", { distanceMiles: 6.1, createdAt: "2026-08-01T00:00:00Z" }),
-      run("b", "drew", { distanceMiles: 3.25, createdAt: "2026-08-02T00:00:00Z" }),
-      run("c", "zack", { distanceMiles: 4, createdAt: "2026-08-03T00:00:00Z" }),
+      run("placed", "zack", {
+        distanceMiles: 8,
+        crewBuildRow: 0,
+        crewBuildColumnStart: 1,
+      }),
+      run("ready", "drew", { distanceMiles: 5.5 }),
     ]);
-
-    expect(model.milesBuilt).toBeCloseTo(13.35, 5);
-    expect(model.blockCount).toBe(3);
-    expect(crewBuildContributorIds(model)).toEqual(["zack", "drew"]);
-    expect(model.courses).toBeGreaterThan(0);
-  });
-
-  it("is empty, honest and untruncated with no shared runs", () => {
-    const model = deriveCrewBuild([]);
-    expect(model.blocks).toEqual([]);
-    expect(model.milesBuilt).toBe(0);
-    expect(model.blockCount).toBe(0);
-    expect(model.courses).toBe(0);
-    expect(model.truncated).toBe(false);
-  });
-
-  it("builds a one-member crew's tower from that runner's runs alone", () => {
-    const model = deriveCrewBuild([
-      run("a", "zack", { createdAt: "2026-08-01T00:00:00Z" }),
-      run("b", "zack", { createdAt: "2026-08-02T00:00:00Z" }),
-    ]);
-    expect(model.blockCount).toBe(2);
+    expect(model.milesBuilt).toBe(13.5);
+    expect(model.runCount).toBe(2);
+    expect(model.placedCount).toBe(1);
+    expect(model.readyCount).toBe(1);
     expect(crewBuildContributorIds(model)).toEqual(["zack"]);
   });
 
-  it("says so rather than quietly shortening the tower at the safety ceiling", () => {
-    const runs = Array.from({ length: 5 }, (_, index) =>
-      run(`run-${index}`, "zack", {
-        createdAt: `2026-08-0${index + 1}T00:00:00Z`,
+  it("mirrors rectangular collision geometry on the client", () => {
+    const placed = deriveCrewBuild([
+      run("base", "drew", {
+        distanceMiles: 5,
+        activityType: "intervals",
+        crewBuildRow: 1,
+        crewBuildColumnStart: 2,
       }),
-    );
+    ]).blocks;
+    const moving = run("moving", "zack", { distanceMiles: 3, activityType: "long" });
 
-    const bounded = deriveCrewBuild(runs, 3);
-    expect(bounded.blockCount).toBe(3);
-    expect(bounded.truncated).toBe(true);
-    // The oldest contributions are kept, so the tower still reads bottom-up.
-    expect(bounded.blocks.map((block) => block.id)).toEqual([
-      "run-0",
-      "run-1",
-      "run-2",
-    ]);
-    expect(deriveCrewBuild(runs).truncated).toBe(false);
-    expect(CREW_BUILD_BLOCK_LIMIT).toBeGreaterThan(runs.length);
+    expect(canPlaceCrewBuildBlock(moving, { row: 1, columnStart: 1 }, placed)).toBe(false);
+    expect(canPlaceCrewBuildBlock(moving, { row: 3, columnStart: 2 }, placed)).toBe(true);
+    expect(canPlaceCrewBuildBlock(moving, { row: 0, columnStart: 8 }, placed)).toBe(false);
+    expect(canPlaceCrewBuildBlock(moving, { row: -1, columnStart: 1 }, placed)).toBe(false);
   });
 
-  it("carries no private field into the derived model", () => {
+  it("allows moving a block against its own old footprint but not a teammate", () => {
+    const runs = [
+      run("mine", "zack", { crewBuildRow: 0, crewBuildColumnStart: 1 }),
+      run("theirs", "drew", { crewBuildRow: 0, crewBuildColumnStart: 3 }),
+    ];
+    const model = deriveCrewBuild(runs);
+    expect(canPlaceCrewBuildBlock(runs[0], { row: 0, columnStart: 1 }, model.blocks)).toBe(true);
+    expect(canPlaceCrewBuildBlock(runs[0], { row: 0, columnStart: 3 }, model.blocks)).toBe(false);
+
+    const moved = deriveCrewBuild([{ ...runs[0], crewBuildRow: 2, crewBuildColumnStart: 5 }, runs[1]]);
+    expect(moved.blocks.find((block) => block.id === "mine")).toMatchObject({ row: 2, columnStart: 5 });
+  });
+
+  it("offers only snapped, in-grid, collision-free client positions", () => {
+    const base = deriveCrewBuild([
+      run("base", "drew", { crewBuildRow: 0, crewBuildColumnStart: 1 }),
+    ]);
+    const moving = run("moving", "zack", { distanceMiles: 8 });
+    const options = crewBuildPlacementOptions(moving, base.blocks, 2);
+    expect(options).not.toContainEqual({ row: 0, columnStart: 1 });
+    expect(options).toContainEqual({ row: 1, columnStart: 1 });
+    expect(options.every((option) => option.columnStart <= 5)).toBe(true);
+  });
+
+  it("treats conflicting persisted coordinates defensively as READY", () => {
     const model = deriveCrewBuild([
-      run("a", "zack", { createdAt: "2026-08-01T00:00:00Z" }),
+      run("first", "zack", {
+        createdAt: "2026-08-08T12:00:00Z",
+        crewBuildRow: 0,
+        crewBuildColumnStart: 1,
+      }),
+      run("conflict", "drew", {
+        createdAt: "2026-08-09T12:00:00Z",
+        crewBuildRow: 0,
+        crewBuildColumnStart: 2,
+      }),
     ]);
-
-    expect(Object.keys(model.blocks[0]).sort()).toEqual([
-      "activityType",
-      "columnStart",
-      "displayName",
-      "distanceMiles",
-      "height",
-      "id",
-      "localDate",
-      "row",
-      "userId",
-      "width",
-    ]);
+    expect(model.blocks.map((block) => block.id)).toEqual(["first"]);
+    expect(model.readyRuns.map((item) => item.id)).toEqual(["conflict"]);
   });
 
-  it("never lets a block leave the eight-column grid", () => {
-    const runs = Array.from({ length: 40 }, (_, index) =>
-      run(`run-${index}`, index % 2 === 0 ? "zack" : "drew", {
-        createdAt: `2026-08-${String((index % 28) + 1).padStart(2, "0")}T00:00:00Z`,
-        distanceMiles: 1 + (index % 9),
-        activityType: (["easy", "intervals", "long", "simulation", "race"] as const)[
-          index % 5
-        ],
-      }),
-    );
-
-    for (const block of deriveCrewBuild(runs).blocks) {
-      expect(block.columnStart).toBeGreaterThanOrEqual(1);
-      expect(block.columnStart + block.width - 1).toBeLessThanOrEqual(8);
-      expect(block.row).toBeGreaterThanOrEqual(0);
-    }
+  it("uses half-open footprint overlap at touching edges", () => {
+    expect(crewBuildBlocksOverlap(
+      { row: 0, columnStart: 1, width: 2, height: 1 },
+      { row: 0, columnStart: 3, width: 2, height: 1 },
+    )).toBe(false);
+    expect(crewBuildBlocksOverlap(
+      { row: 0, columnStart: 1, width: 2, height: 2 },
+      { row: 1, columnStart: 2, width: 1, height: 1 },
+    )).toBe(true);
   });
 });

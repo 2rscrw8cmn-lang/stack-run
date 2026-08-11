@@ -4,140 +4,227 @@ import {
   type BlockHeight,
   type BlockWidth,
 } from "../domain/footprint";
-import { autoPlaceOption, placementOptions } from "../domain/placement";
-import type { BlockPlacement, RunActivityType } from "../domain/types";
+import type { RunActivityType } from "../domain/types";
 import type { CrewBuildRun } from "./types";
 
-/**
- * A safety ceiling, not a design target.
- *
- * A private crew of about ten friends running a full race cycle stays well
- * under this, and `dashboard.ts` reads at most `MAX_SHARED_RUN_READ` rows, so
- * in practice the tower is complete. When the ceiling is genuinely reached the
- * model says so rather than presenting a short tower as the whole crew.
- */
+/** Safety ceiling for the private ten-person Crew read. */
 export const CREW_BUILD_BLOCK_LIMIT = 1280;
+export const CREW_BUILD_COLUMNS = 8;
+export const CREW_BUILD_MIN_VISIBLE_COURSES = 6;
 
-export interface CrewBuildBlock {
-  /** The shared run id, which is also what opens crew-safe Run Detail. */
+export interface CrewBuildPlacement {
+  /** 0-based course counted up from the ground. */
+  row: number;
+  /** 1-based, inclusive. */
+  columnStart: number;
+}
+
+export interface CrewBuildBlock extends CrewBuildPlacement {
+  /** The shared run id, which also opens crew-safe Run Detail. */
   id: string;
   userId: string;
   displayName: string;
   activityType: RunActivityType;
   width: BlockWidth;
   height: BlockHeight;
-  /** 1-based, inclusive. */
-  columnStart: number;
-  /** 0-based course counted up from the ground. */
-  row: number;
   distanceMiles: number;
   localDate: string;
 }
 
+export interface CrewBuildReadyRun {
+  id: string;
+  userId: string;
+  displayName: string;
+  activityType: RunActivityType;
+  width: BlockWidth;
+  height: BlockHeight;
+  distanceMiles: number;
+  localDate: string;
+  createdAt: string;
+}
+
 export interface CrewBuildModel {
+  /** Only physically placed contributions. */
   blocks: CrewBuildBlock[];
+  /** Unplaced contributions, oldest earned contribution first. */
+  readyRuns: CrewBuildReadyRun[];
   /** Courses tall, counted from the ground. */
   courses: number;
-  /** Miles represented by the blocks actually in the tower. */
+  /** All shared-run miles, whether placed or READY. */
   milesBuilt: number;
-  blockCount: number;
+  runCount: number;
+  placedCount: number;
+  readyCount: number;
   /** True when safe runs were dropped at the ceiling above. */
   truncated: boolean;
 }
 
 export const EMPTY_CREW_BUILD: CrewBuildModel = {
   blocks: [],
+  readyRuns: [],
   courses: 0,
   milesBuilt: 0,
-  blockCount: 0,
+  runCount: 0,
+  placedCount: 0,
+  readyCount: 0,
   truncated: false,
 };
 
-/**
- * The communal contribution order, and the whole reason two phones draw the
- * same tower.
- *
- * `created_at` is when the run entered the shared Crew record, which gives the
- * Crew Build append-like behavior without exposing when the workout actually
- * started. The shared-run id breaks ties, so the order is total: nothing here
- * depends on device time, query arrival order, or how a member arranged their
- * own personal Build.
- */
-export function compareCrewBuildContribution(
+/** Stable ordering for the READY queue: oldest earned contribution first. */
+export function compareCrewBuildReadyRuns(
   left: CrewBuildRun,
   right: CrewBuildRun,
 ): number {
   return (
-    left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id)
+    left.localDate.localeCompare(right.localDate) ||
+    left.createdAt.localeCompare(right.createdAt) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+export function crewBuildFootprint(run: Pick<CrewBuildRun, "activityType" | "distanceMiles">): {
+  width: BlockWidth;
+  height: BlockHeight;
+} {
+  return {
+    width: widthForMiles(run.distanceMiles),
+    height: heightForActivityType(run.activityType),
+  };
+}
+
+export function isCrewBuildPlacementWithinGrid(
+  placement: CrewBuildPlacement,
+  width: BlockWidth,
+): boolean {
+  return (
+    Number.isInteger(placement.row) &&
+    placement.row >= 0 &&
+    Number.isInteger(placement.columnStart) &&
+    placement.columnStart >= 1 &&
+    placement.columnStart + width - 1 <= CREW_BUILD_COLUMNS
+  );
+}
+
+export function crewBuildBlocksOverlap(
+  left: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
+  right: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
+): boolean {
+  const columnsOverlap =
+    left.columnStart < right.columnStart + right.width &&
+    right.columnStart < left.columnStart + left.width;
+  const rowsOverlap =
+    left.row < right.row + right.height && right.row < left.row + left.height;
+  return columnsOverlap && rowsOverlap;
+}
+
+/** Client mirror of the RPC's grid and collision checks. */
+export function canPlaceCrewBuildBlock(
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+  placement: CrewBuildPlacement,
+  blocks: readonly CrewBuildBlock[],
+): boolean {
+  const footprint = crewBuildFootprint(run);
+  if (!isCrewBuildPlacementWithinGrid(placement, footprint.width)) return false;
+  return !blocks.some(
+    (block) =>
+      block.id !== run.id &&
+      crewBuildBlocksOverlap({ ...placement, ...footprint }, block),
   );
 }
 
 /**
- * One shared tower from every safe shared run in the Crew.
+ * Finite snapped positions shown in placement mode. The grid grows with the
+ * actual tower and always includes breathing room above it.
+ */
+export function crewBuildPlacementOptions(
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+  blocks: readonly CrewBuildBlock[],
+  rows = Math.max(
+    CREW_BUILD_MIN_VISIBLE_COURSES,
+    blocks.reduce((highest, block) => Math.max(highest, block.row + block.height), 0) + 3,
+  ),
+): CrewBuildPlacement[] {
+  const options: CrewBuildPlacement[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let columnStart = 1; columnStart <= CREW_BUILD_COLUMNS; columnStart += 1) {
+      const placement = { row, columnStart };
+      if (canPlaceCrewBuildBlock(run, placement, blocks)) options.push(placement);
+    }
+  }
+  return options;
+}
+
+/**
+ * Builds the shared read model from persisted Crew coordinates only.
  *
- * This is deliberately *not* a merge of personal Build coordinates. Personal
- * `build_row` / `build_column_start` describe how one runner arranged their own
- * private tower; they have no meaning in a grid every member is contributing
- * to, so they are never read here. The Crew tower's arrangement is derived —
- * the same deterministic auto-placement rule the personal Build uses, replayed
- * over the contribution order — and is never stored anywhere.
- *
- * Nobody owns it and nobody can move a block in it. The running is the
- * contribution.
+ * Personal `build_row` / `build_column_start` never enter this contract. A
+ * run with no valid Crew placement remains READY and receives no invented
+ * physical position. Totals still include every safe shared run.
  */
 export function deriveCrewBuild(
   runs: readonly CrewBuildRun[],
   limit = CREW_BUILD_BLOCK_LIMIT,
 ): CrewBuildModel {
   const ceiling = Math.max(0, limit);
-  const ordered = [...runs].sort(compareCrewBuildContribution);
+  const ordered = [...runs].sort(compareCrewBuildReadyRuns);
   const contributing = ordered.slice(0, ceiling);
-
-  const placed: BlockPlacement[] = [];
   const blocks: CrewBuildBlock[] = [];
+  const readyRuns: CrewBuildReadyRun[] = [];
 
   for (const run of contributing) {
-    const width = widthForMiles(run.distanceMiles);
-    const height = heightForActivityType(run.activityType);
-    const option = autoPlaceOption(placementOptions(width, height, placed));
-    if (!option) continue;
-    placed.push({
-      runLogId: run.id,
-      row: option.row,
-      columnStart: option.columnStart,
-      width,
-      height,
-      placedAt: run.createdAt,
-    });
-    blocks.push({
-      id: run.id,
-      userId: run.userId,
-      displayName: run.displayName,
-      activityType: run.activityType,
-      width,
-      height,
-      columnStart: option.columnStart,
-      row: option.row,
-      distanceMiles: run.distanceMiles,
-      localDate: run.localDate,
-    });
+    const { width, height } = crewBuildFootprint(run);
+    const placement =
+      run.crewBuildRow === null || run.crewBuildColumnStart === null
+        ? null
+        : { row: run.crewBuildRow, columnStart: run.crewBuildColumnStart };
+    if (
+      placement &&
+      isCrewBuildPlacementWithinGrid(placement, width) &&
+      !blocks.some((block) => crewBuildBlocksOverlap({ ...placement, width, height }, block))
+    ) {
+      blocks.push({
+        id: run.id,
+        userId: run.userId,
+        displayName: run.displayName,
+        activityType: run.activityType,
+        width,
+        height,
+        row: placement.row,
+        columnStart: placement.columnStart,
+        distanceMiles: run.distanceMiles,
+        localDate: run.localDate,
+      });
+    } else {
+      readyRuns.push({
+        id: run.id,
+        userId: run.userId,
+        displayName: run.displayName,
+        activityType: run.activityType,
+        width,
+        height,
+        distanceMiles: run.distanceMiles,
+        localDate: run.localDate,
+        createdAt: run.createdAt,
+      });
+    }
   }
 
   return {
     blocks,
+    readyRuns,
     courses: blocks.reduce(
       (highest, block) => Math.max(highest, block.row + block.height),
       0,
     ),
-    // Summed from the blocks that are really in the tower, so the hero number
-    // and the tower can never disagree.
-    milesBuilt: blocks.reduce((total, block) => total + block.distanceMiles, 0),
-    blockCount: blocks.length,
+    milesBuilt: contributing.reduce((total, run) => total + run.distanceMiles, 0),
+    runCount: contributing.length,
+    placedCount: blocks.length,
+    readyCount: readyRuns.length,
     truncated: ordered.length > contributing.length,
   };
 }
 
-/** The runners with at least one block in the shared tower. */
+/** The runners with at least one physically placed block. */
 export function crewBuildContributorIds(model: CrewBuildModel): string[] {
   const seen: string[] = [];
   for (const block of model.blocks) {

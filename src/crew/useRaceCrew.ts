@@ -34,6 +34,10 @@ import {
 } from "./reactions";
 import { CREW_DASHBOARD_STALE_MS } from "./freshness";
 import { getSupabaseAvailability } from "./supabaseClient";
+import {
+  CrewBuildPlacementError,
+  placeCrewBuildBlock,
+} from "./crewBuildPlacement";
 import type {
   CrewDashboardData,
   CrewInvitePreview,
@@ -71,6 +75,8 @@ export interface RaceCrewController {
   crewDataError: string | null;
   propsPendingRunIds: readonly string[];
   propsErrors: Readonly<Record<string, string>>;
+  crewBuildPlacementPending: boolean;
+  crewBuildPlacementError: string | null;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -83,6 +89,8 @@ export interface RaceCrewController {
   removeMember: (userId: string) => Promise<void>;
   refreshCrewData: (force?: boolean) => Promise<void>;
   toggleProps: (runId: string) => Promise<void>;
+  placeCrewBuildBlock: (runId: string, row: number, columnStart: number) => Promise<boolean>;
+  clearCrewBuildPlacementError: () => void;
   clearMessage: () => void;
 }
 
@@ -117,6 +125,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const [crewDataError, setCrewDataError] = useState<string | null>(null);
   const [propsPendingRunIds, setPropsPendingRunIds] = useState<readonly string[]>([]);
   const [propsErrors, setPropsErrors] = useState<Readonly<Record<string, string>>>({});
+  const [crewBuildPlacementPending, setCrewBuildPlacementPending] = useState(false);
+  const [crewBuildPlacementError, setCrewBuildPlacementError] = useState<string | null>(null);
   const latest = useRef({ appState, user, account });
   const lastProjection = useRef({ fingerprint: "", syncedAt: 0 });
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
@@ -263,6 +273,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     setCrewDataError(null);
     setPropsPendingRunIds([]);
     setPropsErrors({});
+    setCrewBuildPlacementError(null);
     propsInFlight.current.clear();
     lastDashboard.current = { crewId, loadedAt: 0 };
   }, [account?.crew?.id]);
@@ -363,6 +374,39 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }
   }
 
+  async function placeBlockInCrewBuild(
+    runId: string,
+    row: number,
+    columnStart: number,
+  ): Promise<boolean> {
+    if (!availability.configured || !user || !account?.crew || crewBuildPlacementPending) {
+      return false;
+    }
+    setCrewBuildPlacementPending(true);
+    setCrewBuildPlacementError(null);
+    try {
+      await placeCrewBuildBlock(availability.client, {
+        sharedRunId: runId,
+        row,
+        columnStart,
+      });
+      lastDashboard.current.loadedAt = 0;
+      await refreshCrewData(true);
+      return true;
+    } catch (reason) {
+      if (reason instanceof CrewBuildPlacementError && reason.kind === "conflict") {
+        setCrewBuildPlacementError("That space was just taken. Choose another spot.");
+        lastDashboard.current.loadedAt = 0;
+        await refreshCrewData(true);
+      } else {
+        setCrewBuildPlacementError("Your block could not be placed. Refresh and try again.");
+      }
+      return false;
+    } finally {
+      setCrewBuildPlacementPending(false);
+    }
+  }
+
   return {
     configured: availability.configured,
     unavailableReason: availability.configured ? null : availability.reason,
@@ -380,6 +424,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     crewDataError,
     propsPendingRunIds,
     propsErrors,
+    crewBuildPlacementPending,
+    crewBuildPlacementError,
     createAccount: (input) => operate(async () => {
       if (!availability.configured) return;
       const nextUser = await createStackAccount(availability.client, input);
@@ -405,6 +451,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setCrewDataError(null);
       setPropsPendingRunIds([]);
       setPropsErrors({});
+      setCrewBuildPlacementError(null);
       propsInFlight.current.clear();
       lastDashboard.current = { crewId: "", loadedAt: 0 };
     }, "Signed out. Personal STACK is still available."),
@@ -452,6 +499,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setCrewDataError(null);
       setPropsPendingRunIds([]);
       setPropsErrors({});
+      setCrewBuildPlacementError(null);
       propsInFlight.current.clear();
       lastDashboard.current = { crewId: "", loadedAt: 0 };
     }, "You left the crew. Personal STACK was not changed."),
@@ -464,6 +512,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }, "Crew member removed."),
     refreshCrewData,
     toggleProps,
+    placeCrewBuildBlock: placeBlockInCrewBuild,
+    clearCrewBuildPlacementError: () => setCrewBuildPlacementError(null),
     clearMessage: () => {
       setError(null);
       setMessage(null);

@@ -123,7 +123,7 @@ Today | Build | Runs | Crew | Plan
 
 Crew is conditional: it appears only for a signed-in active member of a crew. Everybody else keeps the original `Today | Build | Runs | Plan`, and Runs is personal-only again.
 
-The Crew Build is the crew's own tower. It is derived from safe shared runs, deterministically arranged, never persisted, and it ignores each runner's personal Build placement — which belongs to Member Builds only. Nobody places a block in it and nobody can move one: the running is the contribution.
+The Crew Build is the crew's own tower. Every safe shared run earns one Crew block in a READY queue. The runner who earned that block chooses its open position and may later move it; nobody can place or move a teammate's block. Crew placement uses independent `crew_build_row` / `crew_build_column_start` coordinates and never reads or rewrites the runner's personal Build placement, which remains Member-Build-only data. Running earns the block; deliberate runner-owned placement builds the shared tower.
 
 Crew:
 
@@ -233,7 +233,8 @@ Comments separately reviewable.
 ### UI-21 — Crew Destination + Shared Crew Build
 
 - Crew as a conditional fifth destination;
-- one shared communal Crew Build, derived and not persisted;
+- one shared communal Crew Build with runner-owned READY placement and movement;
+- independent persisted Crew coordinates protected by a collision-safe server RPC;
 - `YOU | CREW` removed from Runs;
 - comparisons, recent crew runs, Props and Member Builds moved into Crew.
 
@@ -283,7 +284,7 @@ STACK is successful when:
 | Wellness | Deferred/skipped |
 | Visual direction | Performance Arcade |
 | Build | One deterministic block per actual run; 8 columns; no score/game economy |
-| Social placement | YOU / CREW inside Runs |
+| Social placement | Crew destination; each runner places and moves only their own earned Crew blocks |
 | Social comparisons | Weekly Miles, Longest Run, Consistency, Miles Built |
 
 ## Current boundaries

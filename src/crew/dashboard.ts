@@ -118,7 +118,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,created_at,updated_at",
+        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,created_at,updated_at",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -178,6 +178,8 @@ export async function loadCrewDashboard(
       updatedAt: requiredString(item, "updated_at"),
       buildRow: nullableInteger(item, "build_row"),
       buildColumnStart: nullableInteger(item, "build_column_start"),
+      crewBuildRow: nullableInteger(item, "crew_build_row"),
+      crewBuildColumnStart: nullableInteger(item, "crew_build_column_start"),
       propsCount: 0,
       viewerHasPropped: false,
     };
@@ -216,8 +218,8 @@ export async function loadCrewDashboard(
     buildColumnStart: run.buildColumnStart,
   }));
 
-  // The communal tower's own contract. Personal placement is dropped here
-  // rather than merely ignored downstream, so it cannot reach the Crew Build.
+  // The communal tower's own contract. Personal placement is dropped here;
+  // only the independent, collaborative Crew coordinates cross this boundary.
   const crewBuildRuns = allRuns.map((run) => ({
     id: run.id,
     userId: run.userId,
@@ -226,6 +228,8 @@ export async function loadCrewDashboard(
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     createdAt: run.createdAt,
+    crewBuildRow: run.crewBuildRow,
+    crewBuildColumnStart: run.crewBuildColumnStart,
   }));
 
   return {

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
@@ -54,6 +54,8 @@ function sharedRun(
     updatedAt: `${localDate}T14:00:00Z`,
     buildRow: 0,
     buildColumnStart: 1,
+    crewBuildRow: 0,
+    crewBuildColumnStart: 1,
     propsCount: 0,
     viewerHasPropped: false,
     ...values,
@@ -67,7 +69,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       distanceMiles: 6.1,
       durationSeconds: 3522,
     }),
-    sharedRun("old", "travis", "2026-08-08"),
+    sharedRun("old", "travis", "2026-08-08", { crewBuildColumnStart: 4 }),
   ];
   return {
     members,
@@ -105,7 +107,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, localDate, activityType, distanceMiles, createdAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, localDate, activityType, distanceMiles, createdAt, crewBuildRow, crewBuildColumnStart }) => ({
       id,
       userId,
       displayName,
@@ -113,6 +115,8 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       activityType,
       distanceMiles,
       createdAt,
+      crewBuildRow,
+      crewBuildColumnStart,
     })),
     sharedRunsAvailable: true,
     sharedRunsTruncated: false,
@@ -155,6 +159,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     crewDataError: null,
     propsPendingRunIds: [],
     propsErrors: {},
+    crewBuildPlacementPending: false,
+    crewBuildPlacementError: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -167,6 +173,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     removeMember: action,
     refreshCrewData: action,
     toggleProps: action,
+    placeCrewBuildBlock: vi.fn(async () => true),
+    clearCrewBuildPlacementError: vi.fn(),
     clearMessage: vi.fn(),
     ...overrides,
   };
@@ -314,6 +322,8 @@ describe("Crew comparisons and runs", () => {
               activityType: soloRun.activityType,
               distanceMiles: soloRun.distanceMiles,
               createdAt: soloRun.createdAt,
+              crewBuildRow: soloRun.crewBuildRow,
+              crewBuildColumnStart: soloRun.crewBuildColumnStart,
             },
           ],
         }),
@@ -321,7 +331,7 @@ describe("Crew comparisons and runs", () => {
     );
 
     expect(screen.getByText("miles built").parentElement).toHaveTextContent(/^5\.5/);
-    expect(screen.getByText("1 block · 1 runner")).toBeInTheDocument();
+    expect(screen.getByText("1 run · 1 runner")).toBeInTheDocument();
     expect(screen.getByText("Invite your crew to build together.")).toBeInTheDocument();
   });
 
@@ -544,16 +554,22 @@ describe("Shared Crew Build", () => {
     sharedRun("first", "zack", "2026-08-05", {
       distanceMiles: 4,
       createdAt: "2026-08-05T12:00:00Z",
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
     }),
     sharedRun("second", "drew", "2026-08-06", {
       activityType: "long",
       distanceMiles: 8,
       createdAt: "2026-08-06T12:00:00Z",
+      crewBuildRow: 0,
+      crewBuildColumnStart: 3,
     }),
     sharedRun("third", "travis", "2026-08-07", {
       activityType: "intervals",
       distanceMiles: 5,
       createdAt: "2026-08-07T12:00:00Z",
+      crewBuildRow: 1,
+      crewBuildColumnStart: 1,
     }),
   ];
 
@@ -567,7 +583,7 @@ describe("Shared Crew Build", () => {
     expect(screen.getByText("Crew Build")).toBeInTheDocument();
     expect(screen.getByText("17.0")).toBeInTheDocument();
     expect(screen.getByText("miles built")).toBeInTheDocument();
-    expect(screen.getByText("3 blocks · 3 runners")).toBeInTheDocument();
+    expect(screen.getByText("3 runs · 3 runners")).toBeInTheDocument();
     expect(
       within(screen.getByRole("list", { name: "Crew Build blocks" })).getAllByRole(
         "listitem",
@@ -665,8 +681,8 @@ describe("Shared Crew Build", () => {
     openCrew(controller({ crewData: dashboard({ runs: [] }) }));
 
     expect(screen.getByText("0.0")).toBeInTheDocument();
-    expect(screen.getByText("0 blocks · 3 runners")).toBeInTheDocument();
-    expect(screen.getByText("The first shared run starts the build.")).toBeInTheDocument();
+    expect(screen.getByText("0 runs · 3 runners")).toBeInTheDocument();
+    expect(screen.getByText("The first shared run earns the first Crew block.")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Crew Build blocks" })).not.toBeInTheDocument();
   });
 
@@ -678,12 +694,12 @@ describe("Shared Crew Build", () => {
     );
 
     expect(screen.getByText("Crew Build unavailable.")).toBeInTheDocument();
-    expect(screen.queryByText("The first shared run starts the build.")).not.toBeInTheDocument();
+    expect(screen.queryByText("The first shared run earns the first Crew block.")).not.toBeInTheDocument();
   });
 
   it("says so quietly when the safe read hit its ceiling", () => {
     openCrew(crewWithBuild({ sharedRunsTruncated: true }));
-    expect(screen.getByText("Showing the most recent 3 shared runs.")).toBeInTheDocument();
+    expect(screen.getByText("Showing 3 shared runs.")).toBeInTheDocument();
   });
 
   it("keeps the tower in a scrollable viewport rather than shrinking its blocks", () => {
@@ -694,5 +710,126 @@ describe("Shared Crew Build", () => {
     // The field is told how many courses to draw, so a tall tower keeps its
     // block size and scrolls instead of being squeezed into a fixed box.
     expect(Number(tower.style.getPropertyValue("--crew-build-courses"))).toBeGreaterThan(0);
+  });
+
+  it("shows the current runner's oldest READY contribution beside the Crew Build", () => {
+    const ownOlder = sharedRun("own-older", "zack", "2026-08-08", {
+      activityType: "long",
+      distanceMiles: 8,
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const ownNewer = sharedRun("own-newer", "zack", "2026-08-09", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const teammate = sharedRun("teammate", "drew", "2026-08-07", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    openCrew(controller({ crewData: dashboard({ runs: [ownNewer, teammate, ownOlder] }) }));
+
+    expect(screen.getByText("2 blocks ready")).toBeInTheDocument();
+    expect(screen.getByText("Long Run · 8 MI · Aug 8")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Build Now" })).toBeInTheDocument();
+    expect(screen.getByText("0 built · 3 ready")).toBeInTheDocument();
+    expect(screen.getByText("16.0")).toBeInTheDocument();
+  });
+
+  it("does not offer a placement action for another runner's READY block", () => {
+    const teammate = sharedRun("teammate", "drew", "2026-08-07", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    openCrew(controller({ crewData: dashboard({ runs: [teammate] }) }));
+    expect(screen.getByText("0 built · 1 ready")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Place Your Block|Build Now/ })).not.toBeInTheDocument();
+  });
+
+  it("opens focused placement, selects a valid snapped spot and confirms through the RPC", async () => {
+    const place = vi.fn(async () => true);
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({
+      crewData: dashboard({ runs: [ready] }),
+      placeCrewBuildBlock: place,
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Place Your Block" }));
+    expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Next Open Spot" }));
+    expect(screen.getByText("Row 1 · Column 1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm Placement" }));
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
+    expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
+  });
+
+  it("rejects an invalid tapped anchor before calling the server", async () => {
+    const place = vi.fn(async () => true);
+    const ready = sharedRun("wide-ready", "zack", "2026-08-08", {
+      distanceMiles: 8,
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({
+      crewData: dashboard({ runs: [ready] }),
+      placeCrewBuildBlock: place,
+    }));
+    await user.click(screen.getByRole("button", { name: "Place Your Block" }));
+    const grid = screen.getByRole("list", { name: "Choose a Crew Build position" });
+    vi.spyOn(grid, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 180,
+      width: 320, height: 180, toJSON: () => ({}),
+    });
+    fireEvent.click(grid, { clientX: 319, clientY: 170 });
+    expect(screen.getByText("That spot is blocked. Choose an open grid space.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
+    expect(place).not.toHaveBeenCalled();
+  });
+
+  it("keeps a block READY and shows the specific server collision message", async () => {
+    const place = vi.fn(async () => false);
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({
+      crewData: dashboard({ runs: [ready] }),
+      placeCrewBuildBlock: place,
+      crewBuildPlacementError: "That space was just taken. Choose another spot.",
+    }));
+    await user.click(screen.getByRole("button", { name: "Place Your Block" }));
+    await user.click(screen.getByRole("button", { name: "Next Open Spot" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Placement" }));
+    expect(screen.getByText("That space was just taken. Choose another spot.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
+    expect(screen.queryByText("1 built · 0 ready")).not.toBeInTheDocument();
+  });
+
+  it("offers Move Block only for the current runner's placed Crew block", async () => {
+    const own = sharedRun("own", "zack", "2026-08-08", {
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
+    });
+    const teammate = sharedRun("theirs", "drew", "2026-08-09", {
+      crewBuildRow: 0,
+      crewBuildColumnStart: 3,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [own, teammate] }) }));
+
+    await user.click(screen.getByRole("button", { name: "Zack, Easy, 4 miles, August 8" }));
+    expect(within(screen.getByRole("dialog", { name: "Run Detail" })).getByRole("button", { name: "Move Block" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Drew, Easy, 4 miles, August 9" }));
+    expect(within(screen.getByRole("dialog", { name: "Run Detail" })).queryByRole("button", { name: "Move Block" })).not.toBeInTheDocument();
+  });
+
+  it("uses a compact six-course stage for a small tower", () => {
+    openCrew(crewWithBuild());
+    const stage = screen.getByRole("list", { name: "Crew Build blocks" }).closest(".crew-build__stage");
+    expect(stage).toHaveStyle("--crew-build-visible-courses: 6");
   });
 });

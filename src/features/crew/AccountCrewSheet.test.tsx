@@ -25,6 +25,8 @@ function controller(
     crewDataError: null,
     propsPendingRunIds: [],
     propsErrors: {},
+    crewBuildPlacementPending: false,
+    crewBuildPlacementError: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -37,6 +39,8 @@ function controller(
     removeMember: action,
     refreshCrewData: action,
     toggleProps: action,
+    placeCrewBuildBlock: vi.fn(async () => true),
+    clearCrewBuildPlacementError: vi.fn(),
     clearMessage: vi.fn(),
     ...overrides,
   };

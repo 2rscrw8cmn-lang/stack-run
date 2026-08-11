@@ -86,15 +86,17 @@ export function App() {
   const crewAvailable =
     raceCrew.status === "signed-in" && Boolean(raceCrew.account?.crew);
 
-  // Losing access while standing in the room has to put you somewhere real,
-  // and Runs is the personal history the signed-out app has always had. The
-  // correction happens during render rather than in an effect so the invalid
-  // selection is never painted, and it is a real state change rather than a
-  // derived override so signing back in restores the destination without
-  // restoring the screen the user was thrown off.
-  if (activeTab === "crew" && !crewAvailable) {
-    setActiveTab("runs");
-  }
+  // Losing access while standing in Crew returns to personal Runs. State
+  // correction belongs in an effect; React render remains side-effect free.
+  // The visible tab is derived immediately below so the inaccessible screen is
+  // never painted while the scheduled state correction catches up.
+  useEffect(() => {
+    if (activeTab !== "crew" || crewAvailable) return;
+    queueMicrotask(() => setActiveTab("runs"));
+  }, [activeTab, crewAvailable]);
+
+  const visibleActiveTab =
+    activeTab === "crew" && !crewAvailable ? "runs" : activeTab;
 
   const setAppState = useCallback((next: (current: AppState) => AppState) => {
     setBoot((current) =>
@@ -176,7 +178,7 @@ export function App() {
 
   return (
     <AppShell
-      activeTab={activeTab}
+      activeTab={visibleActiveTab}
       onTabChange={setActiveTab}
       crewAvailable={crewAvailable}
       notice={(writeError || accomplishments.length > 0) ? (

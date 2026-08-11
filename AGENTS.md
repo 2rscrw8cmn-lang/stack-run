@@ -43,7 +43,7 @@ Older Trends/Arcade/original phase docs are historical/current-behavior referenc
 
 ## Current implementation phase
 
-UI-18 through UI-20 are complete and accepted. **UI-21 — Crew Destination + Shared Crew Build** is implemented and awaiting owner visual review; see `docs/PHASE_STATUS.md`.
+UI-18 through UI-20 are complete and accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction are implemented in PR #38; live migration/RLS verification, two-account QA, and owner visual review remain pending. See `docs/PHASE_STATUS.md`.
 
 No UI-22 is authorized. Perform a whole-product review before defining additional phases.
 
@@ -234,7 +234,7 @@ No router is required just to parse this fragment.
 - No raw pace leaderboard.
 - Crew-safe run detail is separate from private personal Run Detail.
 - Props later; comments separately reviewable.
-- Mini Builds are UI-20 Member Builds; the collective Crew Build arrived in UI-21, derived and never persisted.
+- Mini Builds are UI-20 Member Builds; the collective Crew Build arrived in UI-21, with runner-owned placement persisted in independent Crew coordinates (D-066).
 
 ## UI-18 scope boundary
 

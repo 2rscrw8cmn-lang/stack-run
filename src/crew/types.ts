@@ -75,6 +75,9 @@ export interface CrewSharedRun {
   updatedAt: string;
   buildRow: number | null;
   buildColumnStart: number | null;
+  /** Independent shared Crew Build placement; never personal placement. */
+  crewBuildRow: number | null;
+  crewBuildColumnStart: number | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -109,6 +112,8 @@ export interface CrewBuildRun {
   activityType: "easy" | "intervals" | "simulation" | "long" | "race";
   distanceMiles: number;
   createdAt: string;
+  crewBuildRow: number | null;
+  crewBuildColumnStart: number | null;
 }
 
 export interface CrewDashboardData {

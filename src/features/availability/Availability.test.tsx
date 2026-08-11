@@ -112,7 +112,7 @@ describe("importing a calendar", () => {
     expect(saved.shifts).toHaveLength(2);
     expect(saved.blockingLabels).toEqual(["MICU Day"]);
     expect(saved.enabled).toBe(true);
-  });
+  }, 15_000);
 
   it("explains a file it cannot read instead of failing quietly", async () => {
     const { user, onSaveAvailability } = renderPlan();

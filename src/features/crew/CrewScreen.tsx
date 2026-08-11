@@ -24,7 +24,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { CrewMemberSummary } from "../../crew/types";
+import type { CrewBuildRun, CrewMemberSummary } from "../../crew/types";
 import {
   comparisonBarPercent,
   comparisonValue,
@@ -34,7 +34,13 @@ import {
 import { crewFreshness } from "../../crew/freshness";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import { crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
-import { deriveCrewBuild, EMPTY_CREW_BUILD } from "../../crew/crewBuild";
+import {
+  canPlaceCrewBuildBlock,
+  crewBuildPlacementOptions,
+  deriveCrewBuild,
+  EMPTY_CREW_BUILD,
+  type CrewBuildPlacement,
+} from "../../crew/crewBuild";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { CrewBuild } from "./CrewBuild";
@@ -135,6 +141,9 @@ export function CrewScreen({
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
+  const [placingRunId, setPlacingRunId] = useState<string | null>(null);
+  const [placementSelection, setPlacementSelection] = useState<CrewBuildPlacement | null>(null);
+  const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
@@ -142,8 +151,8 @@ export function CrewScreen({
   const refreshCrewData = crew?.refreshCrewData;
   const crewBuildRuns = crew?.crewData?.crewBuildRuns;
 
-  // One derivation per loaded payload. The tower is recomputed from scratch
-  // whenever crew data refreshes, and never stored.
+  // One read-model derivation per loaded payload. The server owns the Crew
+  // coordinates; refresh only separates their placed and READY views.
   const crewBuild = useMemo(
     () => (crewBuildRuns ? deriveCrewBuild(crewBuildRuns) : EMPTY_CREW_BUILD),
     [crewBuildRuns],
@@ -255,6 +264,65 @@ export function CrewScreen({
     ...crewBuild,
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
+  const viewerReadyRuns = build.readyRuns.filter((run) => run.userId === currentUserId);
+  const placingRun = dashboardData.crewBuildRuns.find((run) => run.id === placingRunId) ?? null;
+
+  function startPlacement(run: CrewBuildRun) {
+    crew!.clearCrewBuildPlacementError();
+    setPlacementLocalError(null);
+    setPlacingRunId(run.id);
+    setPlacementSelection(
+      run.crewBuildRow === null || run.crewBuildColumnStart === null
+        ? null
+        : { row: run.crewBuildRow, columnStart: run.crewBuildColumnStart },
+    );
+  }
+
+  function cancelPlacement() {
+    crew!.clearCrewBuildPlacementError();
+    setPlacementLocalError(null);
+    setPlacementSelection(null);
+    setPlacingRunId(null);
+  }
+
+  function selectPlacement(next: CrewBuildPlacement) {
+    if (!placingRun) return;
+    if (!canPlaceCrewBuildBlock(placingRun, next, build.blocks)) {
+      setPlacementLocalError("That spot is blocked. Choose an open grid space.");
+      return;
+    }
+    crew!.clearCrewBuildPlacementError();
+    setPlacementLocalError(null);
+    setPlacementSelection(next);
+  }
+
+  function selectNextOpenSpot() {
+    if (!placingRun) return;
+    const options = crewBuildPlacementOptions(placingRun, build.blocks);
+    if (options.length === 0) {
+      setPlacementLocalError("No open spot is visible. Scroll higher and try again.");
+      return;
+    }
+    const currentIndex = placementSelection
+      ? options.findIndex(
+        (option) =>
+          option.row === placementSelection.row &&
+          option.columnStart === placementSelection.columnStart,
+      )
+      : -1;
+    selectPlacement(options[(currentIndex + 1) % options.length]);
+  }
+
+  async function confirmPlacement() {
+    if (!placingRun || !placementSelection) return;
+    const placed = await crew!.placeCrewBuildBlock(
+      placingRun.id,
+      placementSelection.row,
+      placementSelection.columnStart,
+    );
+    if (placed) cancelPlacement();
+    else setPlacementSelection(null);
+  }
 
   function changeMetricFromKeyboard(
     event: KeyboardEvent<HTMLButtonElement>,
@@ -315,6 +383,24 @@ export function CrewScreen({
         model={build}
         members={members}
         available={dashboardData.sharedRunsAvailable}
+        viewerReadyRuns={viewerReadyRuns}
+        placement={placingRun ? {
+          run: placingRun,
+          selection: placementSelection,
+          pending: crew.crewBuildPlacementPending,
+          error: crew.crewBuildPlacementError ?? placementLocalError,
+          onSelect: selectPlacement,
+          onNextOpenSpot: selectNextOpenSpot,
+          onConfirm: () => void confirmPlacement(),
+          onCancel: cancelPlacement,
+        } : null}
+        onStartReady={() => {
+          const next = viewerReadyRuns[0];
+          if (next) {
+            const source = dashboardData.crewBuildRuns.find((run) => run.id === next.id);
+            if (source) startPlacement(source);
+          }
+        }}
         onSelectRun={(runId) => setSelectedRunId(runId)}
       />
 
@@ -523,6 +609,14 @@ export function CrewScreen({
         onToggleProps={() => {
           if (selectedRun) void crew.toggleProps(selectedRun.id);
         }}
+        onMoveBlock={selectedRun && selectedRun.userId === currentUserId && selectedRun.crewBuildRow !== null
+          ? () => {
+            const source = dashboardData.crewBuildRuns.find((run) => run.id === selectedRun!.id);
+            if (!source) return;
+            setSelectedRunId(null);
+            startPlacement(source);
+          }
+          : undefined}
         onClose={() => setSelectedRunId(null)}
       />
     </div>

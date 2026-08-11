@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../crew/useRaceCrew";
@@ -56,6 +56,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     crewDataError: null,
     propsPendingRunIds: [],
     propsErrors: {},
+    crewBuildPlacementPending: false,
+    crewBuildPlacementError: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -68,6 +70,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     removeMember: action,
     refreshCrewData: action,
     toggleProps: action,
+    placeCrewBuildBlock: vi.fn(async () => true),
+    clearCrewBuildPlacementError: vi.fn(),
     clearMessage: vi.fn(),
     ...overrides,
   };
@@ -149,8 +153,11 @@ describe("Crew as a conditional destination", () => {
     await user.click(screen.getByRole("button", { name: "Crew" }));
     expect(screen.getByText("Crew Build")).toBeInTheDocument();
 
-    current = noCrew;
-    rerender(<App />);
+    await act(async () => {
+      current = noCrew;
+      rerender(<App />);
+      await Promise.resolve();
+    });
 
     expect(navLabels()).toEqual(["Today", "Build", "Runs", "Plan"]);
     expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute("aria-current", "page");
@@ -163,8 +170,11 @@ describe("Crew as a conditional destination", () => {
     const { rerender } = render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Crew" }));
-    current = signedOut;
-    rerender(<App />);
+    await act(async () => {
+      current = signedOut;
+      rerender(<App />);
+      await Promise.resolve();
+    });
     expect(navLabels()).toEqual(["Today", "Build", "Runs", "Plan"]);
     expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute("aria-current", "page");
 

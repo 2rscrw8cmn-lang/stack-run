@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import {
@@ -7,27 +7,40 @@ import {
   formatMilesBuilt,
 } from "../../domain/distance";
 import { crewMemberAccent } from "../../crew/memberAccent";
-import type { CrewBuildBlock, CrewBuildModel } from "../../crew/crewBuild";
-import type { CrewMember } from "../../crew/types";
+import {
+  CREW_BUILD_MIN_VISIBLE_COURSES,
+  crewBuildFootprint,
+  type CrewBuildBlock,
+  type CrewBuildModel,
+  type CrewBuildPlacement,
+  type CrewBuildReadyRun,
+} from "../../crew/crewBuild";
+import type { CrewBuildRun, CrewMember } from "../../crew/types";
+import { Button } from "../../components/ui/Button";
 
-/**
- * Above this many courses the tower is taller than its viewport on a phone and
- * the older courses are behind a scroll, so the caption says so. Blocks keep
- * their size either way — a hundred-course tower squeezed into a fixed box is
- * a picture of a tower rather than one you can read.
- */
-const TALL_COURSES = 12;
+const MAX_VISIBLE_COURSES = 14;
+
+interface CrewBuildPlacementMode {
+  run: CrewBuildRun;
+  selection: CrewBuildPlacement | null;
+  pending: boolean;
+  error: string | null;
+  onSelect: (placement: CrewBuildPlacement) => void;
+  onNextOpenSpot: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
 
 interface CrewBuildProps {
   model: CrewBuildModel;
-  /** Active crew members — the runner count, and the legend. */
   members: CrewMember[];
-  /** False when the safe shared-run read did not succeed. */
   available: boolean;
+  viewerReadyRuns: CrewBuildReadyRun[];
+  placement: CrewBuildPlacementMode | null;
+  onStartReady: () => void;
   onSelectRun: (runId: string) => void;
 }
 
-/** e.g. `Test Turco, Long Run, 8 miles, August 11`. */
 function blockLabel(block: CrewBuildBlock): string {
   return [
     block.displayName,
@@ -37,37 +50,71 @@ function blockLabel(block: CrewBuildBlock): string {
   ].join(", ");
 }
 
-/** The race says its name; every other brick carries its compact mileage. */
-function faceText(block: CrewBuildBlock): string {
+function faceText(block: Pick<CrewBuildBlock, "activityType" | "distanceMiles">): string {
   return block.activityType === "race"
     ? "RACE"
     : formatCompactMiles(block.distanceMiles);
 }
 
-/**
- * The Crew Build — one tower, built by everybody.
- *
- * This is the hero of the Crew destination and the reason Crew is a
- * destination at all. Every safe shared run in the crew is one block in it,
- * and the arrangement is derived rather than arranged: nobody places a block
- * here, and nobody can move one. The running is the contribution.
- *
- * A block keeps STACK's activity color, because activity color means training
- * type everywhere in the app. Whose run it was is a separate, smaller cue — a
- * thin cap along the block's top edge in that runner's stable member accent —
- * so identity never competes with the training meaning of the color.
- */
+function runIdentity(run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "localDate">) {
+  return `${WORKOUT_TYPE_LABEL[run.activityType]} · ${formatMiles(run.distanceMiles)} MI · ${formatDateLabel(run.localDate, { month: "short", day: "numeric" })}`;
+}
+
+/** The shared tower and the runner-owned READY interaction that builds it. */
 export function CrewBuild({
   model,
   members,
   available,
+  viewerReadyRuns,
+  placement,
+  onStartReady,
   onSelectRun,
 }: CrewBuildProps) {
-  const courses = Math.max(1, model.courses);
-  const runnerCount = members.length;
+  const placementFootprint = placement ? crewBuildFootprint(placement.run) : null;
+  const placementTop = placement?.selection && placementFootprint
+    ? placement.selection.row + placementFootprint.height
+    : 0;
+  const gridCourses = placement
+    ? Math.max(
+      CREW_BUILD_MIN_VISIBLE_COURSES,
+      model.courses + 3,
+      placementTop + 1,
+    )
+    : Math.max(1, model.courses);
+  const visibleCourses = Math.min(
+    MAX_VISIBLE_COURSES,
+    Math.max(CREW_BUILD_MIN_VISIBLE_COURSES, gridCourses + (placement ? 0 : 1)),
+  );
+  const renderedBlocks = placement
+    ? model.blocks.filter((block) => block.id !== placement.run.id)
+    : model.blocks;
+  const firstReady = viewerReadyRuns[0] ?? null;
+
+  function chooseFromStage(event: MouseEvent<HTMLUListElement>) {
+    if (!placement) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) return;
+    const columnStart = Math.min(
+      8,
+      Math.max(1, Math.floor(((event.clientX - bounds.left) / bounds.width) * 8) + 1),
+    );
+    const row = Math.min(
+      gridCourses - 1,
+      Math.max(0, Math.floor(((bounds.bottom - event.clientY) / bounds.height) * gridCourses)),
+    );
+    placement.onSelect({ row, columnStart });
+  }
+
+  const stageStyle = {
+    "--crew-build-visible-courses": visibleCourses,
+  } as CSSProperties;
 
   return (
-    <section className="crew-build technical-grid" aria-labelledby="crew-build-title">
+    <section
+      className="crew-build technical-grid"
+      data-placing={placement ? "true" : undefined}
+      aria-labelledby="crew-build-title"
+    >
       <div className="crew-build__lead">
         <p id="crew-build-title" className="machine-label">Crew Build</p>
         <p className="crew-build__miles data-value">
@@ -75,34 +122,57 @@ export function CrewBuild({
           <span className="machine-label">miles built</span>
         </p>
         <p className="crew-build__totals machine-label">
-          {model.blockCount} {model.blockCount === 1 ? "block" : "blocks"} ·{" "}
-          {runnerCount} {runnerCount === 1 ? "runner" : "runners"}
+          {model.runCount} {model.runCount === 1 ? "run" : "runs"} ·{" "}
+          {members.length} {members.length === 1 ? "runner" : "runners"}
         </p>
+        {model.readyCount > 0 && (
+          <p className="crew-build__construction machine-label">
+            {model.placedCount} built · {model.readyCount} ready
+          </p>
+        )}
       </div>
+
+      {available && firstReady && !placement && (
+        <div className="crew-build__ready" role="status">
+          <div>
+            <p className="machine-label">
+              {viewerReadyRuns.length} {viewerReadyRuns.length === 1 ? "block" : "blocks"} ready
+            </p>
+            <p className="crew-build__ready-run data-value">{runIdentity(firstReady)}</p>
+          </div>
+          <Button variant="primary" onClick={onStartReady}>
+            {viewerReadyRuns.length === 1 ? "Place Your Block" : "Build Now"}
+          </Button>
+        </div>
+      )}
+
+      {placement && (
+        <div className="crew-build__placement-lead">
+          <p className="machine-label">Place your block</p>
+          <p className="data-value">{runIdentity(placement.run)}</p>
+          <p>Tap an open grid space. Your block snaps to the eight-column Build.</p>
+        </div>
+      )}
 
       {!available ? (
         <p className="crew-build__unavailable">Crew Build unavailable.</p>
-      ) : model.blocks.length === 0 ? (
-        <div className="crew-build__stage crew-build__stage--empty">
+      ) : model.runCount === 0 ? (
+        <div className="crew-build__stage crew-build__stage--empty" style={stageStyle}>
           <div className="crew-build__field" aria-hidden="true" />
           <div className="crew-build__ground" aria-hidden="true" />
-          <p className="crew-build__empty">The first shared run starts the build.</p>
+          <p className="crew-build__empty">The first shared run earns the first Crew block.</p>
         </div>
       ) : (
-        <div className="crew-build__stage">
-          {/*
-            Tall towers scroll inside their own viewport rather than shrinking
-            until a brick stops being readable. `margin-top: auto` on the tower
-            keeps a short tower standing on the ground line while still letting
-            a tall one scroll from its newest, topmost courses.
-          */}
+        <div className="crew-build__stage" style={stageStyle}>
           <div className="crew-build__viewport">
             <ul
               className="crew-build__tower"
-              aria-label="Crew Build blocks"
-              style={{ "--crew-build-courses": courses } as CSSProperties}
+              aria-label={placement ? "Choose a Crew Build position" : "Crew Build blocks"}
+              data-placement-grid={placement ? "true" : undefined}
+              style={{ "--crew-build-courses": gridCourses } as CSSProperties}
+              onClick={placement ? chooseFromStage : undefined}
             >
-              {model.blocks.map((block) => (
+              {renderedBlocks.map((block) => (
                 <li
                   key={block.id}
                   data-type={block.activityType}
@@ -111,39 +181,86 @@ export function CrewBuild({
                   data-member-color={crewMemberAccent(block.userId)}
                   style={{
                     gridColumn: `${block.columnStart} / span ${block.width}`,
-                    gridRow: `${courses - block.row - block.height + 1} / span ${block.height}`,
+                    gridRow: `${gridCourses - block.row - block.height + 1} / span ${block.height}`,
                   }}
                 >
-                  <button type="button" onClick={() => onSelectRun(block.id)}>
-                    <span className="visually-hidden">{blockLabel(block)}</span>
-                    {/*
-                      One semantic target per block: the cap and the face are
-                      decoration on it, never separate things to land on.
-                    */}
-                    <span className="crew-build__cap" aria-hidden="true" />
-                    <span className="crew-build__face" aria-hidden="true">
-                      {faceText(block)}
+                  {placement ? (
+                    <span className="crew-build__block" aria-hidden="true">
+                      <span className="crew-build__cap" />
+                      <span className="crew-build__face">{faceText(block)}</span>
                     </span>
-                  </button>
+                  ) : (
+                    <button type="button" onClick={() => onSelectRun(block.id)}>
+                      <span className="visually-hidden">{blockLabel(block)}</span>
+                      <span className="crew-build__cap" aria-hidden="true" />
+                      <span className="crew-build__face" aria-hidden="true">{faceText(block)}</span>
+                    </button>
+                  )}
                 </li>
               ))}
+
+              {placement?.selection && placementFootprint && (
+                <li
+                  className="crew-build__preview"
+                  data-type={placement.run.activityType}
+                  data-member-color={crewMemberAccent(placement.run.userId)}
+                  style={{
+                    gridColumn: `${placement.selection.columnStart} / span ${placementFootprint.width}`,
+                    gridRow: `${gridCourses - placement.selection.row - placementFootprint.height + 1} / span ${placementFootprint.height}`,
+                  }}
+                  aria-hidden="true"
+                >
+                  <span className="crew-build__block">
+                    <span className="crew-build__cap" />
+                    <span className="crew-build__face">{faceText(placement.run)}</span>
+                  </span>
+                </li>
+              )}
             </ul>
           </div>
           <div className="crew-build__ground" aria-hidden="true" />
-          <p className="crew-build__caption">
-            Tap a block to see the run behind it.
-            {courses > TALL_COURSES && " Scroll the field for the earliest courses."}
-          </p>
+          {!placement && (
+            <p className="crew-build__caption">
+              {model.blocks.length > 0
+                ? "Tap a block to see the run behind it."
+                : `${model.readyCount} ${model.readyCount === 1 ? "block is" : "blocks are"} earned and ready to build.`}
+              {gridCourses > MAX_VISIBLE_COURSES && " Scroll the field for more courses."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {placement && (
+        <div className="crew-build__placement-controls">
+          <Button variant="secondary" onClick={placement.onNextOpenSpot} disabled={placement.pending}>
+            Next Open Spot
+          </Button>
+          <Button
+            variant="primary"
+            onClick={placement.onConfirm}
+            disabled={!placement.selection || placement.pending}
+          >
+            {placement.pending ? "Placing…" : "Confirm Placement"}
+          </Button>
+          <Button variant="ghost" onClick={placement.onCancel} disabled={placement.pending}>
+            Cancel
+          </Button>
+          {placement.selection && (
+            <p className="machine-label" aria-live="polite">
+              Row {placement.selection.row + 1} · Column {placement.selection.columnStart}
+            </p>
+          )}
+          {placement.error && <p className="crew-build__placement-error" role="status">{placement.error}</p>}
         </div>
       )}
 
       {available && model.truncated && (
         <p className="crew-build__notice" role="status">
-          Showing the most recent {model.blockCount} shared runs.
+          Showing {model.runCount} shared runs.
         </p>
       )}
 
-      {runnerCount > 0 && (
+      {members.length > 0 && (
         <ul className="crew-build__legend" aria-label="Crew Build runners">
           {members.map((member) => (
             <li key={member.userId} data-member-color={crewMemberAccent(member.userId)}>

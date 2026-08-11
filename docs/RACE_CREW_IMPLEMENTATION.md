@@ -700,14 +700,17 @@ UI-20 is complete and accepted via merged PR #37.
 
 Race Crew stopped being "Runs with friends" the moment it could have a Build of its own. STACK's defining mechanic is BUILD, and one tower that every runner's training contributes to is something no other screen in the app has. UI-21 authorizes Crew as a **conditional fifth destination** on exactly that basis, and moves the existing social surfaces into it.
 
+The final owner review corrected the first implementation's automatic arrangement. Every safe shared run now earns one READY Crew block. The runner who earned it chooses an open position and may later move it. Running earns the block; the runner deliberately adds it to the shared object.
+
 In scope:
 
 - Crew as a top-level destination, shown only for a signed-in active member of a crew;
 - the `YOU | CREW` switch removed from Runs, which becomes personal-only again;
-- one shared Crew Build derived from every safe shared run in the crew;
+- one shared Crew Build with runner-owned READY placement and movement;
+- independent persisted Crew coordinates and collision-safe server authorization;
 - the UI-19 comparison, UI-20 Recent Crew Runs with Props and UI-20 Member Builds relocated into Crew.
 
-Out of scope: pace leaderboards, ranking, podiums, comments, notifications, profiles, public discovery, Realtime, a router, a global state library, full personal cloud sync, Intervals OAuth, and any database migration.
+Out of scope: pace leaderboards, ranking, podiums, comments, notifications, profiles, public discovery, Realtime, a router, a global state library, full personal cloud sync, and Intervals OAuth.
 
 ## Navigation
 
@@ -725,45 +728,53 @@ Today | Build | Runs | Plan
 
 Crew uses Lucide `UsersRound` — never `Trophy`, `Crown` or `Medal`. Crew is collaboration, not a winner screen. All five destinations remain readable at 320px with accessible targets and no horizontal scrolling.
 
-If the session or the membership disappears while Crew is open, the app falls back to Runs immediately and does not persist the invalid selection. No router is required; local screen state still holds the destination.
+If the session or membership disappears while Crew is open, an effect falls back to Runs and does not persist the invalid selection. State is never changed during render. No router is required; local screen state still holds the destination.
 
 ## Three Build models
 
 - **Personal Build** — private, and the runner arranges it by hand.
 - **Member Build** — a crew-safe read-only reproduction of that runner's real shared personal arrangement.
-- **Crew Build** — an automatic combined tower derived from every safe shared run in the crew.
+- **Crew Build** — a combined tower in which each runner places and moves only the Crew blocks their shared runs earned.
 
 They are never mixed. `CREW BUILD` is our combined tower; `THE CREW` is each runner's individual Build.
 
-## Communal placement
+## Runner-owned Crew placement
 
-Contribution order, and the reason two phones draw the same tower:
+`shared_runs.crew_build_row` / `crew_build_column_start` are nullable and wholly independent from personal `build_row` / `build_column_start`. Personal coordinates still feed only read-only Member Builds. Crew coordinates feed only the shared Crew Build. Projection upserts never overwrite either coordinate pair with the other.
 
-1. `shared_runs.created_at` ascending — when the run entered the shared Crew record, which gives the tower append-like behavior without exposing the workout's start time;
-2. `shared_runs.id` ascending as a stable tie-breaker.
+Unplaced runs are READY. READY order is `local_date` ascending, then `created_at` ascending, then shared-run `id` ascending. Missing, invalid, or conflicting persisted coordinates never produce invented positions; those blocks remain READY until their owner chooses a valid space.
 
-The ordered blocks then replay through the repository's existing deterministic placement primitive (`placementOptions` + `autoPlaceOption` in `src/domain/placement.ts`). Nothing consults local device time, query arrival order, personal placement or randomness.
+The forward-only `20260811150000_crew_build_placement.sql` migration adds the Crew coordinate pair and authenticated `place_crew_build_block(run_id, row, column_start)` RPC. The transaction:
 
-Personal `build_row` / `build_column_start` are **ignored**: they are Member-Build-only data, and `src/crew/dashboard.ts` drops them from the Crew Build's input rather than passing them along.
+1. authenticates the caller and confirms the run belongs to them;
+2. confirms their crew membership is active;
+3. serializes placement for that crew with a transaction advisory lock and re-reads the row;
+4. derives width from distance and height from activity type;
+5. rejects out-of-grid or overlapping rectangles, including concurrent attempts at the same space;
+6. updates only the two Crew coordinates.
 
-The derived tower is not persisted. No communal coordinates are stored, `shared_runs` is not widened, and **UI-21 requires no migration**.
+Authenticated clients have no direct column grant for Crew coordinates. The RPC is the only write path. Moving a block uses the same checks while excluding that run's prior rectangle. A collision returns the specific `crew_build_placement_conflict` condition; the UI refreshes and keeps the item READY or in its prior position with `That space was just taken. Choose another spot.`
 
 ## Implemented UI-21 details
 
-- `src/crew/crewBuild.ts` derives the tower and is the only place communal placement exists. It has its own input contract (`CrewBuildRun`) with no placement fields, and its output carries no private field.
-- `src/features/crew/CrewBuild.tsx` is the hero: `X.X MILES BUILT`, `X BLOCKS · X RUNNERS`, a grounded eight-column technical field in the approved Build/Performance Arcade language, and a compact member legend. Totals come from the blocks actually in the tower. No ranking, pace, fastest runner, score or XP.
+- `src/crew/crewBuild.ts` is the pure placement/read model. It preserves valid stored Crew coordinates, separates placed and READY blocks, exposes open snapped options, and performs rectangle geometry checks used before confirmation. It never reads personal placement or private run fields.
+- `src/crew/crewBuildPlacement.ts` is the narrow RPC client. `src/crew/useRaceCrew.ts` owns pending/error state, refreshes after success or conflict, and leaves local facts untouched until the server confirms.
+- `src/features/crew/CrewBuild.tsx` is the hero: total miles, all earned runs, runners, and `X built · Y ready`, followed by a grounded eight-column technical field. Totals include placed and READY runs; the physical tower contains only placed blocks. No ranking, pace, fastest runner, score, or XP.
+- The current runner's oldest READY item appears near the hero with its full run identity and `Place Your Block` / `Build Now`. Teammates' READY items are not actionable.
+- Placement mode focuses the stage, shows a snapped preview, rejects invalid or colliding cells client-side, offers `Next Open Spot`, and performs no write until Confirm. Cancel makes no server call.
+- Only the owner's placed block exposes `Move Block`, both from the tower and crew-safe Run Detail. Teammate blocks remain detail-only.
 - Block geometry is unchanged: width from distance, height and color from activity type. Activity color still means training type. Member identity is a thin top-edge cap in the existing stable member accent — never a whole-block fill and never a name inside a normal block.
 - Every block is one semantic interactive target with a real accessible name (`Test Turco, Long Run, 8 miles, August 11`), keyboard-activatable, opening the existing crew-safe Run Detail whoever ran it. The drawn cap and face are `aria-hidden` decoration.
-- Tall towers keep usable block sizes (30px courses, 26px at 320px, 38px on desktop) and scroll inside their own viewport, anchored on the newest, topmost courses, with a caption saying so. No pinch-zoom, canvas or WebGL.
+- Empty and shallow towers show at least six courses. The stage grows with placed height until a phone-height cap and then scrolls internally with the newest/top courses accessible. Blocks use stronger top/side/depth cues without gradients, canvas, WebGL, or new libraries.
 - `src/features/crew/CrewScreen.tsx` orders the destination: crew identity and countdown, Crew Build, comparison, Recent Crew Runs, `THE CREW`. The crew name, the runner count and Miles Built are each stated once.
 - `src/crew/raceCountdown.ts` derives `N DAYS TO RACE` / `RACE DAY` / `RACE COMPLETE` locally from the existing crew race date.
 - Reads stay bounded and single-payload: one `shared_runs` read of up to 128 rows per member (1,280 overall) plus one crew-scoped reaction read feeds the Crew Build, comparisons, recent runs, Props and Member Builds. No N+1 query. `sharedRunsTruncated` and `CREW_BUILD_BLOCK_LIMIT` surface a quiet factual notice rather than presenting a partial tower as complete.
-- Empty and unavailable states are explicit: `The first shared run starts the build.` with an empty technical field, `Crew Build unavailable.` when the safe read failed, `Invite your crew to build together.` for a one-member crew, and never an invented placeholder block.
-- Removing a member deletes their shared rows, so their blocks leave the Crew Build and the tower deterministically reflows. That is intended: access removal outranks tower permanence, and nothing is retained server-side to preserve a shape.
+- Empty and unavailable states are explicit: `The first shared run earns the first block.`, READY-only factual guidance, `Crew Build unavailable.` when the safe read failed, and `Invite your crew to build together.` for a one-member crew. There are no invented placeholder blocks.
+- Removing a member deletes their shared rows, so their placed and READY blocks leave the Crew Build. Remaining stored coordinates do not reflow.
 - Account and crew management stays in Settings → Account & Crew.
-- Refresh behavior is unchanged — stale-aware entry, foreground and manual, with no polling and no Realtime. On refresh the Crew Build is recomputed deterministically.
+- Refresh behavior remains stale-aware entry, foreground, manual, and post-placement refresh, with no polling and no Realtime.
 
-Live two-account and real iPhone Safari QA remain acceptance requirements. Do not mark UI-21 complete until those checks pass.
+The migration must be applied and the repeatable SQL verification must pass before live placement can work. Live two-account ownership/collision/removal behavior plus 320px, 390px, desktop, and real iPhone Safari visual QA remain acceptance requirements. Do not mark UI-21 complete until those checks pass.
 
 No UI-22 is currently authorized. After UI-21, perform a whole-product review before defining additional phases.
 
