@@ -81,7 +81,7 @@ begin
 
   begin
     perform public.place_crew_build_block(
-      (select bridge_id from crew_support_test_ids), 0, 6
+      (select bridge_id from crew_support_test_ids), 0, 5
     );
     raise exception 'collision failure: occupied placement accepted';
   exception when others then
