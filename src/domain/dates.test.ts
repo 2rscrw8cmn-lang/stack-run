@@ -5,6 +5,7 @@ import {
   daysBetweenLocalDates,
   formatDateLabel,
   formatLocalDate,
+  formatUpdatedAgo,
   isAfterLocalDate,
   isBeforeLocalDate,
   isSameLocalDate,
@@ -78,5 +79,15 @@ describe("daysBetweenLocalDates", () => {
 describe("formatDateLabel", () => {
   it("formats a readable label using the local calendar date", () => {
     expect(formatDateLabel("2026-08-03")).toBe("Mon, Aug 3");
+  });
+});
+
+describe("formatUpdatedAgo", () => {
+  const now = new Date("2026-08-11T15:00:00Z").getTime();
+
+  it("uses one compact relative status across data surfaces", () => {
+    expect(formatUpdatedAgo("2026-08-11T14:30:00Z", now)).toBe("Updated 30m ago");
+    expect(formatUpdatedAgo("2026-08-11T12:00:00Z", now)).toBe("Updated 3h ago");
+    expect(formatUpdatedAgo("2026-08-09T12:00:00Z", now)).toBe("Updated 2d ago");
   });
 });

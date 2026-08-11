@@ -1,6 +1,7 @@
 export const APP_STATE_STORAGE_KEY = "stack.app-state.v1";
 export const INTERVALS_SYNC_TOKEN_STORAGE_KEY = "stack.intervals.sync-token.v1";
 export const INTERVALS_API_KEY_STORAGE_KEY = "stack.intervals.api-key.v1";
+export const ONBOARDING_STORAGE_KEY = "stack.onboarding.v1";
 
 const BACKUP_KEY_PREFIX = "stack.app-state.backup.";
 

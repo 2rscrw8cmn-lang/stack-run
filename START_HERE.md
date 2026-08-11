@@ -6,12 +6,12 @@ This repository is the source of truth for **STACK**, a mobile-first running pla
 
 Implemented/accepted:
 
-- original product UI-0 through UI-7;
-- Connected Training UI-8 through UI-11;
-- UI-13 Runs Pillar + Navigation;
-- UI-14 Build Reward Revision;
-- UI-16 Trends 2.0;
-- UI-17 Performance Arcade Design Pass (merged PR #34).
+- UI-0 through UI-21, including Connected Training, Performance Arcade and Race Crew;
+- UI-21 Crew Destination + Shared Crew Build, including runner-owned placement (merged PR #38).
+
+In review:
+
+- UI-22 Final Product Polish + Onboarding, the final planned product phase.
 
 Intentionally skipped/deferred:
 
@@ -20,7 +20,7 @@ Intentionally skipped/deferred:
 
 Current primary destinations:
 
-> **Today / Build / Runs / Plan**
+> **Today / Build / Runs / Plan**, plus **Crew** for a signed-in active crew member
 
 Settings is an icon-only top-right gear.
 
@@ -38,11 +38,9 @@ Other watch/training services may skip HealthFit when they already sync directly
 
 Manual logging remains a full fallback.
 
-## Active next phase
+## Active phase
 
-**UI-18 — Race Crew Foundation** is now the next approved code phase.
-
-The earlier Race Crew architecture gate is resolved.
+**UI-22 — Final Product Polish + Onboarding** is the final planned product phase. It adds no new product capability: it resolves accumulated hierarchy, selector, copy, accessibility and responsive inconsistencies, then gives genuinely new users a short local introduction to the existing Plan → Run → Build → Today loop.
 
 Read first:
 
@@ -57,11 +55,7 @@ docs/DATA_AND_STORAGE.md
 docs/DECISION_LOG_ADDENDUM.md
 ```
 
-The copy/paste UI-18 coding-agent prompt is in:
-
-```text
-docs/RACE_CREW_IMPLEMENTATION.md
-```
+Existing users are migrated quietly and are never forced through the tour. The tour can be replayed from Settings; Crew receives one contextual explanation only when an eligible runner first opens it. Onboarding preferences live in a small repository separate from personal AppState schema 9.
 
 ## Race Crew hobby architecture
 
@@ -90,53 +84,15 @@ Locked decisions:
 
 Intervals officially recommends OAuth for apps intended for multiple users. The owner has intentionally accepted personal keys as a private-hobby shortcut. Revisit OAuth before public/open/commercial/stranger onboarding.
 
-## UI-18 scope
+## UI-22 polish rules
 
-Implement only the foundation:
-
-- Supabase client/config;
-- Create Account / Sign In / Sign Out;
-- Account & Crew Settings;
-- create/join/leave crew;
-- secure private invite flow;
-- owner member controls;
-- SQL migration + RLS;
-- local per-device Intervals API-key repository/client mode;
-- polished Run Data setup wizard;
-- crew-safe shared run + member summary projection;
-- no-loss current owner adoption.
-
-Do **not** implement in UI-18:
-
-- `YOU | CREW` social feed/comparison screen;
-- Props/reactions;
-- mini Builds;
-- comments;
-- full personal cloud sync;
-- public profiles/discovery;
-- Intervals OAuth.
-
-Those come later.
-
-## Planned follow-ons
-
-### UI-19 — Crew Runs + Comparisons
-
-- `YOU | CREW` inside Runs;
-- Weekly Miles;
-- Longest Run;
-- Consistency;
-- Miles Built;
-- recent crew runs;
-- crew-safe run detail.
-
-### UI-20 — Props + Mini Builds
-
-- lightweight encouragement;
-- read-only mini Builds;
-- optional member summary.
-
-Comments remain separately reviewable.
+- preserve the Performance Arcade direction while reducing noise and duplication;
+- keep Runs personal and compact, with Log Run immediately available but no oversized page title;
+- use segmented controls for small finite choices, the shared STACK native select for longer lists, and native date controls for dates;
+- use the shared ActivityTypePicker and EffortPicker everywhere those concepts are edited;
+- hide normal fresh-status timestamps and show relative age only when it is useful;
+- keep every interactive target at least 44 CSS px and every destination usable at 320 CSS px;
+- add no router, global state, feature system, database migration or AppState migration.
 
 ## Run Data setup is part of the product
 

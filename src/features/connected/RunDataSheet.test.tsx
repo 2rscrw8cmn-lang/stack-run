@@ -53,6 +53,7 @@ describe("RunDataSheet", () => {
 
     expect(screen.getByText("Review synced run")).toBeInTheDocument();
     expect(screen.getByLabelText("Match")).toHaveValue(firstRun.id);
+    expect(screen.getByLabelText("Match")).toHaveClass("stack-select__control");
     expect(screen.getByRole("button", { name: "Confirm Match" })).toBeInTheDocument();
   });
 

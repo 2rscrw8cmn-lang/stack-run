@@ -10,13 +10,16 @@ import {
 import {
   createCrew,
   createCrewInvite,
+  deleteCrew as deleteCrewRecord,
   leaveCrew,
   loadCrewAccount,
   previewCrewInvite,
   redeemCrewInvite,
   removeCrewMember,
   revokeCrewInvite,
+  updateCrew as updateCrewRecord,
   updateDisplayName,
+  type CrewDetailsInput,
 } from "./crewService";
 import {
   captureInviteFromLocation,
@@ -81,7 +84,9 @@ export interface RaceCrewController {
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
   saveDisplayName: (displayName: string) => Promise<void>;
-  createCrew: (input: { name: string; raceName: string; raceDate: string; raceDistanceMiles: number }) => Promise<void>;
+  createCrew: (input: CrewDetailsInput) => Promise<void>;
+  updateCrew: (input: CrewDetailsInput) => Promise<boolean>;
+  deleteCrew: () => Promise<boolean>;
   createInvite: () => Promise<void>;
   revokeInvite: (inviteId: string) => Promise<void>;
   joinPendingInvite: () => Promise<void>;
@@ -132,6 +137,19 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
   const dashboardInFlight = useRef<Promise<void> | null>(null);
   const propsInFlight = useRef(new Set<string>());
+
+  const resetCrewClientState = useCallback((): void => {
+    setLatestInviteUrl(null);
+    lastProjection.current = { fingerprint: "", syncedAt: 0 };
+    setCrewData(null);
+    setCrewDataStatus("idle");
+    setCrewDataError(null);
+    setPropsPendingRunIds([]);
+    setPropsErrors({});
+    setCrewBuildPlacementError(null);
+    propsInFlight.current.clear();
+    lastDashboard.current = { crewId: "", loadedAt: 0 };
+  }, []);
 
   useEffect(() => {
     latest.current = { appState, user, account };
@@ -253,6 +271,20 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         setPropsErrors({});
         lastDashboard.current = { crewId, loadedAt: Date.now() };
       } catch (reason) {
+        const currentUser = latest.current.user;
+        if (currentUser) {
+          try {
+            const refreshedAccount = await loadCrewAccount(availability.client, currentUser);
+            setAccount(refreshedAccount);
+            if (!refreshedAccount.crew) {
+              resetCrewClientState();
+              setStatus("signed-in");
+              return;
+            }
+          } catch {
+            // Preserve the dashboard error below when the account refresh also fails.
+          }
+        }
         setCrewDataError(messageOf(reason));
         setCrewDataStatus("error");
       }
@@ -263,7 +295,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     } finally {
       if (dashboardInFlight.current === request) dashboardInFlight.current = null;
     }
-  }, [availability]);
+  }, [availability, resetCrewClientState]);
 
   useEffect(() => {
     const crewId = account?.crew?.id ?? "";
@@ -311,6 +343,26 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     };
   }, [account?.crew, refreshCrewData, user]);
 
+  useEffect(() => {
+    if (!availability.configured || !account?.crew || !user) return;
+    const refreshMembership = () => {
+      if (document.visibilityState === "hidden") return;
+      void loadCrewAccount(availability.client, user)
+        .then((loaded) => {
+          setAccount(loaded);
+          setStatus("signed-in");
+          if (!loaded.crew) resetCrewClientState();
+        })
+        .catch((reason) => setError(messageOf(reason)));
+    };
+    window.addEventListener("focus", refreshMembership);
+    document.addEventListener("visibilitychange", refreshMembership);
+    return () => {
+      window.removeEventListener("focus", refreshMembership);
+      document.removeEventListener("visibilitychange", refreshMembership);
+    };
+  }, [account?.crew, availability, resetCrewClientState, user]);
+
   async function operate(action: () => Promise<void>, success?: string): Promise<void> {
     setBusy(true);
     setError(null);
@@ -320,6 +372,25 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       if (success) setMessage(success);
     } catch (reason) {
       setError(messageOf(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function operateResult(
+    action: () => Promise<void>,
+    success: string,
+  ): Promise<boolean> {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await action();
+      setMessage(success);
+      return true;
+    } catch (reason) {
+      setError(messageOf(reason));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -443,17 +514,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       await signOutOfStack(availability.client);
       setUser(null);
       setAccount(null);
-      setLatestInviteUrl(null);
       setStatus("signed-out");
-      lastProjection.current = { fingerprint: "", syncedAt: 0 };
-      setCrewData(null);
-      setCrewDataStatus("idle");
-      setCrewDataError(null);
-      setPropsPendingRunIds([]);
-      setPropsErrors({});
-      setCrewBuildPlacementError(null);
-      propsInFlight.current.clear();
-      lastDashboard.current = { crewId: "", loadedAt: 0 };
+      resetCrewClientState();
     }, "Signed out. Personal STACK is still available."),
     saveDisplayName: (displayName) => operate(async () => {
       if (!availability.configured || !user) return;
@@ -468,6 +530,42 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       await reloadAccount(user);
       await syncProjection(true);
     }, "Race Crew created."),
+    updateCrew: (input) => operateResult(async () => {
+      if (!availability.configured || !account?.crew || !user) {
+        throw new Error("Crew could not be updated. Refresh and try again.");
+      }
+      try {
+        await updateCrewRecord(availability.client, account.crew.id, input);
+      } catch (reason) {
+        await reloadAccount(user).catch(() => undefined);
+        throw reason;
+      }
+      setAccount((current) =>
+        current?.crew
+          ? { ...current, crew: { ...current.crew, ...input } }
+          : current,
+      );
+      await reloadAccount(user).catch(() => undefined);
+      lastDashboard.current.loadedAt = 0;
+    }, "Crew updated."),
+    deleteCrew: () => operateResult(async () => {
+      if (!availability.configured || !account?.crew || !user) {
+        throw new Error("Crew could not be deleted. Refresh and try again.");
+      }
+      try {
+        await deleteCrewRecord(availability.client, account.crew.id);
+      } catch (reason) {
+        await reloadAccount(user).catch(() => undefined);
+        throw reason;
+      }
+      setAccount((current) =>
+        current
+          ? { ...current, crew: null, role: null, members: [], invites: [] }
+          : current,
+      );
+      resetCrewClientState();
+      await reloadAccount(user).catch(() => undefined);
+    }, "Crew deleted."),
     createInvite: () => operate(async () => {
       if (!availability.configured || !account?.crew) return;
       const created = await createCrewInvite(availability.client, account.crew.id);
@@ -492,16 +590,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       if (!availability.configured || !account?.crew || !user) return;
       await leaveCrew(availability.client, account.crew.id);
       await reloadAccount(user);
-      setLatestInviteUrl(null);
-      lastProjection.current = { fingerprint: "", syncedAt: 0 };
-      setCrewData(null);
-      setCrewDataStatus("idle");
-      setCrewDataError(null);
-      setPropsPendingRunIds([]);
-      setPropsErrors({});
-      setCrewBuildPlacementError(null);
-      propsInFlight.current.clear();
-      lastDashboard.current = { crewId: "", loadedAt: 0 };
+      resetCrewClientState();
     }, "You left the crew. Personal STACK was not changed."),
     removeMember: (userId) => operate(async () => {
       if (!availability.configured || !account?.crew || !user) return;

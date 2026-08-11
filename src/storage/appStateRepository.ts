@@ -57,6 +57,18 @@ export class StorageWriteError extends Error {
   }
 }
 
+/**
+ * True when this browser already has personal STACK data. Failure is treated
+ * as existing data so an unreadable browser is never mistaken for a new user.
+ */
+export function hasStoredAppState(): boolean {
+  try {
+    return localStorage.getItem(APP_STATE_STORAGE_KEY) !== null;
+  } catch {
+    return true;
+  }
+}
+
 type StorageWriteErrorListener = (error: StorageWriteError) => void;
 
 let writeErrorListener: StorageWriteErrorListener | null = null;

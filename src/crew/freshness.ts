@@ -1,4 +1,5 @@
 import type { CrewMemberSummary } from "./types";
+import { formatUpdatedAgo } from "../domain/dates";
 
 export const CREW_DASHBOARD_STALE_MS = 5 * 60_000;
 const CREW_DASHBOARD_WARNING_MS = 2 * 60 * 60_000;
@@ -24,12 +25,8 @@ export function crewFreshness(
   const age = Math.max(0, now - Math.min(...timestamps));
   if (age < CREW_DASHBOARD_STALE_MS) return null;
 
-  const minutes = Math.max(1, Math.floor(age / 60_000));
-  const label = minutes < 60
-    ? `Updated ${minutes}m ago`
-    : minutes < 24 * 60
-      ? `Updated ${Math.floor(minutes / 60)}h ago`
-      : `Updated ${Math.floor(minutes / (24 * 60))}d ago`;
+  const label = formatUpdatedAgo(new Date(now - age).toISOString(), now);
+  if (!label) return null;
 
   return { label, warning: age >= CREW_DASHBOARD_WARNING_MS };
 }

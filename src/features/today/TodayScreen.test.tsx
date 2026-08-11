@@ -122,6 +122,10 @@ describe("TodayScreen workout states", () => {
     renderToday({ today: "2026-07-15" });
 
     expect(screen.getByText("Plan starts soon")).toBeInTheDocument();
+    expect(screen.getByText(/Training begins Monday, August 3, 2026/)).toBeInTheDocument();
+    expect(screen.queryByText("This Week")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: /scheduled runs complete/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
@@ -130,10 +134,17 @@ describe("TodayScreen workout states", () => {
   it("shows the after-race state once race day has passed", () => {
     renderToday({ today: "2026-12-31" });
     expect(screen.getByText("Race complete")).toBeInTheDocument();
+    expect(screen.queryByText("This Week")).not.toBeInTheDocument();
+    expect(screen.queryByText("Next")).not.toBeInTheDocument();
   });
 });
 
 describe("TodayScreen This Week", () => {
+  it("appears on the first actual plan day", () => {
+    renderToday({ today: "2026-08-03" });
+    expect(screen.getByText("This Week")).toBeInTheDocument();
+  });
+
   it("counts scheduled completion for the current week", () => {
     renderToday({ runLogs: [completedEasyRun], today: "2026-08-06" });
 
@@ -222,6 +233,19 @@ describe("TodayScreen run entry", () => {
 });
 
 describe("TodayScreen build preview", () => {
+  it("keeps a pre-plan extra run real without activating Week 1", () => {
+    const prePlanExtra = {
+      ...extraRun,
+      id: "run-extra-pre-plan",
+      completedDate: "2026-07-14",
+    };
+    renderToday({ runLogs: [prePlanExtra], today: "2026-07-15" });
+
+    expect(screen.getByText("Plan starts soon")).toBeInTheDocument();
+    expect(screen.queryByText("This Week")).not.toBeInTheDocument();
+    expect(screen.getByText("1 ready to place")).toBeInTheDocument();
+  });
+
   it("summarises what has been built and what is waiting", () => {
     renderToday({
       runLogs: [completedEasyRun, extraRun],
@@ -330,7 +354,7 @@ describe("TodayScreen run found", () => {
     expect(screen.getByText("Run found")).toBeInTheDocument();
     expect(screen.getByText("2.15 mi")).toBeInTheDocument();
     expect(screen.getByText("20:30")).toBeInTheDocument();
-    expect(screen.getByText("9:32 /mi")).toBeInTheDocument();
+    expect(screen.getByText("9:32 /MI")).toBeInTheDocument();
     expect(screen.getByText("152 bpm")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review Run" })).toBeInTheDocument();
     // Whatever sync found, the day's workout is still the thing on screen.

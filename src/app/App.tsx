@@ -19,6 +19,7 @@ import {
   saveIntervalsSync,
   ignoreIntervalsActivity,
   clearIgnoredIntervalsActivities,
+  hasStoredAppState,
 } from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
 import { createInitialAppState } from "../storage/migrations";
@@ -36,6 +37,14 @@ import {
   loadIntervalsApiKey,
   saveIntervalsApiKey,
 } from "../storage/intervalsCredentialRepository";
+import {
+  loadOnboarding,
+  saveOnboarding,
+  type OnboardingSnapshot,
+  type OnboardingState,
+} from "../storage/onboardingRepository";
+import { WelcomeSheet } from "../features/onboarding/WelcomeSheet";
+import { TourCoachmark } from "../features/onboarding/TourCoachmark";
 
 export type TabId = "today" | "build" | "runs" | "crew" | "plan";
 
@@ -48,12 +57,13 @@ export type TabId = "today" | "build" | "runs" | "crew" | "plan";
  * on the first save. Recovery is a state of the app, not a caught exception.
  */
 type BootState =
-  | { kind: "ready"; state: AppState }
+  | { kind: "ready"; state: AppState; isNew: boolean }
   | { kind: "recovering"; error: StorageLoadError };
 
 function readBootState(): BootState {
+  const isNew = !hasStoredAppState();
   try {
-    return { kind: "ready", state: loadAppState() };
+    return { kind: "ready", state: loadAppState(), isNew };
   } catch (error) {
     if (error instanceof StorageLoadError) {
       return { kind: "recovering", error };
@@ -62,10 +72,34 @@ function readBootState(): BootState {
   }
 }
 
+const CORE_TOUR: ReadonlyArray<{ tab: TabId; title: string; copy: string }> = [
+  { tab: "plan", title: "Plan", copy: "See what should happen, one training week at a time." },
+  { tab: "runs", title: "Runs", copy: "See what actually happened. Log runs here or connect Run Data." },
+  { tab: "build", title: "Build", copy: "Every completed run earns a block. Place it to build your race." },
+  { tab: "today", title: "Today", copy: "Start here for today's workout and what matters now." },
+];
+
 export function App() {
-  const [activeTab, setActiveTab] = useState<TabId>("today");
-  const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
   const [boot, setBoot] = useState<BootState>(readBootState);
+  const [initialOnboarding] = useState<OnboardingSnapshot>(loadOnboarding);
+  const initialLegacyPending =
+    boot.kind === "ready" && !boot.isNew && !initialOnboarding.exists;
+  const initialTourStep =
+    !initialLegacyPending &&
+    initialOnboarding.state.introSeen &&
+    !initialOnboarding.state.coreTourCompleted
+      ? 0
+      : null;
+  const [activeTab, setActiveTab] = useState<TabId>(
+    initialTourStep === null ? "today" : CORE_TOUR[initialTourStep].tab,
+  );
+  const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState<OnboardingState>(
+    initialOnboarding.state,
+  );
+  const [legacyOnboardingPending, setLegacyOnboardingPending] =
+    useState(initialLegacyPending);
+  const [tourStep, setTourStep] = useState<number | null>(initialTourStep);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [syncToken, setSyncToken] = useState<string | null>(() => { try { return loadIntervalsSyncToken(); } catch { return null; } });
   const [intervalsApiKey, setIntervalsApiKey] = useState<string | null>(() => {
@@ -86,6 +120,26 @@ export function App() {
   const crewAvailable =
     raceCrew.status === "signed-in" && Boolean(raceCrew.account?.crew);
 
+  function persistOnboarding(next: OnboardingState) {
+    setOnboarding(next);
+    saveOnboarding(next);
+  }
+
+  // Existing personal users upgrade quietly. If they already belong to a
+  // Crew, that existing membership is not misread as a brand-new join.
+  useEffect(() => {
+    if (!legacyOnboardingPending || raceCrew.status === "loading") return;
+    queueMicrotask(() => {
+      setLegacyOnboardingPending(false);
+      persistOnboarding({
+        version: 1,
+        introSeen: true,
+        coreTourCompleted: true,
+        crewTourSeen: crewAvailable,
+      });
+    });
+  }, [crewAvailable, legacyOnboardingPending, raceCrew.status]);
+
   // Losing access while standing in Crew returns to personal Runs. State
   // correction belongs in an effect; React render remains side-effect free.
   // The visible tab is derived immediately below so the inaccessible screen is
@@ -101,7 +155,7 @@ export function App() {
   const setAppState = useCallback((next: (current: AppState) => AppState) => {
     setBoot((current) =>
       current.kind === "ready"
-        ? { kind: "ready", state: next(current.state) }
+        ? { kind: "ready", state: next(current.state), isNew: current.isNew }
         : current,
     );
   }, []);
@@ -165,22 +219,38 @@ export function App() {
         detail={boot.error.message}
         backupKey={boot.error.backupKey}
         onReadBackup={readBackup}
-        onStartFresh={() => setBoot({ kind: "ready", state: resetAppState() })}
+        onStartFresh={() => setBoot({ kind: "ready", state: resetAppState(), isNew: false })}
         // Nothing was readable, so there is nothing to preserve and nothing to
         // write; this is the same seed plan, held in memory for one session.
         onContinueAnyway={() =>
-          setBoot({ kind: "ready", state: createInitialAppState() })
+          setBoot({ kind: "ready", state: createInitialAppState(), isNew: false })
         }
         onRetry={() => window.location.reload()}
       />
     );
   }
 
+  const tour = tourStep === null ? null : CORE_TOUR[tourStep] ?? null;
+  const welcomeOpen =
+    boot.isNew && !legacyOnboardingPending && !onboarding.introSeen;
+  const crewTourOpen =
+    tour === null &&
+    onboarding.introSeen &&
+    onboarding.coreTourCompleted &&
+    crewAvailable &&
+    visibleActiveTab === "crew" &&
+    !onboarding.crewTourSeen;
+
   return (
+    <>
     <AppShell
       activeTab={visibleActiveTab}
       onTabChange={setActiveTab}
       crewAvailable={crewAvailable}
+      onReplayTour={() => {
+        setActiveTab(CORE_TOUR[0].tab);
+        setTourStep(0);
+      }}
       notice={(writeError || accomplishments.length > 0) ? (
         <>
           {writeError && (
@@ -236,7 +306,7 @@ export function App() {
         setAppState((current) => saveRunDays(current, runDays, plan))
       }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
-      onResetPlan={() => setBoot({ kind: "ready", state: resetAppState() })}
+      onResetPlan={() => setBoot({ kind: "ready", state: resetAppState(), isNew: false })}
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))
       }
@@ -276,5 +346,53 @@ export function App() {
       onIgnoreIntervals={(id) => setAppState((current) => ignoreIntervalsActivity(current, id))}
       onClearIgnoredIntervals={() => setAppState(clearIgnoredIntervalsActivities)}
     />
+    <WelcomeSheet
+      isOpen={welcomeOpen}
+      onGetStarted={() => {
+        persistOnboarding({ ...onboarding, introSeen: true });
+        setActiveTab(CORE_TOUR[0].tab);
+        setTourStep(0);
+      }}
+      onDismiss={() =>
+        persistOnboarding({
+          ...onboarding,
+          introSeen: true,
+          coreTourCompleted: true,
+        })
+      }
+    />
+    {tour && (
+      <TourCoachmark
+        title={tour.title}
+        copy={tour.copy}
+        step={tourStep! + 1}
+        total={CORE_TOUR.length}
+        nextLabel={tourStep === CORE_TOUR.length - 1 ? "Got It" : "Next"}
+        onNext={() => {
+          if (tourStep === CORE_TOUR.length - 1) {
+            persistOnboarding({ ...onboarding, coreTourCompleted: true });
+            setTourStep(null);
+          } else {
+            const next = tourStep! + 1;
+            setActiveTab(CORE_TOUR[next].tab);
+            setTourStep(next);
+          }
+        }}
+        onDismiss={() => {
+          persistOnboarding({ ...onboarding, coreTourCompleted: true });
+          setTourStep(null);
+        }}
+      />
+    )}
+    {crewTourOpen && (
+      <TourCoachmark
+        title="Crew"
+        copy="Every shared run earns a Crew block. You place the blocks you earn. Build the tower together."
+        nextLabel="Got It"
+        onNext={() => persistOnboarding({ ...onboarding, crewTourSeen: true })}
+        onDismiss={() => persistOnboarding({ ...onboarding, crewTourSeen: true })}
+      />
+    )}
+    </>
   );
 }

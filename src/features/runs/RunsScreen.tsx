@@ -6,7 +6,6 @@ import { Section } from "../../components/ui/Section";
 import { earnedBlockPhrase, totalActualMiles } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
 import { selectTrainingSignals } from "../../domain/trends";
 import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
@@ -91,7 +90,6 @@ export function RunsScreen({
   const selected =
     history.find((entry) => entry.runLog.id === detailRunLogId) ?? null;
   const miles = totalActualMiles(runLogs);
-  const totalTime = runLogs.reduce((sum, run) => sum + run.durationSeconds, 0);
   const activeWeeks = selectTrainingSignals(plan, runLogs, today).weeklyMileage
     .filter((week) => week.actualMiles > 0).length;
 
@@ -144,30 +142,12 @@ export function RunsScreen({
   return (
     <div className="runs-screen">
       <div className="runs-screen__lead">
+        <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>Runs</h1>
         <div className="runs-screen__title-row">
-          <h1 className="runs-screen__screen-title data-value" ref={headingRef} tabIndex={-1}>
-            Runs
-            <span className="visually-hidden">
-              {history.length === 0
-                ? " · No runs yet"
-                : ` · ${history.length} ${history.length === 1 ? "run" : "runs"}`}
-            </span>
-          </h1>
-          <Button
-            variant="secondary"
-            className="runs-screen__log"
-            icon={<Plus size={18} strokeWidth={2} />}
-            onClick={() => openEntry(null, false)}
-          >
-            Log Run
-          </Button>
-        </div>
-
-        {history.length === 0 ? (
-          <p className="runs-screen__count data-value">No runs yet</p>
-        ) : (
-          <>
-            <dl className="runs-screen__instrument" aria-label="Running history summary">
+          {history.length === 0 ? (
+            <p className="runs-screen__count data-value">No runs yet</p>
+          ) : (
+            <dl className="runs-screen__quick-stats" aria-label="Running history summary">
               <div>
                 <dd className="data-value">{history.length}</dd>
                 <dt className="machine-label">{history.length === 1 ? "run" : "runs"}</dt>
@@ -177,17 +157,21 @@ export function RunsScreen({
                 <dt className="machine-label">Total mi</dt>
               </div>
               <div>
-                <dd className="data-value">{formatDurationSeconds(totalTime)}</dd>
-                <dt className="machine-label">Total time</dt>
-              </div>
-              <div>
                 <dd className="data-value">{activeWeeks}</dd>
                 <dt className="machine-label">Weeks</dt>
               </div>
             </dl>
-            <p className="visually-hidden">{formatMiles(miles)} miles run</p>
-          </>
-        )}
+          )}
+          <Button
+            variant="secondary"
+            className="runs-screen__log"
+            icon={<Plus size={18} strokeWidth={2} />}
+            onClick={() => openEntry(null, false)}
+          >
+            Log Run
+          </Button>
+        </div>
+        {history.length > 0 && <p className="visually-hidden">{formatMiles(miles)} miles run</p>}
       </div>
 
       <TrendCards
@@ -205,8 +189,8 @@ export function RunsScreen({
           icon={<History size={24} strokeWidth={1.6} />}
           title="Nothing recorded yet"
         >
-          Every run you complete or sync shows up here, newest first —
-          scheduled or extra. Log one and it earns a block.
+          Log a run here or connect Run Data in Settings. Your first completed
+          run earns a block.
         </EmptyState>
       ) : (
         <Section

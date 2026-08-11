@@ -67,7 +67,7 @@ describe("editing a planned workout", () => {
     expect(
       screen.getByRole("heading", { name: "Edit Workout" }),
     ).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/Type/), "intervals");
+    await user.click(screen.getByRole("radio", { name: "Intervals" }));
     await user.clear(screen.getByLabelText(/Name/));
     await user.type(screen.getByLabelText(/Name/), "6 x 400m");
     await user.clear(screen.getByLabelText(/Target/));
@@ -118,7 +118,7 @@ describe("adding a run to a rest day", () => {
       screen.getByRole("heading", { name: "Add Planned Run" }),
     ).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/Type/), "long");
+    await user.click(screen.getByRole("radio", { name: "Long Run" }));
     await user.type(screen.getByLabelText(/Name/), "Long Run: 6 Miles");
     await user.type(screen.getByLabelText(/Target/), "6");
     await user.click(screen.getByRole("button", { name: "Add Planned Run" }));

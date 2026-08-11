@@ -15,7 +15,7 @@ describe("Run Data setup", () => {
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(screen.getByRole("heading", { name: "Check the bridge" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Check one run" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Personal Intervals API key")).toBeInTheDocument();
     expect(screen.getByText(/never uploaded to Supabase/)).toBeInTheDocument();
@@ -25,6 +25,6 @@ describe("Run Data setup", () => {
     const user = userEvent.setup();
     render(<RunDataSetup onConnected={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /Garmin.*COROS.*Other/ }));
-    expect(screen.getByText(/HealthFit is only for Apple Health and is not needed here/)).toBeInTheDocument();
+    expect(screen.getByText(/You do not need HealthFit/)).toBeInTheDocument();
   });
 });

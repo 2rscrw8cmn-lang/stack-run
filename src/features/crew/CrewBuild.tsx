@@ -219,12 +219,11 @@ export function CrewBuild({
             </ul>
           </div>
           <div className="crew-build__ground" aria-hidden="true" />
-          {!placement && (
+          {!placement && (model.blocks.length === 0 || gridCourses > MAX_VISIBLE_COURSES) && (
             <p className="crew-build__caption">
-              {model.blocks.length > 0
-                ? "Tap a block to see the run behind it."
-                : `${model.readyCount} ${model.readyCount === 1 ? "block is" : "blocks are"} earned and ready to build.`}
-              {gridCourses > MAX_VISIBLE_COURSES && " Scroll the field for more courses."}
+              {model.blocks.length === 0
+                ? `${model.readyCount} ${model.readyCount === 1 ? "block is" : "blocks are"} earned and ready to build.`
+                : "Scroll the field for more courses."}
             </p>
           )}
         </div>

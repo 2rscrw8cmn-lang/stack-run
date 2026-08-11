@@ -63,6 +63,8 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signOut: action,
     saveDisplayName: action,
     createCrew: action,
+    updateCrew: vi.fn(async () => true),
+    deleteCrew: vi.fn(async () => true),
     createInvite: action,
     revokeInvite: action,
     joinPendingInvite: action,
@@ -100,6 +102,12 @@ function navLabels() {
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem("stack.onboarding.v1", JSON.stringify({
+    version: 1,
+    introSeen: true,
+    coreTourCompleted: true,
+    crewTourSeen: true,
+  }));
   current = controller();
 });
 
@@ -129,6 +137,26 @@ describe("Crew as a conditional destination", () => {
     expect(screen.getByRole("button", { name: "Crew" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("heading", { level: 1, name: "OUC Race Crew" })).toBeInTheDocument();
     expect(screen.getByText("Crew Build")).toBeInTheDocument();
+  });
+
+  it("introduces Crew once for a member who has not seen it", async () => {
+    localStorage.setItem("stack.onboarding.v1", JSON.stringify({
+      version: 1,
+      introSeen: true,
+      coreTourCompleted: true,
+      crewTourSeen: false,
+    }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Crew" }));
+    expect(screen.getByRole("dialog", { name: "Crew" })).toHaveTextContent(
+      "You place the blocks you earn",
+    );
+    await user.click(screen.getByRole("button", { name: "Got It" }));
+    await user.click(screen.getByRole("button", { name: "Runs" }));
+    await user.click(screen.getByRole("button", { name: "Crew" }));
+    expect(screen.queryByRole("dialog", { name: "Crew" })).not.toBeInTheDocument();
   });
 
   it("leaves Runs personal, with no crew context and no second crew surface", async () => {

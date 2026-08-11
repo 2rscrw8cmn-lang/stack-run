@@ -5,6 +5,7 @@ import type { RunFound } from "../../connected/intervals";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
+import { formatPace } from "../../domain/runs";
 
 interface RunFoundCardProps {
   found: RunFound;
@@ -16,11 +17,6 @@ interface RunFoundCardProps {
   onDismiss: () => void;
   /** Gone for good, remembered in the ignored list. */
   onIgnore: () => void;
-}
-
-function pace(distanceMiles: number, durationSeconds: number): string {
-  const seconds = Math.round(durationSeconds / distanceMiles);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /mi`;
 }
 
 /**
@@ -53,7 +49,7 @@ export function RunFoundCard({ found, today, onConfirmMatch, onAddAsExtra, onDis
           <dt className="machine-label">Time</dt>
         </div>
         <div>
-          <dd className="data-value">{pace(candidate.distanceMiles, candidate.durationSeconds)}</dd>
+          <dd className="data-value">{formatPace(candidate.distanceMiles, candidate.durationSeconds)}</dd>
           <dt className="machine-label">Avg pace</dt>
         </div>
       </dl>

@@ -200,7 +200,7 @@ Other watch/service users skip HealthFit when Intervals already supports their s
 
 ### UI-18 — Race Crew Foundation
 
-Next approved code phase:
+Complete:
 
 - Supabase client/config;
 - account auth;
@@ -237,6 +237,24 @@ Comments separately reviewable.
 - independent persisted Crew coordinates protected by a collision-safe server RPC;
 - `YOU | CREW` removed from Runs;
 - comparisons, recent crew runs, Props and Member Builds moved into Crew.
+
+### UI-22 — Final Product Polish + Onboarding
+
+Final planned product phase, in review:
+
+- whole-product visual and interaction audit at 320px, approximately 390px and desktop;
+- compact Runs entry hierarchy with an obvious Log Run action and no oversized standalone title;
+- one selector taxonomy: segmented controls for small finite choices, a shared styled native select for longer lists, shared activity/effort pickers, and native date controls for dates;
+- normalized spacing, sheet headers, close controls, terminology, pace/date formatting and freshness treatment;
+- implementation-era and repetitive helper copy removed where the interface already explains itself;
+- lightweight device-local onboarding for genuinely new users: welcome, Plan → Run → Build → Today conceptual tour, one Crew explanation when relevant, and replay from Settings;
+- quiet migration for existing users, with onboarding preferences stored separately from AppState schema 9;
+- complete owner lifecycle controls: edit Crew name/race metadata and permanently delete a Crew through explicit confirmation;
+- correct plan lifecycle language: clamped Week 1/final-week selection remains available for Plan preview, while Today shows `This Week` only during the active plan and Plan marks a week current only inside its actual dates through race day.
+
+Crew metadata edits never rewrite a member's local race or plan. Crew deletion cascades shared Crew server data but preserves Auth accounts, profiles, and every runner's local plan, runs, Build and Intervals credential.
+
+UI-22 adds no new product system, dependency, router, global state, database migration or AppState migration. Owner edit/delete use the existing `crews` RLS and cascade architecture. It is the end of the currently planned implementation sequence; later work requires a new product decision.
 
 ## Success criteria
 

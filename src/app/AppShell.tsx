@@ -30,6 +30,7 @@ interface AppShellProps {
   onTabChange: (tab: TabId) => void;
   /** True only for a signed-in active member of a crew. */
   crewAvailable: boolean;
+  onReplayTour: () => void;
   /** Something the whole app needs to say, shown under the brand bar. */
   notice?: ReactNode;
   plan: TrainingPlan;
@@ -72,6 +73,7 @@ export function AppShell({
   activeTab,
   onTabChange,
   crewAvailable,
+  onReplayTour,
   notice,
   plan,
   runLogs,
@@ -242,6 +244,10 @@ export function AppShell({
               ? `${raceCrew.account.profile.displayName} · ${raceCrew.account.crew.name}`
               : `${raceCrew.account?.profile.displayName ?? "Runner"} · No crew`
         }
+        onReplayTour={() => {
+          setSettingsOpen(false);
+          onReplayTour();
+        }}
       />
       <AccountCrewSheet
         isOpen={accountCrewOpen}

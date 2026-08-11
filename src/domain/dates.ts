@@ -63,3 +63,13 @@ export function formatDateLabel(
     parseLocalDate(dateString),
   );
 }
+
+/** Compact product status for meaningfully stale data. */
+export function formatUpdatedAgo(timestamp: string, now = Date.now()): string | null {
+  const updated = new Date(timestamp).getTime();
+  if (!Number.isFinite(updated)) return null;
+  const minutes = Math.max(1, Math.floor(Math.max(0, now - updated) / 60_000));
+  if (minutes < 60) return `Updated ${minutes}m ago`;
+  if (minutes < 24 * 60) return `Updated ${Math.floor(minutes / 60)}h ago`;
+  return `Updated ${Math.floor(minutes / (24 * 60))}d ago`;
+}

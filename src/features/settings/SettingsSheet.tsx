@@ -2,6 +2,7 @@ import {
   CalendarCheck,
   CalendarClock,
   ChevronRight,
+  Compass,
   Database,
   Flag,
   RotateCcw,
@@ -14,7 +15,7 @@ import {
   blockedDates,
   type AvailabilityCalendar,
 } from "../../domain/availability";
-import { formatDateLabel } from "../../domain/dates";
+import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
 import type { RacePlanSetup } from "../../domain/racePlan";
 import {
   applyRunDays,
@@ -56,6 +57,7 @@ interface SettingsSheetProps {
   lastSyncedAt?: string | null;
   onOpenAccountCrew?: () => void;
   accountCrewValue?: string;
+  onReplayTour?: () => void;
 }
 
 /** Which sheet this one handed off to, if any. */
@@ -123,9 +125,11 @@ function runDataValue(
   if (!isConnected) {
     return "Not connected";
   }
-  return lastSyncedAt
-    ? `Connected · last synced ${new Date(lastSyncedAt).toLocaleDateString()}`
-    : "Connected · no sync yet";
+  if (!lastSyncedAt) return "Connected · no sync yet";
+  const age = Date.now() - new Date(lastSyncedAt).getTime();
+  return age >= 2 * 60 * 60_000
+    ? `Connected · ${formatUpdatedAgo(lastSyncedAt) ?? "sync date unavailable"}`
+    : "Connected";
 }
 
 /**
@@ -162,6 +166,7 @@ export function SettingsSheet({
   lastSyncedAt = null,
   onOpenAccountCrew = () => undefined,
   accountCrewValue = "Not signed in",
+  onReplayTour = () => undefined,
 }: SettingsSheetProps) {
   const [child, setChild] = useState<Child | null>(null);
   const [isChildOpen, setChildOpen] = useState(false);
@@ -212,7 +217,7 @@ export function SettingsSheet({
       >
         <div className="settings">
           <section className="settings__group">
-            <h3 className="settings__group-title">Your plan</h3>
+            <h3 className="settings__group-title">Training</h3>
             <ul className="settings__rows">
               <SettingsRow
                 Icon={Flag}
@@ -240,7 +245,22 @@ export function SettingsSheet({
           </section>
 
           <section className="settings__group">
-            <h3 className="settings__group-title">Account</h3>
+            <h3 className="settings__group-title">Run Data</h3>
+            <ul className="settings__rows">
+              <SettingsRow
+                Icon={Database}
+                label="Intervals.icu"
+                value={runDataValue(isConnected, lastSyncedAt)}
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenRunData();
+                }}
+              />
+            </ul>
+          </section>
+
+          <section className="settings__group">
+            <h3 className="settings__group-title">Account & Crew</h3>
             <ul className="settings__rows">
               <SettingsRow
                 Icon={Users}
@@ -255,23 +275,14 @@ export function SettingsSheet({
           </section>
 
           <section className="settings__group">
-            <h3 className="settings__group-title">Connected data</h3>
+            <h3 className="settings__group-title">App</h3>
             <ul className="settings__rows">
               <SettingsRow
-                Icon={Database}
-                label="Run Data"
-                value={runDataValue(isConnected, lastSyncedAt)}
-                onClick={() => {
-                  onOpenChange(false);
-                  onOpenRunData();
-                }}
+                Icon={Compass}
+                label="App Tour"
+                value="Plan · Run · Build"
+                onClick={onReplayTour}
               />
-            </ul>
-          </section>
-
-          <section className="settings__group">
-            <h3 className="settings__group-title">Start over</h3>
-            <ul className="settings__rows">
               <SettingsRow
                 Icon={RotateCcw}
                 label="Reset Plan"

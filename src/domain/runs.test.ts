@@ -88,8 +88,8 @@ describe("run history", () => {
 
 describe("derived pace", () => {
   it("reads as minutes and seconds a mile", () => {
-    expect(formatPace(5, 2400)).toBe("8:00 /mi");
-    expect(formatPace(6.2, 3141)).toBe("8:27 /mi");
+    expect(formatPace(5, 2400)).toBe("8:00 /MI");
+    expect(formatPace(6.2, 3141)).toBe("8:27 /MI");
   });
 
   it("is nothing at all rather than a guess when there is no distance", () => {

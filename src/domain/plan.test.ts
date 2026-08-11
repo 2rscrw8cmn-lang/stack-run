@@ -174,6 +174,22 @@ describe("selectPlanWeekViewModel", () => {
     ).toBe(false);
   });
 
+  it("marks a week current only inside its real active date range", () => {
+    const currentWeeks = (today: string) =>
+      plan.weeks.filter((item) =>
+        selectPlanWeekViewModel(plan, [], item.weekNumber, today).isCurrentWeek,
+      );
+
+    expect(currentWeekNumber(plan, "2026-07-15")).toBe(1);
+    expect(currentWeeks("2026-07-15")).toHaveLength(0);
+    expect(currentWeeks("2026-08-03").map((week) => week.weekNumber)).toEqual([1]);
+    expect(currentWeeks("2026-08-12").map((week) => week.weekNumber)).toEqual([2]);
+    expect(currentWeeks("2026-12-05").map((week) => week.weekNumber)).toEqual([18]);
+    expect(currentWeekNumber(plan, "2026-12-31")).toBe(18);
+    expect(currentWeeks("2026-12-06")).toHaveLength(0);
+    expect(currentWeeks("2026-12-31")).toHaveLength(0);
+  });
+
   it("flags the plan's first and last weeks as navigation boundaries", () => {
     const first = selectPlanWeekViewModel(plan, [], 1, "2026-08-05");
     const middle = selectPlanWeekViewModel(plan, [], 9, "2026-08-05");

@@ -166,7 +166,10 @@ export function selectPlanWeekViewModel(
     completedRuns: runDays.filter((day) => day.status === "completed").length,
     scheduledRuns: runDays.length,
     extraRuns: extraRunsBetween(runLogs, week.startDate, week.endDate).length,
-    isCurrentWeek: week.weekNumber === currentWeekNumber(plan, today),
+    isCurrentWeek:
+      !isBeforeLocalDate(today, week.startDate) &&
+      !isAfterLocalDate(today, week.endDate) &&
+      !isAfterLocalDate(today, plan.race.date),
     hasPreviousWeek: week.weekNumber > first,
     hasNextWeek: week.weekNumber < last,
   };

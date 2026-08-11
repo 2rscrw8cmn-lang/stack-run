@@ -21,7 +21,7 @@ describe("Sheet", () => {
     );
     expect(
       screen.getByRole("heading", { name: "Complete Run" }),
-    ).toBeInTheDocument();
+    ).toHaveFocus();
   });
 
   it("calls onClose when the close control is activated", async () => {

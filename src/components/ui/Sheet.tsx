@@ -18,6 +18,7 @@ interface SheetProps {
  */
 export function Sheet({ title, isOpen, onClose, guardClose, children, className }: SheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function Sheet({ title, isOpen, onClose, guardClose, children, className 
     if (!dialog) return;
     if (isOpen && !dialog.open) {
       dialog.showModal();
+      titleRef.current?.focus();
     } else if (!isOpen && dialog.open) {
       dialog.close();
     }
@@ -85,7 +87,7 @@ export function Sheet({ title, isOpen, onClose, guardClose, children, className 
     >
       <div className="sheet__panel">
         <div className="sheet__header">
-          <h2 id={titleId} className="sheet__title">
+          <h2 ref={titleRef} id={titleId} className="sheet__title" tabIndex={-1}>
             {title}
           </h2>
           <IconButton

@@ -7,6 +7,7 @@ import type { PlanWeekViewModel } from "../../domain/plan";
 interface WeekLeadProps {
   week: PlanWeekViewModel;
   totalWeeks: number;
+  lifecycle: "before-plan" | "active" | "after-race";
   onStep: (direction: -1 | 1) => void;
   onCurrentWeek: () => void;
 }
@@ -22,6 +23,7 @@ interface WeekLeadProps {
 export function WeekLead({
   week,
   totalWeeks,
+  lifecycle,
   onStep,
   onCurrentWeek,
 }: WeekLeadProps) {
@@ -63,6 +65,10 @@ export function WeekLead({
         </p>
         {week.isCurrentWeek ? (
           <span className="week-lead__now">This week</span>
+        ) : lifecycle === "before-plan" ? (
+          <span className="week-lead__now">Preview</span>
+        ) : lifecycle === "after-race" ? (
+          <span className="week-lead__now">Plan complete</span>
         ) : (
           // The shortcut back only exists while it would do something, so the
           // week you are actually training on stays quiet.

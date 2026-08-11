@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
-import { ACTIVITY_TYPES, WORKOUT_TYPE_LABEL } from "../../domain/build";
+import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
 import { formatDateLabel } from "../../domain/dates";
 import type { PlannedRunValues } from "../../domain/planEdit";
 import type { RunActivityType, Workout } from "../../domain/types";
@@ -103,21 +103,12 @@ export function EditWorkoutSheet({
             : " — this changes the plan, not a run you have logged."}
         </p>
 
-        <FormField label="Type" required>
-          <select
-            className="run-input"
-            value={values.type}
-            onChange={(event) =>
-              updateValue("type", event.target.value as RunActivityType)
-            }
-          >
-            {ACTIVITY_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {WORKOUT_TYPE_LABEL[type]}
-              </option>
-            ))}
-          </select>
-        </FormField>
+        <ActivityTypePicker
+          label="Activity"
+          value={values.type}
+          required
+          onChange={(type: RunActivityType) => updateValue("type", type)}
+        />
 
         <FormField label="Name" required error={errors.title}>
           <input

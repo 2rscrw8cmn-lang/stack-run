@@ -1,14 +1,13 @@
-import { Frown, Meh, Smile, type LucideIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
+import { EffortPicker } from "../../components/shared/EffortPicker";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import type {
-  Effort,
   RunActivityType,
   RunLog,
   Workout,
@@ -20,12 +19,6 @@ import {
   type RunEntryValues,
   type ValidRunEntry,
 } from "./runValidation";
-
-const EFFORTS: Array<{ value: Effort; label: string; Icon: LucideIcon }> = [
-  { value: "rough", label: "Rough", Icon: Frown },
-  { value: "solid", label: "Solid", Icon: Meh },
-  { value: "great", label: "Great", Icon: Smile },
-];
 
 const NOTES_MAX_LENGTH = 120;
 
@@ -90,7 +83,6 @@ export function CompleteRunSheet({
   );
   const [errors, setErrors] = useState<RunEntryErrors>({});
   const fieldId = useId();
-  const effortErrorId = `${fieldId}-effort-error`;
   const notesId = `${fieldId}-notes`;
 
   const isDirty =
@@ -190,33 +182,12 @@ export function CompleteRunSheet({
           />
         </FormField>
 
-        <fieldset
-          className="effort-picker"
-          aria-describedby={errors.effort ? effortErrorId : undefined}
-        >
-          <legend className="effort-picker__legend">
-            Effort <span aria-hidden="true">*</span>
-          </legend>
-          <div className="effort-picker__options">
-            {EFFORTS.map(({ value, label, Icon }) => (
-              <button
-                key={value}
-                type="button"
-                className="effort-picker__option"
-                aria-pressed={values.effort === value}
-                onClick={() => updateValue("effort", value)}
-              >
-                <Icon size={28} strokeWidth={1.8} aria-hidden="true" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-          {errors.effort && (
-            <p id={effortErrorId} className="form-field__error" role="alert">
-              {errors.effort}
-            </p>
-          )}
-        </fieldset>
+        <EffortPicker
+          value={values.effort}
+          required
+          error={errors.effort}
+          onChange={(effort) => updateValue("effort", effort)}
+        />
 
         <div className="notes-field">
           <label className="notes-field__label" htmlFor={notesId}>

@@ -2,8 +2,11 @@ import { CircleCheck, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
+import { EffortPicker } from "../../components/shared/EffortPicker";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
+import { StackSelect } from "../../components/ui/StackSelect";
+import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
 import type { AppState, Effort, RunActivityType } from "../../domain/types";
 import { earnedBlockPhrase } from "../../domain/build";
 import { formatMiles } from "../../domain/distance";
@@ -52,7 +55,9 @@ interface Props {
 }
 
 function lastSyncLabel(at: string | null): string {
-  return at ? new Date(at).toLocaleString() : "Not yet";
+  if (!at) return "No successful sync yet";
+  const age = Date.now() - new Date(at).getTime();
+  return age >= 2 * 60 * 60_000 ? (formatUpdatedAgo(at) ?? "Sync date unavailable") : "";
 }
 
 export function RunDataSheet(props: Props) {
@@ -157,10 +162,8 @@ export function RunDataSheet(props: Props) {
                   {connectionMode === "local-api-key"
                     ? "Personal key on this device"
                     : "Legacy owner proxy"}
-                  <br />
-                  Last activity sync:{" "}
-                  {lastSyncLabel(
-                    props.state.intervalsSync.lastSuccessfulActivitySyncAt,
+                  {lastSyncLabel(props.state.intervalsSync.lastSuccessfulActivitySyncAt) && (
+                    <><br />{lastSyncLabel(props.state.intervalsSync.lastSuccessfulActivitySyncAt)}</>
                   )}
                 </p>
               </div>
@@ -205,7 +208,7 @@ export function RunDataSheet(props: Props) {
                       >
                         <strong>{formatMiles(candidate.distanceMiles)} mi</strong>
                         <span>
-                          {candidate.completedDate} ·{" "}
+                          {formatDateLabel(candidate.completedDate)} ·{" "}
                           {formatDurationSeconds(candidate.durationSeconds)}
                         </span>
                       </button>
@@ -242,14 +245,14 @@ export function RunDataSheet(props: Props) {
           <section className="run-data__review">
             <h3 className="run-data__heading">Review synced run</h3>
             <p className="run-data__facts">
-              {selected.completedDate} · {formatMiles(selected.distanceMiles)} mi
+              {formatDateLabel(selected.completedDate)} · {formatMiles(selected.distanceMiles)} mi
               · {formatDurationSeconds(selected.durationSeconds)}
             </p>
 
             {manual && (
               <div className="run-data__attach">
                 <p>
-                  Possible manual run: {manual.completedDate},{" "}
+                  Possible manual run: {formatDateLabel(manual.completedDate)},{" "}
                   {formatMiles(manual.distanceMiles)} mi,{" "}
                   {formatDurationSeconds(manual.durationSeconds)}. Synced values
                   above will replace date, distance and duration; effort, notes,
@@ -268,8 +271,7 @@ export function RunDataSheet(props: Props) {
             )}
 
             <FormField label="Match">
-              <select
-                className="run-input"
+              <StackSelect
                 value={workoutId ?? ""}
                 onChange={(event) => {
                   const id = event.target.value || null;
@@ -281,16 +283,16 @@ export function RunDataSheet(props: Props) {
                 <option value="">Add as Extra Run</option>
                 {workouts.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.date} — {item.title}
+                    {formatDateLabel(item.date, { month: "short", day: "numeric" })} — {item.title}
                   </option>
                 ))}
-              </select>
+              </StackSelect>
             </FormField>
 
             {workout && workout.date !== selected.completedDate && (
               <p className="run-data__note">
-                Actual date {selected.completedDate}; planned date{" "}
-                {workout.date}.
+                Actual date {formatDateLabel(selected.completedDate)}; planned date{" "}
+                {formatDateLabel(workout.date)}.
               </p>
             )}
 
@@ -302,17 +304,7 @@ export function RunDataSheet(props: Props) {
               />
             )}
 
-            <FormField label="How did it feel?">
-              <select
-                className="run-input"
-                value={effort}
-                onChange={(event) => setEffort(event.target.value as Effort)}
-              >
-                <option value="rough">Rough</option>
-                <option value="solid">Solid</option>
-                <option value="great">Great</option>
-              </select>
-            </FormField>
+            <EffortPicker value={effort} onChange={setEffort} />
 
             <FormField label="Notes (optional)">
               <textarea

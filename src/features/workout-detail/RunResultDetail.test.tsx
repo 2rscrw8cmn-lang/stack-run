@@ -17,7 +17,7 @@ describe("connected run result", () => {
     render(<RunResultDetail run={base} />);
     expect(screen.getByText("5 mi")).toBeInTheDocument();
     expect(screen.getByText("40:00")).toBeInTheDocument();
-    expect(screen.getByText("8:00 /mi")).toBeInTheDocument();
+    expect(screen.getByText("8:00 /MI")).toBeInTheDocument();
     expect(screen.getByText("Solid")).toBeInTheDocument();
     expect(screen.getByText("Felt controlled.")).toBeInTheDocument();
     expect(screen.queryByText(/Synced via/)).not.toBeInTheDocument();
