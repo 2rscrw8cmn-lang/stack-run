@@ -86,6 +86,9 @@ describe("UI-20 Props SQL", () => {
     expect(reactionVerification).toMatch(
       /values \(public\.create_crew[\s\S]*?\);[\s\S]*?with run as \([\s\S]*?insert into public\.shared_runs/i,
     );
+    expect(reactionVerification).toMatch(
+      /grant select, insert, update on props_test_ids to authenticated/i,
+    );
     expect(reactionVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

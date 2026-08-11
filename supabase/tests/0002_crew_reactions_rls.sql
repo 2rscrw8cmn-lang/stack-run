@@ -17,7 +17,7 @@ create temporary table props_test_ids (
   crew_id uuid not null,
   run_id uuid
 );
-grant select, insert on props_test_ids to authenticated;
+grant select, insert, update on props_test_ids to authenticated;
 
 set local role authenticated;
 set local request.jwt.claim.role = 'authenticated';
