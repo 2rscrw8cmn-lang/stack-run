@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CrewMember, CrewMemberSummary } from "./types";
-import { orderedComparisonRows } from "./comparisons";
+import { comparisonBarPercent, orderedComparisonRows } from "./comparisons";
 
 const members: CrewMember[] = [
   { userId: "a", displayName: "A", role: "owner", joinedAt: "1" },
@@ -39,5 +39,18 @@ describe("Crew comparisons", () => {
       { ...summary("c", 0), consistencyCompleted: 3, consistencyDue: 4 },
     ]);
     expect(rows.map((row) => row.member.userId)).toEqual(["c", "a", "b"]);
+  });
+
+  it("scales factual mile bars to the displayed maximum and consistency to 100%", () => {
+    expect(comparisonBarPercent("weekly-miles", summary("a", 10), 20)).toBe(50);
+    expect(comparisonBarPercent("weekly-miles", summary("b", 20), 20)).toBe(100);
+    expect(
+      comparisonBarPercent(
+        "consistency",
+        { ...summary("a", 0), consistencyCompleted: 3, consistencyDue: 4 },
+        0.75,
+      ),
+    ).toBe(75);
+    expect(comparisonBarPercent("consistency", summary("b", 0), 1)).toBe(0);
   });
 });

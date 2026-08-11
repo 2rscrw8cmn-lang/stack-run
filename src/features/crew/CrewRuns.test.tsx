@@ -250,6 +250,43 @@ describe("Runs You / Crew context", () => {
 });
 
 describe("Crew comparisons and runs", () => {
+  it.each([2, 5, 10])(
+    "keeps every zero-value member visible with a %s-runner crew",
+    async (memberCount) => {
+      const expandedMembers: CrewMember[] = Array.from(
+        { length: memberCount },
+        (_, index) => ({
+          userId: index === 0 ? "zack" : `runner-${index}`,
+          displayName: index === 0 ? "Zack" : `Runner ${index}`,
+          role: index === 0 ? "owner" : "member",
+          joinedAt: `2026-08-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+        }),
+      );
+      const expandedSummaries = expandedMembers.map((member) => ({
+        ...summary(member.userId),
+        displayName: member.displayName,
+      }));
+
+      await openCrew(
+        controller({
+          account: { ...controller().account!, members: expandedMembers },
+          crewData: dashboard({
+            members: expandedMembers,
+            summaries: expandedSummaries,
+            runs: [],
+          }),
+        }),
+        [],
+      );
+
+      const comparison = screen.getByRole("list", {
+        name: "Weekly Miles comparison",
+      });
+      expect(within(comparison).getAllByRole("listitem")).toHaveLength(memberCount);
+      expect(within(comparison).getAllByText("0 MI")).toHaveLength(memberCount);
+    },
+  );
+
   it("shows crew identity, member count, one-member encouragement, and empty runs", async () => {
     const solo = members.slice(0, 1);
     await openCrew(
@@ -263,33 +300,47 @@ describe("Crew comparisons and runs", () => {
       [],
     );
 
-    expect(screen.getByText("Dec 5 · Half Marathon · 13.1 MI")).toBeInTheDocument();
-    expect(screen.getByText("1 runner")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dec 5 · Half Marathon · 13.1 MI · 1 runner"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Invite your crew to start comparing training.")).toBeInTheDocument();
     expect(screen.getByText("No crew runs yet.")).toBeInTheDocument();
   });
 
   it("switches all four metrics, sorts descending, keeps ties stable, and marks You quietly", async () => {
     const user = await openCrew();
-    const select = screen.getByRole("combobox", { name: "Comparison metric" });
+    const weeklyTab = screen.getByRole("tab", { name: "Weekly Miles" });
 
-    let rows = screen.getAllByRole("listitem").filter((item) => item.closest(".crew-comparison"));
+    let rows = within(
+      screen.getByRole("list", { name: "Weekly Miles comparison" }),
+    ).getAllByRole("listitem");
     expect(rows.map((item) => item.textContent)).toEqual([
       expect.stringContaining("Zack"),
       expect.stringContaining("Drew"),
       expect.stringContaining("Travis"),
     ]);
     expect(within(rows[0]).getByText("You")).toBeInTheDocument();
+    expect(rows[0].querySelector(".crew-comparison__bar")).toHaveStyle(
+      "--crew-bar-value: 100%",
+    );
 
-    await user.selectOptions(select, "longest-run");
-    rows = screen.getAllByRole("listitem").filter((item) => item.closest(".crew-comparison"));
+    weeklyTab.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Longest Run" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Longest Run" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    rows = within(
+      screen.getByRole("list", { name: "Longest Run comparison" }),
+    ).getAllByRole("listitem");
     expect(rows.map((item) => item.textContent)).toEqual([
       expect.stringContaining("Drew"),
       expect.stringContaining("Zack"),
       expect.stringContaining("Travis"),
     ]);
 
-    await user.selectOptions(select, "consistency");
+    await user.click(screen.getByRole("tab", { name: "Consistency" }));
     expect(screen.getByText("88%")).toBeInTheDocument();
     expect(screen.getByText("14 / 16")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
@@ -297,13 +348,17 @@ describe("Crew comparisons and runs", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
 
-    await user.selectOptions(select, "miles-built");
-    rows = screen.getAllByRole("listitem").filter((item) => item.closest(".crew-comparison"));
+    await user.click(screen.getByRole("tab", { name: "Miles Built" }));
+    rows = within(
+      screen.getByRole("list", { name: "Miles Built comparison" }),
+    ).getAllByRole("listitem");
     expect(rows.map((item) => item.textContent)).toEqual([
       expect.stringContaining("Drew"),
       expect.stringContaining("Zack"),
       expect.stringContaining("Travis"),
     ]);
+    expect(screen.queryByRole("combobox", { name: "Comparison metric" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Refresh crew data" })).toHaveTextContent("");
   });
 
   it("shows recent crew runs newest first and derives pace", async () => {

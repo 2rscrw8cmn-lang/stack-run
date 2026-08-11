@@ -24,6 +24,19 @@ export function comparisonValue(
     : null;
 }
 
+/** Graphic support for the visible value; consistency keeps its natural 0–100 scale. */
+export function comparisonBarPercent(
+  metric: ComparisonMetric,
+  summary: CrewMemberSummary | null,
+  maxDisplayedValue: number,
+): number {
+  const value = comparisonValue(metric, summary);
+  if (value === null || value <= 0) return 0;
+  const scale = metric === "consistency" ? 1 : maxDisplayedValue;
+  if (scale <= 0) return 0;
+  return Math.min(100, Math.max(0, (value / scale) * 100));
+}
+
 /** Descending factual order; equal values remain in membership order. */
 export function orderedComparisonRows(
   metric: ComparisonMetric,

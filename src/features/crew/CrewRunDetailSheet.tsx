@@ -6,6 +6,7 @@ import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
+import { crewMemberAccent } from "../../crew/memberAccent";
 
 interface CrewRunDetailSheetProps {
   run: CrewSharedRun | null;
@@ -29,13 +30,16 @@ export function CrewRunDetailSheet({
       isOpen={isOpen}
       onClose={onClose}
     >
-      <div className="crew-run-detail">
+      <div className="crew-run-detail" data-member-color={crewMemberAccent(run.userId)}>
         <div className="crew-run-detail__identity">
           <span className="crew-run-detail__icon" data-type={run.activityType}>
             <ActivityIcon type={run.activityType} size={22} />
           </span>
           <div>
-            <p className="crew-run-detail__name">{run.displayName}</p>
+            <p className="crew-run-detail__name">
+              <span className="crew-member-marker" aria-hidden="true" />
+              <span>{run.displayName}</span>
+            </p>
             <p className="machine-label">
               {WORKOUT_TYPE_LABEL[run.activityType]} · {formatDateLabel(run.localDate)}
             </p>

@@ -5,6 +5,7 @@ import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
+import { crewMemberAccent } from "../../crew/memberAccent";
 
 interface CrewRunRowProps {
   run: CrewSharedRun;
@@ -24,6 +25,7 @@ export function CrewRunRow({ run, onOpen }: CrewRunRowProps) {
         type="button"
         className="crew-run-row"
         data-type={run.activityType}
+        data-member-color={crewMemberAccent(run.userId)}
         aria-label={`${run.displayName}. ${activity}. ${formatDateLabel(run.localDate, {
           weekday: "long",
           month: "long",
@@ -35,7 +37,10 @@ export function CrewRunRow({ run, onOpen }: CrewRunRowProps) {
           <ActivityIcon type={run.activityType} size={19} />
         </span>
         <span className="crew-run-row__body">
-          <span className="crew-run-row__name">{run.displayName}</span>
+          <span className="crew-run-row__name">
+            <span className="crew-member-marker" aria-hidden="true" />
+            <span>{run.displayName}</span>
+          </span>
           <span className="crew-run-row__activity machine-label">
             {activity} · {formatDateLabel(run.localDate)}
           </span>

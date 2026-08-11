@@ -1,15 +1,37 @@
-import { History, RefreshCw, UserRoundPlus, Users, WifiOff } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  BarChart3,
+  CalendarCheck2,
+  History,
+  Layers3,
+  Mountain,
+  RefreshCw,
+  UserRoundPlus,
+  Users,
+  WifiOff,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import type { CrewMemberSummary, CrewSharedRun } from "../../crew/types";
 import {
+  comparisonBarPercent,
   comparisonValue,
   orderedComparisonRows,
   type ComparisonMetric,
 } from "../../crew/comparisons";
+import { crewFreshness } from "../../crew/freshness";
+import { crewMemberAccent } from "../../crew/memberAccent";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
@@ -21,6 +43,18 @@ const METRIC_LABEL: Record<ComparisonMetric, string> = {
   consistency: "Consistency",
   "miles-built": "Miles Built",
 };
+
+const METRICS: Array<{
+  id: ComparisonMetric;
+  shortLabel: string;
+  window: string;
+  Icon: LucideIcon;
+}> = [
+  { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 },
+  { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
+  { id: "consistency", shortLabel: "Consist", window: "Recent plan weeks", Icon: CalendarCheck2 },
+  { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 },
+];
 
 interface CrewRunsViewProps {
   crew: RaceCrewController | null;
@@ -37,21 +71,6 @@ function formattedComparison(metric: ComparisonMetric, summary: CrewMemberSummar
     };
   }
   return { value: `${formatMiles(value)} MI`, detail: null };
-}
-
-function freshnessLabel(summaries: readonly CrewMemberSummary[]): string | null {
-  const newest = summaries
-    .map((summary) => summary.updatedAt)
-    .filter(Boolean)
-    .sort()
-    .at(-1);
-  if (!newest || Number.isNaN(new Date(newest).getTime())) return null;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(newest));
 }
 
 function raceDateLabel(date: string): string | null {
@@ -92,6 +111,7 @@ function CrewAccessState({
 export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
   const [metric, setMetric] = useState<ComparisonMetric>("weekly-miles");
   const [selectedRun, setSelectedRun] = useState<CrewSharedRun | null>(null);
+  const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
   const crewStatus = crew?.status;
@@ -180,75 +200,146 @@ export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
   const members = crew.crewData.members;
   const comparisonRows = orderedComparisonRows(metric, members, crew.crewData.summaries);
   const currentUserId = crew.account?.profile.id;
-  const freshness = freshnessLabel(crew.crewData.summaries);
+  const freshness = crewFreshness(crew.crewData.summaries);
+  const maxDisplayedValue = comparisonRows.reduce((maximum, row) => {
+    const value = comparisonValue(metric, row.summary);
+    return value === null ? maximum : Math.max(maximum, value);
+  }, 0);
   const raceFacts = [
     raceDateLabel(currentCrew.raceDate),
     currentCrew.raceName?.trim() || null,
     currentCrew.raceDistanceMiles > 0 ? `${formatMiles(currentCrew.raceDistanceMiles)} MI` : null,
+    `${members.length} ${members.length === 1 ? "runner" : "runners"}`,
   ].filter(Boolean);
+
+  function changeMetricFromKeyboard(
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) {
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % METRICS.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + METRICS.length) % METRICS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = METRICS.length - 1;
+    }
+    if (nextIndex === null) return;
+    event.preventDefault();
+    setMetric(METRICS[nextIndex].id);
+    metricRefs.current[nextIndex]?.focus();
+  }
 
   return (
     <div className="crew-view">
       <header className="crew-view__header technical-grid">
-        <p className="machine-label">Race Crew</p>
         <h2>{currentCrew.name}</h2>
         {raceFacts.length > 0 && <p className="crew-view__race">{raceFacts.join(" · ")}</p>}
-        <p className="crew-view__count machine-label">
-          {members.length} {members.length === 1 ? "runner" : "runners"}
-        </p>
       </header>
 
-      <section className="crew-comparison" aria-labelledby="crew-comparison-title">
+      <section
+        className="crew-comparison technical-grid"
+        data-metric={metric}
+        aria-labelledby="crew-comparison-title"
+      >
         <div className="crew-comparison__heading">
-          <div>
-            <p className="machine-label">Comparison</p>
-            <h3 id="crew-comparison-title">{METRIC_LABEL[metric]}</h3>
-          </div>
-          <Button
-            variant="ghost"
+          <p className="machine-label">{METRICS.find((item) => item.id === metric)?.window}</p>
+          <IconButton
             className="crew-comparison__refresh"
-            icon={<RefreshCw size={15} strokeWidth={1.8} />}
-            isLoading={crew.crewDataStatus === "loading"}
+            label="Refresh crew data"
+            icon={
+              <RefreshCw
+                className={crew.crewDataStatus === "loading" ? "crew-comparison__refresh-icon--loading" : undefined}
+                size={16}
+                strokeWidth={1.8}
+              />
+            }
+            disabled={crew.crewDataStatus === "loading"}
+            aria-busy={crew.crewDataStatus === "loading"}
             onClick={() => void crew.refreshCrewData(true)}
-          >
-            Refresh
-          </Button>
+          />
         </div>
 
-        <label className="crew-comparison__selector">
-          <span className="visually-hidden">Comparison metric</span>
-          <select
-            value={metric}
-            aria-label="Comparison metric"
-            onChange={(event) => setMetric(event.target.value as ComparisonMetric)}
+        <div className="crew-comparison__selector" role="tablist" aria-label="Comparison metric">
+          {METRICS.map(({ id, shortLabel, Icon }, index) => (
+            <button
+              key={id}
+              ref={(element) => { metricRefs.current[index] = element; }}
+              id={`crew-metric-${id}`}
+              type="button"
+              role="tab"
+              aria-label={METRIC_LABEL[id]}
+              aria-selected={metric === id}
+              aria-controls="crew-comparison-chart"
+              tabIndex={metric === id ? 0 : -1}
+              data-metric={id}
+              onClick={() => setMetric(id)}
+              onKeyDown={(event) => changeMetricFromKeyboard(event, index)}
+            >
+              <Icon size={17} strokeWidth={1.9} aria-hidden="true" />
+              <span>{shortLabel}</span>
+            </button>
+          ))}
+        </div>
+
+        <h3 id="crew-comparison-title">{METRIC_LABEL[metric]}</h3>
+
+        <div
+          id="crew-comparison-chart"
+          role="tabpanel"
+          aria-labelledby={`crew-metric-${metric}`}
+        >
+          <ol
+            className="crew-comparison__rows"
+            aria-label={`${METRIC_LABEL[metric]} comparison`}
           >
-            <option value="weekly-miles">Weekly Miles</option>
-            <option value="longest-run">Longest Run</option>
-            <option value="consistency">Consistency</option>
-            <option value="miles-built">Miles Built</option>
-          </select>
-        </label>
+            {comparisonRows.map(({ member, summary }) => {
+              const formatted = formattedComparison(metric, summary);
+              const isYou = member.userId === currentUserId;
+              const percent = comparisonBarPercent(metric, summary, maxDisplayedValue);
+              const barStyle = { "--crew-bar-value": `${percent}%` } as CSSProperties;
+              return (
+                <li
+                  key={member.userId}
+                  data-you={isYou || undefined}
+                  data-member-color={crewMemberAccent(member.userId)}
+                >
+                  <div className="crew-comparison__row-topline">
+                    <span className="crew-comparison__member">
+                      <span className="crew-member-marker" aria-hidden="true" />
+                      <span>{member.displayName}</span>
+                      {isYou && <span className="crew-comparison__you machine-label">You</span>}
+                    </span>
+                    <span className="crew-comparison__reading">
+                      <span className="data-value">{formatted.value}</span>
+                      {formatted.detail && <span className="machine-label">{formatted.detail}</span>}
+                    </span>
+                  </div>
+                  <span
+                    className="crew-comparison__bar"
+                    data-empty={percent === 0 || undefined}
+                    data-unavailable={comparisonValue(metric, summary) === null || undefined}
+                    style={barStyle}
+                    aria-hidden="true"
+                  >
+                    <span className="crew-comparison__bar-fill" />
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
 
-        <ol className="crew-comparison__rows">
-          {comparisonRows.map(({ member, summary }) => {
-            const formatted = formattedComparison(metric, summary);
-            const isYou = member.userId === currentUserId;
-            return (
-              <li key={member.userId} data-you={isYou || undefined}>
-                <span className="crew-comparison__member">
-                  <span>{member.displayName}</span>
-                  {isYou && <span className="crew-comparison__you machine-label">You</span>}
-                </span>
-                <span className="crew-comparison__reading">
-                  <span className="data-value">{formatted.value}</span>
-                  {formatted.detail && <span className="machine-label">{formatted.detail}</span>}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-
-        {freshness && <p className="crew-comparison__freshness machine-label">Updated {freshness}</p>}
+        {freshness && (
+          <p
+            className="crew-comparison__freshness machine-label"
+            data-warning={freshness.warning || undefined}
+          >
+            {freshness.label}
+          </p>
+        )}
         {members.length === 1 && (
           <p className="crew-comparison__invite-note">
             Invite your crew to start comparing training.

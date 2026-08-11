@@ -143,7 +143,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Runs" }));
     await user.click(screen.getByRole("button", { name: "Log Run" }));
     expect(screen.getByRole("heading", { name: "Log Run" })).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/Activity/), "intervals");
+    await user.click(screen.getByRole("radio", { name: "Intervals" }));
     await user.type(screen.getByLabelText(/Distance/), "5");
     await user.type(screen.getByLabelText(/Duration/), "4000");
     await user.click(screen.getByRole("button", { name: "Great" }));

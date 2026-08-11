@@ -138,15 +138,17 @@ Implemented on `agent/ui-19-crew-runs-comparisons`:
 - accessible local `YOU | CREW` Runs context with no router and no fifth navigation item;
 - unchanged personal Runs content under `YOU`;
 - crew/race/member header from existing UI-18 records;
-- Weekly Miles, Long Run, Consistency and Miles Built comparisons from `crew_member_summaries` only;
+- Weekly Miles, Longest Run, Consistency and Miles Built comparisons from `crew_member_summaries` only;
+- custom keyboard metric control, proportional/segmented charts, stable member accents and reduced lime emphasis;
 - neutral zero-due consistency, stable equal-value ordering and a quiet current-user marker;
 - active-member, newest-first, 20-row-bounded reads from `shared_runs`;
 - derived pace and a dedicated crew-safe detail with no personal/private fields or edit actions;
+- reusable activity-type icon picker for manual/edit and extra-import confirmation without changing import inference;
 - signed-out, no-crew, one-member, loading, empty-run and unavailable/retry states;
 - stale-aware entry/foreground/manual refresh without polling or Supabase Realtime;
 - no database/AppState migration and no UI-20 scope.
 
-Automated verification covers context switching, preserved personal Runs, all state variants and metrics, sorting/ties, consistency numerator/denominator, current-user marking, bounded safe queries, newest-first rows, derived pace and crew-detail privacy. Live two-account Supabase and 320/390/desktop browser QA remain pending because the implementation environment had neither local Supabase configuration nor an available in-app browser.
+Automated verification covers context switching, preserved personal Runs, all state variants and metrics, sorting/ties, honest chart scaling, consistency numerator/denominator, stable identity cues, stale-only freshness, keyboard selectors, activity-type persistence, bounded safe queries, newest-first rows, derived pace and crew-detail privacy. Live two-account Supabase and 320/390/desktop browser QA remain pending because the implementation environment had neither local Supabase configuration nor an available in-app browser.
 
 ## Active source documents
 

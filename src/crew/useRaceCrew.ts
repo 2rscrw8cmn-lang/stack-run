@@ -27,6 +27,7 @@ import {
   syncCrewProjection,
 } from "./projection";
 import { loadCrewDashboard } from "./dashboard";
+import { CREW_DASHBOARD_STALE_MS } from "./freshness";
 import { getSupabaseAvailability } from "./supabaseClient";
 import type {
   CrewDashboardData,
@@ -35,7 +36,6 @@ import type {
 } from "./types";
 
 const PROJECTION_STALE_MS = 30 * 60_000;
-const DASHBOARD_STALE_MS = 5 * 60_000;
 
 export type RaceCrewSessionStatus =
   | "unconfigured"
@@ -216,7 +216,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (!current.user || !crewId) return;
     const fresh =
       lastDashboard.current.crewId === crewId &&
-      Date.now() - lastDashboard.current.loadedAt < DASHBOARD_STALE_MS;
+      Date.now() - lastDashboard.current.loadedAt < CREW_DASHBOARD_STALE_MS;
     if (!force && fresh) return;
     if (dashboardInFlight.current) return dashboardInFlight.current;
 
