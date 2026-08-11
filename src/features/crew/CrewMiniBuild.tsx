@@ -42,6 +42,8 @@ export function CrewMiniBuild({ model }: CrewMiniBuildProps) {
             <rect
               key={block.id}
               data-type={block.activityType}
+              data-row={block.row}
+              data-column-start={block.columnStart}
               x={(block.columnStart - 1) * 10 + 0.7}
               y={fieldHeight - (block.row + block.height) * COURSE_HEIGHT + 0.7}
               width={block.width * 10 - 1.4}

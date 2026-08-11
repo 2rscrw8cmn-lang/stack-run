@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { ThumbsUp } from "lucide-react";
 
 interface PropsButtonProps {
   runOwnerName: string;
@@ -25,18 +25,10 @@ export function PropsButton({
   detail = false,
   onToggle,
 }: PropsButtonProps) {
-  if (!available) {
-    return (
-      <div className="crew-props crew-props--own" aria-label="Props unavailable">
-        <span className="crew-props__action" aria-hidden="true">
-          <Sparkles size={15} strokeWidth={1.8} />
-          <span>Props unavailable</span>
-        </span>
-      </div>
-    );
-  }
+  if (!available) return null;
 
   if (isOwnRun) {
+    if (detail || count === 0) return null;
     return (
       <div
         className="crew-props crew-props--own"
@@ -44,10 +36,9 @@ export function PropsButton({
         aria-label={`${propsCountLabel(count)}. Props are for encouraging teammates.`}
       >
         <span className="crew-props__action" aria-hidden="true">
-          <Sparkles size={15} strokeWidth={1.8} />
-          <span>Props</span>
+          <ThumbsUp size={15} strokeWidth={1.8} />
+          <span>{count}</span>
         </span>
-        {!detail && <span className="crew-props__count data-value" aria-hidden="true">{count}</span>}
       </div>
     );
   }
@@ -63,7 +54,7 @@ export function PropsButton({
         disabled={pending}
         onClick={onToggle}
       >
-        <Sparkles size={15} strokeWidth={1.8} aria-hidden="true" />
+        <ThumbsUp size={15} strokeWidth={1.8} aria-hidden="true" />
         <span>{pressed ? "Propped" : detail ? "Give Props" : "Props"}</span>
       </button>
       {!detail && (

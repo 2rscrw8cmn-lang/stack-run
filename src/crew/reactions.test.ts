@@ -19,6 +19,8 @@ function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
     durationSeconds: 2400,
     createdAt: "2026-08-10T12:00:00Z",
     updatedAt: "2026-08-10T12:00:00Z",
+    buildRow: 0,
+    buildColumnStart: 1,
     propsCount: 0,
     viewerHasPropped: false,
     ...overrides,

@@ -4,11 +4,10 @@ import {
   type BlockHeight,
   type BlockWidth,
 } from "../domain/footprint";
-import { autoPlaceOption, placementOptions } from "../domain/placement";
-import type { BlockPlacement, RunActivityType } from "../domain/types";
+import type { RunActivityType } from "../domain/types";
 import type { CrewMember, CrewMiniBuildRun } from "./types";
 
-export const MINI_BUILD_RUN_LIMIT = 16;
+export const MEMBER_BUILD_BLOCK_LIMIT = 128;
 
 export interface CrewMiniBuildBlock {
   id: string;
@@ -17,6 +16,8 @@ export interface CrewMiniBuildBlock {
   height: BlockHeight;
   columnStart: number;
   row: number;
+  distanceMiles: number;
+  localDate: string;
 }
 
 export interface CrewMiniBuildModel {
@@ -38,47 +39,48 @@ export function orderedMiniBuildMembers(
 }
 
 /**
- * Derives a deterministic, sanitized tower from safe shared-run facts only.
- * It intentionally cannot reproduce the runner's private manual placements.
+ * Reproduces the runner's shared Build from sanitized coordinates only.
+ * Unplaced/legacy rows are omitted rather than silently auto-packed.
  */
 export function deriveCrewMiniBuild(
   runs: CrewMiniBuildRun[],
   userId: string,
-  limit = MINI_BUILD_RUN_LIMIT,
+  limit = MEMBER_BUILD_BLOCK_LIMIT,
 ): CrewMiniBuildModel {
   const bounded = runs
-    .filter((run) => run.userId === userId)
+    .filter(
+      (run) =>
+        run.userId === userId &&
+        Number.isInteger(run.buildRow) &&
+        run.buildRow !== null &&
+        run.buildRow >= 0 &&
+        Number.isInteger(run.buildColumnStart) &&
+        run.buildColumnStart !== null &&
+        run.buildColumnStart >= 1 &&
+        run.buildColumnStart + widthForMiles(run.distanceMiles) - 1 <= 8,
+    )
     .sort(
       (left, right) =>
-        left.localDate.localeCompare(right.localDate) || left.id.localeCompare(right.id),
+        left.buildRow! - right.buildRow! ||
+        left.buildColumnStart! - right.buildColumnStart! ||
+        left.id.localeCompare(right.id),
     )
-    .slice(-Math.max(0, limit));
+    .slice(0, Math.max(0, limit));
 
-  const placements: BlockPlacement[] = [];
-  const blocks: CrewMiniBuildBlock[] = [];
-
-  for (const run of bounded) {
+  const blocks: CrewMiniBuildBlock[] = bounded.map((run) => {
     const width = widthForMiles(run.distanceMiles);
     const height = heightForActivityType(run.activityType);
-    const option = autoPlaceOption(placementOptions(width, height, placements));
-    if (!option) continue;
-    placements.push({
-      runLogId: run.id,
-      row: option.row,
-      columnStart: option.columnStart,
-      width,
-      height,
-      placedAt: `${run.localDate}T00:00:00.000Z`,
-    });
-    blocks.push({
+    return {
       id: run.id,
       activityType: run.activityType,
       width,
       height,
-      columnStart: option.columnStart,
-      row: option.row,
-    });
-  }
+      columnStart: run.buildColumnStart!,
+      row: run.buildRow!,
+      distanceMiles: run.distanceMiles,
+      localDate: run.localDate,
+    };
+  });
 
   return {
     blocks,

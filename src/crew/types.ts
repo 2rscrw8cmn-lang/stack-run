@@ -73,6 +73,8 @@ export interface CrewSharedRun {
   durationSeconds: number;
   createdAt: string;
   updatedAt: string;
+  buildRow: number | null;
+  buildColumnStart: number | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -87,6 +89,8 @@ export interface CrewMiniBuildRun {
   localDate: string;
   activityType: "easy" | "intervals" | "simulation" | "long" | "race";
   distanceMiles: number;
+  buildRow: number | null;
+  buildColumnStart: number | null;
 }
 
 export interface CrewDashboardData {

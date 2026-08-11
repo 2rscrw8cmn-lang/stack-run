@@ -1,4 +1,5 @@
 import type { BuildSummaryMetrics } from "../../domain/build";
+import { formatMilesBuilt } from "../../domain/distance";
 
 interface BuildHeadingProps {
   metrics: BuildSummaryMetrics;
@@ -19,7 +20,7 @@ export function BuildHeading({ metrics }: BuildHeadingProps) {
     <div className="build-heading">
       <p className="build-heading__label machine-label">Build</p>
       <h1 className="build-heading__hero">
-        <span className="build-heading__value data-value">{metrics.totalActualMiles}</span>{" "}
+        <span className="build-heading__value data-value">{formatMilesBuilt(metrics.totalActualMiles)}</span>{" "}
         <span className="build-heading__unit machine-label">
           {metrics.totalActualMiles === 1 ? "mile built" : "miles built"}
         </span>

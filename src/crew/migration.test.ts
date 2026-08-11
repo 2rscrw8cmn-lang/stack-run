@@ -4,6 +4,8 @@ import functionGrants from "../../supabase/migrations/20260810212506_race_crew_f
 import verification from "../../supabase/tests/0001_race_crew_rls.sql?raw";
 import reactionMigration from "../../supabase/migrations/20260810230000_crew_reactions.sql?raw";
 import reactionVerification from "../../supabase/tests/0002_crew_reactions_rls.sql?raw";
+import placementMigration from "../../supabase/migrations/20260811090000_shared_run_build_placement.sql?raw";
+import placementVerification from "../../supabase/tests/0003_shared_run_build_placement_rls.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -90,5 +92,40 @@ describe("UI-20 Props SQL", () => {
       /grant select, insert, update on props_test_ids to authenticated/i,
     );
     expect(reactionVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("UI-20 Member Build placement SQL", () => {
+  it("adds only nullable, constrained shared placement coordinates", () => {
+    expect(placementMigration).toMatch(/add column build_row integer/i);
+    expect(placementMigration).toMatch(/add column build_column_start smallint/i);
+    expect(placementMigration).toMatch(/build_row is null or build_row >= 0/i);
+    expect(placementMigration).toMatch(
+      /build_column_start is null or build_column_start between 1 and 8/i,
+    );
+    expect(placementMigration).toMatch(
+      /\(build_row is null\) = \(build_column_start is null\)/i,
+    );
+    expect(placementMigration).not.toMatch(/not null/i);
+    expect(placementMigration).not.toMatch(
+      /external|route|gps|location|heart|hr_zone|training_load|effort|notes|payload|api_key|placed_at/i,
+    );
+  });
+
+  it("inherits the existing shared_runs RLS without policy or grant changes", () => {
+    expect(placementMigration).not.toMatch(
+      /create policy|drop policy|enable row level security|disable row level security|grant|revoke/i,
+    );
+    expect(migration).toMatch(/create policy shared_runs_update_self/i);
+    expect(migration).toMatch(/create policy shared_runs_read_members/i);
+  });
+
+  it("ships transactional constraint, ownership and anonymous-access verification", () => {
+    expect(placementVerification).toMatch(/invalid negative build row was accepted/i);
+    expect(placementVerification).toMatch(/invalid build column was accepted/i);
+    expect(placementVerification).toMatch(/member modified another runner placement/i);
+    expect(placementVerification).toMatch(/anonymous user can read shared placements/i);
+    expect(placementVerification).toMatch(/anonymous user modified shared placement/i);
+    expect(placementVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

@@ -78,7 +78,9 @@ export function CrewRunDetailSheet({
           <div>
             <p id="crew-run-props-title" className="machine-label">Props</p>
             <p className="crew-run-detail__props-count data-value">
-              {run.propsCount} {run.propsCount === 1 ? "crew member" : "crew members"}
+              {propsAvailable
+                ? `${run.propsCount} ${run.propsCount === 1 ? "crew member" : "crew members"}`
+                : "Props unavailable"}
             </p>
           </div>
           <PropsButton

@@ -158,14 +158,20 @@ Implemented on `agent/ui-20-props-mini-builds`:
 - self-Props disabled in UI and RLS;
 - `crew_reactions` migration with composite same-crew run foreign key, active-member read/insert/delete policies and leave/removal cleanup;
 - repeatable reaction RLS verification covering two members, outsider, duplicates, own/other delete, self-Props and removal access loss;
-- one bounded shared-run read plus one batched visible-run reaction read, with no N+1 member/run queries;
-- up to 16 recent safe shared runs per Mini Build, exact STACK width/type geometry and deterministic eight-column auto-placement;
-- compact horizontal `THE CREW` card rail with stable identity accents, activity-semantic block colors, current-user marker, full-history Miles Built summary and honest zero-run states;
+- a generously bounded shared-run read plus one crew-scoped reaction read, with no N+1 member/run queries;
+- a new forward-only `shared_runs` placement migration adding only nullable, constrained `build_row` and `build_column_start`; the applied Props migration is unchanged;
+- exact shared personal placement in Mini Builds, with width from distance, height/color from activity type, no invented placement for legacy rows and a 128-block per-member safety ceiling;
+- keyboard-focusable compact `THE CREW` cards opening full read-only Member Build sheets whose blocks open crew-safe Run Detail;
+- inline sibling Props controls using Lucide `ThumbsUp`, quiet non-interactive self counts and no false factual zero when reactions are unavailable;
+- one-decimal aggregate Miles Built formatting across personal Build, comparison, Mini Build and Member Build;
+- stable identity accents, current-user marker and honest zero-run states;
 - explicit partial-failure behavior that preserves comparisons when shared-run/Mini Build data is unavailable and preserves runs when only Props is unavailable;
 - privacy tests proving no private RunLog fields or personal placement state reach Mini Build output;
 - no comments, notifications, profiles, ranking, Realtime, AppState migration or new dependency.
 
-Repository verification on 2026-08-10 passes: `npm run check` completed lint, 67 test files / 869 tests, TypeScript and the production Vite build. On 2026-08-11 the owner applied `20260810230000_crew_reactions.sql` to the configured Supabase project and the updated transactional `0002_crew_reactions_rls.sql` completed without an assertion error and rolled its fake data back. Live two-account reaction behavior and 320/390/desktop/iPhone Safari visual checks remain required before UI-20 may be marked complete/accepted.
+On 2026-08-11 the owner applied `20260810230000_crew_reactions.sql` and the updated transactional `0002_crew_reactions_rls.sql` passed; the applied migration was not modified. Final polish repository verification passes lint, 67 test files / 882 tests, TypeScript and the production build. The new `20260811090000_shared_run_build_placement.sql` migration and `0003_shared_run_build_placement_rls.sql` verification are ready for separate owner application. The 320/390/desktop/iPhone Safari visual acceptance remains required before UI-20 may be marked complete/accepted.
+
+UI-20 does not implement one shared Crew tower, communal mileage/placement, a fifth navigation item or UI-21 code.
 
 No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 

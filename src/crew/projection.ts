@@ -5,7 +5,13 @@ import {
   formatLocalDate,
   parseLocalDate,
 } from "../domain/dates";
-import type { AppState, RunActivityType, RunLog } from "../domain/types";
+import { widthForMiles } from "../domain/footprint";
+import type {
+  AppState,
+  BlockPlacement,
+  RunActivityType,
+  RunLog,
+} from "../domain/types";
 
 export interface CrewSharedRunProjection {
   localRunId: string;
@@ -13,6 +19,8 @@ export interface CrewSharedRunProjection {
   activityType: RunActivityType;
   distanceMiles: number;
   durationSeconds: number;
+  buildRow: number | null;
+  buildColumnStart: number | null;
 }
 
 export interface CrewMemberSummaryProjection {
@@ -40,20 +48,51 @@ export function mondayOfLocalDate(date: string): string {
 }
 
 /** Explicit construction is the privacy boundary: never spread a RunLog. */
-export function projectSharedRun(run: RunLog): CrewSharedRunProjection {
+function safeSharedPlacement(
+  run: RunLog,
+  placement: BlockPlacement | undefined,
+): { buildRow: number; buildColumnStart: number } | null {
+  if (!placement || placement.runLogId !== run.id) return null;
+  const width = widthForMiles(run.distanceMiles);
+  if (
+    !Number.isInteger(placement.row) ||
+    placement.row < 0 ||
+    !Number.isInteger(placement.columnStart) ||
+    placement.columnStart < 1 ||
+    placement.columnStart + width - 1 > 8
+  ) {
+    return null;
+  }
+  return {
+    buildRow: placement.row,
+    buildColumnStart: placement.columnStart,
+  };
+}
+
+export function projectSharedRun(
+  run: RunLog,
+  placement?: BlockPlacement,
+): CrewSharedRunProjection {
+  const sharedPlacement = safeSharedPlacement(run, placement);
   return {
     localRunId: run.id,
     localDate: run.completedDate,
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     durationSeconds: run.durationSeconds,
+    buildRow: sharedPlacement?.buildRow ?? null,
+    buildColumnStart: sharedPlacement?.buildColumnStart ?? null,
   };
 }
 
 export function projectSharedRuns(
   runLogs: readonly RunLog[],
+  placements: readonly BlockPlacement[] = [],
 ): CrewSharedRunProjection[] {
-  return runLogs.map(projectSharedRun);
+  const placementsByRunId = new Map(
+    placements.map((placement) => [placement.runLogId, placement] as const),
+  );
+  return runLogs.map((run) => projectSharedRun(run, placementsByRunId.get(run.id)));
 }
 
 export function projectMemberSummary(
@@ -117,7 +156,7 @@ export function projectMemberSummary(
 
 export function projectionFingerprint(state: AppState, today: string): string {
   return JSON.stringify({
-    runs: projectSharedRuns(state.runLogs),
+    runs: projectSharedRuns(state.runLogs, state.blockPlacements),
     summary: projectMemberSummary(state, today),
   });
 }
@@ -144,7 +183,7 @@ export async function syncCrewProjection(
     today: string;
   },
 ): Promise<void> {
-  const runs = projectSharedRuns(input.state.runLogs);
+  const runs = projectSharedRuns(input.state.runLogs, input.state.blockPlacements);
   if (runs.length > 0) {
     const { error } = await client.from("shared_runs").upsert(
       runs.map((run) => ({
@@ -155,6 +194,8 @@ export async function syncCrewProjection(
         activity_type: run.activityType,
         distance_miles: run.distanceMiles,
         duration_seconds: run.durationSeconds,
+        build_row: run.buildRow,
+        build_column_start: run.buildColumnStart,
       })),
       { onConflict: "crew_id,user_id,local_run_id" },
     );

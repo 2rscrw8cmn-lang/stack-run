@@ -33,16 +33,18 @@ import {
 import { crewFreshness } from "../../crew/freshness";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
 import { CrewMiniBuild } from "./CrewMiniBuild";
+import { CrewMemberBuildSheet } from "./CrewMemberBuildSheet";
 import {
   deriveCrewMiniBuild,
   orderedMiniBuildMembers,
 } from "../../crew/miniBuild";
 
 const DEFAULT_RECENT_RUNS = 6;
+const MAX_RECENT_RUNS = 20;
 
 const METRIC_LABEL: Record<ComparisonMetric, string> = {
   "weekly-miles": "Weekly Miles",
@@ -77,7 +79,10 @@ function formattedComparison(metric: ComparisonMetric, summary: CrewMemberSummar
       detail: `${summary.consistencyCompleted} / ${summary.consistencyDue}`,
     };
   }
-  return { value: `${formatMiles(value)} MI`, detail: null };
+  return {
+    value: `${metric === "miles-built" ? formatMilesBuilt(value) : formatMiles(value)} MI`,
+    detail: null,
+  };
 }
 
 function raceDateLabel(date: string): string | null {
@@ -118,6 +123,7 @@ function CrewAccessState({
 export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
   const [metric, setMetric] = useState<ComparisonMetric>("weekly-miles");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
@@ -211,10 +217,12 @@ export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
   const currentUserId = crew.account?.profile.id;
   const freshness = crewFreshness(dashboardData.summaries);
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
+  const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
+  const recentRunPool = dashboardData.runs.slice(0, MAX_RECENT_RUNS);
   const recentRuns = showAllRecentRuns
-    ? dashboardData.runs
-    : dashboardData.runs.slice(0, DEFAULT_RECENT_RUNS);
-  const hiddenRecentRunCount = dashboardData.runs.length - recentRuns.length;
+    ? recentRunPool
+    : recentRunPool.slice(0, DEFAULT_RECENT_RUNS);
+  const hiddenRecentRunCount = recentRunPool.length - recentRuns.length;
   const miniBuildMembers = orderedMiniBuildMembers(members, currentUserId);
   const summariesByUserId = new Map(
     dashboardData.summaries.map((summary) => [summary.userId, summary] as const),
@@ -408,7 +416,7 @@ export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
         title="The Crew"
       >
         <p className="crew-builds__intro">
-          Recent shared runs, automatically built. Personal block placements stay private.
+          Each runner's shared Build.
         </p>
         {!dashboardData.sharedRunsAvailable ? (
           <p className="crew-builds__unavailable">Mini Builds unavailable.</p>
@@ -420,31 +428,50 @@ export function CrewRunsView({ crew, onOpenAccountCrew }: CrewRunsViewProps) {
             return (
               <li
                 key={member.userId}
-                className="crew-build-card technical-grid"
                 data-member-color={crewMemberAccent(member.userId)}
                 data-you={isYou || undefined}
               >
-                <div className="crew-build-card__heading">
-                  <p className="crew-build-card__name">
-                    <span className="crew-member-marker" aria-hidden="true" />
-                    <span>{member.displayName}</span>
-                    {isYou && <span className="crew-build-card__you machine-label">You</span>}
-                  </p>
-                  <p className="crew-build-card__miles data-value">
-                    {formatMiles(summary?.milesBuilt ?? 0)} MI <span>BUILT</span>
-                  </p>
-                </div>
-                <CrewMiniBuild model={model} />
-                {model.sourceRunCount > 0 && (
-                  <p className="crew-build-card__context machine-label">
-                    {model.sourceRunCount} recent shared {model.sourceRunCount === 1 ? "run" : "runs"}
-                  </p>
-                )}
+                <button
+                  type="button"
+                  className="crew-build-card technical-grid"
+                  data-you={isYou || undefined}
+                  aria-label={`Open ${member.displayName}'s Build`}
+                  onClick={() => setSelectedMemberId(member.userId)}
+                >
+                  <span className="crew-build-card__heading">
+                    <span className="crew-build-card__name">
+                      <span className="crew-member-marker" aria-hidden="true" />
+                      <span>{member.displayName}</span>
+                      {isYou && <span className="crew-build-card__you machine-label">You</span>}
+                    </span>
+                    <span className="crew-build-card__miles data-value">
+                      {formatMilesBuilt(summary?.milesBuilt ?? 0)} MI <span>BUILT</span>
+                    </span>
+                  </span>
+                  <CrewMiniBuild model={model} />
+                  {model.sourceRunCount > 0 && (
+                    <span className="crew-build-card__context machine-label">
+                      {model.sourceRunCount} {model.sourceRunCount === 1 ? "block" : "blocks"}
+                    </span>
+                  )}
+                </button>
               </li>
             );
           })}
         </ul>}
       </Section>
+
+      <CrewMemberBuildSheet
+        member={selectedMember}
+        model={selectedMember ? deriveCrewMiniBuild(dashboardData.miniBuildRuns, selectedMember.userId) : null}
+        milesBuilt={selectedMember ? summariesByUserId.get(selectedMember.userId)?.milesBuilt ?? 0 : 0}
+        isOpen={selectedMember !== null}
+        onClose={() => setSelectedMemberId(null)}
+        onSelectRun={(runId) => {
+          setSelectedMemberId(null);
+          setSelectedRunId(runId);
+        }}
+      />
 
       <CrewRunDetailSheet
         run={selectedRun}

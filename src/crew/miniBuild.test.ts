@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CrewMember, CrewMiniBuildRun } from "./types";
 import {
   deriveCrewMiniBuild,
-  MINI_BUILD_RUN_LIMIT,
+  MEMBER_BUILD_BLOCK_LIMIT,
   orderedMiniBuildMembers,
 } from "./miniBuild";
 
@@ -12,8 +12,18 @@ function run(
   distanceMiles: number,
   activityType: CrewMiniBuildRun["activityType"],
   userId = "runner-1",
+  buildRow: number | null = 0,
+  buildColumnStart: number | null = 1,
 ): CrewMiniBuildRun {
-  return { id, userId, localDate, distanceMiles, activityType };
+  return {
+    id,
+    userId,
+    localDate,
+    distanceMiles,
+    activityType,
+    buildRow,
+    buildColumnStart,
+  };
 }
 
 describe("Crew Mini Build derivation", () => {
@@ -40,11 +50,11 @@ describe("Crew Mini Build derivation", () => {
       .toBe(height);
   });
 
-  it("is deterministic regardless of query order and keeps activity semantics", () => {
+  it("uses supplied coordinates regardless of query order and keeps activity semantics", () => {
     const runs = [
-      run("c", "2026-08-03", 8, "long"),
-      run("a", "2026-08-01", 2, "easy"),
-      run("b", "2026-08-02", 5, "intervals"),
+      run("c", "2026-08-03", 8, "long", "runner-1", 3, 5),
+      run("a", "2026-08-01", 2, "easy", "runner-1", 0, 1),
+      run("b", "2026-08-02", 5, "intervals", "runner-1", 1, 2),
     ];
     const first = deriveCrewMiniBuild(runs, "runner-1");
     const second = deriveCrewMiniBuild([...runs].reverse(), "runner-1");
@@ -55,22 +65,51 @@ describe("Crew Mini Build derivation", () => {
       "intervals",
       "long",
     ]);
+    expect(first.blocks.map(({ row, columnStart }) => ({ row, columnStart }))).toEqual([
+      { row: 0, columnStart: 1 },
+      { row: 1, columnStart: 2 },
+      { row: 3, columnStart: 5 },
+    ]);
   });
 
-  it("uses only the newest bounded shared runs", () => {
-    const runs = Array.from({ length: MINI_BUILD_RUN_LIMIT + 4 }, (_, index) =>
+  it("keeps a full normal-cycle Build within a generous safety ceiling", () => {
+    const runs = Array.from({ length: 80 }, (_, index) =>
       run(
         `run-${String(index).padStart(2, "0")}`,
-        `2026-08-${String(index + 1).padStart(2, "0")}`,
+        "2026-08-01",
         4,
         "easy",
+        "runner-1",
+        Math.floor(index / 4),
+        (index % 4) * 2 + 1,
       ),
     );
     const model = deriveCrewMiniBuild(runs, "runner-1");
 
-    expect(model.sourceRunCount).toBe(MINI_BUILD_RUN_LIMIT);
-    expect(model.blocks).toHaveLength(MINI_BUILD_RUN_LIMIT);
-    expect(model.blocks[0].id).toBe("run-04");
+    expect(MEMBER_BUILD_BLOCK_LIMIT).toBeGreaterThanOrEqual(80);
+    expect(model.sourceRunCount).toBe(80);
+    expect(model.blocks).toHaveLength(80);
+  });
+
+  it("changes placement without auto-arranging the supplied Build", () => {
+    const first = deriveCrewMiniBuild(
+      [run("r", "2026-08-01", 4, "easy", "runner-1", 0, 1)],
+      "runner-1",
+    );
+    const moved = deriveCrewMiniBuild(
+      [run("r", "2026-08-01", 4, "easy", "runner-1", 7, 6)],
+      "runner-1",
+    );
+    expect(first.blocks[0]).toMatchObject({ row: 0, columnStart: 1 });
+    expect(moved.blocks[0]).toMatchObject({ row: 7, columnStart: 6 });
+  });
+
+  it("does not invent a position for a legacy unplaced shared run", () => {
+    const model = deriveCrewMiniBuild(
+      [run("unplaced", "2026-08-01", 4, "easy", "runner-1", null, null)],
+      "runner-1",
+    );
+    expect(model).toEqual({ blocks: [], courses: 0, sourceRunCount: 0 });
   });
 
   it("returns an honest zero-run state and never invents blocks", () => {

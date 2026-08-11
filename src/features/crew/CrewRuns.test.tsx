@@ -55,6 +55,8 @@ function sharedRun(
     durationSeconds: 2352,
     createdAt: `${localDate}T14:00:00Z`,
     updatedAt: `${localDate}T14:00:00Z`,
+    buildRow: 0,
+    buildColumnStart: 1,
     propsCount: 0,
     viewerHasPropped: false,
     ...values,
@@ -96,12 +98,14 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       }),
     ],
     runs,
-    miniBuildRuns: runs.map(({ id, userId, localDate, activityType, distanceMiles }) => ({
+    miniBuildRuns: runs.map(({ id, userId, localDate, activityType, distanceMiles, buildRow, buildColumnStart }) => ({
       id,
       userId,
       localDate,
       activityType,
       distanceMiles,
+      buildRow,
+      buildColumnStart,
     })),
     sharedRunsAvailable: true,
     propsAvailable: true,
@@ -435,12 +439,90 @@ describe("Crew comparisons and runs", () => {
     expect(cards).toHaveLength(3);
     expect(cards[0]).toHaveTextContent("Zack");
     expect(cards[0]).toHaveTextContent("You");
-    expect(cards[0]).toHaveTextContent("122 MI BUILT");
+    expect(cards[0]).toHaveTextContent("122.0 MI BUILT");
     expect(cards[0]).toHaveTextContent("No blocks yet.");
     expect(cards[1]).toHaveTextContent("Drew");
     expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
     expect(cards[1]).toHaveAttribute("data-member-color");
-    expect(screen.getByText(/Personal block placements stay private/)).toBeInTheDocument();
+    expect(screen.getByText("Each runner's shared Build.")).toBeInTheDocument();
+  });
+
+  it("opens an exact read-only Member Build and resolves its block to crew-safe Run Detail", async () => {
+    const exact = sharedRun("placed-run", "drew", "2026-08-07", {
+      activityType: "intervals",
+      distanceMiles: 5,
+      buildRow: 6,
+      buildColumnStart: 4,
+    });
+    const user = await openCrew(
+      controller({
+        crewData: dashboard({
+          runs: [exact],
+          miniBuildRuns: [{
+            id: exact.id,
+            userId: exact.userId,
+            localDate: exact.localDate,
+            activityType: exact.activityType,
+            distanceMiles: exact.distanceMiles,
+            buildRow: exact.buildRow,
+            buildColumnStart: exact.buildColumnStart,
+          }],
+        }),
+      }),
+    );
+
+    const card = screen.getByRole("button", { name: "Open Drew's Build" });
+    expect(card).toBeInTheDocument();
+    expect(card.querySelector('rect[data-row="6"][data-column-start="4"]')).toBeInTheDocument();
+    await user.click(card);
+
+    const build = within(screen.getByRole("dialog", { name: "Member Build" }));
+    expect(build.getByText("Drew")).toBeInTheDocument();
+    expect(build.getByText(/140\.0/)).toBeInTheDocument();
+    const block = build.getByRole("button", {
+      name: /Open Drew's Intervals on Friday, August 7, 5 miles/,
+    });
+    expect(block.closest("li")).toHaveAttribute("data-row", "6");
+    expect(block.closest("li")).toHaveAttribute("data-column-start", "4");
+
+    await user.click(block);
+    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+    expect(screen.getByText("5 MI")).toBeInTheDocument();
+  });
+
+  it("keeps Member Build cards keyboard reachable and opens with Enter", async () => {
+    const user = await openCrew();
+    const card = screen.getByRole("button", { name: "Open Zack's Build" });
+    card.focus();
+    expect(card).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog", { name: "Member Build" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Member Build" })).not.toBeInTheDocument();
+  });
+
+  it("keeps run detail and Props as sibling controls inside one compact card", async () => {
+    await openCrew();
+    const runButton = screen.getAllByRole("button", { name: /Open crew-safe run detail/ })[0];
+    const propsButton = screen.getByRole("button", { name: "Give Props to Drew" });
+    const card = runButton.closest("li");
+
+    expect(card).toContainElement(propsButton);
+    expect(runButton).not.toContainElement(propsButton);
+    expect(propsButton.querySelector(".lucide-thumbs-up")).toBeInTheDocument();
+    expect(card?.querySelector(".lucide-sparkles")).not.toBeInTheDocument();
+  });
+
+  it("never presents a false zero when Props data is unavailable", async () => {
+    const user = await openCrew(
+      controller({ crewData: dashboard({ propsAvailable: false }) }),
+    );
+    await user.click(screen.getAllByRole("button", { name: /Open crew-safe run detail/ })[0]);
+    const detail = within(screen.getByRole("dialog", { name: "Run Detail" }));
+
+    expect(detail.getAllByText("Props unavailable").length).toBeGreaterThan(0);
+    expect(detail.queryByText("0 crew members")).not.toBeInTheDocument();
+    expect(detail.queryByRole("button", { name: /Give Props|Remove Props/ })).not.toBeInTheDocument();
   });
 
   it("opens a crew-safe detail and never exposes personal/private fields", async () => {
