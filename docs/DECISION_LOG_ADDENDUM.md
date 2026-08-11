@@ -322,7 +322,7 @@ Deferred/skipped:
 
 Current acceptance:
 
-- **UI-20 — Props + Mini Builds** is implemented; live migration/RLS and responsive/manual QA remain before it is complete.
+- **UI-20 — Props + Mini Builds** is implemented and its deployed migration/RLS verification passed; live two-account and responsive/manual QA remain before it is complete.
 - No later phase is authorized.
 
 See:

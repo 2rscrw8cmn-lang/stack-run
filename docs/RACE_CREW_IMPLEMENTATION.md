@@ -1,6 +1,6 @@
 # Race Crew — Implementation Plan
 
-Status: **UI-18 and UI-19 accepted; UI-20 implemented with live migration/manual QA pending.**
+Status: **UI-18 and UI-19 accepted; UI-20 implemented with live UI/manual QA pending.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
 
@@ -676,7 +676,7 @@ Still deferred unless separately approved.
 - Missing shared-run data leaves comparisons intact and says Recent runs/Mini Builds are unavailable. Missing reaction data leaves the run feed intact and marks Props unavailable.
 - Comments, notifications, member profiles, public discovery, full personal cloud sync and Intervals OAuth remain outside UI-20.
 
-Live application of the migration, the repeatable deployed RLS transaction, two-account reaction behavior and responsive/iPhone Safari smoke checks remain acceptance requirements. Do not mark UI-20 complete until those checks pass.
+The owner applied the reaction migration and the repeatable deployed RLS transaction passed on 2026-08-11. Live two-account reaction behavior and responsive/iPhone Safari smoke checks remain acceptance requirements. Do not mark UI-20 complete until those checks pass.
 
 No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 

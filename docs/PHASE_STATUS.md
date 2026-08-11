@@ -42,7 +42,7 @@ Current personal AppState: **schema 9**.
 | 17 | Performance Arcade Design Pass | **Complete** | Merged PR #34; modern training-computer visual language and final polish. |
 | 18 | Race Crew Foundation | **Complete / accepted** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
 | 19 | Crew Runs + Comparisons | **Complete / accepted** | YOU / CREW, comparisons, recent crew runs, safe detail. |
-| 20 | Props + Mini Builds | **Implemented — live migration/QA pending** | Binary Props + sanitized read-only Mini Builds. |
+| 20 | Props + Mini Builds | **Implemented — live UI QA pending** | Binary Props + sanitized read-only Mini Builds. |
 
 ## UI-17 acceptance
 
@@ -165,7 +165,7 @@ Implemented on `agent/ui-20-props-mini-builds`:
 - privacy tests proving no private RunLog fields or personal placement state reach Mini Build output;
 - no comments, notifications, profiles, ranking, Realtime, AppState migration or new dependency.
 
-Repository verification on 2026-08-10 passes: `npm run check` completed lint, 67 test files / 869 tests, TypeScript and the production Vite build. The repository environment has no Supabase project link/access token/database URL, no Docker-backed local Supabase and no connected in-app browser, so applying the migration, running the live SQL transaction, two-account reaction smoke testing and 320/390/desktop/iPhone Safari visual checks remain required before UI-20 may be marked complete/accepted.
+Repository verification on 2026-08-10 passes: `npm run check` completed lint, 67 test files / 869 tests, TypeScript and the production Vite build. On 2026-08-11 the owner applied `20260810230000_crew_reactions.sql` to the configured Supabase project and the updated transactional `0002_crew_reactions_rls.sql` completed without an assertion error and rolled its fake data back. Live two-account reaction behavior and 320/390/desktop/iPhone Safari visual checks remain required before UI-20 may be marked complete/accepted.
 
 No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 

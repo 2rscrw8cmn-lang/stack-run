@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-20 Props + Mini Builds is implemented on top of the accepted UI-18/UI-19 Race Crew experience, with live migration/RLS and responsive browser checks still pending.** Crew runs now carry one binary, crew-private Props action and each member has a compact read-only Build derived only from bounded safe shared-run facts. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-20 adds no comments, notifications, profiles, public discovery, full personal cloud sync or Intervals OAuth.
+**UI-20 Props + Mini Builds is implemented on top of the accepted UI-18/UI-19 Race Crew experience, with live UI/responsive browser checks still pending.** Crew runs now carry one binary, crew-private Props action and each member has a compact read-only Build derived only from bounded safe shared-run facts. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. UI-20 adds no comments, notifications, profiles, public discovery, full personal cloud sync or Intervals OAuth.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -889,7 +889,7 @@ UI-19 introduces no database migration, AppState migration, router, global state
 
 UI-20 adds no AppState migration or production dependency. Personal placement data, complete `RunLog` objects, Intervals ids/credentials, exact start times, routes, HR/zones/load, effort and notes remain outside the UI-20 query and rendering contracts.
 
-UI-20 automated verification on 2026-08-10 passes: `npm run check` completed lint, 67 test files / 869 tests, TypeScript and the production Vite build. Live Supabase migration/RLS and responsive browser checks remain pending because this environment has no project credentials, local Docker database or connected in-app browser.
+UI-20 automated verification on 2026-08-10 passes: `npm run check` completed lint, 67 test files / 869 tests, TypeScript and the production Vite build. The owner applied the reaction migration and the deployed transactional RLS verification passed on 2026-08-11. Live two-account Props behavior and responsive browser checks remain pending.
 
 No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
