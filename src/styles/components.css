@@ -131,7 +131,8 @@
 
 .bottom-nav__item {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -173,12 +174,29 @@
 .bottom-nav__label {
   font-size: 12px;
   font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Four equal labels, and 320px is the width they have to survive. */
+/* Four or five equal labels, and 320px is the width they have to survive.
+   Five destinations get a 64px column there, which still holds a 20px icon
+   and a whole word without wrapping or scrolling the bar sideways. */
 @media (max-width: 359px) {
   .bottom-nav__label {
     font-size: 11px;
+  }
+  .bottom-nav[data-destinations="5"] .bottom-nav__label {
+    font-size: 10px;
+    letter-spacing: -0.01em;
+  }
+  .bottom-nav[data-destinations="5"] .bottom-nav__item {
+    gap: 3px;
+    padding-inline: 2px;
+  }
+  .bottom-nav[data-destinations="5"] .bottom-nav__item[aria-current="page"]::before {
+    width: 20px;
   }
 }
 
@@ -5562,18 +5580,24 @@ textarea.run-input {
   min-width: 0;
 }
 
-.crew-view__header {
-  padding: 12px 14px;
-  border: 1px solid var(--border-strong);
-  border-radius: 7px;
-  background-color: var(--data-surface);
+/* The crew identity is a standing line, not a card: the weight below it
+   belongs to the Crew Build. */
+.crew-view__lead { min-width: 0; }
+.crew-view__lead-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
 }
+.crew-view__identity { min-width: 0; }
+.crew-view__identity p,
+.crew-view__identity h1 { margin: 0; }
+.crew-view__identity > .machine-label { color: var(--text-subtle); }
 
-.crew-view__header p,
-.crew-view__header h2 { margin: 0; }
-.crew-view__header h2 {
+.crew-view__name {
+  margin-top: 4px !important;
   color: var(--text);
-  font-family: var(--font-data);
   font-size: clamp(20px, 6vw, 27px);
   line-height: 1.08;
   letter-spacing: -0.045em;
@@ -5582,7 +5606,7 @@ textarea.run-input {
 }
 
 .crew-view__race {
-  margin-top: 7px !important;
+  margin-top: 6px !important;
   color: var(--text-muted);
   font-family: var(--font-data);
   font-size: 9px;
@@ -5591,6 +5615,308 @@ textarea.run-input {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   overflow-wrap: anywhere;
+}
+.crew-view__countdown {
+  margin-top: 3px !important;
+  color: var(--accent);
+  font-size: 9px;
+}
+.crew-view__countdown[data-kind="race-day"] { color: var(--race); }
+.crew-view__countdown[data-kind="complete"] { color: var(--text-subtle); }
+.crew-view__refresh { flex: 0 0 44px; color: var(--text-muted); }
+.crew-view__refresh:disabled { cursor: wait; opacity: 0.55; }
+
+/* The Crew Build — the largest object on the screen, and the reason Crew is a
+   destination. A grounded technical field with restrained lime framing, built
+   as a larger sibling of the personal Build rather than a social card. */
+.crew-build {
+  --crew-build-course: 30px;
+  min-width: 0;
+  padding: 14px 12px 12px;
+  border-color: var(--data-border);
+}
+.crew-build__lead p { margin: 0; }
+.crew-build__lead > .machine-label { color: var(--accent); }
+.crew-build__miles {
+  margin-top: 6px !important;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  color: var(--text);
+  font-size: clamp(34px, 12vw, 54px);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+.crew-build__miles span {
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.crew-build__totals {
+  margin-top: 7px !important;
+  color: var(--text-subtle);
+  font-size: 9px;
+}
+.crew-build__construction {
+  margin-top: 4px !important;
+  color: var(--accent);
+  font-size: 8px;
+}
+.crew-build__ready {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-strong));
+}
+.crew-build__ready p { margin: 0; }
+.crew-build__ready > div > .machine-label { color: var(--accent); font-size: 8px; }
+.crew-build__ready-run {
+  margin-top: 4px !important;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.crew-build__ready .button { min-height: 44px; }
+.crew-build__placement-lead {
+  margin-top: 12px;
+  padding: 10px;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface-strong));
+}
+.crew-build__placement-lead p { margin: 0; }
+.crew-build__placement-lead > .machine-label { color: var(--accent); }
+.crew-build__placement-lead > .data-value {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.crew-build__placement-lead > p:last-child {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.crew-build__stage {
+  margin-top: 13px;
+  padding: 10px 8px 0;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px),
+    rgba(0, 0, 0, 0.22);
+  background-size: 12.5% var(--crew-build-course);
+}
+.crew-build__viewport {
+  height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
+  max-height: min(56dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior-block: contain;
+  scrollbar-width: thin;
+}
+.crew-build__tower {
+  width: 100%;
+  height: calc(var(--crew-build-courses) * var(--crew-build-course));
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--crew-build-courses), var(--crew-build-course));
+  /* `margin-top: auto` rather than `justify-content: flex-end`, which makes
+     the overflowing top of a tall tower unreachable in a scroll container. */
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-build__tower li {
+  min-width: 0;
+  min-height: 0;
+  padding: 1px;
+}
+.crew-build__tower li[data-type="easy"] { --piece-color: var(--easy); }
+.crew-build__tower li[data-type="intervals"] { --piece-color: var(--intervals); }
+.crew-build__tower li[data-type="simulation"] { --piece-color: var(--simulation); }
+.crew-build__tower li[data-type="long"] { --piece-color: var(--long); }
+.crew-build__tower li[data-type="race"] { --piece-color: var(--race); }
+.crew-build__tower button,
+.crew-build__block {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--bg) 80%, transparent);
+  border-radius: 2px;
+  /* The same lit-front-face depth the personal Build's bricks carry. */
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #fff 14%, var(--piece-color)),
+      var(--piece-color) 62%,
+      color-mix(in srgb, var(--bg) 22%, var(--piece-color))
+    );
+  color: #020609;
+  font-family: var(--font-data);
+  font-size: clamp(7px, 2.3vw, 10px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px color-mix(in srgb, #fff 34%, transparent),
+    inset -5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
+    0 4px 8px rgba(0, 0, 0, 0.34);
+}
+.crew-build__block { cursor: default; }
+.crew-build__tower button::before,
+.crew-build__block::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: color-mix(in srgb, #fff 28%, var(--piece-color));
+  clip-path: polygon(0 100%, 5px 0, 100% 0, calc(100% - 5px) 100%);
+  opacity: 0.9;
+}
+.crew-build__tower button::after,
+.crew-build__block::after {
+  content: "";
+  position: absolute;
+  inset: 5px 0 0 auto;
+  width: 5px;
+  background: color-mix(in srgb, var(--bg) 30%, var(--piece-color));
+  opacity: 0.82;
+}
+.crew-build__tower button:hover { filter: brightness(1.12); }
+.crew-build__tower button:focus-visible {
+  z-index: 2;
+  outline: 3px solid #fff;
+  outline-offset: -4px;
+}
+/* Identity, not training meaning: a thin cap in the runner's stable accent,
+   sitting on top of a block whose color still says what the session was. */
+.crew-build__cap {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: 2;
+  background: var(--member-accent, transparent);
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+.crew-build__face {
+  position: relative;
+  z-index: 1;
+  padding-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.crew-build__tower[data-placement-grid="true"] { cursor: crosshair; }
+.crew-build__tower[data-placement-grid="true"] > li:not(.crew-build__preview) {
+  pointer-events: none;
+  opacity: 0.82;
+}
+.crew-build__preview { pointer-events: none; z-index: 3; }
+.crew-build__preview .crew-build__block {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  filter: brightness(1.1);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.crew-build[data-placing="true"] .crew-build__stage {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background-color: color-mix(in srgb, var(--accent) 3%, rgba(0, 0, 0, 0.22));
+}
+.crew-build__ground {
+  height: 2px;
+  margin-top: 0;
+  background: var(--border-strong);
+}
+.crew-build__caption {
+  margin: 0;
+  padding: 8px 2px 9px;
+  color: var(--text-subtle);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.crew-build__stage--empty { padding-bottom: 0; }
+.crew-build__field {
+  height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
+  background:
+    linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px);
+  background-size: 12.5% var(--crew-build-course);
+}
+.crew-build__placement-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.crew-build__placement-controls > .button:nth-child(3),
+.crew-build__placement-controls > p { grid-column: 1 / -1; }
+.crew-build__placement-controls > p { margin: 0; }
+.crew-build__placement-controls > .machine-label {
+  color: var(--accent);
+  text-align: center;
+}
+.crew-build__placement-error {
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+.crew-build__empty,
+.crew-build__unavailable,
+.crew-build__notice {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.crew-build__empty { padding: 11px 2px 2px; }
+.crew-build__unavailable {
+  margin-top: 13px;
+  padding: 22px 10px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.crew-build__notice {
+  margin-top: 9px;
+  color: var(--text-subtle);
+  font-size: 11px;
+}
+
+.crew-build__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 13px;
+  margin: 11px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-build__legend li {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.crew-build__legend li > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12ch;
 }
 .crew-view__state {
   min-height: 180px;
@@ -5621,7 +5947,8 @@ textarea.run-input {
   gap: 10px;
 }
 
-.crew-comparison__heading p { margin: 0; color: var(--text-muted); }
+.crew-comparison__heading p { margin: 0; color: var(--accent); }
+.crew-comparison__window { color: var(--text-subtle) !important; font-size: 8px; }
 .crew-comparison > h3 {
   margin: 13px 0 0;
   color: var(--text);
@@ -5632,11 +5959,6 @@ textarea.run-input {
   text-transform: uppercase;
 }
 
-.crew-comparison__refresh {
-  flex: 0 0 44px;
-  color: var(--text-muted);
-}
-.crew-comparison__refresh:disabled { cursor: wait; opacity: 0.55; }
 .crew-comparison__refresh-icon--loading { animation: crew-refresh-spin 900ms linear infinite; }
 @keyframes crew-refresh-spin { to { transform: rotate(360deg); } }
 
@@ -5791,14 +6113,12 @@ textarea.run-input {
   text-align: right;
 }
 .crew-comparison__freshness[data-warning="true"] { color: var(--long); }
-.crew-comparison__invite-note,
 .crew-comparison__error {
   margin: 9px 0 0;
-  color: var(--text-muted);
+  color: var(--danger);
   font-size: 12px;
   line-height: 1.45;
 }
-.crew-comparison__error { color: var(--danger); }
 
 .crew-recent.section {
   gap: 9px;
@@ -6014,6 +6334,11 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   background: var(--surface-strong);
 }
 .crew-run-detail__props .crew-props__error { padding: 2px 0 0; }
+.crew-run-detail__move {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.crew-run-detail__move .button { width: 100%; }
 
 .crew-builds.section {
   gap: 9px;
@@ -6027,7 +6352,8 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   font-weight: 700;
   letter-spacing: 0.07em;
 }
-.crew-builds__intro {
+.crew-builds__intro,
+.crew-builds__invite-note {
   margin: 0;
   color: var(--text-muted);
   font-size: 11px;
@@ -6259,7 +6585,13 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 
 @media (max-width: 340px) {
-  .crew-view__header { padding-inline: 11px; }
+  .crew-build {
+    /* A shorter course keeps a tall tower inside one viewport at 320px and
+       still clears the 24px target floor D-018 set for the personal Build. */
+    --crew-build-course: 26px;
+    padding-inline: 9px;
+  }
+  .crew-build__legend { gap: 4px 10px; }
   .crew-comparison { padding-inline: 9px; }
   .crew-comparison__rows li { padding-inline: 4px; }
   .crew-comparison__reading .data-value { font-size: 14px; }
@@ -6273,6 +6605,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 @media (min-width: 620px) {
   .crew-comparison__selector { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .crew-builds__rail { grid-auto-columns: min(48%, 286px); }
+  /* Desktop gets a bigger tower rather than a different app. */
+  .crew-build {
+    --crew-build-course: 38px;
+    padding: 20px 18px 16px;
+  }
+  .crew-build__viewport { max-height: min(58dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course))); }
 }
 
 @media (prefers-reduced-motion: reduce) {

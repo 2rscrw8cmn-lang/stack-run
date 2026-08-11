@@ -37,7 +37,7 @@ import {
   saveIntervalsApiKey,
 } from "../storage/intervalsCredentialRepository";
 
-export type TabId = "today" | "build" | "runs" | "plan";
+export type TabId = "today" | "build" | "runs" | "crew" | "plan";
 
 /**
  * Either an app, or the reason there isn't one.
@@ -78,6 +78,25 @@ export function App() {
 
   const appState = boot.kind === "ready" ? boot.state : null;
   const raceCrew = useRaceCrew(appState);
+  /**
+   * Crew is a destination only while there is a crew to be in. Membership is
+   * the account's to lose — signing out, leaving, or being removed all take it
+   * away — so the tab is derived from it rather than remembered.
+   */
+  const crewAvailable =
+    raceCrew.status === "signed-in" && Boolean(raceCrew.account?.crew);
+
+  // Losing access while standing in Crew returns to personal Runs. State
+  // correction belongs in an effect; React render remains side-effect free.
+  // The visible tab is derived immediately below so the inaccessible screen is
+  // never painted while the scheduled state correction catches up.
+  useEffect(() => {
+    if (activeTab !== "crew" || crewAvailable) return;
+    queueMicrotask(() => setActiveTab("runs"));
+  }, [activeTab, crewAvailable]);
+
+  const visibleActiveTab =
+    activeTab === "crew" && !crewAvailable ? "runs" : activeTab;
 
   const setAppState = useCallback((next: (current: AppState) => AppState) => {
     setBoot((current) =>
@@ -159,8 +178,9 @@ export function App() {
 
   return (
     <AppShell
-      activeTab={activeTab}
+      activeTab={visibleActiveTab}
       onTabChange={setActiveTab}
+      crewAvailable={crewAvailable}
       notice={(writeError || accomplishments.length > 0) ? (
         <>
           {writeError && (

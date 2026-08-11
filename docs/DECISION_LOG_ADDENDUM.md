@@ -310,6 +310,71 @@ UI-20 does not create one shared Crew Build, communal placement/mileage, a fifth
 
 UI-20 is the last currently authorized Race Crew phase. No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
 
+## D-065 — Crew is a conditional fifth destination, because it owns one shared communal Build
+
+> **Placement correction:** D-066 supersedes the automatic-arrangement, non-persisted, nobody-moves, and no-migration statements recorded below. D-065 remains the authority for the conditional Crew destination and screen hierarchy.
+
+**Decision:** UI-21 promotes Race Crew from a context inside Runs to a top-level STACK destination, on the strength of a mechanic no other surface has: every crew member's shared runs contribute blocks to **one shared Crew Build**.
+
+This supersedes the earlier "Race Crew stays `YOU | CREW` inside Runs; no fifth tab" boundary. That boundary was correct while Crew was a feed and a comparison; it stopped being correct once the crew had a tower of its own.
+
+Navigation:
+
+- an active member of a crew sees `Today | Build | Runs | Crew | Plan`;
+- everybody else — signed out, or signed in with no crew — sees the original `Today | Build | Runs | Plan`;
+- Crew uses Lucide `UsersRound`; never `Trophy`, `Crown` or `Medal`, because a crew is collaboration and the Crew Build is a thing nobody wins;
+- losing membership while Crew is open falls back to Runs immediately, and an invalid Crew selection is never persisted;
+- no router is introduced; local screen state still holds the destination.
+
+Runs returns to being purely personal. The `YOU | CREW` switch is removed and nothing social is duplicated there.
+
+**Three Build models, never mixed:**
+
+- **Personal Build** — private, manually arranged by the runner;
+- **Member Build** — a crew-safe read-only reproduction of that runner's real shared personal arrangement;
+- **Crew Build** — an automatic combined tower derived from every safe shared run in the crew.
+
+Crew Build rules:
+
+- consumes only crew-safe `shared_runs` facts already approved: id, user, local date, activity type, distance, `created_at`;
+- **ignores** the personal `build_row` / `build_column_start` coordinates; those are Member-Build-only data and are dropped at the read boundary rather than passed along;
+- contribution order is `created_at` ascending, then shared-run `id` ascending, and never local device time, query arrival order, personal placement or randomness;
+- ordered blocks then run through the repository's existing deterministic auto-placement primitive, so the tower is identical on every device viewing the same runs;
+- the derived tower is **not persisted**: no communal coordinates, no widened `shared_runs`, **no migration**;
+- nobody owns it and nobody can move a block in it — the running is the contribution;
+- width from distance and height/color from activity type are unchanged, so activity color still means training type everywhere; member identity is a small separate cue in the existing stable member accent;
+- every block is one interactive target with a real accessible name and opens the existing crew-safe Run Detail, whoever ran it;
+- totals are miles built, blocks and runners only — no ranking, pace, fastest runner, score or XP;
+- a departed member's runs are deleted, so their blocks leave the tower and it reflows; access removal outranks tower permanence.
+
+The UI-19 comparison, UI-20 Recent Crew Runs with Props, and UI-20 Member Builds all move into Crew, unchanged in behavior and visually secondary to the Crew Build. `CREW BUILD` is our combined tower; `THE CREW` is each runner's individual Build.
+
+Account and crew management stays in Settings → Account & Crew.
+
+UI-21 does not add Realtime, a router, a global state library, comments, notifications, profiles, ranking, a pace leaderboard, a podium or a database migration.
+
+UI-21 is the last currently authorized Race Crew phase. No UI-22 is authorized. After UI-21, perform a whole-product review before defining additional phases.
+
+## D-066 — Crew Build blocks are earned by running and placed by their runner
+
+**Decision:** The final owner review of UI-21 supersedes only D-065's automatic-arrangement, no-owner, non-persisted, and no-migration clauses. D-065's conditional Crew destination, navigation hierarchy, safe-data boundary, and separation of Personal, Member, and Crew Builds remain in force.
+
+Every safe shared run earns one Crew Build block. A newly earned or legacy unplaced block is **READY** and does not appear in the physical tower until its runner chooses an open position. Only that runner may place or later move the block. Teammates can inspect placed blocks and crew-safe run detail, but never place or move them.
+
+The three coordinate systems remain deliberately independent:
+
+- Personal Build coordinates are private and manually arranged;
+- Member Build reproduces the safe shared personal coordinates as read-only Crew context;
+- Crew Build uses nullable `shared_runs.crew_build_row` / `crew_build_column_start` coordinates that never read from or write to personal placement.
+
+Crew placement is persisted through the authenticated `place_crew_build_block` RPC only. The RPC verifies run ownership and active crew membership, derives width from distance and height from activity type, locks placement for the crew, rejects out-of-bounds or overlapping rectangles, and updates only the two Crew coordinates. Direct client updates to those columns are not granted. This requires the forward-only `20260811150000_crew_build_placement.sql` migration and its transactional verification script.
+
+READY order is chronological (`local_date`, `created_at`, `id`). The hero totals count every safe shared run, whether placed or READY; the physical tower renders only placed blocks. The oldest current-user READY block appears near the hero with the full run identity and a prominent placement action. Own placed blocks expose a quiet Move Block action from both the tower and crew-safe Run Detail. A server collision keeps the block READY or in its prior position and asks the runner to choose another space.
+
+The Crew Build remains an eight-column object-first tower. It shows at least six courses when empty or shallow, grows until a phone-height cap, then scrolls internally with the newest/top courses accessible. Empty, one-member, unavailable, and truncated states remain factual. No Realtime, router, ranking, pace leaderboard, score, XP, comments, notifications, profiles, or global state library is added.
+
+Live migration application, the repeatable SQL verification, two-account placement/collision/permission testing, and 320px/390px/desktop/real iPhone Safari visual acceptance remain owner-run checks. UI-21 must not be marked complete until they pass.
+
 ## Active implementation order
 
 Complete:
@@ -321,6 +386,7 @@ Complete:
 - UI-17
 - UI-18
 - UI-19
+- UI-20
 
 Deferred/skipped:
 
@@ -329,7 +395,8 @@ Deferred/skipped:
 
 Current acceptance:
 
-- **UI-20 — Props + Mini Builds** is implemented and its deployed migration/RLS verification passed; live two-account and responsive/manual QA remain before it is complete.
+- **UI-20 — Props + Mini Builds** is complete and accepted (merged PR #37).
+- **UI-21 — Crew Destination + Shared Crew Build** is implemented; live two-account and responsive/manual QA remain before it is complete.
 - No later phase is authorized.
 
 See:

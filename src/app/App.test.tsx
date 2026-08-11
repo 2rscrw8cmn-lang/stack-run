@@ -345,12 +345,19 @@ describe("App", () => {
     expect(
       bar.queryByRole("button", { name: "Settings" }),
     ).not.toBeInTheDocument();
+    // Crew is a destination only for an active crew member, and this build has
+    // no Race Crew configured at all.
+    expect(bar.queryByRole("button", { name: "Crew" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Runs" }));
     expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute(
       "aria-current",
       "page",
     );
+    // Runs is personal only: the UI-19 `YOU | CREW` switch left with UI-21.
+    expect(
+      screen.queryByRole("tablist", { name: "Runs context" }),
+    ).not.toBeInTheDocument();
 
     // The gear opens a sheet over the tab, and closing it leaves you on the
     // same tab rather than moving the app somewhere.

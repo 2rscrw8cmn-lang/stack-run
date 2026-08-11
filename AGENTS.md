@@ -27,13 +27,13 @@ Older Trends/Arcade/original phase docs are historical/current-behavior referenc
 - Product: `STACK`
 - Tagline: `Build your race.`
 - Phone-first responsive web app; dark only
-- Persistent destinations: Today / Build / Runs / Plan
+- Persistent destinations: Today / Build / Runs / Plan, plus Crew for a signed-in active crew member (D-065)
 - Settings: top-right icon-only gear
 - One active race/plan per personal device/user
 - Personal plan is manually editable; never auto-adapt from health data
 - Scheduled and extra runs are first-class actual activities
 - Every actual run earns one Build block
-- Runs is personal history + Training Signals; Race Crew later appears as `YOU | CREW` inside Runs
+- Runs is personal history + Training Signals only; Race Crew is its own conditional destination since UI-21
 - Build remains deterministic 8-column object-first trophy/toy
 - Wellness / Recovery remains deferred
 - Performance Arcade design language from UI-17 is current
@@ -43,13 +43,11 @@ Older Trends/Arcade/original phase docs are historical/current-behavior referenc
 
 ## Current implementation phase
 
-**UI-18 — Race Crew Foundation** is the next approved code phase.
+UI-18 through UI-21 are complete and owner-accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction are implemented in PR #38, which is awaiting merge. The deployed migration/RLS verification, two-account QA, and 320px/390px/desktop/real iPhone Safari visual review passed on 2026-08-11. See `docs/PHASE_STATUS.md`.
 
-Use the full copy/paste prompt in `docs/RACE_CREW_IMPLEMENTATION.md`.
+No UI-22 is authorized. Perform a whole-product review before defining additional phases.
 
-One branch/PR for UI-18 only.
-
-Do not implement UI-19 social presentation or UI-20 reactions/mini Builds in the same PR.
+The sections below record the locked UI-18 architecture, which still governs auth, projection, RLS and secret handling. Where an older Race Crew product boundary conflicts with a later decision, `docs/DECISION_LOG_ADDENDUM.md` wins.
 
 ## UI-18 locked architecture
 
@@ -229,14 +227,14 @@ No router is required just to parse this fragment.
 
 ## Race Crew product boundaries
 
-- Race Crew stays `YOU | CREW` inside Runs; no fifth tab.
+- Race Crew was `YOU | CREW` inside Runs through UI-20; UI-21 superseded that with a conditional Crew destination (D-065).
 - Invite-only, race-centered.
 - No public discovery/follower graph/DMs.
 - UI-19 comparisons: Weekly Miles, Longest Run, Consistency, Miles Built.
 - No raw pace leaderboard.
 - Crew-safe run detail is separate from private personal Run Detail.
 - Props later; comments separately reviewable.
-- Mini Builds later; collective Crew Build not MVP.
+- Mini Builds are UI-20 Member Builds; the collective Crew Build arrived in UI-21, with runner-owned placement persisted in independent Crew coordinates (D-066).
 
 ## UI-18 scope boundary
 

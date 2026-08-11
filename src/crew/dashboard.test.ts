@@ -36,6 +36,8 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         duration_seconds: 3522,
         build_row: 4,
         build_column_start: 2,
+        crew_build_row: 7,
+        crew_build_column_start: 3,
         created_at: "2026-08-09T12:00:00Z",
         updated_at: "2026-08-09T12:00:00Z",
       },
@@ -101,7 +103,7 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,created_at,updated_at",
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,created_at,updated_at",
     );
     expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
     expect(calls).toContainEqual({
@@ -127,6 +129,8 @@ describe("Crew dashboard query", () => {
       updatedAt: "2026-08-09T12:00:00Z",
       buildRow: 4,
       buildColumnStart: 2,
+      crewBuildRow: 7,
+      crewBuildColumnStart: 3,
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -141,6 +145,22 @@ describe("Crew dashboard query", () => {
         buildColumnStart: 2,
       },
     ]);
+    // The communal tower's own contract: personal placement is dropped rather
+    // than carried along and ignored later.
+    expect(loaded.crewBuildRuns).toEqual([
+      {
+        id: "run-1",
+        userId: "user-1",
+        displayName: "Runner",
+        localDate: "2026-08-09",
+        activityType: "long",
+        distanceMiles: 6.1,
+        createdAt: "2026-08-09T12:00:00Z",
+        crewBuildRow: 7,
+        crewBuildColumnStart: 3,
+      },
+    ]);
+    expect(loaded.sharedRunsTruncated).toBe(false);
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {
@@ -150,7 +170,9 @@ describe("Crew dashboard query", () => {
     expect(loaded.summaries).toHaveLength(1);
     expect(loaded.runs).toEqual([]);
     expect(loaded.miniBuildRuns).toEqual([]);
+    expect(loaded.crewBuildRuns).toEqual([]);
     expect(loaded.sharedRunsAvailable).toBe(false);
+    expect(loaded.sharedRunsTruncated).toBe(false);
     expect(loaded.propsAvailable).toBe(false);
   });
 });

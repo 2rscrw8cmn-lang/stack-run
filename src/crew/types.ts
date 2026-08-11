@@ -75,6 +75,9 @@ export interface CrewSharedRun {
   updatedAt: string;
   buildRow: number | null;
   buildColumnStart: number | null;
+  /** Independent shared Crew Build placement; never personal placement. */
+  crewBuildRow: number | null;
+  crewBuildColumnStart: number | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -93,12 +96,35 @@ export interface CrewMiniBuildRun {
   buildColumnStart: number | null;
 }
 
+/**
+ * The only run facts the communal Crew Build may consume.
+ *
+ * `buildRow` / `buildColumnStart` are deliberately absent: personal placement
+ * describes one runner's private arrangement and has no meaning in a tower
+ * everybody contributes to, so the Crew Build cannot read it even by accident.
+ * `createdAt` is present because it is the communal contribution order.
+ */
+export interface CrewBuildRun {
+  id: string;
+  userId: string;
+  displayName: string;
+  localDate: string;
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  distanceMiles: number;
+  createdAt: string;
+  crewBuildRow: number | null;
+  crewBuildColumnStart: number | null;
+}
+
 export interface CrewDashboardData {
   members: CrewMember[];
   summaries: CrewMemberSummary[];
   runs: CrewSharedRun[];
   miniBuildRuns: CrewMiniBuildRun[];
+  crewBuildRuns: CrewBuildRun[];
   sharedRunsAvailable: boolean;
+  /** True when the safety ceiling was reached and older shared runs were not read. */
+  sharedRunsTruncated: boolean;
   propsAvailable: boolean;
   loadedAt: string;
 }

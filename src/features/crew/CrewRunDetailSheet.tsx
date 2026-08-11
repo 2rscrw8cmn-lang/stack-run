@@ -8,6 +8,7 @@ import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import { PropsButton } from "./PropsButton";
+import { Button } from "../../components/ui/Button";
 
 interface CrewRunDetailSheetProps {
   run: CrewSharedRun | null;
@@ -18,6 +19,7 @@ interface CrewRunDetailSheetProps {
   propsError: string | null;
   propsAvailable: boolean;
   onToggleProps: () => void;
+  onMoveBlock?: () => void;
 }
 
 /** UI-19's deliberately complete crew-safe detail contract. */
@@ -30,6 +32,7 @@ export function CrewRunDetailSheet({
   propsError,
   propsAvailable,
   onToggleProps,
+  onMoveBlock,
 }: CrewRunDetailSheetProps) {
   if (!run) return null;
   const pace = formatPace(run.distanceMiles, run.durationSeconds);
@@ -95,6 +98,12 @@ export function CrewRunDetailSheet({
           />
           {propsError && <p className="crew-props__error" role="status">{propsError}</p>}
         </section>
+
+        {onMoveBlock && (
+          <div className="crew-run-detail__move">
+            <Button variant="ghost" onClick={onMoveBlock}>Move Block</Button>
+          </div>
+        )}
       </div>
     </Sheet>
   );

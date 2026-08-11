@@ -115,13 +115,15 @@ Intervals officially recommends OAuth for apps intended for multiple users. The 
 
 ## Race Crew product direction
 
-Race Crew lives inside Runs as:
+Race Crew began inside Runs as a `YOU | CREW` context, explicitly not a fifth tab. **UI-21 changed that (D-065.)** Once every runner's shared runs contribute blocks to one communal Crew Build, Race Crew owns a mechanic no other screen has, and it became a destination:
 
 ```text
-YOU | CREW
+Today | Build | Runs | Crew | Plan
 ```
 
-Not a fifth tab.
+Crew is conditional: it appears only for a signed-in active member of a crew. Everybody else keeps the original `Today | Build | Runs | Plan`, and Runs is personal-only again.
+
+The Crew Build is the crew's own tower. Every safe shared run earns one Crew block in a READY queue. The runner who earned that block chooses its open position and may later move it; nobody can place or move a teammate's block. Crew placement uses independent `crew_build_row` / `crew_build_column_start` coordinates and never reads or rewrites the runner's personal Build placement, which remains Member-Build-only data. Running earns the block; deliberate runner-owned placement builds the shared tower.
 
 Crew:
 
@@ -228,6 +230,14 @@ No social Crew feed/comparison screen yet.
 
 Comments separately reviewable.
 
+### UI-21 — Crew Destination + Shared Crew Build
+
+- Crew as a conditional fifth destination;
+- one shared communal Crew Build with runner-owned READY placement and movement;
+- independent persisted Crew coordinates protected by a collision-safe server RPC;
+- `YOU | CREW` removed from Runs;
+- comparisons, recent crew runs, Props and Member Builds moved into Crew.
+
 ## Success criteria
 
 STACK is successful when:
@@ -257,7 +267,7 @@ STACK is successful when:
 | Active plan | One race/plan at a time per personal device/user |
 | Platforms | Responsive web app; phone first |
 | Theme | Dark only |
-| Navigation | Today, Build, Runs, Plan |
+| Navigation | Today, Build, Runs, Plan — plus Crew for an active crew member |
 | Settings | Top-right gear |
 | Personal persistence | Browser localStorage schema 9 |
 | Social backend | Supabase Auth + Postgres + RLS |
@@ -274,7 +284,7 @@ STACK is successful when:
 | Wellness | Deferred/skipped |
 | Visual direction | Performance Arcade |
 | Build | One deterministic block per actual run; 8 columns; no score/game economy |
-| Social placement | YOU / CREW inside Runs |
+| Social placement | Crew destination; each runner places and moves only their own earned Crew blocks |
 | Social comparisons | Weekly Miles, Longest Run, Consistency, Miles Built |
 
 ## Current boundaries

@@ -21,6 +21,8 @@ function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
     updatedAt: "2026-08-10T12:00:00Z",
     buildRow: 0,
     buildColumnStart: 1,
+    crewBuildRow: null,
+    crewBuildColumnStart: null,
     propsCount: 0,
     viewerHasPropped: false,
     ...overrides,
@@ -33,7 +35,9 @@ function dashboard(runs: CrewSharedRun[]): CrewDashboardData {
     summaries: [],
     runs,
     miniBuildRuns: [],
+    crewBuildRuns: [],
     sharedRunsAvailable: true,
+    sharedRunsTruncated: false,
     propsAvailable: true,
     loadedAt: "now",
   };

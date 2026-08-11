@@ -42,7 +42,8 @@ Current personal AppState: **schema 9**.
 | 17 | Performance Arcade Design Pass | **Complete** | Merged PR #34; modern training-computer visual language and final polish. |
 | 18 | Race Crew Foundation | **Complete / accepted** | Supabase account/crew foundation, local per-user Intervals key, setup wizard, safe projection. |
 | 19 | Crew Runs + Comparisons | **Complete / accepted** | YOU / CREW, comparisons, recent crew runs, safe detail. |
-| 20 | Props + Mini Builds | **Implemented — live UI QA pending** | Binary Props + sanitized read-only Mini Builds. |
+| 20 | Props + Mini Builds | **Complete / accepted** | Binary Props + sanitized read-only Mini Builds. |
+| 21 | Crew Destination + Shared Crew Build | **Complete / owner-accepted — PR #38 awaiting merge** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
 
 ## UI-17 acceptance
 
@@ -173,7 +174,41 @@ On 2026-08-11 the owner applied `20260810230000_crew_reactions.sql` and the upda
 
 UI-20 does not implement one shared Crew tower, communal mileage/placement, a fifth navigation item or UI-21 code.
 
-No UI-21 is currently authorized. After UI-20, perform a whole-product review before defining additional phases.
+UI-20 is complete and accepted via merged PR #37.
+
+## UI-21 implementation status
+
+Implemented on `claude/ui-21-crew-destination-p9jxv8` in existing PR #38. The final owner correction supersedes the original automatic-placement model:
+
+- Crew promoted to a conditional fifth destination for a signed-in active crew member: `Today | Build | Runs | Crew | Plan`, using Lucide `UsersRound`, with the original four destinations for everybody else and no router;
+- effect-driven fallback to Runs when membership or the session disappears while Crew is open, with no state update during render and no invalid Crew selection persisted;
+- the `YOU | CREW` switch removed from Runs, which is personal-only again with no duplicate crew surface;
+- every safe shared run earns one Crew block; missing Crew coordinates put it in chronological READY order instead of inventing a position;
+- only the runner who earned a block may place or move it, while teammate blocks remain detail-only;
+- independent nullable `crew_build_row` / `crew_build_column_start` coordinates, never copied from or written back to personal `build_row` / `build_column_start`;
+- forward-only `20260811150000_crew_build_placement.sql` migration with ownership, active-membership, footprint, grid, and rectangle-collision enforcement in the `place_crew_build_block` RPC;
+- crew-level transaction locking plus a re-read prevents concurrent confirmations from occupying the same cells; direct authenticated Crew-coordinate updates are not granted;
+- narrow placement client/controller flow with no local write before Confirm, post-result refresh, and a specific choose-another-space conflict state;
+- unchanged block semantics: width from distance, height and color from activity type, with member identity as a thin top-edge cap in the existing stable accent plus a compact legend;
+- the Crew Build hero counts all miles and earned runs while stating `X built · Y ready`; only placed blocks appear in the physical tower;
+- the current runner's oldest READY item near the hero with full run identity and one prominent placement action; teammate READY items are not actionable;
+- focused snapped placement preview with client-side fit/collision rejection, `Next Open Spot`, Confirm, and Cancel; a quiet Move Block action appears only for the owner's placed block in the tower and Run Detail;
+- an adaptive eight-column stage with at least six visible courses, growth until a phone-height cap, internal scrolling after that, and stronger physical top/side/depth cues;
+- every placed block remains a keyboard-activatable interactive target with a real accessible name, opening crew-safe Run Detail regardless of whose run it is;
+- crew header reduced to crew name, race line and a locally derived `N DAYS TO RACE` / `RACE DAY` / `RACE COMPLETE` countdown;
+- UI-19 comparisons, UI-20 Recent Crew Runs with Props and UI-20 Member Builds moved into Crew unchanged in behavior and visually secondary to the tower, with the crew name, runner count and Miles Built each stated once;
+- honest empty, one-member, unavailable and safety-ceiling states, including a quiet notice rather than silently presenting a truncated tower as complete;
+- one bounded crew dashboard payload feeding the Crew Build, comparisons, recent runs, Props and Member Builds, with no N+1 query, no Realtime and unchanged stale-aware/foreground/manual refresh.
+
+Automated verification covers conditional navigation and effect-driven fallback; persisted Crew-coordinate rendering; independent personal coordinates; no automatic placement; READY chronology; all-run totals; distance/activity footprints; client fit, overlap, move-own, and snapped-option geometry; placement RPC parameter and conflict handling; current-user-only placement and movement controls; no write on invalid selection; collision recovery; empty, READY-only, unavailable, one-member, and compact-stage behavior; block detail access; and the existing bounded/privacy-safe dashboard boundary.
+
+Repository verification passes `npm run check`: lint, 71 test files / 926 tests, TypeScript, and the production build.
+
+On 2026-08-11 the owner applied `20260811150000_crew_build_placement.sql` and the repeatable deployed `0004_crew_build_placement_rpc.sql` transaction passed. The owner also completed live two-account placement, movement, ownership denial, stale-view collision, persistence, coordinate-independence, sign-out fallback, and member-removal checks. Visual acceptance passed at 320px, 390px, desktop, and real iPhone Safari, including five-destination navigation, READY/placement controls, shallow/tall stage behavior, readable block depth, and absence of horizontal overflow. UI-21 is complete and owner-accepted in PR #38, which remains unmerged.
+
+UI-21 does not implement a pace leaderboard, ranking, podium, comments, notifications, profiles, Realtime, a router, a global state library, a new dependency, or an AppState migration.
+
+No UI-22 is currently authorized. After UI-21, perform a whole-product review before defining additional phases.
 
 ## Active source documents
 
