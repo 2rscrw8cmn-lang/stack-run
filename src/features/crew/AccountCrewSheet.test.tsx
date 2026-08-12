@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
@@ -7,7 +7,7 @@ import { todayLocalDate } from "../../domain/dates";
 import { AccountCrewSheet } from "./AccountCrewSheet";
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner" },
+  profile: { id: "owner-1", displayName: "Owner", accentColor: null },
   crew: {
     id: "crew-1",
     ownerUserId: "owner-1",
@@ -19,18 +19,18 @@ const ownerAccount: LoadedCrewAccount = {
   },
   role: "owner",
   members: [
-    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
+    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
   ],
   invites: [],
 };
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "member-1", displayName: "Member" },
+  profile: { id: "member-1", displayName: "Member", accentColor: null },
   role: "member",
   members: [
     ...ownerAccount.members,
-    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z" },
+    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
   ],
 };
 
@@ -61,6 +61,7 @@ function controller(
     signIn: action,
     signOut: action,
     saveDisplayName: action,
+    saveAccentColor: vi.fn(async () => undefined),
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
@@ -117,7 +118,7 @@ describe("Account & Crew settings", () => {
       status: "signed-in",
       email: "runner@example.test",
       account: {
-        profile: { id: "user-1", displayName: "Runner" },
+        profile: { id: "user-1", displayName: "Runner", accentColor: null },
         crew: null,
         role: null,
         members: [],
@@ -230,7 +231,7 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner" },
+            profile: { id: "owner-1", displayName: "Owner", accentColor: null },
             crew: null,
             role: null,
             members: [],
@@ -250,6 +251,7 @@ describe("Account & Crew settings", () => {
       id: "run-1",
       userId: "owner-1",
       displayName: "Owner",
+      accentColor: null,
       localDate: "2026-08-05",
       activityType: "easy" as const,
       distanceMiles: 3,
@@ -348,5 +350,68 @@ describe("Account & Crew settings", () => {
     await user.click(screen.getByRole("button", { name: "Delete Crew" }));
     await user.click(screen.getByRole("button", { name: "Delete Crew" }));
     expect(deleteCrew).toHaveBeenCalledOnce();
+  });
+
+  it("shows all 16 colors, marks the current pick, and greys out ones crewmates already wear", async () => {
+    const saveAccentColor = vi.fn(async () => undefined);
+    const account: LoadedCrewAccount = {
+      ...memberAccount,
+      profile: { id: "member-1", displayName: "Member", accentColor: "aqua" },
+      members: [
+        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta" },
+        { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua" },
+      ],
+    };
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account, saveAccentColor })}
+      />,
+    );
+
+    const picker = screen.getByRole("list", { name: "Your color" });
+    expect(within(picker).getAllByRole("button")).toHaveLength(16);
+
+    // The runner's own pick is marked current, not disabled — clicking it
+    // again is a harmless no-op rather than something the picker refuses.
+    const current = within(picker).getByRole("button", { name: /your current color/ });
+    expect(current).toHaveAccessibleName(/^Aqua/);
+    expect(current).toHaveAttribute("aria-pressed", "true");
+    expect(current).not.toBeDisabled();
+
+    // A crewmate's color — explicit or not — is unavailable before the
+    // database's own uniqueness check ever has to reject it.
+    const taken = within(picker).getByRole("button", { name: /taken by another crew member/ });
+    expect(taken).toHaveAccessibleName(/^Magenta/);
+    expect(taken).toBeDisabled();
+
+    await user.click(within(picker).getByRole("button", { name: "Green" }));
+    expect(saveAccentColor).toHaveBeenCalledWith("green");
+  });
+
+  it("does not grey out a color once nobody else wears it", async () => {
+    // A departed member's color frees up rather than staying reserved
+    // forever: "taken" is read live off the current roster, not a history.
+    const account: LoadedCrewAccount = {
+      ...ownerAccount,
+      profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+      members: [
+        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
+      ],
+    };
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account })}
+      />,
+    );
+
+    const picker = screen.getByRole("list", { name: "Your color" });
+    expect(within(picker).queryAllByRole("button", { name: /taken/ })).toHaveLength(0);
   });
 });

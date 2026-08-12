@@ -43,7 +43,7 @@ export function CrewMemberBuildSheet({
     >
       <div
         className="crew-member-build"
-        data-member-color={crewMemberAccent(member.userId)}
+        data-member-color={crewMemberAccent(member.userId, member.accentColor)}
       >
         <header className="crew-member-build__heading">
           <p className="crew-member-build__name">

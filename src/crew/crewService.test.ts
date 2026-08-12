@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { deleteCrew, updateCrew, validateCrewDetails } from "./crewService";
+import { deleteCrew, updateAccentColor, updateCrew, validateCrewDetails } from "./crewService";
 
 function crewTable(result: { data: unknown; error: { message: string } | null }) {
   const chain = {
@@ -14,6 +14,17 @@ function crewTable(result: { data: unknown; error: { message: string } | null })
   chain.delete.mockReturnValue(chain);
   chain.eq.mockReturnValue(chain);
   chain.select.mockReturnValue(chain);
+  const client = { from: vi.fn(() => chain) } as unknown as SupabaseClient;
+  return { client, chain };
+}
+
+/** `updateAccentColor`/`updateDisplayName` resolve straight off `.eq(...)`, with no `.select()`. */
+function profilesTable(result: { error: { message: string } | null }) {
+  const chain = {
+    update: vi.fn(),
+    eq: vi.fn(async () => result),
+  };
+  chain.update.mockReturnValue(chain);
   const client = { from: vi.fn(() => chain) } as unknown as SupabaseClient;
   return { client, chain };
 }
@@ -66,5 +77,24 @@ describe("Crew owner mutations", () => {
 
     const denied = crewTable({ data: null, error: null });
     await expect(deleteCrew(denied.client, "crew-1")).rejects.toThrow("could not be deleted");
+  });
+});
+
+describe("Accent color", () => {
+  it("saves an explicit pick to the caller's own profile", async () => {
+    const { client, chain } = profilesTable({ error: null });
+    await updateAccentColor(client, "user-1", "magenta");
+
+    expect(chain.update).toHaveBeenCalledWith({ accent_color: "magenta" });
+    expect(chain.eq).toHaveBeenCalledWith("id", "user-1");
+  });
+
+  it("surfaces the database's own collision message rather than inventing one", async () => {
+    const { client } = profilesTable({
+      error: { message: "That color is already taken by another crew member." },
+    });
+    await expect(updateAccentColor(client, "user-1", "magenta")).rejects.toThrow(
+      "already taken by another crew member",
+    );
   });
 });

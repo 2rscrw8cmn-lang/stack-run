@@ -55,6 +55,10 @@ function faceText(block: Pick<CrewBuildBlock, "activityType" | "distanceMiles">)
     : formatCompactMiles(block.distanceMiles);
 }
 
+function memberInitial(displayName: string): string {
+  return displayName ? displayName[0].toUpperCase() : "?";
+}
+
 function runIdentity(run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "localDate">) {
   return `${WORKOUT_TYPE_LABEL[run.activityType]} · ${formatMiles(run.distanceMiles)} MI · ${formatDateLabel(run.localDate, { month: "short", day: "numeric" })}`;
 }
@@ -167,7 +171,7 @@ export function CrewBuild({
                   data-type={block.activityType}
                   data-row={block.row}
                   data-column-start={block.columnStart}
-                  data-member-color={crewMemberAccent(block.userId)}
+                  data-member-color={crewMemberAccent(block.userId, block.accentColor)}
                   data-recent={block.recentlyPlaced || undefined}
                   style={{
                     gridColumn: `${block.columnStart} / span ${block.width}`,
@@ -176,13 +180,17 @@ export function CrewBuild({
                 >
                   {placement ? (
                     <span className="crew-build__block" aria-hidden="true">
-                      <span className="crew-build__cap" />
+                      <span className="crew-build__monogram" aria-hidden="true">
+                        {memberInitial(block.displayName)}
+                      </span>
                       <span className="crew-build__face">{faceText(block)}</span>
                     </span>
                   ) : (
                     <button type="button" onClick={() => onSelectRun(block.id)}>
                       <span className="visually-hidden">{blockLabel(block)}</span>
-                      <span className="crew-build__cap" aria-hidden="true" />
+                      <span className="crew-build__monogram" aria-hidden="true">
+                        {memberInitial(block.displayName)}
+                      </span>
                       <span className="crew-build__face" aria-hidden="true">{faceText(block)}</span>
                     </button>
                   )}
@@ -193,7 +201,7 @@ export function CrewBuild({
                 <li
                   className="crew-build__preview"
                   data-type={placement.run.activityType}
-                  data-member-color={crewMemberAccent(placement.run.userId)}
+                  data-member-color={crewMemberAccent(placement.run.userId, placement.run.accentColor)}
                   style={{
                     gridColumn: `${placement.selection.columnStart} / span ${placementFootprint.width}`,
                     gridRow: `${gridCourses - placement.selection.row - placementFootprint.height + 1} / span ${placementFootprint.height}`,
@@ -201,7 +209,9 @@ export function CrewBuild({
                   aria-hidden="true"
                 >
                   <span className="crew-build__block">
-                    <span className="crew-build__cap" />
+                    <span className="crew-build__monogram" aria-hidden="true">
+                      {memberInitial(placement.run.displayName)}
+                    </span>
                     <span className="crew-build__face">{faceText(placement.run)}</span>
                   </span>
                 </li>
@@ -252,7 +262,7 @@ export function CrewBuild({
       {members.length > 0 && (
         <ul className="crew-build__legend" aria-label="Crew Build runners">
           {members.map((member) => (
-            <li key={member.userId} data-member-color={crewMemberAccent(member.userId)}>
+            <li key={member.userId} data-member-color={crewMemberAccent(member.userId, member.accentColor)}>
               <span className="crew-member-marker" aria-hidden="true" />
               <span>{member.displayName}</span>
             </li>

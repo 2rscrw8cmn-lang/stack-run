@@ -7,6 +7,7 @@ function run(id: string, userId: string, localDate: string): CrewSharedRun {
     id,
     userId,
     displayName: userId,
+    accentColor: null,
     localDate,
     activityType: "easy",
     distanceMiles: 3.2,

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RunActivityType } from "../domain/types";
+import { accentColorFrom, type CrewMemberAccent } from "./memberAccent";
 import type {
   CrewDashboardData,
   CrewMember,
@@ -109,7 +110,7 @@ export async function loadCrewDashboard(
   );
 
   const [profileResult, summaryResult, runResult] = await Promise.all([
-    client.from("profiles").select("id,display_name").in("id", userIds),
+    client.from("profiles").select("id,display_name,accent_color").in("id", userIds),
     client
       .from("crew_member_summaries")
       .select(
@@ -133,13 +134,15 @@ export async function loadCrewDashboard(
   if (summaryResult.error) throw new Error(summaryResult.error.message);
   const sharedRunsAvailable = !runResult.error;
 
-  const names = new Map(
+  const profiles = new Map(
     rows(profileResult.data).map((item) => [
       requiredString(item, "id"),
-      nullableName(item),
+      { displayName: nullableName(item), accentColor: accentColorFrom(item.accent_color) },
     ] as const),
   );
-  const displayName = (userId: string) => names.get(userId) ?? "Runner";
+  const displayName = (userId: string) => profiles.get(userId)?.displayName ?? "Runner";
+  const accentColorOf = (userId: string): CrewMemberAccent | null =>
+    profiles.get(userId)?.accentColor ?? null;
 
   const members: CrewMember[] = memberRows.map((item) => {
     const userId = requiredString(item, "user_id");
@@ -148,6 +151,7 @@ export async function loadCrewDashboard(
       role: roleFrom(item.role),
       joinedAt: requiredString(item, "joined_at"),
       displayName: displayName(userId),
+      accentColor: accentColorOf(userId),
     };
   });
   const summaries: CrewMemberSummary[] = rows(summaryResult.data).map((item) => {
@@ -175,6 +179,7 @@ export async function loadCrewDashboard(
       id: requiredString(item, "id"),
       userId,
       displayName: displayName(userId),
+      accentColor: accentColorOf(userId),
       localDate,
       activityType: activityTypeFrom(item.activity_type),
       distanceMiles: requiredNumber(item, "distance_miles"),
@@ -233,6 +238,7 @@ export async function loadCrewDashboard(
     id: run.id,
     userId: run.userId,
     displayName: run.displayName,
+    accentColor: run.accentColor,
     localDate: run.localDate,
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,

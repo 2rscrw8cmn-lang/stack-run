@@ -3,9 +3,9 @@ import type { CrewMember, CrewMemberSummary } from "./types";
 import { comparisonBarPercent, orderedComparisonRows } from "./comparisons";
 
 const members: CrewMember[] = [
-  { userId: "a", displayName: "A", role: "owner", joinedAt: "1" },
-  { userId: "b", displayName: "B", role: "member", joinedAt: "2" },
-  { userId: "c", displayName: "C", role: "member", joinedAt: "3" },
+  { userId: "a", displayName: "A", role: "owner", joinedAt: "1", accentColor: null },
+  { userId: "b", displayName: "B", role: "member", joinedAt: "2", accentColor: null },
+  { userId: "c", displayName: "C", role: "member", joinedAt: "3", accentColor: null },
 ];
 
 function summary(userId: string, weeklyMiles: number): CrewMemberSummary {

@@ -52,6 +52,31 @@
   --zone-6: #ff6565;
   --zone-7: #d270ff;
 
+  /*
+   * The runner-identity palette (16 options, picked in Settings). Every hue
+   * sits at least ~22° from every activity color above (easy, intervals,
+   * simulation, long) so a member's color is never confusable with what a
+   * block's own fill already means. Deliberately its own set rather than a
+   * reuse of --easy/--intervals/--zone-* — those still mean "activity" and
+   * "heart-rate zone" elsewhere and must stay free to mean only that.
+   */
+  --member-green: #43e33b;
+  --member-emerald: #3be351;
+  --member-jade: #3be370;
+  --member-mint: #3be38f;
+  --member-seafoam: #3be3ae;
+  --member-aqua: #3be3cd;
+  --member-turquoise: #3bdbe3;
+  --member-sky: #3bbfe3;
+  --member-orchid: #d53be3;
+  --member-magenta: #e33bcd;
+  --member-fuchsia: #e33ba8;
+  --member-raspberry: #e33b84;
+  --member-crimson: #e33b5f;
+  --member-red: #e33b3b;
+  --member-vermilion: #e35f3b;
+  --member-rust: #e3843b;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 22px;

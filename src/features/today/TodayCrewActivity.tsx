@@ -35,7 +35,7 @@ export function TodayCrewActivity({
     <Section className="today-crew-activity" icon={<UsersRound size={15} strokeWidth={2} />} title="Crew Activity">
       <ul className="today-crew-activity__list">
         {runs.map((run) => (
-          <li key={run.id} data-member-color={crewMemberAccent(run.userId)}>
+          <li key={run.id} data-member-color={crewMemberAccent(run.userId, run.accentColor)}>
             <span className="today-crew-activity__icon" data-type={run.activityType}>
               <ActivityIcon type={run.activityType} size={17} />
             </span>
