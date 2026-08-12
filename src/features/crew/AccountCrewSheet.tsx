@@ -3,6 +3,7 @@ import {
   LogIn,
   LogOut,
   Pencil,
+  Plus,
   ShieldCheck,
   Trash2,
   UserPlus,
@@ -16,7 +17,10 @@ import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type { Race } from "../../domain/types";
 import { validateCrewDetails } from "../../crew/crewService";
 import {
-  crewMemberAccent,
+  DEFAULT_CREW_EMBLEM,
+  type CrewEmblem as CrewEmblemModel,
+} from "../../crew/emblem";
+import {
   MEMBER_ACCENTS,
   MEMBER_ACCENT_LABEL,
   type CrewMemberAccent,
@@ -24,6 +28,8 @@ import {
 import { compareCrewRace } from "../../crew/raceMatch";
 import type { RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
+import { CrewEmblem } from "./CrewEmblem";
+import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
 
 interface Props {
   isOpen: boolean;
@@ -133,11 +139,16 @@ function PendingInvitePanel({ crew, localRace }: Pick<Props, "crew" | "localRace
   return (
     <section className="crew-settings__section crew-settings__invite-preview">
       <p className="machine-label">Private invite</p>
-      <h3>{pending.preview.crewName}</h3>
-      <p>
-        {pending.preview.raceName} · {formatDateLabel(pending.preview.raceDate)} ·{" "}
-        {pending.preview.raceDistanceMiles} mi
-      </p>
+      <div className="crew-settings__crew-identity">
+        <CrewEmblem emblem={pending.preview.emblem} size={44} />
+        <div>
+          <h3>{pending.preview.crewName}</h3>
+          <p>
+            {pending.preview.raceName} · {formatDateLabel(pending.preview.raceDate)} ·{" "}
+            {pending.preview.raceDistanceMiles} mi
+          </p>
+        </div>
+      </div>
       {mismatch.mismatched && localRace && (
         <div className="crew-settings__warning" role="status">
           <strong>Your current race does not match this crew.</strong>
@@ -148,18 +159,32 @@ function PendingInvitePanel({ crew, localRace }: Pick<Props, "crew" | "localRace
           <p>Joining will not change your race or training plan.</p>
         </div>
       )}
-      {crew.status === "signed-in" ? (
-        <Button isLoading={crew.busy} onClick={() => void crew.joinPendingInvite()}>
-          {mismatch.mismatched ? "Join Anyway" : "Join Crew"}
-        </Button>
-      ) : (
+      {crew.status !== "signed-in" ? (
         <p className="crew-settings__note">Create an account or sign in to join.</p>
+      ) : pending.preview.alreadyMember ? (
+        <p className="crew-settings__note">You are already in this crew.</p>
+      ) : (
+        <>
+          <Button isLoading={crew.busy} onClick={() => void crew.joinPendingInvite()}>
+            {mismatch.mismatched ? "Join Anyway" : "Join Crew"}
+          </Button>
+          {(crew.account?.memberships.length ?? 0) > 0 && (
+            <p className="crew-settings__note">
+              You can be in more than one crew. Joining this one keeps the crews
+              you are already in.
+            </p>
+          )}
+        </>
       )}
     </section>
   );
 }
 
-function CreateCrewPanel({ crew, localRace }: Pick<Props, "crew" | "localRace">) {
+function CreateCrewPanel({
+  crew,
+  localRace,
+  onCancel,
+}: Pick<Props, "crew" | "localRace"> & { onCancel?: () => void }) {
   const [name, setName] = useState("");
   const [raceName, setRaceName] = useState(localRace?.name ?? "");
   const [raceDate, setRaceDate] = useState(localRace?.date ?? "");
@@ -167,6 +192,7 @@ function CreateCrewPanel({ crew, localRace }: Pick<Props, "crew" | "localRace">)
     localRace ? String(localRace.distanceMiles) : "",
   );
   const [buildStartDate, setBuildStartDate] = useState(todayLocalDate());
+  const [emblem, setEmblem] = useState<CrewEmblemModel>(DEFAULT_CREW_EMBLEM);
   return (
     <section className="crew-settings__section">
       <p className="machine-label">Create a private crew</p>
@@ -188,15 +214,27 @@ function CreateCrewPanel({ crew, localRace }: Pick<Props, "crew" | "localRace">)
         <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
       </FormField>
       <p className="crew-settings__note">Runs on or after this date can contribute to the Crew Build.</p>
-      <Button icon={<Users size={18} />} isLoading={crew.busy} onClick={() => void crew.createCrew({
-        name,
-        raceName,
-        raceDate,
-        raceDistanceMiles: Number(distance),
-        buildStartDate,
-      })}>
-        Create Race Crew
-      </Button>
+      <div className="crew-settings__emblem-field">
+        <p className="form-field__label">Crew emblem</p>
+        <CrewEmblemBuilder emblem={emblem} onChange={setEmblem} />
+      </div>
+      <div className="crew-settings__form-actions">
+        <Button icon={<Users size={18} />} isLoading={crew.busy} onClick={() => void crew.createCrew({
+          name,
+          raceName,
+          raceDate,
+          raceDistanceMiles: Number(distance),
+          buildStartDate,
+          emblem,
+        })}>
+          Create Race Crew
+        </Button>
+        {onCancel && (
+          <Button variant="secondary" disabled={crew.busy} onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
     </section>
   );
 }
@@ -217,6 +255,7 @@ function EditCrewPanel({
   const [raceDate, setRaceDate] = useState(raceCrew.raceDate);
   const [distance, setDistance] = useState(String(raceCrew.raceDistanceMiles));
   const [buildStartDate, setBuildStartDate] = useState(raceCrew.buildStartDate);
+  const [emblem, setEmblem] = useState<CrewEmblemModel>(raceCrew.emblem);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [pendingChange, setPendingChange] = useState<ReturnType<typeof validateCrewDetails> | null>(null);
 
@@ -233,6 +272,7 @@ function EditCrewPanel({
         raceDate,
         raceDistanceMiles: Number(distance),
         buildStartDate,
+        emblem,
       });
       setValidationError(null);
       const movesLater = input.buildStartDate > raceCrew.buildStartDate;
@@ -287,6 +327,10 @@ function EditCrewPanel({
         <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
       </FormField>
       <p className="crew-settings__note">Runs on or after this date can contribute to the Crew Build.</p>
+      <div className="crew-settings__emblem-field">
+        <p className="form-field__label">Crew emblem</p>
+        <CrewEmblemBuilder emblem={emblem} onChange={setEmblem} />
+      </div>
       {validationError && <p role="alert" className="crew-settings__message crew-settings__message--error">{validationError}</p>}
       <div className="crew-settings__form-actions">
         <Button isLoading={crew.busy} onClick={() => void save()}>Save Changes</Button>
@@ -346,12 +390,19 @@ function CrewPanel({
   );
   return (
     <section className="crew-settings__section">
-      <p className="machine-label">Your Race Crew</p>
-      <h3>{raceCrew.name}</h3>
-      <p>
-        {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
-        {raceCrew.raceDistanceMiles} mi
+      <p className="machine-label">
+        {account.memberships.length > 1 ? "Crew you are viewing" : "Your Race Crew"}
       </p>
+      <div className="crew-settings__crew-identity">
+        <CrewEmblem emblem={raceCrew.emblem} size={44} />
+        <div>
+          <h3>{raceCrew.name}</h3>
+          <p>
+            {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
+            {raceCrew.raceDistanceMiles} mi
+          </p>
+        </div>
+      </div>
       <p className="crew-settings__note">Build starts {formatDateLabel(raceCrew.buildStartDate)}.</p>
 
       {account.role === "owner" && (
@@ -424,6 +475,51 @@ function CrewPanel({
 }
 
 /**
+ * Every crew this account is in, and which one the app is showing.
+ *
+ * Crews are peers, not a hierarchy: a runner can be training for a spring
+ * marathon with one set of friends and a summer trail race with another, and
+ * switching between them is a view change on this device only. It never
+ * touches membership, the shared Builds, or anything personal.
+ */
+function CrewListPanel({ crew }: { crew: RaceCrewController }) {
+  const account = crew.account;
+  const memberships = account?.memberships ?? [];
+  if (!account || memberships.length < 2) return null;
+  return (
+    <section className="crew-settings__section">
+      <p className="machine-label">Your crews</p>
+      <ul className="crew-settings__crew-list" aria-label="Your crews">
+        {memberships.map(({ crew: raceCrew, role }) => {
+          const isActive = raceCrew.id === account.crew?.id;
+          return (
+            <li key={raceCrew.id}>
+              <button
+                type="button"
+                className="crew-settings__crew-option"
+                aria-pressed={isActive}
+                disabled={crew.busy}
+                onClick={() => void crew.switchCrew(raceCrew.id)}
+              >
+                <CrewEmblem emblem={raceCrew.emblem} size={34} />
+                <span className="crew-settings__crew-option-body">
+                  <strong>{raceCrew.name}</strong>
+                  <small>
+                    {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
+                    {role === "owner" ? "Owner" : "Member"}
+                  </small>
+                </span>
+                <span className="machine-label">{isActive ? "Viewing" : "Switch"}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/**
  * Sixteen colors, none of them an activity color, so a runner's identity in
  * the Crew Build tower never reads as the type of run instead of who ran it.
  * A color already worn by a current crewmate is greyed out here — the
@@ -476,12 +572,9 @@ function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
   const [displayName, setDisplayName] = useState(
     crew.account?.profile.displayName ?? "",
   );
-  const viewerId = crew.account?.profile.id;
-  const takenAccents = new Set(
-    (crew.account?.members ?? [])
-      .filter((member) => member.userId !== viewerId)
-      .map((member) => crewMemberAccent(member.userId, member.accentColor)),
-  );
+  // Explicit picks across every crew this account is in — the same union the
+  // database enforces, so the picker cannot offer a color it would reject.
+  const takenAccents = new Set(crew.account?.takenAccentColors ?? []);
   return (
     <section className="crew-settings__section">
       <p className="machine-label">STACK account</p>
@@ -510,8 +603,14 @@ function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
 export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
   const signedIn = crew.status === "signed-in";
   const [view, setView] = useState<"main" | "edit" | "delete">("main");
+  const [creatingSince, setCreatingSince] = useState<number | null>(null);
   const raceCrew = crew.account?.crew ?? null;
   const visibleView = crew.account?.role === "owner" && raceCrew ? view : "main";
+  const crewCount = crew.account?.memberships.length ?? 0;
+  // The create form stays open until it has actually produced a crew, which
+  // this sheet recognizes as a changed membership count. Derived rather than
+  // remembered, so a successful create closes it without an effect.
+  const creatingAnother = creatingSince !== null && creatingSince === crewCount;
 
   return (
     <Sheet
@@ -567,12 +666,38 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
           <>
             <AccountProfilePanel crew={crew} />
             <PendingInvitePanel crew={crew} localRace={localRace} />
+            <CrewListPanel crew={crew} />
             {crew.account?.crew ? (
-              <CrewPanel
-                crew={crew}
-                onEdit={() => setView("edit")}
-                onDelete={() => setView("delete")}
-              />
+              <>
+                <CrewPanel
+                  crew={crew}
+                  onEdit={() => setView("edit")}
+                  onDelete={() => setView("delete")}
+                />
+                {/* Another crew is another race with another set of friends,
+                    so it is an addition here, never a replacement. */}
+                {creatingAnother ? (
+                  <CreateCrewPanel
+                    crew={crew}
+                    localRace={localRace}
+                    onCancel={() => setCreatingSince(null)}
+                  />
+                ) : (
+                  <section className="crew-settings__section">
+                    <Button
+                      variant="secondary"
+                      icon={<Plus size={18} />}
+                      onClick={() => setCreatingSince(crewCount)}
+                    >
+                      Create Another Crew
+                    </Button>
+                    <p className="crew-settings__note">
+                      You are in {crewCount} {crewCount === 1 ? "crew" : "crews"}. Join
+                      another any time with a private invite link.
+                    </p>
+                  </section>
+                )}
+              </>
             ) : !crew.pendingInvite ? (
               <CreateCrewPanel crew={crew} localRace={localRace} />
             ) : null}

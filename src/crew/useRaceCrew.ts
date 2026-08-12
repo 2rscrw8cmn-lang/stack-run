@@ -38,6 +38,10 @@ import {
   removeCrewDeleteTombstone,
   type CrewDeleteTombstone,
 } from "../storage/crewDeleteTombstoneRepository";
+import {
+  loadActiveCrewId,
+  saveActiveCrewId,
+} from "../storage/activeCrewRepository";
 import { loadCrewDashboard } from "./dashboard";
 import {
   commitOptimisticCrewProps,
@@ -97,6 +101,8 @@ export interface RaceCrewController {
   createCrew: (input: CrewDetailsInput) => Promise<void>;
   updateCrew: (input: CrewDetailsInput) => Promise<boolean>;
   deleteCrew: () => Promise<boolean>;
+  /** Changes which crew this device is looking at. */
+  switchCrew: (crewId: string) => Promise<void>;
   createInvite: () => Promise<void>;
   revokeInvite: (inviteId: string) => Promise<void>;
   joinPendingInvite: () => Promise<void>;
@@ -144,14 +150,15 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const [crewBuildPlacementPending, setCrewBuildPlacementPending] = useState(false);
   const [crewBuildPlacementError, setCrewBuildPlacementError] = useState<string | null>(null);
   const latest = useRef({ appState, user, account });
-  const lastProjection = useRef({ fingerprint: "", syncedAt: 0 });
+  /** Freshness is per crew: each one owns its Build window and its own sync. */
+  const lastProjection = useRef(new Map<string, { fingerprint: string; syncedAt: number }>());
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
-  const dashboardInFlight = useRef<Promise<void> | null>(null);
+  const dashboardInFlight = useRef<{ crewId: string; request: Promise<void> } | null>(null);
   const propsInFlight = useRef(new Set<string>());
 
   const resetCrewClientState = useCallback((): void => {
     setLatestInviteUrl(null);
-    lastProjection.current = { fingerprint: "", syncedAt: 0 };
+    lastProjection.current.clear();
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
@@ -166,9 +173,18 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     latest.current = { appState, user, account };
   });
 
-  const reloadAccount = useCallback(async (nextUser: User): Promise<void> => {
+  const reloadAccount = useCallback(async (
+    nextUser: User,
+    preferredCrewId?: string,
+  ): Promise<void> => {
     if (!availability.configured) return;
-    const loaded = await loadCrewAccount(availability.client, nextUser);
+    const preferred = preferredCrewId ?? loadActiveCrewId(nextUser.id) ?? undefined;
+    const loaded = await loadCrewAccount(availability.client, nextUser, preferred);
+    // Remember what actually resolved, so a crew that was left, deleted or
+    // never joined stops being asked for on the next load.
+    if (loaded.crew && loaded.crew.id !== preferred) {
+      saveActiveCrewId(nextUser.id, loaded.crew.id);
+    }
     latest.current = { ...latest.current, user: nextUser, account: loaded };
     setAccount(loaded);
     setStatus("signed-in");
@@ -237,74 +253,97 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       );
   }, [availability, initialInviteToken]);
 
+  /**
+   * Shares this device's safe projection with every crew the account is in.
+   *
+   * A run belongs to the runner, not to whichever crew happens to be open, so
+   * standing in one crew must never starve the others of contributions. Each
+   * crew keeps its own freshness entry because each owns its own Build window,
+   * and one crew's failure never stops the rest from syncing.
+   */
   const syncProjection = useCallback(async (force = false): Promise<void> => {
     if (!availability.configured) return;
     const current = latest.current;
-    if (!current.appState || !current.user || !current.account?.crew) return;
+    const state = current.appState;
+    const activeUser = current.user;
+    const memberships = current.account?.memberships ?? [];
+    if (!state || !activeUser || memberships.length === 0) return;
     const today = todayLocalDate();
-    const fingerprint = projectionFingerprint(
-      current.appState,
-      today,
-      current.account.crew.buildStartDate,
-    );
-    const fresh = Date.now() - lastProjection.current.syncedAt < PROJECTION_STALE_MS;
-    if (!force && fresh && fingerprint === lastProjection.current.fingerprint) return;
-    try {
-      const pendingDeletes = loadCrewDeleteTombstones().filter(
-        (item) =>
-          item.crewId === current.account?.crew?.id &&
-          item.userId === current.user?.id,
-      );
-      for (const tombstone of pendingDeletes) {
-        await deleteCrewRunProjection(availability.client, tombstone);
+    const failures: string[] = [];
+
+    for (const membership of memberships) {
+      const crew = membership.crew;
+      const fingerprint = projectionFingerprint(state, today, crew.buildStartDate);
+      const previous = lastProjection.current.get(crew.id);
+      const fresh = previous !== undefined
+        && Date.now() - previous.syncedAt < PROJECTION_STALE_MS;
+      if (!force && fresh && fingerprint === previous.fingerprint) continue;
+      try {
+        const pendingDeletes = loadCrewDeleteTombstones().filter(
+          (item) => item.crewId === crew.id && item.userId === activeUser.id,
+        );
+        for (const tombstone of pendingDeletes) {
+          await deleteCrewRunProjection(availability.client, tombstone);
+        }
+        await syncCrewProjection(availability.client, {
+          state,
+          crewId: crew.id,
+          userId: activeUser.id,
+          today,
+          buildStartDate: crew.buildStartDate,
+          authoritativeEmpty: pendingDeletes.length > 0,
+        });
+        for (const tombstone of pendingDeletes) {
+          removeCrewDeleteTombstone(tombstone);
+        }
+        lastProjection.current.set(crew.id, { fingerprint, syncedAt: Date.now() });
+        if (crew.id === current.account?.crew?.id) lastDashboard.current.loadedAt = 0;
+      } catch (reason) {
+        failures.push(messageOf(reason));
       }
-      await syncCrewProjection(availability.client, {
-        state: current.appState,
-        crewId: current.account.crew.id,
-        userId: current.user.id,
-        today,
-        buildStartDate: current.account.crew.buildStartDate,
-        authoritativeEmpty: pendingDeletes.length > 0,
-      });
-      for (const tombstone of pendingDeletes) {
-        removeCrewDeleteTombstone(tombstone);
-      }
-      lastProjection.current = { fingerprint, syncedAt: Date.now() };
-      lastDashboard.current.loadedAt = 0;
-      setProjectionError(null);
-    } catch (reason) {
-      setProjectionError(messageOf(reason));
     }
+    setProjectionError(failures[0] ?? null);
   }, [availability]);
 
+  /** A deleted personal run is withdrawn from every crew it was shared with. */
   async function deleteRunContribution(localRunId: string): Promise<void> {
-    if (!availability.configured || !user || !account?.crew) return;
-    const tombstone: CrewDeleteTombstone = {
-      crewId: account.crew.id,
-      userId: user.id,
-      localRunId,
-      deletedAt: new Date().toISOString(),
-    };
-
+    const memberships = account?.memberships ?? [];
+    if (!availability.configured || !user || memberships.length === 0) return;
+    const deletedAt = new Date().toISOString();
     let retrySaved = true;
-    try {
-      addCrewDeleteTombstone(tombstone);
-    } catch {
-      retrySaved = false;
+    let failed = false;
+
+    for (const membership of memberships) {
+      const tombstone: CrewDeleteTombstone = {
+        crewId: membership.crew.id,
+        userId: user.id,
+        localRunId,
+        deletedAt,
+      };
+      try {
+        addCrewDeleteTombstone(tombstone);
+      } catch {
+        retrySaved = false;
+      }
+      try {
+        await deleteCrewRunProjection(availability.client, tombstone);
+        // The tombstone survives a successful delete on purpose: only a
+        // completed projection sync can retire it, because that sync is what
+        // proves the now-smaller local view is the authoritative one.
+        lastProjection.current.delete(membership.crew.id);
+      } catch {
+        failed = true;
+      }
     }
 
-    try {
-      await deleteCrewRunProjection(availability.client, tombstone);
-      lastProjection.current = { fingerprint: "", syncedAt: 0 };
-      lastDashboard.current.loadedAt = 0;
-      setProjectionError(null);
-    } catch {
-      setProjectionError(
-        retrySaved
+    lastDashboard.current.loadedAt = 0;
+    setProjectionError(
+      !failed
+        ? null
+        : retrySaved
           ? "Run deleted here. Crew cleanup will retry when STACK reconnects."
           : "Run deleted here, but Crew cleanup could not be saved for retry.",
-      );
-    }
+    );
   }
 
   const refreshCrewData = useCallback(async (force = false): Promise<void> => {
@@ -317,7 +356,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       lastDashboard.current.crewId === crewId &&
       Date.now() - lastDashboard.current.loadedAt < CREW_DASHBOARD_STALE_MS;
     if (!force && fresh) return;
-    if (dashboardInFlight.current) return dashboardInFlight.current;
+    // Only a request for the crew being asked about can be shared; switching
+    // crews must not be answered with the previous crew's load.
+    if (dashboardInFlight.current?.crewId === crewId) {
+      return dashboardInFlight.current.request;
+    }
 
     const request = (async () => {
       setCrewDataStatus("loading");
@@ -340,7 +383,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         const currentUser = latest.current.user;
         if (currentUser) {
           try {
-            const refreshedAccount = await loadCrewAccount(availability.client, currentUser);
+            const refreshedAccount = await loadCrewAccount(
+              availability.client,
+              currentUser,
+              crewId,
+            );
             setAccount(refreshedAccount);
             if (!refreshedAccount.crew) {
               resetCrewClientState();
@@ -355,11 +402,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         setCrewDataStatus("error");
       }
     })();
-    dashboardInFlight.current = request;
+    dashboardInFlight.current = { crewId, request };
     try {
       await request;
     } finally {
-      if (dashboardInFlight.current === request) dashboardInFlight.current = null;
+      if (dashboardInFlight.current?.request === request) dashboardInFlight.current = null;
     }
   }, [availability, resetCrewClientState]);
 
@@ -415,7 +462,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (!availability.configured || !account?.crew || !user) return;
     const refreshMembership = () => {
       if (document.visibilityState === "hidden") return;
-      void loadCrewAccount(availability.client, user)
+      void loadCrewAccount(availability.client, user, account.crew?.id)
         .then((loaded) => {
           setAccount(loaded);
           setStatus("signed-in");
@@ -611,10 +658,24 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }, "Color updated."),
     createCrew: (input) => operate(async () => {
       if (!availability.configured || !user) return;
-      await createCrew(availability.client, input);
-      await reloadAccount(user);
+      const createdCrewId = await createCrew(availability.client, input);
+      // A crew you just made is the crew you meant to be looking at.
+      if (createdCrewId) saveActiveCrewId(user.id, createdCrewId);
+      resetCrewClientState();
+      await reloadAccount(user, createdCrewId ?? undefined);
       await syncProjection(true);
     }, "Race Crew created."),
+    switchCrew: (crewId) => operate(async () => {
+      if (!availability.configured || !user) return;
+      if (account?.crew?.id === crewId) return;
+      if (!account?.memberships.some((item) => item.crew.id === crewId)) {
+        throw new Error("That crew is no longer available.");
+      }
+      saveActiveCrewId(user.id, crewId);
+      resetCrewClientState();
+      await reloadAccount(user, crewId);
+      await refreshCrewData(true);
+    }),
     updateCrew: (input) => operateResult(async () => {
       if (!availability.configured || !account?.crew || !user) {
         throw new Error("Crew could not be updated. Refresh and try again.");
@@ -625,12 +686,18 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         await reloadAccount(user).catch(() => undefined);
         throw reason;
       }
-      setAccount((current) =>
-        current?.crew
-          ? { ...current, crew: { ...current.crew, ...input } }
-          : current,
-      );
-      await reloadAccount(user).catch(() => undefined);
+      setAccount((current) => {
+        if (!current?.crew) return current;
+        const updated = { ...current.crew, ...input };
+        return {
+          ...current,
+          crew: updated,
+          memberships: current.memberships.map((item) =>
+            item.crew.id === updated.id ? { ...item, crew: updated } : item,
+          ),
+        };
+      });
+      await reloadAccount(user, account.crew.id).catch(() => undefined);
       lastDashboard.current.loadedAt = 0;
       await syncProjection(true);
       await refreshCrewData(true);
@@ -639,19 +706,30 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       if (!availability.configured || !account?.crew || !user) {
         throw new Error("Crew could not be deleted. Refresh and try again.");
       }
+      const deletedCrewId = account.crew.id;
       try {
-        await deleteCrewRecord(availability.client, account.crew.id);
+        await deleteCrewRecord(availability.client, deletedCrewId);
       } catch (reason) {
-        await reloadAccount(user).catch(() => undefined);
+        await reloadAccount(user, deletedCrewId).catch(() => undefined);
         throw reason;
       }
       setAccount((current) =>
         current
-          ? { ...current, crew: null, role: null, members: [], invites: [] }
+          ? {
+            ...current,
+            memberships: current.memberships.filter(
+              (item) => item.crew.id !== deletedCrewId,
+            ),
+            crew: null,
+            role: null,
+            members: [],
+            invites: [],
+          }
           : current,
       );
       resetCrewClientState();
-      await reloadAccount(user).catch(() => undefined);
+      // Any remaining crew becomes the view; the deleted one cannot be asked for.
+      await reloadAccount(user, undefined).catch(() => undefined);
     }, "Crew deleted."),
     createInvite: () => operate(async () => {
       if (!availability.configured || !account?.crew) return;
@@ -667,17 +745,20 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }, "Invite revoked."),
     joinPendingInvite: () => operate(async () => {
       if (!availability.configured || !pendingInvite || !user) return;
-      await redeemCrewInvite(availability.client, pendingInvite.token);
+      const joinedCrewId = await redeemCrewInvite(availability.client, pendingInvite.token);
       clearPendingInvite();
       setPendingInvite(null);
-      await reloadAccount(user);
+      if (joinedCrewId) saveActiveCrewId(user.id, joinedCrewId);
+      resetCrewClientState();
+      await reloadAccount(user, joinedCrewId ?? undefined);
       await syncProjection(true);
     }, "Joined Race Crew. Your local race and plan were not changed."),
     leaveCrew: () => operate(async () => {
       if (!availability.configured || !account?.crew || !user) return;
       await leaveCrew(availability.client, account.crew.id);
-      await reloadAccount(user);
       resetCrewClientState();
+      // No preference: whichever remaining crew is oldest becomes the view.
+      await reloadAccount(user, undefined);
     }, "You left the crew. Personal STACK was not changed."),
     removeMember: (userId) => operate(async () => {
       if (!availability.configured || !account?.crew || !user) return;

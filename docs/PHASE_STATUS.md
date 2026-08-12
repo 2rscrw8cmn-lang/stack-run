@@ -46,6 +46,40 @@ Current personal AppState: **schema 9**.
 | 21 | Crew Destination + Shared Crew Build | **Complete / owner-accepted — merged PR #38** | Conditional Crew destination plus runner-owned READY placement in one shared Build. |
 | 22 | Final Product Polish + Onboarding | **Complete / merged PR #39** | Product-wide consistency pass plus lightweight local conceptual onboarding. |
 
+## Post-UI-22 feature — Multiple crews and crew emblems
+
+Status: **Implemented / owner review pending.** This is a Crew identity and
+membership change (D-072), not UI-23.
+
+- an account may create and join any number of crews; `crew_members` already
+  allowed it, so no membership constraint changed and no data migrated;
+- exactly one crew is viewed at a time, remembered per account on the device
+  under `stack.crew.active.v1`, falling back to the oldest membership when the
+  remembered crew was left, removed or deleted;
+- Crew shows a switcher rail only for a runner in more than one crew; Account &
+  Crew lists every crew, marks the one being viewed and offers Create Another
+  Crew alongside the existing invite flow;
+- projection uploads to every crew the account belongs to, each against its own
+  `build_start_date`, with per-crew freshness and per-crew failure; an explicit
+  personal run deletion withdraws that run from every crew;
+- the accent picker greys out colors held anywhere across the account's crews,
+  matching the database's own union rather than a single roster;
+- each crew has a four-part emblem (crown, core, base, frame) stored as a short
+  code in `crews.emblem`; owners design it during creation and editing, and a
+  crew with no saved emblem renders a stable mark derived from its crew id, so
+  existing crews needed no backfill;
+- the invite preview shows the crew's emblem and states plainly when the viewer
+  is already a member;
+- forward migration `20260812210000_multi_crew_and_emblem.sql` adds the emblem
+  column and its check pattern, carries the emblem through `create_crew` and
+  `update_crew`, and extends `preview_crew_invite`. Build-start rules, Crew
+  Build placement, RLS and the safe projection contract are unchanged;
+- personal STACK, schema 9 and the never-send list are untouched.
+
+Owner acceptance still needs the migration applied and verified, plus two-account
+QA covering a runner in two crews at once (switching, contributing to both,
+leaving one) at 320/390/desktop widths and on real iPhone Safari.
+
 ## Post-UI-22 hotfix — Crew cross-device data integrity
 
 Status: **Implemented / owner review pending.** This is a data-integrity

@@ -44,6 +44,7 @@ import {
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { CrewBuild } from "./CrewBuild";
+import { CrewEmblem } from "./CrewEmblem";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
 import { CrewMiniBuild } from "./CrewMiniBuild";
@@ -147,6 +148,7 @@ export function CrewScreen({
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
+  const memberships = crew?.account?.memberships ?? [];
   const currentUserId = crew?.account?.profile.id;
   const crewStatus = crew?.status;
   const refreshCrewData = crew?.refreshCrewData;
@@ -364,7 +366,35 @@ export function CrewScreen({
         card: the visual weight below it belongs to the Crew Build.
       */}
       <header className="crew-view__lead">
+        {/*
+          The switcher only appears for a runner who actually has more than one
+          crew: a single-crew runner should never be asked to choose.
+        */}
+        {memberships.length > 1 && (
+          <nav className="crew-view__switcher" aria-label="Your crews">
+            <ul>
+              {memberships.map(({ crew: option }) => (
+                <li key={option.id}>
+                  <button
+                    type="button"
+                    aria-pressed={option.id === currentCrew.id}
+                    disabled={crew.busy}
+                    onClick={() => void crew.switchCrew(option.id)}
+                  >
+                    <CrewEmblem emblem={option.emblem} size={22} />
+                    <span>{option.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
         <div className="crew-view__lead-row">
+          <CrewEmblem
+            className="crew-view__emblem"
+            emblem={currentCrew.emblem}
+            size={46}
+          />
           <div className="crew-view__identity">
             <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
             {(raceLine || countdown) && (

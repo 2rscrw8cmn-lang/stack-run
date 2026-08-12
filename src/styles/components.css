@@ -5594,6 +5594,172 @@ textarea.run-input {
   color: var(--text-muted);
 }
 
+/* Crew identity: the emblem stands beside the name, never instead of it. */
+.crew-settings__crew-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+.crew-settings__crew-identity > div { min-width: 0; display: grid; gap: 3px; }
+.crew-settings__crew-identity h3 { margin: 0; }
+
+.crew-emblem { display: block; flex: 0 0 auto; }
+
+.crew-settings__crew-list { display: grid; gap: var(--space-2); min-width: 0; }
+.crew-settings__crew-list li { min-width: 0; }
+.crew-settings__crew-option {
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.crew-settings__crew-option[aria-pressed="true"] {
+  border-color: var(--data-border);
+  background: var(--data-surface-strong);
+}
+.crew-settings__crew-option[aria-pressed="true"] .machine-label { color: var(--accent); }
+.crew-settings__crew-option:disabled { cursor: wait; opacity: 0.6; }
+.crew-settings__crew-option-body { min-width: 0; display: grid; gap: 2px; }
+.crew-settings__crew-option-body small { color: var(--text-muted); }
+.crew-settings__crew-option > .machine-label { white-space: nowrap; }
+
+/* On a phone the trailing state word costs the crew name more than it is
+   worth beside it, so it drops under the name rather than squeezing it to
+   three lines. The pressed border and fill still say which crew is viewed. */
+@media (max-width: 420px) {
+  .crew-settings__crew-option { grid-template-columns: auto minmax(0, 1fr); }
+  .crew-settings__crew-option > .machine-label { grid-column: 2; }
+}
+
+.crew-settings__emblem-field { display: grid; gap: var(--space-2); }
+
+/* The emblem designer: a live mark, five recipes, then the four parts. */
+/* Grid and flex children default to a min-content floor, which a row that is
+   meant to scroll would otherwise impose on the whole sheet — that is how a
+   five-chip preset rail turns into sideways scroll on a 320px phone. */
+.crew-emblem-builder { display: grid; gap: var(--space-3); min-width: 0; }
+.crew-emblem-builder > * { min-width: 0; }
+.crew-emblem-builder__stage {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: var(--space-3);
+  border: 1px solid var(--data-border);
+  background-color: var(--data-surface);
+}
+.crew-emblem-builder__presets {
+  min-width: 0;
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.crew-emblem-builder__presets::-webkit-scrollbar { display: none; }
+.crew-emblem-builder__preset {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.crew-emblem-builder__preset[aria-pressed="true"] {
+  border-color: var(--data-border);
+  color: var(--text);
+}
+
+.crew-emblem-builder__sections { display: grid; gap: var(--space-2); }
+.crew-emblem-builder__row { display: grid; gap: 4px; }
+.crew-emblem-builder__selector {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: var(--space-2);
+}
+.crew-emblem-builder__arrow {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.crew-emblem-builder__option {
+  min-height: 48px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.crew-emblem-builder__option[aria-pressed="true"] {
+  border-color: var(--data-border);
+  background: var(--data-surface-strong);
+}
+.crew-emblem-builder__option span { min-width: 0; overflow-wrap: anywhere; }
+.crew-emblem-builder__mark { width: 54px; height: 30px; }
+
+.crew-emblem-builder__colors { display: grid; gap: var(--space-2); }
+.crew-emblem-builder__colors ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.crew-emblem-builder__swatch {
+  width: 40px;
+  height: 40px;
+  border: 2px solid transparent;
+  outline: 1px solid var(--border-strong);
+  outline-offset: -1px;
+  cursor: pointer;
+}
+.crew-emblem-builder__swatch[data-emblem-color="0"] { background: #a6ff1a; }
+.crew-emblem-builder__swatch[data-emblem-color="1"] { background: #287dff; }
+.crew-emblem-builder__swatch[data-emblem-color="2"] { background: #ffd21a; }
+.crew-emblem-builder__swatch[data-emblem-color="3"] { background: #a14cff; }
+.crew-emblem-builder__swatch[data-emblem-color="4"] { background: #f6f7f8; }
+.crew-emblem-builder__swatch[aria-pressed="true"] { border-color: var(--text); }
+
+.crew-emblem-builder__random {
+  justify-self: start;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.crew-emblem-builder__random:hover { color: var(--text); }
+
 .run-data-setup__paths { display: grid; gap: var(--space-2); }
 .run-data-setup__paths button {
   width: 100%;
@@ -5684,14 +5850,53 @@ textarea.run-input {
 
 /* The crew identity is a standing line, not a card: the weight below it
    belongs to the Crew Build. */
-.crew-view__lead { min-width: 0; }
+.crew-view__lead { min-width: 0; display: grid; gap: 10px; }
 .crew-view__lead-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
 }
+.crew-view__emblem { align-self: center; }
+
+/* One row of crews, only for a runner who is in more than one. */
+.crew-view__switcher { min-width: 0; }
+.crew-view__switcher ul {
+  min-width: 0;
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.crew-view__switcher ul::-webkit-scrollbar { display: none; }
+.crew-view__switcher button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  max-width: 190px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.crew-view__switcher button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crew-view__switcher button[aria-pressed="true"] {
+  border-color: var(--data-border);
+  background: var(--data-surface-strong);
+  color: var(--text);
+}
+.crew-view__switcher button:disabled { cursor: wait; opacity: 0.6; }
 .crew-view__identity { min-width: 0; }
 .crew-view__identity p,
 .crew-view__identity h1 { margin: 0; }

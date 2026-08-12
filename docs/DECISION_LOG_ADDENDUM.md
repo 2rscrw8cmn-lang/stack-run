@@ -451,6 +451,18 @@ The Crew header is compact, Comparison uses one icon-only row on a non-grid surf
 
 Moving the Build start later still pulls pre-window runs off the shared tower, but it demotes their `crew_build_row`/`crew_build_column_start` (and cascades their Props) rather than deleting the `shared_runs` row — the row remains a legitimate Member Build block. Moving it earlier is unchanged: nothing is deleted or invented. Crews that already had pre-window rows deleted by the original D-070 migration or an owner's earlier boundary move cannot recover that history retroactively; normal projection re-uploads it going forward.
 
+## D-072 — A runner may belong to several crews, and a crew designs its own emblem
+
+**Decision:** Race Crew membership is a list, not a single slot. A runner can train for a spring road race with one set of friends and a summer trail race with another, so an account may create and join any number of crews at once. The schema already allowed this — `crew_members` is many-to-many and no constraint ever limited it — so this is a client and identity change, not a data-model change.
+
+Crews are peers. There is no primary crew, no hierarchy, and nothing about one crew is derived from another: each keeps its own race, Build start date, roster, invites, Recent Crew Runs and communal Crew Build. Exactly one crew is *viewed* at a time, and that is a per-account device preference (`stack.crew.active.v1`), never server state; a remembered crew the runner has left, been removed from or that has been deleted falls back to the oldest remaining membership. Leaving or deleting one crew never disturbs the others, and the Crew destination remains conditional on being in at least one.
+
+Contribution is not scoped to the crew being viewed. Standing in one crew must never starve the others, so each projection pass uploads this device's safe projection to every crew the account belongs to, against each crew's own Build start window, with independent freshness and independent failure. An explicit personal run deletion withdraws that run from every crew.
+
+Each crew also gets a designed emblem: four modular parts (crown, core, base, frame), each with a shape and a color from a five-color crew palette, stored as a short code (`E1-<top>-<middle>-<bottom>-<frame>`) rather than an uploaded image. Only the owner edits it, alongside the rest of the crew's metadata. A crew with no saved emblem renders a stable mark derived from its crew id, so crews that predate this decision needed no backfill and still look like themselves on every device. The emblem is crew identity only: it never encodes a runner, a run or a plan, and it is not a second runner-identity signal — the 16 member accent colors keep that job, and the emblem palette is deliberately a different, smaller set.
+
+This is a Crew identity and membership change only. Personal STACK, schema 9, the safe projection contract, Build geometry and the never-send list are all unchanged.
+
 ## Active implementation order
 
 Complete:

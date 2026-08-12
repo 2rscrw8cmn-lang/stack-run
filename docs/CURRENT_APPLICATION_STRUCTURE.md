@@ -1166,3 +1166,63 @@ thing for both: this deployment has no reader, redeploy so the function ships.
   through `src/test/OpenSettings.tsx`, which holds the open state the shell
   holds. Availability's blocked-day and conflict-review tests still drive
   `PlanScreen`, because that half of the feature did not move.
+
+## Several crews at once, and a crew's own emblem (post-UI-22)
+
+This is D-072, not UI-23. `crew_members` was already many-to-many, so nothing
+about membership storage changed; what changed is that the client stopped
+reading one row and started reading the list.
+
+`crewService.loadCrewAccount(client, user, preferredCrewId?)` now returns every
+membership, oldest first, alongside the one being viewed. It reads all of the
+account's crews in a single `in` query and, in `loadCrewDirectory`, all of their
+rosters and profiles in two more, so a runner in four crews still costs the same
+five reads as a runner in one. The viewed crew is the preferred id when it is
+still a membership and the oldest membership otherwise, which is what makes a
+left, removed or deleted crew resolve quietly rather than error. That directory
+read also returns `takenAccentColors`, the union of crewmate colors across every
+crew the account is in, because the `profiles` uniqueness trigger enforces that
+same union — a picker that knew only the visible roster would have offered
+colors the database was about to reject.
+
+`src/storage/activeCrewRepository.ts` holds the viewed crew per account under
+`stack.crew.active.v1`. It is a device preference, so every read and write is
+best-effort; losing it opens the oldest membership. Two runners sharing a
+browser profile keep separate entries.
+
+`useRaceCrew.ts` keeps projection freshness in a per-crew map and syncs to every
+membership in turn, each against that crew's own `build_start_date`. One crew's
+failure is reported without stopping the others, and standing in one crew never
+starves the rest of contributions. `deleteRunContribution` writes one tombstone
+per crew and withdraws the run from all of them; as before, a tombstone is
+retired only by a completed projection sync, because that sync is what proves
+the smaller local view is authoritative. `switchCrew(crewId)` refuses a crew the
+account is not in, remembers the choice, clears crew-scoped client state and
+reloads. The dashboard in-flight guard is now keyed by crew id, so switching
+crews can no longer be answered with the previous crew's load.
+
+`src/crew/emblem.ts` owns crew emblems: six crowns, six cores, six bases and six
+frames, five colors drawn from the product palette, and the `E1-…` code that
+`crews.emblem` stores. Decoding is deliberately tolerant — an index this client
+does not have degrades to that section's first option — and `resolveCrewEmblem`
+falls back to `crewEmblemFromSeed(crewId)`, a stable derivation that is why
+crews created before emblems existed needed no backfill and look the same on
+every device. `CrewEmblem.tsx` draws it at any size from one shared coordinate
+space, so a crew's mark is identical in a 22px switcher chip and the builder's
+preview; `CrewEmblemBuilder.tsx` is the designer, with five presets, per-part
+arrows, a color row for the selected part and Surprise Me.
+
+Crew shows a switcher rail only when there is more than one crew to switch
+between, and the viewed crew's emblem now stands beside its name. Account & Crew
+lists every crew with its emblem, role and race, marks the one being viewed, and
+offers Create Another Crew — an addition, never a replacement, so creating or
+joining one crew leaves the others alone. The invite preview shows the inviting
+crew's emblem and says plainly when the viewer is already a member.
+
+`supabase/migrations/20260812210000_multi_crew_and_emblem.sql` adds
+`crews.emblem` with a check pattern matching the code format, carries the emblem
+through `create_crew` and `update_crew` (both re-created with the new trailing
+defaulted parameter), and extends `preview_crew_invite` with the emblem and an
+`already_member` flag. Build-start behavior, Crew Build placement, RLS and the
+safe projection contract are unchanged, and no personal AppState migration was
+introduced.
