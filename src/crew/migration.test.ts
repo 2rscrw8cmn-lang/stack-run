@@ -153,6 +153,7 @@ describe("Crew construction timestamp SQL", () => {
 
 describe("Crew-owned Build start SQL", () => {
   it("adds and backfills the required Crew date from placed construction or creation", () => {
+    expect(buildStartMigration).toMatch(/add column if not exists crew_build_placed_at timestamptz null/i);
     expect(buildStartMigration).toMatch(/add column if not exists build_start_date date/i);
     expect(buildStartMigration).toMatch(/select min\(run\.local_date\)[\s\S]*crew_build_row is not null[\s\S]*crew\.created_at::date/i);
     expect(buildStartMigration).toMatch(/alter column build_start_date set not null/i);
@@ -161,7 +162,7 @@ describe("Crew-owned Build start SQL", () => {
   });
 
   it("retires membership cleanup and enforces the Build window on member writes", () => {
-    expect(buildStartMigration).toMatch(/drop function public\.cleanup_pre_membership_shared_runs\(date\)/i);
+    expect(buildStartMigration).toMatch(/drop function if exists public\.cleanup_pre_membership_shared_runs\(date\)/i);
     expect(buildStartMigration).toMatch(/is_crew_run_in_build_window/i);
     expect(buildStartMigration).toMatch(/create policy shared_runs_insert_self[\s\S]*is_crew_run_in_build_window/i);
     expect(buildStartMigration).toMatch(/create policy shared_runs_update_self[\s\S]*is_crew_run_in_build_window/i);
@@ -174,6 +175,12 @@ describe("Crew-owned Build start SQL", () => {
     expect(buildStartMigration).toMatch(/local_date < p_build_start_date/i);
     expect(buildStartMigration).toMatch(/set crew_build_row = null,[\s\S]*crew_build_placed_at = null/i);
     expect(buildStartMigration).toMatch(/grant execute on function public\.update_crew[\s\S]*to authenticated/i);
+  });
+
+  it("is self-contained for placement timestamps when the prior review migration was skipped", () => {
+    expect(buildStartMigration).toMatch(/create index if not exists shared_runs_recent_crew_build_idx/i);
+    expect(buildStartMigration).toMatch(/create or replace function public\.place_crew_build_block/i);
+    expect(buildStartMigration).toMatch(/crew_build_placed_at = now\(\)/i);
   });
 
   it("ships transactional cross-member cleanup and enforcement verification", () => {
