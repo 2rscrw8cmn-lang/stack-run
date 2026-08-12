@@ -62,7 +62,7 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
       title: "Weekly Mileage",
       value: `${formatMiles(latestWeek.actualMiles)} mi`,
       note: delta === null
-        ? `Week ${latestWeek.weekNumber}${latestWeek.isPartial ? " so far" : ""}`
+        ? `${latestWeek.label}${latestWeek.isPartial ? " so far" : ""}`
         : `${signed(delta, "")} mi vs 4wk avg${latestWeek.isPartial ? " · so far" : ""}`,
       visual: <MiniBars values={signals.weeklyMileage.slice(-8).map((week) => week.actualMiles)} />,
     });
@@ -134,7 +134,7 @@ export function TrendCards({ plan, runLogs, today, onOpenSignal }: TrendCardsPro
       id: "training-load",
       title: "Training Load",
       value: String(latest.total),
-      note: change === null ? `Week ${latest.weekNumber}` : `${signed(change, "%")} vs 4wk avg`,
+      note: change === null ? latest.label : `${signed(change, "%")} vs 4wk avg`,
       visual: <MiniBars tone="intervals" values={signals.trainingLoad.slice(-8).map((week) => week.total)} />,
     });
   }

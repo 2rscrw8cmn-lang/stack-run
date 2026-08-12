@@ -38,6 +38,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         build_column_start: 2,
         crew_build_row: 7,
         crew_build_column_start: 3,
+        crew_build_placed_at: "2026-08-09T13:00:00Z",
         created_at: "2026-08-09T12:00:00Z",
         updated_at: "2026-08-09T12:00:00Z",
       },
@@ -103,7 +104,7 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,created_at,updated_at",
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
     );
     expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
     expect(calls).toContainEqual({
@@ -131,6 +132,7 @@ describe("Crew dashboard query", () => {
       buildColumnStart: 2,
       crewBuildRow: 7,
       crewBuildColumnStart: 3,
+      crewBuildPlacedAt: "2026-08-09T13:00:00Z",
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -158,6 +160,7 @@ describe("Crew dashboard query", () => {
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
+        crewBuildPlacedAt: "2026-08-09T13:00:00Z",
       },
     ]);
     expect(loaded.sharedRunsTruncated).toBe(false);

@@ -13,7 +13,6 @@ import {
   type CrewBuildBlock,
   type CrewBuildModel,
   type CrewBuildPlacement,
-  type CrewBuildReadyRun,
 } from "../../crew/crewBuild";
 import type { CrewBuildRun, CrewMember } from "../../crew/types";
 import { Button } from "../../components/ui/Button";
@@ -35,7 +34,6 @@ interface CrewBuildProps {
   model: CrewBuildModel;
   members: CrewMember[];
   available: boolean;
-  viewerReadyRuns: CrewBuildReadyRun[];
   placement: CrewBuildPlacementMode | null;
   onStartReady: () => void;
   onSelectRun: (runId: string) => void;
@@ -47,6 +45,7 @@ function blockLabel(block: CrewBuildBlock): string {
     WORKOUT_TYPE_LABEL[block.activityType],
     `${formatMiles(block.distanceMiles)} miles`,
     formatDateLabel(block.localDate, { month: "long", day: "numeric" }),
+    ...(block.recentlyPlaced ? ["newly placed"] : []),
   ].join(", ");
 }
 
@@ -65,7 +64,6 @@ export function CrewBuild({
   model,
   members,
   available,
-  viewerReadyRuns,
   placement,
   onStartReady,
   onSelectRun,
@@ -88,7 +86,8 @@ export function CrewBuild({
   const renderedBlocks = placement
     ? model.blocks.filter((block) => block.id !== placement.run.id)
     : model.blocks;
-  const firstReady = viewerReadyRuns[0] ?? null;
+  const firstReady = model.viewerReadyRuns[0] ?? null;
+  const contributionCount = model.placedCount + model.readyCount;
 
   function chooseFromStage(event: MouseEvent<HTMLUListElement>) {
     if (!placement) return;
@@ -118,30 +117,20 @@ export function CrewBuild({
       <div className="crew-build__lead">
         <p id="crew-build-title" className="machine-label">Crew Build</p>
         <p className="crew-build__miles data-value">
-          {formatMilesBuilt(model.milesBuilt)}
+          {formatMilesBuilt(model.placedMiles)}
           <span className="machine-label">miles built</span>
         </p>
-        <p className="crew-build__totals machine-label">
-          {model.runCount} {model.runCount === 1 ? "run" : "runs"} ·{" "}
-          {members.length} {members.length === 1 ? "runner" : "runners"}
-        </p>
-        {model.readyCount > 0 && (
-          <p className="crew-build__construction machine-label">
-            {model.placedCount} built · {model.readyCount} ready
-          </p>
-        )}
       </div>
 
       {available && firstReady && !placement && (
         <div className="crew-build__ready" role="status">
           <div>
             <p className="machine-label">
-              {viewerReadyRuns.length} {viewerReadyRuns.length === 1 ? "block" : "blocks"} ready
+              {model.viewerReadyRuns.length} {model.viewerReadyRuns.length === 1 ? "block" : "blocks"} ready
             </p>
-            <p className="crew-build__ready-run data-value">{runIdentity(firstReady)}</p>
           </div>
           <Button variant="primary" onClick={onStartReady}>
-            {viewerReadyRuns.length === 1 ? "Place Your Block" : "Build Now"}
+            {model.viewerReadyRuns.length === 1 ? "Place Block" : "Build Now"}
           </Button>
         </div>
       )}
@@ -156,7 +145,7 @@ export function CrewBuild({
 
       {!available ? (
         <p className="crew-build__unavailable">Crew Build unavailable.</p>
-      ) : model.runCount === 0 ? (
+      ) : contributionCount === 0 ? (
         <div className="crew-build__stage crew-build__stage--empty" style={stageStyle}>
           <div className="crew-build__field" aria-hidden="true" />
           <div className="crew-build__ground" aria-hidden="true" />
@@ -179,6 +168,7 @@ export function CrewBuild({
                   data-row={block.row}
                   data-column-start={block.columnStart}
                   data-member-color={crewMemberAccent(block.userId)}
+                  data-recent={block.recentlyPlaced || undefined}
                   style={{
                     gridColumn: `${block.columnStart} / span ${block.width}`,
                     gridRow: `${gridCourses - block.row - block.height + 1} / span ${block.height}`,

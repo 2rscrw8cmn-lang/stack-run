@@ -167,6 +167,8 @@ export function AppShell({
             syncError={connectedSync.error}
             onRetrySync={connectedSync.sync}
             isSyncing={connectedSync.status === "syncing"}
+            raceCrew={raceCrew}
+            onViewCrew={() => onTabChange("crew")}
           />
         )}
         {activeTab === "build" && (

@@ -435,6 +435,14 @@ the same Intervals activity receives different extra-run local ids on different
 devices requires a separate canonical-identity migration decision; this hotfix
 does not upload raw Intervals ids or risk recreating existing shared rows.
 
+## D-070 — Crew begins at membership; built mileage is physically built
+
+**Decision:** This focused correction is not UI-23. A run is eligible for a Crew only when its local run date is on or after the browser-local calendar date of the runner's authoritative `crew_members.joined_at`. Same-day runs and later imports of post-join runs count. Pre-join history remains in personal Runs, Personal Build and Training Signals but is filtered from every Crew projection/read/summary. Existing pre-join server rows are removed intentionally by an authenticated cleanup RPC; ordinary cross-device absence remains non-destructive. Cleanup cascades Props and demotes unsupported survivors to READY without relocation.
+
+Crew `Miles Built` now means the mileage in physically placed communal blocks, both in the hero and per-member comparison. READY remains earned but unbuilt. Member Build remains a sanitized read-only Personal Build reproduction. `shared_runs.crew_build_placed_at` records a successful initial placement or move; a restrained recent-construction treatment lasts 24 hours and includes accessible text. Null legacy timestamps remain normal.
+
+The Crew header is compact, Comparison uses one icon-only row on a non-grid surface, and Today may show up to two other-member runs from today/yesterday using the existing Props controller. Actual-run Training Signals remain available outside an active plan; Consistency and planned comparisons remain plan-dependent. Phone Training Signals use simple horizontal overflow while desktop retains its grid.
+
 ## Active implementation order
 
 Complete:

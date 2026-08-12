@@ -1,6 +1,6 @@
 # Race Crew — Implementation Plan
 
-Status: **UI-18 through UI-22 complete; the Crew cross-device integrity hotfix is in owner review.**
+Status: **UI-18 through UI-22 complete; Crew cross-device integrity and focused Crew polish are in owner review.**
 
 This document turns the approved private-hobby Race Crew architecture into implementation phases.
 
@@ -790,14 +790,14 @@ Authenticated clients have no direct column grant for Crew coordinates. The RPC 
 
 - `src/crew/crewBuild.ts` is the pure placement/read model. It preserves valid stored Crew coordinates, separates placed and READY blocks, exposes open snapped options, and performs rectangle geometry checks used before confirmation. It never reads personal placement or private run fields.
 - `src/crew/crewBuildPlacement.ts` is the narrow RPC client. `src/crew/useRaceCrew.ts` owns pending/error state, refreshes after success or conflict, and leaves local facts untouched until the server confirms.
-- `src/features/crew/CrewBuild.tsx` is the hero: total miles, all earned runs, runners, and `X built · Y ready`, followed by a grounded eight-column technical field. Totals include placed and READY runs; the physical tower contains only placed blocks. No ranking, pace, fastest runner, score, or XP.
-- The current runner's oldest READY item appears near the hero with its full run identity and `Place Your Block` / `Build Now`. Teammates' READY items are not actionable.
+- `src/features/crew/CrewBuild.tsx` is the hero: physically placed mileage followed by a grounded eight-column technical field. READY mileage is separate and only the current viewer's actionable count is shown. Generic all-member READY/run/runner accounting is removed. No ranking, pace, fastest runner, score, or XP.
+- The current runner sees a compact `1 BLOCK READY · PLACE BLOCK` or `N BLOCKS READY · BUILD NOW` action. Teammates' READY items are not promoted because the viewer cannot act on them.
 - Placement mode focuses the stage, shows a snapped preview, rejects invalid or colliding cells client-side, offers `Next Open Spot`, and performs no write until Confirm. Cancel makes no server call.
 - Only the owner's placed block exposes `Move Block`, both from the tower and crew-safe Run Detail. Teammate blocks remain detail-only.
 - Block geometry is unchanged: width from distance, height and color from activity type. Activity color still means training type. Member identity is a thin top-edge cap in the existing stable member accent — never a whole-block fill and never a name inside a normal block.
 - Every block is one semantic interactive target with a real accessible name (`Test Turco, Long Run, 8 miles, August 11`), keyboard-activatable, opening the existing crew-safe Run Detail whoever ran it. The drawn cap and face are `aria-hidden` decoration.
 - Empty and shallow towers show at least six courses. The stage grows with placed height until a phone-height cap and then scrolls internally with the newest/top courses accessible. Blocks use stronger top/side/depth cues without gradients, canvas, WebGL, or new libraries.
-- `src/features/crew/CrewScreen.tsx` orders the destination: crew identity and countdown, Crew Build, comparison, Recent Crew Runs, `THE CREW`. The crew name, the runner count and Miles Built are each stated once.
+- `src/features/crew/CrewScreen.tsx` orders the destination: compact crew/race identity, Crew Build, comparison, Recent Crew Runs, `THE CREW`. Miles Built means only mileage in physically placed communal blocks; the comparison derives the same value per runner. Member Builds retain their separate sanitized Personal Build semantics.
 - `src/crew/raceCountdown.ts` derives `N DAYS TO RACE` / `RACE DAY` / `RACE COMPLETE` locally from the existing crew race date.
 - Reads stay bounded and single-payload: one `shared_runs` read of up to 128 rows per member (1,280 overall) plus one crew-scoped reaction read feeds the Crew Build, comparisons, recent runs, Props and Member Builds. No N+1 query. `sharedRunsTruncated` and `CREW_BUILD_BLOCK_LIMIT` surface a quiet factual notice rather than presenting a partial tower as complete.
 - Empty and unavailable states are explicit: `The first shared run earns the first block.`, READY-only factual guidance, `Crew Build unavailable.` when the safe read failed, and `Invite your crew to build together.` for a one-member crew. There are no invented placeholder blocks.
@@ -808,6 +808,14 @@ Authenticated clients have no direct column grant for Crew coordinates. The RPC 
 Acceptance completed on 2026-08-11: the owner applied the migration; the repeatable deployed SQL verification passed; live two-account ownership, placement, movement, stale-view collision, persistence, coordinate-independence, sign-out fallback, and removal behavior passed; and 320px, 390px, desktop, and real iPhone Safari visual QA passed. UI-21 is complete and owner-accepted in PR #38, which remains unmerged.
 
 No UI-22 is currently authorized. After UI-21, perform a whole-product review before defining additional phases.
+
+## Post-UI-22 focused Crew polish
+
+- `crew_members.joined_at` is the authoritative participation boundary. The browser converts it to the runner's local date; `completedDate >= joined local date` is eligible, including same-day and later-imported post-join runs.
+- Projection receives `joinedAt` and filters before upload. Pre-join personal RunLogs, Personal Build blocks and Training Signals remain untouched. A security-definer cleanup RPC deletes only the authenticated member's pre-join `shared_runs`; reaction foreign keys cascade Props, and unsupported surviving construction is demoted to READY.
+- `shared_runs.crew_build_placed_at` is nullable and server-owned. The placement RPC refreshes it on initial placement and movement. A 24-hour recent-construction treatment is visual and accessible; null legacy rows are not backfilled.
+- Today reuses the Race Crew controller and Props behavior for at most two other-member runs dated today or yesterday. No qualifying rows means no social section.
+- The comparison selector is one icon-only row with full accessible names and keyboard behavior. The selected title supplies visible context; the technical-grid background is removed.
 
 ---
 

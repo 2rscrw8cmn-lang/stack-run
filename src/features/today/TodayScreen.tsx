@@ -39,6 +39,8 @@ import { NextWorkoutCard } from "./NextWorkoutCard";
 import { ThisWeekStrip } from "./ThisWeekStrip";
 import { TodayHeading } from "./TodayHeading";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
+import type { RaceCrewController } from "../../crew/useRaceCrew";
+import { TodayCrewActivity } from "./TodayCrewActivity";
 
 interface TodayScreenProps {
   plan: TrainingPlan;
@@ -69,6 +71,8 @@ interface TodayScreenProps {
   syncError?: string | null;
   onRetrySync?: () => void;
   isSyncing?: boolean;
+  raceCrew?: RaceCrewController | null;
+  onViewCrew?: () => void;
 }
 
 /** Which run the entry sheet is open for, and what it is about to write. */
@@ -99,6 +103,8 @@ export function TodayScreen({
   syncError = null,
   onRetrySync = () => undefined,
   isSyncing = false,
+  raceCrew = null,
+  onViewCrew = () => undefined,
 }: TodayScreenProps) {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [isEntryOpen, setEntryOpen] = useState(false);
@@ -226,6 +232,8 @@ export function TodayScreen({
       )}
 
       {next && <NextWorkoutCard workout={next} />}
+
+      <TodayCrewActivity crew={raceCrew} today={today} onViewCrew={onViewCrew} />
 
       {/*
         A failed sync is worth saying and not worth interrupting for: the plan,

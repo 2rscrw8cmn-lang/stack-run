@@ -4,6 +4,7 @@ import { createInitialAppState } from "../storage/migrations";
 import type { RunLog } from "../domain/types";
 import {
   projectMemberSummary,
+  projectSharedRuns,
   projectServerBackedSummary,
   projectSharedRun,
   projectionFingerprint,
@@ -50,6 +51,10 @@ function fakeProjectionClient(input: {
   calls: ProjectionCall[];
 }): SupabaseClient {
   return {
+    rpc: vi.fn((name: string, value: unknown) => {
+      input.calls.push({ table: name, operation: "rpc", value });
+      return Promise.resolve({ data: 0, error: null });
+    }),
     from: vi.fn((table: string) => {
       let operation = "select";
       const builder = {
@@ -195,6 +200,7 @@ describe("Race Crew projection", () => {
       },
       crewId: "crew-1",
       userId: "user-1",
+      joinedAt: "2026-08-01T12:00:00Z",
       today: "2026-08-10",
     });
 
@@ -247,6 +253,7 @@ describe("Race Crew projection", () => {
         state: createInitialAppState(),
         crewId: "crew-1",
         userId: "user-1",
+        joinedAt: "2026-08-01T12:00:00Z",
         today: "2026-08-12",
       },
     );
@@ -280,6 +287,7 @@ describe("Race Crew projection", () => {
         state: { ...createInitialAppState(), runLogs: [partial] },
         crewId: "crew-1",
         userId: "user-1",
+        joinedAt: "2026-08-01T12:00:00Z",
         today: "2026-08-12",
       },
     );
@@ -304,6 +312,7 @@ describe("Race Crew projection", () => {
         state: createInitialAppState(),
         crewId: "crew-1",
         userId: "user-1",
+        joinedAt: "2026-08-01T12:00:00Z",
         today: "2026-08-12",
       },
     );
@@ -318,6 +327,7 @@ describe("Race Crew projection", () => {
         state: createInitialAppState(),
         crewId: "crew-1",
         userId: "user-1",
+        joinedAt: "2026-08-01T12:00:00Z",
         today: "2026-08-12",
         authoritativeEmpty: true,
       },
@@ -346,6 +356,7 @@ describe("Race Crew projection", () => {
         state: { ...createInitialAppState(), runLogs: [privateRun] },
         crewId: "crew-1",
         userId: "user-1",
+        joinedAt: "2026-08-01T12:00:00Z",
         today: "2026-08-10",
       },
     );
@@ -383,6 +394,41 @@ describe("Race Crew projection", () => {
       longestRun28dMiles: 4,
       milesBuilt: 24,
     });
+  });
+
+  it("shares only runs on or after the local crew-join date, including late imports", () => {
+    const runs = [
+      { ...privateRun, id: "before", completedDate: "2026-08-09" },
+      { ...privateRun, id: "same-day", completedDate: "2026-08-10" },
+      { ...privateRun, id: "after", completedDate: "2026-08-11" },
+      { ...privateRun, id: "late-import", completedDate: "2026-08-08", createdAt: "2026-08-12T12:00:00Z" },
+    ];
+
+    expect(projectSharedRuns(runs, [], "2026-08-10").map((run) => run.localRunId))
+      .toEqual(["same-day", "after"]);
+  });
+
+  it("accepts a late import whose run date is after joining", () => {
+    const lateImport = {
+      ...privateRun,
+      id: "late-post-join",
+      completedDate: "2026-08-05",
+      createdAt: "2026-08-12T12:00:00Z",
+    };
+    expect(projectSharedRuns([lateImport], [], "2026-08-01").map((run) => run.localRunId))
+      .toEqual(["late-post-join"]);
+  });
+
+  it("keeps an old imported run personal when its run date predates joining", () => {
+    const oldImport = {
+      ...privateRun,
+      id: "late-pre-join",
+      completedDate: "2026-08-05",
+      createdAt: "2026-08-12T12:00:00Z",
+    };
+    const personalState = { ...createInitialAppState(), runLogs: [oldImport] };
+    expect(personalState.runLogs).toContain(oldImport);
+    expect(projectSharedRuns(personalState.runLogs, [], "2026-08-10")).toEqual([]);
   });
 
   it("calculates the approved factual summary and excludes extras from consistency", () => {

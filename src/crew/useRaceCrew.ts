@@ -237,8 +237,16 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (!availability.configured) return;
     const current = latest.current;
     if (!current.appState || !current.user || !current.account?.crew) return;
+    const membership = current.account.members.find(
+      (member) => member.userId === current.user?.id,
+    );
+    if (!membership) return;
     const today = todayLocalDate();
-    const fingerprint = projectionFingerprint(current.appState, today);
+    const fingerprint = projectionFingerprint(
+      current.appState,
+      today,
+      membership.joinedAt,
+    );
     const fresh = Date.now() - lastProjection.current.syncedAt < PROJECTION_STALE_MS;
     if (!force && fresh && fingerprint === lastProjection.current.fingerprint) return;
     try {
@@ -255,6 +263,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         crewId: current.account.crew.id,
         userId: current.user.id,
         today,
+        joinedAt: membership.joinedAt,
         authoritativeEmpty: pendingDeletes.length > 0,
       });
       for (const tombstone of pendingDeletes) {
@@ -360,7 +369,12 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     lastDashboard.current = { crewId, loadedAt: 0 };
   }, [account?.crew?.id]);
 
-  const fingerprint = appState ? projectionFingerprint(appState, todayLocalDate()) : "";
+  const currentMembership = account?.members.find(
+    (member) => member.userId === user?.id,
+  );
+  const fingerprint = appState && currentMembership
+    ? projectionFingerprint(appState, todayLocalDate(), currentMembership.joinedAt)
+    : "";
   useEffect(() => {
     if (!account?.crew || !user || !fingerprint) return;
     const timer = window.setTimeout(() => void syncProjection(false), 0);

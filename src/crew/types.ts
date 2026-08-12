@@ -78,6 +78,8 @@ export interface CrewSharedRun {
   /** Independent shared Crew Build placement; never personal placement. */
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  /** Dedicated construction time; projection updates never change it. */
+  crewBuildPlacedAt: string | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -114,6 +116,7 @@ export interface CrewBuildRun {
   createdAt: string;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  crewBuildPlacedAt: string | null;
 }
 
 export interface CrewDashboardData {

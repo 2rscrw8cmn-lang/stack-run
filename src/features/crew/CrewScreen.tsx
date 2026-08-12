@@ -147,6 +147,7 @@ export function CrewScreen({
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
+  const currentUserId = crew?.account?.profile.id;
   const crewStatus = crew?.status;
   const refreshCrewData = crew?.refreshCrewData;
   const crewBuildRuns = crew?.crewData?.crewBuildRuns;
@@ -154,8 +155,10 @@ export function CrewScreen({
   // One read-model derivation per loaded payload. The server owns the Crew
   // coordinates; refresh only separates their placed and READY views.
   const crewBuild = useMemo(
-    () => (crewBuildRuns ? deriveCrewBuild(crewBuildRuns) : EMPTY_CREW_BUILD),
-    [crewBuildRuns],
+    () => (crewBuildRuns
+      ? deriveCrewBuild(crewBuildRuns, undefined, currentUserId)
+      : EMPTY_CREW_BUILD),
+    [crewBuildRuns, currentUserId],
   );
 
   useEffect(() => {
@@ -240,8 +243,18 @@ export function CrewScreen({
 
   const dashboardData = crew.crewData;
   const members = dashboardData.members;
-  const comparisonRows = orderedComparisonRows(metric, members, dashboardData.summaries);
-  const currentUserId = crew.account?.profile.id;
+  const placedMilesByUserId = new Map<string, number>();
+  for (const block of crewBuild.blocks) {
+    placedMilesByUserId.set(
+      block.userId,
+      (placedMilesByUserId.get(block.userId) ?? 0) + block.distanceMiles,
+    );
+  }
+  const comparisonSummaries = dashboardData.summaries.map((summary) => ({
+    ...summary,
+    milesBuilt: placedMilesByUserId.get(summary.userId) ?? 0,
+  }));
+  const comparisonRows = orderedComparisonRows(metric, members, comparisonSummaries);
   const freshness = crewFreshness(dashboardData.summaries);
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
   const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
@@ -264,7 +277,7 @@ export function CrewScreen({
     ...crewBuild,
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
-  const viewerReadyRuns = build.readyRuns.filter((run) => run.userId === currentUserId);
+  const viewerReadyRuns = build.viewerReadyRuns;
   const placingRun = dashboardData.crewBuildRuns.find((run) => run.id === placingRunId) ?? null;
 
   function startPlacement(run: CrewBuildRun) {
@@ -353,12 +366,10 @@ export function CrewScreen({
       <header className="crew-view__lead">
         <div className="crew-view__lead-row">
           <div className="crew-view__identity">
-            <p className="machine-label">Crew</p>
             <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
-            {raceLine && <p className="crew-view__race">{raceLine}</p>}
-            {countdown && (
-              <p className="crew-view__countdown machine-label" data-kind={countdown.kind}>
-                {countdown.label}
+            {(raceLine || countdown) && (
+              <p className="crew-view__race machine-label" data-kind={countdown?.kind}>
+                {[raceLine, countdown?.label].filter(Boolean).join(" · ")}
               </p>
             )}
           </div>
@@ -383,7 +394,6 @@ export function CrewScreen({
         model={build}
         members={members}
         available={dashboardData.sharedRunsAvailable}
-        viewerReadyRuns={viewerReadyRuns}
         placement={placingRun ? {
           run: placingRun,
           selection: placementSelection,
@@ -405,19 +415,19 @@ export function CrewScreen({
       />
 
       <section
-        className="crew-comparison technical-grid"
+        className="crew-comparison"
         data-metric={metric}
         aria-labelledby="crew-comparison-title"
       >
         <div className="crew-comparison__heading">
-          <p className="machine-label">Comparison</p>
+          <h2 id="crew-comparison-title">{METRIC_LABEL[metric]}</h2>
           <p className="crew-comparison__window machine-label">
             {METRICS.find((item) => item.id === metric)?.window}
           </p>
         </div>
 
         <div className="crew-comparison__selector" role="tablist" aria-label="Comparison metric">
-          {METRICS.map(({ id, shortLabel, Icon }, index) => (
+          {METRICS.map(({ id, Icon }, index) => (
             <button
               key={id}
               ref={(element) => { metricRefs.current[index] = element; }}
@@ -433,12 +443,9 @@ export function CrewScreen({
               onKeyDown={(event) => changeMetricFromKeyboard(event, index)}
             >
               <Icon size={17} strokeWidth={1.9} aria-hidden="true" />
-              <span>{shortLabel}</span>
             </button>
           ))}
         </div>
-
-        <h3 id="crew-comparison-title">{METRIC_LABEL[metric]}</h3>
 
         <div
           id="crew-comparison-chart"

@@ -56,7 +56,7 @@ correction, not UI-23.
   minimal device-local tombstone without blocking personal deletion;
 - shared-row upsert identity, Props, Crew placement and unknown Member Build
   placement are preserved;
-- Weekly Miles, Longest Run and Miles Built derive from cloud shared runs;
+- Weekly Miles, Longest Run and the legacy Member Build total derive from cloud shared runs;
   incomplete devices preserve last-known Consistency;
 - Intervals remains per-device and Settings states that directly;
 - the forward-only Crew placement RPC migration rejects floating blocks and
@@ -68,6 +68,19 @@ correction, not UI-23.
 Required owner acceptance still includes applying/verifying the new migration
 and same-account Device A ↔ Device B QA on desktop/iPhone Safari. Do not merge
 until those checks pass.
+
+## Post-UI-22 polish — Crew Build, Today activity and Training Signals
+
+Status: **Implemented / owner visual review pending.** This is focused product/data correction, not UI-23.
+
+- Crew participation begins on the browser-local date of authoritative `crew_members.joined_at`; same-day and post-join late imports qualify, pre-join history remains personal, and an authenticated cleanup RPC removes existing pre-join rows/Props while demoting unsupported survivors to READY;
+- Crew Build and its Miles Built comparison use physically placed communal mileage only; current-viewer READY remains a separate compact action;
+- `crew_build_placed_at` records placement or movement, with a subtle and accessible 24-hour recent-construction state and no legacy backfill;
+- the Crew header is compressed and Comparison is a lighter non-grid surface with four icon-only controls in one keyboard-operable row;
+- Today shows at most two teammate runs from today/yesterday and reuses the same optimistic Props controller, or renders nothing when none qualify;
+- Weekly Mileage, Long Run, Easy Pace, HR Zones, Training Load and Run Mix use actual history outside an active plan; Consistency and planned comparisons remain plan-dependent;
+- phone Training Signals use a swipeable overflow row with a next-card peek; desktop retains its grid and existing card/detail design;
+- forward migration `20260812150000_crew_membership_boundary_and_placed_at.sql` and transactional verification `0007_crew_membership_boundary_and_placed_at.sql` cover cleanup, Props cascade, support demotion, initial placement and move timestamps.
 
 ## Post-UI-22 hotfix — Run Data review persistence and plan matching
 

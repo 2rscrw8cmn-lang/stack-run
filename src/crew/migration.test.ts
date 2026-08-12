@@ -6,6 +6,8 @@ import reactionMigration from "../../supabase/migrations/20260810230000_crew_rea
 import reactionVerification from "../../supabase/tests/0002_crew_reactions_rls.sql?raw";
 import placementMigration from "../../supabase/migrations/20260811090000_shared_run_build_placement.sql?raw";
 import placementVerification from "../../supabase/tests/0003_shared_run_build_placement_rls.sql?raw";
+import boundaryMigration from "../../supabase/migrations/20260812150000_crew_membership_boundary_and_placed_at.sql?raw";
+import boundaryVerification from "../../supabase/tests/0007_crew_membership_boundary_and_placed_at.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -127,5 +129,32 @@ describe("UI-20 Member Build placement SQL", () => {
     expect(placementVerification).toMatch(/anonymous user can read shared placements/i);
     expect(placementVerification).toMatch(/anonymous user modified shared placement/i);
     expect(placementVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew membership boundary and construction timestamp SQL", () => {
+  it("adds a dedicated nullable placement timestamp and refreshes it on placement or move", () => {
+    expect(boundaryMigration).toMatch(/add column if not exists crew_build_placed_at timestamptz null/i);
+    expect(boundaryMigration).toMatch(
+      /set crew_build_row = p_row,[\s\S]*crew_build_column_start = p_column_start,[\s\S]*crew_build_placed_at = now\(\)/i,
+    );
+    expect(boundaryMigration).not.toMatch(/update public\.shared_runs[\s\S]*set crew_build_placed_at = now\(\)[\s\S]*where crew_build_placed_at is null/i);
+  });
+
+  it("ships an authenticated join-aware cleanup that demotes unsupported survivors", () => {
+    expect(boundaryMigration).toMatch(/cleanup_pre_membership_shared_runs/i);
+    expect(boundaryMigration).toMatch(/local_date < p_joined_local_date/i);
+    expect(boundaryMigration).toMatch(/user_id = v_user_id/i);
+    expect(boundaryMigration).toMatch(/set crew_build_row = null,[\s\S]*crew_build_placed_at = null/i);
+    expect(boundaryMigration).toMatch(/revoke all on function public\.cleanup_pre_membership_shared_runs\(date\)[\s\S]*from public, anon/i);
+  });
+
+  it("verifies same-day retention, Props cascade, structural demotion and move timestamps transactionally", () => {
+    expect(boundaryVerification).toMatch(/expected one pre-membership deletion/i);
+    expect(boundaryVerification).toMatch(/same-day or post-join run was removed/i);
+    expect(boundaryVerification).toMatch(/Props did not cascade/i);
+    expect(boundaryVerification).toMatch(/unsupported surviving block was not demoted to READY/i);
+    expect(boundaryVerification).toMatch(/moving a block did not refresh placed time/i);
+    expect(boundaryVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

@@ -56,6 +56,7 @@ function sharedRun(
     buildColumnStart: 1,
     crewBuildRow: 0,
     crewBuildColumnStart: 1,
+    crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,
     ...values,
@@ -107,7 +108,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, localDate, activityType, distanceMiles, createdAt, crewBuildRow, crewBuildColumnStart }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, localDate, activityType, distanceMiles, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
@@ -117,6 +118,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       createdAt,
       crewBuildRow,
       crewBuildColumnStart,
+      crewBuildPlacedAt,
     })),
     sharedRunsAvailable: true,
     sharedRunsTruncated: false,
@@ -296,8 +298,7 @@ describe("Crew comparisons and runs", () => {
     openCrew();
 
     expect(screen.getByRole("heading", { level: 1, name: "OUC Half Crew" })).toBeInTheDocument();
-    expect(screen.getByText("Dec 5 · Half Marathon")).toBeInTheDocument();
-    expect(screen.getByText("117 days to race")).toBeInTheDocument();
+    expect(screen.getByText("Half Marathon · Dec 5 · 117 days to race")).toBeInTheDocument();
     // The crew name is stated once, not repeated by every module below it.
     expect(screen.getAllByText("OUC Half Crew")).toHaveLength(1);
   });
@@ -327,6 +328,7 @@ describe("Crew comparisons and runs", () => {
               createdAt: soloRun.createdAt,
               crewBuildRow: soloRun.crewBuildRow,
               crewBuildColumnStart: soloRun.crewBuildColumnStart,
+              crewBuildPlacedAt: soloRun.crewBuildPlacedAt,
             },
           ],
         }),
@@ -334,7 +336,7 @@ describe("Crew comparisons and runs", () => {
     );
 
     expect(screen.getByText("miles built").parentElement).toHaveTextContent(/^5\.5/);
-    expect(screen.getByText("1 run · 1 runner")).toBeInTheDocument();
+    expect(screen.queryByText("1 run · 1 runner")).not.toBeInTheDocument();
     expect(screen.getByText("Invite your crew to build together.")).toBeInTheDocument();
   });
 
@@ -370,6 +372,8 @@ describe("Crew comparisons and runs", () => {
       expect.stringContaining("Zack"),
       expect.stringContaining("Travis"),
     ]);
+    const metricTabs = screen.getByRole("tablist", { name: "Comparison metric" });
+    expect(within(metricTabs).queryByText(/Miles|Long|Consist|Built/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Consistency" }));
     expect(screen.getByText("88%")).toBeInTheDocument();
@@ -385,8 +389,8 @@ describe("Crew comparisons and runs", () => {
     ).getAllByRole("listitem");
     expect(rows.map((item) => item.textContent)).toEqual([
       expect.stringContaining("Drew"),
-      expect.stringContaining("Zack"),
       expect.stringContaining("Travis"),
+      expect.stringContaining("Zack"),
     ]);
     expect(screen.queryByRole("combobox", { name: "Comparison metric" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Refresh crew data" })).toHaveTextContent("");
@@ -398,6 +402,41 @@ describe("Crew comparisons and runs", () => {
     expect(runButtons[0]).toHaveAccessibleName(expect.stringContaining("Sunday, August 9"));
     expect(runButtons[1]).toHaveAccessibleName(expect.stringContaining("Saturday, August 8"));
     expect(runButtons[0]).toHaveTextContent("9:37 /MI");
+  });
+
+  it("ranks Miles Built by communal placement rather than total shared mileage", async () => {
+    const placedA = sharedRun("a-placed", "zack", "2026-08-09", {
+      distanceMiles: 6,
+      crewBuildColumnStart: 1,
+    });
+    const readyA = sharedRun("a-ready", "zack", "2026-08-10", {
+      distanceMiles: 4,
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const placedB = sharedRun("b-placed", "drew", "2026-08-09", {
+      distanceMiles: 8,
+      crewBuildColumnStart: 4,
+    });
+    const user = await openCrew(controller({
+      crewData: dashboard({
+        runs: [placedA, readyA, placedB],
+        summaries: [
+          summary("zack", { milesBuilt: 10 }),
+          summary("drew", { milesBuilt: 8 }),
+          summary("travis", { milesBuilt: 0 }),
+        ],
+      }),
+    }));
+
+    await user.click(screen.getByRole("tab", { name: "Miles Built" }));
+    const rows = within(screen.getByRole("list", { name: "Miles Built comparison" }))
+      .getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/Drew.*8\.0 MI/),
+      expect.stringMatching(/Zack.*6\.0 MI/),
+      expect.stringMatching(/Travis.*0\.0 MI/),
+    ]);
   });
 
   it("shows one binary Props action, count and pressed state while disabling self-Props", async () => {
@@ -580,13 +619,13 @@ describe("Shared Crew Build", () => {
     return controller({ crewData: dashboard({ runs: buildRuns, ...overrides }) });
   }
 
-  it("leads with miles built, block count and runner count", () => {
+  it("leads with physically placed miles while keeping secondary totals hidden", () => {
     openCrew(crewWithBuild());
 
     expect(screen.getByText("Crew Build")).toBeInTheDocument();
     expect(screen.getByText("17.0")).toBeInTheDocument();
     expect(screen.getByText("miles built")).toBeInTheDocument();
-    expect(screen.getByText("3 runs · 3 runners")).toBeInTheDocument();
+    expect(screen.queryByText("3 runs · 3 runners")).not.toBeInTheDocument();
     expect(
       within(screen.getByRole("list", { name: "Crew Build blocks" })).getAllByRole(
         "listitem",
@@ -684,7 +723,7 @@ describe("Shared Crew Build", () => {
     openCrew(controller({ crewData: dashboard({ runs: [] }) }));
 
     expect(screen.getByText("0.0")).toBeInTheDocument();
-    expect(screen.getByText("0 runs · 3 runners")).toBeInTheDocument();
+    expect(screen.queryByText("0 runs · 3 runners")).not.toBeInTheDocument();
     expect(screen.getByText("The first shared run earns the first Crew block.")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Crew Build blocks" })).not.toBeInTheDocument();
   });
@@ -733,10 +772,10 @@ describe("Shared Crew Build", () => {
     openCrew(controller({ crewData: dashboard({ runs: [ownNewer, teammate, ownOlder] }) }));
 
     expect(screen.getByText("2 blocks ready")).toBeInTheDocument();
-    expect(screen.getByText("Long Run · 8 MI · Aug 8")).toBeInTheDocument();
+    expect(screen.queryByText("Long Run · 8 MI · Aug 8")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Build Now" })).toBeInTheDocument();
-    expect(screen.getByText("0 built · 3 ready")).toBeInTheDocument();
-    expect(screen.getByText("16.0")).toBeInTheDocument();
+    expect(screen.queryByText("0 built · 3 ready")).not.toBeInTheDocument();
+    expect(screen.getByText("0.0")).toBeInTheDocument();
   });
 
   it("does not offer a placement action for another runner's READY block", () => {
@@ -745,8 +784,8 @@ describe("Shared Crew Build", () => {
       crewBuildColumnStart: null,
     });
     openCrew(controller({ crewData: dashboard({ runs: [teammate] }) }));
-    expect(screen.getByText("0 built · 1 ready")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Place Your Block|Build Now/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("0 built · 1 ready")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Place Block|Build Now/ })).not.toBeInTheDocument();
   });
 
   it("opens focused placement, selects a valid snapped spot and confirms through the RPC", async () => {
@@ -760,7 +799,7 @@ describe("Shared Crew Build", () => {
       placeCrewBuildBlock: place,
     }));
 
-    await user.click(screen.getByRole("button", { name: "Place Your Block" }));
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Next Open Spot" }));
@@ -781,7 +820,7 @@ describe("Shared Crew Build", () => {
       crewData: dashboard({ runs: [ready] }),
       placeCrewBuildBlock: place,
     }));
-    await user.click(screen.getByRole("button", { name: "Place Your Block" }));
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
     const grid = screen.getByRole("list", { name: "Choose a Crew Build position" });
     vi.spyOn(grid, "getBoundingClientRect").mockReturnValue({
       x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 180,
@@ -804,7 +843,7 @@ describe("Shared Crew Build", () => {
       placeCrewBuildBlock: place,
       crewBuildPlacementError: "That space was just taken. Choose another spot.",
     }));
-    await user.click(screen.getByRole("button", { name: "Place Your Block" }));
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
     await user.click(screen.getByRole("button", { name: "Next Open Spot" }));
     await user.click(screen.getByRole("button", { name: "Confirm Placement" }));
     expect(screen.getByText("That space was just taken. Choose another spot.")).toBeInTheDocument();
