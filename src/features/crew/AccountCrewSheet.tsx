@@ -1,4 +1,6 @@
 import {
+  ChevronLeft,
+  ChevronRight,
   Copy,
   LogIn,
   LogOut,
@@ -7,6 +9,7 @@ import {
   ShieldCheck,
   Trash2,
   UserPlus,
+  UserRound,
   Users,
 } from "lucide-react";
 import { useState } from "react";
@@ -36,6 +39,27 @@ interface Props {
   onClose: () => void;
   crew: RaceCrewController;
   localRace: Race | null;
+}
+
+/**
+ * The hub and every place it can navigate to. A single Sheet swaps its title
+ * and body across these rather than stacking dialogs, so the account,
+ * profile and each crew's settings stay reachable with one Back tap and one
+ * Close.
+ */
+type View = "main" | "profile" | "join" | "create" | "crew" | "edit" | "emblem" | "delete";
+
+function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: string }) {
+  return (
+    <Button
+      variant="ghost"
+      className="crew-settings__back"
+      icon={<ChevronLeft size={18} />}
+      onClick={onClick}
+    >
+      {label}
+    </Button>
+  );
 }
 
 function AuthPanel({ crew }: { crew: RaceCrewController }) {
@@ -177,6 +201,26 @@ function PendingInvitePanel({ crew, localRace }: Pick<Props, "crew" | "localRace
         </>
       )}
     </section>
+  );
+}
+
+/** Reached from the hub's `Join Crew` action, for a runner without a link in hand. */
+function JoinCrewPanel({ crew, localRace, onBack }: Pick<Props, "crew" | "localRace"> & { onBack: () => void }) {
+  return (
+    <>
+      <BackButton onClick={onBack} />
+      {crew.pendingInvite ? (
+        <PendingInvitePanel crew={crew} localRace={localRace} />
+      ) : (
+        <section className="crew-settings__section">
+          <p className="crew-settings__copy">
+            Ask a crew owner for their private invite link. Opening it on this
+            device brings you right back here to join — your local race and
+            plan are never changed.
+          </p>
+        </section>
+      )}
+    </>
   );
 }
 
@@ -402,148 +446,192 @@ function DeleteCrewPanel({
   );
 }
 
-function CrewPanel({
+/**
+ * The Crew Settings sub-sheet for whichever crew the hub sent the runner to:
+ * identity + emblem, race/Build start, members, invites, and owner/member
+ * actions. The hub's crew list is the only place that says which crew is
+ * being viewed, so this panel never repeats that state.
+ */
+function CrewSettingsPanel({
   crew,
+  onBack,
   onEdit,
   onDelete,
 }: {
   crew: RaceCrewController;
+  onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const account = crew.account;
   const raceCrew = account?.crew;
-  if (!account || !raceCrew || !account.role) return null;
+  if (!account || !raceCrew || !account.role) {
+    return (
+      <>
+        <BackButton onClick={onBack} />
+        <p className="crew-settings__copy">Switching crews…</p>
+      </>
+    );
+  }
   const activeInvites = account.invites.filter(
     (invite) => !invite.revokedAt && !invite.redeemedAt,
   );
   return (
-    <section className="crew-settings__section">
-      <p className="machine-label">
-        {account.memberships.length > 1 ? "Crew you are viewing" : "Your Race Crew"}
-      </p>
-      <div className="crew-settings__crew-identity">
-        <CrewEmblem emblem={raceCrew.emblem} size={44} />
-        <div>
-          <h3>{raceCrew.name}</h3>
-          <p>
-            {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
-            {raceCrew.raceDistanceMiles} mi
-          </p>
-        </div>
-      </div>
-      <p className="crew-settings__note">Build starts {formatDateLabel(raceCrew.buildStartDate)}.</p>
-
-      {account.role === "owner" && (
-        <Button variant="secondary" icon={<Pencil size={18} />} onClick={onEdit}>
-          Edit Crew
-        </Button>
-      )}
-
-      <div className="crew-settings__members">
-        <h4>Members</h4>
-        <ul>
-          {account.members.map((member) => (
-            <li key={member.userId}>
-              <span>
-                <strong>{member.displayName}</strong>
-                <small>{member.role === "owner" ? "Owner" : "Member"}</small>
-              </span>
-              {account.role === "owner" && member.role !== "owner" && (
-                <button type="button" onClick={() => void crew.removeMember(member.userId)}>
-                  Remove
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {account.role === "owner" && (
-        <div className="crew-settings__owner-tools">
-          <h4>Invites</h4>
-          <Button variant="secondary" icon={<UserPlus size={18} />} isLoading={crew.busy} onClick={() => void crew.createInvite()}>
-            Create Private Invite
-          </Button>
-          {crew.latestInviteUrl && (
-            <div className="crew-settings__invite-link">
-              <label htmlFor="crew-invite-url">Invite link</label>
-              <input id="crew-invite-url" className="run-input" readOnly value={crew.latestInviteUrl} />
-              <Button variant="secondary" icon={<Copy size={18} />} onClick={() => void navigator.clipboard.writeText(crew.latestInviteUrl ?? "")}>
-                Copy Link
-              </Button>
-              <p>Raw invite tokens are shown only here and are not stored in the database.</p>
-            </div>
-          )}
-          {activeInvites.length > 0 && (
-            <ul className="crew-settings__invites" aria-label="Active invites">
-              {activeInvites.map((invite) => (
-                <li key={invite.id}>
-                  <span>Expires {new Date(invite.expiresAt).toLocaleDateString()}</span>
-                  <button type="button" onClick={() => void crew.revokeInvite(invite.id)}>Revoke</button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="crew-settings__danger">
-            <p className="machine-label">Danger zone</p>
-            <Button variant="danger" icon={<Trash2 size={18} />} onClick={onDelete}>
-              Delete Crew
-            </Button>
+    <>
+      <BackButton onClick={onBack} />
+      <section className="crew-settings__section">
+        <div className="crew-settings__crew-identity">
+          <CrewEmblem emblem={raceCrew.emblem} size={44} />
+          <div>
+            <h3>{raceCrew.name}</h3>
+            <p>
+              {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
+              {raceCrew.raceDistanceMiles} mi
+            </p>
           </div>
         </div>
+        <p className="crew-settings__note">Build starts {formatDateLabel(raceCrew.buildStartDate)}.</p>
+
+        {account.role === "owner" && (
+          <Button variant="secondary" icon={<Pencil size={18} />} onClick={onEdit}>
+            Edit Crew
+          </Button>
+        )}
+      </section>
+
+      <section className="crew-settings__section">
+        <div className="crew-settings__members">
+          <h4>Members</h4>
+          <ul>
+            {account.members.map((member) => (
+              <li key={member.userId}>
+                <span>
+                  <strong>{member.displayName}</strong>
+                  <small>{member.role === "owner" ? "Owner" : "Member"}</small>
+                </span>
+                {account.role === "owner" && member.role !== "owner" && (
+                  <button type="button" onClick={() => void crew.removeMember(member.userId)}>
+                    Remove
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {account.role === "owner" && (
+        <section className="crew-settings__section">
+          <div className="crew-settings__owner-tools">
+            <h4>Invites</h4>
+            <Button variant="secondary" icon={<UserPlus size={18} />} isLoading={crew.busy} onClick={() => void crew.createInvite()}>
+              Create Private Invite
+            </Button>
+            {crew.latestInviteUrl && (
+              <div className="crew-settings__invite-link">
+                <label htmlFor="crew-invite-url">Invite link</label>
+                <input id="crew-invite-url" className="run-input" readOnly value={crew.latestInviteUrl} />
+                <Button variant="secondary" icon={<Copy size={18} />} onClick={() => void navigator.clipboard.writeText(crew.latestInviteUrl ?? "")}>
+                  Copy Link
+                </Button>
+                <p>Raw invite tokens are shown only here and are not stored in the database.</p>
+              </div>
+            )}
+            {activeInvites.length > 0 && (
+              <ul className="crew-settings__invites" aria-label="Active invites">
+                {activeInvites.map((invite) => (
+                  <li key={invite.id}>
+                    <span>Expires {new Date(invite.expiresAt).toLocaleDateString()}</span>
+                    <button type="button" onClick={() => void crew.revokeInvite(invite.id)}>Revoke</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="crew-settings__danger">
+              <p className="machine-label">Danger zone</p>
+              <Button variant="danger" icon={<Trash2 size={18} />} onClick={onDelete}>
+                Delete Crew
+              </Button>
+            </div>
+          </div>
+        </section>
       )}
 
       {account.role === "member" && (
-        <Button variant="danger" onClick={() => void crew.leaveCrew()}>
-          Leave Crew
-        </Button>
+        <section className="crew-settings__section">
+          <Button variant="danger" onClick={() => void crew.leaveCrew()}>
+            Leave Crew
+          </Button>
+        </section>
       )}
-    </section>
+    </>
   );
 }
 
 /**
- * Every crew this account is in, and which one the app is showing.
- *
- * Crews are peers, not a hierarchy: a runner can be training for a spring
- * marathon with one set of friends and a summer trail race with another, and
- * switching between them is a view change on this device only. It never
- * touches membership, the shared Builds, or anything personal.
+ * Every crew this account is in, and which one the app is showing. Crews are
+ * peers, not a hierarchy: a runner can be training for a spring marathon
+ * with one set of friends and a summer trail race with another. Tapping a
+ * card opens that crew's settings, switching the app's active crew first if
+ * it was not already the one being viewed — a view change on this device
+ * only, never a membership or Build change.
  */
-function CrewListPanel({ crew }: { crew: RaceCrewController }) {
+function CrewHubList({
+  crew,
+  onOpenCrew,
+  onJoin,
+  onCreate,
+}: {
+  crew: RaceCrewController;
+  onOpenCrew: (crewId: string) => void;
+  onJoin: () => void;
+  onCreate: () => void;
+}) {
   const account = crew.account;
   const memberships = account?.memberships ?? [];
-  if (!account || memberships.length < 2) return null;
   return (
     <section className="crew-settings__section">
-      <p className="machine-label">Your crews</p>
-      <ul className="crew-settings__crew-list" aria-label="Your crews">
-        {memberships.map(({ crew: raceCrew, role }) => {
-          const isActive = raceCrew.id === account.crew?.id;
-          return (
-            <li key={raceCrew.id}>
-              <button
-                type="button"
-                className="crew-settings__crew-option"
-                aria-pressed={isActive}
-                disabled={crew.busy}
-                onClick={() => void crew.switchCrew(raceCrew.id)}
-              >
-                <CrewEmblem emblem={raceCrew.emblem} size={34} />
-                <span className="crew-settings__crew-option-body">
-                  <strong>{raceCrew.name}</strong>
-                  <small>
-                    {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
-                    {role === "owner" ? "Owner" : "Member"}
-                  </small>
-                </span>
-                <span className="machine-label">{isActive ? "Viewing" : "Switch"}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <p className="machine-label">Crews</p>
+      {memberships.length === 0 ? (
+        <p className="crew-settings__copy">
+          You are not in a crew yet. Create one or join with a private invite link.
+        </p>
+      ) : (
+        <ul className="crew-settings__crew-list" aria-label="Your crews">
+          {memberships.map(({ crew: raceCrew, role }) => {
+            const isActive = raceCrew.id === account?.crew?.id;
+            return (
+              <li key={raceCrew.id}>
+                <button
+                  type="button"
+                  className="crew-settings__crew-option"
+                  aria-pressed={isActive}
+                  disabled={crew.busy}
+                  onClick={() => onOpenCrew(raceCrew.id)}
+                >
+                  <CrewEmblem emblem={raceCrew.emblem} size={34} />
+                  <span className="crew-settings__crew-option-body">
+                    <strong>{raceCrew.name}</strong>
+                    <small>
+                      {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
+                      {role === "owner" ? "Owner" : "Member"}
+                    </small>
+                  </span>
+                  <span className="machine-label">{isActive ? "Viewing" : "Switch"}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="crew-settings__form-actions">
+        <Button variant="secondary" icon={<LogIn size={18} />} onClick={onJoin}>
+          Join Crew
+        </Button>
+        <Button variant="secondary" icon={<Plus size={18} />} onClick={onCreate}>
+          Create Crew
+        </Button>
+      </div>
     </section>
   );
 }
@@ -597,7 +685,8 @@ function AccentColorPicker({
   );
 }
 
-function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
+/** The Edit Profile sub-sheet: account-scoped controls only, never Crew-specific ones. */
+function AccountProfilePanel({ crew, onBack }: { crew: RaceCrewController; onBack: () => void }) {
   const [displayName, setDisplayName] = useState(
     crew.account?.profile.displayName ?? "",
   );
@@ -605,142 +694,214 @@ function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
   // database enforces, so the picker cannot offer a color it would reject.
   const takenAccents = new Set(crew.account?.takenAccentColors ?? []);
   return (
-    <section className="crew-settings__section">
-      <p className="machine-label">STACK account</p>
-      <p className="crew-settings__email">{crew.email}</p>
-      <FormField label="Profile display name">
-        <input className="run-input" value={displayName} maxLength={60} onChange={(event) => setDisplayName(event.target.value)} />
-      </FormField>
-      <div className="crew-settings__account-actions">
-        <Button variant="secondary" disabled={!displayName.trim()} onClick={() => void crew.saveDisplayName(displayName)}>
-          Save Name
-        </Button>
-        <Button variant="secondary" icon={<LogOut size={18} />} onClick={() => void crew.signOut()}>
-          Sign Out
-        </Button>
-      </div>
-      <AccentColorPicker
-        current={crew.account?.profile.accentColor ?? null}
-        taken={takenAccents}
-        busy={crew.busy}
-        onPick={(accentColor) => void crew.saveAccentColor(accentColor)}
-      />
-    </section>
+    <>
+      <BackButton onClick={onBack} />
+      <section className="crew-settings__section">
+        <p className="machine-label">STACK account</p>
+        <p className="crew-settings__email">{crew.email}</p>
+        <FormField label="Profile display name">
+          <input className="run-input" value={displayName} maxLength={60} onChange={(event) => setDisplayName(event.target.value)} />
+        </FormField>
+        <div className="crew-settings__account-actions">
+          <Button variant="secondary" disabled={!displayName.trim()} onClick={() => void crew.saveDisplayName(displayName)}>
+            Save Name
+          </Button>
+          <Button variant="secondary" icon={<LogOut size={18} />} onClick={() => void crew.signOut()}>
+            Sign Out
+          </Button>
+        </div>
+        <AccentColorPicker
+          current={crew.account?.profile.accentColor ?? null}
+          taken={takenAccents}
+          busy={crew.busy}
+          onPick={(accentColor) => void crew.saveAccentColor(accentColor)}
+        />
+      </section>
+    </>
   );
+}
+
+function sheetTitle(view: View): string {
+  switch (view) {
+    case "profile":
+      return "Edit Profile";
+    case "join":
+      return "Join Crew";
+    case "create":
+      return "Create Crew";
+    case "crew":
+      return "Crew Settings";
+    case "edit":
+      return "Edit Crew";
+    case "emblem":
+      return "Edit Emblem";
+    case "delete":
+      return "Delete Crew";
+    default:
+      return "Account & Crew";
+  }
 }
 
 export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
   const signedIn = crew.status === "signed-in";
-  const [view, setView] = useState<"main" | "edit" | "emblem" | "delete">("main");
-  const [creatingSince, setCreatingSince] = useState<number | null>(null);
+  const [view, setView] = useState<View>("main");
+  const [createStartCount, setCreateStartCount] = useState<number | null>(null);
   const raceCrew = crew.account?.crew ?? null;
-  const visibleView = crew.account?.role === "owner" && raceCrew ? view : "main";
+  const isOwner = crew.account?.role === "owner";
   const crewCount = crew.account?.memberships.length ?? 0;
-  // The create form stays open until it has actually produced a crew, which
-  // this sheet recognizes as a changed membership count. Derived rather than
-  // remembered, so a successful create closes it without an effect.
-  const creatingAnother = creatingSince !== null && creatingSince === crewCount;
+
+  // A create that actually produced a crew is recognized as a changed
+  // membership count, so the sheet returns to the hub as soon as that count
+  // moves — derived at render rather than chased with an effect.
+  const createFinished =
+    view === "create" && createStartCount !== null && crewCount > createStartCount;
+
+  // Owner-only edit/emblem/delete views fall back to the hub if the role or
+  // crew they depend on is gone, e.g. a stale view surviving a crew switch.
+  const ownerOnlyView = view === "edit" || view === "emblem" || view === "delete";
+  const visibleView: View =
+    !signedIn || createFinished || (ownerOnlyView && (!isOwner || !raceCrew)) ? "main" : view;
+
+  function openCrew(crewId: string): void {
+    if (crew.account?.crew?.id !== crewId) {
+      void crew.switchCrew(crewId);
+    }
+    setView("crew");
+  }
+
+  function openCreate(): void {
+    setCreateStartCount(crewCount);
+    setView("create");
+  }
 
   return (
     <Sheet
-      title={visibleView === "emblem" ? "Edit Emblem" : visibleView === "edit" ? "Edit Crew" : visibleView === "delete" ? "Delete Crew" : "Account & Crew"}
+      title={sheetTitle(visibleView)}
       isOpen={isOpen}
       onClose={() => {
         setView("main");
+        setCreateStartCount(null);
         onClose();
       }}
       className="crew-settings-sheet"
     >
       <div className="crew-settings">
-        {(visibleView === "edit" || visibleView === "emblem") && raceCrew && (
-          <EditCrewPanel
+        {visibleView === "profile" && (
+          <AccountProfilePanel crew={crew} onBack={() => setView("main")} />
+        )}
+
+        {visibleView === "join" && (
+          <JoinCrewPanel crew={crew} localRace={localRace} onBack={() => setView("main")} />
+        )}
+
+        {visibleView === "create" && (
+          <>
+            <BackButton onClick={() => setView("main")} />
+            <CreateCrewPanel crew={crew} localRace={localRace} onCancel={() => setView("main")} />
+          </>
+        )}
+
+        {visibleView === "crew" && (
+          <CrewSettingsPanel
             crew={crew}
-            raceCrew={raceCrew}
-            onCancel={() => setView("main")}
-            onSaved={() => setView("main")}
-            emblemEditorOpen={visibleView === "emblem"}
-            onEditEmblem={() => setView("emblem")}
-            onCloseEmblemEditor={() => setView("edit")}
+            onBack={() => setView("main")}
+            onEdit={() => setView("edit")}
+            onDelete={() => setView("delete")}
           />
         )}
 
+        {(visibleView === "edit" || visibleView === "emblem") && raceCrew && (
+          <>
+            <BackButton onClick={() => setView("crew")} label="Back to Crew Settings" />
+            <EditCrewPanel
+              crew={crew}
+              raceCrew={raceCrew}
+              onCancel={() => setView("crew")}
+              onSaved={() => setView("crew")}
+              emblemEditorOpen={visibleView === "emblem"}
+              onEditEmblem={() => setView("emblem")}
+              onCloseEmblemEditor={() => setView("edit")}
+            />
+          </>
+        )}
+
         {visibleView === "delete" && raceCrew && (
-          <DeleteCrewPanel
-            crew={crew}
-            raceCrew={raceCrew}
-            onCancel={() => setView("main")}
-            onDeleted={() => setView("main")}
-          />
+          <>
+            <BackButton onClick={() => setView("crew")} label="Back to Crew Settings" />
+            <DeleteCrewPanel
+              crew={crew}
+              raceCrew={raceCrew}
+              onCancel={() => setView("crew")}
+              onDeleted={() => setView("main")}
+            />
+          </>
         )}
 
         {visibleView === "main" && (
           <>
-        {!crew.configured && (
-          <section className="crew-settings__empty">
-            <ShieldCheck size={24} aria-hidden="true" />
-            <h3>Race Crew unavailable</h3>
-            <p>{crew.unavailableReason}</p>
-          </section>
-        )}
+            {!crew.configured && (
+              <section className="crew-settings__empty">
+                <ShieldCheck size={24} aria-hidden="true" />
+                <h3>Race Crew unavailable</h3>
+                <p>{crew.unavailableReason}</p>
+              </section>
+            )}
 
-        {crew.configured && crew.status === "loading" && (
-          <p className="crew-settings__copy">Loading account…</p>
-        )}
+            {crew.configured && crew.status === "loading" && (
+              <p className="crew-settings__copy">Loading account…</p>
+            )}
 
-        {crew.configured && crew.status === "signed-out" && (
-          <>
-            <PendingInvitePanel crew={crew} localRace={localRace} />
-            <AuthPanel crew={crew} />
-          </>
-        )}
-
-        {crew.configured && signedIn && (
-          <>
-            <AccountProfilePanel crew={crew} />
-            <PendingInvitePanel crew={crew} localRace={localRace} />
-            <CrewListPanel crew={crew} />
-            {crew.account?.crew ? (
+            {crew.configured && crew.status === "signed-out" && (
               <>
-                <CrewPanel
-                  crew={crew}
-                  onEdit={() => setView("edit")}
-                  onDelete={() => setView("delete")}
-                />
-                {/* Another crew is another race with another set of friends,
-                    so it is an addition here, never a replacement. */}
-                {creatingAnother ? (
-                  <CreateCrewPanel
-                    crew={crew}
-                    localRace={localRace}
-                    onCancel={() => setCreatingSince(null)}
-                  />
-                ) : (
-                  <section className="crew-settings__section">
-                    <Button
-                      variant="secondary"
-                      icon={<Plus size={18} />}
-                      onClick={() => setCreatingSince(crewCount)}
-                    >
-                      Create Another Crew
-                    </Button>
-                    <p className="crew-settings__note">
-                      You are in {crewCount} {crewCount === 1 ? "crew" : "crews"}. Join
-                      another any time with a private invite link.
-                    </p>
-                  </section>
-                )}
+                <PendingInvitePanel crew={crew} localRace={localRace} />
+                <AuthPanel crew={crew} />
               </>
-            ) : !crew.pendingInvite ? (
-              <CreateCrewPanel crew={crew} localRace={localRace} />
-            ) : null}
-          </>
-        )}
+            )}
 
-        {crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
-        {crew.message && <p role="status" className="crew-settings__message">{crew.message}</p>}
-        {crew.projectionError && (
-          <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
-        )}
+            {crew.configured && signedIn && (
+              <>
+                <ul className="settings__rows">
+                  <li>
+                    <button
+                      type="button"
+                      className="settings__row"
+                      onClick={() => setView("profile")}
+                    >
+                      <span className="settings__row-icon" aria-hidden="true">
+                        <UserRound size={18} strokeWidth={1.9} />
+                      </span>
+                      <span className="settings__row-text">
+                        <span className="settings__row-label">
+                          {crew.account?.profile.displayName ?? "Account"}
+                        </span>{" "}
+                        <span className="settings__row-value">{crew.email}</span>
+                      </span>
+                      <ChevronRight
+                        className="settings__row-chevron"
+                        size={18}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </li>
+                </ul>
+
+                <PendingInvitePanel crew={crew} localRace={localRace} />
+
+                <CrewHubList
+                  crew={crew}
+                  onOpenCrew={openCrew}
+                  onJoin={() => setView("join")}
+                  onCreate={openCreate}
+                />
+              </>
+            )}
+
+            {crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
+            {crew.message && <p role="status" className="crew-settings__message">{crew.message}</p>}
+            {crew.projectionError && (
+              <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
+            )}
           </>
         )}
         {visibleView !== "main" && crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
