@@ -29,7 +29,7 @@ import {
   type CrewMemberAccent,
 } from "../../crew/memberAccent";
 import { compareCrewRace } from "../../crew/raceMatch";
-import type { RaceCrew } from "../../crew/types";
+import type { CrewType, RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
@@ -143,6 +143,38 @@ function AuthPanel({ crew }: { crew: RaceCrewController }) {
   );
 }
 
+/** Segmented Race Crew / Run Club choice, styled like the sign-in/create switch above it. */
+function CrewTypeToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: CrewType;
+  onChange: (next: CrewType) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="crew-settings__switch" aria-label="Crew type">
+      <button
+        type="button"
+        aria-pressed={value === "race"}
+        disabled={disabled}
+        onClick={() => onChange("race")}
+      >
+        Race Crew
+      </button>
+      <button
+        type="button"
+        aria-pressed={value === "club"}
+        disabled={disabled}
+        onClick={() => onChange("club")}
+      >
+        Run Club
+      </button>
+    </div>
+  );
+}
+
 function PendingInvitePanel({ crew, localRace }: Pick<Props, "crew" | "localRace">) {
   const pending = crew.pendingInvite;
   if (!pending) return null;
@@ -152,6 +184,7 @@ function PendingInvitePanel({ crew, localRace }: Pick<Props, "crew" | "localRace
   if (!pending.preview) {
     return <p className="crew-settings__copy">Checking private crew invite…</p>;
   }
+  const isClub = pending.preview.crewType === "club";
   const mismatch = compareCrewRace(
     {
       raceName: pending.preview.raceName,
@@ -168,8 +201,12 @@ function PendingInvitePanel({ crew, localRace }: Pick<Props, "crew" | "localRace
         <div>
           <h3>{pending.preview.crewName}</h3>
           <p>
-            {pending.preview.raceName} · {formatDateLabel(pending.preview.raceDate)} ·{" "}
-            {pending.preview.raceDistanceMiles} mi
+            {isClub ? "Run Club" : (
+              <>
+                {pending.preview.raceName} · {formatDateLabel(pending.preview.raceDate!)} ·{" "}
+                {pending.preview.raceDistanceMiles} mi
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -229,6 +266,7 @@ function CreateCrewPanel({
   localRace,
   onCancel,
 }: Pick<Props, "crew" | "localRace"> & { onCancel?: () => void }) {
+  const [crewType, setCrewType] = useState<CrewType>("race");
   const [name, setName] = useState("");
   const [raceName, setRaceName] = useState(localRace?.name ?? "");
   const [raceDate, setRaceDate] = useState(localRace?.date ?? "");
@@ -237,23 +275,29 @@ function CreateCrewPanel({
   );
   const [buildStartDate, setBuildStartDate] = useState(todayLocalDate());
   const [emblem, setEmblem] = useState<CrewEmblemModel>(DEFAULT_CREW_EMBLEM);
+  const isClub = crewType === "club";
   return (
     <section className="crew-settings__section">
       <p className="machine-label">Create a private crew</p>
+      <CrewTypeToggle value={crewType} onChange={setCrewType} disabled={crew.busy} />
       <FormField label="Crew name">
         <input className="run-input" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
       </FormField>
-      <FormField label="Race name">
-        <input className="run-input" value={raceName} maxLength={120} onChange={(event) => setRaceName(event.target.value)} />
-      </FormField>
-      <div className="crew-settings__race-fields">
-        <FormField label="Race date">
-          <input className="run-input" type="date" value={raceDate} onChange={(event) => setRaceDate(event.target.value)} />
-        </FormField>
-        <FormField label="Distance (mi)">
-          <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
-        </FormField>
-      </div>
+      {!isClub && (
+        <>
+          <FormField label="Race name">
+            <input className="run-input" value={raceName} maxLength={120} onChange={(event) => setRaceName(event.target.value)} />
+          </FormField>
+          <div className="crew-settings__race-fields">
+            <FormField label="Race date">
+              <input className="run-input" type="date" value={raceDate} onChange={(event) => setRaceDate(event.target.value)} />
+            </FormField>
+            <FormField label="Distance (mi)">
+              <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
+            </FormField>
+          </div>
+        </>
+      )}
       <FormField label="Build starts">
         <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
       </FormField>
@@ -265,13 +309,14 @@ function CreateCrewPanel({
       <div className="crew-settings__form-actions">
         <Button icon={<Users size={18} />} isLoading={crew.busy} onClick={() => void crew.createCrew({
           name,
-          raceName,
-          raceDate,
-          raceDistanceMiles: Number(distance),
+          crewType,
+          raceName: isClub ? null : raceName,
+          raceDate: isClub ? null : raceDate || null,
+          raceDistanceMiles: isClub ? null : (distance ? Number(distance) : null),
           buildStartDate,
           emblem,
         })}>
-          Create Race Crew
+          {isClub ? "Create Run Club" : "Create Race Crew"}
         </Button>
         {onCancel && (
           <Button variant="secondary" disabled={crew.busy} onClick={onCancel}>
@@ -300,10 +345,13 @@ function EditCrewPanel({
   onEditEmblem: () => void;
   onCloseEmblemEditor: () => void;
 }) {
+  const isClub = raceCrew.crewType === "club";
   const [name, setName] = useState(raceCrew.name);
-  const [raceName, setRaceName] = useState(raceCrew.raceName);
-  const [raceDate, setRaceDate] = useState(raceCrew.raceDate);
-  const [distance, setDistance] = useState(String(raceCrew.raceDistanceMiles));
+  const [raceName, setRaceName] = useState(raceCrew.raceName ?? "");
+  const [raceDate, setRaceDate] = useState(raceCrew.raceDate ?? "");
+  const [distance, setDistance] = useState(
+    raceCrew.raceDistanceMiles !== null ? String(raceCrew.raceDistanceMiles) : "",
+  );
   const [buildStartDate, setBuildStartDate] = useState(raceCrew.buildStartDate);
   const [emblem, setEmblem] = useState<CrewEmblemModel>(raceCrew.emblem);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -318,9 +366,10 @@ function EditCrewPanel({
     try {
       const input = validateCrewDetails({
         name,
-        raceName,
-        raceDate,
-        raceDistanceMiles: Number(distance),
+        crewType: raceCrew.crewType,
+        raceName: isClub ? null : raceName,
+        raceDate: isClub ? null : raceDate || null,
+        raceDistanceMiles: isClub ? null : (distance ? Number(distance) : null),
         buildStartDate,
         emblem,
       });
@@ -373,17 +422,21 @@ function EditCrewPanel({
       <FormField label="Crew name">
         <input className="run-input" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
       </FormField>
-      <FormField label="Race name">
-        <input className="run-input" value={raceName} maxLength={120} onChange={(event) => setRaceName(event.target.value)} />
-      </FormField>
-      <div className="crew-settings__race-fields">
-        <FormField label="Race date">
-          <input className="run-input" type="date" value={raceDate} onChange={(event) => setRaceDate(event.target.value)} />
-        </FormField>
-        <FormField label="Distance (mi)">
-          <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
-        </FormField>
-      </div>
+      {!isClub && (
+        <>
+          <FormField label="Race name">
+            <input className="run-input" value={raceName} maxLength={120} onChange={(event) => setRaceName(event.target.value)} />
+          </FormField>
+          <div className="crew-settings__race-fields">
+            <FormField label="Race date">
+              <input className="run-input" type="date" value={raceDate} onChange={(event) => setRaceDate(event.target.value)} />
+            </FormField>
+            <FormField label="Distance (mi)">
+              <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
+            </FormField>
+          </div>
+        </>
+      )}
       <FormField label="Build starts">
         <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
       </FormField>
@@ -485,8 +538,12 @@ function CrewSettingsPanel({
           <div>
             <h3>{raceCrew.name}</h3>
             <p>
-              {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
-              {raceCrew.raceDistanceMiles} mi
+              {raceCrew.crewType === "club" ? "Run Club" : (
+                <>
+                  {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate!)} ·{" "}
+                  {raceCrew.raceDistanceMiles} mi
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -613,7 +670,10 @@ function CrewHubList({
                   <span className="crew-settings__crew-option-body">
                     <strong>{raceCrew.name}</strong>
                     <small>
-                      {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
+                      {raceCrew.crewType === "club"
+                        ? "Run Club"
+                        : `${raceCrew.raceName} · ${formatDateLabel(raceCrew.raceDate!)}`}
+                      {" · "}
                       {role === "owner" ? "Owner" : "Member"}
                     </small>
                   </span>

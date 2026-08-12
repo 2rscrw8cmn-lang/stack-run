@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import {
+  createCrew,
   deleteCrew,
   loadCrewAccount,
   updateAccentColor,
@@ -44,6 +45,7 @@ function profilesTable(result: { error: { message: string } | null }) {
 
 const details = {
   name: "  OUC Race Crew  ",
+  crewType: "race" as const,
   raceName: "  OUC Half Marathon  ",
   raceDate: "2026-12-05",
   raceDistanceMiles: 13.1,
@@ -65,6 +67,34 @@ describe("Crew details validation", () => {
     expect(() => validateCrewDetails({ ...details, buildStartDate: "2026-02-30" })).toThrow("valid Build start");
     expect(() => validateCrewDetails({ ...details, buildStartDate: "2026-12-06" })).toThrow("after the race date");
   });
+
+  it("never requires or persists race fields for a Run Club", () => {
+    const club = {
+      name: "  Thursday Run Club  ",
+      crewType: "club" as const,
+      raceName: null,
+      raceDate: null,
+      raceDistanceMiles: null,
+      buildStartDate: "2026-08-01",
+      emblem: DEFAULT_CREW_EMBLEM,
+    };
+    expect(validateCrewDetails(club)).toEqual({
+      ...club,
+      name: "Thursday Run Club",
+    });
+    // Even a caller that fills in leftover race fields never sees them survive.
+    expect(
+      validateCrewDetails({
+        ...club,
+        raceName: "Not A Real Race",
+        raceDate: "2026-12-05",
+        raceDistanceMiles: 13.1,
+      }),
+    ).toEqual({ ...club, name: "Thursday Run Club" });
+    expect(() =>
+      validateCrewDetails({ ...club, buildStartDate: "2026-02-30" }),
+    ).toThrow("valid Build start");
+  });
 });
 
 describe("Crew owner mutations", () => {
@@ -79,6 +109,41 @@ describe("Crew owner mutations", () => {
       p_race_name: "OUC Half Marathon",
       p_race_date: "2026-12-05",
       p_race_distance_miles: 13.1,
+      p_build_start_date: "2026-08-01",
+      p_emblem: encodeCrewEmblem(DEFAULT_CREW_EMBLEM),
+    });
+  });
+
+  it("sends the Crew type on creation, race or club", async () => {
+    const rpc = vi.fn(async () => ({ data: "crew-9", error: null }));
+    const client = { rpc } as unknown as SupabaseClient;
+    await createCrew(client, details);
+
+    expect(rpc).toHaveBeenCalledWith("create_crew", {
+      p_name: "OUC Race Crew",
+      p_crew_type: "race",
+      p_race_name: "OUC Half Marathon",
+      p_race_date: "2026-12-05",
+      p_race_distance_miles: 13.1,
+      p_build_start_date: "2026-08-01",
+      p_emblem: encodeCrewEmblem(DEFAULT_CREW_EMBLEM),
+    });
+
+    await createCrew(client, {
+      name: "Thursday Run Club",
+      crewType: "club",
+      raceName: null,
+      raceDate: null,
+      raceDistanceMiles: null,
+      buildStartDate: "2026-08-01",
+      emblem: DEFAULT_CREW_EMBLEM,
+    });
+    expect(rpc).toHaveBeenLastCalledWith("create_crew", {
+      p_name: "Thursday Run Club",
+      p_crew_type: "club",
+      p_race_name: null,
+      p_race_date: null,
+      p_race_distance_miles: null,
       p_build_start_date: "2026-08-01",
       p_emblem: encodeCrewEmblem(DEFAULT_CREW_EMBLEM),
     });
@@ -160,6 +225,7 @@ function crewRow(id: string, name: string, emblem: string | null) {
     id,
     owner_user_id: "user-1",
     name,
+    crew_type: "race",
     race_name: "Race",
     race_date: "2026-12-05",
     race_distance_miles: 13.1,
@@ -272,5 +338,41 @@ describe("Loading an account with more than one crew", () => {
     expect(account.memberships).toEqual([]);
     expect(account.crew).toBeNull();
     expect(account.takenAccentColors).toEqual([]);
+  });
+
+  it("loads a Run Club with null race fields rather than inventing a race", async () => {
+    const { client } = fakeClient({
+      profiles: [
+        { data: { id: "user-1", display_name: "Runner", accent_color: null }, error: null },
+        { data: [{ id: "user-1", display_name: "Runner", accent_color: null }], error: null },
+      ],
+      crew_members: [
+        { data: [{ crew_id: "club-1", role: "owner", joined_at: "2026-08-01T00:00:00Z" }], error: null },
+        { data: [{ crew_id: "club-1", user_id: "user-1", role: "owner", joined_at: "2026-08-01T00:00:00Z" }], error: null },
+      ],
+      crews: [
+        {
+          data: [{
+            id: "club-1",
+            owner_user_id: "user-1",
+            name: "Thursday Run Club",
+            crew_type: "club",
+            race_name: null,
+            race_date: null,
+            race_distance_miles: null,
+            build_start_date: "2026-08-01",
+            emblem: null,
+          }],
+          error: null,
+        },
+      ],
+      crew_invites: [{ data: [], error: null }],
+    });
+    const account = await loadCrewAccount(client, user, "club-1");
+
+    expect(account.crew?.crewType).toBe("club");
+    expect(account.crew?.raceName).toBeNull();
+    expect(account.crew?.raceDate).toBeNull();
+    expect(account.crew?.raceDistanceMiles).toBeNull();
   });
 });

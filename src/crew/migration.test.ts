@@ -12,6 +12,8 @@ import buildStartMigration from "../../supabase/migrations/20260812170000_crew_b
 import buildStartVerification from "../../supabase/tests/0008_crew_build_start_date.sql?raw";
 import unwindowedMigration from "../../supabase/migrations/20260812190000_member_build_unwindowed_history.sql?raw";
 import unwindowedVerification from "../../supabase/tests/0009_member_build_unwindowed_history.sql?raw";
+import crewTypeMigration from "../../supabase/migrations/20260812220000_crew_type_run_club.sql?raw";
+import crewTypeVerification from "../../supabase/tests/0011_crew_type_run_club.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -235,5 +237,55 @@ describe("Member Build unwindowed history SQL (D-071)", () => {
     expect(unwindowedVerification).toMatch(/in-window run failed to place on the Crew Build/i);
     expect(unwindowedVerification).toMatch(/pre-window Member Build update was rejected or leaked into the Crew Build/i);
     expect(unwindowedVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew type / Run Club SQL", () => {
+  it("adds a constrained crew_type column, backfilling existing rows to race", () => {
+    expect(crewTypeMigration).toMatch(
+      /add column if not exists crew_type text not null default 'race'\s*\n\s*check \(crew_type in \('race', 'club'\)\)/i,
+    );
+  });
+
+  it("makes race fields nullable and enforces them only for the matching type", () => {
+    expect(crewTypeMigration).toMatch(/alter column race_name drop not null/i);
+    expect(crewTypeMigration).toMatch(/alter column race_date drop not null/i);
+    expect(crewTypeMigration).toMatch(/alter column race_distance_miles drop not null/i);
+    expect(crewTypeMigration).toMatch(/add constraint crews_race_fields_match_type/i);
+    expect(crewTypeMigration).toMatch(
+      /crew_type = 'race'[\s\S]*race_name is not null[\s\S]*race_date is not null[\s\S]*race_distance_miles is not null/i,
+    );
+    expect(crewTypeMigration).toMatch(
+      /crew_type = 'club'[\s\S]*race_name is null[\s\S]*race_date is null[\s\S]*race_distance_miles is null/i,
+    );
+  });
+
+  it("never invents a fake race for a club, in either create_crew or update_crew", () => {
+    expect(crewTypeMigration).toMatch(
+      /create function public\.create_crew\(\s*p_name text,\s*p_crew_type text,/i,
+    );
+    expect(crewTypeMigration).toMatch(
+      /case when v_crew_type = 'race' then trim\(p_race_name\) else null end/i,
+    );
+    expect(crewTypeMigration).toMatch(
+      /race_name = case when v_crew_type = 'race' then trim\(p_race_name\) else null end/i,
+    );
+    // update_crew reads the Crew's own stored type rather than trusting the caller.
+    expect(crewTypeMigration).toMatch(
+      /select build_start_date, crew_type into v_old_start, v_crew_type/i,
+    );
+  });
+
+  it("carries crew_type through the invite preview without inventing race facts for a club", () => {
+    expect(crewTypeMigration).toMatch(/drop function if exists public\.preview_crew_invite\(text\)/i);
+    expect(crewTypeMigration).toMatch(/crew_type text,\s*\n\s*race_name text,/i);
+  });
+
+  it("ships transactional verification for club creation, editing and invites", () => {
+    expect(crewTypeVerification).toMatch(/a Run Club was given fake\/default race data/i);
+    expect(crewTypeVerification).toMatch(/a race Crew was created without race fields/i);
+    expect(crewTypeVerification).toMatch(/editing a Run Club changed its crew_type/i);
+    expect(crewTypeVerification).toMatch(/invite preview invented race facts for a Run Club/i);
+    expect(crewTypeVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

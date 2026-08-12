@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarCheck2,
+  CalendarDays,
   ChevronDown,
   History,
   Layers3,
@@ -26,16 +27,18 @@ import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import { Sheet } from "../../components/ui/Sheet";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { CrewBuildRun, CrewMemberSummary } from "../../crew/types";
+import type { CrewBuildRun, CrewType } from "../../crew/types";
 import {
   comparisonBarPercent,
   comparisonValue,
   orderedComparisonRows,
   type ComparisonMetric,
+  type ComparisonSummary,
 } from "../../crew/comparisons";
 import { crewFreshness } from "../../crew/freshness";
 import { crewMemberAccent } from "../../crew/memberAccent";
-import { crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import { runDaysByUserId, RUN_DAYS_WINDOW } from "../../crew/runDays";
 import {
   canPlaceCrewBuildBlock,
   crewBuildPlacementOptions,
@@ -63,20 +66,42 @@ const METRIC_LABEL: Record<ComparisonMetric, string> = {
   "weekly-miles": "Weekly Miles",
   "longest-run": "Longest Run",
   consistency: "Consistency",
+  "run-days": "Run Days",
   "miles-built": "Miles Built",
 };
 
-const METRICS: Array<{
+type MetricDescriptor = {
   id: ComparisonMetric;
   shortLabel: string;
   window: string;
   Icon: LucideIcon;
-}> = [
-  { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 },
-  { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
+};
+
+const WEEKLY_MILES_METRIC: MetricDescriptor =
+  { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 };
+const LONGEST_RUN_METRIC: MetricDescriptor =
+  { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain };
+const MILES_BUILT_METRIC: MetricDescriptor =
+  { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 };
+
+// Race Crew comparisons keep Consistency, which needs a training plan. Run
+// Club has no plan to measure against, so Run Days takes the same slot.
+const RACE_METRICS: MetricDescriptor[] = [
+  WEEKLY_MILES_METRIC,
+  LONGEST_RUN_METRIC,
   { id: "consistency", shortLabel: "Consist", window: "Recent plan weeks", Icon: CalendarCheck2 },
-  { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 },
+  MILES_BUILT_METRIC,
 ];
+const CLUB_METRICS: MetricDescriptor[] = [
+  WEEKLY_MILES_METRIC,
+  LONGEST_RUN_METRIC,
+  { id: "run-days", shortLabel: "Days", window: `Trailing ${RUN_DAYS_WINDOW} days`, Icon: CalendarDays },
+  MILES_BUILT_METRIC,
+];
+
+function metricsForCrewType(crewType: CrewType): MetricDescriptor[] {
+  return crewType === "club" ? CLUB_METRICS : RACE_METRICS;
+}
 
 interface CrewScreenProps {
   crew: RaceCrewController | null;
@@ -85,13 +110,19 @@ interface CrewScreenProps {
   today?: string;
 }
 
-function formattedComparison(metric: ComparisonMetric, summary: CrewMemberSummary | null) {
+function formattedComparison(metric: ComparisonMetric, summary: ComparisonSummary | null) {
   const value = comparisonValue(metric, summary);
   if (value === null || !summary) return { value: "—", detail: null };
   if (metric === "consistency") {
     return {
       value: `${Math.round(value * 100)}%`,
       detail: `${summary.consistencyCompleted} / ${summary.consistencyDue}`,
+    };
+  }
+  if (metric === "run-days") {
+    return {
+      value: `${value}`,
+      detail: `of ${RUN_DAYS_WINDOW} days`,
     };
   }
   return {
@@ -249,6 +280,11 @@ export function CrewScreen({
 
   const dashboardData = crew.crewData;
   const members = dashboardData.members;
+  const metrics = metricsForCrewType(currentCrew.crewType);
+  // Consistency needs a plan and Run Days needs a Run Club: switching crews
+  // (or a metric no longer offered) falls back to the first tab rather than
+  // rendering a tab that isn't shown.
+  const activeMetric = metrics.some((item) => item.id === metric) ? metric : metrics[0].id;
   const placedMilesByUserId = new Map<string, number>();
   for (const block of crewBuild.blocks) {
     placedMilesByUserId.set(
@@ -256,11 +292,13 @@ export function CrewScreen({
       (placedMilesByUserId.get(block.userId) ?? 0) + block.distanceMiles,
     );
   }
-  const comparisonSummaries = dashboardData.summaries.map((summary) => ({
+  const runDays = runDaysByUserId(dashboardData.runs, today);
+  const comparisonSummaries: ComparisonSummary[] = dashboardData.summaries.map((summary) => ({
     ...summary,
     milesBuilt: placedMilesByUserId.get(summary.userId) ?? 0,
+    runDays: runDays.get(summary.userId) ?? 0,
   }));
-  const comparisonRows = orderedComparisonRows(metric, members, comparisonSummaries);
+  const comparisonRows = orderedComparisonRows(activeMetric, members, comparisonSummaries);
   const freshness = crewFreshness(dashboardData.summaries);
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
   const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
@@ -274,11 +312,20 @@ export function CrewScreen({
     dashboardData.summaries.map((summary) => [summary.userId, summary] as const),
   );
   const maxDisplayedValue = comparisonRows.reduce((maximum, row) => {
-    const value = comparisonValue(metric, row.summary);
+    const value = comparisonValue(activeMetric, row.summary);
     return value === null ? maximum : Math.max(maximum, value);
   }, 0);
-  const raceLine = crewRaceLine(currentCrew);
-  const countdown = raceCountdown(currentCrew.raceDate, today);
+  // Race Crew leads with the race and its countdown; a Run Club has neither,
+  // so it states a compact non-race context instead — never both, never
+  // a fabricated countdown for a Crew with no race.
+  const isRaceCrew = currentCrew.crewType === "race";
+  const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
+  const countdown = isRaceCrew && currentCrew.raceDate
+    ? raceCountdown(currentCrew.raceDate, today)
+    : null;
+  const contextLine = isRaceCrew
+    ? [raceLine, countdown?.label].filter(Boolean).join(" · ")
+    : crewClubLine(currentCrew);
   const build = {
     ...crewBuild,
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
@@ -349,17 +396,17 @@ export function CrewScreen({
   ) {
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      nextIndex = (currentIndex + 1) % METRICS.length;
+      nextIndex = (currentIndex + 1) % metrics.length;
     } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      nextIndex = (currentIndex - 1 + METRICS.length) % METRICS.length;
+      nextIndex = (currentIndex - 1 + metrics.length) % metrics.length;
     } else if (event.key === "Home") {
       nextIndex = 0;
     } else if (event.key === "End") {
-      nextIndex = METRICS.length - 1;
+      nextIndex = metrics.length - 1;
     }
     if (nextIndex === null) return;
     event.preventDefault();
-    setMetric(METRICS[nextIndex].id);
+    setMetric(metrics[nextIndex].id);
     metricRefs.current[nextIndex]?.focus();
   }
 
@@ -388,9 +435,9 @@ export function CrewScreen({
                   <ChevronDown aria-hidden="true" size={18} strokeWidth={2} />
                 </button>
               </h1>
-              {(raceLine || countdown) && (
+              {contextLine && (
                 <p className="crew-view__race machine-label" data-kind={countdown?.kind}>
-                  {[raceLine, countdown?.label].filter(Boolean).join(" · ")}
+                  {contextLine}
                 </p>
               )}
             </div>
@@ -403,9 +450,9 @@ export function CrewScreen({
               />
               <div className="crew-view__identity">
                 <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
-                {(raceLine || countdown) && (
+                {contextLine && (
                   <p className="crew-view__race machine-label" data-kind={countdown?.kind}>
-                    {[raceLine, countdown?.label].filter(Boolean).join(" · ")}
+                    {contextLine}
                   </p>
                 )}
               </div>
@@ -487,18 +534,18 @@ export function CrewScreen({
 
       <section
         className="crew-comparison"
-        data-metric={metric}
+        data-metric={activeMetric}
         aria-labelledby="crew-comparison-title"
       >
         <div className="crew-comparison__heading">
-          <h2 id="crew-comparison-title">{METRIC_LABEL[metric]}</h2>
+          <h2 id="crew-comparison-title">{METRIC_LABEL[activeMetric]}</h2>
           <p className="crew-comparison__window machine-label">
-            {METRICS.find((item) => item.id === metric)?.window}
+            {metrics.find((item) => item.id === activeMetric)?.window}
           </p>
         </div>
 
         <div className="crew-comparison__selector" role="tablist" aria-label="Comparison metric">
-          {METRICS.map(({ id, Icon }, index) => (
+          {metrics.map(({ id, Icon }, index) => (
             <button
               key={id}
               ref={(element) => { metricRefs.current[index] = element; }}
@@ -506,9 +553,9 @@ export function CrewScreen({
               type="button"
               role="tab"
               aria-label={METRIC_LABEL[id]}
-              aria-selected={metric === id}
+              aria-selected={activeMetric === id}
               aria-controls="crew-comparison-chart"
-              tabIndex={metric === id ? 0 : -1}
+              tabIndex={activeMetric === id ? 0 : -1}
               data-metric={id}
               onClick={() => setMetric(id)}
               onKeyDown={(event) => changeMetricFromKeyboard(event, index)}
@@ -521,16 +568,16 @@ export function CrewScreen({
         <div
           id="crew-comparison-chart"
           role="tabpanel"
-          aria-labelledby={`crew-metric-${metric}`}
+          aria-labelledby={`crew-metric-${activeMetric}`}
         >
           <ol
             className="crew-comparison__rows"
-            aria-label={`${METRIC_LABEL[metric]} comparison`}
+            aria-label={`${METRIC_LABEL[activeMetric]} comparison`}
           >
             {comparisonRows.map(({ member, summary }) => {
-              const formatted = formattedComparison(metric, summary);
+              const formatted = formattedComparison(activeMetric, summary);
               const isYou = member.userId === currentUserId;
-              const percent = comparisonBarPercent(metric, summary, maxDisplayedValue);
+              const percent = comparisonBarPercent(activeMetric, summary, maxDisplayedValue);
               const barStyle = { "--crew-bar-value": `${percent}%` } as CSSProperties;
               return (
                 <li
@@ -552,7 +599,7 @@ export function CrewScreen({
                   <span
                     className="crew-comparison__bar"
                     data-empty={percent === 0 || undefined}
-                    data-unavailable={comparisonValue(metric, summary) === null || undefined}
+                    data-unavailable={comparisonValue(activeMetric, summary) === null || undefined}
                     style={barStyle}
                     aria-hidden="true"
                   >

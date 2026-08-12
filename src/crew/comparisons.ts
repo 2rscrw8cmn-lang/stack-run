@@ -4,21 +4,32 @@ export type ComparisonMetric =
   | "weekly-miles"
   | "longest-run"
   | "consistency"
+  | "run-days"
   | "miles-built";
+
+/**
+ * The raw synced summary plus Run Days, computed by the screen from actual
+ * shared runs rather than a training plan. Race Crew comparisons never read
+ * `runDays`; Run Club comparisons never read `consistencyCompleted/Due`.
+ */
+export interface ComparisonSummary extends CrewMemberSummary {
+  runDays: number;
+}
 
 export interface ComparisonRow {
   member: CrewMember;
-  summary: CrewMemberSummary | null;
+  summary: ComparisonSummary | null;
 }
 
 export function comparisonValue(
   metric: ComparisonMetric,
-  summary: CrewMemberSummary | null,
+  summary: ComparisonSummary | null,
 ): number | null {
   if (!summary) return null;
   if (metric === "weekly-miles") return summary.weeklyMiles;
   if (metric === "longest-run") return summary.longestRun28dMiles;
   if (metric === "miles-built") return summary.milesBuilt;
+  if (metric === "run-days") return summary.runDays;
   return summary.consistencyDue > 0
     ? summary.consistencyCompleted / summary.consistencyDue
     : null;
@@ -27,7 +38,7 @@ export function comparisonValue(
 /** Graphic support for the visible value; consistency keeps its natural 0–100 scale. */
 export function comparisonBarPercent(
   metric: ComparisonMetric,
-  summary: CrewMemberSummary | null,
+  summary: ComparisonSummary | null,
   maxDisplayedValue: number,
 ): number {
   const value = comparisonValue(metric, summary);
@@ -41,7 +52,7 @@ export function comparisonBarPercent(
 export function orderedComparisonRows(
   metric: ComparisonMetric,
   members: readonly CrewMember[],
-  summaries: readonly CrewMemberSummary[],
+  summaries: readonly ComparisonSummary[],
 ): ComparisonRow[] {
   const byUser = new Map(summaries.map((summary) => [summary.userId, summary]));
   return members

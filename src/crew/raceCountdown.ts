@@ -29,23 +29,34 @@ export function raceCountdown(
   };
 }
 
-/** `Half Marathon · Dec 5`, falling back to the distance when unnamed. */
+/** `Half Marathon · Dec 5`, falling back to the distance when unnamed. Nullable-safe: a Run Club has no race to describe. */
 export function crewRaceLine(crew: {
-  raceName: string;
-  raceDate: string;
-  raceDistanceMiles: number;
+  raceName: string | null;
+  raceDate: string | null;
+  raceDistanceMiles: number | null;
 }): string {
   const facts: string[] = [];
-  const name = crew.raceName.trim();
+  const name = crew.raceName?.trim();
   if (name) {
     facts.push(name);
-  } else if (crew.raceDistanceMiles > 0) {
+  } else if (crew.raceDistanceMiles !== null && crew.raceDistanceMiles > 0) {
     facts.push(`${Number(crew.raceDistanceMiles.toFixed(2))} mi`);
   }
-  try {
-    facts.push(formatDateLabel(crew.raceDate, { month: "short", day: "numeric" }));
-  } catch {
-    // An unreadable stored date simply drops out of the line.
+  if (crew.raceDate) {
+    try {
+      facts.push(formatDateLabel(crew.raceDate, { month: "short", day: "numeric" }));
+    } catch {
+      // An unreadable stored date simply drops out of the line.
+    }
   }
   return facts.join(" · ");
+}
+
+/** `Building since Aug 1` — the Run Club header's compact, non-race context. */
+export function crewClubLine(crew: { buildStartDate: string }): string {
+  try {
+    return `Building since ${formatDateLabel(crew.buildStartDate, { month: "short", day: "numeric" })}`;
+  } catch {
+    return "";
+  }
 }
