@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarCheck2,
+  ChevronDown,
   History,
   Layers3,
   Mountain,
@@ -23,6 +24,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
+import { Sheet } from "../../components/ui/Sheet";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import type { CrewBuildRun, CrewMemberSummary } from "../../crew/types";
 import {
@@ -142,6 +144,7 @@ export function CrewScreen({
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
+  const [isCrewPickerOpen, setCrewPickerOpen] = useState(false);
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
   const [placementSelection, setPlacementSelection] = useState<CrewBuildPlacement | null>(null);
   const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
@@ -149,6 +152,7 @@ export function CrewScreen({
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
   const memberships = crew?.account?.memberships ?? [];
+  const canSwitchCrews = memberships.length > 1;
   const currentUserId = crew?.account?.profile.id;
   const crewStatus = crew?.status;
   const refreshCrewData = crew?.refreshCrewData;
@@ -366,43 +370,47 @@ export function CrewScreen({
         card: the visual weight below it belongs to the Crew Build.
       */}
       <header className="crew-view__lead">
-        {/*
-          The switcher only appears for a runner who actually has more than one
-          crew: a single-crew runner should never be asked to choose.
-        */}
-        {memberships.length > 1 && (
-          <nav className="crew-view__switcher" aria-label="Your crews">
-            <ul>
-              {memberships.map(({ crew: option }) => (
-                <li key={option.id}>
-                  <button
-                    type="button"
-                    aria-pressed={option.id === currentCrew.id}
-                    disabled={crew.busy}
-                    onClick={() => void crew.switchCrew(option.id)}
-                  >
-                    <CrewEmblem emblem={option.emblem} size={22} />
-                    <span>{option.name}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
-        <div className="crew-view__lead-row">
-          <CrewEmblem
-            className="crew-view__emblem"
-            emblem={currentCrew.emblem}
-            size={46}
-          />
-          <div className="crew-view__identity">
-            <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
-            {(raceLine || countdown) && (
-              <p className="crew-view__race machine-label" data-kind={countdown?.kind}>
-                {[raceLine, countdown?.label].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </div>
+        <div className={`crew-view__lead-row${canSwitchCrews ? " crew-view__lead-row--picker" : ""}`}>
+          {canSwitchCrews ? (
+            <div className="crew-view__identity">
+              <h1 className="crew-view__name data-value">
+                <button
+                  type="button"
+                  className="crew-view__picker-trigger"
+                  aria-label={`Choose crew: ${currentCrew.name}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={isCrewPickerOpen}
+                  disabled={crew.busy}
+                  onClick={() => setCrewPickerOpen(true)}
+                >
+                  <CrewEmblem emblem={currentCrew.emblem} size={46} />
+                  <span>{currentCrew.name}</span>
+                  <ChevronDown aria-hidden="true" size={18} strokeWidth={2} />
+                </button>
+              </h1>
+              {(raceLine || countdown) && (
+                <p className="crew-view__race machine-label" data-kind={countdown?.kind}>
+                  {[raceLine, countdown?.label].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <CrewEmblem
+                className="crew-view__emblem"
+                emblem={currentCrew.emblem}
+                size={46}
+              />
+              <div className="crew-view__identity">
+                <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
+                {(raceLine || countdown) && (
+                  <p className="crew-view__race machine-label" data-kind={countdown?.kind}>
+                    {[raceLine, countdown?.label].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
           <IconButton
             className="crew-view__refresh"
             label="Refresh crew data"
@@ -419,6 +427,39 @@ export function CrewScreen({
           />
         </div>
       </header>
+
+      {canSwitchCrews && isCrewPickerOpen && (
+        <Sheet
+          title="Choose Crew"
+          isOpen
+          onClose={() => setCrewPickerOpen(false)}
+          className="crew-picker"
+        >
+          <ul className="crew-picker__list" aria-label="Your crews">
+            {memberships.map(({ crew: option }) => {
+              const isCurrentCrew = option.id === currentCrew.id;
+              return (
+                <li key={option.id}>
+                  <button
+                    type="button"
+                    className="crew-picker__option"
+                    aria-pressed={isCurrentCrew}
+                    disabled={crew.busy}
+                    onClick={() => {
+                      setCrewPickerOpen(false);
+                      if (!isCurrentCrew) void crew.switchCrew(option.id);
+                    }}
+                  >
+                    <CrewEmblem emblem={option.emblem} size={34} />
+                    <span>{option.name}</span>
+                    {isCurrentCrew && <span className="machine-label">Current</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </Sheet>
+      )}
 
       <CrewBuild
         model={build}

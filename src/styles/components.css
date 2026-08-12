@@ -5850,7 +5850,7 @@ textarea.run-input {
 
 /* The crew identity is a standing line, not a card: the weight below it
    belongs to the Crew Build. */
-.crew-view__lead { min-width: 0; display: grid; gap: 10px; }
+.crew-view__lead { min-width: 0; }
 .crew-view__lead-row {
   min-width: 0;
   display: grid;
@@ -5859,48 +5859,78 @@ textarea.run-input {
   gap: 10px;
 }
 .crew-view__emblem { align-self: center; }
+.crew-view__lead-row--picker { grid-template-columns: minmax(0, 1fr) auto; }
+.crew-view__identity { min-width: 0; }
+.crew-view__identity p,
+.crew-view__identity h1 { margin: 0; }
+.crew-view__identity > .machine-label { color: var(--text-subtle); }
 
-/* One row of crews, only for a runner who is in more than one. */
-.crew-view__switcher { min-width: 0; }
-.crew-view__switcher ul {
+/* The active Crew identity is the multi-crew entry point, so it earns no
+   permanent row of duplicate names above the shared Build. */
+.crew-view__picker-trigger {
+  width: 100%;
   min-width: 0;
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-.crew-view__switcher ul::-webkit-scrollbar { display: none; }
-.crew-view__switcher button {
-  flex: 0 0 auto;
-  min-height: 38px;
-  max-width: 190px;
-  display: inline-flex;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-2);
-  padding-inline: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.crew-view__switcher button span {
+.crew-view__picker-trigger > span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.crew-view__switcher button[aria-pressed="true"] {
+.crew-view__picker-trigger > svg:last-child { color: var(--text-muted); }
+.crew-view__picker-trigger:disabled { cursor: wait; opacity: 0.6; }
+.crew-view__picker-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* A list reset is intentional: browser bullets have no place in a picker. */
+.crew-picker__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-picker__option {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.crew-picker__option > span:not(.machine-label) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crew-picker__option .machine-label { color: var(--text-subtle); }
+.crew-picker__option[aria-pressed="true"] {
   border-color: var(--data-border);
   background: var(--data-surface-strong);
-  color: var(--text);
 }
-.crew-view__switcher button:disabled { cursor: wait; opacity: 0.6; }
-.crew-view__identity { min-width: 0; }
-.crew-view__identity p,
-.crew-view__identity h1 { margin: 0; }
-.crew-view__identity > .machine-label { color: var(--text-subtle); }
+.crew-picker__option:disabled { cursor: wait; opacity: 0.6; }
 
 .crew-view__name {
   margin-top: 4px !important;

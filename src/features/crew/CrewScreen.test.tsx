@@ -923,37 +923,42 @@ describe("Switching between crews", () => {
     });
   }
 
-  it("offers no switcher to a runner with a single crew", () => {
+  it("offers no crew-switch affordance to a runner with a single crew", () => {
     openCrew();
-    expect(screen.queryByRole("navigation", { name: "Your crews" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Choose crew:/ })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "OUC Half Crew" })).toBeInTheDocument();
   });
 
-  it("lists every crew and marks the one being viewed", () => {
-    openCrew(inTwoCrews());
-    const switcher = within(screen.getByRole("navigation", { name: "Your crews" }));
+  it("opens a compact picker from the active Crew identity and marks the one being viewed", async () => {
+    const user = openCrew(inTwoCrews());
+    expect(screen.queryByRole("dialog", { name: "Choose Crew" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Choose crew: OUC Half Crew" }));
+    const picker = within(screen.getByRole("dialog", { name: "Choose Crew" }));
+    const crews = within(picker.getByRole("list", { name: "Your crews" }));
 
-    expect(switcher.getByRole("button", { name: "OUC Half Crew" })).toHaveAttribute(
+    expect(crews.getByRole("button", { name: /OUC Half Crew.*Current/ })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(switcher.getByRole("button", { name: "Trail Crew" })).toHaveAttribute(
+    expect(crews.getByRole("button", { name: "Trail Crew" })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
+    expect(picker.getByRole("list", { name: "Your crews" })).toHaveClass("crew-picker__list");
   });
 
-  it("asks the controller for the crew the runner picked", async () => {
+  it("asks the controller for the crew picked and closes the picker", async () => {
     const switchCrew = vi.fn(async () => undefined);
     const user = openCrew(inTwoCrews({ switchCrew }));
 
+    await user.click(screen.getByRole("button", { name: "Choose crew: OUC Half Crew" }));
     await user.click(screen.getByRole("button", { name: "Trail Crew" }));
     expect(switchCrew).toHaveBeenCalledWith("crew-2");
+    expect(screen.queryByRole("dialog", { name: "Choose Crew" })).not.toBeInTheDocument();
   });
 
   it("shows the viewed crew's own emblem beside its name", () => {
     openCrew(inTwoCrews());
-    // One emblem in the header, one per switcher chip.
-    expect(document.querySelectorAll(".crew-emblem")).toHaveLength(3);
+    expect(document.querySelectorAll(".crew-emblem")).toHaveLength(1);
   });
 });
