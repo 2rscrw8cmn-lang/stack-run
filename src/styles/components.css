@@ -5642,6 +5642,14 @@ textarea.run-input {
 }
 
 .crew-settings__emblem-field { display: grid; gap: var(--space-2); }
+.crew-settings__emblem-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+}
 
 /* The emblem designer: a live mark, five recipes, then the four parts. */
 /* Grid and flex children default to a min-content floor, which a row that is
@@ -5652,41 +5660,22 @@ textarea.run-input {
 .crew-emblem-builder__stage {
   display: grid;
   place-items: center;
-  min-height: 180px;
-  padding: var(--space-3);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-height: 118px;
+  padding: var(--space-2);
   border: 1px solid var(--data-border);
   background-color: var(--data-surface);
 }
-.crew-emblem-builder__presets {
-  min-width: 0;
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-.crew-emblem-builder__presets::-webkit-scrollbar { display: none; }
-.crew-emblem-builder__preset {
-  flex: 0 0 auto;
-  min-height: 34px;
-  padding-inline: var(--space-3);
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-  color: var(--text-muted);
-  font-family: var(--font-data);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.crew-emblem-builder__preset[aria-pressed="true"] {
-  border-color: var(--data-border);
-  color: var(--text);
-}
-
 .crew-emblem-builder__sections { display: grid; gap: var(--space-2); }
-.crew-emblem-builder__row { display: grid; gap: 4px; }
+.crew-emblem-builder__row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+.crew-emblem-builder__row .machine-label { margin: 0; }
 .crew-emblem-builder__selector {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
@@ -5721,10 +5710,24 @@ textarea.run-input {
   border-color: var(--data-border);
   background: var(--data-surface-strong);
 }
-.crew-emblem-builder__option span { min-width: 0; overflow-wrap: anywhere; }
-.crew-emblem-builder__mark { width: 54px; height: 30px; }
+.crew-emblem-builder__option-label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.crew-emblem-builder__mark { width: 44px; height: 30px; }
+.crew-emblem-builder__color-indicator {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+}
 
 .crew-emblem-builder__colors { display: grid; gap: var(--space-2); }
+.crew-emblem-builder ul { margin: 0; padding: 0; list-style: none; }
 .crew-emblem-builder__colors ul {
   display: flex;
   flex-wrap: wrap;
@@ -5744,6 +5747,11 @@ textarea.run-input {
 .crew-emblem-builder__swatch[data-emblem-color="3"] { background: #a14cff; }
 .crew-emblem-builder__swatch[data-emblem-color="4"] { background: #f6f7f8; }
 .crew-emblem-builder__swatch[aria-pressed="true"] { border-color: var(--text); }
+.crew-emblem-builder__color-indicator[data-emblem-color="0"] { background: #a6ff1a; }
+.crew-emblem-builder__color-indicator[data-emblem-color="1"] { background: #287dff; }
+.crew-emblem-builder__color-indicator[data-emblem-color="2"] { background: #ffd21a; }
+.crew-emblem-builder__color-indicator[data-emblem-color="3"] { background: #a14cff; }
+.crew-emblem-builder__color-indicator[data-emblem-color="4"] { background: #f6f7f8; }
 
 .crew-emblem-builder__random {
   justify-self: start;

@@ -244,11 +244,17 @@ function EditCrewPanel({
   raceCrew,
   onCancel,
   onSaved,
+  emblemEditorOpen,
+  onEditEmblem,
+  onCloseEmblemEditor,
 }: {
   crew: RaceCrewController;
   raceCrew: RaceCrew;
   onCancel: () => void;
   onSaved: () => void;
+  emblemEditorOpen: boolean;
+  onEditEmblem: () => void;
+  onCloseEmblemEditor: () => void;
 }) {
   const [name, setName] = useState(raceCrew.name);
   const [raceName, setRaceName] = useState(raceCrew.raceName);
@@ -307,6 +313,17 @@ function EditCrewPanel({
     );
   }
 
+  if (emblemEditorOpen) {
+    return (
+      <section className="crew-settings__section crew-emblem-editor">
+        <CrewEmblemBuilder emblem={emblem} onChange={setEmblem} />
+        <Button variant="secondary" onClick={onCloseEmblemEditor}>
+          Done
+        </Button>
+      </section>
+    );
+  }
+
   return (
     <section className="crew-settings__section">
       <FormField label="Crew name">
@@ -327,16 +344,28 @@ function EditCrewPanel({
         <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
       </FormField>
       <p className="crew-settings__note">Runs on or after this date can contribute to the Crew Build.</p>
-      <div className="crew-settings__emblem-field">
-        <p className="form-field__label">Crew emblem</p>
-        <CrewEmblemBuilder emblem={emblem} onChange={setEmblem} />
-      </div>
+      <EmblemField emblem={emblem} onEdit={onEditEmblem} />
       {validationError && <p role="alert" className="crew-settings__message crew-settings__message--error">{validationError}</p>}
       <div className="crew-settings__form-actions">
         <Button isLoading={crew.busy} onClick={() => void save()}>Save Changes</Button>
         <Button variant="secondary" disabled={crew.busy} onClick={onCancel}>Cancel</Button>
       </div>
     </section>
+  );
+}
+
+/** The parent Sheet swaps to a compact emblem sub-view when this is opened. */
+function EmblemField({ emblem, onEdit }: { emblem: CrewEmblemModel; onEdit: () => void }) {
+  return (
+    <div className="crew-settings__emblem-field">
+      <p className="form-field__label">Crew emblem</p>
+      <div className="crew-settings__emblem-summary">
+        <CrewEmblem emblem={emblem} size={56} label="Current crew emblem" />
+        <Button variant="secondary" icon={<Pencil size={18} />} onClick={onEdit}>
+          Edit Emblem
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -602,7 +631,7 @@ function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
 
 export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
   const signedIn = crew.status === "signed-in";
-  const [view, setView] = useState<"main" | "edit" | "delete">("main");
+  const [view, setView] = useState<"main" | "edit" | "emblem" | "delete">("main");
   const [creatingSince, setCreatingSince] = useState<number | null>(null);
   const raceCrew = crew.account?.crew ?? null;
   const visibleView = crew.account?.role === "owner" && raceCrew ? view : "main";
@@ -614,7 +643,7 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
 
   return (
     <Sheet
-      title={visibleView === "edit" ? "Edit Crew" : visibleView === "delete" ? "Delete Crew" : "Account & Crew"}
+      title={visibleView === "emblem" ? "Edit Emblem" : visibleView === "edit" ? "Edit Crew" : visibleView === "delete" ? "Delete Crew" : "Account & Crew"}
       isOpen={isOpen}
       onClose={() => {
         setView("main");
@@ -623,12 +652,15 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
       className="crew-settings-sheet"
     >
       <div className="crew-settings">
-        {visibleView === "edit" && raceCrew && (
+        {(visibleView === "edit" || visibleView === "emblem") && raceCrew && (
           <EditCrewPanel
             crew={crew}
             raceCrew={raceCrew}
             onCancel={() => setView("main")}
             onSaved={() => setView("main")}
+            emblemEditorOpen={visibleView === "emblem"}
+            onEditEmblem={() => setView("emblem")}
+            onCloseEmblemEditor={() => setView("edit")}
           />
         )}
 

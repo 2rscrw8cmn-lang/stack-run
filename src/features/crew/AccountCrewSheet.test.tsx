@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { CREW_EMBLEM_PRESETS, DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
+import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
 import type { LoadedCrewAccount, RaceCrew } from "../../crew/types";
 import { todayLocalDate } from "../../domain/dates";
 import { AccountCrewSheet } from "./AccountCrewSheet";
@@ -523,7 +523,9 @@ describe("Crew emblems", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
     await user.click(screen.getByRole("button", { name: "Next core shape" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
     expect(updateCrew).toHaveBeenCalledWith(
@@ -540,26 +542,28 @@ describe("Crew emblems", () => {
     );
   });
 
-  it("applies a preset to every part at once", async () => {
-    const updateCrew = vi.fn(async () => true);
+  it("keeps all four compact controls in the dedicated editor without presets", async () => {
     const user = userEvent.setup();
     render(
       <AccountCrewSheet
         isOpen
         onClose={vi.fn()}
         localRace={null}
-        crew={controller({ status: "signed-in", account: ownerAccount, updateCrew })}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
       />,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
-    await user.click(screen.getByRole("button", { name: "TOTEM" }));
-    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(screen.getByRole("img", { name: "Current crew emblem" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Crew emblem preview" })).not.toBeInTheDocument();
 
-    expect(updateCrew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        emblem: CREW_EMBLEM_PRESETS.find((preset) => preset.name === "TOTEM")?.emblem,
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
+    expect(screen.getByRole("heading", { name: "Edit Emblem" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Crew emblem preview" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous crown shape" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous core shape" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous base shape" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous frame shape" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "TOTEM" })).not.toBeInTheDocument();
   });
 });
