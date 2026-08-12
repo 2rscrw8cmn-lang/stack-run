@@ -38,20 +38,11 @@ interface ServerSharedRunFact {
   distanceMiles: number;
 }
 
-/** Converts the authoritative membership timestamp in the viewer's local zone. */
-export function joinedLocalDate(joinedAt: string): string {
-  const joined = new Date(joinedAt);
-  if (!Number.isFinite(joined.getTime())) {
-    throw new Error("Race Crew returned an invalid membership date.");
-  }
-  return formatLocalDate(joined);
-}
-
 export function isCrewEligibleLocalDate(
   localDate: string,
-  membershipDate: string,
+  buildStartDate: string,
 ): boolean {
-  return compareLocalDates(localDate, membershipDate) >= 0;
+  return compareLocalDates(localDate, buildStartDate) >= 0;
 }
 
 function roundMiles(value: number): number {
@@ -110,7 +101,7 @@ export function projectSharedRun(
 export function projectSharedRuns(
   runLogs: readonly RunLog[],
   placements: readonly BlockPlacement[] = [],
-  membershipDate?: string,
+  buildStartDate?: string,
 ): CrewSharedRunProjection[] {
   const placementsByRunId = new Map(
     placements.map((placement) => [placement.runLogId, placement] as const),
@@ -118,8 +109,8 @@ export function projectSharedRuns(
   return runLogs
     .filter(
       (run) =>
-        membershipDate === undefined ||
-        isCrewEligibleLocalDate(run.completedDate, membershipDate),
+        buildStartDate === undefined ||
+        isCrewEligibleLocalDate(run.completedDate, buildStartDate),
     )
     .map((run) => projectSharedRun(run, placementsByRunId.get(run.id)));
 }
@@ -127,15 +118,15 @@ export function projectSharedRuns(
 export function projectMemberSummary(
   state: AppState,
   today: string,
-  membershipDate?: string,
+  buildStartDate?: string,
 ): CrewMemberSummaryProjection {
   const weekStart = mondayOfLocalDate(today);
   const weekEnd = addDaysToLocalDate(weekStart, 6);
   const trailingStart = addDaysToLocalDate(today, -27);
   const eligibleRuns = state.runLogs.filter(
     (run) =>
-      membershipDate === undefined ||
-      isCrewEligibleLocalDate(run.completedDate, membershipDate),
+      buildStartDate === undefined ||
+      isCrewEligibleLocalDate(run.completedDate, buildStartDate),
   );
   const weeklyRuns = eligibleRuns.filter((run) =>
     inRange(run.completedDate, weekStart, weekEnd),
@@ -155,8 +146,8 @@ export function projectMemberSummary(
         (workout) =>
           workout.type !== "rest" &&
           compareLocalDates(workout.date, today) <= 0 &&
-          (membershipDate === undefined ||
-            isCrewEligibleLocalDate(workout.date, membershipDate)),
+          (buildStartDate === undefined ||
+            isCrewEligibleLocalDate(workout.date, buildStartDate)),
       ),
     }))
     .filter(({ due }) => due.length > 0)
@@ -194,15 +185,12 @@ export function projectMemberSummary(
 export function projectionFingerprint(
   state: AppState,
   today: string,
-  joinedAt?: string,
+  buildStartDate?: string,
 ): string {
-  const membershipDate = joinedAt === undefined
-    ? undefined
-    : joinedLocalDate(joinedAt);
   return JSON.stringify({
-    membershipDate,
-    runs: projectSharedRuns(state.runLogs, state.blockPlacements, membershipDate),
-    summary: projectMemberSummary(state, today, membershipDate),
+    buildStartDate,
+    runs: projectSharedRuns(state.runLogs, state.blockPlacements, buildStartDate),
+    summary: projectMemberSummary(state, today, buildStartDate),
   });
 }
 
@@ -284,7 +272,7 @@ export function projectServerBackedSummary(
 /**
  * Adds or updates only the authenticated runner's safe rows. Absence from one
  * browser is never deletion authority; explicit run deletion owns that path.
- * RLS independently enforces the same ownership and membership boundary.
+ * RLS independently enforces the Crew-owned Build start boundary.
  */
 export async function syncCrewProjection(
   client: SupabaseClient,
@@ -293,21 +281,15 @@ export async function syncCrewProjection(
     crewId: string;
     userId: string;
     today: string;
-    joinedAt: string;
+    buildStartDate: string;
     /** True only while retrying an explicit-deletion tombstone. */
     authoritativeEmpty?: boolean;
   },
 ): Promise<void> {
-  const membershipDate = joinedLocalDate(input.joinedAt);
-  const cleanup = await client.rpc("cleanup_pre_membership_shared_runs", {
-    p_joined_local_date: membershipDate,
-  });
-  if (cleanup.error) throw new Error(cleanup.error.message);
-
   const runs = projectSharedRuns(
     input.state.runLogs,
     input.state.blockPlacements,
-    membershipDate,
+    input.buildStartDate,
   );
   if (runs.length > 0) {
     const { error } = await client.from("shared_runs").upsert(
@@ -353,12 +335,14 @@ export async function syncCrewProjection(
     .maybeSingle();
   if (existingSummary.error) throw new Error(existingSummary.error.message);
 
-  const serverFacts = serverSharedRunFactsFrom(serverRuns.data);
+  const serverFacts = serverSharedRunFactsFrom(serverRuns.data).filter((run) =>
+    isCrewEligibleLocalDate(run.localDate, input.buildStartDate),
+  );
   const derivedServerSummary = projectServerBackedSummary(serverFacts, input.today);
   const localSummary = projectMemberSummary(
     input.state,
     input.today,
-    membershipDate,
+    input.buildStartDate,
   );
   const localIds = new Set(runs.map((run) => run.localRunId));
   const hasCompleteSharedRunView =

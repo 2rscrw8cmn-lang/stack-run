@@ -18,6 +18,7 @@ export interface CrewDetailsInput {
   raceName: string;
   raceDate: string;
   raceDistanceMiles: number;
+  buildStartDate: string;
 }
 
 export function validateCrewDetails(
@@ -36,11 +37,29 @@ export function validateCrewDetails(
     throw new Error("Enter a valid race date.");
   }
 
+  try {
+    if (formatLocalDate(parseLocalDate(input.buildStartDate)) !== input.buildStartDate) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error("Enter a valid Build start date.");
+  }
+
+  if (input.buildStartDate > input.raceDate) {
+    throw new Error("Build start cannot be after the race date.");
+  }
+
   if (!Number.isFinite(input.raceDistanceMiles) || input.raceDistanceMiles <= 0) {
     throw new Error("Enter a valid race distance.");
   }
 
-  return { name, raceName, raceDate: input.raceDate, raceDistanceMiles: input.raceDistanceMiles };
+  return {
+    name,
+    raceName,
+    raceDate: input.raceDate,
+    raceDistanceMiles: input.raceDistanceMiles,
+    buildStartDate: input.buildStartDate,
+  };
 }
 
 function row(value: unknown): Row | null {
@@ -86,6 +105,7 @@ function crewFrom(source: Row): RaceCrew {
     raceName: requiredString(source, "race_name"),
     raceDate: requiredString(source, "race_date"),
     raceDistanceMiles: requiredNumber(source, "race_distance_miles"),
+    buildStartDate: requiredString(source, "build_start_date"),
   };
 }
 
@@ -198,7 +218,7 @@ export async function loadCrewAccount(
   const role = roleFrom(membershipRow.role);
   const crewResult = await client
     .from("crews")
-    .select("id,owner_user_id,name,race_name,race_date,race_distance_miles")
+    .select("id,owner_user_id,name,race_name,race_date,race_distance_miles,build_start_date")
     .eq("id", crewId)
     .single();
   if (crewResult.error) throw new Error(crewResult.error.message);
@@ -237,6 +257,7 @@ export async function createCrew(
     p_race_name: details.raceName,
     p_race_date: details.raceDate,
     p_race_distance_miles: details.raceDistanceMiles,
+    p_build_start_date: details.buildStartDate,
   });
   if (result.error) throw new Error(result.error.message);
 }
@@ -247,19 +268,15 @@ export async function updateCrew(
   input: CrewDetailsInput,
 ): Promise<void> {
   const details = validateCrewDetails(input);
-  const result = await client
-    .from("crews")
-    .update({
-      name: details.name,
-      race_name: details.raceName,
-      race_date: details.raceDate,
-      race_distance_miles: details.raceDistanceMiles,
-    })
-    .eq("id", crewId)
-    .select("id")
-    .maybeSingle();
+  const result = await client.rpc("update_crew", {
+    p_crew_id: crewId,
+    p_name: details.name,
+    p_race_name: details.raceName,
+    p_race_date: details.raceDate,
+    p_race_distance_miles: details.raceDistanceMiles,
+    p_build_start_date: details.buildStartDate,
+  });
   if (result.error) throw new Error(result.error.message);
-  if (!result.data) throw new Error("Crew could not be updated. Refresh and try again.");
 }
 
 export async function deleteCrew(

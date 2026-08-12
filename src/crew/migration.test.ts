@@ -8,6 +8,8 @@ import placementMigration from "../../supabase/migrations/20260811090000_shared_
 import placementVerification from "../../supabase/tests/0003_shared_run_build_placement_rls.sql?raw";
 import boundaryMigration from "../../supabase/migrations/20260812150000_crew_membership_boundary_and_placed_at.sql?raw";
 import boundaryVerification from "../../supabase/tests/0007_crew_membership_boundary_and_placed_at.sql?raw";
+import buildStartMigration from "../../supabase/migrations/20260812170000_crew_build_start_date.sql?raw";
+import buildStartVerification from "../../supabase/tests/0008_crew_build_start_date.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -132,7 +134,7 @@ describe("UI-20 Member Build placement SQL", () => {
   });
 });
 
-describe("Crew membership boundary and construction timestamp SQL", () => {
+describe("Crew construction timestamp SQL", () => {
   it("adds a dedicated nullable placement timestamp and refreshes it on placement or move", () => {
     expect(boundaryMigration).toMatch(/add column if not exists crew_build_placed_at timestamptz null/i);
     expect(boundaryMigration).toMatch(
@@ -141,20 +143,50 @@ describe("Crew membership boundary and construction timestamp SQL", () => {
     expect(boundaryMigration).not.toMatch(/update public\.shared_runs[\s\S]*set crew_build_placed_at = now\(\)[\s\S]*where crew_build_placed_at is null/i);
   });
 
-  it("ships an authenticated join-aware cleanup that demotes unsupported survivors", () => {
-    expect(boundaryMigration).toMatch(/cleanup_pre_membership_shared_runs/i);
-    expect(boundaryMigration).toMatch(/local_date < p_joined_local_date/i);
-    expect(boundaryMigration).toMatch(/user_id = v_user_id/i);
-    expect(boundaryMigration).toMatch(/set crew_build_row = null,[\s\S]*crew_build_placed_at = null/i);
-    expect(boundaryMigration).toMatch(/revoke all on function public\.cleanup_pre_membership_shared_runs\(date\)[\s\S]*from public, anon/i);
-  });
-
-  it("verifies same-day retention, Props cascade, structural demotion and move timestamps transactionally", () => {
-    expect(boundaryVerification).toMatch(/expected one pre-membership deletion/i);
-    expect(boundaryVerification).toMatch(/same-day or post-join run was removed/i);
-    expect(boundaryVerification).toMatch(/Props did not cascade/i);
-    expect(boundaryVerification).toMatch(/unsupported surviving block was not demoted to READY/i);
+  it("verifies initial and moved placement timestamps transactionally", () => {
+    expect(boundaryVerification).not.toMatch(/cleanup_pre_membership_shared_runs/i);
+    expect(boundaryVerification).toMatch(/initial placement timestamp missing/i);
     expect(boundaryVerification).toMatch(/moving a block did not refresh placed time/i);
     expect(boundaryVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew-owned Build start SQL", () => {
+  it("adds and backfills the required Crew date from placed construction or creation", () => {
+    expect(buildStartMigration).toMatch(/add column if not exists build_start_date date/i);
+    expect(buildStartMigration).toMatch(/select min\(run\.local_date\)[\s\S]*crew_build_row is not null[\s\S]*crew\.created_at::date/i);
+    expect(buildStartMigration).toMatch(/alter column build_start_date set not null/i);
+    expect(buildStartMigration).toMatch(/build_start_date <= race_date/i);
+    expect(buildStartMigration).not.toMatch(/min\([\s\S]*where[\s\S]*crew_build_row is null/i);
+  });
+
+  it("retires membership cleanup and enforces the Build window on member writes", () => {
+    expect(buildStartMigration).toMatch(/drop function public\.cleanup_pre_membership_shared_runs\(date\)/i);
+    expect(buildStartMigration).toMatch(/is_crew_run_in_build_window/i);
+    expect(buildStartMigration).toMatch(/create policy shared_runs_insert_self[\s\S]*is_crew_run_in_build_window/i);
+    expect(buildStartMigration).toMatch(/create policy shared_runs_update_self[\s\S]*is_crew_run_in_build_window/i);
+    expect(buildStartMigration).toMatch(/revoke update on table public\.crews from anon, authenticated/i);
+  });
+
+  it("uses one owner-only edit RPC for deletion, Props cascade and recursive demotion", () => {
+    expect(buildStartMigration).toMatch(/create or replace function public\.update_crew/i);
+    expect(buildStartMigration).toMatch(/owner_user_id = v_user_id/i);
+    expect(buildStartMigration).toMatch(/local_date < p_build_start_date/i);
+    expect(buildStartMigration).toMatch(/set crew_build_row = null,[\s\S]*crew_build_placed_at = null/i);
+    expect(buildStartMigration).toMatch(/grant execute on function public\.update_crew[\s\S]*to authenticated/i);
+  });
+
+  it("ships transactional cross-member cleanup and enforcement verification", () => {
+    expect(buildStartVerification).toMatch(/later Build start did not delete one contribution/i);
+    expect(buildStartVerification).toMatch(/Props did not cascade/i);
+    expect(buildStartVerification).toMatch(/recursively demoted/i);
+    expect(buildStartVerification).toMatch(/earlier Build start deleted or invented/i);
+    expect(buildStartVerification).toMatch(/member changed Crew Build start/i);
+    expect(buildStartVerification).toMatch(/member uploaded a pre-window run/i);
+    expect(buildStartVerification).toMatch(/backfill did not choose earliest placed Crew block/i);
+    expect(buildStartVerification).toMatch(/backfill used oldest READY instead of Crew creation/i);
+    expect(buildStartVerification).toMatch(/owner bypassed atomic Crew edit/i);
+    expect(buildStartVerification).toMatch(/future Build start before race was rejected/i);
+    expect(buildStartVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

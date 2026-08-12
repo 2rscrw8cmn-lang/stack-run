@@ -26,7 +26,7 @@ set local request.jwt.claim.role = 'authenticated';
 -- Runner A owns Crew A and publishes one approved projection of each kind.
 set local request.jwt.claim.sub = '10000000-0000-0000-0000-000000000001';
 insert into race_crew_test_ids values (
-  'a', public.create_crew('Crew A', 'Race A', '2026-12-05', 13.1)
+  'a', public.create_crew('Crew A', 'Race A', '2026-12-05', 13.1, '2026-01-01')
 );
 insert into public.shared_runs (
   crew_id, user_id, local_run_id, local_date, activity_type,
@@ -52,7 +52,7 @@ select public.create_crew_invite(
 -- Runner B owns a separate Crew B and initially sees none of Crew A.
 set local request.jwt.claim.sub = '10000000-0000-0000-0000-000000000002';
 insert into race_crew_test_ids values (
-  'b', public.create_crew('Crew B', 'Race B', '2027-01-10', 26.2)
+  'b', public.create_crew('Crew B', 'Race B', '2027-01-10', 26.2, '2026-01-01')
 );
 
 do $$

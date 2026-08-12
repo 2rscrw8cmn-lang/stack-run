@@ -216,6 +216,7 @@ crews
 - race_name text
 - race_date date
 - race_distance_miles numeric
+- build_start_date date
 - created_at timestamptz
 
 crew_members
@@ -811,8 +812,9 @@ No UI-22 is currently authorized. After UI-21, perform a whole-product review be
 
 ## Post-UI-22 focused Crew polish
 
-- `crew_members.joined_at` is the authoritative participation boundary. The browser converts it to the runner's local date; `completedDate >= joined local date` is eligible, including same-day and later-imported post-join runs.
-- Projection receives `joinedAt` and filters before upload. Pre-join personal RunLogs, Personal Build blocks and Training Signals remain untouched. A security-definer cleanup RPC deletes only the authenticated member's pre-join `shared_runs`; reaction foreign keys cascade Props, and unsupported surviving construction is demoted to READY.
+- `crews.build_start_date` is the authoritative contribution boundary for every member. `completedDate >= buildStartDate` is eligible; membership join time, import time, plan linkage and local creation time are irrelevant.
+- New Crew creation defaults Build starts to today and owner editing validates it on or before race day. Moving later uses an explicit confirmation and one owner-only server transaction that removes pre-window rows for all members, cascades Props and recursively demotes unsupported construction to READY without relocation. Moving earlier deletes or invents nothing; normal additive projection contributes each member's newly eligible local history.
+- Projection receives `buildStartDate`, includes it in its fingerprint and filters before upload. Pre-window personal RunLogs, Personal Build blocks and Training Signals remain untouched. RLS independently rejects ordinary member uploads before the Crew date; `crew_members.joined_at` remains history/order/audit only.
 - `shared_runs.crew_build_placed_at` is nullable and server-owned. The placement RPC refreshes it on initial placement and movement. A 24-hour recent-construction treatment is visual and accessible; null legacy rows are not backfilled.
 - Today reuses the Race Crew controller and Props behavior for at most two other-member runs dated today or yesterday. No qualifying rows means no social section.
 - The comparison selector is one icon-only row with full accessible names and keyboard behavior. The selected title supplies visible context; the technical-grid background is removed.

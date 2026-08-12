@@ -10,6 +10,7 @@ export interface RaceCrew {
   raceName: string;
   raceDate: string;
   raceDistanceMiles: number;
+  buildStartDate: string;
 }
 
 export type CrewRole = "owner" | "member";

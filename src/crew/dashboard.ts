@@ -7,7 +7,7 @@ import type {
   CrewRole,
   CrewSharedRun,
 } from "./types";
-import { isCrewEligibleLocalDate, joinedLocalDate } from "./projection";
+import { isCrewEligibleLocalDate } from "./projection";
 
 const RECENT_RUN_LIMIT = 20;
 const MEMBER_BUILD_RUNS_PER_MEMBER = 128;
@@ -78,6 +78,7 @@ export async function loadCrewDashboard(
   client: SupabaseClient,
   crewId: string,
   viewerUserId: string,
+  buildStartDate: string,
 ): Promise<CrewDashboardData> {
   const membership = await client
     .from("crew_members")
@@ -149,10 +150,6 @@ export async function loadCrewDashboard(
       displayName: displayName(userId),
     };
   });
-  const joinedByUserId = new Map(
-    members.map((member) => [member.userId, joinedLocalDate(member.joinedAt)] as const),
-  );
-
   const summaries: CrewMemberSummary[] = rows(summaryResult.data).map((item) => {
     const userId = requiredString(item, "user_id");
     return {
@@ -171,8 +168,7 @@ export async function loadCrewDashboard(
   const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).flatMap((item) => {
     const userId = requiredString(item, "user_id");
     const localDate = requiredString(item, "local_date");
-    const membershipDate = joinedByUserId.get(userId);
-    if (!membershipDate || !isCrewEligibleLocalDate(localDate, membershipDate)) {
+    if (!isCrewEligibleLocalDate(localDate, buildStartDate)) {
       return [];
     }
     return [{

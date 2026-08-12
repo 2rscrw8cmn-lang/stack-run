@@ -89,7 +89,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
 describe("Crew dashboard query", () => {
   it("uses only approved tables/columns and a generous full-Build read bound", async () => {
     const calls: QueryCall[] = [];
-    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1", "user-1");
+    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1", "user-1", "2026-08-01");
 
     expect(new Set(calls.map((call) => call.table))).toEqual(
       new Set([
@@ -167,7 +167,7 @@ describe("Crew dashboard query", () => {
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {
-    const loaded = await loadCrewDashboard(fakeClient([], "shared_runs"), "crew-1", "user-1");
+    const loaded = await loadCrewDashboard(fakeClient([], "shared_runs"), "crew-1", "user-1", "2026-08-01");
 
     expect(loaded.members).toHaveLength(1);
     expect(loaded.summaries).toHaveLength(1);
@@ -177,5 +177,18 @@ describe("Crew dashboard query", () => {
     expect(loaded.sharedRunsAvailable).toBe(false);
     expect(loaded.sharedRunsTruncated).toBe(false);
     expect(loaded.propsAvailable).toBe(false);
+  });
+
+  it("defensively excludes server rows before the Crew Build start", async () => {
+    const loaded = await loadCrewDashboard(
+      fakeClient([]),
+      "crew-1",
+      "user-1",
+      "2026-08-10",
+    );
+
+    expect(loaded.runs).toEqual([]);
+    expect(loaded.miniBuildRuns).toEqual([]);
+    expect(loaded.crewBuildRuns).toEqual([]);
   });
 });

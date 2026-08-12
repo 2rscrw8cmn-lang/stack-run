@@ -435,9 +435,11 @@ the same Intervals activity receives different extra-run local ids on different
 devices requires a separate canonical-identity migration decision; this hotfix
 does not upload raw Intervals ids or risk recreating existing shared rows.
 
-## D-070 — Crew begins at membership; built mileage is physically built
+## D-070 — Crew-owned Build start; built mileage is physically built
 
-**Decision:** This focused correction is not UI-23. A run is eligible for a Crew only when its local run date is on or after the browser-local calendar date of the runner's authoritative `crew_members.joined_at`. Same-day runs and later imports of post-join runs count. Pre-join history remains in personal Runs, Personal Build and Training Signals but is filtered from every Crew projection/read/summary. Existing pre-join server rows are removed intentionally by an authenticated cleanup RPC; ordinary cross-device absence remains non-destructive. Cleanup cascades Props and demotes unsupported survivors to READY without relocation.
+**Decision:** This focused correction is not UI-23. A run is eligible for a Crew only when its local run date is on or after the Crew-owned `crews.build_start_date`. The same date applies to every member; membership join time, import time, plan linkage and local creation time are irrelevant. Same-day and later-imported in-window runs count. Pre-window history remains in personal Runs, Personal Build and Training Signals but is filtered from every Crew projection/read/summary. `crew_members.joined_at` remains history/order/audit only.
+
+New Crew creation defaults Build starts to today and requires the date on or before race day; future dates and dates before member joins are valid. Moving the date later requires owner confirmation and one atomic owner RPC that updates Crew metadata/date, deletes pre-window rows across all members, cascades Props and recursively demotes unsupported survivors to READY without relocation. Moving it earlier deletes and invents nothing; each member's next additive projection uploads newly eligible local history. Server write policies reject pre-window member uploads and direct Crew table updates cannot bypass cleanup.
 
 Crew `Miles Built` now means the mileage in physically placed communal blocks, both in the hero and per-member comparison. READY remains earned but unbuilt. Member Build remains a sanitized read-only Personal Build reproduction. `shared_runs.crew_build_placed_at` records a successful initial placement or move; a restrained recent-construction treatment lasts 24 hours and includes accessible text. Null legacy timestamps remain normal.
 

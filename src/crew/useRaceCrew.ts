@@ -166,6 +166,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const reloadAccount = useCallback(async (nextUser: User): Promise<void> => {
     if (!availability.configured) return;
     const loaded = await loadCrewAccount(availability.client, nextUser);
+    latest.current = { ...latest.current, user: nextUser, account: loaded };
     setAccount(loaded);
     setStatus("signed-in");
   }, [availability]);
@@ -237,15 +238,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (!availability.configured) return;
     const current = latest.current;
     if (!current.appState || !current.user || !current.account?.crew) return;
-    const membership = current.account.members.find(
-      (member) => member.userId === current.user?.id,
-    );
-    if (!membership) return;
     const today = todayLocalDate();
     const fingerprint = projectionFingerprint(
       current.appState,
       today,
-      membership.joinedAt,
+      current.account.crew.buildStartDate,
     );
     const fresh = Date.now() - lastProjection.current.syncedAt < PROJECTION_STALE_MS;
     if (!force && fresh && fingerprint === lastProjection.current.fingerprint) return;
@@ -263,7 +260,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         crewId: current.account.crew.id,
         userId: current.user.id,
         today,
-        joinedAt: membership.joinedAt,
+        buildStartDate: current.account.crew.buildStartDate,
         authoritativeEmpty: pendingDeletes.length > 0,
       });
       for (const tombstone of pendingDeletes) {
@@ -323,7 +320,14 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       setCrewDataStatus("loading");
       setCrewDataError(null);
       try {
-        const loaded = await loadCrewDashboard(availability.client, crewId, userId);
+        const buildStartDate = current.account?.crew?.buildStartDate;
+        if (!buildStartDate) return;
+        const loaded = await loadCrewDashboard(
+          availability.client,
+          crewId,
+          userId,
+          buildStartDate,
+        );
         if (latest.current.account?.crew?.id !== crewId) return;
         setCrewData(loaded);
         setCrewDataStatus("ready");
@@ -369,11 +373,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     lastDashboard.current = { crewId, loadedAt: 0 };
   }, [account?.crew?.id]);
 
-  const currentMembership = account?.members.find(
-    (member) => member.userId === user?.id,
-  );
-  const fingerprint = appState && currentMembership
-    ? projectionFingerprint(appState, todayLocalDate(), currentMembership.joinedAt)
+  const fingerprint = appState && account?.crew
+    ? projectionFingerprint(appState, todayLocalDate(), account.crew.buildStartDate)
     : "";
   useEffect(() => {
     if (!account?.crew || !user || !fingerprint) return;
@@ -621,6 +622,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       );
       await reloadAccount(user).catch(() => undefined);
       lastDashboard.current.loadedAt = 0;
+      await syncProjection(true);
+      await refreshCrewData(true);
     }, "Crew updated."),
     deleteCrew: () => operateResult(async () => {
       if (!availability.configured || !account?.crew || !user) {

@@ -271,9 +271,10 @@ crew_id + user_id + localRunId
 ```
 
 Normal projection is non-destructive. It first filters local RunLogs to
-`completedDate >=` the browser-local calendar date of authoritative
-`crew_members.joined_at`. Same-day and late-imported post-join runs qualify;
-pre-join runs remain personal. Absence from one local device is never
+`completedDate >= crews.build_start_date`. The date is Crew-owned and applies
+equally to every member; `crew_members.joined_at`, import time, plan linkage and
+local creation time do not affect eligibility. Same-day and later-imported
+in-window runs qualify; pre-window runs remain personal. Absence from one local device is never
 evidence that a Crew contribution was deleted. Local runs upsert safe facts by
 `crew_id + user_id + localRunId`; a missing personal placement omits Member
 Build coordinates instead of writing null, and Crew Build coordinates are
@@ -284,7 +285,13 @@ row. The local delete completes first. If Crew cleanup fails, a minimal
 device-local tombstone under `stack.crew-delete-tombstones.v1` retains only
 crew/user/local-run identity and retries later; it is removed after success.
 
-The membership boundary is a separate authoritative lifecycle rule, not absence reconciliation. `cleanup_pre_membership_shared_runs` deletes the authenticated member's already-projected pre-join rows, lets associated Props cascade, and repeatedly clears communal coordinates on unsupported survivors so they return to READY without relocation.
+Owner edits use one security-definer `update_crew` transaction. Moving the Build
+start later deletes pre-window shared rows across all members, lets associated
+Props cascade, and repeatedly clears communal coordinates on unsupported
+survivors so they return to READY without relocation. Moving it earlier deletes
+nothing and invents nothing; each member's next normal projection additively
+uploads eligible local history. RLS rejects ordinary member uploads before the
+Crew date, and direct table updates cannot bypass the transaction.
 
 Weekly Miles, trailing-28-day Longest Run and Miles Built are recomputed from
 the authenticated runner's cloud `shared_runs` union, so a blank or partial

@@ -23,6 +23,7 @@ const details = {
   raceName: "  OUC Half Marathon  ",
   raceDate: "2026-12-05",
   raceDistanceMiles: 13.1,
+  buildStartDate: "2026-08-01",
 };
 
 describe("Crew details validation", () => {
@@ -36,22 +37,25 @@ describe("Crew details validation", () => {
     expect(() => validateCrewDetails({ ...details, raceName: " " })).toThrow("race name");
     expect(() => validateCrewDetails({ ...details, raceDate: "2026-02-30" })).toThrow("valid race date");
     expect(() => validateCrewDetails({ ...details, raceDistanceMiles: 0 })).toThrow("valid race distance");
+    expect(() => validateCrewDetails({ ...details, buildStartDate: "2026-02-30" })).toThrow("valid Build start");
+    expect(() => validateCrewDetails({ ...details, buildStartDate: "2026-12-06" })).toThrow("after the race date");
   });
 });
 
 describe("Crew owner mutations", () => {
-  it("updates only the selected Crew metadata", async () => {
-    const { client, chain } = crewTable({ data: { id: "crew-1" }, error: null });
+  it("uses the atomic owner RPC for metadata and Build start changes", async () => {
+    const rpc = vi.fn(async () => ({ data: 0, error: null }));
+    const client = { rpc } as unknown as SupabaseClient;
     await updateCrew(client, "crew-1", details);
 
-    expect(chain.update).toHaveBeenCalledWith({
-      name: "OUC Race Crew",
-      race_name: "OUC Half Marathon",
-      race_date: "2026-12-05",
-      race_distance_miles: 13.1,
+    expect(rpc).toHaveBeenCalledWith("update_crew", {
+      p_crew_id: "crew-1",
+      p_name: "OUC Race Crew",
+      p_race_name: "OUC Half Marathon",
+      p_race_date: "2026-12-05",
+      p_race_distance_miles: 13.1,
+      p_build_start_date: "2026-08-01",
     });
-    expect(chain.eq).toHaveBeenCalledWith("id", "crew-1");
-    expect(chain.select).toHaveBeenCalledWith("id");
   });
 
   it("deletes only the selected Crew and detects denied or stale ownership", async () => {

@@ -12,7 +12,7 @@ import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
-import { formatDateLabel } from "../../domain/dates";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type { Race } from "../../domain/types";
 import { validateCrewDetails } from "../../crew/crewService";
 import { compareCrewRace } from "../../crew/raceMatch";
@@ -160,6 +160,7 @@ function CreateCrewPanel({ crew, localRace }: Pick<Props, "crew" | "localRace">)
   const [distance, setDistance] = useState(
     localRace ? String(localRace.distanceMiles) : "",
   );
+  const [buildStartDate, setBuildStartDate] = useState(todayLocalDate());
   return (
     <section className="crew-settings__section">
       <p className="machine-label">Create a private crew</p>
@@ -177,11 +178,16 @@ function CreateCrewPanel({ crew, localRace }: Pick<Props, "crew" | "localRace">)
           <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
         </FormField>
       </div>
+      <FormField label="Build starts">
+        <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
+      </FormField>
+      <p className="crew-settings__note">Runs on or after this date can contribute to the Crew Build.</p>
       <Button icon={<Users size={18} />} isLoading={crew.busy} onClick={() => void crew.createCrew({
         name,
         raceName,
         raceDate,
         raceDistanceMiles: Number(distance),
+        buildStartDate,
       })}>
         Create Race Crew
       </Button>
@@ -204,7 +210,14 @@ function EditCrewPanel({
   const [raceName, setRaceName] = useState(raceCrew.raceName);
   const [raceDate, setRaceDate] = useState(raceCrew.raceDate);
   const [distance, setDistance] = useState(String(raceCrew.raceDistanceMiles));
+  const [buildStartDate, setBuildStartDate] = useState(raceCrew.buildStartDate);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [pendingChange, setPendingChange] = useState<ReturnType<typeof validateCrewDetails> | null>(null);
+
+  async function performSave(input: ReturnType<typeof validateCrewDetails>): Promise<void> {
+    setPendingChange(null);
+    if (await crew.updateCrew(input)) onSaved();
+  }
 
   async function save(): Promise<void> {
     try {
@@ -213,12 +226,39 @@ function EditCrewPanel({
         raceName,
         raceDate,
         raceDistanceMiles: Number(distance),
+        buildStartDate,
       });
       setValidationError(null);
-      if (await crew.updateCrew(input)) onSaved();
+      const movesLater = input.buildStartDate > raceCrew.buildStartDate;
+      const knownRemoved = crew.crewData?.runs.some(
+        (run) => run.localDate < input.buildStartDate,
+      );
+      if (
+        movesLater &&
+        (knownRemoved || !crew.crewData || crew.crewData.sharedRunsTruncated)
+      ) {
+        setPendingChange(input);
+        return;
+      }
+      await performSave(input);
     } catch (reason) {
       setValidationError(reason instanceof Error ? reason.message : "Check the Crew details.");
     }
+  }
+
+  if (pendingChange) {
+    return (
+      <section className="crew-settings__section crew-settings__delete-confirmation">
+        <h3>Change Crew Build start?</h3>
+        <p>
+          Changing the Crew Build start to {formatDateLabel(pendingChange.buildStartDate, { month: "short", day: "numeric" })} will remove Crew contributions before that date. Personal run history and Personal Builds are not affected.
+        </p>
+        <div className="crew-settings__form-actions">
+          <Button isLoading={crew.busy} onClick={() => void performSave(pendingChange)}>Change Build Start</Button>
+          <Button variant="secondary" disabled={crew.busy} onClick={() => setPendingChange(null)}>Keep Current Date</Button>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -237,6 +277,10 @@ function EditCrewPanel({
           <input className="run-input" type="number" min="0.1" step="0.1" inputMode="decimal" value={distance} onChange={(event) => setDistance(event.target.value)} />
         </FormField>
       </div>
+      <FormField label="Build starts">
+        <input className="run-input" type="date" value={buildStartDate} onChange={(event) => setBuildStartDate(event.target.value)} />
+      </FormField>
+      <p className="crew-settings__note">Runs on or after this date can contribute to the Crew Build.</p>
       {validationError && <p role="alert" className="crew-settings__message crew-settings__message--error">{validationError}</p>}
       <div className="crew-settings__form-actions">
         <Button isLoading={crew.busy} onClick={() => void save()}>Save Changes</Button>
@@ -302,6 +346,7 @@ function CrewPanel({
         {raceCrew.raceName} · {formatDateLabel(raceCrew.raceDate)} ·{" "}
         {raceCrew.raceDistanceMiles} mi
       </p>
+      <p className="crew-settings__note">Build starts {formatDateLabel(raceCrew.buildStartDate)}.</p>
 
       {account.role === "owner" && (
         <Button variant="secondary" icon={<Pencil size={18} />} onClick={onEdit}>

@@ -68,6 +68,7 @@ const ownerAccount: LoadedCrewAccount = {
     raceName: "Original Race",
     raceDate: "2026-12-05",
     raceDistanceMiles: 13.1,
+    buildStartDate: "2026-08-01",
   },
   role: "owner",
   members: [
@@ -166,6 +167,7 @@ describe("Race Crew owner lifecycle", () => {
         raceName: "Updated Race",
         raceDate: "2027-01-10",
         raceDistanceMiles: 26.2,
+        buildStartDate: "2026-08-01",
       });
     });
 
@@ -220,6 +222,7 @@ describe("Race Crew owner lifecycle", () => {
         raceName: "Denied",
         raceDate: "2027-01-10",
         raceDistanceMiles: 26.2,
+        buildStartDate: "2026-08-01",
       });
     });
 
