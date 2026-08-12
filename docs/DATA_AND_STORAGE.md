@@ -199,6 +199,8 @@ export interface CrewSharedRunProjection {
 
 Server also associates authenticated `user_id` and `crew_id`.
 
+Current sanitized placement extensions are nullable `build_row` / `build_column_start` for read-only Member Build, and server-owned `crew_build_row` / `crew_build_column_start` plus `crew_build_placed_at` for the communal Build. `crew_build_placed_at` changes only after a successful initial placement or move; ordinary projection never writes it.
+
 `localRunId` is STACK's local random run identity for update/delete synchronization. It is not the Intervals activity id.
 
 Derived pace is not persisted.
@@ -222,7 +224,7 @@ Periods:
 
 - Weekly Miles: current Monday–Sunday week using actual local run dates;
 - Longest Run: trailing 28 days;
-- Consistency: most recent up-to-4 plan weeks through today, scheduled workouts only;
+- Consistency: most recent up-to-4 plan weeks through today, scheduled workouts only and never obligations before Crew membership;
 - Miles Built: current local active plan/Build actual miles.
 
 Extras count actual miles but do not repair Consistency.
@@ -268,7 +270,11 @@ Use deterministic upsert identity:
 crew_id + user_id + localRunId
 ```
 
-Normal projection is non-destructive. Absence from one local device is never
+Normal projection is non-destructive. It first filters local RunLogs to
+`completedDate >= crews.build_start_date`. The date is Crew-owned and applies
+equally to every member; `crew_members.joined_at`, import time, plan linkage and
+local creation time do not affect eligibility. Same-day and later-imported
+in-window runs qualify; pre-window runs remain personal. Absence from one local device is never
 evidence that a Crew contribution was deleted. Local runs upsert safe facts by
 `crew_id + user_id + localRunId`; a missing personal placement omits Member
 Build coordinates instead of writing null, and Crew Build coordinates are
@@ -278,6 +284,14 @@ Only an explicit personal run deletion may delete its matching `shared_runs`
 row. The local delete completes first. If Crew cleanup fails, a minimal
 device-local tombstone under `stack.crew-delete-tombstones.v1` retains only
 crew/user/local-run identity and retries later; it is removed after success.
+
+Owner edits use one security-definer `update_crew` transaction. Moving the Build
+start later deletes pre-window shared rows across all members, lets associated
+Props cascade, and repeatedly clears communal coordinates on unsupported
+survivors so they return to READY without relocation. Moving it earlier deletes
+nothing and invents nothing; each member's next normal projection additively
+uploads eligible local history. RLS rejects ordinary member uploads before the
+Crew date, and direct table updates cannot bypass the transaction.
 
 Weekly Miles, trailing-28-day Longest Run and Miles Built are recomputed from
 the authenticated runner's cloud `shared_runs` union, so a blank or partial

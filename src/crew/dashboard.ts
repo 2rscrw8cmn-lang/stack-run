@@ -7,6 +7,7 @@ import type {
   CrewRole,
   CrewSharedRun,
 } from "./types";
+import { isCrewEligibleLocalDate } from "./projection";
 
 const RECENT_RUN_LIMIT = 20;
 const MEMBER_BUILD_RUNS_PER_MEMBER = 128;
@@ -77,6 +78,7 @@ export async function loadCrewDashboard(
   client: SupabaseClient,
   crewId: string,
   viewerUserId: string,
+  buildStartDate: string,
 ): Promise<CrewDashboardData> {
   const membership = await client
     .from("crew_members")
@@ -118,7 +120,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,created_at,updated_at",
+        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -148,7 +150,6 @@ export async function loadCrewDashboard(
       displayName: displayName(userId),
     };
   });
-
   const summaries: CrewMemberSummary[] = rows(summaryResult.data).map((item) => {
     const userId = requiredString(item, "user_id");
     return {
@@ -164,13 +165,17 @@ export async function loadCrewDashboard(
     };
   });
 
-  const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).map((item) => {
+  const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).flatMap((item) => {
     const userId = requiredString(item, "user_id");
-    return {
+    const localDate = requiredString(item, "local_date");
+    if (!isCrewEligibleLocalDate(localDate, buildStartDate)) {
+      return [];
+    }
+    return [{
       id: requiredString(item, "id"),
       userId,
       displayName: displayName(userId),
-      localDate: requiredString(item, "local_date"),
+      localDate,
       activityType: activityTypeFrom(item.activity_type),
       distanceMiles: requiredNumber(item, "distance_miles"),
       durationSeconds: requiredNumber(item, "duration_seconds"),
@@ -180,9 +185,13 @@ export async function loadCrewDashboard(
       buildColumnStart: nullableInteger(item, "build_column_start"),
       crewBuildRow: nullableInteger(item, "crew_build_row"),
       crewBuildColumnStart: nullableInteger(item, "crew_build_column_start"),
+      crewBuildPlacedAt:
+        typeof item.crew_build_placed_at === "string"
+          ? item.crew_build_placed_at
+          : null,
       propsCount: 0,
       viewerHasPropped: false,
-    };
+    }];
   });
 
   const reactionResult = !sharedRunsAvailable || allRuns.length === 0
@@ -230,6 +239,7 @@ export async function loadCrewDashboard(
     createdAt: run.createdAt,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,
+    crewBuildPlacedAt: run.crewBuildPlacedAt,
   }));
 
   return {

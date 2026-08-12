@@ -14,10 +14,10 @@ export function WeeklyMileageDetail({
 }) {
   const weeks = signals.weeklyMileage;
   const [selectedKey, setSelectedKey] = useState(() =>
-    weeks.length ? String(weeks[weeks.length - 1].weekNumber) : "",
+    weeks.length ? weeks[weeks.length - 1].key : "",
   );
   const selectedIndex = Math.max(
-    weeks.findIndex((week) => String(week.weekNumber) === selectedKey),
+    weeks.findIndex((week) => week.key === selectedKey),
     0,
   );
   const selected = weeks[selectedIndex];
@@ -40,14 +40,14 @@ export function WeeklyMileageDetail({
       </div>
       <PlanActualColumns
         columns={weeks.map((week) => ({
-          key: String(week.weekNumber),
-          shortLabel: `W${week.weekNumber}`,
+          key: week.key,
+          shortLabel: week.shortLabel,
           actual: week.actualMiles,
           planned: week.plannedMiles,
           isPartial: week.isPartial,
-          selectionLabel: `Week ${week.weekNumber}, ${formatMiles(week.actualMiles)} actual miles${week.plannedMiles === null ? ", planned mileage unavailable" : `, ${formatMiles(week.plannedMiles)} planned miles`}${week.isPartial ? ", in progress" : ""}`,
+          selectionLabel: `${week.label}, ${formatMiles(week.actualMiles)} actual miles${week.plannedMiles === null ? ", no plan comparison" : `, ${formatMiles(week.plannedMiles)} planned miles`}${week.isPartial ? ", in progress" : ""}`,
         }))}
-        selectedKey={String(selected.weekNumber)}
+        selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
       <SignalFacts
@@ -64,7 +64,7 @@ export function WeeklyMileageDetail({
         </p>
       </DetailSection>
       <DetailSection
-        title={<><span>{`Week ${selected.weekNumber} runs`}</span><span>{` · ${formatMiles(selected.actualMiles)} mi`}</span></>}
+        title={<><span>{`${selected.label} runs`}</span><span>{` · ${formatMiles(selected.actualMiles)} mi`}</span></>}
       >
         {selected.isPartial && <p className="signal-detail__note">This week is still in progress.</p>}
         <TrendRunList

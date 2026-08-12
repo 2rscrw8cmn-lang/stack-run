@@ -38,6 +38,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         build_column_start: 2,
         crew_build_row: 7,
         crew_build_column_start: 3,
+        crew_build_placed_at: "2026-08-09T13:00:00Z",
         created_at: "2026-08-09T12:00:00Z",
         updated_at: "2026-08-09T12:00:00Z",
       },
@@ -88,7 +89,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
 describe("Crew dashboard query", () => {
   it("uses only approved tables/columns and a generous full-Build read bound", async () => {
     const calls: QueryCall[] = [];
-    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1", "user-1");
+    const loaded = await loadCrewDashboard(fakeClient(calls), "crew-1", "user-1", "2026-08-01");
 
     expect(new Set(calls.map((call) => call.table))).toEqual(
       new Set([
@@ -103,7 +104,7 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,created_at,updated_at",
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
     );
     expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
     expect(calls).toContainEqual({
@@ -131,6 +132,7 @@ describe("Crew dashboard query", () => {
       buildColumnStart: 2,
       crewBuildRow: 7,
       crewBuildColumnStart: 3,
+      crewBuildPlacedAt: "2026-08-09T13:00:00Z",
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -158,13 +160,14 @@ describe("Crew dashboard query", () => {
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
+        crewBuildPlacedAt: "2026-08-09T13:00:00Z",
       },
     ]);
     expect(loaded.sharedRunsTruncated).toBe(false);
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {
-    const loaded = await loadCrewDashboard(fakeClient([], "shared_runs"), "crew-1", "user-1");
+    const loaded = await loadCrewDashboard(fakeClient([], "shared_runs"), "crew-1", "user-1", "2026-08-01");
 
     expect(loaded.members).toHaveLength(1);
     expect(loaded.summaries).toHaveLength(1);
@@ -174,5 +177,18 @@ describe("Crew dashboard query", () => {
     expect(loaded.sharedRunsAvailable).toBe(false);
     expect(loaded.sharedRunsTruncated).toBe(false);
     expect(loaded.propsAvailable).toBe(false);
+  });
+
+  it("defensively excludes server rows before the Crew Build start", async () => {
+    const loaded = await loadCrewDashboard(
+      fakeClient([]),
+      "crew-1",
+      "user-1",
+      "2026-08-10",
+    );
+
+    expect(loaded.runs).toEqual([]);
+    expect(loaded.miniBuildRuns).toEqual([]);
+    expect(loaded.crewBuildRuns).toEqual([]);
   });
 });

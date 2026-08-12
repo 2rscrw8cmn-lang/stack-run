@@ -5,6 +5,7 @@ import {
   crewBuildContributorIds,
   crewBuildPlacementOptions,
   deriveCrewBuild,
+  isRecentCrewBuildPlacement,
 } from "./crewBuild";
 import type { CrewBuildRun } from "./types";
 
@@ -23,6 +24,7 @@ function run(
     createdAt: "2026-08-09T12:00:00Z",
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildPlacedAt: null,
     ...values,
   };
 }
@@ -30,12 +32,12 @@ function run(
 describe("collaborative Crew Build", () => {
   it("uses stored Crew coordinates and never auto-places an unplaced run", () => {
     const model = deriveCrewBuild([
-      run("placed", "zack", { crewBuildRow: 3, crewBuildColumnStart: 4 }),
+      run("placed", "zack", { crewBuildRow: 0, crewBuildColumnStart: 4 }),
       run("ready", "drew", { localDate: "2026-08-10" }),
     ]);
 
     expect(model.blocks).toHaveLength(1);
-    expect(model.blocks[0]).toMatchObject({ id: "placed", row: 3, columnStart: 4 });
+    expect(model.blocks[0]).toMatchObject({ id: "placed", row: 0, columnStart: 4 });
     expect(model.readyRuns.map((item) => item.id)).toEqual(["ready"]);
     expect(model.readyRuns[0]).not.toHaveProperty("row");
     expect(model.readyRuns[0]).not.toHaveProperty("columnStart");
@@ -44,7 +46,7 @@ describe("collaborative Crew Build", () => {
   });
 
   it("keeps personal Member Build coordinates completely independent", () => {
-    const shared = run("a", "zack", { crewBuildRow: 2, crewBuildColumnStart: 3 });
+    const shared = run("a", "zack", { crewBuildRow: 0, crewBuildColumnStart: 3 });
     const withPersonalPlacement = {
       ...shared,
       buildRow: 99,
@@ -52,7 +54,7 @@ describe("collaborative Crew Build", () => {
     } as CrewBuildRun;
 
     expect(deriveCrewBuild([withPersonalPlacement]).blocks[0]).toMatchObject({
-      row: 2,
+      row: 0,
       columnStart: 3,
     });
     expect(deriveCrewBuild([withPersonalPlacement]).blocks[0]).not.toHaveProperty("buildRow");
@@ -84,7 +86,7 @@ describe("collaborative Crew Build", () => {
     expect(["short", "long", "intervals", "simulation", "race"].map((id) => byId.get(id)?.height)).toEqual([1, 1, 2, 2, 3]);
   });
 
-  it("counts all shared miles and runs while only stored blocks occupy the tower", () => {
+  it("counts only physically placed miles in the Crew Build hero", () => {
     const model = deriveCrewBuild([
       run("placed", "zack", {
         distanceMiles: 8,
@@ -93,11 +95,38 @@ describe("collaborative Crew Build", () => {
       }),
       run("ready", "drew", { distanceMiles: 5.5 }),
     ]);
-    expect(model.milesBuilt).toBe(13.5);
+    expect(model.placedMiles).toBe(8);
     expect(model.runCount).toBe(2);
     expect(model.placedCount).toBe(1);
     expect(model.readyCount).toBe(1);
     expect(crewBuildContributorIds(model)).toEqual(["zack"]);
+  });
+
+  it("excludes READY contributions from Miles Built", () => {
+    const model = deriveCrewBuild([
+      run("placed-three", "zack", {
+        distanceMiles: 3,
+        crewBuildRow: 0,
+        crewBuildColumnStart: 1,
+      }),
+      run("ready-five", "zack", { distanceMiles: 5 }),
+      run("placed-two", "drew", {
+        distanceMiles: 2,
+        crewBuildRow: 0,
+        crewBuildColumnStart: 3,
+      }),
+    ]);
+
+    expect(model.placedMiles).toBe(5);
+    expect(model.readyRuns.map((item) => item.id)).toEqual(["ready-five"]);
+  });
+
+  it("marks placements from the last 24 hours as recent without animation", () => {
+    const now = Date.parse("2026-08-12T12:00:00Z");
+    expect(isRecentCrewBuildPlacement("2026-08-12T12:00:00Z", now)).toBe(true);
+    expect(isRecentCrewBuildPlacement("2026-08-11T12:00:01Z", now)).toBe(true);
+    expect(isRecentCrewBuildPlacement("2026-08-11T11:59:59Z", now)).toBe(false);
+    expect(isRecentCrewBuildPlacement(null, now)).toBe(false);
   });
 
   it("mirrors rectangular collision geometry on the client", () => {
@@ -192,6 +221,17 @@ describe("collaborative Crew Build", () => {
     ]);
     expect(model.blocks.map((block) => block.id)).toEqual(["first"]);
     expect(model.readyRuns.map((item) => item.id)).toEqual(["conflict"]);
+  });
+
+  it("treats structurally unsupported persisted coordinates defensively as READY", () => {
+    const model = deriveCrewBuild([
+      run("floating", "zack", {
+        crewBuildRow: 2,
+        crewBuildColumnStart: 1,
+      }),
+    ]);
+    expect(model.blocks).toEqual([]);
+    expect(model.readyRuns.map((item) => item.id)).toEqual(["floating"]);
   });
 
   it("uses half-open footprint overlap at touching edges", () => {

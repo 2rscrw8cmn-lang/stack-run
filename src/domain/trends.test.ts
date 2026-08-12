@@ -137,7 +137,8 @@ describe("optional imported analytics", () => {
       run("2026-08-11", { trainingLoad: 55 }),
     ], week2.endDate);
     expect(twoWeeks.hasUsefulTrainingLoad).toBe(true);
-    expect(twoWeeks.trainingLoad.map((week) => week.total)).toEqual([40, 55]);
+    expect(twoWeeks.trainingLoad.map((week) => week.total).filter((total) => total !== null))
+      .toEqual([40, 55]);
   });
 });
 
@@ -166,5 +167,52 @@ describe("Consistency and Run Mix", () => {
       { activityType: "easy", miles: 5, runCount: 2, share: 0.5 },
       { activityType: "long", miles: 5, runCount: 1, share: 0.5 },
     ]);
+  });
+});
+
+describe("signals outside an active plan", () => {
+  it("keeps actual-data signals available before plan start without inventing consistency", () => {
+    const actual = [
+      run("2026-07-02", { activityType: "easy", trainingLoad: 35 }),
+      run("2026-07-06", { activityType: "easy", trainingLoad: 40 }),
+      run("2026-07-08", { activityType: "easy", hrZoneSeconds: [0, 600, 300] }),
+      run("2026-07-10", { activityType: "easy" }),
+      run("2026-07-12", { activityType: "long", distanceMiles: 7 }),
+      run("2026-07-14", { activityType: "easy", trainingLoad: 50 }),
+      run("2026-07-15", { activityType: "intervals", distanceMiles: 4 }),
+    ];
+    const signals = selectTrainingSignals(plan, actual, "2026-07-15");
+
+    expect(signals.weeklyMileage.at(-1)?.actualMiles).toBe(7);
+    expect(signals.weeklyMileage.at(-1)?.plannedMiles).toBeNull();
+    expect(signals.longRuns.at(-1)?.value).toBe(7);
+    expect(signals.easyRuns).toHaveLength(5);
+    expect(signals.recentEasy).not.toBeNull();
+    expect(signals.heartRateZones.coveredRuns).toBe(1);
+    expect(signals.hasUsefulTrainingLoad).toBe(true);
+    expect(signals.runMix.totalMiles).toBeGreaterThan(0);
+    expect(signals.consistency.percentage).toBeNull();
+    expect(signals.consistency.weeks).toEqual([]);
+    expect(signals.nextLongRunTarget).toBeNull();
+  });
+
+  it("continues actual-data signals after the plan without a fake future target", () => {
+    const actual = [
+      run("2026-12-22", { activityType: "easy", trainingLoad: 42 }),
+      run("2026-12-27", { activityType: "long", distanceMiles: 8 }),
+      run("2026-12-29", { activityType: "easy", trainingLoad: 48 }),
+      run("2027-01-02", { activityType: "easy", hrZoneSeconds: [0, 500, 250] }),
+      run("2027-01-03", { activityType: "easy" }),
+      run("2027-01-05", { activityType: "easy" }),
+    ];
+    const signals = selectTrainingSignals(plan, actual, "2027-01-05");
+
+    expect(signals.weeklyMileage.at(-1)?.actualMiles).toBeGreaterThan(0);
+    expect(signals.longRuns.at(-1)?.value).toBe(8);
+    expect(signals.easyRuns).toHaveLength(5);
+    expect(signals.heartRateZones.coveredRuns).toBe(1);
+    expect(signals.hasUsefulTrainingLoad).toBe(true);
+    expect(signals.runMix.totalMiles).toBeGreaterThan(0);
+    expect(signals.nextLongRunTarget).toBeNull();
   });
 });

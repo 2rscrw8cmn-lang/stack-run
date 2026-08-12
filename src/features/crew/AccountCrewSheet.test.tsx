@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import type { LoadedCrewAccount } from "../../crew/types";
+import { todayLocalDate } from "../../domain/dates";
 import { AccountCrewSheet } from "./AccountCrewSheet";
 
 const ownerAccount: LoadedCrewAccount = {
@@ -14,6 +15,7 @@ const ownerAccount: LoadedCrewAccount = {
     raceName: "OUC Half Marathon",
     raceDate: "2026-12-05",
     raceDistanceMiles: 13.1,
+    buildStartDate: "2026-08-01",
   },
   role: "owner",
   members: [
@@ -214,8 +216,87 @@ describe("Account & Crew settings", () => {
       raceName: "Winter Half",
       raceDate: "2026-12-05",
       raceDistanceMiles: 13.1,
+      buildStartDate: "2026-08-01",
     });
     expect(localRace).toEqual({ name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 });
+  });
+
+  it("defaults a new Crew Build start to today", () => {
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={{ name: "OUC Half", date: "2026-12-05", distanceMiles: 13.1 }}
+        crew={controller({
+          status: "signed-in",
+          account: {
+            profile: { id: "owner-1", displayName: "Owner" },
+            crew: null,
+            role: null,
+            members: [],
+            invites: [],
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByLabelText("Build starts")).toHaveValue(todayLocalDate());
+  });
+
+  it("confirms a later Build start when it removes existing Crew contributions", async () => {
+    const updateCrew = vi.fn(async () => true);
+    const user = userEvent.setup();
+    const oldRun = {
+      id: "run-1",
+      userId: "owner-1",
+      displayName: "Owner",
+      localDate: "2026-08-05",
+      activityType: "easy" as const,
+      distanceMiles: 3,
+      durationSeconds: 1800,
+      createdAt: "2026-08-05T12:00:00Z",
+      updatedAt: "2026-08-05T12:00:00Z",
+      buildRow: null,
+      buildColumnStart: null,
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+      crewBuildPlacedAt: null,
+      propsCount: 0,
+      viewerHasPropped: false,
+    };
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({
+          status: "signed-in",
+          account: ownerAccount,
+          updateCrew,
+          crewData: {
+            members: ownerAccount.members,
+            summaries: [],
+            runs: [oldRun],
+            miniBuildRuns: [],
+            crewBuildRuns: [],
+            sharedRunsAvailable: true,
+            sharedRunsTruncated: false,
+            propsAvailable: true,
+            loadedAt: "2026-08-12T00:00:00Z",
+          },
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    await user.clear(screen.getByLabelText("Build starts"));
+    await user.type(screen.getByLabelText("Build starts"), "2026-08-10");
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(screen.getByText(/remove Crew contributions before that date/)).toBeInTheDocument();
+    expect(updateCrew).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Change Build Start" }));
+    expect(updateCrew).toHaveBeenCalledWith(expect.objectContaining({ buildStartDate: "2026-08-10" }));
   });
 
   it("rejects blank names and invalid distance before calling the backend", async () => {

@@ -4,6 +4,7 @@ import { createInitialAppState } from "../storage/migrations";
 import type { RunLog } from "../domain/types";
 import {
   projectMemberSummary,
+  projectSharedRuns,
   projectServerBackedSummary,
   projectSharedRun,
   projectionFingerprint,
@@ -50,6 +51,10 @@ function fakeProjectionClient(input: {
   calls: ProjectionCall[];
 }): SupabaseClient {
   return {
+    rpc: vi.fn((name: string, value: unknown) => {
+      input.calls.push({ table: name, operation: "rpc", value });
+      return Promise.resolve({ data: 0, error: null });
+    }),
     from: vi.fn((table: string) => {
       let operation = "select";
       const builder = {
@@ -168,6 +173,21 @@ describe("Race Crew projection", () => {
     expect(moved).not.toContain("placedAt");
   });
 
+  it("uses the Crew-owned Build start date for fingerprint eligibility", () => {
+    const state = {
+      ...createInitialAppState(),
+      runLogs: [
+        { ...privateRun, id: "before", completedDate: "2026-08-09" },
+        { ...privateRun, id: "same-day", completedDate: "2026-08-10" },
+      ],
+    };
+
+    const fingerprint = projectionFingerprint(state, "2026-08-12", "2026-08-10");
+    expect(fingerprint).toContain('"buildStartDate":"2026-08-10"');
+    expect(fingerprint).not.toContain("before");
+    expect(fingerprint).toContain("same-day");
+  });
+
   it("sends only the allowlisted run facts and sanitized coordinates", async () => {
     const calls: ProjectionCall[] = [];
     const client = fakeProjectionClient({
@@ -195,6 +215,7 @@ describe("Race Crew projection", () => {
       },
       crewId: "crew-1",
       userId: "user-1",
+      buildStartDate: "2026-08-01",
       today: "2026-08-10",
     });
 
@@ -247,6 +268,7 @@ describe("Race Crew projection", () => {
         state: createInitialAppState(),
         crewId: "crew-1",
         userId: "user-1",
+        buildStartDate: "2026-08-01",
         today: "2026-08-12",
       },
     );
@@ -280,6 +302,7 @@ describe("Race Crew projection", () => {
         state: { ...createInitialAppState(), runLogs: [partial] },
         crewId: "crew-1",
         userId: "user-1",
+        buildStartDate: "2026-08-01",
         today: "2026-08-12",
       },
     );
@@ -304,6 +327,7 @@ describe("Race Crew projection", () => {
         state: createInitialAppState(),
         crewId: "crew-1",
         userId: "user-1",
+        buildStartDate: "2026-08-01",
         today: "2026-08-12",
       },
     );
@@ -318,6 +342,7 @@ describe("Race Crew projection", () => {
         state: createInitialAppState(),
         crewId: "crew-1",
         userId: "user-1",
+        buildStartDate: "2026-08-01",
         today: "2026-08-12",
         authoritativeEmpty: true,
       },
@@ -346,6 +371,7 @@ describe("Race Crew projection", () => {
         state: { ...createInitialAppState(), runLogs: [privateRun] },
         crewId: "crew-1",
         userId: "user-1",
+        buildStartDate: "2026-08-01",
         today: "2026-08-10",
       },
     );
@@ -383,6 +409,58 @@ describe("Race Crew projection", () => {
       longestRun28dMiles: 4,
       milesBuilt: 24,
     });
+  });
+
+  it("shares only runs on or after the Crew Build start date", () => {
+    const runs = [
+      { ...privateRun, id: "before", completedDate: "2026-08-09" },
+      { ...privateRun, id: "same-day", completedDate: "2026-08-10" },
+      { ...privateRun, id: "after", completedDate: "2026-08-11" },
+      { ...privateRun, id: "late-import", completedDate: "2026-08-08", createdAt: "2026-08-12T12:00:00Z" },
+    ];
+
+    expect(projectSharedRuns(runs, [], "2026-08-10").map((run) => run.localRunId))
+      .toEqual(["same-day", "after"]);
+  });
+
+  it("accepts a late import whose completed date is inside the Crew window", () => {
+    const lateImport = {
+      ...privateRun,
+      id: "late-in-window",
+      completedDate: "2026-08-05",
+      createdAt: "2026-08-12T12:00:00Z",
+    };
+    expect(projectSharedRuns([lateImport], [], "2026-08-01").map((run) => run.localRunId))
+      .toEqual(["late-in-window"]);
+  });
+
+  it("keeps an imported run personal when its completed date predates the Build", () => {
+    const oldImport = {
+      ...privateRun,
+      id: "late-pre-build",
+      completedDate: "2026-08-05",
+      createdAt: "2026-08-12T12:00:00Z",
+    };
+    const personalState = { ...createInitialAppState(), runLogs: [oldImport] };
+    expect(personalState.runLogs).toContain(oldImport);
+    expect(projectSharedRuns(personalState.runLogs, [], "2026-08-10")).toEqual([]);
+  });
+
+  it("can keep a year of 150 personal runs while sharing only 18 eligible runs", () => {
+    const personalRuns = Array.from({ length: 150 }, (_, index) => ({
+      ...privateRun,
+      id: `year-${index}`,
+      completedDate: index < 132 ? "2025-12-31" : "2026-08-01",
+    }));
+
+    expect(personalRuns).toHaveLength(150);
+    expect(projectSharedRuns(personalRuns, [], "2026-08-01")).toHaveLength(18);
+  });
+
+  it("changes the fingerprint when the Crew Build start moves earlier", () => {
+    const state = { ...createInitialAppState(), runLogs: [privateRun] };
+    expect(projectionFingerprint(state, "2026-08-12", "2026-08-11"))
+      .not.toBe(projectionFingerprint(state, "2026-08-12", "2026-08-01"));
   });
 
   it("calculates the approved factual summary and excludes extras from consistency", () => {

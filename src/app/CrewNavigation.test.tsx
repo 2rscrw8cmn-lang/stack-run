@@ -20,6 +20,7 @@ const account: LoadedCrewAccount = {
     raceName: "Half Marathon",
     raceDate: "2026-12-05",
     raceDistanceMiles: 13.1,
+    buildStartDate: "2026-08-01",
   },
   role: "owner",
   members,

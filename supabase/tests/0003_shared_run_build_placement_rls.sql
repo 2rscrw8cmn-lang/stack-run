@@ -25,7 +25,7 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '30000000-0000-0000-0000-000000000001';
 
 insert into build_placement_test_ids (crew_id)
-values (public.create_crew('Build Crew', 'Build Race', '2026-12-05', 13.1));
+values (public.create_crew('Build Crew', 'Build Race', '2026-12-05', 13.1, '2026-01-01'));
 
 with run as (
   insert into public.shared_runs (

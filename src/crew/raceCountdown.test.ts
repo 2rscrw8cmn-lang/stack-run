@@ -34,13 +34,13 @@ describe("Crew race line", () => {
         raceDate: "2026-12-05",
         raceDistanceMiles: 13.1,
       }),
-    ).toBe("Dec 5 · Half Marathon");
+    ).toBe("Half Marathon · Dec 5");
   });
 
   it("falls back to the distance when the race is unnamed", () => {
     expect(
       crewRaceLine({ raceName: "  ", raceDate: "2026-12-05", raceDistanceMiles: 13.1 }),
-    ).toBe("Dec 5 · 13.1 mi");
+    ).toBe("13.1 mi · Dec 5");
   });
 
   it("drops an unreadable date instead of failing", () => {

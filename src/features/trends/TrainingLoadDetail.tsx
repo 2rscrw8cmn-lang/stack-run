@@ -15,8 +15,8 @@ export function TrainingLoadDetail({
 }) {
   const weeks = signals.trainingLoad;
   const latestIndex = weeks.reduce((latest, week, index) => week.total === null ? latest : index, 0);
-  const [selectedKey, setSelectedKey] = useState(() => weeks.length ? String(weeks[latestIndex].weekNumber) : "");
-  const selectedIndex = Math.max(weeks.findIndex((week) => String(week.weekNumber) === selectedKey), 0);
+  const [selectedKey, setSelectedKey] = useState(() => weeks.length ? weeks[latestIndex].key : "");
+  const selectedIndex = Math.max(weeks.findIndex((week) => week.key === selectedKey), 0);
   const selected = weeks[selectedIndex];
   if (!selected) return <p className="signal-detail__empty">No Training Load data is available.</p>;
   const priorTotals = weeks.slice(0, selectedIndex).filter((week) => !week.isPartial && week.total !== null).slice(-4).map((week) => week.total!);
@@ -35,13 +35,13 @@ export function TrainingLoadDetail({
       <p className="signal-detail__note">Only runs with imported Training Load are included.</p>
       <PlanActualColumns
         columns={weeks.map((week) => ({
-          key: String(week.weekNumber),
-          shortLabel: `W${week.weekNumber}`,
+          key: week.key,
+          shortLabel: week.shortLabel,
           actual: week.total,
           isPartial: week.isPartial,
-          selectionLabel: `Week ${week.weekNumber}, ${week.total === null ? "Training Load unavailable" : `${week.total} Training Load`}, ${week.coveredRuns} of ${week.eligibleRuns} runs covered${week.isPartial ? ", in progress" : ""}`,
+          selectionLabel: `${week.label}, ${week.total === null ? "Training Load unavailable" : `${week.total} Training Load`}, ${week.coveredRuns} of ${week.eligibleRuns} runs covered${week.isPartial ? ", in progress" : ""}`,
         }))}
-        selectedKey={String(selected.weekNumber)}
+        selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
       <SignalFacts facts={[
@@ -50,7 +50,7 @@ export function TrainingLoadDetail({
         ...(comparison === null ? [] : [{ label: "Versus average", value: `${comparison > 0 ? "+" : ""}${comparison}%` }]),
         { label: "Coverage", value: `${selected.coveredRuns} of ${selected.eligibleRuns} runs` },
       ]} />
-      <DetailSection title={`Week ${selected.weekNumber} run load`}>
+      <DetailSection title={`${selected.label} run load`}>
         <TrendRunList
           runs={selectedRuns}
           onOpenRun={onOpenRun}

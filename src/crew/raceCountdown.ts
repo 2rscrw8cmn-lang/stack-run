@@ -29,23 +29,23 @@ export function raceCountdown(
   };
 }
 
-/** `Dec 5 · Half Marathon`, falling back to the distance when unnamed. */
+/** `Half Marathon · Dec 5`, falling back to the distance when unnamed. */
 export function crewRaceLine(crew: {
   raceName: string;
   raceDate: string;
   raceDistanceMiles: number;
 }): string {
   const facts: string[] = [];
-  try {
-    facts.push(formatDateLabel(crew.raceDate, { month: "short", day: "numeric" }));
-  } catch {
-    // An unreadable stored date simply drops out of the line.
-  }
   const name = crew.raceName.trim();
   if (name) {
     facts.push(name);
   } else if (crew.raceDistanceMiles > 0) {
     facts.push(`${Number(crew.raceDistanceMiles.toFixed(2))} mi`);
+  }
+  try {
+    facts.push(formatDateLabel(crew.raceDate, { month: "short", day: "numeric" }));
+  } catch {
+    // An unreadable stored date simply drops out of the line.
   }
   return facts.join(" · ");
 }

@@ -1,8 +1,10 @@
 import {
   addDaysToLocalDate,
   compareLocalDates,
+  formatLocalDate,
   isAfterLocalDate,
   isBeforeLocalDate,
+  parseLocalDate,
 } from "./dates";
 import { formatWeekRange } from "./plan";
 import type {
@@ -33,7 +35,10 @@ export interface DatedPoint {
 }
 
 export interface WeeklyMileagePoint {
-  weekNumber: number;
+  key: string;
+  weekNumber: number | null;
+  label: string;
+  shortLabel: string;
   startDate: string;
   endDate: string;
   actualMiles: number;
@@ -81,7 +86,10 @@ export interface TrainingLoadRun {
 }
 
 export interface TrainingLoadWeek {
-  weekNumber: number;
+  key: string;
+  weekNumber: number | null;
+  label: string;
+  shortLabel: string;
   startDate: string;
   endDate: string;
   total: number | null;
@@ -146,12 +154,28 @@ function inRange(date: string, startDate: string, endDate: string): boolean {
   return !isBeforeLocalDate(date, startDate) && !isAfterLocalDate(date, endDate);
 }
 
-function activeHistoryEnd(plan: TrainingPlan, today: string): string {
-  return isAfterLocalDate(today, plan.endDate) ? plan.endDate : today;
-}
-
 function roundMiles(value: number): number {
   return Number(value.toFixed(2));
+}
+
+function mondayOf(date: string): string {
+  const parsed = parseLocalDate(date);
+  parsed.setDate(parsed.getDate() - ((parsed.getDay() + 6) % 7));
+  return formatLocalDate(parsed);
+}
+
+function calendarWeeksEndingAt(today: string): Array<{
+  startDate: string;
+  endDate: string;
+}> {
+  const currentStart = mondayOf(today);
+  return Array.from({ length: TREND_WEEK_WINDOW }, (_, index) => {
+    const startDate = addDaysToLocalDate(
+      currentStart,
+      (index - (TREND_WEEK_WINDOW - 1)) * 7,
+    );
+    return { startDate, endDate: addDaysToLocalDate(startDate, 6) };
+  });
 }
 
 function runsInRange(
@@ -270,31 +294,48 @@ export function selectTrainingSignals(
   const startedWeeks = plan.weeks
     .filter((week) => !isAfterLocalDate(week.startDate, today))
     .sort((a, b) => a.weekNumber - b.weekNumber);
-  const displayedWeeks = startedWeeks.slice(-TREND_WEEK_WINDOW);
+  const planWeekByStart = new Map(
+    plan.weeks.map((week) => [week.startDate, week] as const),
+  );
+  const displayedWeeks = calendarWeeksEndingAt(today);
 
   const weeklyMileage = displayedWeeks.map((week) => {
-    const runs = runsInRange(runLogs, week.startDate, week.endDate);
+    const planWeek = planWeekByStart.get(week.startDate) ?? null;
     const isCurrentWeek = inRange(today, week.startDate, week.endDate);
+    const actualEnd = isCurrentWeek ? today : week.endDate;
+    const runs = runsInRange(runLogs, week.startDate, actualEnd);
+    const label = planWeek
+      ? `Week ${planWeek.weekNumber}`
+      : formatWeekRange(week.startDate, week.endDate);
     return {
-      weekNumber: week.weekNumber,
+      key: week.startDate,
+      weekNumber: planWeek?.weekNumber ?? null,
+      label,
+      shortLabel: planWeek
+        ? `W${planWeek.weekNumber}`
+        : formatWeekRange(week.startDate, week.startDate),
       startDate: week.startDate,
       endDate: week.endDate,
       actualMiles: roundMiles(
         runs.reduce((total, run) => total + run.distanceMiles, 0),
       ),
-      plannedMiles: plannedWeekMiles(week),
+      plannedMiles: planWeek ? plannedWeekMiles(planWeek) : null,
       isCurrentWeek,
       isPartial: isCurrentWeek && isBeforeLocalDate(today, week.endDate),
       runs,
     };
   });
 
-  const endDate = activeHistoryEnd(plan, today);
-  const activeRuns = isBeforeLocalDate(endDate, plan.startDate)
-    ? []
-    : runsInRange(runLogs, plan.startDate, endDate);
+  const actualRuns = runLogs
+    .filter((run) => !isAfterLocalDate(run.completedDate, today))
+    .sort(
+      (a, b) =>
+        compareLocalDates(a.completedDate, b.completedDate) ||
+        a.createdAt.localeCompare(b.createdAt) ||
+        a.id.localeCompare(b.id),
+    );
 
-  const longRuns = activeRuns
+  const longRuns = actualRuns
     .filter((run) => run.activityType === "long")
     .map((run) => ({
       runLogId: run.id,
@@ -313,10 +354,13 @@ export function selectTrainingSignals(
       }),
     )
     .sort((a, b) => compareLocalDates(a.date, b.date));
-  const nextLongRunTarget =
-    plannedLongRuns.find((point) => isAfterLocalDate(point.date, today)) ?? null;
+  const planIsActive = !isBeforeLocalDate(today, plan.startDate) &&
+    !isAfterLocalDate(today, plan.endDate);
+  const nextLongRunTarget = planIsActive
+    ? plannedLongRuns.find((point) => isAfterLocalDate(point.date, today)) ?? null
+    : null;
 
-  const easyRuns = activeRuns
+  const easyRuns = actualRuns
     .filter((run) => run.activityType === "easy" && run.distanceMiles > 0)
     .map((run) => ({
       runLogId: run.id,
@@ -335,24 +379,13 @@ export function selectTrainingSignals(
         )
       : null;
 
-  const recentStart = isAfterLocalDate(
-    addDaysToLocalDate(today, -(RECENT_ZONE_DAYS - 1)),
-    plan.startDate,
-  )
-    ? addDaysToLocalDate(today, -(RECENT_ZONE_DAYS - 1))
-    : plan.startDate;
-  const heartRateZones = isBeforeLocalDate(endDate, recentStart)
-    ? {
-        startDate: recentStart,
-        endDate,
-        zoneSeconds: [],
-        coveredRuns: 0,
-        eligibleRuns: 0,
-      }
-    : aggregateZones(runLogs, recentStart, endDate);
+  const recentStart = addDaysToLocalDate(today, -(RECENT_ZONE_DAYS - 1));
+  const heartRateZones = aggregateZones(actualRuns, recentStart, today);
 
   const trainingLoad = displayedWeeks.map((week) => {
-    const eligibleRuns = runsInRange(runLogs, week.startDate, week.endDate);
+    const isCurrentWeek = inRange(today, week.startDate, week.endDate);
+    const actualEnd = isCurrentWeek ? today : week.endDate;
+    const eligibleRuns = runsInRange(actualRuns, week.startDate, actualEnd);
     const runs = eligibleRuns.flatMap((run) => {
       const value = run.importedMetrics?.trainingLoad;
       return value === undefined
@@ -364,9 +397,16 @@ export function selectTrainingSignals(
             value,
           }];
     });
-    const isCurrentWeek = inRange(today, week.startDate, week.endDate);
+    const planWeek = planWeekByStart.get(week.startDate) ?? null;
     return {
-      weekNumber: week.weekNumber,
+      key: week.startDate,
+      weekNumber: planWeek?.weekNumber ?? null,
+      label: planWeek
+        ? `Week ${planWeek.weekNumber}`
+        : formatWeekRange(week.startDate, week.endDate),
+      shortLabel: planWeek
+        ? `W${planWeek.weekNumber}`
+        : formatWeekRange(week.startDate, week.startDate),
       startDate: week.startDate,
       endDate: week.endDate,
       total: runs.length
@@ -426,13 +466,8 @@ export function selectTrainingSignals(
     weeks: consistencyWeeks,
   };
 
-  const mixStartCandidate = addDaysToLocalDate(today, -(RUN_MIX_DAYS - 1));
-  const mixStart = isAfterLocalDate(mixStartCandidate, plan.startDate)
-    ? mixStartCandidate
-    : plan.startDate;
-  const mixRuns = isBeforeLocalDate(endDate, mixStart)
-    ? []
-    : runsInRange(runLogs, mixStart, endDate);
+  const mixStart = addDaysToLocalDate(today, -(RUN_MIX_DAYS - 1));
+  const mixRuns = runsInRange(actualRuns, mixStart, today);
   const totalMixMiles = roundMiles(
     mixRuns.reduce((sum, run) => sum + run.distanceMiles, 0),
   );
@@ -477,7 +512,7 @@ export function selectTrainingSignals(
     consistency,
     runMix: {
       startDate: mixStart,
-      endDate,
+      endDate: today,
       totalMiles: totalMixMiles,
       slices,
     },

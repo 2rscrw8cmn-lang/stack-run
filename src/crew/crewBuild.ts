@@ -29,6 +29,8 @@ export interface CrewBuildBlock extends CrewBuildPlacement {
   height: BlockHeight;
   distanceMiles: number;
   localDate: string;
+  crewBuildPlacedAt: string | null;
+  recentlyPlaced: boolean;
 }
 
 export interface CrewBuildReadyRun {
@@ -48,10 +50,13 @@ export interface CrewBuildModel {
   blocks: CrewBuildBlock[];
   /** Unplaced contributions, oldest earned contribution first. */
   readyRuns: CrewBuildReadyRun[];
+  /** READY contributions the current viewer can actually place. */
+  viewerReadyRuns: CrewBuildReadyRun[];
   /** Courses tall, counted from the ground. */
   courses: number;
-  /** All shared-run miles, whether placed or READY. */
-  milesBuilt: number;
+  /** Miles represented by blocks physically present in the shared tower. */
+  placedMiles: number;
+  /** Eligible shared contributions, retained for truncation/accounting only. */
   runCount: number;
   placedCount: number;
   readyCount: number;
@@ -62,13 +67,27 @@ export interface CrewBuildModel {
 export const EMPTY_CREW_BUILD: CrewBuildModel = {
   blocks: [],
   readyRuns: [],
+  viewerReadyRuns: [],
   courses: 0,
-  milesBuilt: 0,
+  placedMiles: 0,
   runCount: 0,
   placedCount: 0,
   readyCount: 0,
   truncated: false,
 };
+
+const RECENT_PLACEMENT_MS = 24 * 60 * 60_000;
+
+export function isRecentCrewBuildPlacement(
+  placedAt: string | null,
+  now = Date.now(),
+): boolean {
+  if (!placedAt) return false;
+  const placed = new Date(placedAt).getTime();
+  if (!Number.isFinite(placed)) return false;
+  const age = now - placed;
+  return age >= 0 && age <= RECENT_PLACEMENT_MS;
+}
 
 /** Stable ordering for the READY queue: oldest earned contribution first. */
 export function compareCrewBuildReadyRuns(
@@ -168,6 +187,8 @@ export function canPlaceCrewBuildBlock(
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     localDate: "",
+    crewBuildPlacedAt: null,
+    recentlyPlaced: false,
     ...placement,
     ...footprint,
   };
@@ -205,11 +226,14 @@ export function crewBuildPlacementOptions(
  *
  * Personal `build_row` / `build_column_start` never enter this contract. A
  * run with no valid Crew placement remains READY and receives no invented
- * physical position. Totals still include every safe shared run.
+ * physical position. The hero mileage is derived only from surviving placed
+ * blocks; READY mileage remains deliberately separate.
  */
 export function deriveCrewBuild(
   runs: readonly CrewBuildRun[],
   limit = CREW_BUILD_BLOCK_LIMIT,
+  viewerUserId?: string,
+  now = Date.now(),
 ): CrewBuildModel {
   const ceiling = Math.max(0, limit);
   const ordered = [...runs].sort(compareCrewBuildReadyRuns);
@@ -239,6 +263,8 @@ export function deriveCrewBuild(
         columnStart: placement.columnStart,
         distanceMiles: run.distanceMiles,
         localDate: run.localDate,
+        crewBuildPlacedAt: run.crewBuildPlacedAt,
+        recentlyPlaced: isRecentCrewBuildPlacement(run.crewBuildPlacedAt, now),
       });
     } else {
       readyRuns.push({
@@ -255,16 +281,58 @@ export function deriveCrewBuild(
     }
   }
 
+  // Persisted data can predate server support validation or lose a supporting
+  // block during lifecycle cleanup. Remove unsupported construction from the
+  // read model until the remaining tower is structurally valid; those runs
+  // return to READY and are never auto-relocated.
+  let structurallyValid = blocks;
+  let removedUnsupported = true;
+  while (removedUnsupported) {
+    const next = structurallyValid.filter((block) =>
+      isCrewBuildBlockSupported(block, structurallyValid),
+    );
+    removedUnsupported = next.length !== structurallyValid.length;
+    structurallyValid = next;
+  }
+  const validIds = new Set(structurallyValid.map((block) => block.id));
+  for (const block of blocks) {
+    if (validIds.has(block.id)) continue;
+    const source = contributing.find((run) => run.id === block.id);
+    if (!source) continue;
+    readyRuns.push({
+      id: source.id,
+      userId: source.userId,
+      displayName: source.displayName,
+      activityType: source.activityType,
+      width: block.width,
+      height: block.height,
+      distanceMiles: source.distanceMiles,
+      localDate: source.localDate,
+      createdAt: source.createdAt,
+    });
+  }
+  readyRuns.sort((left, right) =>
+    left.localDate.localeCompare(right.localDate) ||
+    left.createdAt.localeCompare(right.createdAt) ||
+    left.id.localeCompare(right.id),
+  );
+
   return {
-    blocks,
+    blocks: structurallyValid,
     readyRuns,
-    courses: blocks.reduce(
+    viewerReadyRuns: viewerUserId
+      ? readyRuns.filter((run) => run.userId === viewerUserId)
+      : [],
+    courses: structurallyValid.reduce(
       (highest, block) => Math.max(highest, block.row + block.height),
       0,
     ),
-    milesBuilt: contributing.reduce((total, run) => total + run.distanceMiles, 0),
+    placedMiles: structurallyValid.reduce(
+      (total, block) => total + block.distanceMiles,
+      0,
+    ),
     runCount: contributing.length,
-    placedCount: blocks.length,
+    placedCount: structurallyValid.length,
     readyCount: readyRuns.length,
     truncated: ordered.length > contributing.length,
   };
