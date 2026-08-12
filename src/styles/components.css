@@ -6373,6 +6373,9 @@ textarea.run-input {
   border-bottom: 1px solid var(--border);
 }
 .crew-comparison__rows li:first-child { border-top: 1px solid var(--border); }
+/* The section itself closes with its own bottom border immediately below
+   the last row, so this row's own bottom border would double that line. */
+.crew-comparison__rows li:last-child { border-bottom: 0; }
 
 .crew-comparison__rows li[data-you="true"] {
   border-left: 2px solid var(--accent);
@@ -6454,17 +6457,6 @@ textarea.run-input {
 }
 .crew-comparison__bar[data-empty="true"] .crew-comparison__bar-fill { width: 2px; }
 .crew-comparison__bar[data-unavailable="true"] .crew-comparison__bar-fill { display: none; }
-.crew-comparison[data-metric="miles-built"] .crew-comparison__bar {
-  height: 9px;
-  border-radius: 1px;
-}
-.crew-comparison[data-metric="miles-built"] .crew-comparison__bar-fill {
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--intervals) 0 16px,
-    color-mix(in srgb, var(--intervals) 38%, transparent) 16px 18px
-  );
-}
 .crew-comparison__freshness {
   margin: 7px 0 0;
   color: var(--text-subtle);
