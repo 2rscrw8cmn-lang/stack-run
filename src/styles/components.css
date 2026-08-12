@@ -6105,15 +6105,12 @@ textarea.run-input {
   font-weight: 900;
   letter-spacing: -0.02em;
   cursor: pointer;
-  /* Identity, not training meaning: a ring in the runner's stable accent
-     around a block whose fill still says what the session was. It is a
-     box-shadow rather than the border, which is already doing depth-effect
-     work above, and it is listed first so it paints on top of the inset
-     shadows instead of being hidden under them. Not clipped by this
-     element's own `overflow: hidden` — that only clips this box's content,
-     never its own outer shadow. */
+  /* No member-accent ring here on purpose: a full-block outline in the
+     runner's color read as a selection/error/highlight state on some
+     block/member combinations (red on lime, notably), and it was redundant
+     with the monogram badge and legend below, which already carry identity
+     in the same stable accent. Depth only, on a normal placed block. */
   box-shadow:
-    0 0 0 2px var(--member-accent, transparent),
     inset 0 1px color-mix(in srgb, #fff 34%, transparent),
     inset -5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
     0 4px 8px rgba(0, 0, 0, 0.34);
@@ -6179,17 +6176,14 @@ textarea.run-input {
   opacity: 0.82;
 }
 .crew-build__preview { pointer-events: none; z-index: 3; }
-/* The placement-selection ring (`--accent`, inset) stays a distinct layer
-   from the ownership ring (`--member-accent`, outset) rather than
-   replacing it — one says "this is where it will land", the other still
-   says whose block it is. */
+/* The placement-selection state is carried entirely by `--accent` — an
+   inset outline plus an outer glow — so it stays obvious without leaning
+   on the (removed) member-accent ownership ring. */
 .crew-build__preview .crew-build__block {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   filter: brightness(1.1);
-  box-shadow:
-    0 0 0 2px var(--member-accent, transparent),
-    0 0 18px color-mix(in srgb, var(--accent) 34%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 34%, transparent);
 }
 .crew-build[data-placing="true"] .crew-build__stage {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
