@@ -27,6 +27,10 @@ interface RunsScreenProps {
     runLogId?: string,
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
+  /** Connects an extra run to a scheduled workout after the fact. */
+  onLinkRun?: (runLogId: string, workoutId: string) => void;
+  /** Undoes a manual link, turning the run back into an extra run. */
+  onUnlinkRun?: (runLogId: string) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   syncToken?: IntervalsConnection | string | null;
@@ -54,6 +58,8 @@ export function RunsScreen({
   runLogs,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
+  onLinkRun,
+  onUnlinkRun,
   today = todayLocalDate(),
   syncToken,
 }: RunsScreenProps) {
@@ -221,9 +227,25 @@ export function RunsScreen({
       {selected && (
         <RunDetailSheet
           entry={selected}
+          plan={plan}
+          runLogs={runLogs}
           syncToken={syncToken}
           isOpen={isDetailOpen}
           onEditRun={() => openEntry(selected, true)}
+          onLinkRun={
+            onLinkRun &&
+            ((runLogId, workoutId) => {
+              onLinkRun(runLogId, workoutId);
+              setAnnouncement("Run connected to the plan.");
+            })
+          }
+          onUnlinkRun={
+            onUnlinkRun &&
+            ((runLogId) => {
+              onUnlinkRun(runLogId);
+              setAnnouncement("Run unlinked from the plan.");
+            })
+          }
           onClose={closeDetail}
         />
       )}

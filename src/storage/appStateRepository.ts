@@ -416,6 +416,50 @@ export function deleteRunLog(state: AppState, runLogId: string): AppState {
   return next;
 }
 
+/**
+ * Connects an already-logged run to a scheduled workout after the fact.
+ *
+ * Import is not the only moment a run and a workout meet: a run typed in
+ * standalone, or synced without a match, is a real activity sitting apart
+ * from the day it actually satisfied. This is that same link, made later.
+ *
+ * Refuses silently, like the rest of this module's guards, when the run is
+ * unknown or the workout already has one — one workout still links to at
+ * most one run.
+ */
+export function linkRunLogToWorkout(state: AppState, runLogId: string, workoutId: string): AppState {
+  const existing = state.runLogs.find((run) => run.id === runLogId);
+  if (!existing || state.runLogs.some((run) => run.workoutId === workoutId)) return state;
+
+  const next: AppState = {
+    ...state,
+    runLogs: state.runLogs.map((run) =>
+      run.id === runLogId
+        ? { ...run, workoutId, updatedAt: new Date().toISOString() }
+        : run,
+    ),
+  };
+  saveAppState(next);
+  return next;
+}
+
+/** Undoes a manual link, turning the run back into an extra run. */
+export function unlinkRunLogFromWorkout(state: AppState, runLogId: string): AppState {
+  const existing = state.runLogs.find((run) => run.id === runLogId);
+  if (!existing || existing.workoutId === null) return state;
+
+  const next: AppState = {
+    ...state,
+    runLogs: state.runLogs.map((run) =>
+      run.id === runLogId
+        ? { ...run, workoutId: null, updatedAt: new Date().toISOString() }
+        : run,
+    ),
+  };
+  saveAppState(next);
+  return next;
+}
+
 export function acceptIntervalsRun(state: AppState, candidate: IntervalsCandidate, workoutId: string | null, activityType: RunLog["activityType"], effort: RunLog["effort"], notes: string): AppState {
   if (state.runLogs.some((run) => run.externalSource?.provider === "intervals" && run.externalSource.activityId === candidate.externalId)) return state;
   return saveRunLog(state, {

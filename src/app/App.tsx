@@ -3,6 +3,7 @@ import type { AvailabilityCalendar } from "../domain/availability";
 import type { AppState, RunLog } from "../domain/types";
 import {
   deleteRunLog,
+  linkRunLogToWorkout,
   loadAppState,
   onStorageWriteError,
   placeBlock,
@@ -19,6 +20,7 @@ import {
   saveIntervalsSync,
   ignoreIntervalsActivity,
   clearIgnoredIntervalsActivities,
+  unlinkRunLogFromWorkout,
   hasStoredAppState,
 } from "../storage/appStateRepository";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
@@ -301,6 +303,12 @@ export function App() {
           void raceCrew.deleteRunContribution(runLogId);
         }
       }}
+      onLinkRun={(runLogId, workoutId) =>
+        setAppState((current) => linkRunLogToWorkout(current, runLogId, workoutId))
+      }
+      onUnlinkRun={(runLogId) =>
+        setAppState((current) => unlinkRunLogFromWorkout(current, runLogId))
+      }
       availability={boot.state.availability}
       onSaveAvailability={saveCalendar}
       raceSetup={boot.state.raceSetup}

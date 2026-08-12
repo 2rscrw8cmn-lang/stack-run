@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { Button } from "../../components/ui/Button";
+import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
+import { StackSelect } from "../../components/ui/StackSelect";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
+import { availableWorkoutsForRunLog } from "../../domain/plan";
 import type { RunHistoryEntry } from "../../domain/runs";
+import type { RunLog, TrainingPlan } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
 import { RunResultDetail } from "../workout-detail/RunResultDetail";
 
@@ -10,6 +15,16 @@ interface RunDetailSheetProps {
   entry: RunHistoryEntry;
   /** Opens the existing run-entry sheet, which also owns deletion. */
   onEditRun: () => void;
+  /**
+   * Needed to offer a manual link: the workouts this run could still satisfy
+   * depend on the whole plan and every other run's link.
+   */
+  plan?: TrainingPlan;
+  runLogs?: RunLog[];
+  /** Connects an extra run to a scheduled workout after the fact. */
+  onLinkRun?: (runLogId: string, workoutId: string) => void;
+  /** Undoes a link, turning the run back into an extra run. */
+  onUnlinkRun?: (runLogId: string) => void;
   syncToken?: IntervalsConnection | string | null;
   isOpen: boolean;
   onClose: () => void;
@@ -29,11 +44,27 @@ interface RunDetailSheetProps {
 export function RunDetailSheet({
   entry,
   onEditRun,
+  plan,
+  runLogs,
+  onLinkRun,
+  onUnlinkRun,
   syncToken,
   isOpen,
   onClose,
 }: RunDetailSheetProps) {
   const { runLog, workout } = entry;
+  const canLink = !workout && Boolean(plan) && Boolean(runLogs) && Boolean(onLinkRun);
+  const candidates = canLink
+    ? availableWorkoutsForRunLog(runLog, plan!, runLogs!)
+    : [];
+  const [pickedWorkoutId, setPickedWorkoutId] = useState("");
+  // The picker starts fresh on every run this sheet is opened for, rather
+  // than carrying over whatever a previous run left selected.
+  const [pickedFor, setPickedFor] = useState(runLog.id);
+  if (pickedFor !== runLog.id) {
+    setPickedFor(runLog.id);
+    setPickedWorkoutId("");
+  }
 
   return (
     <Sheet
@@ -70,10 +101,41 @@ export function RunDetailSheet({
           </p>
         </div>
 
+        {canLink && candidates.length > 0 && (
+          <div className="workout-detail__result">
+            <h3 className="workout-detail__result-title">Connect to plan</h3>
+            <FormField label="Scheduled workout">
+              <StackSelect
+                value={pickedWorkoutId}
+                onChange={(event) => setPickedWorkoutId(event.target.value)}
+              >
+                <option value="">Choose a workout…</option>
+                {candidates.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {formatDateLabel(item.date, { month: "short", day: "numeric" })} — {item.title}
+                  </option>
+                ))}
+              </StackSelect>
+            </FormField>
+            <Button
+              variant="secondary"
+              disabled={!pickedWorkoutId}
+              onClick={() => onLinkRun?.(runLog.id, pickedWorkoutId)}
+            >
+              Link Run
+            </Button>
+          </div>
+        )}
+
         <div className="workout-detail__actions">
           <Button variant="secondary" onClick={onEditRun}>
             Edit Run
           </Button>
+          {workout && onUnlinkRun && (
+            <Button variant="ghost" onClick={() => onUnlinkRun(runLog.id)}>
+              Unlink from Plan
+            </Button>
+          )}
         </div>
       </div>
     </Sheet>

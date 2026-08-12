@@ -1,6 +1,7 @@
 import { activeWeekNumber, blockStateFor, earnsBlock, scheduledRuns } from "./build";
 import {
   compareLocalDates,
+  daysBetweenLocalDates,
   formatDateLabel,
   isAfterLocalDate,
   isBeforeLocalDate,
@@ -173,4 +174,33 @@ export function selectPlanWeekViewModel(
     hasPreviousWeek: week.weekNumber > first,
     hasNextWeek: week.weekNumber < last,
   };
+}
+
+/**
+ * Every scheduled workout an extra run could be manually connected to,
+ * nearest date first — the same choice import already offers, made
+ * available after the fact for a run that was logged without one.
+ *
+ * Excludes rest days and any workout another run already satisfies: one
+ * workout links to at most one run, whether the link was made at import or
+ * here.
+ */
+export function availableWorkoutsForRunLog(
+  runLog: RunLog,
+  plan: TrainingPlan,
+  runLogs: readonly RunLog[],
+): Workout[] {
+  const matched = new Set(
+    runLogs.flatMap((run) => (run.workoutId ? [run.workoutId] : [])),
+  );
+  return plan.weeks
+    .flatMap((week) => week.workouts)
+    .filter((workout) => workout.type !== "rest" && !matched.has(workout.id))
+    .sort(
+      (a, b) =>
+        Math.abs(daysBetweenLocalDates(a.date, runLog.completedDate)) -
+          Math.abs(daysBetweenLocalDates(b.date, runLog.completedDate)) ||
+        a.date.localeCompare(b.date) ||
+        a.id.localeCompare(b.id),
+    );
 }

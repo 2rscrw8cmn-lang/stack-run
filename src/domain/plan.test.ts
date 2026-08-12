@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 import {
+  availableWorkoutsForRunLog,
   clampWeekNumber,
   currentWeekNumber,
   formatWeekRange,
@@ -216,5 +217,30 @@ describe("selectPlanWeekViewModel", () => {
 
     expect(today).toHaveLength(1);
     expect(today[0].workout.date).toBe("2026-08-06");
+  });
+});
+
+describe("availableWorkoutsForRunLog", () => {
+  const extra = { ...runLogFor("workout-002", "2026-08-03"), workoutId: null };
+
+  it("orders scheduled workouts nearest the run's date first", () => {
+    const workouts = availableWorkoutsForRunLog(extra, plan, [extra]);
+    const ids = workouts.map((workout) => workout.id);
+
+    expect(ids[0]).toBe("workout-002");
+    expect(ids.indexOf("workout-002")).toBeLessThan(ids.indexOf("workout-004"));
+  });
+
+  it("excludes rest days", () => {
+    const workouts = availableWorkoutsForRunLog(extra, plan, [extra]);
+
+    expect(workouts.every((workout) => workout.type !== "rest")).toBe(true);
+  });
+
+  it("excludes a workout another run already satisfies", () => {
+    const taken = runLogFor("workout-002", "2026-08-04");
+    const workouts = availableWorkoutsForRunLog(extra, plan, [extra, taken]);
+
+    expect(workouts.some((workout) => workout.id === "workout-002")).toBe(false);
   });
 });

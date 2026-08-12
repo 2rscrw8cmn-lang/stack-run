@@ -197,6 +197,61 @@ describe("Runs", () => {
     expect(runLogId).toBe("scheduled");
   });
 
+  it("connects an extra run to a scheduled workout from its detail sheet", async () => {
+    const onLinkRun = vi.fn();
+    const user = userEvent.setup();
+    renderRuns([run("extra", "2026-08-04")], { onLinkRun });
+
+    await user.click(rows()[0]);
+    const sheet = within(screen.getByRole("dialog"));
+    expect(sheet.getByText("Connect to plan")).toBeInTheDocument();
+
+    await user.selectOptions(sheet.getByLabelText("Scheduled workout"), "workout-002");
+    await user.click(sheet.getByRole("button", { name: "Link Run" }));
+
+    expect(onLinkRun).toHaveBeenCalledWith("extra", "workout-002");
+    expect(screen.getByText("Run connected to the plan.")).toBeInTheDocument();
+  });
+
+  it("does not offer linking without a handler for it", async () => {
+    const user = userEvent.setup();
+    renderRuns([run("extra", "2026-08-04")]);
+
+    await user.click(rows()[0]);
+    expect(screen.queryByText("Connect to plan")).not.toBeInTheDocument();
+  });
+
+  it("does not offer a workout another run already claimed", async () => {
+    const user = userEvent.setup();
+    renderRuns(
+      [
+        run("extra", "2026-08-01"),
+        run("scheduled", "2026-08-04", { workoutId: "workout-002" }),
+      ],
+      { onLinkRun: vi.fn() },
+    );
+
+    await user.click(screen.getByRole("button", { name: /August 1/ }));
+    const select = screen.getByLabelText("Scheduled workout") as HTMLSelectElement;
+    const values = [...select.options].map((option) => option.value);
+
+    expect(values).not.toContain("workout-002");
+  });
+
+  it("unlinks a scheduled run back to an extra one from its detail sheet", async () => {
+    const onUnlinkRun = vi.fn();
+    const user = userEvent.setup();
+    renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })], {
+      onUnlinkRun,
+    });
+
+    await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Unlink from Plan" }));
+
+    expect(onUnlinkRun).toHaveBeenCalledWith("scheduled");
+    expect(screen.getByText("Run unlinked from the plan.")).toBeInTheDocument();
+  });
+
   it("deletes through the existing entry sheet and puts focus back on the list", async () => {
     const onDeleteRun = vi.fn();
     vi.spyOn(window, "confirm").mockReturnValue(true);
