@@ -98,21 +98,22 @@ export function projectSharedRun(
   };
 }
 
+/**
+ * Every local run is projected, not only ones on or after the Crew Build
+ * start date. Member Build is a sanitized reproduction of the runner's real
+ * Personal Build — the Crew-owned window governs the shared communal tower
+ * and crew-relative stats, not this per-runner history. `isCrewEligibleLocalDate`
+ * is applied only where those windowed views are actually derived (crew
+ * comparisons/summary, the Crew Build itself, and RLS on the server).
+ */
 export function projectSharedRuns(
   runLogs: readonly RunLog[],
   placements: readonly BlockPlacement[] = [],
-  buildStartDate?: string,
 ): CrewSharedRunProjection[] {
   const placementsByRunId = new Map(
     placements.map((placement) => [placement.runLogId, placement] as const),
   );
-  return runLogs
-    .filter(
-      (run) =>
-        buildStartDate === undefined ||
-        isCrewEligibleLocalDate(run.completedDate, buildStartDate),
-    )
-    .map((run) => projectSharedRun(run, placementsByRunId.get(run.id)));
+  return runLogs.map((run) => projectSharedRun(run, placementsByRunId.get(run.id)));
 }
 
 export function projectMemberSummary(
@@ -189,7 +190,7 @@ export function projectionFingerprint(
 ): string {
   return JSON.stringify({
     buildStartDate,
-    runs: projectSharedRuns(state.runLogs, state.blockPlacements, buildStartDate),
+    runs: projectSharedRuns(state.runLogs, state.blockPlacements),
     summary: projectMemberSummary(state, today, buildStartDate),
   });
 }
@@ -286,11 +287,7 @@ export async function syncCrewProjection(
     authoritativeEmpty?: boolean;
   },
 ): Promise<void> {
-  const runs = projectSharedRuns(
-    input.state.runLogs,
-    input.state.blockPlacements,
-    input.buildStartDate,
-  );
+  const runs = projectSharedRuns(input.state.runLogs, input.state.blockPlacements);
   if (runs.length > 0) {
     const { error } = await client.from("shared_runs").upsert(
       runs.map((run) => ({

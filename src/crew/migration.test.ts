@@ -10,6 +10,8 @@ import boundaryMigration from "../../supabase/migrations/20260812150000_crew_mem
 import boundaryVerification from "../../supabase/tests/0007_crew_membership_boundary_and_placed_at.sql?raw";
 import buildStartMigration from "../../supabase/migrations/20260812170000_crew_build_start_date.sql?raw";
 import buildStartVerification from "../../supabase/tests/0008_crew_build_start_date.sql?raw";
+import unwindowedMigration from "../../supabase/migrations/20260812190000_member_build_unwindowed_history.sql?raw";
+import unwindowedVerification from "../../supabase/tests/0009_member_build_unwindowed_history.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -184,16 +186,54 @@ describe("Crew-owned Build start SQL", () => {
   });
 
   it("ships transactional cross-member cleanup and enforcement verification", () => {
-    expect(buildStartVerification).toMatch(/later Build start did not delete one contribution/i);
+    expect(buildStartVerification).toMatch(/later Build start did not demote exactly one Crew Build contribution/i);
     expect(buildStartVerification).toMatch(/Props did not cascade/i);
+    expect(buildStartVerification).toMatch(/pre-window run was deleted/i);
     expect(buildStartVerification).toMatch(/recursively demoted/i);
     expect(buildStartVerification).toMatch(/earlier Build start deleted or invented/i);
     expect(buildStartVerification).toMatch(/member changed Crew Build start/i);
-    expect(buildStartVerification).toMatch(/member uploaded a pre-window run/i);
     expect(buildStartVerification).toMatch(/backfill did not choose earliest placed Crew block/i);
     expect(buildStartVerification).toMatch(/backfill used oldest READY instead of Crew creation/i);
     expect(buildStartVerification).toMatch(/owner bypassed atomic Crew edit/i);
     expect(buildStartVerification).toMatch(/future Build start before race was rejected/i);
     expect(buildStartVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Member Build unwindowed history SQL (D-071)", () => {
+  it("lets ordinary projection upsert a member's shared runs regardless of the Crew Build window", () => {
+    expect(unwindowedMigration).toMatch(/create policy shared_runs_insert_self/i);
+    expect(unwindowedMigration).toMatch(/create policy shared_runs_update_self/i);
+    const policies = unwindowedMigration.match(
+      /create policy shared_runs_(?:insert|update)_self[\s\S]*?;/gi,
+    ) ?? [];
+    expect(policies).toHaveLength(2);
+    for (const policy of policies) {
+      expect(policy).not.toMatch(/is_crew_run_in_build_window/i);
+    }
+  });
+
+  it("moves the Build window enforcement to Crew Build placement only", () => {
+    expect(unwindowedMigration).toMatch(/create or replace function public\.place_crew_build_block/i);
+    expect(unwindowedMigration).toMatch(
+      /is_crew_run_in_build_window\(v_run\.crew_id, v_run\.local_date\)[\s\S]*crew_build_placement_before_window/i,
+    );
+  });
+
+  it("demotes rather than deletes pre-window rows when the owner moves the Build start later", () => {
+    expect(unwindowedMigration).toMatch(/create or replace function public\.update_crew/i);
+    expect(unwindowedMigration).not.toMatch(/delete from public\.shared_runs/i);
+    expect(unwindowedMigration).toMatch(/array_agg\(id\)[\s\S]*crew_build_row is not null/i);
+    expect(unwindowedMigration).toMatch(/set crew_build_row = null,[\s\S]*crew_build_placed_at = null[\s\S]*where id = any\(v_demoted_ids\)/i);
+    expect(unwindowedMigration).toMatch(/delete from public\.crew_reactions[\s\S]*where shared_run_id = any\(v_demoted_ids\)/i);
+    expect(unwindowedMigration).toMatch(/miles_built = coalesce\(\([\s\S]*run\.local_date >= p_build_start_date/i);
+  });
+
+  it("ships transactional verification that pre-window uploads survive but cannot join the Crew Build", () => {
+    expect(unwindowedVerification).toMatch(/pre-window Member Build upload was rejected or lost its placement/i);
+    expect(unwindowedVerification).toMatch(/crew_build_placement_before_window/i);
+    expect(unwindowedVerification).toMatch(/in-window run failed to place on the Crew Build/i);
+    expect(unwindowedVerification).toMatch(/pre-window Member Build update was rejected or leaked into the Crew Build/i);
+    expect(unwindowedVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

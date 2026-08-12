@@ -1,6 +1,5 @@
 const WIDTH = 320;
 const HEIGHT = 168;
-const TICK_BAND = 22;
 const AXIS_GUTTER = 24;
 
 export interface PlanActualColumn {
@@ -37,7 +36,7 @@ export function PlanActualColumns({
     <div className="plan-actual-chart technical-grid">
       <svg
         className="chart plan-actual-chart__figure"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT + TICK_BAND}`}
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         aria-hidden="true"
         focusable="false"
       >
@@ -94,9 +93,6 @@ export function PlanActualColumns({
                   y2={plannedY}
                 />
               )}
-              <text x={x} y={HEIGHT + 13} textAnchor="middle" className="chart__tick">
-                {column.shortLabel}
-              </text>
             </g>
           );
         })}

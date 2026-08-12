@@ -293,7 +293,7 @@ describe("Account & Crew settings", () => {
     await user.type(screen.getByLabelText("Build starts"), "2026-08-10");
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
-    expect(screen.getByText(/remove Crew contributions before that date/)).toBeInTheDocument();
+    expect(screen.getByText(/pull contributions before that date off the shared Crew Build/)).toBeInTheDocument();
     expect(updateCrew).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Change Build Start" }));
     expect(updateCrew).toHaveBeenCalledWith(expect.objectContaining({ buildStartDate: "2026-08-10" }));

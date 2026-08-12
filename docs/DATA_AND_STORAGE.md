@@ -270,12 +270,15 @@ Use deterministic upsert identity:
 crew_id + user_id + localRunId
 ```
 
-Normal projection is non-destructive. It first filters local RunLogs to
-`completedDate >= crews.build_start_date`. The date is Crew-owned and applies
-equally to every member; `crew_members.joined_at`, import time, plan linkage and
-local creation time do not affect eligibility. Same-day and later-imported
-in-window runs qualify; pre-window runs remain personal. Absence from one local device is never
-evidence that a Crew contribution was deleted. Local runs upsert safe facts by
+Normal projection uploads every local RunLog, not only ones on or after
+`crews.build_start_date` (D-071). Member Build is a sanitized reproduction of
+the runner's real Personal Build, so it is never date-clipped; the Crew-owned
+Build start date instead governs the shared communal Crew Build, Recent Crew
+Runs and crew-relative comparison stats, and is enforced there (and by RLS
+only on Crew Build placement, not on ordinary upload). `crew_members.joined_at`,
+import time, plan linkage and local creation time never affect eligibility for
+any of these. Absence from one local device is never evidence that a Crew
+contribution was deleted. Local runs upsert safe facts by
 `crew_id + user_id + localRunId`; a missing personal placement omits Member
 Build coordinates instead of writing null, and Crew Build coordinates are
 never part of projection writes.
@@ -286,12 +289,14 @@ device-local tombstone under `stack.crew-delete-tombstones.v1` retains only
 crew/user/local-run identity and retries later; it is removed after success.
 
 Owner edits use one security-definer `update_crew` transaction. Moving the Build
-start later deletes pre-window shared rows across all members, lets associated
+start later demotes (never deletes) pre-window shared rows off the Crew Build
+across all members — the row remains a Member Build block — lets associated
 Props cascade, and repeatedly clears communal coordinates on unsupported
 survivors so they return to READY without relocation. Moving it earlier deletes
 nothing and invents nothing; each member's next normal projection additively
-uploads eligible local history. RLS rejects ordinary member uploads before the
-Crew date, and direct table updates cannot bypass the transaction.
+uploads newly eligible local history into the windowed views. RLS rejects
+ordinary member Crew Build placement before the Crew date (`place_crew_build_block`),
+and direct table updates cannot bypass the `update_crew` transaction.
 
 Weekly Miles, trailing-28-day Longest Run and Miles Built are recomputed from
 the authenticated runner's cloud `shared_runs` union, so a blank or partial

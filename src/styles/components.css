@@ -3689,7 +3689,7 @@ textarea.run-input {
 .trend-cards__grid > li { min-width: 0; display: flex; }
 .trend-cards__grid .trend-cards__card { min-height: 112px; }
 
-.signal-detail { display: grid; gap: var(--space-5); }
+.signal-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
 
 .signal-detail__intro,
 .signal-detail__note,
@@ -6148,14 +6148,6 @@ textarea.run-input {
 }
 .crew-comparison__bar[data-empty="true"] .crew-comparison__bar-fill { width: 2px; }
 .crew-comparison__bar[data-unavailable="true"] .crew-comparison__bar-fill { display: none; }
-.crew-comparison[data-metric="consistency"] .crew-comparison__bar,
-.crew-comparison[data-metric="miles-built"] .crew-comparison__bar {
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent 0 17px,
-    rgba(255, 255, 255, 0.12) 17px 18px
-  );
-}
 .crew-comparison[data-metric="miles-built"] .crew-comparison__bar {
   height: 9px;
   border-radius: 1px;

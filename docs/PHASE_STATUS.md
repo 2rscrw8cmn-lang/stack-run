@@ -73,15 +73,15 @@ until those checks pass.
 
 Status: **Implemented / owner visual review pending.** This is focused product/data correction, not UI-23.
 
-- Crew contribution begins at Crew-owned `crews.build_start_date` for every member; same-day and later-imported in-window runs qualify, while membership join time, plan linkage, import time and local creation time are irrelevant;
-- creation defaults Build starts to today; owner edits validate it on or before race day. A later move requires confirmation and atomically removes pre-window rows for all members, cascades Props and recursively demotes unsupported survivors to READY; an earlier move is non-destructive and normal projection adds newly eligible local history;
+- Crew contribution — the shared communal Crew Build, Recent Crew Runs and crew-relative comparison stats — begins at Crew-owned `crews.build_start_date` for every member; same-day and later-imported in-window runs qualify, while membership join time, plan linkage, import time and local creation time are irrelevant. Member Build is unwindowed (D-071): it reproduces the runner's real Personal Build regardless of the Crew's window, so projection uploads full local history and RLS enforces the window only in Crew Build placement, not on ordinary upload;
+- creation defaults Build starts to today; owner edits validate it on or before race day. A later move requires confirmation and atomically demotes (never deletes) pre-window rows off the Crew Build for all members, cascades Props and recursively demotes unsupported survivors to READY; an earlier move is non-destructive and normal projection adds newly eligible local history;
 - Crew Build and its Miles Built comparison use physically placed communal mileage only; current-viewer READY remains a separate compact action;
 - `crew_build_placed_at` records placement or movement, with a subtle and accessible 24-hour recent-construction state and no legacy backfill;
 - the Crew header is compressed and Comparison is a lighter non-grid surface with four icon-only controls in one keyboard-operable row;
 - Today shows at most two teammate runs from today/yesterday and reuses the same optimistic Props controller, or renders nothing when none qualify;
 - Weekly Mileage, Long Run, Easy Pace, HR Zones, Training Load and Run Mix use actual history outside an active plan; Consistency and planned comparisons remain plan-dependent;
 - phone Training Signals use a swipeable overflow row with a next-card peek; desktop retains its grid and existing card/detail design;
-- existing migration `20260812150000_crew_membership_boundary_and_placed_at.sql` remains immutable for construction timestamps; forward migration `20260812170000_crew_build_start_date.sql` retires membership cleanup and adds the authoritative window/RLS/edit transaction. Transactional tests `0007` and `0008` cover placement time, backfill/enforcement, Props cascade and recursive support demotion.
+- existing migration `20260812150000_crew_membership_boundary_and_placed_at.sql` remains immutable for construction timestamps; forward migration `20260812170000_crew_build_start_date.sql` retires membership cleanup and adds the authoritative window/RLS/edit transaction; forward migration `20260812190000_member_build_unwindowed_history.sql` (D-071) narrows RLS/window enforcement to Crew Build placement only and changes the later-move edit to demote rather than delete. Transactional tests `0007`, `0008` and `0009` cover placement time, backfill/enforcement, Props cascade, recursive support demotion and unwindowed Member Build history.
 
 ## Post-UI-22 hotfix — Run Data review persistence and plan matching
 

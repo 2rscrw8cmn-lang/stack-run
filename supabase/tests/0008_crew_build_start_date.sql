@@ -110,22 +110,29 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '80000000-0000-0000-0000-000000000001';
 
 do $$
-declare v_deleted integer;
+declare v_demoted integer;
 begin
   select public.update_crew(
     (select crew_id from crew_build_start_test_ids),
     'Build Start Crew', 'Test Race', '2026-12-05', 13.1, '2026-08-10'
-  ) into v_deleted;
-  if v_deleted <> 1 then raise exception 'later Build start did not delete one contribution'; end if;
+  ) into v_demoted;
+  if v_demoted <> 1 then raise exception 'later Build start did not demote exactly one Crew Build contribution'; end if;
 end;
 $$;
 
+-- Moving the window later pulls a run off the shared communal tower but
+-- never deletes it: it is still a legitimate Member Build block.
 do $$
 begin
-  if exists (select 1 from public.shared_runs where id = (select removed_id from crew_build_start_test_ids))
-    then raise exception 'pre-window run survived owner edit'; end if;
+  if not exists (select 1 from public.shared_runs where id = (select removed_id from crew_build_start_test_ids))
+    then raise exception 'pre-window run was deleted; Member Build history must survive a later Build start'; end if;
+  if exists (
+    select 1 from public.shared_runs
+    where id = (select removed_id from crew_build_start_test_ids)
+      and crew_build_row is not null
+  ) then raise exception 'pre-window run kept its Crew Build placement'; end if;
   if exists (select 1 from public.crew_reactions where shared_run_id = (select removed_id from crew_build_start_test_ids))
-    then raise exception 'Props did not cascade with pre-window deletion'; end if;
+    then raise exception 'Props did not cascade with pre-window demotion'; end if;
   if exists (
     select 1 from public.shared_runs
     where id in (
@@ -169,7 +176,10 @@ begin
 end;
 $$;
 
--- An ordinary member cannot edit the Crew or upload a run before the window.
+-- An ordinary member cannot edit the Crew. Uploading a run dated before the
+-- window is now allowed (Member Build history) and covered in
+-- 0009_member_build_unwindowed_history.sql, along with the Crew Build
+-- placement window that replaces this as the actual enforcement point.
 set local request.jwt.claim.sub = '80000000-0000-0000-0000-000000000002';
 do $$
 begin
@@ -181,20 +191,6 @@ begin
     raise exception 'member changed Crew Build start';
   exception when others then
     if sqlerrm = 'member changed Crew Build start' then raise; end if;
-  end;
-
-  begin
-    insert into public.shared_runs (
-      crew_id, user_id, local_run_id, local_date, activity_type,
-      distance_miles, duration_seconds
-    ) values (
-      (select crew_id from crew_build_start_test_ids),
-      '80000000-0000-0000-0000-000000000002',
-      'pre-window-upload', '2025-12-31', 'easy', 3, 1800
-    );
-    raise exception 'member uploaded a pre-window run';
-  exception when others then
-    if sqlerrm = 'member uploaded a pre-window run' then raise; end if;
   end;
 end;
 $$;
