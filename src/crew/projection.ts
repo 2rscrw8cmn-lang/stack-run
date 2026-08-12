@@ -194,8 +194,11 @@ export function projectMemberSummary(
 export function projectionFingerprint(
   state: AppState,
   today: string,
-  membershipDate?: string,
+  joinedAt?: string,
 ): string {
+  const membershipDate = joinedAt === undefined
+    ? undefined
+    : joinedLocalDate(joinedAt);
   return JSON.stringify({
     membershipDate,
     runs: projectSharedRuns(state.runLogs, state.blockPlacements, membershipDate),

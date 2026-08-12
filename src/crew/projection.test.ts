@@ -5,6 +5,7 @@ import type { RunLog } from "../domain/types";
 import {
   projectMemberSummary,
   projectSharedRuns,
+  joinedLocalDate,
   projectServerBackedSummary,
   projectSharedRun,
   projectionFingerprint,
@@ -171,6 +172,22 @@ describe("Race Crew projection", () => {
     );
     expect(moved).not.toBe(first);
     expect(moved).not.toContain("placedAt");
+  });
+
+  it("converts a Supabase joined_at timestamp before fingerprint date comparisons", () => {
+    const joinedAt = "2026-08-10T21:47:31.227862+00:00";
+    const state = {
+      ...createInitialAppState(),
+      runLogs: [
+        { ...privateRun, id: "before", completedDate: "2026-08-09" },
+        { ...privateRun, id: "same-day", completedDate: "2026-08-10" },
+      ],
+    };
+
+    expect(joinedLocalDate(joinedAt)).toBe("2026-08-10");
+    expect(() => projectionFingerprint(state, "2026-08-12", joinedAt)).not.toThrow();
+    expect(projectionFingerprint(state, "2026-08-12", joinedAt)).not.toContain("before");
+    expect(projectionFingerprint(state, "2026-08-12", joinedAt)).toContain("same-day");
   });
 
   it("sends only the allowlisted run facts and sanitized coordinates", async () => {
