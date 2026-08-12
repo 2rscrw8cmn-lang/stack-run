@@ -87,6 +87,12 @@ function controller(
   };
 }
 
+/** Opens the Crew Settings sub-sheet for whichever crew is active, from the hub. */
+async function openCrewSettings(user: ReturnType<typeof userEvent.setup>, crewName: string | RegExp) {
+  const list = within(screen.getByRole("list", { name: "Your crews" }));
+  await user.click(list.getByRole("button", { name: crewName instanceof RegExp ? crewName : new RegExp(crewName) }));
+}
+
 describe("Account & Crew settings", () => {
   it("keeps an unconfigured build factual and non-blocking", () => {
     render(
@@ -163,6 +169,8 @@ describe("Account & Crew settings", () => {
         crew={crew}
       />,
     );
+    // The pending invite shows straight on the hub, with no navigation
+    // required — it needs the runner's attention immediately.
     expect(screen.getByText(/current race does not match/)).toBeInTheDocument();
     expect(screen.getByText(/will not change your race or training plan/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Join Anyway" }));
@@ -174,7 +182,45 @@ describe("Account & Crew settings", () => {
     });
   });
 
-  it("shows Crew management only to the owner", () => {
+  it("separates the account row from Crew-specific controls on the hub", () => {
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", email: "owner@example.test", account: ownerAccount })}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Owner.*owner@example\.test/ })).toBeInTheDocument();
+    expect(screen.getByText("Crews")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Join Crew" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Crew" })).toBeInTheDocument();
+    // No settings form fields leak onto the hub itself.
+    expect(screen.queryByLabelText("Profile display name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Crew name")).not.toBeInTheDocument();
+  });
+
+  it("opens Edit Profile from the hub's account row, separate from Crew controls", async () => {
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", email: "owner@example.test", account: ownerAccount })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Owner.*owner@example\.test/ }));
+    expect(screen.getByRole("heading", { name: "Edit Profile" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Profile display name")).toHaveValue("Owner");
+    expect(screen.getByRole("button", { name: "Sign Out" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Your color" })).toBeInTheDocument();
+    // Crew controls are not duplicated onto this sub-sheet.
+    expect(screen.queryByRole("button", { name: "Edit Crew" })).not.toBeInTheDocument();
+  });
+
+  it("shows Crew management only to the owner", async () => {
+    const user = userEvent.setup();
     const { rerender } = render(
       <AccountCrewSheet
         isOpen
@@ -183,9 +229,13 @@ describe("Account & Crew settings", () => {
         crew={controller({ status: "signed-in", account: ownerAccount })}
       />,
     );
+    await openCrewSettings(user, "OUC Race Crew");
     expect(screen.getByRole("button", { name: "Edit Crew" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete Crew" })).toBeInTheDocument();
 
+    // The sheet is already on the Crew Settings sub-view; re-rendering with a
+    // different account (as happens when the controller updates) redraws the
+    // same view rather than resetting navigation.
     rerender(
       <AccountCrewSheet
         isOpen
@@ -196,6 +246,7 @@ describe("Account & Crew settings", () => {
     );
     expect(screen.queryByRole("button", { name: "Edit Crew" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete Crew" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Leave Crew" })).toBeInTheDocument();
   });
 
   it("prefills and saves valid Crew edits without changing the personal race", async () => {
@@ -211,6 +262,7 @@ describe("Account & Crew settings", () => {
       />,
     );
 
+    await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     expect(screen.getByLabelText("Crew name")).toHaveValue("OUC Race Crew");
     expect(screen.getByLabelText("Race name")).toHaveValue("OUC Half Marathon");
@@ -235,7 +287,8 @@ describe("Account & Crew settings", () => {
     expect(localRace).toEqual({ name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 });
   });
 
-  it("defaults a new Crew Build start to today", () => {
+  it("defaults a new Crew Build start to today", async () => {
+    const user = userEvent.setup();
     render(
       <AccountCrewSheet
         isOpen
@@ -256,6 +309,7 @@ describe("Account & Crew settings", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: "Create Crew" }));
     expect(screen.getByLabelText("Build starts")).toHaveValue(todayLocalDate());
   });
 
@@ -305,6 +359,7 @@ describe("Account & Crew settings", () => {
       />,
     );
 
+    await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     await user.clear(screen.getByLabelText("Build starts"));
     await user.type(screen.getByLabelText("Build starts"), "2026-08-10");
@@ -327,6 +382,7 @@ describe("Account & Crew settings", () => {
         crew={controller({ status: "signed-in", account: ownerAccount, updateCrew })}
       />,
     );
+    await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     await user.clear(screen.getByLabelText("Crew name"));
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
@@ -341,7 +397,7 @@ describe("Account & Crew settings", () => {
     expect(updateCrew).not.toHaveBeenCalled();
   });
 
-  it("requires confirmation and supports cancelling Crew deletion", async () => {
+  it("requires confirmation and supports cancelling Crew deletion, returning to the hub once deleted", async () => {
     const deleteCrew = vi.fn(async () => true);
     const user = userEvent.setup();
     render(
@@ -353,6 +409,7 @@ describe("Account & Crew settings", () => {
       />,
     );
 
+    await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Delete Crew" }));
     expect(screen.getByRole("heading", { name: "Delete OUC Race Crew?" })).toBeInTheDocument();
     expect(screen.getByText(/shared data for everyone/)).toBeInTheDocument();
@@ -365,6 +422,8 @@ describe("Account & Crew settings", () => {
     await user.click(screen.getByRole("button", { name: "Delete Crew" }));
     await user.click(screen.getByRole("button", { name: "Delete Crew" }));
     expect(deleteCrew).toHaveBeenCalledOnce();
+    // A crew that no longer exists has nothing left to configure here.
+    expect(await screen.findByRole("heading", { name: "Account & Crew" })).toBeInTheDocument();
   });
 
   it("shows all 16 colors, marks the current pick, and greys out ones crewmates already wear", async () => {
@@ -388,6 +447,7 @@ describe("Account & Crew settings", () => {
         crew={controller({ status: "signed-in", account, saveAccentColor })}
       />,
     );
+    await user.click(screen.getByRole("button", { name: /^Member\b/ }));
 
     const picker = screen.getByRole("list", { name: "Your color" });
     expect(within(picker).getAllByRole("button")).toHaveLength(16);
@@ -419,6 +479,7 @@ describe("Account & Crew settings", () => {
         { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
       ],
     };
+    const user = userEvent.setup();
     render(
       <AccountCrewSheet
         isOpen
@@ -427,6 +488,7 @@ describe("Account & Crew settings", () => {
         crew={controller({ status: "signed-in", account })}
       />,
     );
+    await user.click(screen.getByRole("button", { name: /^Owner\b/ }));
 
     const picker = screen.getByRole("list", { name: "Your color" });
     expect(within(picker).queryAllByRole("button", { name: /taken/ })).toHaveLength(0);
@@ -453,7 +515,7 @@ const twoCrewAccount: LoadedCrewAccount = {
 };
 
 describe("Belonging to more than one crew", () => {
-  it("offers a second crew without asking the runner to leave the first", async () => {
+  it("offers Create Crew as an addition, never a replacement for the first", async () => {
     const user = userEvent.setup();
     render(
       <AccountCrewSheet
@@ -464,10 +526,9 @@ describe("Belonging to more than one crew", () => {
       />,
     );
 
-    expect(screen.getByText("You are in 1 crew. Join another any time with a private invite link.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Crew name")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Create Another Crew" }));
+    await user.click(screen.getByRole("button", { name: "Create Crew" }));
     expect(screen.getByText("Create a private crew")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Crew emblem preview" })).toBeInTheDocument();
 
@@ -475,7 +536,7 @@ describe("Belonging to more than one crew", () => {
     expect(screen.queryByText("Create a private crew")).not.toBeInTheDocument();
   });
 
-  it("lists both crews and switches to the one the runner picks", async () => {
+  it("lists every crew once on the hub and switches to the one the runner picks", async () => {
     const switchCrew = vi.fn(async () => undefined);
     const user = userEvent.setup();
     render(
@@ -489,13 +550,17 @@ describe("Belonging to more than one crew", () => {
 
     const list = within(screen.getByRole("list", { name: "Your crews" }));
     expect(list.getAllByRole("button")).toHaveLength(2);
-    expect(list.getByRole("button", { name: /OUC Race Crew/ })).toHaveAttribute("aria-pressed", "true");
+    const active = list.getByRole("button", { name: /OUC Race Crew/ });
+    expect(active).toHaveAttribute("aria-pressed", "true");
+    // The active crew is represented once here, not repeated elsewhere.
+    expect(screen.queryByText("Crew you are viewing")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your Race Crew")).not.toBeInTheDocument();
 
     await user.click(list.getByRole("button", { name: /Trail Crew/ }));
     expect(switchCrew).toHaveBeenCalledWith("crew-2");
   });
 
-  it("hides the list for a runner with a single crew", () => {
+  it("still lists a single crew on the hub, as the one way to reach Crew Settings", () => {
     render(
       <AccountCrewSheet
         isOpen
@@ -505,7 +570,8 @@ describe("Belonging to more than one crew", () => {
       />,
     );
 
-    expect(screen.queryByRole("list", { name: "Your crews" })).not.toBeInTheDocument();
+    const list = within(screen.getByRole("list", { name: "Your crews" }));
+    expect(list.getAllByRole("button")).toHaveLength(1);
   });
 });
 
@@ -522,6 +588,7 @@ describe("Crew emblems", () => {
       />,
     );
 
+    await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
     await user.click(screen.getByRole("button", { name: "Next core shape" }));
@@ -553,6 +620,7 @@ describe("Crew emblems", () => {
       />,
     );
 
+    await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     expect(screen.getByRole("img", { name: "Current crew emblem" })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Crew emblem preview" })).not.toBeInTheDocument();
@@ -565,5 +633,22 @@ describe("Crew emblems", () => {
     expect(screen.getByRole("button", { name: "Previous base shape" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Previous frame shape" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "TOTEM" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Join Crew", () => {
+  it("explains how to join when there is no invite link in hand yet", async () => {
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Join Crew" }));
+    expect(screen.getByRole("heading", { name: "Join Crew" })).toBeInTheDocument();
+    expect(screen.getByText(/Ask a crew owner for their private invite link/)).toBeInTheDocument();
   });
 });
