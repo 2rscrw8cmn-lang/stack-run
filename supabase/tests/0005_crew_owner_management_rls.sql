@@ -50,12 +50,10 @@ insert into public.crew_member_summaries (
   '2026-08-10', 3.1, 3.1, 1, 1, 3.1
 );
 
-update public.crews
-set name = 'Updated Crew',
-    race_name = 'Updated Race',
-    race_date = '2027-01-10',
-    race_distance_miles = 26.2
-where id = (select crew_id from crew_owner_management_test);
+select public.update_crew(
+  (select crew_id from crew_owner_management_test),
+  'Updated Crew', 'Updated Race', '2027-01-10', 26.2, '2026-01-01'
+);
 
 do $$
 begin
@@ -87,13 +85,15 @@ where run.local_run_id = 'owner-run';
 do $$
 declare changed integer;
 begin
-  update public.crews
-  set name = 'Member Forgery'
-  where id = (select crew_id from crew_owner_management_test);
-  get diagnostics changed = row_count;
-  if changed <> 0 then
+  begin
+    perform public.update_crew(
+      (select crew_id from crew_owner_management_test),
+      'Member Forgery', 'Updated Race', '2027-01-10', 26.2, '2026-01-01'
+    );
     raise exception 'RLS failure: member updated Crew metadata';
-  end if;
+  exception when others then
+    if sqlerrm = 'RLS failure: member updated Crew metadata' then raise; end if;
+  end;
 
   delete from public.crews
   where id = (select crew_id from crew_owner_management_test);
@@ -108,13 +108,15 @@ set local request.jwt.claim.sub = '50000000-0000-0000-0000-000000000003';
 do $$
 declare changed integer;
 begin
-  update public.crews
-  set name = 'Outsider Forgery'
-  where id = (select crew_id from crew_owner_management_test);
-  get diagnostics changed = row_count;
-  if changed <> 0 then
+  begin
+    perform public.update_crew(
+      (select crew_id from crew_owner_management_test),
+      'Outsider Forgery', 'Updated Race', '2027-01-10', 26.2, '2026-01-01'
+    );
     raise exception 'RLS failure: outsider updated Crew metadata';
-  end if;
+  exception when others then
+    if sqlerrm = 'RLS failure: outsider updated Crew metadata' then raise; end if;
+  end;
 
   delete from public.crews
   where id = (select crew_id from crew_owner_management_test);
