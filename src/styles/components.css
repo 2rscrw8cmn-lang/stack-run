@@ -5606,9 +5606,11 @@ textarea.run-input {
 
 .crew-emblem { display: block; flex: 0 0 auto; }
 
-.crew-settings__crew-list { display: grid; gap: var(--space-2); }
+.crew-settings__crew-list { display: grid; gap: var(--space-2); min-width: 0; }
+.crew-settings__crew-list li { min-width: 0; }
 .crew-settings__crew-option {
   width: 100%;
+  min-width: 0;
   min-height: 60px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -5629,11 +5631,24 @@ textarea.run-input {
 .crew-settings__crew-option:disabled { cursor: wait; opacity: 0.6; }
 .crew-settings__crew-option-body { min-width: 0; display: grid; gap: 2px; }
 .crew-settings__crew-option-body small { color: var(--text-muted); }
+.crew-settings__crew-option > .machine-label { white-space: nowrap; }
+
+/* On a phone the trailing state word costs the crew name more than it is
+   worth beside it, so it drops under the name rather than squeezing it to
+   three lines. The pressed border and fill still say which crew is viewed. */
+@media (max-width: 420px) {
+  .crew-settings__crew-option { grid-template-columns: auto minmax(0, 1fr); }
+  .crew-settings__crew-option > .machine-label { grid-column: 2; }
+}
 
 .crew-settings__emblem-field { display: grid; gap: var(--space-2); }
 
 /* The emblem designer: a live mark, five recipes, then the four parts. */
-.crew-emblem-builder { display: grid; gap: var(--space-3); }
+/* Grid and flex children default to a min-content floor, which a row that is
+   meant to scroll would otherwise impose on the whole sheet — that is how a
+   five-chip preset rail turns into sideways scroll on a 320px phone. */
+.crew-emblem-builder { display: grid; gap: var(--space-3); min-width: 0; }
+.crew-emblem-builder > * { min-width: 0; }
 .crew-emblem-builder__stage {
   display: grid;
   place-items: center;
@@ -5643,6 +5658,7 @@ textarea.run-input {
   background-color: var(--data-surface);
 }
 .crew-emblem-builder__presets {
+  min-width: 0;
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
@@ -5845,7 +5861,9 @@ textarea.run-input {
 .crew-view__emblem { align-self: center; }
 
 /* One row of crews, only for a runner who is in more than one. */
+.crew-view__switcher { min-width: 0; }
 .crew-view__switcher ul {
+  min-width: 0;
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
