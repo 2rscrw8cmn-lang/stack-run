@@ -2,11 +2,13 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
+import { DEFAULT_CREW_EMBLEM, crewEmblemFromSeed } from "../../crew/emblem";
 import type {
   CrewDashboardData,
   CrewMember,
   CrewMemberSummary,
   CrewSharedRun,
+  RaceCrew,
 } from "../../crew/types";
 import { CrewScreen } from "./CrewScreen";
 
@@ -131,6 +133,29 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
   };
 }
 
+const crewOne: RaceCrew = {
+  id: "crew-1",
+  ownerUserId: "zack",
+  name: "OUC Half Crew",
+  raceName: "Half Marathon",
+  raceDate: "2026-12-05",
+  raceDistanceMiles: 13.1,
+  buildStartDate: "2026-08-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
+/** A second crew, so the switcher has something to switch between. */
+const crewTwo: RaceCrew = {
+  id: "crew-2",
+  ownerUserId: "drew",
+  name: "Trail Crew",
+  raceName: "Ridge 50K",
+  raceDate: "2027-04-10",
+  raceDistanceMiles: 31,
+  buildStartDate: "2026-11-01",
+  emblem: crewEmblemFromSeed("crew-2"),
+};
+
 function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewController {
   const action = vi.fn(async () => undefined);
   return {
@@ -143,18 +168,12 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     email: "zack@example.test",
     account: {
       profile: { id: "zack", displayName: "Zack", accentColor: null },
-      crew: {
-        id: "crew-1",
-        ownerUserId: "zack",
-        name: "OUC Half Crew",
-        raceName: "Half Marathon",
-        raceDate: "2026-12-05",
-        raceDistanceMiles: 13.1,
-        buildStartDate: "2026-08-01",
-      },
+      memberships: [{ crew: crewOne, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+      crew: crewOne,
       role: "owner",
       members,
       invites: [],
+      takenAccentColors: [],
     },
     pendingInvite: null,
     latestInviteUrl: null,
@@ -174,6 +193,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
+    switchCrew: action,
     createInvite: action,
     revokeInvite: action,
     joinPendingInvite: action,
@@ -206,10 +226,12 @@ describe("Crew destination states", () => {
     const noCrew = controller({
       account: {
         profile: { id: "zack", displayName: "Zack", accentColor: null },
+        memberships: [],
         crew: null,
         role: null,
         members: [],
         invites: [],
+        takenAccentColors: [],
       },
       crewData: null,
     });
@@ -883,5 +905,55 @@ describe("Shared Crew Build", () => {
     openCrew(crewWithBuild());
     const stage = screen.getByRole("list", { name: "Crew Build blocks" }).closest(".crew-build__stage");
     expect(stage).toHaveStyle("--crew-build-visible-courses: 6");
+  });
+});
+
+describe("Switching between crews", () => {
+  function inTwoCrews(overrides: Partial<RaceCrewController> = {}) {
+    const base = controller(overrides);
+    return controller({
+      ...overrides,
+      account: {
+        ...base.account!,
+        memberships: [
+          { crew: crewOne, role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
+          { crew: crewTwo, role: "member", joinedAt: "2026-09-01T00:00:00Z" },
+        ],
+      },
+    });
+  }
+
+  it("offers no switcher to a runner with a single crew", () => {
+    openCrew();
+    expect(screen.queryByRole("navigation", { name: "Your crews" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "OUC Half Crew" })).toBeInTheDocument();
+  });
+
+  it("lists every crew and marks the one being viewed", () => {
+    openCrew(inTwoCrews());
+    const switcher = within(screen.getByRole("navigation", { name: "Your crews" }));
+
+    expect(switcher.getByRole("button", { name: "OUC Half Crew" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(switcher.getByRole("button", { name: "Trail Crew" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("asks the controller for the crew the runner picked", async () => {
+    const switchCrew = vi.fn(async () => undefined);
+    const user = openCrew(inTwoCrews({ switchCrew }));
+
+    await user.click(screen.getByRole("button", { name: "Trail Crew" }));
+    expect(switchCrew).toHaveBeenCalledWith("crew-2");
+  });
+
+  it("shows the viewed crew's own emblem beside its name", () => {
+    openCrew(inTwoCrews());
+    // One emblem in the header, one per switcher chip.
+    expect(document.querySelectorAll(".crew-emblem")).toHaveLength(3);
   });
 });

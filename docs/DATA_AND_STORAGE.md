@@ -250,6 +250,54 @@ Do not upload through the crew projection:
 
 If a future feature wants any currently private field, that requires a new explicit sharing decision.
 
+## Multiple crews per account (D-072)
+
+`crew_members` was always many-to-many; only the client assumed one crew. An
+account may belong to several crews at once, each with its own race, its own
+Build start date, its own roster and its own communal Crew Build. Crews are
+peers — there is no primary crew, and nothing about one crew is derived from
+another.
+
+Exactly one crew is *viewed* at a time. That choice is a device preference
+stored per account under `stack.crew.active.v1`, never server state:
+
+```json
+{ "<user-id>": "<crew-id>" }
+```
+
+Losing or clearing it only means the oldest membership opens first. A
+remembered crew the account has left, been removed from or that has been
+deleted resolves the same way, and the resolved crew is written back.
+
+Projection is not scoped to the viewed crew. Each sync pass uploads this
+device's safe projection to **every** crew the account is in, each against
+that crew's own `build_start_date`, with independent freshness per crew; one
+crew failing never blocks the others. An explicit personal run deletion
+likewise withdraws that run from every crew, writing one tombstone per crew.
+
+The runner-identity accent color remains one pick per profile, and the
+database's uniqueness trigger spans every crew the runner shares. The picker
+is loaded with the union of crewmate colors across all of the account's crews
+so it cannot offer a color the database would reject.
+
+## Crew emblem
+
+`crews.emblem` stores a short opaque code, not an image:
+
+```text
+E1-<top>-<middle>-<bottom>-<frame>     each part written as shape.color
+```
+
+Constrained by a check pattern in the migration and parsed by the same rules
+on every client. Null is a valid, permanent state: a crew with no saved
+emblem renders a stable mark derived from its crew id, identical on every
+device, so pre-emblem crews needed no backfill. An index a client does not
+have degrades to that section's first option rather than failing the emblem.
+
+The emblem is crew identity only. It carries no personal data, is visible to
+anyone holding a valid invite (the invite preview shows it before joining),
+and is never derived from a runner, a run or a plan.
+
 ## Projection synchronization
 
 Race Crew does not require a background server worker.

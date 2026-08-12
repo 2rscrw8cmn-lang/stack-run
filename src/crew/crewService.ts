@@ -1,11 +1,22 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { formatLocalDate, parseLocalDate } from "../domain/dates";
+import {
+  DEFAULT_CREW_EMBLEM,
+  encodeCrewEmblem,
+  resolveCrewEmblem,
+  type CrewEmblem,
+} from "./emblem";
 import { createInviteToken, hashInviteToken, inviteUrl } from "./invites";
-import { accentColorFrom, type CrewMemberAccent } from "./memberAccent";
+import {
+  accentColorFrom,
+  crewMemberAccent,
+  type CrewMemberAccent,
+} from "./memberAccent";
 import type {
   CrewInvite,
   CrewInvitePreview,
   CrewMember,
+  CrewMembershipSummary,
   CrewProfile,
   CrewRole,
   LoadedCrewAccount,
@@ -14,12 +25,16 @@ import type {
 
 type Row = Record<string, unknown>;
 
+const CREW_COLUMNS =
+  "id,owner_user_id,name,race_name,race_date,race_distance_miles,build_start_date,emblem";
+
 export interface CrewDetailsInput {
   name: string;
   raceName: string;
   raceDate: string;
   raceDistanceMiles: number;
   buildStartDate: string;
+  emblem: CrewEmblem;
 }
 
 export function validateCrewDetails(
@@ -60,6 +75,7 @@ export function validateCrewDetails(
     raceDate: input.raceDate,
     raceDistanceMiles: input.raceDistanceMiles,
     buildStartDate: input.buildStartDate,
+    emblem: input.emblem ?? DEFAULT_CREW_EMBLEM,
   };
 }
 
@@ -100,14 +116,16 @@ function profileFrom(source: Row): CrewProfile {
 }
 
 function crewFrom(source: Row): RaceCrew {
+  const id = requiredString(source, "id");
   return {
-    id: requiredString(source, "id"),
+    id,
     ownerUserId: requiredString(source, "owner_user_id"),
     name: requiredString(source, "name"),
     raceName: requiredString(source, "race_name"),
     raceDate: requiredString(source, "race_date"),
     raceDistanceMiles: requiredNumber(source, "race_distance_miles"),
     buildStartDate: requiredString(source, "build_start_date"),
+    emblem: resolveCrewEmblem(source.emblem, id),
   };
 }
 
@@ -144,19 +162,37 @@ export async function ensureProfile(
   return profileFrom(createdRow);
 }
 
-async function loadMembers(
+interface CrewDirectory {
+  membersByCrewId: Map<string, CrewMember[]>;
+  takenAccentColors: CrewMemberAccent[];
+}
+
+/**
+ * Every crewmate across every crew this account belongs to, in two queries.
+ *
+ * The roster of the crew being viewed and the set of accent colors already
+ * spoken for come from the same read: the accent uniqueness rule spans all of
+ * a runner's crews, so a picker that only knew the active crew would offer
+ * colors the database is about to reject.
+ */
+async function loadCrewDirectory(
   client: SupabaseClient,
-  crewId: string,
-): Promise<CrewMember[]> {
+  crewIds: readonly string[],
+  viewerId: string,
+): Promise<CrewDirectory> {
+  const empty: CrewDirectory = { membersByCrewId: new Map(), takenAccentColors: [] };
+  if (crewIds.length === 0) return empty;
+
   const membership = await client
     .from("crew_members")
-    .select("user_id,role,joined_at")
-    .eq("crew_id", crewId)
+    .select("crew_id,user_id,role,joined_at")
+    .in("crew_id", crewIds)
     .order("joined_at");
   if (membership.error) throw new Error(membership.error.message);
   const memberRows = rows(membership.data);
-  const userIds = memberRows.map((item) => requiredString(item, "user_id"));
-  if (userIds.length === 0) return [];
+  const userIds = [...new Set(memberRows.map((item) => requiredString(item, "user_id")))];
+  if (userIds.length === 0) return empty;
+
   const profileResult = await client
     .from("profiles")
     .select("id,display_name,accent_color")
@@ -168,17 +204,34 @@ async function loadMembers(
       return [profile.id, profile] as const;
     }),
   );
-  return memberRows.map((item) => {
+
+  const membersByCrewId = new Map<string, CrewMember[]>();
+  for (const item of memberRows) {
+    const crewId = requiredString(item, "crew_id");
     const userId = requiredString(item, "user_id");
     const profile = profiles.get(userId);
-    return {
+    const roster = membersByCrewId.get(crewId) ?? [];
+    roster.push({
       userId,
       role: roleFrom(item.role),
       joinedAt: requiredString(item, "joined_at"),
       displayName: profile?.displayName ?? "Runner",
       accentColor: profile?.accentColor ?? null,
-    };
-  });
+    });
+    membersByCrewId.set(crewId, roster);
+  }
+
+  // A color a crewmate merely renders with counts as taken too: the point is
+  // that two runners in one tower never look alike, which a stable hash can
+  // cause just as easily as an explicit pick.
+  const takenAccentColors = [
+    ...new Set(
+      userIds
+        .filter((userId) => userId !== viewerId)
+        .map((userId) => crewMemberAccent(userId, profiles.get(userId)?.accentColor ?? null)),
+    ),
+  ];
+  return { membersByCrewId, takenAccentColors };
 }
 
 async function loadInvites(
@@ -201,39 +254,77 @@ async function loadInvites(
   }));
 }
 
+/**
+ * The account and every crew it belongs to.
+ *
+ * A runner can train for more than one race with more than one set of
+ * friends, so membership is a list. Exactly one of those crews is the one
+ * being viewed: `preferredCrewId` is the device's remembered choice, and it
+ * loses gracefully to the oldest membership when it names a crew this account
+ * has left, been removed from, or never joined.
+ */
 export async function loadCrewAccount(
   client: SupabaseClient,
   user: User,
+  preferredCrewId?: string | null,
 ): Promise<LoadedCrewAccount> {
   const profile = await ensureProfile(client, user);
   const membership = await client
     .from("crew_members")
-    .select("crew_id,role")
+    .select("crew_id,role,joined_at")
     .eq("user_id", user.id)
-    .order("joined_at")
-    .limit(1)
-    .maybeSingle();
+    .order("joined_at");
   if (membership.error) throw new Error(membership.error.message);
-  const membershipRow = row(membership.data);
-  if (!membershipRow) {
-    return { profile, crew: null, role: null, members: [], invites: [] };
-  }
-  const crewId = requiredString(membershipRow, "crew_id");
-  const role = roleFrom(membershipRow.role);
-  const crewResult = await client
-    .from("crews")
-    .select("id,owner_user_id,name,race_name,race_date,race_distance_miles,build_start_date")
-    .eq("id", crewId)
-    .single();
+  const membershipRows = rows(membership.data);
+  const empty: LoadedCrewAccount = {
+    profile,
+    memberships: [],
+    crew: null,
+    role: null,
+    members: [],
+    invites: [],
+    takenAccentColors: [],
+  };
+  if (membershipRows.length === 0) return empty;
+
+  const crewIds = membershipRows.map((item) => requiredString(item, "crew_id"));
+  const crewResult = await client.from("crews").select(CREW_COLUMNS).in("id", crewIds);
   if (crewResult.error) throw new Error(crewResult.error.message);
-  const crewRow = row(crewResult.data);
-  if (!crewRow) throw new Error("Race Crew could not be loaded.");
+  const crewsById = new Map(
+    rows(crewResult.data).map((item) => {
+      const crew = crewFrom(item);
+      return [crew.id, crew] as const;
+    }),
+  );
+
+  const memberships: CrewMembershipSummary[] = [];
+  for (const item of membershipRows) {
+    const crew = crewsById.get(requiredString(item, "crew_id"));
+    // A crew deleted between the two reads is simply gone from this list.
+    if (!crew) continue;
+    memberships.push({
+      crew,
+      role: roleFrom(item.role),
+      joinedAt: requiredString(item, "joined_at"),
+    });
+  }
+  if (memberships.length === 0) return empty;
+
+  const active =
+    memberships.find((item) => item.crew.id === preferredCrewId) ?? memberships[0];
+  const directory = await loadCrewDirectory(
+    client,
+    memberships.map((item) => item.crew.id),
+    user.id,
+  );
   return {
     profile,
-    crew: crewFrom(crewRow),
-    role,
-    members: await loadMembers(client, crewId),
-    invites: await loadInvites(client, crewId, role),
+    memberships,
+    crew: active.crew,
+    role: active.role,
+    members: directory.membersByCrewId.get(active.crew.id) ?? [],
+    invites: await loadInvites(client, active.crew.id, active.role),
+    takenAccentColors: directory.takenAccentColors,
   };
 }
 
@@ -269,10 +360,11 @@ export async function updateAccentColor(
   if (result.error) throw new Error(result.error.message);
 }
 
+/** Returns the new crew's id so the device can switch straight to it. */
 export async function createCrew(
   client: SupabaseClient,
   input: CrewDetailsInput,
-): Promise<void> {
+): Promise<string | null> {
   const details = validateCrewDetails(input);
   const result = await client.rpc("create_crew", {
     p_name: details.name,
@@ -280,8 +372,10 @@ export async function createCrew(
     p_race_date: details.raceDate,
     p_race_distance_miles: details.raceDistanceMiles,
     p_build_start_date: details.buildStartDate,
+    p_emblem: encodeCrewEmblem(details.emblem),
   });
   if (result.error) throw new Error(result.error.message);
+  return typeof result.data === "string" ? result.data : null;
 }
 
 export async function updateCrew(
@@ -297,6 +391,7 @@ export async function updateCrew(
     p_race_date: details.raceDate,
     p_race_distance_miles: details.raceDistanceMiles,
     p_build_start_date: details.buildStartDate,
+    p_emblem: encodeCrewEmblem(details.emblem),
   });
   if (result.error) throw new Error(result.error.message);
 }
@@ -341,24 +436,29 @@ export async function previewCrewInvite(
   if (result.error) throw new Error(result.error.message);
   const preview = rows(result.data)[0];
   if (!preview) throw new Error("That crew invite is invalid, expired, revoked or already used.");
+  const crewId = requiredString(preview, "crew_id");
   return {
-    crewId: requiredString(preview, "crew_id"),
+    crewId,
     crewName: requiredString(preview, "crew_name"),
     raceName: requiredString(preview, "race_name"),
     raceDate: requiredString(preview, "race_date"),
     raceDistanceMiles: requiredNumber(preview, "race_distance_miles"),
     expiresAt: requiredString(preview, "expires_at"),
+    emblem: resolveCrewEmblem(preview.emblem, crewId),
+    alreadyMember: preview.already_member === true,
   };
 }
 
+/** Returns the joined crew's id so the device can switch straight to it. */
 export async function redeemCrewInvite(
   client: SupabaseClient,
   token: string,
-): Promise<void> {
+): Promise<string | null> {
   const result = await client.rpc("redeem_crew_invite", {
     p_token_hash: await hashInviteToken(token),
   });
   if (result.error) throw new Error(result.error.message);
+  return typeof result.data === "string" ? result.data : null;
 }
 
 export async function leaveCrew(

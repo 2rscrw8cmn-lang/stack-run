@@ -5,6 +5,7 @@ export const INTERVALS_PENDING_STORAGE_KEY = "stack.intervals.pending.v1";
 export const ONBOARDING_STORAGE_KEY = "stack.onboarding.v1";
 export const CREW_DELETE_TOMBSTONES_STORAGE_KEY =
   "stack.crew-delete-tombstones.v1";
+export const ACTIVE_CREW_STORAGE_KEY = "stack.crew.active.v1";
 
 const BACKUP_KEY_PREFIX = "stack.app-state.backup.";
 

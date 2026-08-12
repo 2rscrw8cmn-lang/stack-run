@@ -1,3 +1,4 @@
+import type { CrewEmblem } from "./emblem";
 import type { CrewMemberAccent } from "./memberAccent";
 
 export interface CrewProfile {
@@ -15,6 +16,8 @@ export interface RaceCrew {
   raceDate: string;
   raceDistanceMiles: number;
   buildStartDate: string;
+  /** Always renderable: a crew with no saved emblem gets its stable derived one. */
+  emblem: CrewEmblem;
 }
 
 export type CrewRole = "owner" | "member";
@@ -42,14 +45,33 @@ export interface CrewInvitePreview {
   raceDate: string;
   raceDistanceMiles: number;
   expiresAt: string;
+  emblem: CrewEmblem;
+  /** True when the viewer is already in this crew, so joining is a no-op. */
+  alreadyMember: boolean;
+}
+
+/** One crew this account belongs to, in the switcher's own order. */
+export interface CrewMembershipSummary {
+  crew: RaceCrew;
+  role: CrewRole;
+  joinedAt: string;
 }
 
 export interface LoadedCrewAccount {
   profile: CrewProfile;
+  /** Every crew this account belongs to, oldest membership first. */
+  memberships: CrewMembershipSummary[];
+  /** The crew currently being viewed, drawn from `memberships`. */
   crew: RaceCrew | null;
   role: CrewRole | null;
   members: CrewMember[];
   invites: CrewInvite[];
+  /**
+   * Accent colors explicitly held by crewmates in any of this account's
+   * crews. The database enforces the same union, so the Settings picker has
+   * to know about crews the runner is not currently looking at.
+   */
+  takenAccentColors: CrewMemberAccent[];
 }
 
 export interface CrewMemberSummary {

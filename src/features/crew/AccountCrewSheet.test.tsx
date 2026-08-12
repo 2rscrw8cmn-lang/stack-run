@@ -2,26 +2,32 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { LoadedCrewAccount } from "../../crew/types";
+import { CREW_EMBLEM_PRESETS, DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
+import type { LoadedCrewAccount, RaceCrew } from "../../crew/types";
 import { todayLocalDate } from "../../domain/dates";
 import { AccountCrewSheet } from "./AccountCrewSheet";
 
+const ownerCrew: RaceCrew = {
+  id: "crew-1",
+  ownerUserId: "owner-1",
+  name: "OUC Race Crew",
+  raceName: "OUC Half Marathon",
+  raceDate: "2026-12-05",
+  raceDistanceMiles: 13.1,
+  buildStartDate: "2026-08-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
 const ownerAccount: LoadedCrewAccount = {
   profile: { id: "owner-1", displayName: "Owner", accentColor: null },
-  crew: {
-    id: "crew-1",
-    ownerUserId: "owner-1",
-    name: "OUC Race Crew",
-    raceName: "OUC Half Marathon",
-    raceDate: "2026-12-05",
-    raceDistanceMiles: 13.1,
-    buildStartDate: "2026-08-01",
-  },
+  memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+  crew: ownerCrew,
   role: "owner",
   members: [
     { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
   ],
   invites: [],
+  takenAccentColors: [],
 };
 
 const memberAccount: LoadedCrewAccount = {
@@ -65,6 +71,7 @@ function controller(
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
+    switchCrew: action,
     createInvite: action,
     revokeInvite: action,
     joinPendingInvite: action,
@@ -119,10 +126,12 @@ describe("Account & Crew settings", () => {
       email: "runner@example.test",
       account: {
         profile: { id: "user-1", displayName: "Runner", accentColor: null },
+        memberships: [],
         crew: null,
         role: null,
         members: [],
         invites: [],
+        takenAccentColors: [],
       },
       pendingInvite: {
         token: "private-token",
@@ -134,6 +143,8 @@ describe("Account & Crew settings", () => {
           raceDate: "2026-12-05",
           raceDistanceMiles: 13.1,
           expiresAt: "2026-08-24T00:00:00Z",
+          emblem: DEFAULT_CREW_EMBLEM,
+          alreadyMember: false,
         },
       },
       joinPendingInvite,
@@ -218,6 +229,8 @@ describe("Account & Crew settings", () => {
       raceDate: "2026-12-05",
       raceDistanceMiles: 13.1,
       buildStartDate: "2026-08-01",
+      // Untouched here, so the crew keeps the emblem it already had.
+      emblem: ownerCrew.emblem,
     });
     expect(localRace).toEqual({ name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 });
   });
@@ -232,10 +245,12 @@ describe("Account & Crew settings", () => {
           status: "signed-in",
           account: {
             profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+            memberships: [],
             crew: null,
             role: null,
             members: [],
             invites: [],
+            takenAccentColors: [],
           },
         })}
       />,
@@ -361,6 +376,8 @@ describe("Account & Crew settings", () => {
         { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta" },
         { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua" },
       ],
+      // Spans every crew this account is in, not only the one on screen.
+      takenAccentColors: ["magenta"],
     };
     const user = userEvent.setup();
     render(
@@ -413,5 +430,136 @@ describe("Account & Crew settings", () => {
 
     const picker = screen.getByRole("list", { name: "Your color" });
     expect(within(picker).queryAllByRole("button", { name: /taken/ })).toHaveLength(0);
+  });
+});
+
+const secondCrew: RaceCrew = {
+  id: "crew-2",
+  ownerUserId: "friend-1",
+  name: "Trail Crew",
+  raceName: "Ridge 50K",
+  raceDate: "2027-04-10",
+  raceDistanceMiles: 31,
+  buildStartDate: "2026-11-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
+const twoCrewAccount: LoadedCrewAccount = {
+  ...ownerAccount,
+  memberships: [
+    { crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
+    { crew: secondCrew, role: "member", joinedAt: "2026-09-01T00:00:00Z" },
+  ],
+};
+
+describe("Belonging to more than one crew", () => {
+  it("offers a second crew without asking the runner to leave the first", async () => {
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+      />,
+    );
+
+    expect(screen.getByText("You are in 1 crew. Join another any time with a private invite link.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Crew name")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create Another Crew" }));
+    expect(screen.getByText("Create a private crew")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Crew emblem preview" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("Create a private crew")).not.toBeInTheDocument();
+  });
+
+  it("lists both crews and switches to the one the runner picks", async () => {
+    const switchCrew = vi.fn(async () => undefined);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: twoCrewAccount, switchCrew })}
+      />,
+    );
+
+    const list = within(screen.getByRole("list", { name: "Your crews" }));
+    expect(list.getAllByRole("button")).toHaveLength(2);
+    expect(list.getByRole("button", { name: /OUC Race Crew/ })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(list.getByRole("button", { name: /Trail Crew/ }));
+    expect(switchCrew).toHaveBeenCalledWith("crew-2");
+  });
+
+  it("hides the list for a runner with a single crew", () => {
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+      />,
+    );
+
+    expect(screen.queryByRole("list", { name: "Your crews" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Crew emblems", () => {
+  it("saves the emblem the owner designed along with the rest of the Crew", async () => {
+    const updateCrew = vi.fn(async () => true);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount, updateCrew })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    await user.click(screen.getByRole("button", { name: "Next core shape" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(updateCrew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "OUC Race Crew",
+        emblem: {
+          ...DEFAULT_CREW_EMBLEM,
+          middle: {
+            ...DEFAULT_CREW_EMBLEM.middle,
+            shape: DEFAULT_CREW_EMBLEM.middle.shape + 1,
+          },
+        },
+      }),
+    );
+  });
+
+  it("applies a preset to every part at once", async () => {
+    const updateCrew = vi.fn(async () => true);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount, updateCrew })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    await user.click(screen.getByRole("button", { name: "TOTEM" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(updateCrew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emblem: CREW_EMBLEM_PRESETS.find((preset) => preset.name === "TOTEM")?.emblem,
+      }),
+    );
   });
 });

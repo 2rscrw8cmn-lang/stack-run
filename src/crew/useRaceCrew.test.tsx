@@ -2,7 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
 import { loadCrewDeleteTombstones } from "../storage/crewDeleteTombstoneRepository";
-import type { CrewDashboardData, LoadedCrewAccount } from "./types";
+import { DEFAULT_CREW_EMBLEM } from "./emblem";
+import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "./types";
 
 const mocks = vi.hoisted(() => {
   const user = {
@@ -59,30 +60,37 @@ vi.mock("./projection", async (importOriginal) => ({
 
 const { useRaceCrew } = await import("./useRaceCrew");
 
+const ownerCrew: RaceCrew = {
+  id: "crew-1",
+  ownerUserId: "owner-1",
+  name: "Original Crew",
+  raceName: "Original Race",
+  raceDate: "2026-12-05",
+  raceDistanceMiles: 13.1,
+  buildStartDate: "2026-08-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
 const ownerAccount: LoadedCrewAccount = {
   profile: { id: "owner-1", displayName: "Owner", accentColor: null },
-  crew: {
-    id: "crew-1",
-    ownerUserId: "owner-1",
-    name: "Original Crew",
-    raceName: "Original Race",
-    raceDate: "2026-12-05",
-    raceDistanceMiles: 13.1,
-    buildStartDate: "2026-08-01",
-  },
+  memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+  crew: ownerCrew,
   role: "owner",
   members: [
     { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
   ],
   invites: [],
+  takenAccentColors: [],
 };
 
 const noCrewAccount: LoadedCrewAccount = {
   profile: ownerAccount.profile,
+  memberships: [],
   crew: null,
   role: null,
   members: [],
   invites: [],
+  takenAccentColors: [],
 };
 
 const memberAccount: LoadedCrewAccount = {
@@ -151,7 +159,7 @@ describe("Race Crew owner lifecycle", () => {
   it("reloads edited Crew metadata without touching personal AppState", async () => {
     const updatedAccount: LoadedCrewAccount = {
       ...ownerAccount,
-      crew: { ...ownerAccount.crew!, name: "Updated Crew", raceName: "Updated Race" },
+      crew: { ...ownerCrew, name: "Updated Crew", raceName: "Updated Race" },
     };
     mocks.loadCrewAccount
       .mockResolvedValueOnce(ownerAccount)
@@ -168,6 +176,7 @@ describe("Race Crew owner lifecycle", () => {
         raceDate: "2027-01-10",
         raceDistanceMiles: 26.2,
         buildStartDate: "2026-08-01",
+        emblem: DEFAULT_CREW_EMBLEM,
       });
     });
 
@@ -223,6 +232,7 @@ describe("Race Crew owner lifecycle", () => {
         raceDate: "2027-01-10",
         raceDistanceMiles: 26.2,
         buildStartDate: "2026-08-01",
+        emblem: DEFAULT_CREW_EMBLEM,
       });
     });
 
@@ -242,5 +252,110 @@ describe("Race Crew owner lifecycle", () => {
     await waitFor(() => expect(result.current.account?.crew).toBeNull());
     expect(result.current.status).toBe("signed-in");
     expect(result.current.crewData).toBeNull();
+  });
+});
+
+/** The second argument of every call: the client is the first. */
+function syncedInputs<T>(mock: { mock: { calls: unknown[][] } }): T[] {
+  return mock.mock.calls.map((call) => call[1] as T);
+}
+
+const secondCrew: RaceCrew = {
+  id: "crew-2",
+  ownerUserId: "friend-1",
+  name: "Trail Crew",
+  raceName: "Ridge 50K",
+  raceDate: "2027-04-10",
+  raceDistanceMiles: 31,
+  buildStartDate: "2026-11-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
+const twoCrewAccount: LoadedCrewAccount = {
+  ...ownerAccount,
+  memberships: [
+    { crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
+    { crew: secondCrew, role: "member", joinedAt: "2026-09-01T00:00:00Z" },
+  ],
+};
+
+const viewingSecondCrew: LoadedCrewAccount = {
+  ...twoCrewAccount,
+  crew: secondCrew,
+  role: "member",
+};
+
+describe("Running with more than one crew", () => {
+  it("shares this device's projection with every crew, not just the visible one", async () => {
+    mocks.loadCrewAccount.mockResolvedValue(twoCrewAccount);
+    const { result } = renderHook(() => useRaceCrew(createInitialAppState()));
+    await waitFor(() => expect(result.current.account?.memberships).toHaveLength(2));
+
+    await waitFor(() => expect(mocks.syncCrewProjection).toHaveBeenCalledTimes(2));
+    const crewIds = syncedInputs<{ crewId: string }>(mocks.syncCrewProjection).map(
+      (input) => input.crewId,
+    );
+    expect(crewIds.sort()).toEqual(["crew-1", "crew-2"]);
+    // Each crew owns its own contribution window.
+    const windows = syncedInputs<{ buildStartDate: string }>(mocks.syncCrewProjection).map(
+      (input) => input.buildStartDate,
+    );
+    expect(windows.sort()).toEqual(["2026-08-01", "2026-11-01"]);
+  });
+
+  it("switches the viewed crew and remembers it on this device", async () => {
+    mocks.loadCrewAccount
+      .mockResolvedValueOnce(twoCrewAccount)
+      .mockResolvedValue(viewingSecondCrew);
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.crew?.id).toBe("crew-1"));
+
+    await act(async () => {
+      await result.current.switchCrew("crew-2");
+    });
+
+    expect(result.current.account?.crew?.id).toBe("crew-2");
+    expect(result.current.account?.role).toBe("member");
+    expect(mocks.loadCrewAccount).toHaveBeenLastCalledWith(
+      mocks.client,
+      mocks.user,
+      "crew-2",
+    );
+    expect(JSON.parse(localStorage.getItem("stack.crew.active.v1") ?? "{}")).toEqual({
+      "owner-1": "crew-2",
+    });
+  });
+
+  it("refuses to switch to a crew this account is not in", async () => {
+    mocks.loadCrewAccount.mockResolvedValue(twoCrewAccount);
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.crew?.id).toBe("crew-1"));
+    mocks.loadCrewAccount.mockClear();
+
+    await act(async () => {
+      await result.current.switchCrew("crew-9");
+    });
+
+    expect(result.current.error).toBe("That crew is no longer available.");
+    expect(result.current.account?.crew?.id).toBe("crew-1");
+    expect(mocks.loadCrewAccount).not.toHaveBeenCalled();
+  });
+
+  it("withdraws a deleted run from every crew it was shared with", async () => {
+    mocks.loadCrewAccount.mockResolvedValue(twoCrewAccount);
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.memberships).toHaveLength(2));
+    mocks.deleteCrewRunProjection.mockClear();
+
+    await act(async () => {
+      await result.current.deleteRunContribution("run-b");
+    });
+
+    expect(
+      syncedInputs<{ crewId: string }>(mocks.deleteCrewRunProjection).map(
+        (input) => input.crewId,
+      ),
+    ).toEqual(["crew-1", "crew-2"]);
+    expect(result.current.projectionError).toBeNull();
   });
 });

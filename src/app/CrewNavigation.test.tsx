@@ -2,7 +2,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../crew/useRaceCrew";
-import type { CrewDashboardData, LoadedCrewAccount } from "../crew/types";
+import { DEFAULT_CREW_EMBLEM } from "../crew/emblem";
+import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "../crew/types";
 
 const action = vi.fn(async () => undefined);
 
@@ -11,20 +12,25 @@ const members = [
   { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
 ];
 
+const raceCrew: RaceCrew = {
+  id: "crew-1",
+  ownerUserId: "zack",
+  name: "OUC Race Crew",
+  raceName: "Half Marathon",
+  raceDate: "2026-12-05",
+  raceDistanceMiles: 13.1,
+  buildStartDate: "2026-08-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
 const account: LoadedCrewAccount = {
   profile: { id: "zack", displayName: "Zack", accentColor: null },
-  crew: {
-    id: "crew-1",
-    ownerUserId: "zack",
-    name: "OUC Race Crew",
-    raceName: "Half Marathon",
-    raceDate: "2026-12-05",
-    raceDistanceMiles: 13.1,
-    buildStartDate: "2026-08-01",
-  },
+  memberships: [{ crew: raceCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+  crew: raceCrew,
   role: "owner",
   members,
   invites: [],
+  takenAccentColors: [],
 };
 
 const crewData: CrewDashboardData = {
@@ -67,6 +73,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
+    switchCrew: action,
     createInvite: action,
     revokeInvite: action,
     joinPendingInvite: action,
