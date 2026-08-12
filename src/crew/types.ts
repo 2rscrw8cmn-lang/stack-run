@@ -1,6 +1,10 @@
+import type { CrewMemberAccent } from "./memberAccent";
+
 export interface CrewProfile {
   id: string;
   displayName: string;
+  /** Null until the runner picks one in Settings; a stable hash fills in until then. */
+  accentColor: CrewMemberAccent | null;
 }
 
 export interface RaceCrew {
@@ -20,6 +24,8 @@ export interface CrewMember {
   role: CrewRole;
   joinedAt: string;
   displayName: string;
+  /** Null until the runner picks one in Settings; a stable hash fills in until then. */
+  accentColor: CrewMemberAccent | null;
 }
 
 export interface CrewInvite {
@@ -68,6 +74,7 @@ export interface CrewSharedRun {
   id: string;
   userId: string;
   displayName: string;
+  accentColor: CrewMemberAccent | null;
   localDate: string;
   activityType: "easy" | "intervals" | "simulation" | "long" | "race";
   distanceMiles: number;
@@ -111,6 +118,7 @@ export interface CrewBuildRun {
   id: string;
   userId: string;
   displayName: string;
+  accentColor: CrewMemberAccent | null;
   localDate: string;
   activityType: "easy" | "intervals" | "simulation" | "long" | "race";
   distanceMiles: number;

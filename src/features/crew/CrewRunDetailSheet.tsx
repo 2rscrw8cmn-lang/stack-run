@@ -44,7 +44,7 @@ export function CrewRunDetailSheet({
       isOpen={isOpen}
       onClose={onClose}
     >
-      <div className="crew-run-detail" data-member-color={crewMemberAccent(run.userId)}>
+      <div className="crew-run-detail" data-member-color={crewMemberAccent(run.userId, run.accentColor)}>
         <div className="crew-run-detail__identity">
           <span className="crew-run-detail__icon" data-type={run.activityType}>
             <ActivityIcon type={run.activityType} size={22} />

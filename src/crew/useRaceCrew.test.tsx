@@ -60,7 +60,7 @@ vi.mock("./projection", async (importOriginal) => ({
 const { useRaceCrew } = await import("./useRaceCrew");
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner" },
+  profile: { id: "owner-1", displayName: "Owner", accentColor: null },
   crew: {
     id: "crew-1",
     ownerUserId: "owner-1",
@@ -72,7 +72,7 @@ const ownerAccount: LoadedCrewAccount = {
   },
   role: "owner",
   members: [
-    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
+    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
   ],
   invites: [],
 };
@@ -87,10 +87,10 @@ const noCrewAccount: LoadedCrewAccount = {
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "owner-1", displayName: "Former Owner" },
+  profile: { id: "owner-1", displayName: "Former Owner", accentColor: null },
   role: "member",
   members: [
-    { userId: "owner-1", displayName: "Former Owner", role: "member", joinedAt: "2026-08-01T00:00:00Z" },
+    { userId: "owner-1", displayName: "Former Owner", role: "member", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
   ],
 };
 

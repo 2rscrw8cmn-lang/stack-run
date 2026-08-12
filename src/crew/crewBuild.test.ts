@@ -18,6 +18,7 @@ function run(
     id,
     userId,
     displayName: userId === "zack" ? "Zack" : "Drew",
+    accentColor: null,
     localDate: "2026-08-09",
     activityType: "easy",
     distanceMiles: 4,

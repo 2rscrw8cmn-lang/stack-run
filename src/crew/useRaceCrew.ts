@@ -17,10 +17,12 @@ import {
   redeemCrewInvite,
   removeCrewMember,
   revokeCrewInvite,
+  updateAccentColor,
   updateCrew as updateCrewRecord,
   updateDisplayName,
   type CrewDetailsInput,
 } from "./crewService";
+import type { CrewMemberAccent } from "./memberAccent";
 import {
   captureInviteFromLocation,
   clearPendingInvite,
@@ -91,6 +93,7 @@ export interface RaceCrewController {
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
   saveDisplayName: (displayName: string) => Promise<void>;
+  saveAccentColor: (accentColor: CrewMemberAccent) => Promise<void>;
   createCrew: (input: CrewDetailsInput) => Promise<void>;
   updateCrew: (input: CrewDetailsInput) => Promise<boolean>;
   deleteCrew: () => Promise<boolean>;
@@ -599,6 +602,13 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       lastDashboard.current.loadedAt = 0;
       await refreshCrewData(true);
     }, "Display name updated."),
+    saveAccentColor: (accentColor) => operate(async () => {
+      if (!availability.configured || !user) return;
+      await updateAccentColor(availability.client, user.id, accentColor);
+      await reloadAccount(user);
+      lastDashboard.current.loadedAt = 0;
+      await refreshCrewData(true);
+    }, "Color updated."),
     createCrew: (input) => operate(async () => {
       if (!availability.configured || !user) return;
       await createCrew(availability.client, input);

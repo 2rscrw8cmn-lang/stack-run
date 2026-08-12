@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { formatLocalDate, parseLocalDate } from "../domain/dates";
 import { createInviteToken, hashInviteToken, inviteUrl } from "./invites";
+import { accentColorFrom, type CrewMemberAccent } from "./memberAccent";
 import type {
   CrewInvite,
   CrewInvitePreview,
@@ -94,6 +95,7 @@ function profileFrom(source: Row): CrewProfile {
   return {
     id: requiredString(source, "id"),
     displayName: requiredString(source, "display_name"),
+    accentColor: accentColorFrom(source.accent_color),
   };
 }
 
@@ -120,7 +122,7 @@ export async function ensureProfile(
 ): Promise<CrewProfile> {
   const existing = await client
     .from("profiles")
-    .select("id,display_name")
+    .select("id,display_name,accent_color")
     .eq("id", user.id)
     .maybeSingle();
   if (existing.error) throw new Error(existing.error.message);
@@ -134,7 +136,7 @@ export async function ensureProfile(
   const created = await client
     .from("profiles")
     .upsert({ id: user.id, display_name: fallback || "Runner" })
-    .select("id,display_name")
+    .select("id,display_name,accent_color")
     .single();
   if (created.error) throw new Error(created.error.message);
   const createdRow = row(created.data);
@@ -157,22 +159,24 @@ async function loadMembers(
   if (userIds.length === 0) return [];
   const profileResult = await client
     .from("profiles")
-    .select("id,display_name")
+    .select("id,display_name,accent_color")
     .in("id", userIds);
   if (profileResult.error) throw new Error(profileResult.error.message);
-  const names = new Map(
+  const profiles = new Map(
     rows(profileResult.data).map((item) => {
       const profile = profileFrom(item);
-      return [profile.id, profile.displayName] as const;
+      return [profile.id, profile] as const;
     }),
   );
   return memberRows.map((item) => {
     const userId = requiredString(item, "user_id");
+    const profile = profiles.get(userId);
     return {
       userId,
       role: roleFrom(item.role),
       joinedAt: requiredString(item, "joined_at"),
-      displayName: names.get(userId) ?? "Runner",
+      displayName: profile?.displayName ?? "Runner",
+      accentColor: profile?.accentColor ?? null,
     };
   });
 }
@@ -243,6 +247,24 @@ export async function updateDisplayName(
   const result = await client
     .from("profiles")
     .update({ display_name: name })
+    .eq("id", userId);
+  if (result.error) throw new Error(result.error.message);
+}
+
+/**
+ * Saves an explicit accent pick. The database is the actual referee of
+ * "already taken" — a trigger on `profiles` rejects a color any current
+ * crewmate already has — so a race between two members picking at once
+ * still can't produce a collision; this only carries the choice up.
+ */
+export async function updateAccentColor(
+  client: SupabaseClient,
+  userId: string,
+  accentColor: CrewMemberAccent,
+): Promise<void> {
+  const result = await client
+    .from("profiles")
+    .update({ accent_color: accentColor })
     .eq("id", userId);
   if (result.error) throw new Error(result.error.message);
 }

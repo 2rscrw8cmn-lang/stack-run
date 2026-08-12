@@ -34,7 +34,7 @@ export function CrewRunRow({
   const facts = [distance, duration, pace].filter(Boolean).join(" · ");
 
   return (
-    <li className="crew-run-item" data-member-color={crewMemberAccent(run.userId)}>
+    <li className="crew-run-item" data-member-color={crewMemberAccent(run.userId, run.accentColor)}>
       <button
         type="button"
         className="crew-run-row"

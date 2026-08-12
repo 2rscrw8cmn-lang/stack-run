@@ -465,7 +465,7 @@ export function CrewScreen({
                 <li
                   key={member.userId}
                   data-you={isYou || undefined}
-                  data-member-color={crewMemberAccent(member.userId)}
+                  data-member-color={crewMemberAccent(member.userId, member.accentColor)}
                 >
                   <div className="crew-comparison__row-topline">
                     <span className="crew-comparison__member">
@@ -558,7 +558,7 @@ export function CrewScreen({
             return (
               <li
                 key={member.userId}
-                data-member-color={crewMemberAccent(member.userId)}
+                data-member-color={crewMemberAccent(member.userId, member.accentColor)}
                 data-you={isYou || undefined}
               >
                 <button

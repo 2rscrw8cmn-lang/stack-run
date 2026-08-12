@@ -122,9 +122,9 @@ describe("Crew Mini Build derivation", () => {
 
   it("puts the current runner first without ranking the rest by miles", () => {
     const members: CrewMember[] = [
-      { userId: "a", displayName: "A", role: "owner", joinedAt: "1" },
-      { userId: "b", displayName: "B", role: "member", joinedAt: "2" },
-      { userId: "c", displayName: "C", role: "member", joinedAt: "3" },
+      { userId: "a", displayName: "A", role: "owner", joinedAt: "1", accentColor: null },
+      { userId: "b", displayName: "B", role: "member", joinedAt: "2", accentColor: null },
+      { userId: "c", displayName: "C", role: "member", joinedAt: "3", accentColor: null },
     ];
     expect(orderedMiniBuildMembers(members, "c").map((member) => member.userId)).toEqual([
       "c",

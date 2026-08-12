@@ -7,12 +7,12 @@ import type { CrewDashboardData, LoadedCrewAccount } from "../crew/types";
 const action = vi.fn(async () => undefined);
 
 const members = [
-  { userId: "zack", displayName: "Zack", role: "owner" as const, joinedAt: "2026-08-01T00:00:00Z" },
-  { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z" },
+  { userId: "zack", displayName: "Zack", role: "owner" as const, joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
+  { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
 ];
 
 const account: LoadedCrewAccount = {
-  profile: { id: "zack", displayName: "Zack" },
+  profile: { id: "zack", displayName: "Zack", accentColor: null },
   crew: {
     id: "crew-1",
     ownerUserId: "zack",
@@ -63,6 +63,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signIn: action,
     signOut: action,
     saveDisplayName: action,
+    saveAccentColor: action,
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),

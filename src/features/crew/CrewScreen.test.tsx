@@ -13,9 +13,9 @@ import { CrewScreen } from "./CrewScreen";
 const TODAY = "2026-08-10";
 
 const members: CrewMember[] = [
-  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z" },
-  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z" },
-  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z" },
+  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
+  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
+  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null },
 ];
 
 function summary(
@@ -46,6 +46,7 @@ function sharedRun(
     id,
     userId,
     displayName: members.find((member) => member.userId === userId)?.displayName ?? "Runner",
+    accentColor: members.find((member) => member.userId === userId)?.accentColor ?? null,
     localDate,
     activityType: "easy",
     distanceMiles: 4,
@@ -108,10 +109,11 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, localDate, activityType, distanceMiles, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
+      accentColor,
       localDate,
       activityType,
       distanceMiles,
@@ -140,7 +142,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     message: null,
     email: "zack@example.test",
     account: {
-      profile: { id: "zack", displayName: "Zack" },
+      profile: { id: "zack", displayName: "Zack", accentColor: null },
       crew: {
         id: "crew-1",
         ownerUserId: "zack",
@@ -168,6 +170,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signIn: action,
     signOut: action,
     saveDisplayName: action,
+    saveAccentColor: action,
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
@@ -202,7 +205,7 @@ describe("Crew destination states", () => {
   it("shows the intentional no-crew state", () => {
     const noCrew = controller({
       account: {
-        profile: { id: "zack", displayName: "Zack" },
+        profile: { id: "zack", displayName: "Zack", accentColor: null },
         crew: null,
         role: null,
         members: [],
@@ -268,6 +271,7 @@ describe("Crew comparisons and runs", () => {
           displayName: index === 0 ? "Zack" : `Runner ${index}`,
           role: index === 0 ? "owner" : "member",
           joinedAt: `2026-08-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+          accentColor: null,
         }),
       );
       const expandedSummaries = expandedMembers.map((member) => ({
@@ -323,6 +327,7 @@ describe("Crew comparisons and runs", () => {
               id: soloRun.id,
               userId: soloRun.userId,
               displayName: soloRun.displayName,
+              accentColor: soloRun.accentColor,
               localDate: soloRun.localDate,
               activityType: soloRun.activityType,
               distanceMiles: soloRun.distanceMiles,
@@ -661,7 +666,11 @@ describe("Shared Crew Build", () => {
       blocks[1].getAttribute("data-member-color"),
     );
     expect(blocks[0].getAttribute("data-type")).toBe("easy");
-    expect(blocks[0].querySelector(".crew-build__cap")).toBeInTheDocument();
+    // Zack ran this one: the monogram badge carries his initial, not his
+    // activity color, which stays on the block face.
+    const monogram = blocks[0].querySelector(".crew-build__monogram");
+    expect(monogram).toHaveTextContent("Z");
+    expect(monogram).toHaveAttribute("aria-hidden", "true");
   });
 
   it("names each block for a screen reader without exposing its decoration", () => {

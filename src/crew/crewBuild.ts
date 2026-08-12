@@ -5,6 +5,7 @@ import {
   type BlockWidth,
 } from "../domain/footprint";
 import type { RunActivityType } from "../domain/types";
+import type { CrewMemberAccent } from "./memberAccent";
 import type { CrewBuildRun } from "./types";
 
 /** Safety ceiling for the private ten-person Crew read. */
@@ -24,6 +25,7 @@ export interface CrewBuildBlock extends CrewBuildPlacement {
   id: string;
   userId: string;
   displayName: string;
+  accentColor: CrewMemberAccent | null;
   activityType: RunActivityType;
   width: BlockWidth;
   height: BlockHeight;
@@ -37,6 +39,7 @@ export interface CrewBuildReadyRun {
   id: string;
   userId: string;
   displayName: string;
+  accentColor: CrewMemberAccent | null;
   activityType: RunActivityType;
   width: BlockWidth;
   height: BlockHeight;
@@ -184,6 +187,7 @@ export function canPlaceCrewBuildBlock(
     id: run.id,
     userId: "",
     displayName: "",
+    accentColor: null,
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     localDate: "",
@@ -256,6 +260,7 @@ export function deriveCrewBuild(
         id: run.id,
         userId: run.userId,
         displayName: run.displayName,
+        accentColor: run.accentColor,
         activityType: run.activityType,
         width,
         height,
@@ -271,6 +276,7 @@ export function deriveCrewBuild(
         id: run.id,
         userId: run.userId,
         displayName: run.displayName,
+        accentColor: run.accentColor,
         activityType: run.activityType,
         width,
         height,
@@ -303,6 +309,7 @@ export function deriveCrewBuild(
       id: source.id,
       userId: source.userId,
       displayName: source.displayName,
+      accentColor: source.accentColor,
       activityType: source.activityType,
       width: block.width,
       height: block.height,

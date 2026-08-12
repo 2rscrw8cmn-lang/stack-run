@@ -15,6 +15,12 @@ import { Sheet } from "../../components/ui/Sheet";
 import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type { Race } from "../../domain/types";
 import { validateCrewDetails } from "../../crew/crewService";
+import {
+  crewMemberAccent,
+  MEMBER_ACCENTS,
+  MEMBER_ACCENT_LABEL,
+  type CrewMemberAccent,
+} from "../../crew/memberAccent";
 import { compareCrewRace } from "../../crew/raceMatch";
 import type { RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
@@ -417,9 +423,64 @@ function CrewPanel({
   );
 }
 
+/**
+ * Sixteen colors, none of them an activity color, so a runner's identity in
+ * the Crew Build tower never reads as the type of run instead of who ran it.
+ * A color already worn by a current crewmate is greyed out here — the
+ * `profiles` trigger is the actual referee, this is just steering the runner
+ * away from a pick that would be rejected anyway.
+ */
+function AccentColorPicker({
+  current,
+  taken,
+  busy,
+  onPick,
+}: {
+  current: CrewMemberAccent | null;
+  taken: ReadonlySet<CrewMemberAccent>;
+  busy: boolean;
+  onPick: (accentColor: CrewMemberAccent) => void;
+}) {
+  return (
+    <div className="crew-settings__accent-field">
+      <p className="form-field__label">Your color</p>
+      <ul className="crew-settings__accent-picker" aria-label="Your color">
+        {MEMBER_ACCENTS.map((accentColor) => {
+          const isCurrent = accentColor === current;
+          const isTaken = taken.has(accentColor) && !isCurrent;
+          const label = isTaken
+            ? `${MEMBER_ACCENT_LABEL[accentColor]}, taken by another crew member`
+            : isCurrent
+              ? `${MEMBER_ACCENT_LABEL[accentColor]}, your current color`
+              : MEMBER_ACCENT_LABEL[accentColor];
+          return (
+            <li key={accentColor}>
+              <button
+                type="button"
+                className="crew-settings__accent-swatch"
+                data-member-color={accentColor}
+                aria-pressed={isCurrent}
+                aria-label={label}
+                disabled={isTaken || busy}
+                onClick={() => onPick(accentColor)}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
   const [displayName, setDisplayName] = useState(
     crew.account?.profile.displayName ?? "",
+  );
+  const viewerId = crew.account?.profile.id;
+  const takenAccents = new Set(
+    (crew.account?.members ?? [])
+      .filter((member) => member.userId !== viewerId)
+      .map((member) => crewMemberAccent(member.userId, member.accentColor)),
   );
   return (
     <section className="crew-settings__section">
@@ -436,6 +497,12 @@ function AccountProfilePanel({ crew }: { crew: RaceCrewController }) {
           Sign Out
         </Button>
       </div>
+      <AccentColorPicker
+        current={crew.account?.profile.accentColor ?? null}
+        taken={takenAccents}
+        busy={crew.busy}
+        onPick={(accentColor) => void crew.saveAccentColor(accentColor)}
+      />
     </section>
   );
 }
