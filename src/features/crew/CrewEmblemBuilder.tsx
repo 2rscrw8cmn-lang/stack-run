@@ -4,7 +4,6 @@ import {
   CREW_EMBLEM_COLORS,
   CREW_EMBLEM_FRAMES,
   CREW_EMBLEM_INK,
-  CREW_EMBLEM_PRESETS,
   CREW_EMBLEM_SECTIONS,
   CREW_EMBLEM_SECTION_LABEL,
   CREW_EMBLEM_SHAPES,
@@ -12,7 +11,6 @@ import {
   crewEmblemColor,
   cycleEmblemShape,
   randomCrewEmblem,
-  sameCrewEmblem,
   setEmblemColor,
   shapeName,
   type CrewEmblem,
@@ -87,37 +85,18 @@ interface CrewEmblemBuilderProps {
 /**
  * The crew emblem designer.
  *
- * Four parts, one color at a time, and a live mark at the size the crew will
- * actually see it. Presets exist because most crews want a good emblem in one
- * tap, not a design session; the parts exist because the ones who do care
- * should not be stuck with five options.
+ * Four parts, one color at a time, and a live mark kept in view while the
+ * runner works. Each part is a compact row so the whole emblem remains
+ * legible on a phone.
  */
 export function CrewEmblemBuilder({ emblem, onChange }: CrewEmblemBuilderProps) {
   const [selected, setSelected] = useState<CrewEmblemSection>("middle");
-  const activePreset = CREW_EMBLEM_PRESETS.findIndex((preset) =>
-    sameCrewEmblem(preset.emblem, emblem),
-  );
 
   return (
     <div className="crew-emblem-builder">
       <div className="crew-emblem-builder__stage technical-grid">
-        <CrewEmblemMark emblem={emblem} size={168} label="Crew emblem preview" />
+        <CrewEmblemMark emblem={emblem} size={106} label="Crew emblem preview" />
       </div>
-
-      <ul className="crew-emblem-builder__presets" aria-label="Emblem presets">
-        {CREW_EMBLEM_PRESETS.map((preset, index) => (
-          <li key={preset.name}>
-            <button
-              type="button"
-              className="crew-emblem-builder__preset"
-              aria-pressed={index === activePreset}
-              onClick={() => onChange(preset.emblem)}
-            >
-              {preset.name}
-            </button>
-          </li>
-        ))}
-      </ul>
 
       <div className="crew-emblem-builder__sections">
         {CREW_EMBLEM_SECTIONS.map((section) => (
@@ -142,7 +121,14 @@ export function CrewEmblemBuilder({ emblem, onChange }: CrewEmblemBuilderProps) 
                 onClick={() => setSelected(section)}
               >
                 <SectionMark emblem={emblem} section={section} />
-                <span>{shapeName(section, emblem[section].shape)}</span>
+                <span className="crew-emblem-builder__option-label">
+                  {shapeName(section, emblem[section].shape)}
+                  <span
+                    className="crew-emblem-builder__color-indicator"
+                    data-emblem-color={emblem[section].color}
+                    aria-hidden="true"
+                  />
+                </span>
               </button>
               <button
                 type="button"
