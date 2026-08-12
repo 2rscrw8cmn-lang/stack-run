@@ -43,6 +43,10 @@ interface AppShellProps {
   ) => void;
   /** Removes one recorded run, and the block it earned with it. */
   onDeleteRun: (runLogId: string) => void;
+  /** Connects an extra run to a scheduled workout after the fact. */
+  onLinkRun: (runLogId: string, workoutId: string) => void;
+  /** Undoes a manual link, turning the run back into an extra run. */
+  onUnlinkRun: (runLogId: string) => void;
   /** Persists an edited plan, and restores the seed. */
   onEditPlan: (plan: TrainingPlan) => void;
   onResetPlan: () => void;
@@ -80,6 +84,8 @@ export function AppShell({
   blockPlacements,
   onSaveRun,
   onDeleteRun,
+  onLinkRun,
+  onUnlinkRun,
   onEditPlan,
   onResetPlan,
   availability,
@@ -188,6 +194,8 @@ export function AppShell({
             runLogs={runLogs}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
+            onLinkRun={onLinkRun}
+            onUnlinkRun={onUnlinkRun}
             syncToken={intervalsConnection}
           />
         )}

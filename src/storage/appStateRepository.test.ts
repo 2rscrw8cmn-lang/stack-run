@@ -5,6 +5,7 @@ import { likelyManualMatches, normalizeActivityList } from "../connected/interva
 import {
   acceptIntervalsRun,
   deleteRunLog,
+  linkRunLogToWorkout,
   loadAppState,
   onStorageWriteError,
   placeBlock,
@@ -14,6 +15,7 @@ import {
   savePlan,
   saveRunLog,
   ignoreIntervalsActivity,
+  unlinkRunLogFromWorkout,
   StorageLoadError,
   StorageWriteError,
 } from "./appStateRepository";
@@ -352,6 +354,64 @@ describe("deleteRunLog", () => {
   it("ignores an id that is not there", () => {
     const state = saveRunLog(loadAppState(), scheduledRun);
     expect(deleteRunLog(state, "run-nothing")).toBe(state);
+  });
+});
+
+describe("linkRunLogToWorkout", () => {
+  it("connects an extra run to a scheduled workout and persists it", () => {
+    let state = saveRunLog(loadAppState(), extraRun);
+    const extraId = state.runLogs[0].id;
+    state = linkRunLogToWorkout(state, extraId, "workout-002");
+
+    expect(state.runLogs[0].workoutId).toBe("workout-002");
+    expect(loadAppState().runLogs[0].workoutId).toBe("workout-002");
+  });
+
+  it("keeps the run's id and block, so an earlier placement stays valid", () => {
+    let state = saveRunLog(loadAppState(), extraRun);
+    const extraId = state.runLogs[0].id;
+    state = placeBlock(state, {
+      runLogId: extraId,
+      row: 0,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+    state = linkRunLogToWorkout(state, extraId, "workout-002");
+
+    expect(state.runLogs[0].id).toBe(extraId);
+    expect(state.blockPlacements[0].runLogId).toBe(extraId);
+  });
+
+  it("refuses to double-book a workout another run already satisfies", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = saveRunLog(state, extraRun);
+    const extraId = state.runLogs[1].id;
+
+    const next = linkRunLogToWorkout(state, extraId, "workout-002");
+    expect(next).toBe(state);
+    expect(next.runLogs[1].workoutId).toBeNull();
+  });
+
+  it("ignores an unknown run id", () => {
+    const state = loadAppState();
+    expect(linkRunLogToWorkout(state, "run-nothing", "workout-002")).toBe(state);
+  });
+});
+
+describe("unlinkRunLogFromWorkout", () => {
+  it("turns a scheduled run back into an extra run", () => {
+    let state = saveRunLog(loadAppState(), scheduledRun);
+    state = unlinkRunLogFromWorkout(state, "run-workout-002");
+
+    expect(state.runLogs[0].workoutId).toBeNull();
+    expect(loadAppState().runLogs[0].workoutId).toBeNull();
+  });
+
+  it("does nothing to a run that was already extra", () => {
+    const state = saveRunLog(loadAppState(), extraRun);
+    const extraId = state.runLogs[0].id;
+    expect(unlinkRunLogFromWorkout(state, extraId)).toBe(state);
   });
 });
 
