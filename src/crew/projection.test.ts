@@ -173,7 +173,7 @@ describe("Race Crew projection", () => {
     expect(moved).not.toContain("placedAt");
   });
 
-  it("uses the Crew-owned Build start date for fingerprint eligibility", () => {
+  it("embeds the Crew-owned Build start date in the fingerprint without clipping projected runs", () => {
     const state = {
       ...createInitialAppState(),
       runLogs: [
@@ -184,7 +184,8 @@ describe("Race Crew projection", () => {
 
     const fingerprint = projectionFingerprint(state, "2026-08-12", "2026-08-10");
     expect(fingerprint).toContain('"buildStartDate":"2026-08-10"');
-    expect(fingerprint).not.toContain("before");
+    // Member Build is unwindowed, so both runs are still projected for upload.
+    expect(fingerprint).toContain("before");
     expect(fingerprint).toContain("same-day");
   });
 
@@ -411,7 +412,7 @@ describe("Race Crew projection", () => {
     });
   });
 
-  it("shares only runs on or after the Crew Build start date", () => {
+  it("shares every run regardless of the Crew Build start date", () => {
     const runs = [
       { ...privateRun, id: "before", completedDate: "2026-08-09" },
       { ...privateRun, id: "same-day", completedDate: "2026-08-10" },
@@ -419,34 +420,38 @@ describe("Race Crew projection", () => {
       { ...privateRun, id: "late-import", completedDate: "2026-08-08", createdAt: "2026-08-12T12:00:00Z" },
     ];
 
-    expect(projectSharedRuns(runs, [], "2026-08-10").map((run) => run.localRunId))
-      .toEqual(["same-day", "after"]);
+    // Member Build is a sanitized reproduction of the runner's real Personal
+    // Build; the Crew-owned window governs the communal tower and crew
+    // stats elsewhere, not what gets projected here.
+    expect(projectSharedRuns(runs, []).map((run) => run.localRunId))
+      .toEqual(["before", "same-day", "after", "late-import"]);
   });
 
-  it("accepts a late import whose completed date is inside the Crew window", () => {
+  it("shares a late-imported run regardless of its completed date", () => {
     const lateImport = {
       ...privateRun,
-      id: "late-in-window",
+      id: "late-import",
       completedDate: "2026-08-05",
       createdAt: "2026-08-12T12:00:00Z",
     };
-    expect(projectSharedRuns([lateImport], [], "2026-08-01").map((run) => run.localRunId))
-      .toEqual(["late-in-window"]);
+    expect(projectSharedRuns([lateImport], []).map((run) => run.localRunId))
+      .toEqual(["late-import"]);
   });
 
-  it("keeps an imported run personal when its completed date predates the Build", () => {
+  it("shares an imported run even when its completed date predates the Crew Build", () => {
     const oldImport = {
       ...privateRun,
-      id: "late-pre-build",
+      id: "pre-build-import",
       completedDate: "2026-08-05",
       createdAt: "2026-08-12T12:00:00Z",
     };
     const personalState = { ...createInitialAppState(), runLogs: [oldImport] };
     expect(personalState.runLogs).toContain(oldImport);
-    expect(projectSharedRuns(personalState.runLogs, [], "2026-08-10")).toEqual([]);
+    expect(projectSharedRuns(personalState.runLogs, []).map((run) => run.localRunId))
+      .toEqual(["pre-build-import"]);
   });
 
-  it("can keep a year of 150 personal runs while sharing only 18 eligible runs", () => {
+  it("projects a full year of personal history for Member Build, not just the eligible Crew window", () => {
     const personalRuns = Array.from({ length: 150 }, (_, index) => ({
       ...privateRun,
       id: `year-${index}`,
@@ -454,7 +459,7 @@ describe("Race Crew projection", () => {
     }));
 
     expect(personalRuns).toHaveLength(150);
-    expect(projectSharedRuns(personalRuns, [], "2026-08-01")).toHaveLength(18);
+    expect(projectSharedRuns(personalRuns, [])).toHaveLength(150);
   });
 
   it("changes the fingerprint when the Crew Build start moves earlier", () => {

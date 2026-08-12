@@ -179,7 +179,7 @@ describe("Crew dashboard query", () => {
     expect(loaded.propsAvailable).toBe(false);
   });
 
-  it("defensively excludes server rows before the Crew Build start", async () => {
+  it("defensively excludes server rows before the Crew Build start from the windowed Crew views only", async () => {
     const loaded = await loadCrewDashboard(
       fakeClient([]),
       "crew-1",
@@ -187,8 +187,22 @@ describe("Crew dashboard query", () => {
       "2026-08-10",
     );
 
+    // The Crew's own windowed views (recent activity, the communal tower)
+    // stay scoped to the Crew Build start date.
     expect(loaded.runs).toEqual([]);
-    expect(loaded.miniBuildRuns).toEqual([]);
     expect(loaded.crewBuildRuns).toEqual([]);
+    // Member Build is unwindowed: it reproduces the runner's real Personal
+    // Build regardless of when the Crew's own window opened.
+    expect(loaded.miniBuildRuns).toEqual([
+      {
+        id: "run-1",
+        userId: "user-1",
+        localDate: "2026-08-09",
+        activityType: "long",
+        distanceMiles: 6.1,
+        buildRow: 4,
+        buildColumnStart: 2,
+      },
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import {
   addDaysToLocalDate,
   compareLocalDates,
+  formatDateLabel,
   formatLocalDate,
   isAfterLocalDate,
   isBeforeLocalDate,
@@ -313,7 +314,7 @@ export function selectTrainingSignals(
       label,
       shortLabel: planWeek
         ? `W${planWeek.weekNumber}`
-        : formatWeekRange(week.startDate, week.startDate),
+        : formatDateLabel(week.startDate, { month: "short", day: "numeric" }),
       startDate: week.startDate,
       endDate: week.endDate,
       actualMiles: roundMiles(
@@ -406,7 +407,7 @@ export function selectTrainingSignals(
         : formatWeekRange(week.startDate, week.endDate),
       shortLabel: planWeek
         ? `W${planWeek.weekNumber}`
-        : formatWeekRange(week.startDate, week.startDate),
+        : formatDateLabel(week.startDate, { month: "short", day: "numeric" }),
       startDate: week.startDate,
       endDate: week.endDate,
       total: runs.length

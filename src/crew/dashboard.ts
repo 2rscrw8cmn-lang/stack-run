@@ -165,13 +165,15 @@ export async function loadCrewDashboard(
     };
   });
 
-  const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).flatMap((item) => {
+  // Every synced row, regardless of the Crew Build window: Member Build is a
+  // sanitized reproduction of each runner's real Personal Build, not a crew
+  // artifact, so it is never date-clipped here. `crewEligibleRuns` below is
+  // the separate, windowed view that the communal tower and the crew's own
+  // recent-activity feed actually read from.
+  const allRuns: CrewSharedRun[] = rows(sharedRunsAvailable ? runResult.data : []).map((item) => {
     const userId = requiredString(item, "user_id");
     const localDate = requiredString(item, "local_date");
-    if (!isCrewEligibleLocalDate(localDate, buildStartDate)) {
-      return [];
-    }
-    return [{
+    return {
       id: requiredString(item, "id"),
       userId,
       displayName: displayName(userId),
@@ -191,10 +193,16 @@ export async function loadCrewDashboard(
           : null,
       propsCount: 0,
       viewerHasPropped: false,
-    }];
+    };
   });
 
-  const reactionResult = !sharedRunsAvailable || allRuns.length === 0
+  // The Crew's own windowed view: the communal tower, its recent-activity
+  // feed and Props all stay scoped to the Crew-owned Build start date.
+  const crewEligibleRuns = allRuns.filter((run) =>
+    isCrewEligibleLocalDate(run.localDate, buildStartDate),
+  );
+
+  const reactionResult = !sharedRunsAvailable || crewEligibleRuns.length === 0
     ? { data: [], error: null }
     : await client
       .from("crew_reactions")
@@ -211,12 +219,14 @@ export async function loadCrewDashboard(
     if (userId === viewerUserId) viewerProps.add(runId);
   }
 
-  const runs = allRuns.map((run) => ({
+  const runs = crewEligibleRuns.map((run) => ({
     ...run,
     propsCount: propsCounts.get(run.id) ?? 0,
     viewerHasPropped: viewerProps.has(run.id),
   }));
 
+  // Member Build reads the full, unwindowed set: it reproduces the runner's
+  // real Personal Build, not a crew-scoped artifact.
   const miniBuildRuns = allRuns.map((run) => ({
     id: run.id,
     userId: run.userId,
@@ -229,7 +239,7 @@ export async function loadCrewDashboard(
 
   // The communal tower's own contract. Personal placement is dropped here;
   // only the independent, collaborative Crew coordinates cross this boundary.
-  const crewBuildRuns = allRuns.map((run) => ({
+  const crewBuildRuns = crewEligibleRuns.map((run) => ({
     id: run.id,
     userId: run.userId,
     displayName: run.displayName,

@@ -445,6 +445,12 @@ Crew `Miles Built` now means the mileage in physically placed communal blocks, b
 
 The Crew header is compact, Comparison uses one icon-only row on a non-grid surface, and Today may show up to two other-member runs from today/yesterday using the existing Props controller. Actual-run Training Signals remain available outside an active plan; Consistency and planned comparisons remain plan-dependent. Phone Training Signals use simple horizontal overflow while desktop retains its grid.
 
+## D-071 — Member Build stays unwindowed; the Build start window is Crew Build/RLS-only
+
+**Decision:** This is a focused correction to D-070, not UI-23. D-070 already said "Member Build remains a sanitized read-only Personal Build reproduction," but the implementation did not honor that: `shared_runs` INSERT/UPDATE RLS rejected any row dated before `crews.build_start_date`, so pre-window personal history was never uploaded at all, and the dashboard read applied the same eligibility filter to Member Build alongside the Crew Build. Both are corrected. Ordinary projection may now upsert a runner's full local history regardless of date; the Crew-owned Build start window is enforced only where it actually governs the shared communal tower — `place_crew_build_block` rejects placing a run dated before the window, and dashboard reads keep Recent Crew Runs, the Crew Build and crew-relative comparison stats (weekly miles, longest run, Miles Built, Props) windowed. Member Build (`miniBuildRuns`) is read unwindowed.
+
+Moving the Build start later still pulls pre-window runs off the shared tower, but it demotes their `crew_build_row`/`crew_build_column_start` (and cascades their Props) rather than deleting the `shared_runs` row — the row remains a legitimate Member Build block. Moving it earlier is unchanged: nothing is deleted or invented. Crews that already had pre-window rows deleted by the original D-070 migration or an owner's earlier boundary move cannot recover that history retroactively; normal projection re-uploads it going forward.
+
 ## Active implementation order
 
 Complete:

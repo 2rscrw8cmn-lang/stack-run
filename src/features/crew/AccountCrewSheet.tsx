@@ -251,7 +251,7 @@ function EditCrewPanel({
       <section className="crew-settings__section crew-settings__delete-confirmation">
         <h3>Change Crew Build start?</h3>
         <p>
-          Changing the Crew Build start to {formatDateLabel(pendingChange.buildStartDate, { month: "short", day: "numeric" })} will remove Crew contributions before that date. Personal run history and Personal Builds are not affected.
+          Changing the Crew Build start to {formatDateLabel(pendingChange.buildStartDate, { month: "short", day: "numeric" })} will pull contributions before that date off the shared Crew Build. They stay visible in each runner's own Member Build, and Personal run history and Personal Builds are not affected.
         </p>
         <div className="crew-settings__form-actions">
           <Button isLoading={crew.busy} onClick={() => void performSave(pendingChange)}>Change Build Start</Button>
