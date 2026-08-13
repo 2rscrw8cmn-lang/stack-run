@@ -46,6 +46,10 @@ import {
 } from "../storage/activeCrewRepository";
 import { loadCrewDashboard } from "./dashboard";
 import {
+  loadActivePersonalOwner,
+  loadPersonalMetadata,
+} from "../storage/personalSyncRepository";
+import {
   commitOptimisticCrewProps,
   setCrewReaction,
   withDashboardPropsState,
@@ -84,6 +88,7 @@ export interface RaceCrewController {
   error: string | null;
   message: string | null;
   email: string | null;
+  userId?: string | null;
   account: LoadedCrewAccount | null;
   pendingInvite: PendingCrewInvite | null;
   latestInviteUrl: string | null;
@@ -257,7 +262,9 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   }, [availability, initialInviteToken]);
 
   /**
-   * Shares this device's safe projection with every crew the account is in.
+   * Shares the canonical account cache's safe projection with every crew the
+   * account is in. An old device is never allowed to project before personal
+   * account reconciliation has completed.
    *
    * A run belongs to the runner, not to whichever crew happens to be open, so
    * standing in one crew must never starve the others of contributions. Each
@@ -271,6 +278,10 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     const activeUser = current.user;
     const memberships = current.account?.memberships ?? [];
     if (!state || !activeUser || memberships.length === 0) return;
+    if (
+      loadActivePersonalOwner() !== activeUser.id ||
+      !loadPersonalMetadata(activeUser.id).initialized
+    ) return;
     const today = todayLocalDate();
     const failures: string[] = [];
 
@@ -614,6 +625,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     error,
     message,
     email: user?.email ?? null,
+    userId: user?.id ?? null,
     account,
     pendingInvite,
     latestInviteUrl,
@@ -630,13 +642,13 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       const nextUser = await createStackAccount(availability.client, input);
       setUser(nextUser);
       await reloadAccount(nextUser);
-    }, "STACK account created. Your personal training stayed on this device."),
+    }, "STACK account created. Choose the device that should initialize its personal data."),
     signIn: (input) => operate(async () => {
       if (!availability.configured) return;
       const nextUser = await signInToStack(availability.client, input);
       setUser(nextUser);
       await reloadAccount(nextUser);
-    }, "Signed in. Your local plan and runs were not replaced."),
+    }, "Signed in. Loading the personal STACK saved to this account."),
     signOut: () => operate(async () => {
       if (!availability.configured) return;
       await signOutOfStack(availability.client);

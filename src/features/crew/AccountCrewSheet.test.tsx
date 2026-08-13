@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
 import type { LoadedCrewAccount, RaceCrew } from "../../crew/types";
+import type { PersonalSyncController } from "../../personal-sync/types";
 import { todayLocalDate } from "../../domain/dates";
 import { AccountCrewSheet } from "./AccountCrewSheet";
 
@@ -107,6 +108,28 @@ function controller(
   };
 }
 
+function personalSync(
+  overrides: Partial<PersonalSyncController> = {},
+): PersonalSyncController {
+  return {
+    status: "ready",
+    initialized: true,
+    error: null,
+    message: null,
+    initialization: null,
+    userId: "owner-1",
+    pendingCandidates: [],
+    recordMutation: vi.fn(),
+    recordPendingCandidates: vi.fn(),
+    initializeFromThisDevice: vi.fn(async () => undefined),
+    deferInitialization: vi.fn(),
+    syncNow: vi.fn(async () => undefined),
+    resetAccount: vi.fn(async () => undefined),
+    clearMessage: vi.fn(),
+    ...overrides,
+  };
+}
+
 /** Opens the Crew Settings sub-sheet for whichever crew is active, from the hub. */
 async function openCrewSettings(user: ReturnType<typeof userEvent.setup>, crewName: string | RegExp) {
   const list = within(screen.getByRole("list", { name: "Your crews" }));
@@ -131,7 +154,7 @@ describe("Account & Crew settings", () => {
     expect(screen.getByText(/Personal STACK still works normally/)).toBeInTheDocument();
   });
 
-  it("offers create/sign-in without suggesting personal cloud sync", () => {
+  it("explains account sync while keeping signed-out STACK local", () => {
     render(
       <AccountCrewSheet
         isOpen
@@ -142,7 +165,41 @@ describe("Account & Crew settings", () => {
     );
     expect(screen.getByRole("button", { name: "Create Account" })).toBeInTheDocument();
     expect(screen.getByLabelText("8-digit STACK PIN")).toHaveAttribute("pattern", "[0-9]{8}");
-    expect(screen.getByText(/plan, runs and Build stay on this device/)).toBeInTheDocument();
+    expect(screen.getByText(/one canonical personal STACK across your devices/)).toBeInTheDocument();
+    expect(screen.getByText(/Signed-out personal STACK still works locally/)).toBeInTheDocument();
+  });
+
+  it("requires an explicit first-device choice and reports the recoverable counts", () => {
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+        personalSync={personalSync({
+          status: "initialization-required",
+          initialized: false,
+          initialization: { runCount: 12, blockCount: 8, raceName: "Fall Half" },
+        })}
+      />,
+    );
+    expect(screen.getByText(/This device has 12 runs and 8 built blocks/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use This Device's Data" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Not Now" })).toBeInTheDocument();
+  });
+
+  it("shows the canonical account state and offers an explicit Sync Now", () => {
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+        personalSync={personalSync()}
+      />,
+    );
+    expect(screen.getByText("Saved to your STACK account")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sync Now" })).toBeInTheDocument();
   });
 
   it("warns on a mismatched invite and joins without changing the local race", async () => {

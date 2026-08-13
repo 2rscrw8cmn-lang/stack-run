@@ -4,6 +4,7 @@ import { loadSeedPlan } from "../seed/loadSeedPlan";
 import {
   createInitialAppState,
   CURRENT_SCHEMA_VERSION,
+  InvalidAppStateError,
   migrateAppState,
   UnsupportedSchemaVersionError,
 } from "./migrations";
@@ -80,6 +81,12 @@ describe("migrateAppState", () => {
   it("accepts a valid current-version state", () => {
     const existing = createInitialAppState();
     expect(migrateAppState(existing)).toEqual(existing);
+  });
+
+  it("rejects malformed nested current-version training configuration", () => {
+    const malformed = structuredClone(createInitialAppState());
+    malformed.plan.weeks[0].workouts[0].build.span = "wide" as never;
+    expect(() => migrateAppState(malformed)).toThrow(InvalidAppStateError);
   });
 
   it("tolerates a current-version payload that is missing the placements array", () => {

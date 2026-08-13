@@ -49,6 +49,15 @@ const scheduledRun = {
 
 const extraRun = { ...scheduledRun, workoutId: null };
 
+function runIdForWorkout(
+  state: ReturnType<typeof loadAppState>,
+  workoutId: string,
+): string {
+  const id = state.runLogs.find((run) => run.workoutId === workoutId)?.id;
+  if (!id) throw new Error(`Missing test run for ${workoutId}`);
+  return id;
+}
+
 describe("saveRunLog", () => {
   it("updates the one existing log for a workout and persists it", () => {
     let state = loadAppState();
@@ -283,7 +292,7 @@ describe("saveAppState", () => {
 describe("deleteRunLog", () => {
   it("removes the run and persists the removal", () => {
     let state = saveRunLog(loadAppState(), scheduledRun);
-    state = deleteRunLog(state, "run-workout-002");
+    state = deleteRunLog(state, runIdForWorkout(state, "workout-002"));
 
     expect(state.runLogs).toEqual([]);
     expect(loadAppState().runLogs).toEqual([]);
@@ -291,15 +300,16 @@ describe("deleteRunLog", () => {
 
   it("takes the block it earned out of the tower with it", () => {
     let state = saveRunLog(loadAppState(), scheduledRun);
+    const runId = runIdForWorkout(state, "workout-002");
     state = placeBlock(state, {
-      runLogId: "run-workout-002",
+      runLogId: runId,
       row: 0,
       columnStart: 3,
       width: 1,
       height: 1,
     });
 
-    state = deleteRunLog(state, "run-workout-002");
+    state = deleteRunLog(state, runId);
     expect(state.blockPlacements).toEqual([]);
     expect(loadAppState().blockPlacements).toEqual([]);
   });
@@ -309,21 +319,21 @@ describe("deleteRunLog", () => {
     state = saveRunLog(state, { ...scheduledRun, workoutId: "workout-004" });
     state = saveRunLog(state, { ...scheduledRun, workoutId: "workout-006" });
     state = placeBlock(state, {
-      runLogId: "run-workout-002",
+      runLogId: runIdForWorkout(state, "workout-002"),
       row: 0,
       columnStart: 1,
       width: 1,
       height: 1,
     });
     state = placeBlock(state, {
-      runLogId: "run-workout-004",
+      runLogId: runIdForWorkout(state, "workout-004"),
       row: 1,
       columnStart: 1,
       width: 1,
       height: 1,
     });
     state = placeBlock(state, {
-      runLogId: "run-workout-006",
+      runLogId: runIdForWorkout(state, "workout-006"),
       row: 2,
       columnStart: 1,
       width: 1,
@@ -331,7 +341,7 @@ describe("deleteRunLog", () => {
     });
 
     // Pull the bottom block out from under the other two.
-    state = deleteRunLog(state, "run-workout-002");
+    state = deleteRunLog(state, runIdForWorkout(state, "workout-002"));
 
     expect(state.blockPlacements).toHaveLength(2);
     // Every remaining block still rests on something.
@@ -347,7 +357,7 @@ describe("deleteRunLog", () => {
     state = saveRunLog(state, extraRun);
     const extraId = state.runLogs[1].id;
 
-    state = deleteRunLog(state, "run-workout-002");
+    state = deleteRunLog(state, runIdForWorkout(state, "workout-002"));
     expect(state.runLogs.map((runLog) => runLog.id)).toEqual([extraId]);
   });
 
@@ -402,7 +412,7 @@ describe("linkRunLogToWorkout", () => {
 describe("unlinkRunLogFromWorkout", () => {
   it("turns a scheduled run back into an extra run", () => {
     let state = saveRunLog(loadAppState(), scheduledRun);
-    state = unlinkRunLogFromWorkout(state, "run-workout-002");
+    state = unlinkRunLogFromWorkout(state, runIdForWorkout(state, "workout-002"));
 
     expect(state.runLogs[0].workoutId).toBeNull();
     expect(loadAppState().runLogs[0].workoutId).toBeNull();
@@ -431,8 +441,9 @@ describe("savePlan", () => {
 
   it("leaves runs and placements attached to the workouts they name", () => {
     let state = saveRunLog(loadAppState(), scheduledRun);
+    const runId = runIdForWorkout(state, "workout-002");
     state = placeBlock(state, {
-      runLogId: "run-workout-002",
+      runLogId: runId,
       row: 0,
       columnStart: 1,
       width: 1,
@@ -442,7 +453,7 @@ describe("savePlan", () => {
     state = savePlan(state, moveWorkout(state.plan, "workout-002", "2026-09-16"));
 
     expect(state.runLogs[0].workoutId).toBe("workout-002");
-    expect(state.blockPlacements[0].runLogId).toBe("run-workout-002");
+    expect(state.blockPlacements[0].runLogId).toBe(runId);
     expect(loadAppState().runLogs).toHaveLength(1);
     expect(loadAppState().blockPlacements).toHaveLength(1);
   });
@@ -493,8 +504,10 @@ describe("placeBlock", () => {
   }
 
   it("persists a placement and reloads it", () => {
-    const state = placeBlock(stateWithLoggedRun(), {
-      runLogId: "run-workout-002",
+    const logged = stateWithLoggedRun();
+    const runId = runIdForWorkout(logged, "workout-002");
+    const state = placeBlock(logged, {
+      runLogId: runId,
       row: 0,
       columnStart: 3,
       width: 1,
@@ -503,7 +516,7 @@ describe("placeBlock", () => {
 
     expect(state.blockPlacements).toHaveLength(1);
     expect(loadAppState().blockPlacements[0]).toMatchObject({
-      runLogId: "run-workout-002",
+      runLogId: runId,
       row: 0,
       columnStart: 3,
       width: 1,
@@ -515,15 +528,17 @@ describe("placeBlock", () => {
   });
 
   it("keeps one placement per run when a block is moved", () => {
-    let state = placeBlock(stateWithLoggedRun(), {
-      runLogId: "run-workout-002",
+    const logged = stateWithLoggedRun();
+    const runId = runIdForWorkout(logged, "workout-002");
+    let state = placeBlock(logged, {
+      runLogId: runId,
       row: 0,
       columnStart: 3,
       width: 1,
       height: 1,
     });
     state = placeBlock(state, {
-      runLogId: "run-workout-002",
+      runLogId: runId,
       row: 0,
       columnStart: 5,
       width: 1,
@@ -535,10 +550,11 @@ describe("placeBlock", () => {
   });
 
   it("rejects a footprint the run did not earn", () => {
+    const logged = stateWithLoggedRun();
     // A 2 mile run earns a 1-wide block; the caller cannot ask for a bigger one.
     expect(() =>
-      placeBlock(stateWithLoggedRun(), {
-        runLogId: "run-workout-002",
+      placeBlock(logged, {
+        runLogId: runIdForWorkout(logged, "workout-002"),
         row: 0,
         columnStart: 1,
         width: 3,
@@ -548,9 +564,10 @@ describe("placeBlock", () => {
   });
 
   it("rejects a row that is not where the block would fall", () => {
+    const logged = stateWithLoggedRun();
     expect(() =>
-      placeBlock(stateWithLoggedRun(), {
-        runLogId: "run-workout-002",
+      placeBlock(logged, {
+        runLogId: runIdForWorkout(logged, "workout-002"),
         row: 4,
         columnStart: 1,
         width: 1,
@@ -563,7 +580,7 @@ describe("placeBlock", () => {
     let state = saveRunLog(loadAppState(), easyRun);
     state = saveRunLog(state, { ...easyRun, workoutId: "workout-004" });
     state = placeBlock(state, {
-      runLogId: "run-workout-002",
+      runLogId: runIdForWorkout(state, "workout-002"),
       row: 0,
       columnStart: 3,
       width: 1,
@@ -573,7 +590,7 @@ describe("placeBlock", () => {
     // Claiming the occupied cell is refused; the course above is accepted.
     expect(() =>
       placeBlock(state, {
-        runLogId: "run-workout-004",
+        runLogId: runIdForWorkout(state, "workout-004"),
         row: 0,
         columnStart: 3,
         width: 1,
@@ -583,7 +600,7 @@ describe("placeBlock", () => {
 
     expect(() =>
       placeBlock(state, {
-        runLogId: "run-workout-004",
+        runLogId: runIdForWorkout(state, "workout-004"),
         row: 1,
         columnStart: 3,
         width: 1,
@@ -601,7 +618,7 @@ describe("placeBlock", () => {
 
     expect(() =>
       placeBlock(state, {
-        runLogId: "run-workout-007",
+        runLogId: runIdForWorkout(state, "workout-007"),
         row: 0,
         columnStart: 7,
         width: 4,
@@ -626,14 +643,14 @@ describe("placeBlock", () => {
     let state = saveRunLog(loadAppState(), easyRun);
     state = saveRunLog(state, { ...easyRun, workoutId: "workout-004" });
     state = placeBlock(state, {
-      runLogId: "run-workout-002",
+      runLogId: runIdForWorkout(state, "workout-002"),
       row: 0,
       columnStart: 3,
       width: 1,
       height: 1,
     });
     state = placeBlock(state, {
-      runLogId: "run-workout-004",
+      runLogId: runIdForWorkout(state, "workout-004"),
       row: 0,
       columnStart: 5,
       width: 1,
@@ -643,7 +660,7 @@ describe("placeBlock", () => {
     // workout-004 was placed last, so only it can still be moved.
     expect(() =>
       placeBlock(state, {
-        runLogId: "run-workout-002",
+        runLogId: runIdForWorkout(state, "workout-002"),
         row: 0,
         columnStart: 1,
         width: 1,
@@ -669,7 +686,7 @@ describe("placeBlock", () => {
   it("leaves run logs untouched", () => {
     const before = stateWithLoggedRun();
     const after = placeBlock(before, {
-      runLogId: "run-workout-002",
+      runLogId: runIdForWorkout(before, "workout-002"),
       row: 0,
       columnStart: 3,
       width: 1,
@@ -792,9 +809,12 @@ describe("editing an actual run", () => {
       "",
     );
 
-    expect(blankDevice.runLogs[0].id).toBe("run-extra-2026-08-04");
-    expect(secondImport.runLogs.find(
+    const firstId = blankDevice.runLogs[0].id;
+    const secondId = secondImport.runLogs.find(
       (run) => run.externalSource?.activityId === accepted.externalId,
-    )?.id).toBe("run-extra-2026-08-04-2");
+    )?.id;
+    expect(firstId).toMatch(/^run-[0-9a-f-]{36}$/);
+    expect(secondId).toMatch(/^run-[0-9a-f-]{36}$/);
+    expect(secondId).not.toBe(firstId);
   });
 });

@@ -2,7 +2,9 @@
 
 ## Current state
 
-**UI-23 — Run Detail 2.0 is implemented for owner review, corrected against the August 13 real-device review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened and stay 2×2 on phones, a Run Profile chart adds on-demand pace/HR/elevation/cadence visualization with gap-preserving lines, HR zones become an interactive donut with no visible legend, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. Cadence is displayed for the first time, verbatim at the source's own convention. The governing rule, from that review: **streams give shape, imported aggregates give numbers** — no summary statistic is recomputed from per-sample data. See `## Runner Icons (post-UI-23)
+**UI-23 — Run Detail 2.0 is implemented for owner review, corrected against the August 13 real-device review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened and stay 2×2 on phones, a Run Profile chart adds on-demand pace/HR/elevation/cadence visualization with gap-preserving lines, HR zones become an interactive donut with no visible legend, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. Cadence is displayed for the first time, verbatim at the source's own convention. The governing rule, from that review: **streams give shape, imported aggregates give numbers** — no summary statistic is recomputed from per-sample data. See `## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
+
+### Runner Icons (post-UI-23)
 
 Crews had emblems and runners had colors; runners had no mark of their own, so
 every compact Crew identity surface fell back to a 7px accent dot. `Runner
@@ -112,7 +114,7 @@ value rather than accepting a string, so no user-supplied markup has a path into
 the column. Crew membership, RLS, the safe projection contract, Build geometry
 and personal AppState are all unchanged.
 
-## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
+### Earlier phases
 
 **UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix, Run Data review-persistence/plan-matching hotfix, and focused Crew/Training Signals polish described below are implemented for owner review and predate UI-23.
 
@@ -1455,3 +1457,45 @@ own detail. `Unlink from Plan` remains inline and visually secondary.
 No Supabase migration, no new dependency, and no change to Intervals
 credential handling, HR-zone calculation, run edit/delete, or plan
 linking/unlinking rules.
+
+## DATA-1 — Personal account sync
+
+`src/personal-sync/usePersonalSync.ts` owns the signed-in lifecycle. It switches
+the browser to an account-scoped schema-9 cache before paint, performs explicit
+initialization or second-device reconciliation, records local changes in a
+persistent outbox, and rehydrates only validated server snapshots. Failed or
+malformed hydration leaves the last valid account cache visible.
+
+`src/personal-sync/personalCloudRepository.ts` is the sole browser boundary for
+the four private personal tables and their revision-enforcing RPCs.
+`reconciliation.ts` owns legacy external aliases, ambiguous manual collisions,
+tombstones, placement reference rewrites and no-repack second-device Build
+adoption. `src/storage/personalSyncRepository.ts` owns account cache metadata,
+revisions, outboxes and recoverable backups.
+
+New RunLogs are `run-<random UUID>` and no production code parses their shape.
+Imported identity is independently constrained by user/provider/external id in
+Postgres, including tombstones. Training configuration and Intervals review
+state are revisioned documents; each run has its own revision; Personal Build
+structural writes are validated and reject stale revisions.
+
+The training row also carries the account reset generation. Every outbox write
+uses its last observed generation; reset increments it, so a never-synced run
+from an older offline device is backed up and rejected instead of being
+inserted. Run deletion batches tombstones and the existing deterministic
+Personal Build repack into one RPC, which returns the new Build revision and
+canonical placements. Mutations arriving during a request trigger one queued
+follow-up pass after the current request releases its in-flight guard.
+
+Canonical hydration reconstructs schema-9 and passes it through the shared
+storage migration/domain validation before replacement. Legacy unscoped
+Intervals credentials are adopted on first initialization or first canonical
+account adoption on that device, never uploaded, never overwrite a scoped
+credential, and are marked to prevent same-browser account leakage.
+
+Crew remains a separate narrow projection. `useRaceCrew` will not project until
+the active account cache is canonical. `reconcile_crew_run_identity` merges
+legacy shared rows in place, retaining a survivor UUID, Props, Member Build and
+Crew Build position where possible. Shared Member Build rows freeze width and
+height; editing a placed communal contribution across a footprint boundary
+demotes it to READY before recursive support healing.

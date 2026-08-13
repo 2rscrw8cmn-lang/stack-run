@@ -94,4 +94,13 @@ describe("pending Intervals candidates", () => {
     });
     expect(() => clearPendingIntervalsCandidates()).not.toThrow();
   });
+
+  it("keeps pending review queues isolated between signed-in accounts", () => {
+    savePendingIntervalsCandidates([candidate], "user-a");
+    savePendingIntervalsCandidates([{ ...candidate, externalId: "i2" }], "user-b");
+
+    expect(loadPendingIntervalsCandidates("user-a").map((item) => item.externalId)).toEqual(["i1"]);
+    expect(loadPendingIntervalsCandidates("user-b").map((item) => item.externalId)).toEqual(["i2"]);
+    expect(loadPendingIntervalsCandidates()).toEqual([]);
+  });
 });

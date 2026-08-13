@@ -30,10 +30,10 @@ set local request.jwt.claim.sub = '92000000-0000-0000-0000-000000000001';
 
 -- One account creates two crews. Nothing about the first blocks the second.
 update multi_crew_test_ids set road_crew_id = public.create_crew(
-  'Road Crew', 'Winter Half', '2026-12-05', 13.1, '2026-08-10', 'E1-1.2-3.0-5.4-2.1'
+  'Road Crew', 'race', 'Winter Half', '2026-12-05', 13.1, '2026-08-10', 'E1-1.2-3.0-5.4-2.1'
 );
 update multi_crew_test_ids set trail_crew_id = public.create_crew(
-  'Trail Crew', 'Ridge 50K', '2027-04-10', 31, '2026-11-01'
+  'Trail Crew', 'race', 'Ridge 50K', '2027-04-10', 31, '2026-11-01'
 );
 
 do $$
@@ -61,7 +61,7 @@ do $$
 begin
   begin
     perform public.create_crew(
-      'Bad Emblem Crew', 'Race', '2026-12-05', 13.1, '2026-08-10', 'not-an-emblem'
+      'Bad Emblem Crew', 'race', 'Race', '2026-12-05', 13.1, '2026-08-10', 'not-an-emblem'
     );
     raise exception 'an invalid emblem code was accepted';
   exception when others then

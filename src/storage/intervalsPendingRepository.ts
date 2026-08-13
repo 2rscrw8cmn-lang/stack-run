@@ -3,6 +3,12 @@ import type { ImportedRunMetrics } from "../domain/types";
 import { StorageWriteError } from "./appStateRepository";
 import { INTERVALS_PENDING_STORAGE_KEY } from "./storageKeys";
 
+function storageKey(accountId: string | null): string {
+  return accountId
+    ? `${INTERVALS_PENDING_STORAGE_KEY}.${encodeURIComponent(accountId)}`
+    : INTERVALS_PENDING_STORAGE_KEY;
+}
+
 /**
  * The unresolved Run Data review queue, kept outside schema-9 AppState.
  *
@@ -53,10 +59,10 @@ function isPendingCandidate(value: unknown): value is IntervalsCandidate {
  * Never throws. A queue that cannot be read is a queue the next sync rebuilds;
  * it is not a reason to keep the user out of their own training data.
  */
-export function loadPendingIntervalsCandidates(): IntervalsCandidate[] {
+export function loadPendingIntervalsCandidates(accountId: string | null = null): IntervalsCandidate[] {
   let raw: string | null;
   try {
-    raw = localStorage.getItem(INTERVALS_PENDING_STORAGE_KEY);
+    raw = localStorage.getItem(storageKey(accountId));
   } catch {
     return [];
   }
@@ -73,13 +79,16 @@ export function loadPendingIntervalsCandidates(): IntervalsCandidate[] {
  * Throws `StorageWriteError` so the caller can say the queue will not survive
  * this session rather than quietly promise a persistence it did not get.
  */
-export function savePendingIntervalsCandidates(candidates: readonly IntervalsCandidate[]): void {
+export function savePendingIntervalsCandidates(
+  candidates: readonly IntervalsCandidate[],
+  accountId: string | null = null,
+): void {
   try {
     if (candidates.length === 0) {
-      localStorage.removeItem(INTERVALS_PENDING_STORAGE_KEY);
+      localStorage.removeItem(storageKey(accountId));
       return;
     }
-    localStorage.setItem(INTERVALS_PENDING_STORAGE_KEY, JSON.stringify(candidates));
+    localStorage.setItem(storageKey(accountId), JSON.stringify(candidates));
   } catch (error) {
     throw new StorageWriteError(
       "This browser could not save the list of runs waiting to be reviewed.",
@@ -89,9 +98,9 @@ export function savePendingIntervalsCandidates(candidates: readonly IntervalsCan
 }
 
 /** Only an explicit Forget Connection may call this. */
-export function clearPendingIntervalsCandidates(): void {
+export function clearPendingIntervalsCandidates(accountId: string | null = null): void {
   try {
-    localStorage.removeItem(INTERVALS_PENDING_STORAGE_KEY);
+    localStorage.removeItem(storageKey(accountId));
   } catch {
     // Nothing to recover: the queue is filtered against imported and ignored
     // activities on load, so a failed clear cannot resurrect a settled run.

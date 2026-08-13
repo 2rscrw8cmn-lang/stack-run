@@ -2,7 +2,20 @@
 
 ## Personal AppState
 
-STACK's personal training data remains one versioned JSON object in browser `localStorage`.
+Issue #50 / DATA-1 supersedes the former signed-in local-only boundary.
+
+- Signed out, STACK remains a versioned schema-9 JSON object in browser
+  `localStorage` at `stack.app-state.v1`.
+- Signed in, the account's private Supabase rows are canonical and schema-9 is
+  an account-scoped cache/offline working copy at
+  `stack.app-state.account.v1.<user-id>`.
+- Cloud storage is normalized into `personal_training_state`,
+  `personal_runs`, `personal_build_state` and `personal_intervals_state`; the
+  complete AppState is never stored as one opaque cloud blob.
+- Local mutations are immediate and enter the account-scoped persistent
+  `stack.personal-outbox.v1.<user-id>` outbox.
+- Outbox mutations carry the last observed account generation. Reset advances
+  that generation, rejecting stale pre-reset inserts before canonical refresh.
 
 Key:
 
@@ -14,7 +27,8 @@ Current schema: **9**.
 
 UI components never read/write the AppState storage slot directly. Personal state mutations go through `src/storage/appStateRepository.ts`.
 
-Race Crew does **not** replace this local-first model.
+Race Crew still reads only its narrow safe projection. Crew members and owners
+cannot read the private personal tables.
 
 ## Current schema-9 shape
 
@@ -87,6 +101,14 @@ Current single-owner deployment may still contain:
 ```text
 stack.intervals.sync-token.v1
 ```
+
+For signed-in accounts both the proxy token and personal API key use an
+account-scoped suffix on that device. They are never uploaded. The old
+unscoped credential is adopted into exactly one account either after the
+runner explicitly initializes from that device or when that device first
+adopts an already initialized canonical account. Existing scoped credentials
+are never overwritten, and the unscoped value is removed only after a
+successful adoption.
 
 This authorizes the existing protected Vercel proxy.
 

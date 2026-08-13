@@ -66,11 +66,17 @@ interface Options {
   /** Null while storage recovery owns the screen: there is nothing to sync into. */
   state: AppState | null;
   onSynced: (at: string) => void;
+  /** Authenticated account scope; null preserves signed-out local behavior. */
+  accountId?: string | null;
+  /** Canonical pending candidates hydrated by personal account sync. */
+  pendingSeed?: readonly IntervalsCandidate[];
+  onPendingChanged?: (candidates: readonly IntervalsCandidate[]) => void;
   /** Overridable so tests do not depend on the network. */
   read?: typeof fetchIntervals;
 }
 
 type SyncMode = "quiet" | "manual" | "backfill";
+const EMPTY_PENDING: readonly IntervalsCandidate[] = [];
 
 /**
  * Keeps synced runs arriving without anybody asking, and without polling.
@@ -88,7 +94,16 @@ type SyncMode = "quiet" | "manual" | "backfill";
  * Build are all still true when Intervals is unreachable, so a failed quiet
  * sync sets `error` for a screen to offer a retry with and gets out of the way.
  */
-export function useConnectedSync({ connection, token = null, state, onSynced, read = fetchIntervals }: Options): ConnectedSync {
+export function useConnectedSync({
+  connection,
+  token = null,
+  state,
+  onSynced,
+  accountId = null,
+  pendingSeed = EMPTY_PENDING,
+  onPendingChanged = () => undefined,
+  read = fetchIntervals,
+}: Options): ConnectedSync {
   const activeConnection = connection ?? (token
     ? { mode: "legacy-proxy" as const, credential: token }
     : null);
@@ -101,9 +116,9 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
 
   // Read through refs: the sync closure must see the newest run logs and
   // ignored ids without the effect below re-subscribing on every state change.
-  const latest = useRef({ state, onSynced, read, connection: activeConnection });
+  const latest = useRef({ state, onSynced, onPendingChanged, read, connection: activeConnection });
   useEffect(() => {
-    latest.current = { state, onSynced, read, connection: activeConnection };
+    latest.current = { state, onSynced, onPendingChanged, read, connection: activeConnection };
   });
   const inFlight = useRef(false);
   const lastAttemptAt = useRef(0);
@@ -117,19 +132,25 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
 
   const hasState = state !== null;
   useEffect(() => {
-    if (!connectionCredential || !hasState) return;
+    if (!hasState) return;
     // What a previous session discovered and the user never settled. Anything
     // since imported or ignored is dropped here rather than offered again.
     const current = latest.current.state;
     applyQueue(unresolvedCandidates(
-      loadPendingIntervalsCandidates(),
+      mergeCandidates(loadPendingIntervalsCandidates(accountId), [...pendingSeed]),
       current?.runLogs ?? [],
       current?.intervalsSync.ignoredActivityIds ?? [],
     ));
-  }, [applyQueue, connectionCredential, hasState]);
+  }, [accountId, applyQueue, hasState, pendingSeed]);
 
   const run = useCallback(async (mode: SyncMode): Promise<OlderRunsResult> => {
-    const { state: current, onSynced: synced, read: fetcher, connection: credential } = latest.current;
+    const {
+      state: current,
+      onSynced: synced,
+      onPendingChanged: pendingChanged,
+      read: fetcher,
+      connection: credential,
+    } = latest.current;
     if (!credential || !current || inFlight.current) return null;
 
     const lastSuccess = current.intervalsSync.lastSuccessfulActivitySyncAt;
@@ -160,7 +181,8 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
       applyQueue(merged);
       let failure: string | null = null;
       try {
-        savePendingIntervalsCandidates(merged);
+        savePendingIntervalsCandidates(merged, accountId);
+        pendingChanged(merged);
       } catch (reason) {
         // The runs are on screen and reviewable; only surviving a reload is
         // lost, and saying so beats implying a durability that isn't there.
@@ -176,7 +198,7 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
       inFlight.current = false;
       setStatus("idle");
     }
-  }, [applyQueue]);
+  }, [accountId, applyQueue]);
 
   useEffect(() => {
     if (!connectionCredential) return;
@@ -205,17 +227,21 @@ export function useConnectedSync({ connection, token = null, state, onSynced, re
     const next = queue.current.filter((candidate) => candidate.externalId !== externalId);
     applyQueue(next);
     try {
-      savePendingIntervalsCandidates(next);
+      savePendingIntervalsCandidates(next, accountId);
+      latest.current.onPendingChanged(next);
     } catch {
       // Nothing to tell the user: the run is now imported, attached or ignored,
       // and the load filter settles it again on the next open regardless.
     }
-  }, [applyQueue]);
+  }, [accountId, applyQueue]);
 
   return {
-    // Forgetting the connection takes what it found with it, without a render
-    // pass spent clearing state a filter can answer.
-    candidates: activeConnection ? candidates.filter((candidate) => !dismissed.includes(candidate.externalId)) : [],
+    // A signed-in account can review the canonical queue without a credential;
+    // only a fresh network fetch requires this device to be connected.
+    candidates:
+      activeConnection || accountId
+        ? candidates.filter((candidate) => !dismissed.includes(candidate.externalId))
+        : [],
     status,
     error: activeConnection ? error : null,
     sync,

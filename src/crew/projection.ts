@@ -5,7 +5,6 @@ import {
   formatLocalDate,
   parseLocalDate,
 } from "../domain/dates";
-import { widthForMiles } from "../domain/footprint";
 import type {
   AppState,
   BlockPlacement,
@@ -21,6 +20,8 @@ export interface CrewSharedRunProjection {
   durationSeconds: number;
   buildRow: number | null;
   buildColumnStart: number | null;
+  buildWidth: BlockPlacement["width"] | null;
+  buildHeight: BlockPlacement["height"] | null;
 }
 
 export interface CrewMemberSummaryProjection {
@@ -64,21 +65,29 @@ export function mondayOfLocalDate(date: string): string {
 function safeSharedPlacement(
   run: RunLog,
   placement: BlockPlacement | undefined,
-): { buildRow: number; buildColumnStart: number } | null {
+): {
+  buildRow: number;
+  buildColumnStart: number;
+  buildWidth: BlockPlacement["width"];
+  buildHeight: BlockPlacement["height"];
+} | null {
   if (!placement || placement.runLogId !== run.id) return null;
-  const width = widthForMiles(run.distanceMiles);
   if (
     !Number.isInteger(placement.row) ||
     placement.row < 0 ||
     !Number.isInteger(placement.columnStart) ||
     placement.columnStart < 1 ||
-    placement.columnStart + width - 1 > 8
+    placement.columnStart + placement.width - 1 > 8 ||
+    ![1, 2, 3, 4].includes(placement.width) ||
+    ![1, 2, 3].includes(placement.height)
   ) {
     return null;
   }
   return {
     buildRow: placement.row,
     buildColumnStart: placement.columnStart,
+    buildWidth: placement.width,
+    buildHeight: placement.height,
   };
 }
 
@@ -95,6 +104,8 @@ export function projectSharedRun(
     durationSeconds: run.durationSeconds,
     buildRow: sharedPlacement?.buildRow ?? null,
     buildColumnStart: sharedPlacement?.buildColumnStart ?? null,
+    buildWidth: sharedPlacement?.buildWidth ?? null,
+    buildHeight: sharedPlacement?.buildHeight ?? null,
   };
 }
 
@@ -303,6 +314,8 @@ export async function syncCrewProjection(
           : {
               build_row: run.buildRow,
               build_column_start: run.buildColumnStart,
+              build_width: run.buildWidth,
+              build_height: run.buildHeight,
             }),
       })),
       {

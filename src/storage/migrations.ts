@@ -68,6 +68,116 @@ export class UnsupportedSchemaVersionError extends Error {
   }
 }
 
+export class InvalidAppStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidAppStateError";
+  }
+}
+
+function object(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function localDate(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+}
+
+function optionalString(value: unknown): boolean {
+  return value === undefined || value === null || typeof value === "string";
+}
+
+function validBuildAssignment(value: unknown): boolean {
+  const build = object(value);
+  return build !== null &&
+    typeof build.renders === "boolean" &&
+    Number.isInteger(build.weekRow) && Number(build.weekRow) >= 0 &&
+    (build.orderInWeek === null ||
+      (Number.isInteger(build.orderInWeek) && Number(build.orderInWeek) >= 0)) &&
+    Number.isInteger(build.span) && Number(build.span) >= 0 && Number(build.span) <= 4 &&
+    ["neutral", "easy", "intervals", "simulation", "long", "race"]
+      .includes(String(build.colorKey));
+}
+
+function validTrainingPlan(value: unknown): boolean {
+  const plan = object(value);
+  const race = object(plan?.race);
+  if (!plan || plan.schemaVersion !== 1 || typeof plan.id !== "string" ||
+      typeof plan.name !== "string" || !localDate(plan.startDate) ||
+      !localDate(plan.endDate) || !Array.isArray(plan.notes) ||
+      plan.notes.some((note) => typeof note !== "string") || !race ||
+      typeof race.name !== "string" || !localDate(race.date) ||
+      typeof race.distanceMiles !== "number" || !Number.isFinite(race.distanceMiles) ||
+      race.distanceMiles <= 0 || !optionalString(race.startTime) ||
+      !optionalString(race.location) || !Array.isArray(plan.weeks) ||
+      plan.weeks.length === 0) return false;
+
+  return plan.weeks.every((weekValue) => {
+    const week = object(weekValue);
+    if (!week || !Number.isInteger(week.weekNumber) || Number(week.weekNumber) < 1 ||
+        typeof week.phase !== "string" || !localDate(week.startDate) ||
+        !localDate(week.endDate) || !Array.isArray(week.workouts)) return false;
+    return week.workouts.every((workoutValue) => {
+      const workout = object(workoutValue);
+      return workout !== null && typeof workout.id === "string" && workout.id.length > 0 &&
+        localDate(workout.date) && Number.isInteger(workout.weekNumber) &&
+        Number(workout.weekNumber) === Number(week.weekNumber) &&
+        typeof workout.phase === "string" &&
+        ["rest", "easy", "intervals", "simulation", "long", "race"]
+          .includes(String(workout.type)) &&
+        typeof workout.title === "string" &&
+        (workout.targetDistanceMiles === null || typeof workout.targetDistanceMiles === "string") &&
+        typeof workout.details === "string" && validBuildAssignment(workout.build);
+    });
+  });
+}
+
+function validRaceSetup(value: unknown): boolean {
+  if (value === null) return true;
+  const setup = object(value);
+  return setup !== null && typeof setup.name === "string" && localDate(setup.date) &&
+    ["5k", "10k", "half", "marathon"].includes(String(setup.distance)) &&
+    ["novice", "intermediate", "advanced"].includes(String(setup.level)) &&
+    (setup.startDate === undefined || localDate(setup.startDate));
+}
+
+function validAvailability(value: unknown): boolean {
+  if (value === null) return true;
+  const calendar = object(value);
+  return calendar !== null && typeof calendar.name === "string" &&
+    typeof calendar.importedAt === "string" && Number.isFinite(Date.parse(calendar.importedAt)) &&
+    optionalString(calendar.sourceUrl) && typeof calendar.enabled === "boolean" &&
+    Array.isArray(calendar.blockingLabels) &&
+    calendar.blockingLabels.every((label) => typeof label === "string") &&
+    Array.isArray(calendar.shifts) && calendar.shifts.every((shiftValue) => {
+      const shift = object(shiftValue);
+      return shift !== null && localDate(shift.date) && typeof shift.label === "string" &&
+        (shift.startTime === null || typeof shift.startTime === "string") &&
+        (shift.endTime === null || typeof shift.endTime === "string");
+    });
+}
+
+/** Runtime validation shared by schema-9 storage and canonical cloud hydration. */
+export function validateCurrentAppState(state: AppState): AppState {
+  if (state.settings?.units !== "miles" || state.settings.theme !== "dark" ||
+      !validTrainingPlan(state.plan) || !validRaceSetup(state.raceSetup) ||
+      !validAvailability(state.availability) ||
+      (state.runDays !== null && (!Array.isArray(state.runDays) ||
+        state.runDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6))) ||
+      !state.intervalsSync ||
+      (state.intervalsSync.lastSuccessfulActivitySyncAt !== null &&
+        (typeof state.intervalsSync.lastSuccessfulActivitySyncAt !== "string" ||
+          !Number.isFinite(Date.parse(state.intervalsSync.lastSuccessfulActivitySyncAt)))) ||
+      !Array.isArray(state.intervalsSync.ignoredActivityIds) ||
+      state.intervalsSync.ignoredActivityIds.some((id) => typeof id !== "string")) {
+    throw new InvalidAppStateError("AppState training/config data is malformed.");
+  }
+  return state;
+}
+
 export function createInitialAppState(): AppState {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -250,7 +360,7 @@ export function migrateAppState(input: unknown): AppState {
   }
 
   if (candidate.schemaVersion === CURRENT_SCHEMA_VERSION) {
-    return {
+    return validateCurrentAppState({
       ...(candidate as unknown as AppState),
       // A payload written by an older build of this phase, or hand edited,
       // may still be missing these.
@@ -259,7 +369,7 @@ export function migrateAppState(input: unknown): AppState {
       runDays: (candidate as unknown as AppState).runDays ?? null,
       raceSetup: (candidate as unknown as AppState).raceSetup ?? null,
       intervalsSync: (candidate as unknown as AppState).intervalsSync ?? { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
-    };
+    });
   }
 
   throw new UnsupportedSchemaVersionError(candidate.schemaVersion);

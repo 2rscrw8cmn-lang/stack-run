@@ -25,7 +25,7 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '30000000-0000-0000-0000-000000000001';
 
 insert into build_placement_test_ids (crew_id)
-values (public.create_crew('Build Crew', 'Build Race', '2026-12-05', 13.1, '2026-01-01'));
+values (public.create_crew('Build Crew', 'race', 'Build Race', '2026-12-05', 13.1, '2026-01-01'));
 
 with run as (
   insert into public.shared_runs (
@@ -113,17 +113,23 @@ set local request.jwt.claim.sub = '';
 do $$
 declare changed integer;
 begin
-  if (select count(*) from public.shared_runs) <> 0 then
-    raise exception 'RLS failure: anonymous user can read shared placements';
-  end if;
+  begin
+    if (select count(*) from public.shared_runs) <> 0 then
+      raise exception 'RLS failure: anonymous user can read shared placements';
+    end if;
+  exception when insufficient_privilege then null;
+  end;
 
-  update public.shared_runs
-  set build_row = 0, build_column_start = 1
-  where id = (select owner_run_id from build_placement_test_ids);
-  get diagnostics changed = row_count;
-  if changed <> 0 then
-    raise exception 'RLS failure: anonymous user modified shared placement';
-  end if;
+  begin
+    update public.shared_runs
+    set build_row = 0, build_column_start = 1
+    where id = (select owner_run_id from build_placement_test_ids);
+    get diagnostics changed = row_count;
+    if changed <> 0 then
+      raise exception 'RLS failure: anonymous user modified shared placement';
+    end if;
+  exception when insufficient_privilege then null;
+  end;
 end;
 $$;
 

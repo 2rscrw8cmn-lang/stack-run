@@ -105,7 +105,7 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
     );
     expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
     expect(calls).toContainEqual({
@@ -134,6 +134,8 @@ describe("Crew dashboard query", () => {
       updatedAt: "2026-08-09T12:00:00Z",
       buildRow: 4,
       buildColumnStart: 2,
+      buildWidth: null,
+      buildHeight: null,
       crewBuildRow: 7,
       crewBuildColumnStart: 3,
       crewBuildPlacedAt: "2026-08-09T13:00:00Z",
@@ -149,6 +151,8 @@ describe("Crew dashboard query", () => {
         distanceMiles: 6.1,
         buildRow: 4,
         buildColumnStart: 2,
+        buildWidth: null,
+        buildHeight: null,
       },
     ]);
     // The communal tower's own contract: personal placement is dropped rather
@@ -207,6 +211,8 @@ describe("Crew dashboard query", () => {
         distanceMiles: 6.1,
         buildRow: 4,
         buildColumnStart: 2,
+        buildWidth: null,
+        buildHeight: null,
       },
     ]);
   });
