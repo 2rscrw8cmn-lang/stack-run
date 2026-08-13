@@ -15,6 +15,8 @@ interface DonutChartProps {
   label: string;
   centerLabel?: string;
   centerValue?: string;
+  /** "large" centers a bigger ring above its legend — the mobile Training Signal treatment. */
+  size?: "default" | "large";
 }
 
 /**
@@ -29,6 +31,7 @@ export function DonutChart({
   label,
   centerLabel,
   centerValue,
+  size = "default",
 }: DonutChartProps) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
   if (total <= 0) return null;
@@ -43,7 +46,7 @@ export function DonutChart({
   }, []);
 
   return (
-    <div className="donut">
+    <div className={size === "large" ? "donut donut--large" : "donut"}>
       <div className="donut__figure technical-grid" aria-hidden="true">
         <svg viewBox="0 0 112 112" focusable="false">
           <circle className="donut__track" cx="56" cy="56" r={RADIUS} />

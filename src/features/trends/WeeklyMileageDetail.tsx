@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
+import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { meanValues, type TrainingSignals } from "../../domain/trends";
 import { DetailSection, SignalFacts, TrendRunList } from "./TrendDetailShared";
@@ -41,7 +42,9 @@ export function WeeklyMileageDetail({
       <PlanActualColumns
         columns={weeks.map((week) => ({
           key: week.key,
-          shortLabel: week.shortLabel,
+          // Dates, not a mix of dates and plan week numbers: the selected
+          // week's plan-week identity is already stated in the summary below.
+          shortLabel: formatDateLabel(week.startDate, { month: "short", day: "numeric" }),
           actual: week.actualMiles,
           planned: week.plannedMiles,
           isPartial: week.isPartial,
@@ -50,6 +53,9 @@ export function WeeklyMileageDetail({
         selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
+      <p className="signal-detail__period machine-label">
+        {selected.label}{selected.isPartial ? " · in progress" : ""} · {formatMiles(selected.actualMiles)} mi
+      </p>
       <SignalFacts
         facts={[
           { label: selected.isPartial ? "Actual so far" : "Current", value: `${formatMiles(selected.actualMiles)} mi` },
@@ -58,11 +64,6 @@ export function WeeklyMileageDetail({
           ...(delta === null ? [] : [{ label: "Delta", value: signedMiles(delta) }]),
         ]}
       />
-      <DetailSection title="Select a week">
-        <p className="signal-detail__intro">
-          Tap a bar or week control to inspect the runs behind it. Solid lime is actual; the dashed marker is plan.
-        </p>
-      </DetailSection>
       <DetailSection
         title={<><span>{`${selected.label} runs`}</span><span>{` · ${formatMiles(selected.actualMiles)} mi`}</span></>}
       >

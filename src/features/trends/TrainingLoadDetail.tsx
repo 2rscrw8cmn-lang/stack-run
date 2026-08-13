@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
+import { formatDateLabel } from "../../domain/dates";
 import { meanValues, type TrainingSignals } from "../../domain/trends";
 import type { RunLog } from "../../domain/types";
 import { DetailSection, SignalFacts, TrendRunList } from "./TrendDetailShared";
@@ -34,9 +35,12 @@ export function TrainingLoadDetail({
     <div className="signal-detail">
       <p className="signal-detail__note">Only runs with imported Training Load are included.</p>
       <PlanActualColumns
+        tone="intervals"
         columns={weeks.map((week) => ({
           key: week.key,
-          shortLabel: week.shortLabel,
+          // Dates, not a mix of dates and plan week numbers: the selected
+          // week's plan-week identity is already stated in the summary below.
+          shortLabel: formatDateLabel(week.startDate, { month: "short", day: "numeric" }),
           actual: week.total,
           isPartial: week.isPartial,
           selectionLabel: `${week.label}, ${week.total === null ? "Training Load unavailable" : `${week.total} Training Load`}, ${week.coveredRuns} of ${week.eligibleRuns} runs covered${week.isPartial ? ", in progress" : ""}`,
@@ -44,6 +48,9 @@ export function TrainingLoadDetail({
         selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
+      <p className="signal-detail__period machine-label">
+        {selected.label}{selected.isPartial ? " · in progress" : ""} · {selected.total === null ? "No load data" : `${selected.total} load`}
+      </p>
       <SignalFacts facts={[
         ...(selected.total === null ? [] : [{ label: selected.isPartial ? "Load so far" : "Weekly load", value: String(selected.total) }]),
         ...(average === null ? [] : [{ label: "Prior 4-week average", value: String(Math.round(average)) }]),

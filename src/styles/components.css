@@ -429,6 +429,15 @@
     border-radius: 999px;
     background: var(--border-strong);
   }
+
+  /*
+   * Every Training Signal detail is a different view of the same instrument,
+   * not a sheet whose height depends on how much that signal has to say. Pin
+   * them all to the same near-full-screen height and let the body scroll.
+   */
+  .sheet--instrument .sheet__panel {
+    height: 90%;
+  }
 }
 
 @media (min-width: 768px) {
@@ -3637,35 +3646,6 @@ textarea.run-input {
 
 /* Training Trends, as a row of cards you push sideways */
 
-.trend-cards__track {
-  display: flex;
-  gap: var(--space-3);
-  margin: 0;
-  /* Bleeds to both screen edges, so a card can run off the side and say
-     there is more of it. The padding puts the first card back on the grid. */
-  margin-inline: calc(var(--space-4) * -1);
-  padding: var(--space-1) var(--space-4) var(--space-2);
-  list-style: none;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--space-4);
-  -webkit-overflow-scrolling: touch;
-  /* The peeking next card is the affordance; a bar under it is not. */
-  scrollbar-width: none;
-}
-
-.trend-cards__track::-webkit-scrollbar {
-  display: none;
-}
-
-.trend-cards__item {
-  scroll-snap-align: start;
-  /* Never wider than the column, always narrow enough that the next card
-     shows at 320px. */
-  flex: 0 0 clamp(224px, 76%, 268px);
-  display: flex;
-}
-
 .trend-cards__card {
   width: 100%;
   display: flex;
@@ -3699,13 +3679,6 @@ textarea.run-input {
   font-variant-numeric: tabular-nums;
 }
 
-/* The drawing sits between the number and the phrase, and stays small: this
-   is a summary of a trend, not the trend itself. */
-.trend-cards__chart {
-  display: block;
-  margin: var(--space-1) 0;
-}
-
 .trend-cards__note {
   font-size: 12px;
   color: var(--text-muted);
@@ -3723,7 +3696,7 @@ textarea.run-input {
 }
 
 .trend-cards__grid > li { min-width: 0; display: flex; }
-.trend-cards__grid .trend-cards__card { min-height: 112px; }
+.trend-cards__grid .trend-cards__card { min-height: 96px; }
 
 .signal-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
 
@@ -3834,6 +3807,23 @@ textarea.run-input {
   transform: rotate(-90deg);
 }
 
+/* A large centered donut is the focal point of Run Mix and HR Zones: the
+   ring first, its legend beneath, rather than a small side-by-side pair. */
+.donut--large {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: var(--space-3);
+}
+
+.donut--large .donut__figure svg {
+  max-width: min(64vw, 240px);
+}
+
+.donut--large .donut__legend {
+  width: 100%;
+  max-width: 320px;
+}
+
 .donut__track,
 .donut__arc { fill: none; stroke-width: 16; }
 .donut__track { stroke: var(--surface-strong); }
@@ -3893,27 +3883,32 @@ textarea.run-input {
 .plan-actual-chart__key i { display: inline-block; width: 14px; height: 6px; background: var(--accent); }
 .plan-actual-chart__key i[data-kind="planned"] { height: 0; border-top: 2px dashed var(--text-muted); background: none; }
 
-.plan-actual-chart__selectors {
-  display: flex;
-  gap: var(--space-1);
-  margin-top: var(--space-3);
-  padding-bottom: var(--space-1);
-  overflow-x: auto;
-  scrollbar-width: thin;
+.plan-actual-chart__plot { position: relative; }
+
+/* Transparent, full-height hit targets over each chart column — the chart
+   itself is the week selector, so there is no separate visible pill row. */
+.plan-actual-chart__targets { position: absolute; inset: 0; }
+
+.plan-actual-chart__target {
+  position: absolute;
+  top: 0;
+  left: var(--target-left);
+  width: var(--target-width);
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.plan-actual-chart__target:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
-.plan-actual-chart__selector {
-  flex: 0 0 44px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 11px;
-}
-.plan-actual-chart__selector[aria-pressed="true"] { border-color: var(--accent); color: var(--text); background: var(--surface-strong); }
+.chart__tick--x-selected { fill: var(--accent); font-weight: 700; }
+
+.plan-actual-chart--intervals .plan-actual-chart__actual { fill: var(--intervals); }
+.plan-actual-chart--intervals .chart__tick--x-selected { fill: var(--intervals); }
 
 .selectable-line { position: relative; }
 .selectable-line__reference { fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 5 4; }
@@ -3947,10 +3942,8 @@ textarea.run-input {
 .consistency-grid__status { grid-column: 1 / -1; font-size: 11px; color: var(--text-subtle); }
 
 @media (max-width: 340px) {
-  .trend-cards__grid,
   .signal-facts,
   .consistency-grid { grid-template-columns: 1fr; }
-  .trend-cards__grid .trend-cards__card { min-height: 96px; }
   .donut { grid-template-columns: 1fr; }
   .donut__figure svg { max-width: 156px; }
 }
@@ -4153,15 +4146,13 @@ textarea.run-input {
   isolation: isolate;
   overflow: hidden;
   gap: var(--space-2);
-  min-height: 120px;
-  background-image:
-    linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px);
-  background-size: 16px 16px;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  min-height: 92px;
+  transition: border-color 160ms ease, transform 160ms ease;
   --signal-accent: var(--accent);
 }
 
+/* The one signal-specific accent: a coloured rail on the left edge. The
+   border stays a neutral dark line on every card, resting or interactive. */
 .trend-cards__card::before {
   content: "";
   position: absolute;
@@ -4177,10 +4168,13 @@ textarea.run-input {
 .trend-cards__card[data-signal="consistency"] { --signal-accent: var(--simulation); }
 .trend-cards__card[data-signal="run-mix"] { --signal-accent: var(--zone-5); }
 
-.trend-cards__card:hover,
+.trend-cards__card:hover {
+  border-color: var(--border-strong);
+}
+
 .trend-cards__card:focus-visible {
-  border-color: var(--signal-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal-accent) 16%, transparent);
+  outline: 2px solid var(--signal-accent);
+  outline-offset: 2px;
 }
 
 .trend-cards__card:active {
@@ -4257,7 +4251,6 @@ textarea.run-input {
 
 .chart__tick,
 .plan-actual-chart__key,
-.plan-actual-chart__selector,
 .donut__value,
 .consistency-grid__ratio,
 .consistency-grid__number,
@@ -4279,15 +4272,8 @@ textarea.run-input {
   stroke: var(--chart-reference);
 }
 
-.plan-actual-chart__selector {
-  border-radius: 4px;
-  background: var(--data-surface-strong);
-}
-
-.plan-actual-chart__selector[aria-pressed="true"] {
-  border-color: var(--selected-border);
-  background: color-mix(in srgb, var(--accent) 10%, var(--data-surface-strong));
-  box-shadow: 0 0 0 2px var(--selected-glow);
+.plan-actual-chart__actual--selected {
+  filter: drop-shadow(0 0 4px var(--selected-glow));
 }
 
 .chart__dot--selected {
@@ -4318,6 +4304,9 @@ textarea.run-input {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+.donut--large .donut__center-value { font-size: 20px; }
+.donut--large .donut__center-label { font-size: 10px; }
 
 .donut__swatch {
   border-radius: 1px;
@@ -4632,13 +4621,16 @@ textarea.run-input {
 
 .trend-cards__grid .trend-cards__card,
 .trend-cards__card {
-  min-height: 116px;
+  min-height: 92px;
   padding: 9px 9px 8px 12px;
   gap: 3px;
   border-width: 1px;
+  /* The shared .data-module utility tints its border with --data-border
+     (lime); every compact card overrides back to a neutral dark line — the
+     rail and title are the only signal-specific colour left on the card. */
+  border-color: var(--border);
   border-radius: 7px;
   background-color: #071016;
-  background-size: 14px 14px;
 }
 
 .trend-cards__card::before {
@@ -4669,110 +4661,6 @@ textarea.run-input {
   letter-spacing: 0.045em;
 }
 
-.mini-chart {
-  display: block;
-  margin-top: auto;
-}
-
-.mini-bars {
-  display: flex;
-  justify-content: flex-start;
-  align-items: end;
-  gap: 4px;
-  width: 100%;
-  height: 34px;
-  padding-top: 3px;
-  border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 34%, transparent);
-}
-
-.mini-bars i {
-  flex: 1 1 0;
-  min-width: 3px;
-  height: var(--mini-value);
-  background: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
-}
-
-.mini-bars[data-points="1"] { justify-content: center; }
-.mini-bars[data-points="1"] i { flex: 0 0 22%; }
-.mini-bars[data-points="2"],
-.mini-bars[data-points="3"] { justify-content: space-around; }
-.mini-bars[data-points="2"] i { flex: 0 0 20%; }
-.mini-bars[data-points="3"] i { flex: 0 0 17%; }
-
-.mini-chart--long i { background: var(--long); }
-.mini-chart--intervals i { background: var(--intervals); }
-
-.mini-sparkline {
-  width: 100%;
-  height: 34px;
-}
-
-.mini-sparkline svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.mini-sparkline line {
-  stroke: color-mix(in srgb, var(--easy) 35%, transparent);
-  stroke-width: 1;
-}
-
-.mini-sparkline polyline {
-  fill: none;
-  stroke: var(--easy);
-  stroke-width: 2;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
-}
-
-.mini-sparkline circle,
-.mini-sparkline__single { fill: var(--easy); }
-
-.trend-cards__card[data-signal="hr-zones"] .trend-cards__reading,
-.trend-cards__card[data-signal="run-mix"] .trend-cards__reading {
-  max-width: calc(100% - 54px);
-}
-
-.mini-donut {
-  position: absolute;
-  right: 10px;
-  bottom: 9px;
-  width: 52px;
-  height: 52px;
-}
-
-.mini-donut svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.mini-donut__track,
-.mini-donut__arc {
-  fill: none;
-  stroke-width: 9;
-}
-
-.mini-donut__track { stroke: var(--surface-strong); }
-.mini-donut__arc {
-  stroke: var(--mini-color);
-  stroke-dasharray: var(--mini-dash);
-  stroke-dashoffset: var(--mini-offset);
-  stroke-linecap: butt;
-}
-
-.mini-matrix {
-  display: grid;
-  grid-template-columns: repeat(8, 8px);
-  gap: 5px;
-  min-height: 25px;
-  align-content: end;
-  margin-top: 3px;
-}
-
 .runs-recent.section {
   gap: 9px;
   padding-top: 10px;
@@ -4785,46 +4673,6 @@ textarea.run-input {
   font-family: var(--font-data);
   font-weight: 700;
   letter-spacing: 0.07em;
-}
-
-@media (min-width: 341px) and (max-width: 699px) {
-  .trend-cards__grid > li:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-
-  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(52px, 112px);
-    grid-template-rows: auto 1fr;
-    min-height: 94px;
-    align-items: center;
-    column-gap: 12px;
-  }
-
-  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__title {
-    grid-column: 1 / -1;
-  }
-
-  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__reading {
-    grid-column: 1;
-    grid-row: 2;
-    max-width: none;
-  }
-
-  .trend-cards__grid > li:last-child:nth-child(odd) .mini-chart {
-    position: static;
-    grid-column: 2;
-    grid-row: 2;
-    width: 100%;
-    margin: 0;
-    align-self: center;
-    justify-self: end;
-  }
-
-  .trend-cards__grid > li:last-child:nth-child(odd) .mini-donut {
-    width: 52px;
-    height: 52px;
-  }
 }
 
 @media (min-width: 700px) {
@@ -4843,18 +4691,6 @@ textarea.run-input {
   .trend-cards__grid > li:last-child:nth-child(3n + 1) {
     grid-column: 3 / span 2;
   }
-}
-
-.mini-matrix i {
-  width: 8px;
-  height: 8px;
-  border: 1px solid var(--text-subtle);
-  border-radius: 50%;
-}
-
-.mini-matrix i[data-complete="true"] {
-  border-color: var(--accent);
-  background: var(--accent);
 }
 
 /* Focused signal composition */
@@ -4886,7 +4722,7 @@ textarea.run-input {
 .plan-actual-chart__figure {
   display: block;
   width: 100%;
-  min-height: 176px;
+  min-height: 192px;
 }
 
 .chart__grid-line {
@@ -4894,8 +4730,20 @@ textarea.run-input {
   stroke-width: 1;
 }
 
+.chart__tick--x {
+  font-size: 8px;
+}
+
 .plan-actual-chart__actual {
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 20%, transparent));
+}
+
+.plan-actual-chart--intervals .plan-actual-chart__actual {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--intervals) 20%, transparent));
+}
+
+.plan-actual-chart--intervals .plan-actual-chart__key i[data-kind="actual"] {
+  background: var(--intervals);
 }
 
 .plan-actual-chart__key {
@@ -4904,15 +4752,6 @@ textarea.run-input {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.plan-actual-chart__selectors {
-  margin-top: 8px;
-}
-
-.plan-actual-chart__selector {
-  min-height: 44px;
-  border-radius: 4px;
 }
 
 .signal-facts {
@@ -5427,11 +5266,9 @@ textarea.run-input {
   .runs-screen__instrument > div { padding-inline: 4px; }
   .runs-screen__instrument dd,
   .runs-screen__instrument h1 { font-size: 17px; }
-  .trend-cards__grid { grid-template-columns: 1fr; }
   .runs-screen__instrument { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .runs-screen__instrument > div:nth-child(3) { border-left: 0; }
   .runs-screen__instrument > div:nth-child(n + 3) { border-top: 1px solid var(--border); padding-top: 7px; }
-  .trend-cards__grid .trend-cards__card { min-height: 112px; }
   .signal-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .run-result-detail__secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 0; }
   .run-result-detail__secondary > div:nth-child(3) { border-left: 0; }
@@ -7273,11 +7110,13 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .today-crew-activity > .button { justify-self: start; }
 
 @media (max-width: 699px) {
+  /* Narrow enough that roughly 1.5–1.8 cards show at once — the peeking
+     next card is the affordance that this is a rail, not a full row. */
   .trend-cards__grid {
     width: 100%;
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: clamp(224px, 78%, 280px);
+    grid-auto-columns: clamp(176px, 58%, 208px);
     grid-template-columns: none;
     overflow-x: auto;
     overflow-y: hidden;
@@ -7286,27 +7125,9 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
     -webkit-overflow-scrolling: touch;
   }
   .trend-cards__grid::-webkit-scrollbar { display: none; }
-  .trend-cards__grid > li,
-  .trend-cards__grid > li:last-child:nth-child(odd) {
+  .trend-cards__grid > li {
     grid-column: auto;
     min-width: 0;
-  }
-  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__card {
-    display: flex;
-    min-height: 116px;
-  }
-  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__title,
-  .trend-cards__grid > li:last-child:nth-child(odd) .trend-cards__reading,
-  .trend-cards__grid > li:last-child:nth-child(odd) .mini-chart {
-    position: initial;
-    width: auto;
-    margin-top: auto;
-  }
-  .trend-cards__grid > li:last-child:nth-child(odd) .mini-donut {
-    position: absolute;
-    width: 52px;
-    height: 52px;
-    margin: 0;
   }
 }
 

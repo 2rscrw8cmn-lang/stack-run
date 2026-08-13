@@ -41,4 +41,16 @@ describe("DonutChart", () => {
     const { container } = renderZones([0, 0, 0]);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("defaults to the compact side-by-side layout and opts into a large centered ring", () => {
+    const { container, rerender } = render(
+      <DonutChart label="Test" segments={[{ label: "A", value: 1, valueLabel: "1", color: "red" }]} />,
+    );
+    expect(container.querySelector(".donut")).not.toHaveClass("donut--large");
+
+    rerender(
+      <DonutChart size="large" label="Test" segments={[{ label: "A", value: 1, valueLabel: "1", color: "red" }]} />,
+    );
+    expect(container.querySelector(".donut")).toHaveClass("donut--large");
+  });
 });
