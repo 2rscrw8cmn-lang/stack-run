@@ -8,6 +8,13 @@ Apply the forward migration:
 supabase db push
 ```
 
+Existing projects that already applied
+`20260813150000_personal_account_sync.sql` must also apply the follow-up
+`20260813173000_personal_table_write_privileges.sql`. It removes inherited
+browser-role DML grants and replaces the initial self-write RLS policies with
+self-read policies; authenticated writes continue exclusively through the
+revision-enforcing RPCs.
+
 It adds:
 
 - `personal_training_state`

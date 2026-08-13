@@ -50,9 +50,11 @@ Status: **Implemented / PR review and real-device QA pending.**
   Crew rows reconcile in place, preserving Props and placement where possible;
   changed communal footprints demote to READY and support healing remains in
   force.
-- Forward migration `20260813150000_personal_account_sync.sql` and transactional
-  verification `0012_personal_account_sync.sql` cover privacy, revisions,
-  external uniqueness, tombstones, Crew reconciliation and account reset.
+- Forward migrations `20260813150000_personal_account_sync.sql` and
+  `20260813173000_personal_table_write_privileges.sql`, plus transactional
+  verification `0012_personal_account_sync.sql`, cover privacy, RPC-only writes,
+  revisions, external uniqueness, tombstones, Crew reconciliation and account
+  reset.
 - No Realtime, OAuth, service worker, CRDT, new destination or UI redesign.
 
 See `docs/PERSONAL_ACCOUNT_SYNC.md` for deployment and remaining QA.
