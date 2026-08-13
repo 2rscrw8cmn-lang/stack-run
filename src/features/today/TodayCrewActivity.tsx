@@ -9,6 +9,7 @@ import { crewMemberAccent } from "../../crew/memberAccent";
 import { selectRecentCrewActivity } from "../../crew/recentActivity";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { PropsButton } from "../crew/PropsButton";
+import { RunnerIcon } from "../crew/RunnerIcon";
 
 export function TodayCrewActivity({
   crew,
@@ -41,7 +42,7 @@ export function TodayCrewActivity({
             </span>
             <span className="today-crew-activity__body">
               <span className="today-crew-activity__name">
-                <span className="crew-member-marker" aria-hidden="true" />
+                <RunnerIcon icon={run.runnerIcon} size={26} />
                 {run.displayName}
               </span>
               <span className="machine-label">

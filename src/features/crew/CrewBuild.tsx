@@ -9,6 +9,7 @@ import {
 } from "../../domain/distance";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
 import { crewMemberAccent } from "../../crew/memberAccent";
+import { RunnerIcon } from "./RunnerIcon";
 import {
   CREW_BUILD_MIN_VISIBLE_COURSES,
   crewBuildFootprint,
@@ -342,7 +343,7 @@ export function CrewBuild({
         <ul className="crew-build__legend" aria-label="Crew Build runners">
           {members.map((member) => (
             <li key={member.userId} data-member-color={crewMemberAccent(member.userId, member.accentColor)}>
-              <span className="crew-member-marker" aria-hidden="true" />
+              <RunnerIcon icon={member.runnerIcon} size={26} />
               <span>{member.displayName}</span>
             </li>
           ))}

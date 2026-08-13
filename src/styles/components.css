@@ -5546,7 +5546,10 @@ textarea.run-input {
   gap: var(--space-3);
 }
 
-.crew-settings__members li span { min-width: 0; display: grid; gap: 2px; }
+/* The runner's icon sits with their name, not spread away from it by the
+   row's space-between, so the pair reads as one identity and Remove stays
+   alone on the right. */
+.crew-settings__members li span { min-width: 0; flex: 1 1 auto; display: grid; gap: 2px; }
 .crew-settings__members small { color: var(--text-muted); }
 .crew-settings__members button,
 .crew-settings__invites button { flex: 0 0 auto; padding-inline: var(--space-3); }
@@ -5803,6 +5806,125 @@ textarea.run-input {
   cursor: pointer;
 }
 .crew-emblem-builder__random:hover { color: var(--text); }
+
+/*
+ * Runner Icons — the personal mark, drawn in the runner's member accent.
+ *
+ * The mark reads its color from `--member-accent` like every other
+ * member-colored surface, so an icon can never disagree with the Crew Build
+ * blocks beside it. `data-member-color` on the SVG itself means the icon is
+ * still correct when it is lifted out of a member-colored row.
+ */
+.runner-icon {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.runner-icon__plate {
+  fill: var(--member-accent, var(--text-muted));
+  stroke: var(--runner-icon-ink);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+.runner-icon__cut { fill: var(--runner-icon-ink); }
+.runner-icon__mark {
+  fill: var(--runner-icon-mark);
+  stroke: var(--runner-icon-ink);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.crew-settings__icon-row {
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.crew-settings__icon-row .runner-icon { justify-self: center; }
+.crew-settings__icon-row-body { min-width: 0; display: grid; gap: 2px; }
+.crew-settings__icon-row-body small { color: var(--text-muted); }
+
+.runner-icon-builder { display: grid; gap: var(--space-3); min-width: 0; }
+.runner-icon-builder > * { min-width: 0; }
+.runner-icon-builder__stage {
+  display: grid;
+  place-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-height: 118px;
+  padding: var(--space-2);
+  border: 1px solid var(--data-border);
+  background-color: var(--data-surface);
+}
+.runner-icon-builder__parts { display: grid; gap: var(--space-2); }
+/*
+ * Sized for 320px first. Four fixed columns plus one flexible name leaves the
+ * part name about 86px at the narrowest supported width, which every name in
+ * the library clears on one line at 13px — and the name is what tells the
+ * runner which part they are on, so it is the thing that must not wrap.
+ */
+.runner-icon-builder__row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+.runner-icon-builder__row .machine-label { margin: 0; font-size: 10px; }
+.runner-icon-builder__selector {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: var(--space-2);
+}
+.runner-icon-builder__arrow {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.runner-icon-builder__option {
+  margin: 0;
+  min-height: 48px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 13px;
+}
+.runner-icon-builder__option span { min-width: 0; }
+.runner-icon-builder__mark { width: 34px; height: 32px; overflow: visible; }
+.runner-icon-builder__random {
+  justify-self: start;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.runner-icon-builder__random:hover { color: var(--text); }
 
 .run-data-setup__paths { display: grid; gap: var(--space-2); }
 .run-data-setup__paths button {
@@ -6416,14 +6538,9 @@ textarea.run-input {
 [data-member-color="red"] { --member-accent: var(--member-red); }
 [data-member-color="vermilion"] { --member-accent: var(--member-vermilion); }
 [data-member-color="rust"] { --member-accent: var(--member-rust); }
-.crew-member-marker {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: var(--member-accent, var(--text-muted));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--member-accent, var(--text-muted)) 13%, transparent);
-}
+/* The generic member dot that used to mark identity here is gone: the
+   runner's own icon carries both the shape and the same accent color, so
+   every surface that had a dot beside a name now has the person instead. */
 
 .crew-comparison__reading {
   display: grid;

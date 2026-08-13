@@ -498,12 +498,30 @@ Deferred/skipped:
 - UI-12 Wellness
 - UI-15 Plan Export Investigation
 
+## D-074 — A runner has one Runner Icon and one identity color, account-level
+
+**Decision:** Crews have emblems (D-072) and runners have accent colors, but a runner had no personal mark of their own, so Crew member rows, Props, comparisons and Member Builds fell back to a generic dot. Runner Icons add that mark: a small modular arcade/totem figure assembled from four parts — Head, Face, Body, Extra — drawn in the runner's existing member accent.
+
+Three identity concepts stay separate and keep their jobs. A **Crew Emblem** answers *which crew*; a **Runner Icon** answers *which person*; a **member accent** answers *which person, at a glance, in one color*. Runner Icons complement emblems rather than replacing them, and the emblem palette stays its own smaller, crew-only set.
+
+Four choices worth recording:
+
+1. **One identity color, never two.** The icon has no color of its own: it renders from `profiles.accent_color`, the same value that colors Crew Build blocks and comparison bars. `profiles.runner_icon` stores four part indices and nothing else, so a runner cannot end up with an icon in one color and ownership of their bricks in another. The editor shows the existing member-accent picker rather than a second palette, and a color pick applies immediately there because it repaints far more than the icon.
+2. **Account-level, not per crew.** A runner is the same person in every crew, so the icon lives on `profiles` beside display name and accent, and follows them into every crew they join.
+3. **Approved identifiers only, never markup.** The stored form is a short code (`R1-<head>.<face>.<body>.<extra>`) with a database check constraint matching the pattern the client encodes. `updateRunnerIcon` encodes from a typed value rather than accepting a string, so user SVG has no path into the column even by mistake. An index a client does not have degrades to that part's first option, and an account with no saved icon renders a stable mark derived from its user id — which is why this needed no backfill and blocks no existing account.
+4. **The icon does not go on the bricks.** Crew Build blocks stay member-colored with at most an initial, per D-072 and issue #65; the icon appears in the legend and the identity UI around the tower. `CrewBuildRun` deliberately does not carry it. The mark is also never the only identification: it is decorative wherever a name is adjacent, which is everywhere it currently appears.
+
+The part library is deliberately small — six options per part, no expansion for quantity — because everything here has to survive at 26–34px. Heads are six different silhouettes rather than one silhouette with six trims, for the same reason. No cosmetics, unlocks, animation, uploads or freeform editing are introduced, and Crew Emblems are unchanged.
+
+This decision authorizes the Runner Icon work as scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md`. It adds one narrow, self-only column and no change to RLS, the safe projection contract, Crew membership or personal AppState.
+
 Current acceptance:
 
 - **UI-20 — Props + Mini Builds** is complete and accepted (merged PR #37).
 - **UI-21 — Crew Destination + Shared Crew Build** is complete and accepted (merged PR #38).
 - **UI-22 — Final Product Polish + Onboarding** is complete and accepted (merged PR #39).
 - **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
+- **Runner Icons** are authorized by D-074 and are in review.
 - No later phase is planned or authorized beyond UI-23.
 
 See:

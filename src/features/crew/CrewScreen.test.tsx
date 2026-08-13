@@ -15,9 +15,9 @@ import { CrewScreen } from "./CrewScreen";
 const TODAY = "2026-08-10";
 
 const members: CrewMember[] = [
-  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
-  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
-  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null },
+  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
 ];
 
 function summary(
@@ -49,6 +49,7 @@ function sharedRun(
     userId,
     displayName: members.find((member) => member.userId === userId)?.displayName ?? "Runner",
     accentColor: members.find((member) => member.userId === userId)?.accentColor ?? null,
+    runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
     localDate,
     activityType: "easy",
     distanceMiles: 4,
@@ -182,7 +183,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     message: null,
     email: "zack@example.test",
     account: {
-      profile: { id: "zack", displayName: "Zack", accentColor: null },
+      profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
       memberships: [{ crew: crewOne, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
       crew: crewOne,
       role: "owner",
@@ -205,6 +206,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signOut: action,
     saveDisplayName: action,
     saveAccentColor: action,
+    saveRunnerIcon: action,
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
@@ -240,7 +242,7 @@ describe("Crew destination states", () => {
   it("shows the intentional no-crew state", () => {
     const noCrew = controller({
       account: {
-        profile: { id: "zack", displayName: "Zack", accentColor: null },
+        profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
         memberships: [],
         crew: null,
         role: null,
@@ -309,6 +311,7 @@ describe("Crew comparisons and runs", () => {
           role: index === 0 ? "owner" : "member",
           joinedAt: `2026-08-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
           accentColor: null,
+          runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
         }),
       );
       const expandedSummaries = expandedMembers.map((member) => ({
@@ -770,6 +773,29 @@ describe("Shared Crew Build", () => {
     const monogram = blocks[0].querySelector(".placed-block__monogram");
     expect(monogram).toHaveTextContent("Z");
     expect(monogram).toHaveAttribute("aria-hidden", "true");
+  });
+
+  /**
+   * Issue #71's explicit boundary: the runner's icon belongs in the legend and
+   * the identity UI around the tower, never stamped onto every brick. Blocks
+   * stay member-colored with at most an initial.
+   */
+  it("keeps the Crew Build blocks clean and puts the runner icons in the legend", () => {
+    openCrew(crewWithBuild());
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+    expect(tower.querySelectorAll(".runner-icon")).toHaveLength(0);
+
+    const legend = screen.getByRole("list", { name: "Crew Build runners" });
+    const entries = within(legend).getAllByRole("listitem");
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      // One icon per runner, decorative, beside a name that does the naming.
+      const mark = entry.querySelector(".runner-icon");
+      expect(mark).not.toBeNull();
+      expect(mark).toHaveAttribute("aria-hidden", "true");
+      expect(entry).toHaveAttribute("data-member-color");
+      expect(entry.textContent).toMatch(/\S/);
+    }
   });
 
   it("names each block for a screen reader without exposing its decoration", () => {

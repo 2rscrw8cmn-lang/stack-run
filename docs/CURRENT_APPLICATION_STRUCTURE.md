@@ -2,7 +2,72 @@
 
 ## Current state
 
-**UI-23 — Run Detail 2.0 is implemented for owner review, corrected against the August 13 real-device review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened and stay 2×2 on phones, a Run Profile chart adds on-demand pace/HR/elevation/cadence visualization with gap-preserving lines, HR zones become an interactive donut with no visible legend, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. Cadence is displayed for the first time, verbatim at the source's own convention. The governing rule, from that review: **streams give shape, imported aggregates give numbers** — no summary statistic is recomputed from per-sample data. See `## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
+**UI-23 — Run Detail 2.0 is implemented for owner review, corrected against the August 13 real-device review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened and stay 2×2 on phones, a Run Profile chart adds on-demand pace/HR/elevation/cadence visualization with gap-preserving lines, HR zones become an interactive donut with no visible legend, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. Cadence is displayed for the first time, verbatim at the source's own convention. The governing rule, from that review: **streams give shape, imported aggregates give numbers** — no summary statistic is recomputed from per-sample data. See `## Runner Icons (post-UI-23)
+
+Crews had emblems and runners had colors; runners had no mark of their own, so
+every compact Crew identity surface fell back to a 7px accent dot. `Runner
+Icons` replace that dot with the person. D-074 records the decision.
+
+`src/crew/runnerIcon.ts` owns the model: six heads, six faces, six bodies and
+six extras, and the `R1-<head>.<face>.<body>.<extra>` code that
+`profiles.runner_icon` stores. It holds no color at all — the runner's color is
+`profiles.accent_color`, so an icon and the Crew Build blocks that runner owns
+cannot disagree. Decoding is deliberately tolerant in the same way emblems are:
+an index this client does not have degrades to that part's first option, and
+`resolveRunnerIcon` falls back to `runnerIconFromSeed(userId)`, a stable
+derivation that is why accounts predating this feature needed no backfill, are
+never blocked on setup, and look the same in every crewmate's roster.
+Seed-derived icons deliberately leave `extra` empty — an icon nobody chose does
+not also wear a bolt.
+
+The library is small on purpose. Every part has to survive at the 26–34px the
+Crew surfaces actually use, so there are six options each and no expansion for
+quantity; the six heads are six different silhouettes (boxy crown, bare flared
+brim, tall spike, twin peaks, thin band, one-sided wedge) rather than one
+silhouette with six trims, because two heads differing only in trim are the same
+head at that size. Every face is the same plate with different cut-outs, so the
+part carrying the accent color stays constant and the cut pattern does the
+identifying. Extras are the one part drawn in a non-accent tone
+(`--runner-icon-mark`), which is what makes a bolt read as applied hardware
+rather than more of the runner's color; they are honestly a large-size detail
+and are never what distinguishes two runners on their own.
+
+`RunnerIcon.tsx` draws the mark at any size from one shared coordinate space,
+and sets `data-member-color` on the SVG itself rather than inheriting it, so an
+icon lifted out of a member-colored row is still the right color. It is
+decorative by default and only exposes itself as an image when given a label —
+which in practice is the editor preview alone, because everywhere else the
+runner's name is already beside it. `RunnerIconBuilder.tsx` is the editor: a
+sticky live preview, four compact cycling rows with the current part named, and
+Surprise Me. It is sized for 320px first — four fixed columns and one flexible
+name column leave about 86px for the part name, which every name in the library
+clears on one line.
+
+Editing lives at Settings → Account & Crew → Edit Profile → Runner Icon, one
+level below the profile panel, reached from a row that previews the current
+icon. Parts are drafted and committed with `Save Icon`; the color is not. The
+editor shows the same member-accent picker the profile panel does, not a second
+palette, and a color pick applies immediately because it repaints Crew Build
+blocks and comparison bars as well as the icon.
+
+The icon now stands in for the retired `.crew-member-marker` dot in Crew member
+rows and the crew roster, Recent Crew Runs, Today's Crew Activity, crew
+comparisons, Member Build cards and the Member Build sheet, crew-safe Run Detail
+and the Crew Build legend. It does **not** go on Crew Build blocks: those stay
+member-colored with at most an initial per issue #65, and `CrewBuildRun`
+deliberately carries no `runnerIcon` so the boundary is structural rather than a
+convention.
+
+`supabase/migrations/20260813170000_runner_icon.sql` adds `profiles.runner_icon`
+with a check pattern matching the code format. Null stays null — nothing is
+backfilled. No policy is added: `profiles` is already readable by crewmates and
+writable only by its owner under the UI-18 policies, and an icon is exactly as
+sensitive as the display name beside it. `updateRunnerIcon` encodes from a typed
+value rather than accepting a string, so no user-supplied markup has a path into
+the column. Crew membership, RLS, the safe projection contract, Build geometry
+and personal AppState are all unchanged.
+
+## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
 
 **UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix, Run Data review-persistence/plan-matching hotfix, and focused Crew/Training Signals polish described below are implemented for owner review and predate UI-23.
 

@@ -356,6 +356,39 @@ Still owner review: a second real-iPhone pass over the corrected Run Detail at 3
 
 UI-23 adds no Supabase/database migration, no new dependency, and no change to the Intervals API key/credential boundary, HR-zone calculation, run edit/delete behavior, or plan linking/unlinking rules.
 
+## Runner Icons — in review
+
+A personal identity mark for each STACK account, authorized by D-074 and scoped
+in `docs/CURRENT_APPLICATION_STRUCTURE.md`. Runners get a small modular
+arcade/totem icon — Head, Face, Body, Extra — drawn in the member accent they
+already have, editable at Settings → Account & Crew → Edit Profile → Runner
+Icon, and shown wherever a generic accent dot was previously doing the job of
+saying who someone is.
+
+What it adds:
+
+- `src/crew/runnerIcon.ts`: the part library, the `R1-…` code, tolerant
+  decoding, `runnerIconFromSeed` defaults and Surprise Me;
+- `RunnerIcon.tsx` (the mark) and `RunnerIconBuilder.tsx` (the compact editor),
+  plus a Runner Icon view under Edit Profile;
+- one column, `profiles.runner_icon`
+  (`supabase/migrations/20260813170000_runner_icon.sql`), self-only, nullable,
+  never backfilled;
+- runner icons in Crew member rows and roster, Recent Crew Runs, Today's Crew
+  Activity, comparisons, Member Build cards and sheet, crew-safe Run Detail and
+  the Crew Build legend, replacing `.crew-member-marker`.
+
+What it deliberately does not do: give the icon a color of its own (it uses
+`profiles.accent_color`, so icon and Crew Build ownership can never disagree),
+stamp the icon onto Crew Build blocks, touch Crew Emblems, expand the part
+library for quantity, or add uploads, animation, cosmetics or a new navigation
+destination. No new dependency, no RLS change, no safe-projection field, no
+personal AppState migration.
+
+Still owner review: a real-iPhone pass at 320px, 390px and desktop over the
+editor and the Crew surfaces the icon now appears on, and a two-account check
+that a saved icon shows up in a crewmate's roster.
+
 ## Active source documents
 
 - `START_HERE.md`

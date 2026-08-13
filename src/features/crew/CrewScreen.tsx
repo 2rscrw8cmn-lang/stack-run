@@ -37,6 +37,7 @@ import {
 } from "../../crew/comparisons";
 import { crewFreshness } from "../../crew/freshness";
 import { crewMemberAccent } from "../../crew/memberAccent";
+import { RunnerIcon } from "./RunnerIcon";
 import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
 import { runDaysByUserId, RUN_DAYS_WINDOW } from "../../crew/runDays";
 import {
@@ -595,7 +596,7 @@ export function CrewScreen({
                 >
                   <div className="crew-comparison__row-topline">
                     <span className="crew-comparison__member">
-                      <span className="crew-member-marker" aria-hidden="true" />
+                      <RunnerIcon icon={member.runnerIcon} size={26} />
                       <span>{member.displayName}</span>
                       {isYou && <span className="crew-comparison__you machine-label">You</span>}
                     </span>
@@ -696,7 +697,7 @@ export function CrewScreen({
                 >
                   <span className="crew-build-card__heading">
                     <span className="crew-build-card__name">
-                      <span className="crew-member-marker" aria-hidden="true" />
+                      <RunnerIcon icon={member.runnerIcon} size={28} />
                       <span>{member.displayName}</span>
                       {isYou && <span className="crew-build-card__you machine-label">You</span>}
                     </span>

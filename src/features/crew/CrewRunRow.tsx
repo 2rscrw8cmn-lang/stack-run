@@ -7,6 +7,7 @@ import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import { PropsButton } from "./PropsButton";
+import { RunnerIcon } from "./RunnerIcon";
 
 interface CrewRunRowProps {
   run: CrewSharedRun;
@@ -51,7 +52,7 @@ export function CrewRunRow({
         </span>
         <span className="crew-run-row__body">
           <span className="crew-run-row__name">
-            <span className="crew-member-marker" aria-hidden="true" />
+            <RunnerIcon icon={run.runnerIcon} size={30} />
             <span>{run.displayName}</span>
           </span>
           <span className="crew-run-row__activity machine-label">

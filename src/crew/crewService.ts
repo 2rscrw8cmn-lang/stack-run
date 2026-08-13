@@ -12,6 +12,12 @@ import {
   crewMemberAccent,
   type CrewMemberAccent,
 } from "./memberAccent";
+import {
+  encodeRunnerIcon,
+  resolveRunnerIcon,
+  runnerIconFromSeed,
+  type RunnerIcon,
+} from "./runnerIcon";
 import type {
   CrewInvite,
   CrewInvitePreview,
@@ -28,6 +34,9 @@ type Row = Record<string, unknown>;
 
 const CREW_COLUMNS =
   "id,owner_user_id,name,crew_type,race_name,race_date,race_distance_miles,build_start_date,emblem";
+
+/** Everything Crew is allowed to know about a person, and nothing else. */
+const PROFILE_COLUMNS = "id,display_name,accent_color,runner_icon";
 
 export interface CrewDetailsInput {
   name: string;
@@ -135,10 +144,12 @@ function crewTypeFrom(value: unknown): CrewType {
 }
 
 function profileFrom(source: Row): CrewProfile {
+  const id = requiredString(source, "id");
   return {
-    id: requiredString(source, "id"),
+    id,
     displayName: requiredString(source, "display_name"),
     accentColor: accentColorFrom(source.accent_color),
+    runnerIcon: resolveRunnerIcon(source.runner_icon, id),
   };
 }
 
@@ -168,7 +179,7 @@ export async function ensureProfile(
 ): Promise<CrewProfile> {
   const existing = await client
     .from("profiles")
-    .select("id,display_name,accent_color")
+    .select(PROFILE_COLUMNS)
     .eq("id", user.id)
     .maybeSingle();
   if (existing.error) throw new Error(existing.error.message);
@@ -182,7 +193,7 @@ export async function ensureProfile(
   const created = await client
     .from("profiles")
     .upsert({ id: user.id, display_name: fallback || "Runner" })
-    .select("id,display_name,accent_color")
+    .select(PROFILE_COLUMNS)
     .single();
   if (created.error) throw new Error(created.error.message);
   const createdRow = row(created.data);
@@ -223,7 +234,7 @@ async function loadCrewDirectory(
 
   const profileResult = await client
     .from("profiles")
-    .select("id,display_name,accent_color")
+    .select(PROFILE_COLUMNS)
     .in("id", userIds);
   if (profileResult.error) throw new Error(profileResult.error.message);
   const profiles = new Map(
@@ -245,6 +256,7 @@ async function loadCrewDirectory(
       joinedAt: requiredString(item, "joined_at"),
       displayName: profile?.displayName ?? "Runner",
       accentColor: profile?.accentColor ?? null,
+      runnerIcon: profile?.runnerIcon ?? runnerIconFromSeed(userId),
     });
     membersByCrewId.set(crewId, roster);
   }
@@ -384,6 +396,25 @@ export async function updateAccentColor(
   const result = await client
     .from("profiles")
     .update({ accent_color: accentColor })
+    .eq("id", userId);
+  if (result.error) throw new Error(result.error.message);
+}
+
+/**
+ * Saves the runner's icon as a code, never as markup.
+ *
+ * Encoding here rather than accepting a string from the caller is what keeps
+ * the "no user SVG in the database" rule structural instead of a convention:
+ * the only thing that can reach this column is four validated indices.
+ */
+export async function updateRunnerIcon(
+  client: SupabaseClient,
+  userId: string,
+  runnerIcon: RunnerIcon,
+): Promise<void> {
+  const result = await client
+    .from("profiles")
+    .update({ runner_icon: encodeRunnerIcon(runnerIcon) })
     .eq("id", userId);
   if (result.error) throw new Error(result.error.message);
 }
