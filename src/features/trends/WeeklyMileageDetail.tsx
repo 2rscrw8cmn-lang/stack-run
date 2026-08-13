@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
+import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { meanValues, type TrainingSignals } from "../../domain/trends";
 import { DetailSection, SignalFacts, TrendRunList } from "./TrendDetailShared";
@@ -41,7 +42,9 @@ export function WeeklyMileageDetail({
       <PlanActualColumns
         columns={weeks.map((week) => ({
           key: week.key,
-          shortLabel: week.shortLabel,
+          // Dates, not a mix of dates and plan week numbers: the selected
+          // week's plan-week identity is already stated in the summary below.
+          shortLabel: formatDateLabel(week.startDate, { month: "short", day: "numeric" }),
           actual: week.actualMiles,
           planned: week.plannedMiles,
           isPartial: week.isPartial,

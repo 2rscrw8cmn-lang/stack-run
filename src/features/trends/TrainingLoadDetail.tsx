@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
+import { formatDateLabel } from "../../domain/dates";
 import { meanValues, type TrainingSignals } from "../../domain/trends";
 import type { RunLog } from "../../domain/types";
 import { DetailSection, SignalFacts, TrendRunList } from "./TrendDetailShared";
@@ -37,7 +38,9 @@ export function TrainingLoadDetail({
         tone="intervals"
         columns={weeks.map((week) => ({
           key: week.key,
-          shortLabel: week.shortLabel,
+          // Dates, not a mix of dates and plan week numbers: the selected
+          // week's plan-week identity is already stated in the summary below.
+          shortLabel: formatDateLabel(week.startDate, { month: "short", day: "numeric" }),
           actual: week.total,
           isPartial: week.isPartial,
           selectionLabel: `${week.label}, ${week.total === null ? "Training Load unavailable" : `${week.total} Training Load`}, ${week.coveredRuns} of ${week.eligibleRuns} runs covered${week.isPartial ? ", in progress" : ""}`,
