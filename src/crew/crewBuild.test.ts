@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { GRID_COLUMNS } from "../domain/placement";
 import {
   canPlaceCrewBuildBlock,
+  CREW_BUILD_COLUMNS,
   crewBuildBlocksOverlap,
   crewBuildContributorIds,
+  crewBuildLandingOptions,
   crewBuildPlacementOptions,
   deriveCrewBuild,
   isRecentCrewBuildPlacement,
@@ -244,5 +247,80 @@ describe("collaborative Crew Build", () => {
       { row: 0, columnStart: 1, width: 2, height: 2 },
       { row: 1, columnStart: 2, width: 1, height: 1 },
     )).toBe(true);
+  });
+});
+
+describe("shared geometry reuse (issue #65)", () => {
+  it("stacks on the exact same eight-column grid Personal Build uses", () => {
+    expect(CREW_BUILD_COLUMNS).toBe(GRID_COLUMNS);
+  });
+
+  it("computes neighbour-aware top/right face visibility for connected blocks, like Personal Build", () => {
+    // A wide block resting across two narrower ones: the narrow blocks' top
+    // faces are covered where the wide one rests on them, and the interior
+    // right face between them is covered too — Personal Build's exact rule.
+    const model = deriveCrewBuild([
+      run("left", "zack", { distanceMiles: 2.9, crewBuildRow: 0, crewBuildColumnStart: 1 }),
+      run("right", "drew", { distanceMiles: 2.9, crewBuildRow: 0, crewBuildColumnStart: 2 }),
+      run("bridge", "zack", { distanceMiles: 5, crewBuildRow: 1, crewBuildColumnStart: 1 }),
+    ]);
+    const byId = new Map(model.blocks.map((block) => [block.id, block] as const));
+
+    expect(byId.get("left")?.topFace).toEqual([false]);
+    expect(byId.get("right")?.topFace).toEqual([false]);
+    // "bridge" is 5mi -> 3 columns wide, one flag per column it spans.
+    expect(byId.get("bridge")?.topFace).toEqual([true, true, true]);
+    // The two ground blocks abut each other, so neither draws a right face
+    // where they touch.
+    expect(byId.get("left")?.rightFace).toEqual([false]);
+  });
+
+  it("reports a void under a block that bridges an opening, like Personal Build", () => {
+    const model = deriveCrewBuild([
+      run("support", "zack", { distanceMiles: 2.9, crewBuildRow: 0, crewBuildColumnStart: 1 }),
+      run("bridge", "drew", { distanceMiles: 5, crewBuildRow: 1, crewBuildColumnStart: 1 }),
+    ]);
+    // "bridge" is 3 wide (5mi -> width 3) sitting on "support" (1 wide);
+    // columns 2-3 at row 0 are open ground under the bridge.
+    expect(model.voids).toContainEqual({ row: 0, column: 2 });
+    expect(model.voids).toContainEqual({ row: 0, column: 3 });
+    expect(model.voids).not.toContainEqual({ row: 0, column: 1 });
+  });
+
+  it("paints later courses over earlier ones via depth, like Personal Build", () => {
+    const model = deriveCrewBuild([
+      run("ground", "zack", { crewBuildRow: 0, crewBuildColumnStart: 1 }),
+      run("upper", "drew", { crewBuildRow: 1, crewBuildColumnStart: 1 }),
+    ]);
+    const byId = new Map(model.blocks.map((block) => [block.id, block] as const));
+    expect(byId.get("upper")!.depth).toBeGreaterThan(byId.get("ground")!.depth);
+  });
+
+  it("offers one gravity-computed landing per column, exactly like Personal Build's placementOptions", () => {
+    const base = deriveCrewBuild([
+      run("base", "drew", { distanceMiles: 2.9, crewBuildRow: 0, crewBuildColumnStart: 1 }),
+    ]);
+    const moving = run("moving", "zack", { distanceMiles: 2.9 });
+    const options = crewBuildLandingOptions(moving, base.blocks);
+
+    // One landing per column a 1-wide block fits in, never a floating row.
+    expect(options).toHaveLength(8);
+    // Column 1 is occupied at row 0, so a new block there rests on top of it.
+    expect(options[0]).toMatchObject({ row: 1, columnStart: 1 });
+    // Every other column is still open ground.
+    expect(options[1]).toMatchObject({ row: 0, columnStart: 2 });
+  });
+
+  it("never offers a landing that fails Crew's own support/collision validation", () => {
+    const model = deriveCrewBuild([
+      run("a", "zack", { distanceMiles: 8, crewBuildRow: 0, crewBuildColumnStart: 1 }),
+      run("b", "drew", { distanceMiles: 2.9, crewBuildRow: 1, crewBuildColumnStart: 1 }),
+    ]);
+    const moving = run("moving", "travis", { distanceMiles: 5 });
+    const options = crewBuildLandingOptions(moving, model.blocks);
+
+    for (const option of options) {
+      expect(canPlaceCrewBuildBlock(moving, option, model.blocks)).toBe(true);
+    }
   });
 });

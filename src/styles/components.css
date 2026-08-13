@@ -1446,6 +1446,31 @@ textarea.run-input {
 }
 
 /*
+ * An optional ownership mark on the front face — Crew Build's small runner
+ * initial. Absent on Personal Build, where nothing sets it. Positioned in the
+ * corner rather than over the mileage the face already shows, and above the
+ * front face but below nothing: no face draws over this corner.
+ */
+.placed-block__monogram {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: clamp(9px, 2.6vw, 12px);
+  height: clamp(9px, 2.6vw, 12px);
+  border-radius: 2px;
+  background: var(--member-accent, var(--text-muted));
+  color: #020609;
+  font-family: var(--font-data);
+  font-size: clamp(6px, 1.8vw, 8px);
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+
+/*
  * The top face: a parallelogram sheared along the depth axis. skewX at
  * atan(2) = 63.435deg moves the far edge exactly --iso-run to the right while
  * the near edge stays put, so the run:rise stays 2:1. Drawn only where
@@ -1730,6 +1755,17 @@ textarea.run-input {
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* A server-rejected placement — Crew Build's stale-collision retry. Personal
+   Build never sets this: nothing here commits over the network. */
+.placement-bar__error {
+  margin: 0;
+  padding: 0 var(--space-3);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 /* Blocks Ready tray */
@@ -5991,7 +6027,19 @@ textarea.run-input {
    destination. A grounded technical field with restrained lime framing, built
    as a larger sibling of the personal Build rather than a social card. */
 .crew-build {
-  --crew-build-course: 30px;
+  /*
+   * The same construction tokens `.build-site` sets, and for the same
+   * reasons (issue #65). Without these the shared `.placed-block` faces
+   * resolve `--iso-rise`/`--iso-run` to nothing and every Crew brick
+   * collapses to a flat rectangle — the tower stops reading as built.
+   * Crew keeps a course a little taller than Personal's 26px because its
+   * field is shorter, so the bricks have to carry more of the presence.
+   */
+  --course-height: 28px;
+  --iso-run: 16px;
+  --iso-rise: 8px;
+  /* Kept as the viewport/field sizing unit, in step with the course. */
+  --crew-build-course: var(--course-height);
   min-width: 0;
   padding: 14px 12px 12px;
   border-color: var(--data-border);
@@ -6063,19 +6111,82 @@ textarea.run-input {
   font-size: 11px;
 }
 
+/*
+ * The Crew construction field. Same stage language as Personal Build's
+ * `.build-site__stage` — technical grid, sky washing down, lit ground plane,
+ * corner brackets — at a height that suits a dashboard section rather than a
+ * dedicated tab. It is shorter than Personal's 44vh, never a six-row table.
+ */
 .crew-build__stage {
+  position: relative;
   margin-top: 13px;
-  padding: 10px 8px 0;
-  border: 1px solid var(--border);
+  /* Bottom padding gives the ground plane somewhere to stand, so the site
+     ends in a horizon rather than at a border. */
+  padding: 10px 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border-strong));
   background:
     linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px),
-    rgba(0, 0, 0, 0.22);
-  background-size: 12.5% var(--crew-build-course);
+    radial-gradient(80% 38% at 50% 91%, rgba(166, 255, 26, 0.09), transparent 72%),
+    linear-gradient(180deg, #071018 0%, #08131b 58%, #050b0f 100%);
+  background-size: 14px 14px, 14px 14px, auto, auto;
+  box-shadow:
+    inset 0 0 0 1px rgba(166, 255, 26, 0.1),
+    inset 0 -30px 48px rgba(166, 255, 26, 0.05);
+  overflow: hidden;
+}
+/* The same surveyor's brackets that frame the personal Build stage. */
+.crew-build__stage::before,
+.crew-build__stage::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  opacity: 0.48;
+  z-index: 1;
+}
+.crew-build__stage::before {
+  top: 7px;
+  left: 7px;
+  border-top: 1px solid var(--accent);
+  border-left: 1px solid var(--accent);
+}
+.crew-build__stage::after {
+  right: 7px;
+  bottom: 7px;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+}
+/*
+ * Plain sky above the tower, the same washed treatment Personal Build's
+ * `.build-site__sky` uses — scenery, not a projection of what is to come.
+ * Crew's field stays shorter than the dedicated Build tab (there is other
+ * content below it), but it no longer reads as a compressed table either.
+ */
+/*
+ * The sky is the headroom, so it is the part that gives.
+ *
+ * Growing to fill the field bottom-anchors the tower without
+ * `justify-content: flex-end`, which would put the overflowing top of a tall
+ * tower out of scrolling reach. Shrinking to `min-height` when the tower
+ * outgrows the field keeps the sky from squeezing the structure instead.
+ */
+.crew-build__sky {
+  flex: 1 1 auto;
+  min-height: 26px;
+  mask-image: linear-gradient(180deg, transparent, #000 70%);
+}
+/* Scroll anchor: placement opens framed on the top of what is built, same as
+   Personal Build's `.build-site__skyline`. */
+.crew-build__skyline {
+  flex: 0 0 auto;
+  height: 1px;
+  scroll-margin-block: 30vh;
 }
 .crew-build__viewport {
   height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
-  max-height: min(56dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
+  max-height: min(48dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -6083,140 +6194,35 @@ textarea.run-input {
   overscroll-behavior-block: contain;
   scrollbar-width: thin;
 }
-.crew-build__tower {
-  width: 100%;
-  height: calc(var(--crew-build-courses) * var(--crew-build-course));
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  grid-template-rows: repeat(var(--crew-build-courses), var(--crew-build-course));
-  /* `margin-top: auto` rather than `justify-content: flex-end`, which makes
-     the overflowing top of a tall tower unreachable in a scroll container. */
-  margin: auto 0 0;
-  padding: 0;
-  list-style: none;
-}
-.crew-build__tower li {
-  min-width: 0;
-  min-height: 0;
-  padding: 1px;
-}
-.crew-build__tower li[data-type="easy"] { --piece-color: var(--easy); }
-.crew-build__tower li[data-type="intervals"] { --piece-color: var(--intervals); }
-.crew-build__tower li[data-type="simulation"] { --piece-color: var(--simulation); }
-.crew-build__tower li[data-type="long"] { --piece-color: var(--long); }
-.crew-build__tower li[data-type="race"] { --piece-color: var(--race); }
-.crew-build__tower button,
-.crew-build__block {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--bg) 80%, transparent);
-  border-radius: 2px;
-  /* The same lit-front-face depth the personal Build's bricks carry. */
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, #fff 14%, var(--piece-color)),
-      var(--piece-color) 62%,
-      color-mix(in srgb, var(--bg) 22%, var(--piece-color))
-    );
-  color: #020609;
-  font-family: var(--font-data);
-  font-size: clamp(7px, 2.3vw, 10px);
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  cursor: pointer;
-  /* No member-accent ring here on purpose: a full-block outline in the
-     runner's color read as a selection/error/highlight state on some
-     block/member combinations (red on lime, notably), and it was redundant
-     with the monogram badge and legend below, which already carry identity
-     in the same stable accent. Depth only, on a normal placed block. */
-  box-shadow:
-    inset 0 1px color-mix(in srgb, #fff 34%, transparent),
-    inset -5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
-    0 4px 8px rgba(0, 0, 0, 0.34);
-}
-.crew-build__block { cursor: default; }
-.crew-build__tower button::before,
-.crew-build__block::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 6px;
-  background: color-mix(in srgb, #fff 28%, var(--piece-color));
-  clip-path: polygon(0 100%, 5px 0, 100% 0, calc(100% - 5px) 100%);
-  opacity: 0.9;
-}
-.crew-build__tower button::after,
-.crew-build__block::after {
-  content: "";
-  position: absolute;
-  inset: 5px 0 0 auto;
-  width: 5px;
-  background: color-mix(in srgb, var(--bg) 30%, var(--piece-color));
-  opacity: 0.82;
-}
-.crew-build__tower button:hover { filter: brightness(1.12); }
-.crew-build__tower button:focus-visible {
-  z-index: 2;
-  outline: 3px solid #fff;
-  outline-offset: -4px;
-}
-/* The runner's initial: a small badge in their stable accent, in the
-   corner rather than over the face text the block already shows. Clamped
-   between the mobile course height (26px) and the desktop one (38px) so it
-   never overflows a one-course-tall block. */
-.crew-build__monogram {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: clamp(9px, 2.6vw, 12px);
-  height: clamp(9px, 2.6vw, 12px);
-  border-radius: 2px;
-  background: var(--member-accent, var(--text-muted));
-  color: #020609;
-  font-family: var(--font-data);
-  font-size: clamp(6px, 1.8vw, 8px);
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: inset 0 -1px color-mix(in srgb, var(--bg) 55%, transparent);
-}
-.crew-build__face {
-  position: relative;
-  z-index: 1;
-  padding-top: 2px;
-  overflow: hidden;
-  white-space: nowrap;
-}
+/*
+ * Crew's tower *is* `.built-tower` (issue #65): same grid, same course
+ * height, same depth padding, so the shared `.placed-block` bricks butt
+ * against each other and cull faces exactly as they do on the Build tab.
+ * Bottom-anchoring is handled by the sky's auto margin above, so this
+ * modifier carries only what is genuinely Crew's.
+ */
+.crew-build__tower { flex: 0 0 auto; }
 .crew-build__tower[data-placement-grid="true"] { cursor: crosshair; }
-.crew-build__tower[data-placement-grid="true"] > li:not(.crew-build__preview) {
+.crew-build__tower[data-placement-grid="true"] > .placed-block {
   pointer-events: none;
   opacity: 0.82;
 }
-.crew-build__preview { pointer-events: none; z-index: 3; }
-/* The placement-selection state is carried entirely by `--accent` — an
-   inset outline plus an outer glow — so it stays obvious without leaning
-   on the (removed) member-accent ownership ring. */
-.crew-build__preview .crew-build__block {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  filter: brightness(1.1);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 34%, transparent);
-}
 .crew-build[data-placing="true"] .crew-build__stage {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  background-color: color-mix(in srgb, var(--accent) 3%, rgba(0, 0, 0, 0.22));
 }
+/* The ground, receding along the same depth axis as the bricks — the same
+   skewed plane Personal Build stands on. */
 .crew-build__ground {
-  height: 2px;
-  margin-top: 0;
-  background: var(--border-strong);
+  height: var(--iso-rise);
+  /* Cancels the tower's depth padding so the plane runs the full width of
+     the site, exactly as `.build-site__ground` does. */
+  margin-right: calc(-1 * var(--iso-run));
+  transform-origin: bottom left;
+  transform: skewX(-63.435deg);
+  background: linear-gradient(180deg, rgba(166, 255, 26, 0.08), #071018 55%, #020507);
+  box-shadow:
+    0 -1px 0 rgba(166, 255, 26, 0.13),
+    0 12px 26px rgba(0, 0, 0, 0.9);
 }
 .crew-build__caption {
   margin: 0;
@@ -6226,31 +6232,10 @@ textarea.run-input {
   line-height: 1.4;
 }
 .crew-build__stage--empty { padding-bottom: 0; }
+/* An empty site still stands somewhere: the stage already paints the grid,
+   so this just holds the field open to its full height above the ground. */
 .crew-build__field {
   height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
-  background:
-    linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px);
-  background-size: 12.5% var(--crew-build-course);
-}
-.crew-build__placement-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-.crew-build__placement-controls > .button:nth-child(3),
-.crew-build__placement-controls > p { grid-column: 1 / -1; }
-.crew-build__placement-controls > p { margin: 0; }
-.crew-build__placement-controls > .machine-label {
-  color: var(--accent);
-  text-align: center;
-}
-.crew-build__placement-error {
-  color: var(--danger);
-  font-size: 11px;
-  line-height: 1.4;
-  text-align: center;
 }
 .crew-build__empty,
 .crew-build__unavailable,
@@ -7138,8 +7123,11 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 @media (max-width: 340px) {
   .crew-build {
     /* A shorter course keeps a tall tower inside one viewport at 320px and
-       still clears the 24px target floor D-018 set for the personal Build. */
-    --crew-build-course: 26px;
+       still clears the 24px target floor D-018 set for the personal Build.
+       The depth axis shrinks with it so the oblique stays 2:1. */
+    --course-height: 24px;
+    --iso-run: 12px;
+    --iso-rise: 6px;
     padding-inline: 9px;
   }
   .crew-build__legend { gap: 4px 10px; }
@@ -7158,10 +7146,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .crew-builds__rail { grid-auto-columns: min(48%, 286px); }
   /* Desktop gets a bigger tower rather than a different app. */
   .crew-build {
-    --crew-build-course: 38px;
+    --course-height: 34px;
+    --iso-run: 20px;
+    --iso-rise: 10px;
     padding: 20px 18px 16px;
   }
-  .crew-build__viewport { max-height: min(58dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course))); }
+  .crew-build__viewport { max-height: min(54dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course))); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7192,14 +7182,10 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 .crew-build__ready > div > .machine-label { font-size: 9px; }
 .crew-build__stage { margin-top: 8px; }
-.crew-build__tower li[data-recent="true"] button {
-  filter: brightness(1.07);
-  box-shadow:
-    inset 0 2px color-mix(in srgb, #fff 55%, transparent),
-    inset -5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
-    0 0 11px color-mix(in srgb, var(--piece-color) 22%, transparent);
+.crew-build__tower li[data-recent="true"] .placed-block__brick {
+  filter: brightness(1.07) drop-shadow(0 0 6px color-mix(in srgb, var(--piece-color) 30%, transparent));
 }
-.crew-build__tower li[data-recent="true"] .crew-build__monogram {
+.crew-build__tower li[data-recent="true"] .placed-block__monogram {
   filter: brightness(1.25);
 }
 

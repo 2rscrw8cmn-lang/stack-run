@@ -6,11 +6,12 @@ import {
   type Footprint,
 } from "./footprint";
 import {
-  GRID_COLUMNS,
-  lastColumnOf,
+  faceVisibilityOf,
   newestPlacement,
+  occupiedCellsOf,
   skylineOf,
   topOf,
+  voidsOf,
 } from "./placement";
 import type {
   BlockPlacement,
@@ -299,18 +300,7 @@ export function selectBuildViewModel(
 
   // Cell occupancy for the whole tower, so face culling and paint order can
   // both be answered without scanning every other block.
-  const filled = new Set<string>();
-  for (const placement of placements) {
-    for (
-      let column = placement.columnStart;
-      column <= lastColumnOf(placement);
-      column += 1
-    ) {
-      for (let row = placement.row; row < topOf(placement); row += 1) {
-        filled.add(`${column}:${row}`);
-      }
-    }
-  }
+  const filled = occupiedCellsOf(placements);
 
   const blocks: PlacedBlock[] = [...placements]
     .sort((a, b) => a.row - b.row || a.columnStart - b.columnStart)
@@ -320,25 +310,7 @@ export function selectBuildViewModel(
         return [];
       }
 
-      // The top face shows over each column nothing rests on.
-      const topFace: boolean[] = [];
-      for (
-        let column = placement.columnStart;
-        column <= lastColumnOf(placement);
-        column += 1
-      ) {
-        topFace.push(!filled.has(`${column}:${topOf(placement)}`));
-      }
-
-      // The right face shows over each course nothing abuts. Past the last
-      // column there is nothing to abut, so the whole face shows.
-      const rightColumn = lastColumnOf(placement) + 1;
-      const rightFace: boolean[] = [];
-      for (let row = placement.row; row < topOf(placement); row += 1) {
-        rightFace.push(
-          rightColumn > GRID_COLUMNS || !filled.has(`${rightColumn}:${row}`),
-        );
-      }
+      const { topFace, rightFace } = faceVisibilityOf(placement, filled);
 
       return [
         {
@@ -357,14 +329,7 @@ export function selectBuildViewModel(
   const skyline = skylineOf(placements);
   const courses = skyline.reduce((highest, column) => Math.max(highest, column), 0);
 
-  const voids: TowerVoid[] = [];
-  for (let column = 1; column <= GRID_COLUMNS; column += 1) {
-    for (let row = 0; row < skyline[column - 1]; row += 1) {
-      if (!filled.has(`${column}:${row}`)) {
-        voids.push({ row, column });
-      }
-    }
-  }
+  const voids: TowerVoid[] = voidsOf(placements, filled);
 
   return {
     metrics: {

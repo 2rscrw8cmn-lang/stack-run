@@ -4,14 +4,37 @@ import {
   type BlockHeight,
   type BlockWidth,
 } from "../domain/footprint";
+import {
+  faceVisibilityOf,
+  GRID_COLUMNS,
+  occupiedCellsOf,
+  placementOptions,
+  topOf,
+  voidsOf,
+  type FaceVisibility,
+  type GridVoid,
+  type PlacementOption,
+} from "../domain/placement";
 import type { RunActivityType } from "../domain/types";
 import type { CrewMemberAccent } from "./memberAccent";
 import type { CrewBuildRun } from "./types";
 
 /** Safety ceiling for the private ten-person Crew read. */
 export const CREW_BUILD_BLOCK_LIMIT = 1280;
-export const CREW_BUILD_COLUMNS = 8;
-export const CREW_BUILD_MIN_VISIBLE_COURSES = 6;
+/**
+ * The shared tower is the same eight-column grid Personal Build stacks
+ * on — reused rather than redeclared so the two can never drift apart.
+ */
+export const CREW_BUILD_COLUMNS = GRID_COLUMNS;
+/**
+ * How much field the Crew stage holds open under an empty or short tower.
+ *
+ * Six courses made the shared Build read as a compressed table rather than a
+ * construction site (issue #65). Ten gives the tower real sky to grow into
+ * while still leaving the Crew dashboard's comparison and runs below the
+ * fold-line — Crew's field is deliberately shorter than the Build tab's.
+ */
+export const CREW_BUILD_MIN_VISIBLE_COURSES = 10;
 
 export interface CrewBuildPlacement {
   /** 0-based course counted up from the ground. */
@@ -33,6 +56,15 @@ export interface CrewBuildBlock extends CrewBuildPlacement {
   localDate: string;
   crewBuildPlacedAt: string | null;
   recentlyPlaced: boolean;
+  /**
+   * Visible faces, computed with the same neighbour-aware culling as
+   * Personal Build (`faceVisibilityOf`), so connected Crew blocks read as one
+   * physical structure rather than a stack of separate cards.
+   */
+  topFace: boolean[];
+  rightFace: boolean[];
+  /** Paint order — see `PlacedBlock.depth` in Personal Build for why. */
+  depth: number;
 }
 
 export interface CrewBuildReadyRun {
@@ -55,6 +87,11 @@ export interface CrewBuildModel {
   readyRuns: CrewBuildReadyRun[];
   /** READY contributions the current viewer can actually place. */
   viewerReadyRuns: CrewBuildReadyRun[];
+  /**
+   * Openings the tower spans, drawn so a bridging block is not left
+   * floating — the same concept as Personal Build's `TowerVoid`.
+   */
+  voids: GridVoid[];
   /** Courses tall, counted from the ground. */
   courses: number;
   /** Miles represented by blocks physically present in the shared tower. */
@@ -71,6 +108,7 @@ export const EMPTY_CREW_BUILD: CrewBuildModel = {
   blocks: [],
   readyRuns: [],
   viewerReadyRuns: [],
+  voids: [],
   courses: 0,
   placedMiles: 0,
   runCount: 0,
@@ -193,6 +231,11 @@ export function canPlaceCrewBuildBlock(
     localDate: "",
     crewBuildPlacedAt: null,
     recentlyPlaced: false,
+    // Unused by the support/collision checks below — faces and paint order
+    // only matter once a placement is actually rendered.
+    topFace: [],
+    rightFace: [],
+    depth: 0,
     ...placement,
     ...footprint,
   };
@@ -204,8 +247,30 @@ export function canPlaceCrewBuildBlock(
 }
 
 /**
+ * Column-only landing options for a run, exactly like Personal Build: the
+ * user picks a column and gravity computes the row, so there is at most one
+ * option per column instead of a row-by-column scan. Reuses Personal's
+ * `placementOptions` unmodified — a landing that rests fully on the tallest
+ * spanned column is always either on the ground or resting on some block
+ * below it, so it satisfies Crew's own support rule for free.
+ */
+export function crewBuildLandingOptions(
+  run: Pick<CrewBuildRun, "activityType" | "distanceMiles">,
+  blocks: readonly CrewBuildBlock[],
+): PlacementOption[] {
+  const { width, height } = crewBuildFootprint(run);
+  return placementOptions(width, height, blocks);
+}
+
+/**
  * Finite snapped positions shown in placement mode. The grid grows with the
  * actual tower and always includes breathing room above it.
+ *
+ * @deprecated Superseded by `crewBuildLandingOptions`, which mirrors
+ * Personal Build's horizontal-drag-then-gravity interaction (issue #65).
+ * Kept for the client-side collision mirror `canPlaceCrewBuildBlock` still
+ * relies on internally and for any caller that still needs every valid
+ * anchor rather than one landing per column.
  */
 export function crewBuildPlacementOptions(
   run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
@@ -270,6 +335,11 @@ export function deriveCrewBuild(
         localDate: run.localDate,
         crewBuildPlacedAt: run.crewBuildPlacedAt,
         recentlyPlaced: isRecentCrewBuildPlacement(run.crewBuildPlacedAt, now),
+        // Faces and depth depend on the whole tower, so they're filled in
+        // once below, after unsupported construction has been removed.
+        topFace: [],
+        rightFace: [],
+        depth: topOf({ row: placement.row, height }),
       });
     } else {
       readyRuns.push({
@@ -324,9 +394,21 @@ export function deriveCrewBuild(
     left.id.localeCompare(right.id),
   );
 
+  // Face culling and voids are the same neighbour-aware geometry Personal
+  // Build's `selectBuildViewModel` uses, run over the final, structurally
+  // valid Crew tower rather than the intermediate list unsupported blocks
+  // were still part of.
+  const filled = occupiedCellsOf(structurallyValid);
+  const finalBlocks: CrewBuildBlock[] = structurallyValid.map((block) => {
+    const { topFace, rightFace }: FaceVisibility = faceVisibilityOf(block, filled);
+    return { ...block, topFace, rightFace };
+  });
+  const voids = voidsOf(structurallyValid, filled);
+
   return {
-    blocks: structurallyValid,
+    blocks: finalBlocks,
     readyRuns,
+    voids,
     viewerReadyRuns: viewerUserId
       ? readyRuns.filter((run) => run.userId === viewerUserId)
       : [],

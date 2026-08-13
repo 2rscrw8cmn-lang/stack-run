@@ -3,6 +3,7 @@ import {
   earnedBlocks,
   findPlacementForRunLog,
   selectBuildViewModel,
+  WORKOUT_TYPE_LABEL,
 } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
@@ -258,12 +259,16 @@ export function BuildScreen({
 
       {placingBlock && (
         <PlacementBar
-          block={placingBlock}
-          isMove={
+          pieceColor={`var(--${placingBlock.runLog.activityType})`}
+          width={placingBlock.footprint.width}
+          height={placingBlock.footprint.height}
+          title={`${
             findPlacementForRunLog(blockPlacements, placingBlock.runLog.id) !==
             undefined
-          }
-          candidate={candidate}
+              ? "Move"
+              : "Place"
+          } ${WORKOUT_TYPE_LABEL[placingBlock.runLog.activityType]}`}
+          positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
           canStepBack={candidateIndex > 0}
           canStepForward={
             candidateIndex >= 0 && candidateIndex < options.length - 1

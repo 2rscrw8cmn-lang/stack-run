@@ -3,16 +3,19 @@ import {
   assertPlacementFits,
   autoPlaceOption,
   canMove,
+  faceVisibilityOf,
   fitsInGrid,
   GRID_COLUMNS,
   InvalidPlacementError,
   landingRow,
   lastColumnOf,
   newestPlacement,
+  occupiedCellsOf,
   placementOptions,
   repackPlacements,
   skylineOf,
   topOf,
+  voidsOf,
 } from "./placement";
 import type { BlockPlacement } from "./types";
 
@@ -47,6 +50,51 @@ describe("skylineOf", () => {
     ]);
     expect(skyline[0]).toBe(4);
     expect(skyline[1]).toBe(1);
+  });
+});
+
+describe("occupiedCellsOf / faceVisibilityOf / voidsOf", () => {
+  // Deliberately not `BlockPlacement`: these are the primitives Crew Build's
+  // `CrewBuildBlock` also satisfies structurally (issue #65), so the
+  // geometry is exercised here against a plain footprint shape rather than
+  // Personal's own placement type.
+  const footprint = (row: number, columnStart: number, width: number, height = 1) => ({
+    row,
+    columnStart,
+    width,
+    height,
+  });
+
+  it("fills every cell a block spans, for any structurally-compatible footprint", () => {
+    const filled = occupiedCellsOf([footprint(0, 1, 2, 2)]);
+    expect(filled.has("1:0")).toBe(true);
+    expect(filled.has("2:1")).toBe(true);
+    expect(filled.has("3:0")).toBe(false);
+  });
+
+  it("hides a top face where a neighbour rests, one flag per spanned column", () => {
+    const below = footprint(0, 1, 2, 1);
+    const above = footprint(1, 1, 1, 1);
+    const filled = occupiedCellsOf([below, above]);
+    expect(faceVisibilityOf(below, filled).topFace).toEqual([false, true]);
+  });
+
+  it("hides a right face where a neighbour abuts, and always shows it at the grid edge", () => {
+    const left = footprint(0, 1, 1, 1);
+    const right = footprint(0, 2, 1, 1);
+    const filled = occupiedCellsOf([left, right]);
+    expect(faceVisibilityOf(left, filled).rightFace).toEqual([false]);
+    expect(faceVisibilityOf(right, filled).rightFace).toEqual([true]);
+  });
+
+  it("reports a void only under cells the skyline covers but nothing fills", () => {
+    const support = footprint(0, 1, 1, 1);
+    const bridge = footprint(1, 1, 3, 1);
+    const filled = occupiedCellsOf([support, bridge]);
+    const voids = voidsOf([support, bridge], filled);
+    expect(voids).toContainEqual({ row: 0, column: 2 });
+    expect(voids).toContainEqual({ row: 0, column: 3 });
+    expect(voids).not.toContainEqual({ row: 0, column: 1 });
   });
 });
 
