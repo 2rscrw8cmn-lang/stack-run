@@ -105,16 +105,30 @@ export function CrewBuild({
 
   const placementFootprint = placement ? crewBuildFootprint(placement.run) : null;
   const candidate = placement?.candidate ?? null;
-  const drawnCourses = placement
-    ? Math.max(
-      CREW_BUILD_MIN_VISIBLE_COURSES,
-      model.courses + 3,
-      candidate && placementFootprint ? candidate.row + placementFootprint.height + 1 : 0,
-    )
-    : Math.max(1, model.courses);
+
+  /*
+   * How many courses the *grid* draws — the tower's own height, and nothing
+   * more, exactly like Personal Build. The tall field comes from the
+   * viewport below, not from padding this out with empty rows: inflating the
+   * grid would push the skyline anchor up into open air, and the scroll that
+   * frames it would then carry the built tower off the bottom of the field.
+   *
+   * While placing it grows by the hovering block's height. That bound is
+   * deliberately independent of which column is hovered — a landing can
+   * never rest higher than the tower's own skyline, so `courses + height`
+   * covers every option the drag can reach. Deriving it from the *current*
+   * candidate instead resized the grid on each column change, which
+   * re-flowed every block's row and slid the tower vertically under the
+   * finger mid-drag.
+   */
+  const drawnCourses = Math.max(
+    1,
+    model.courses + (placement ? (placementFootprint?.height ?? 1) : 0),
+  );
+  /* The field: how much site the stage holds open, tower plus sky. */
   const visibleCourses = Math.min(
     MAX_VISIBLE_COURSES,
-    Math.max(CREW_BUILD_MIN_VISIBLE_COURSES, drawnCourses + (placement ? 0 : 1)),
+    Math.max(CREW_BUILD_MIN_VISIBLE_COURSES, drawnCourses + 1),
   );
   const firstReady = model.viewerReadyRuns[0] ?? null;
   const contributionCount = model.placedCount + model.readyCount;
@@ -129,14 +143,21 @@ export function CrewBuild({
     onCommit: () => placement?.onConfirm(),
   });
 
-  // Keep the landing in view while a block is being placed, the same way
-  // Personal Build's tower does.
-  const candidateKey = candidate ? `${candidate.columnStart}:${candidate.row}` : "";
+  /*
+   * Frame the top of the tower when placement opens.
+   *
+   * Only when it opens: Crew's field is its own scroll container, so
+   * re-running this on every candidate change yanked the viewport (and the
+   * page under it) sideways-to-vertically on every column the drag crossed.
+   * The grid is already tall enough to show any landing, so there is nothing
+   * to chase once the block is in hand.
+   */
+  const isPlacing = placement !== null;
   useEffect(() => {
-    if (placement) {
+    if (isPlacing) {
       skylineRef.current?.scrollIntoView({ block: "center" });
     }
-  }, [placement, candidateKey]);
+  }, [isPlacing]);
 
   const stageStyle = {
     "--crew-build-visible-courses": visibleCourses,
@@ -181,22 +202,31 @@ export function CrewBuild({
         <p className="crew-build__unavailable">Crew Build unavailable.</p>
       ) : contributionCount === 0 && !placement ? (
         <div className="crew-build__stage crew-build__stage--empty" style={stageStyle}>
-          <div className="crew-build__sky" aria-hidden="true" />
           <div className="crew-build__field" aria-hidden="true" />
           <div className="crew-build__ground" aria-hidden="true" />
           <p className="crew-build__empty">The first shared run earns the first Crew block.</p>
         </div>
       ) : (
         <div className="crew-build__stage" style={stageStyle}>
-          <div className="crew-build__sky" aria-hidden="true" />
           <div className="crew-build__viewport">
+            <div className="crew-build__sky" aria-hidden="true" />
             <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
+            {/*
+              `built-tower` is Personal Build's own grid class, not a lookalike:
+              it carries the shared course height and the depth padding the 3D
+              faces need to overhang into (issue #65).
+            */}
             <ul
               ref={towerRef}
-              className="crew-build__tower"
+              className="built-tower crew-build__tower"
               aria-label={placement ? "Choose a Crew Build position" : "Crew Build blocks"}
               data-placement-grid={placement ? "true" : undefined}
-              style={{ "--crew-build-courses": drawnCourses } as CSSProperties}
+              style={
+                {
+                  "--grid-columns": GRID_COLUMNS,
+                  "--grid-courses": drawnCourses,
+                } as CSSProperties
+              }
               onPointerMove={placement ? trackDrag : undefined}
               onPointerUp={placement ? release : undefined}
               onPointerCancel={placement ? cancelDrag : undefined}

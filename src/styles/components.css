@@ -6027,7 +6027,19 @@ textarea.run-input {
    destination. A grounded technical field with restrained lime framing, built
    as a larger sibling of the personal Build rather than a social card. */
 .crew-build {
-  --crew-build-course: 30px;
+  /*
+   * The same construction tokens `.build-site` sets, and for the same
+   * reasons (issue #65). Without these the shared `.placed-block` faces
+   * resolve `--iso-rise`/`--iso-run` to nothing and every Crew brick
+   * collapses to a flat rectangle — the tower stops reading as built.
+   * Crew keeps a course a little taller than Personal's 26px because its
+   * field is shorter, so the bricks have to carry more of the presence.
+   */
+  --course-height: 28px;
+  --iso-run: 16px;
+  --iso-rise: 8px;
+  /* Kept as the viewport/field sizing unit, in step with the course. */
+  --crew-build-course: var(--course-height);
   min-width: 0;
   padding: 14px 12px 12px;
   border-color: var(--data-border);
@@ -6099,15 +6111,52 @@ textarea.run-input {
   font-size: 11px;
 }
 
+/*
+ * The Crew construction field. Same stage language as Personal Build's
+ * `.build-site__stage` — technical grid, sky washing down, lit ground plane,
+ * corner brackets — at a height that suits a dashboard section rather than a
+ * dedicated tab. It is shorter than Personal's 44vh, never a six-row table.
+ */
 .crew-build__stage {
+  position: relative;
   margin-top: 13px;
-  padding: 10px 8px 0;
-  border: 1px solid var(--border);
+  /* Bottom padding gives the ground plane somewhere to stand, so the site
+     ends in a horizon rather than at a border. */
+  padding: 10px 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border-strong));
   background:
     linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px),
-    rgba(0, 0, 0, 0.22);
-  background-size: 12.5% var(--crew-build-course);
+    radial-gradient(80% 38% at 50% 91%, rgba(166, 255, 26, 0.09), transparent 72%),
+    linear-gradient(180deg, #071018 0%, #08131b 58%, #050b0f 100%);
+  background-size: 14px 14px, 14px 14px, auto, auto;
+  box-shadow:
+    inset 0 0 0 1px rgba(166, 255, 26, 0.1),
+    inset 0 -30px 48px rgba(166, 255, 26, 0.05);
+  overflow: hidden;
+}
+/* The same surveyor's brackets that frame the personal Build stage. */
+.crew-build__stage::before,
+.crew-build__stage::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  opacity: 0.48;
+  z-index: 1;
+}
+.crew-build__stage::before {
+  top: 7px;
+  left: 7px;
+  border-top: 1px solid var(--accent);
+  border-left: 1px solid var(--accent);
+}
+.crew-build__stage::after {
+  right: 7px;
+  bottom: 7px;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
 }
 /*
  * Plain sky above the tower, the same washed treatment Personal Build's
@@ -6115,24 +6164,29 @@ textarea.run-input {
  * Crew's field stays shorter than the dedicated Build tab (there is other
  * content below it), but it no longer reads as a compressed table either.
  */
+/*
+ * The sky is the headroom, so it is the part that gives.
+ *
+ * Growing to fill the field bottom-anchors the tower without
+ * `justify-content: flex-end`, which would put the overflowing top of a tall
+ * tower out of scrolling reach. Shrinking to `min-height` when the tower
+ * outgrows the field keeps the sky from squeezing the structure instead.
+ */
 .crew-build__sky {
-  height: 46px;
-  mask-image: linear-gradient(180deg, transparent, #000 75%);
-  background: radial-gradient(
-    120% 60% at 50% 100%,
-    color-mix(in srgb, var(--accent) 6%, transparent),
-    transparent 70%
-  );
+  flex: 1 1 auto;
+  min-height: 26px;
+  mask-image: linear-gradient(180deg, transparent, #000 70%);
 }
 /* Scroll anchor: placement opens framed on the top of what is built, same as
    Personal Build's `.build-site__skyline`. */
 .crew-build__skyline {
+  flex: 0 0 auto;
   height: 1px;
   scroll-margin-block: 30vh;
 }
 .crew-build__viewport {
   height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
-  max-height: min(56dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
+  max-height: min(48dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -6140,31 +6194,14 @@ textarea.run-input {
   overscroll-behavior-block: contain;
   scrollbar-width: thin;
 }
-.crew-build__tower {
-  width: 100%;
-  height: calc(var(--crew-build-courses) * var(--crew-build-course));
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  grid-template-rows: repeat(var(--crew-build-courses), var(--crew-build-course));
-  /* `margin-top: auto` rather than `justify-content: flex-end`, which makes
-     the overflowing top of a tall tower unreachable in a scroll container. */
-  margin: auto 0 0;
-  padding: 0;
-  list-style: none;
-}
-.crew-build__tower li {
-  min-width: 0;
-  min-height: 0;
-  padding: 1px;
-}
 /*
- * Crew blocks render with Personal Build's own `.placed-block`/`Brick`
- * markup (issue #65) rather than a parallel implementation, so the 3D
- * front/top/right faces, mileage label and monogram all come from
- * `components.css`'s Build section above. Only what genuinely differs stays
- * here: a taller course grid, the runner-colour source, and the
- * recently-placed treatment below.
+ * Crew's tower *is* `.built-tower` (issue #65): same grid, same course
+ * height, same depth padding, so the shared `.placed-block` bricks butt
+ * against each other and cull faces exactly as they do on the Build tab.
+ * Bottom-anchoring is handled by the sky's auto margin above, so this
+ * modifier carries only what is genuinely Crew's.
  */
+.crew-build__tower { flex: 0 0 auto; }
 .crew-build__tower[data-placement-grid="true"] { cursor: crosshair; }
 .crew-build__tower[data-placement-grid="true"] > .placed-block {
   pointer-events: none;
@@ -6172,12 +6209,20 @@ textarea.run-input {
 }
 .crew-build[data-placing="true"] .crew-build__stage {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  background-color: color-mix(in srgb, var(--accent) 3%, rgba(0, 0, 0, 0.22));
 }
+/* The ground, receding along the same depth axis as the bricks — the same
+   skewed plane Personal Build stands on. */
 .crew-build__ground {
-  height: 2px;
-  margin-top: 0;
-  background: var(--border-strong);
+  height: var(--iso-rise);
+  /* Cancels the tower's depth padding so the plane runs the full width of
+     the site, exactly as `.build-site__ground` does. */
+  margin-right: calc(-1 * var(--iso-run));
+  transform-origin: bottom left;
+  transform: skewX(-63.435deg);
+  background: linear-gradient(180deg, rgba(166, 255, 26, 0.08), #071018 55%, #020507);
+  box-shadow:
+    0 -1px 0 rgba(166, 255, 26, 0.13),
+    0 12px 26px rgba(0, 0, 0, 0.9);
 }
 .crew-build__caption {
   margin: 0;
@@ -6187,12 +6232,10 @@ textarea.run-input {
   line-height: 1.4;
 }
 .crew-build__stage--empty { padding-bottom: 0; }
+/* An empty site still stands somewhere: the stage already paints the grid,
+   so this just holds the field open to its full height above the ground. */
 .crew-build__field {
   height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
-  background:
-    linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px);
-  background-size: 12.5% var(--crew-build-course);
 }
 .crew-build__empty,
 .crew-build__unavailable,
@@ -7080,8 +7123,11 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 @media (max-width: 340px) {
   .crew-build {
     /* A shorter course keeps a tall tower inside one viewport at 320px and
-       still clears the 24px target floor D-018 set for the personal Build. */
-    --crew-build-course: 26px;
+       still clears the 24px target floor D-018 set for the personal Build.
+       The depth axis shrinks with it so the oblique stays 2:1. */
+    --course-height: 24px;
+    --iso-run: 12px;
+    --iso-rise: 6px;
     padding-inline: 9px;
   }
   .crew-build__legend { gap: 4px 10px; }
@@ -7100,10 +7146,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .crew-builds__rail { grid-auto-columns: min(48%, 286px); }
   /* Desktop gets a bigger tower rather than a different app. */
   .crew-build {
-    --crew-build-course: 38px;
+    --course-height: 34px;
+    --iso-run: 20px;
+    --iso-rise: 10px;
     padding: 20px 18px 16px;
   }
-  .crew-build__viewport { max-height: min(58dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course))); }
+  .crew-build__viewport { max-height: min(54dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course))); }
 }
 
 @media (prefers-reduced-motion: reduce) {

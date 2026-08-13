@@ -26,7 +26,15 @@ export const CREW_BUILD_BLOCK_LIMIT = 1280;
  * on — reused rather than redeclared so the two can never drift apart.
  */
 export const CREW_BUILD_COLUMNS = GRID_COLUMNS;
-export const CREW_BUILD_MIN_VISIBLE_COURSES = 6;
+/**
+ * How much field the Crew stage holds open under an empty or short tower.
+ *
+ * Six courses made the shared Build read as a compressed table rather than a
+ * construction site (issue #65). Ten gives the tower real sky to grow into
+ * while still leaving the Crew dashboard's comparison and runs below the
+ * fold-line — Crew's field is deliberately shorter than the Build tab's.
+ */
+export const CREW_BUILD_MIN_VISIBLE_COURSES = 10;
 
 export interface CrewBuildPlacement {
   /** 0-based course counted up from the ground. */

@@ -860,7 +860,7 @@ describe("Shared Crew Build", () => {
     expect(tower.parentElement).toHaveClass("crew-build__viewport");
     // The field is told how many courses to draw, so a tall tower keeps its
     // block size and scrolls instead of being squeezed into a fixed box.
-    expect(Number(tower.style.getPropertyValue("--crew-build-courses"))).toBeGreaterThan(0);
+    expect(Number(tower.style.getPropertyValue("--grid-courses"))).toBeGreaterThan(0);
   });
 
   it("shows the current runner's oldest READY contribution beside the Crew Build", () => {
@@ -982,10 +982,45 @@ describe("Shared Crew Build", () => {
     expect(within(screen.getByRole("dialog", { name: "Run Detail" })).queryByRole("button", { name: "Move Block" })).not.toBeInTheDocument();
   });
 
-  it("uses a compact six-course stage for a small tower", () => {
+  it("holds a tall construction field open under a small tower", () => {
     openCrew(crewWithBuild());
     const stage = screen.getByRole("list", { name: "Crew Build blocks" }).closest(".crew-build__stage");
-    expect(stage).toHaveStyle("--crew-build-visible-courses: 6");
+    // Issue #65: six courses read as a compressed table. The field now keeps
+    // real sky above a short tower, the way the Build tab does.
+    expect(stage).toHaveStyle("--crew-build-visible-courses: 10");
+  });
+
+  it("builds Crew blocks out of Personal Build's own tower grid and brick faces", () => {
+    openCrew(crewWithBuild());
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+
+    // The grid is Personal Build's `.built-tower`, not a Crew lookalike —
+    // that is what supplies the shared course height and the depth padding
+    // the 3D faces overhang into.
+    expect(tower).toHaveClass("built-tower");
+    expect(Number(tower.style.getPropertyValue("--grid-columns"))).toBe(8);
+
+    // The tower draws real 3D faces rather than flat cards.
+    expect(
+      tower.querySelectorAll(".placed-block__face--top").length,
+    ).toBeGreaterThan(0);
+    expect(
+      tower.querySelectorAll(".placed-block__face--right").length,
+    ).toBeGreaterThan(0);
+
+    // ...and culls them per neighbour, not per block. "first" sits under
+    // "third" and hard against "second", so it is fully enclosed and shows
+    // neither face — which is what makes connected blocks read as one mass
+    // instead of a stack of separate bricks.
+    const enclosed = screen
+      .getByRole("button", { name: "Zack, Easy, 4 miles, August 5" })
+      .closest("li")!;
+    expect(enclosed.querySelector(".placed-block__face--front")).toBeInTheDocument();
+    expect(
+      enclosed.querySelectorAll(
+        ".placed-block__face--top, .placed-block__face--right",
+      ),
+    ).toHaveLength(0);
   });
 });
 
