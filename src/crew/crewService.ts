@@ -19,6 +19,7 @@ import type {
   CrewMembershipSummary,
   CrewProfile,
   CrewRole,
+  CrewType,
   LoadedCrewAccount,
   RaceCrew,
 } from "./types";
@@ -26,55 +27,75 @@ import type {
 type Row = Record<string, unknown>;
 
 const CREW_COLUMNS =
-  "id,owner_user_id,name,race_name,race_date,race_distance_miles,build_start_date,emblem";
+  "id,owner_user_id,name,crew_type,race_name,race_date,race_distance_miles,build_start_date,emblem";
 
 export interface CrewDetailsInput {
   name: string;
-  raceName: string;
-  raceDate: string;
-  raceDistanceMiles: number;
+  crewType: CrewType;
+  /** Ignored (and stored as null) for a `club` Crew. */
+  raceName: string | null;
+  raceDate: string | null;
+  raceDistanceMiles: number | null;
   buildStartDate: string;
   emblem: CrewEmblem;
+}
+
+function validDateOrThrow(value: string, message: string): string {
+  try {
+    if (formatLocalDate(parseLocalDate(value)) !== value) throw new Error();
+  } catch {
+    throw new Error(message);
+  }
+  return value;
 }
 
 export function validateCrewDetails(
   input: CrewDetailsInput,
 ): CrewDetailsInput {
   const name = input.name.trim();
-  const raceName = input.raceName.trim();
   if (!name) throw new Error("Enter a Crew name.");
+
+  const buildStartDate = validDateOrThrow(
+    input.buildStartDate,
+    "Enter a valid Build start date.",
+  );
+
+  if (input.crewType === "club") {
+    return {
+      name,
+      crewType: "club",
+      raceName: null,
+      raceDate: null,
+      raceDistanceMiles: null,
+      buildStartDate,
+      emblem: input.emblem ?? DEFAULT_CREW_EMBLEM,
+    };
+  }
+
+  const raceName = input.raceName?.trim() ?? "";
   if (!raceName) throw new Error("Enter a race name.");
+  if (input.raceDate === null) throw new Error("Enter a valid race date.");
+  const raceDate = validDateOrThrow(input.raceDate, "Enter a valid race date.");
 
-  try {
-    if (formatLocalDate(parseLocalDate(input.raceDate)) !== input.raceDate) {
-      throw new Error();
-    }
-  } catch {
-    throw new Error("Enter a valid race date.");
-  }
-
-  try {
-    if (formatLocalDate(parseLocalDate(input.buildStartDate)) !== input.buildStartDate) {
-      throw new Error();
-    }
-  } catch {
-    throw new Error("Enter a valid Build start date.");
-  }
-
-  if (input.buildStartDate > input.raceDate) {
+  if (buildStartDate > raceDate) {
     throw new Error("Build start cannot be after the race date.");
   }
 
-  if (!Number.isFinite(input.raceDistanceMiles) || input.raceDistanceMiles <= 0) {
+  if (
+    input.raceDistanceMiles === null ||
+    !Number.isFinite(input.raceDistanceMiles) ||
+    input.raceDistanceMiles <= 0
+  ) {
     throw new Error("Enter a valid race distance.");
   }
 
   return {
     name,
+    crewType: "race",
     raceName,
-    raceDate: input.raceDate,
+    raceDate,
     raceDistanceMiles: input.raceDistanceMiles,
-    buildStartDate: input.buildStartDate,
+    buildStartDate,
     emblem: input.emblem ?? DEFAULT_CREW_EMBLEM,
   };
 }
@@ -100,11 +121,17 @@ function nullableString(source: Row, key: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
-function requiredNumber(source: Row, key: string): number {
+function nullableNumber(source: Row, key: string): number | null {
   const value = source[key];
+  if (value === null || value === undefined) return null;
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed)) throw new Error(`Race Crew returned invalid ${key}.`);
   return parsed;
+}
+
+function crewTypeFrom(value: unknown): CrewType {
+  if (value === "race" || value === "club") return value;
+  throw new Error("Race Crew returned an invalid crew type.");
 }
 
 function profileFrom(source: Row): CrewProfile {
@@ -121,9 +148,10 @@ function crewFrom(source: Row): RaceCrew {
     id,
     ownerUserId: requiredString(source, "owner_user_id"),
     name: requiredString(source, "name"),
-    raceName: requiredString(source, "race_name"),
-    raceDate: requiredString(source, "race_date"),
-    raceDistanceMiles: requiredNumber(source, "race_distance_miles"),
+    crewType: crewTypeFrom(source.crew_type),
+    raceName: nullableString(source, "race_name"),
+    raceDate: nullableString(source, "race_date"),
+    raceDistanceMiles: nullableNumber(source, "race_distance_miles"),
     buildStartDate: requiredString(source, "build_start_date"),
     emblem: resolveCrewEmblem(source.emblem, id),
   };
@@ -368,6 +396,7 @@ export async function createCrew(
   const details = validateCrewDetails(input);
   const result = await client.rpc("create_crew", {
     p_name: details.name,
+    p_crew_type: details.crewType,
     p_race_name: details.raceName,
     p_race_date: details.raceDate,
     p_race_distance_miles: details.raceDistanceMiles,
@@ -440,9 +469,10 @@ export async function previewCrewInvite(
   return {
     crewId,
     crewName: requiredString(preview, "crew_name"),
-    raceName: requiredString(preview, "race_name"),
-    raceDate: requiredString(preview, "race_date"),
-    raceDistanceMiles: requiredNumber(preview, "race_distance_miles"),
+    crewType: crewTypeFrom(preview.crew_type),
+    raceName: nullableString(preview, "race_name"),
+    raceDate: nullableString(preview, "race_date"),
+    raceDistanceMiles: nullableNumber(preview, "race_distance_miles"),
     expiresAt: requiredString(preview, "expires_at"),
     emblem: resolveCrewEmblem(preview.emblem, crewId),
     alreadyMember: preview.already_member === true,

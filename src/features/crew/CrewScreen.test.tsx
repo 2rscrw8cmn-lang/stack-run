@@ -137,6 +137,7 @@ const crewOne: RaceCrew = {
   id: "crew-1",
   ownerUserId: "zack",
   name: "OUC Half Crew",
+  crewType: "race",
   raceName: "Half Marathon",
   raceDate: "2026-12-05",
   raceDistanceMiles: 13.1,
@@ -149,11 +150,25 @@ const crewTwo: RaceCrew = {
   id: "crew-2",
   ownerUserId: "drew",
   name: "Trail Crew",
+  crewType: "race",
   raceName: "Ridge 50K",
   raceDate: "2027-04-10",
   raceDistanceMiles: 31,
   buildStartDate: "2026-11-01",
   emblem: crewEmblemFromSeed("crew-2"),
+};
+
+/** A Run Club counterpart: no race fields, so the header and comparisons swap accordingly. */
+const runClub: RaceCrew = {
+  id: "crew-3",
+  ownerUserId: "zack",
+  name: "Thursday Run Club",
+  crewType: "club",
+  raceName: null,
+  raceDate: null,
+  raceDistanceMiles: null,
+  buildStartDate: "2026-08-01",
+  emblem: crewEmblemFromSeed("crew-3"),
 };
 
 function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewController {
@@ -330,6 +345,22 @@ describe("Crew comparisons and runs", () => {
     expect(screen.getAllByText("OUC Half Crew")).toHaveLength(1);
   });
 
+  it("leads a Run Club with a compact non-race context and no countdown", () => {
+    openCrew(
+      controller({
+        account: {
+          ...controller().account!,
+          memberships: [{ crew: runClub, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+          crew: runClub,
+        },
+      }),
+    );
+
+    expect(screen.getByRole("heading", { level: 1, name: "Thursday Run Club" })).toBeInTheDocument();
+    expect(screen.getByText("Building since Aug 1")).toBeInTheDocument();
+    expect(screen.queryByText(/days to race|Race day|Race complete/)).not.toBeInTheDocument();
+  });
+
   it("builds a one-member crew's tower and invites the rest", () => {
     const solo = members.slice(0, 1);
     const soloRun = sharedRun("solo", "zack", "2026-08-09", { distanceMiles: 5.5 });
@@ -422,6 +453,43 @@ describe("Crew comparisons and runs", () => {
     ]);
     expect(screen.queryByRole("combobox", { name: "Comparison metric" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Refresh crew data" })).toHaveTextContent("");
+  });
+
+  it("swaps Run Days in for Consistency on a Run Club, counting distinct days", async () => {
+    const runs = [
+      sharedRun("z1", "zack", "2026-08-01"),
+      sharedRun("z2", "zack", "2026-08-05"),
+      sharedRun("z3", "zack", "2026-08-09"),
+      sharedRun("d1", "drew", "2026-08-09"),
+    ];
+    const user = await openCrew(
+      controller({
+        account: {
+          ...controller().account!,
+          memberships: [{ crew: runClub, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+          crew: runClub,
+        },
+        crewData: dashboard({ runs }),
+      }),
+    );
+
+    const metricTabs = screen.getByRole("tablist", { name: "Comparison metric" });
+    expect(within(metricTabs).queryByRole("tab", { name: "Consistency" })).not.toBeInTheDocument();
+    expect(within(metricTabs).getByRole("tab", { name: "Run Days" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Run Days" }));
+    const rows = within(
+      screen.getByRole("list", { name: "Run Days comparison" }),
+    ).getAllByRole("listitem");
+    expect(rows.map((item) => item.textContent)).toEqual([
+      expect.stringContaining("Zack"),
+      expect.stringContaining("Drew"),
+      expect.stringContaining("Travis"),
+    ]);
+    expect(within(rows[0]).getByText("3")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("of 28 days")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("1")).toBeInTheDocument();
+    expect(within(rows[2]).getByText("0")).toBeInTheDocument();
   });
 
   it("shows recent crew runs newest first and derives pace", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CrewMember, CrewMemberSummary } from "./types";
-import { comparisonBarPercent, orderedComparisonRows } from "./comparisons";
+import type { CrewMember } from "./types";
+import { comparisonBarPercent, orderedComparisonRows, type ComparisonSummary } from "./comparisons";
 
 const members: CrewMember[] = [
   { userId: "a", displayName: "A", role: "owner", joinedAt: "1", accentColor: null },
@@ -8,7 +8,7 @@ const members: CrewMember[] = [
   { userId: "c", displayName: "C", role: "member", joinedAt: "3", accentColor: null },
 ];
 
-function summary(userId: string, weeklyMiles: number): CrewMemberSummary {
+function summary(userId: string, weeklyMiles: number): ComparisonSummary {
   return {
     userId,
     displayName: userId.toUpperCase(),
@@ -18,6 +18,7 @@ function summary(userId: string, weeklyMiles: number): CrewMemberSummary {
     consistencyCompleted: 0,
     consistencyDue: 0,
     milesBuilt: weeklyMiles,
+    runDays: weeklyMiles,
     updatedAt: "2026-08-10T00:00:00Z",
   };
 }
@@ -52,5 +53,15 @@ describe("Crew comparisons", () => {
       ),
     ).toBe(75);
     expect(comparisonBarPercent("consistency", summary("b", 0), 1)).toBe(0);
+  });
+
+  it("orders and scales Run Days like any other plan-independent count", () => {
+    const rows = orderedComparisonRows("run-days", members, [
+      { ...summary("a", 0), runDays: 3 },
+      { ...summary("b", 0), runDays: 6 },
+      { ...summary("c", 0), runDays: 0 },
+    ]);
+    expect(rows.map((row) => row.member.userId)).toEqual(["b", "a", "c"]);
+    expect(comparisonBarPercent("run-days", { ...summary("a", 0), runDays: 3 }, 6)).toBe(50);
   });
 });

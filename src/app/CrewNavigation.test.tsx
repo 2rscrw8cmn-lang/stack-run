@@ -16,6 +16,7 @@ const raceCrew: RaceCrew = {
   id: "crew-1",
   ownerUserId: "zack",
   name: "OUC Race Crew",
+  crewType: "race",
   raceName: "Half Marathon",
   raceDate: "2026-12-05",
   raceDistanceMiles: 13.1,

@@ -64,6 +64,7 @@ const ownerCrew: RaceCrew = {
   id: "crew-1",
   ownerUserId: "owner-1",
   name: "Original Crew",
+  crewType: "race",
   raceName: "Original Race",
   raceDate: "2026-12-05",
   raceDistanceMiles: 13.1,
@@ -172,6 +173,7 @@ describe("Race Crew owner lifecycle", () => {
     await act(async () => {
       saved = await result.current.updateCrew({
         name: "Updated Crew",
+        crewType: "race",
         raceName: "Updated Race",
         raceDate: "2027-01-10",
         raceDistanceMiles: 26.2,
@@ -228,6 +230,7 @@ describe("Race Crew owner lifecycle", () => {
     await act(async () => {
       saved = await result.current.updateCrew({
         name: "Denied",
+        crewType: "race",
         raceName: "Denied",
         raceDate: "2027-01-10",
         raceDistanceMiles: 26.2,
@@ -264,6 +267,7 @@ const secondCrew: RaceCrew = {
   id: "crew-2",
   ownerUserId: "friend-1",
   name: "Trail Crew",
+  crewType: "race",
   raceName: "Ridge 50K",
   raceDate: "2027-04-10",
   raceDistanceMiles: 31,

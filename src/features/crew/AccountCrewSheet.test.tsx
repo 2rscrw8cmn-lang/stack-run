@@ -11,6 +11,7 @@ const ownerCrew: RaceCrew = {
   id: "crew-1",
   ownerUserId: "owner-1",
   name: "OUC Race Crew",
+  crewType: "race",
   raceName: "OUC Half Marathon",
   raceDate: "2026-12-05",
   raceDistanceMiles: 13.1,
@@ -38,6 +39,24 @@ const memberAccount: LoadedCrewAccount = {
     ...ownerAccount.members,
     { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
   ],
+};
+
+const runClubCrew: RaceCrew = {
+  id: "crew-club",
+  ownerUserId: "owner-1",
+  name: "Thursday Run Club",
+  crewType: "club",
+  raceName: null,
+  raceDate: null,
+  raceDistanceMiles: null,
+  buildStartDate: "2026-08-01",
+  emblem: DEFAULT_CREW_EMBLEM,
+};
+
+const runClubOwnerAccount: LoadedCrewAccount = {
+  ...ownerAccount,
+  memberships: [{ crew: runClubCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+  crew: runClubCrew,
 };
 
 function controller(
@@ -145,6 +164,7 @@ describe("Account & Crew settings", () => {
         preview: {
           crewId: "crew-1",
           crewName: "OUC Half Crew",
+          crewType: "race",
           raceName: "OUC Half",
           raceDate: "2026-12-05",
           raceDistanceMiles: 13.1,
@@ -277,6 +297,7 @@ describe("Account & Crew settings", () => {
 
     expect(updateCrew).toHaveBeenCalledWith({
       name: "Winter Crew",
+      crewType: "race",
       raceName: "Winter Half",
       raceDate: "2026-12-05",
       raceDistanceMiles: 13.1,
@@ -311,6 +332,90 @@ describe("Account & Crew settings", () => {
 
     await user.click(screen.getByRole("button", { name: "Create Crew" }));
     expect(screen.getByLabelText("Build starts")).toHaveValue(todayLocalDate());
+  });
+
+  it("asks Crew type first, hides race fields for a Run Club, and creates one with no race data", async () => {
+    const createCrew = vi.fn(async () => undefined);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({
+          status: "signed-in",
+          account: {
+            profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+            memberships: [],
+            crew: null,
+            role: null,
+            members: [],
+            invites: [],
+            takenAccentColors: [],
+          },
+          createCrew,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create Crew" }));
+    // Race Crew is the default, so the existing race-fields flow is unchanged.
+    expect(screen.getByLabelText("Race name")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Race Crew" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run Club" }));
+    expect(screen.queryByLabelText("Race name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Race date")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Distance (mi)")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Crew name"), "Thursday Run Club");
+    await user.click(screen.getByRole("button", { name: "Create Run Club" }));
+
+    expect(createCrew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Thursday Run Club",
+        crewType: "club",
+        raceName: null,
+        raceDate: null,
+        raceDistanceMiles: null,
+      }),
+    );
+  });
+
+  it("does not expose race fields when editing a Run Club", async () => {
+    const updateCrew = vi.fn(async () => true);
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: runClubOwnerAccount, updateCrew })}
+      />,
+    );
+
+    await openCrewSettings(user, "Thursday Run Club");
+    expect(screen.getByText("Run Club")).toBeInTheDocument();
+    expect(screen.queryByText(/·.*mi$/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    expect(screen.queryByLabelText("Race name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Race date")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Distance (mi)")).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Crew name"));
+    await user.type(screen.getByLabelText("Crew name"), "Friday Run Club");
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(updateCrew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Friday Run Club",
+        crewType: "club",
+        raceName: null,
+        raceDate: null,
+        raceDistanceMiles: null,
+      }),
+    );
   });
 
   it("confirms a later Build start when it removes existing Crew contributions", async () => {
@@ -499,6 +604,7 @@ const secondCrew: RaceCrew = {
   id: "crew-2",
   ownerUserId: "friend-1",
   name: "Trail Crew",
+  crewType: "race",
   raceName: "Ridge 50K",
   raceDate: "2027-04-10",
   raceDistanceMiles: 31,

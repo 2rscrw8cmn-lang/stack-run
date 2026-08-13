@@ -1,9 +1,9 @@
 import type { Race } from "../domain/types";
 
 export interface CrewRace {
-  raceName: string;
-  raceDate: string;
-  raceDistanceMiles: number;
+  raceName: string | null;
+  raceDate: string | null;
+  raceDistanceMiles: number | null;
 }
 
 export interface RaceMismatch {
@@ -12,11 +12,12 @@ export interface RaceMismatch {
   mismatched: boolean;
 }
 
+/** A Run Club has no race to mismatch against, regardless of the viewer's local race. */
 export function compareCrewRace(
   crew: CrewRace,
   localRace: Race | null,
 ): RaceMismatch {
-  if (!localRace) {
+  if (!localRace || crew.raceDate === null || crew.raceDistanceMiles === null) {
     return { dateDiffers: false, distanceDiffers: false, mismatched: false };
   }
   const dateDiffers = crew.raceDate !== localRace.date;

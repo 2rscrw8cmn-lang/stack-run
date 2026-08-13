@@ -8,13 +8,18 @@ export interface CrewProfile {
   accentColor: CrewMemberAccent | null;
 }
 
+/** `race`: the original race-centered Crew. `club`: an ongoing Run Club with no race required. */
+export type CrewType = "race" | "club";
+
 export interface RaceCrew {
   id: string;
   ownerUserId: string;
   name: string;
-  raceName: string;
-  raceDate: string;
-  raceDistanceMiles: number;
+  crewType: CrewType;
+  /** Null only for a `club`; always present for a `race` Crew. */
+  raceName: string | null;
+  raceDate: string | null;
+  raceDistanceMiles: number | null;
   buildStartDate: string;
   /** Always renderable: a crew with no saved emblem gets its stable derived one. */
   emblem: CrewEmblem;
@@ -41,9 +46,10 @@ export interface CrewInvite {
 export interface CrewInvitePreview {
   crewId: string;
   crewName: string;
-  raceName: string;
-  raceDate: string;
-  raceDistanceMiles: number;
+  crewType: CrewType;
+  raceName: string | null;
+  raceDate: string | null;
+  raceDistanceMiles: number | null;
   expiresAt: string;
   emblem: CrewEmblem;
   /** True when the viewer is already in this crew, so joining is a no-op. */
