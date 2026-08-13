@@ -43,7 +43,16 @@ describe("Intervals proxy", () => {
   it("validates whitelisted selectors", async () => {
     expect((await readIntervals(request("resource=activities&oldest=2026-01-01&newest=2026-06-01"), env)).status).toBe(400);
     expect((await readIntervals(request("resource=activity&id=../secret"), env)).status).toBe(400);
+    expect((await readIntervals(request("resource=activity-streams&id=../secret"), env)).status).toBe(400);
     expect((await readIntervals(request("resource=anything"), env)).status).toBe(400);
+  });
+  it("requests the Run Profile stream types for the streams resource", async () => {
+    const fetcher = upstream(() => new Response(JSON.stringify({ time: [0, 60] })));
+    const response = await readIntervals(request("resource=activity-streams&id=activity-1"), env, fetcher);
+    const url = new URL(String(fetcher.mock.calls[0]?.[0]));
+    expect(url.pathname).toBe("/api/v1/activity/activity-1/streams");
+    expect(url.searchParams.get("types")).toBe("time,heartrate,altitude,velocity_smooth");
+    expect(response.status).toBe(200);
   });
   it("tests the connection against the activity endpoint sync itself uses", async () => {
     const fetcher = upstream(() => new Response(JSON.stringify([{ id: "i1", name: "private" }])));

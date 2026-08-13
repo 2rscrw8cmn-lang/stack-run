@@ -2,7 +2,9 @@
 
 ## Current state
 
-**UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix, Run Data review-persistence/plan-matching hotfix, and focused Crew/Training Signals polish described below are implemented for owner review and are not UI-23.
+**UI-23 — Run Detail 2.0 is implemented for owner review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened to fit mobile, a Run Profile chart adds on-demand pace/HR/elevation visualization when source-verified stream data is available, HR-zone distribution moves to the large centered donut treatment, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. See `## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
+
+**UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix, Run Data review-persistence/plan-matching hotfix, and focused Crew/Training Signals polish described below are implemented for owner review and predate UI-23.
 
 UI-17 Performance Arcade remains the current presentation layer. STACK keeps its Today / Build / Runs / Plan structure — plus Crew for an active crew member — and readable system-sans body copy, while numbers, short machine labels, data modules, charts, selected states, and Build stamps share the locally bundled Space Mono/tabular language. Runs/Training Signals carries the strongest treatment; Today, Build, and Plan adopt it in progressively quieter ways.
 
@@ -1226,3 +1228,73 @@ defaulted parameter), and extends `preview_crew_invite` with the emblem and an
 `already_member` flag. Build-start behavior, Crew Build placement, RLS and the
 safe projection contract are unchanged, and no personal AppState migration was
 introduced.
+
+## UI-23 — Run Detail 2.0
+
+Personal Run Detail (`src/features/runs/RunDetailSheet.tsx`, still built on the
+shared `RunResultDetail` also used by Build's block detail) is reworked around
+richer activity analysis and a cleaner mobile hierarchy. Crew-safe run detail
+(`CrewRunDetailSheet.tsx`) is untouched — this phase is personal-only, and the
+Crew-safe projection boundary carries no new field.
+
+**Header and status are metadata again, not a section.** The old standalone
+`Extra Run`/`Scheduled workout` heading-and-paragraph block is gone.
+`run-detail__context` now carries the date and, when the run satisfied a
+workout, one concise `Week N · Title` line, plus two small tags next to the
+activity type: `Plan` for a linked scheduled run, `Extra` for one the plan
+never asked for.
+
+**Secondary metrics fit mobile.** `Elevation gain`/`Training Load` are
+shortened to `Gain`/`Load` (`Average HR` was already short enough to read as
+`Avg HR` once machine-label uppercasing applies); nothing shows a metric
+STACK cannot verify — cadence stays hidden everywhere, exactly as before,
+because `average_cadence` remains `Expected` in
+`docs/CONNECTED_DATA_FIELDS.md`. The secondary grid is 2 columns from 320px
+and 3 once there is room (`min-width: 400px`), rather than cramming up to
+four short labels into one row.
+
+**Run Profile** (`src/components/charts/RunProfileChart.tsx`) is a new, single
+chart area with metric selectors (`Pace`, `Heart Rate`, `Elevation`) that only
+appear for metrics the fetched data actually contains — never a fixed set of
+buttons. It plots one metric over the run's elapsed time with a `Low`/`Avg`/
+`High` text fact row as the accessible authority. The data comes from
+`fetchIntervalsRunProfile` in `src/connected/intervals.ts`, a second on-demand
+Intervals read (`GET /activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth`)
+alongside the existing `?intervals=true` detail read — both fire once, when a
+synced run's detail sheet opens, never during ordinary sync, and neither is
+persisted past the open sheet's component state. **This stream contract is
+`Expected`, not `Verified`** — see the UI-23 discovery checklist in
+`docs/CONNECTED_DATA_FIELDS.md`. `normalizeIntervalsRunProfile` is written so
+an unrecognized shape resolves to `null` rather than a guess, and Run Detail
+renders no Run Profile section at all in that case — exactly what a run
+without profile data looks like today. Cadence is deliberately absent from
+Run Profile for the identical reason it is absent from the metric grid.
+
+**HR-zone distribution** now uses `DonutChart`'s existing `size="large"`
+treatment — the same large centered ring and legend Training Signals' HR
+Zones card already uses — rather than a bespoke smaller side-by-side layout,
+so the improved mobile donut is one implementation, not two that could drift.
+
+**`View intervals` is gone.** The explicit button and its
+"No understandable interval groups were found" empty state are replaced by
+the same on-demand `fetchIntervalsActivityDetail` call firing automatically
+when the sheet opens (still never during sync): a source-verified structured
+`Intervals` section appears only when `icu_intervals` actually produced rows,
+and nothing is shown for an ordinary run with none. A genuine fetch failure
+still surfaces a concise error with a `Retry` action.
+
+**`Connect to Plan` is a compact action.** The always-visible inline
+select-and-link form is gone from Run Detail; a `Connect to Plan` button
+(shown only when the run is unlinked and a candidate workout exists) opens
+`src/features/runs/ConnectToPlanSheet.tsx`, a small picker sub-sheet using the
+same `availableWorkoutsForRunLog` candidate logic Run Detail used inline.
+`RunsScreen` orchestrates the hand-off the same way `PlanScreen` hands off
+from a workout's detail sheet to its edit/move sheets — only one `<dialog>`
+is ever open, and confirming or cancelling the picker returns to the run's
+own detail. `Unlink from Plan` remains inline and visually secondary, as
+before.
+
+No Supabase migration, no new dependency, and no change to Intervals
+credential handling, HR-zone calculation, run edit/delete, or plan
+linking/unlinking rules — this phase reworks presentation and adds one
+narrow, defensively-normalized on-demand read.

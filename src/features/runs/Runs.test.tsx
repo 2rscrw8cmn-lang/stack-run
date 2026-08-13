@@ -123,7 +123,7 @@ describe("Runs", () => {
 
     const sheet = within(screen.getByRole("dialog"));
     expect(sheet.getByText("Tuesday, August 4, 2026")).toBeInTheDocument();
-    expect(sheet.getByText("Scheduled workout")).toBeInTheDocument();
+    expect(sheet.getByText("Plan")).toBeInTheDocument();
     expect(sheet.getByText(/Week 1 · 2 Miles/)).toBeInTheDocument();
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
   });
@@ -156,7 +156,7 @@ describe("Runs", () => {
     expect(sheet.getByText("Elapsed")).toBeInTheDocument();
     expect(sheet.getByText("54:00")).toBeInTheDocument();
     expect(sheet.queryByText("Duration")).not.toBeInTheDocument();
-    expect(sheet.getByText("Extra run")).toBeInTheDocument();
+    expect(sheet.getByText("Extra")).toBeInTheDocument();
   });
 
   it("keeps one duration when elapsed time says nothing new", async () => {
@@ -197,20 +197,27 @@ describe("Runs", () => {
     expect(runLogId).toBe("scheduled");
   });
 
-  it("connects an extra run to a scheduled workout from its detail sheet", async () => {
+  it("connects an extra run to a scheduled workout from a compact picker sheet", async () => {
     const onLinkRun = vi.fn();
     const user = userEvent.setup();
     renderRuns([run("extra", "2026-08-04")], { onLinkRun });
 
     await user.click(rows()[0]);
-    const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Connect to plan")).toBeInTheDocument();
+    const detail = within(screen.getByRole("dialog"));
+    const connectButton = detail.getByRole("button", { name: "Connect to Plan" });
+    expect(connectButton).toBeInTheDocument();
 
-    await user.selectOptions(sheet.getByLabelText("Scheduled workout"), "workout-002");
-    await user.click(sheet.getByRole("button", { name: "Link Run" }));
+    await user.click(connectButton);
+    const picker = within(screen.getByRole("dialog"));
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Connect to Plan");
+
+    await user.selectOptions(picker.getByLabelText("Scheduled workout"), "workout-002");
+    await user.click(picker.getByRole("button", { name: "Link Run" }));
 
     expect(onLinkRun).toHaveBeenCalledWith("extra", "workout-002");
     expect(screen.getByText("Run connected to the plan.")).toBeInTheDocument();
+    // Comes back to the run's own detail rather than leaving the picker open.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
   });
 
   it("does not offer linking without a handler for it", async () => {
@@ -218,7 +225,7 @@ describe("Runs", () => {
     renderRuns([run("extra", "2026-08-04")]);
 
     await user.click(rows()[0]);
-    expect(screen.queryByText("Connect to plan")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Connect to Plan" })).not.toBeInTheDocument();
   });
 
   it("does not offer a workout another run already claimed", async () => {
@@ -232,6 +239,7 @@ describe("Runs", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /August 1/ }));
+    await user.click(screen.getByRole("button", { name: "Connect to Plan" }));
     const select = screen.getByLabelText("Scheduled workout") as HTMLSelectElement;
     const values = [...select.options].map((option) => option.value);
 

@@ -93,6 +93,39 @@ Intervals.icu documents `icu_intervals` entries that may include:
 
 Do not fetch detail for every activity during normal list sync.
 
+## Run Profile streams (Run Detail 2.0)
+
+Run Detail 2.0 added an on-demand chart of one metric over the run's elapsed
+time, with selectors for whichever metrics actually have data. The stream
+values come from a second endpoint, requested only when a synced run's detail
+sheet is open — never during ordinary sync, and never persisted beyond the
+open sheet's component state:
+
+```text
+GET /api/v1/activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth
+```
+
+| STACK concept | Intervals candidate | Status | UI phase | Notes |
+|---|---|---|---|
+| Elapsed-time axis | `time` stream | Expected | UI-23 | Seconds from run start. Required; the profile is not shown at all without it. |
+| Heart rate over time | `heartrate` stream | Expected | UI-23 | bpm per sample. |
+| Elevation over time | `altitude` stream | Expected | UI-23 | Meters per sample; converted to feet. |
+| Pace over time | derived from `velocity_smooth` stream | Expected | UI-23 | Metres/second, an unambiguous unit; STACK derives seconds-per-mile rather than trusting an assumed-unit `pace` field. |
+| Cadence over time | — | Not attempted | UI-23 | Cadence stays out of Run Profile for the same reason it stays out of the compact metric grid: `average_cadence` above is still `Expected`, and a per-second cadence stream would carry the identical unverified semantics. |
+
+**This whole resource is `Expected`, not `Verified`.** The endpoint and field
+names follow Intervals.icu's documented streams contract, the same way every
+other candidate in this file started, but this repository has no way to
+exercise it against a real HealthFit-originated activity — the same
+"cannot be performed in the secret-free repository environment" limitation
+recorded elsewhere in this file. `normalizeIntervalsRunProfile` in
+`src/connected/intervals.ts` is written defensively for that reason: a shape
+it does not recognize resolves to `null` rather than a guess, and Run Detail
+simply shows no Run Profile section — the same as a run with no profile data
+today. Promote these rows to `Verified` only after checking them against a
+real synced run on the deployed app, the way the June 10/August 9 fixtures
+verified everything else in this file.
+
 ## Wellness fields
 
 Check the Intervals wellness endpoint only after activity import works:
@@ -179,3 +212,16 @@ UI-8 field discovery is complete when:
 - [ ] HR-zone field presence/shape is recorded.
 - [ ] A structured interval workout is checked later for `icu_intervals`.
 - [ ] Wellness coverage is checked before UI-12.
+
+## UI-23 discovery: Run Profile streams
+
+Run Detail 2.0 ships the plumbing but not the verification. Complete before
+promoting the Run Profile streams rows above to `Verified`:
+
+- [ ] `GET /activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth` is confirmed reachable through the deployed `/api/intervals` proxy and the direct local-key path.
+- [ ] The response shape (array of `{type, data}` descriptors vs. a map) is recorded here.
+- [ ] `time` stream presence/units is confirmed on a real HealthFit-originated run.
+- [ ] `heartrate` stream presence is confirmed and spot-checked against the run's known average HR.
+- [ ] `altitude` stream presence/unit is confirmed.
+- [ ] `velocity_smooth` presence/unit is confirmed and the derived pace is spot-checked against the run's known average pace.
+- [ ] A run genuinely lacking streams (e.g. an older or manually uploaded activity) is confirmed to render with no Run Profile section rather than an error.

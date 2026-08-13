@@ -328,7 +328,24 @@ Implemented:
 
 UI-22 adds no new production dependency, router, global state, database migration or AppState migration. Personal STACK remains usable signed out and onboarding failure or Crew lifecycle errors cannot block the app.
 
-Repository verification passes `npm run check`: lint, 75 test files / 950 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in owner Edit/Delete presentation. No later phase is currently planned; additional scope requires a new decision.
+Repository verification passes `npm run check`: lint, 75 test files / 950 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in owner Edit/Delete presentation.
+
+## UI-23 implementation status
+
+**UI-23 — Run Detail 2.0** (see `docs/CURRENT_APPLICATION_STRUCTURE.md`) is implemented for owner review, per D-073. Additional scope beyond the planned UI-18–UI-22 sequence, opened as a new decision the way the note above requires.
+
+Implemented:
+
+- compact `Plan`/`Extra` status tags near the date/type, replacing the standalone `Extra Run` explanation section and the "Scheduled workout" heading/paragraph;
+- shortened secondary-metric labels (`Gain`, `Load`) and a responsive 2–3-column secondary metric grid;
+- a new Run Profile chart (`RunProfileChart`) with metric selectors limited to whatever the fetched stream data actually contains — Pace, Heart Rate, Elevation; cadence stays out everywhere, unchanged;
+- the large centered HR-zone donut treatment (`DonutChart size="large"`), reused rather than reinvented from Training Signals;
+- automatic, on-demand structured Intervals detection replacing the `View intervals` button and its confusing empty-groups message; a real fetch failure still shows a concise `Retry`;
+- `Connect to Plan` moved from an always-visible inline form into a compact action opening `ConnectToPlanSheet`, a small picker sub-sheet.
+
+Explicitly not verified in this environment, and recorded rather than assumed: the new `/activity/{id}/streams` contract behind Run Profile is `Expected`, not `Verified` — this repository has no credentials or network path to Intervals.icu to check it against a real HealthFit-originated activity. `docs/CONNECTED_DATA_FIELDS.md` carries the discovery checklist that must pass before those rows are promoted to `Verified`. The feature degrades safely either way: an unrecognized response shape renders no Run Profile section, identical to a run with no profile data.
+
+UI-23 adds no Supabase/database migration, no new dependency, and no change to the Intervals API key/credential boundary, HR-zone calculation, run edit/delete behavior, or plan linking/unlinking rules.
 
 ## Active source documents
 

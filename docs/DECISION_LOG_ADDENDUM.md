@@ -463,6 +463,18 @@ Each crew also gets a designed emblem: four modular parts (crown, core, base, fr
 
 This is a Crew identity and membership change only. Personal STACK, schema 9, the safe projection contract, Build geometry and the never-send list are all unchanged.
 
+## D-073 — Run Detail 2.0 is new personal-only scope, not a data-model change
+
+**Decision:** UI-22 said no later phase was planned; a new owner request (Run Detail's visual hierarchy, `View intervals`, and plan-linking form all reading as unfinished) is exactly the kind of additional scope that note said requires a new decision. Run Detail 2.0 is personal-only — it touches `RunResultDetail`, `RunDetailSheet`, and the sheets they compose with, and leaves Crew's safe-projection `CrewRunDetailSheet` untouched.
+
+Three implementation choices worth recording:
+
+1. **Structured Intervals and the new Run Profile chart both stay on-demand, narrow, and unpersisted.** They fire once, when a synced run's detail sheet opens, replacing the old explicit `View intervals` tap rather than adding a second trigger; neither is added to AppState. This preserves the existing UI-9 rule ("Do not fetch detail for every activity during normal list sync") rather than relaxing it.
+2. **The Run Profile's per-second stream data (`/activity/{id}/streams`) is treated exactly like every other unverified Intervals field in this project's history: implemented defensively, documented as `Expected` in `docs/CONNECTED_DATA_FIELDS.md`, and gated so an unrecognized response shape renders nothing rather than a guess.** This repository cannot exercise the endpoint against real HealthFit data — the same limitation UI-8 recorded for the original field catalog — so the feature ships as plumbing plus a documented verification checklist, not a claim that it is already correct. Cadence stays out of Run Profile for the identical reason `average_cadence` stays out of the compact metric grid: its semantics are still unverified.
+3. **No Supabase migration.** Every change here is presentation plus one additional narrow client-side Intervals read; nothing about the schema, RLS, or the Crew-safe projection boundary needed to move.
+
+This decision authorizes UI-23 as scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not reopen UI-19/UI-20/UI-21 Crew scope, and it does not authorize a general Intervals streams feature beyond Run Profile.
+
 ## Active implementation order
 
 Complete:
@@ -476,6 +488,7 @@ Complete:
 - UI-19
 - UI-20
 - UI-21
+- UI-22
 
 Deferred/skipped:
 
@@ -486,8 +499,9 @@ Current acceptance:
 
 - **UI-20 — Props + Mini Builds** is complete and accepted (merged PR #37).
 - **UI-21 — Crew Destination + Shared Crew Build** is complete and accepted (merged PR #38).
-- **UI-22 — Final Product Polish + Onboarding** is the final planned phase and is in review.
-- No later phase is planned or authorized.
+- **UI-22 — Final Product Polish + Onboarding** is complete and accepted (merged PR #39).
+- **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
+- No later phase is planned or authorized beyond UI-23.
 
 See:
 

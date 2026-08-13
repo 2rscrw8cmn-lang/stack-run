@@ -2156,6 +2156,7 @@ textarea.run-input {
 
 .run-result-detail__error { color: var(--long); }
 .run-result-detail__request .button { width: 100%; }
+.run-result-detail__profile,
 .run-result-detail__zones,
 .run-result-detail__intervals { display: grid; gap: var(--space-2); }
 .run-result-detail__intervals ol { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
@@ -4834,11 +4835,18 @@ textarea.run-input {
 
 .run-detail__context {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
+}
+
+.run-detail__context-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .run-detail__context p {
@@ -4847,8 +4855,19 @@ textarea.run-input {
   font-size: 9px;
 }
 
-.run-detail__type {
+.run-detail__plan-line {
+  color: var(--text-subtle);
+  font-size: 8px;
+}
+
+.run-detail__context-tags {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.run-detail__type {
   padding: 3px 7px;
   border: 1px solid currentColor;
   border-radius: 3px;
@@ -4860,6 +4879,22 @@ textarea.run-input {
 .run-detail__type[data-type="simulation"] { color: var(--simulation); }
 .run-detail__type[data-type="long"] { color: var(--long); }
 .run-detail__type[data-type="race"] { color: var(--race); }
+
+/* The extra-or-planned status is metadata, not a section: one small tag next
+   to the activity type replaces what used to be a standalone heading and
+   paragraph. */
+.run-detail__status-tag {
+  padding: 3px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text-subtle);
+  font-size: 8px;
+}
+
+.run-detail__status-tag[data-status="plan"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 .run-result-detail {
   gap: 16px;
@@ -4929,11 +4964,21 @@ textarea.run-input {
   font-size: 9px;
 }
 
+/* 2 columns fits every current secondary metric comfortably from 320px up;
+   3 opens up once there is room, rather than compressing up to four short
+   labels into one cramped row. */
 .run-result-detail__secondary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 0;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-strong);
 }
+
+.run-result-detail__secondary > div:nth-child(n+3) {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.run-result-detail__secondary > div:nth-child(2n+1) { border-left: 0; }
 
 .run-result-detail__secondary dd {
   font-size: clamp(15px, 4.4vw, 20px);
@@ -4941,6 +4986,15 @@ textarea.run-input {
   white-space: nowrap;
 }
 
+@media (min-width: 400px) {
+  .run-result-detail__secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .run-result-detail__secondary > div:nth-child(2n+1) { border-left: 1px solid var(--border); }
+  .run-result-detail__secondary > div:nth-child(3n+1) { border-left: 0; }
+  .run-result-detail__secondary > div:nth-child(n+4) { border-top: 1px solid var(--border); padding-top: 8px; }
+  .run-result-detail__secondary > div:nth-child(-n+3) { border-top: 0; padding-top: 0; }
+}
+
+.run-result-detail__profile,
 .run-result-detail__zones,
 .run-result-detail__intervals {
   gap: 10px;
@@ -4948,6 +5002,7 @@ textarea.run-input {
   border-top: 1px solid var(--border-strong);
 }
 
+.run-result-detail__profile > h3,
 .run-result-detail__zones > h3,
 .run-result-detail__intervals > h3 {
   margin: 0;
@@ -4955,45 +5010,75 @@ textarea.run-input {
   font-size: 10px;
 }
 
-.run-result-detail__zones .donut {
-  grid-template-columns: minmax(132px, 0.92fr) minmax(0, 1.25fr);
-  gap: 12px;
-}
-
-.run-result-detail__zones .donut__figure {
-  padding: 5px;
-  border-color: var(--border-strong);
-  border-radius: 7px;
-}
-
-.run-result-detail__zones .donut__figure svg {
-  max-width: 168px;
-}
-
-.run-result-detail__zones .donut__track,
-.run-result-detail__zones .donut__arc {
-  stroke-width: 19;
-}
-
-.run-result-detail__zones .donut__center-value {
-  font-size: 18px;
-}
-
-.run-result-detail__zones .donut__legend {
-  gap: 5px;
-}
-
-.run-result-detail__zones .donut__legend-row {
-  grid-template-columns: 9px minmax(42px, 1fr) auto;
+.run-profile__selectors {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  font-family: var(--font-data);
-  font-size: 10px;
 }
 
-.run-result-detail__zones .donut__value {
-  min-width: 72px;
-  text-align: right;
-  white-space: nowrap;
+.run-profile__selector {
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.run-profile__selector[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.run-profile-chart {
+  padding: var(--space-3);
+}
+
+.run-profile-chart__figure {
+  display: block;
+  width: 100%;
+}
+
+.run-profile-chart__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: var(--space-2) 0 0;
+}
+
+.run-profile-chart__facts > div {
+  text-align: center;
+}
+
+.run-profile-chart__facts dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.run-profile-chart__facts dt {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.connect-to-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.connect-to-plan__lead {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.connect-to-plan .button {
+  width: 100%;
 }
 
 .run-result-detail__interval-head,
@@ -5270,10 +5355,6 @@ textarea.run-input {
   .runs-screen__instrument > div:nth-child(3) { border-left: 0; }
   .runs-screen__instrument > div:nth-child(n + 3) { border-top: 1px solid var(--border); padding-top: 7px; }
   .signal-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .run-result-detail__secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 0; }
-  .run-result-detail__secondary > div:nth-child(3) { border-left: 0; }
-  .run-result-detail__zones .donut { grid-template-columns: 1fr; }
-  .run-result-detail__zones .donut__figure svg { max-width: 144px; }
 }
 
 @media (max-width: 340px) {
