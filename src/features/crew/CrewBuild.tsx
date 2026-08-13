@@ -66,10 +66,6 @@ function faceLabel(
     : { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
 }
 
-function memberInitial(displayName: string): string {
-  return displayName ? displayName[0].toUpperCase() : "?";
-}
-
 /** The CSS custom property reference for a member's stable block colour. */
 function memberPieceColor(
   userId: string,
@@ -274,7 +270,6 @@ export function CrewBuild({
                       label={faceLabel(block)}
                       topFace={block.topFace}
                       rightFace={block.rightFace}
-                      monogram={memberInitial(block.displayName)}
                     />
                   </button>
                 </li>

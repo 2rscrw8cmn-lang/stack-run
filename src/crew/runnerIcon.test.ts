@@ -10,6 +10,7 @@ import {
   runnerIconFromSeed,
   runnerIconPartName,
   sameRunnerIcon,
+  selectableRunnerIconIndices,
   type RunnerIcon,
 } from "./runnerIcon";
 
@@ -122,9 +123,46 @@ describe("Editing a runner icon", () => {
 });
 
 describe("The part library itself", () => {
+  /**
+   * Small on purpose. Six selectable options per part is the ceiling: past
+   * that the options stop being distinguishable at the size Crew draws them,
+   * and the editor stops being four compact rows.
+   */
   it("keeps every part small enough to stay distinct at crew size", () => {
     for (const part of RUNNER_ICON_PARTS) {
-      expect(RUNNER_ICON_SHAPES[part].length).toBe(6);
+      expect(selectableRunnerIconIndices(part)).toHaveLength(6);
+    }
+  });
+
+  /**
+   * A retired option must keep its index and keep drawing. Anything else
+   * silently changes what an already-saved icon means.
+   */
+  it("keeps retired options addressable but out of the editor", () => {
+    const sideStripe = RUNNER_ICON_SHAPES.extra.findIndex(
+      (shape) => shape.name === "Side Stripe",
+    );
+    expect(sideStripe).toBe(4);
+    expect(RUNNER_ICON_SHAPES.extra[sideStripe].deprecated).toBe(true);
+    expect(selectableRunnerIconIndices("extra")).not.toContain(sideStripe);
+
+    // Still decodes, still draws, still means what it always meant.
+    expect(decodeRunnerIcon("R1-0.0.0.4")).toEqual({ head: 0, face: 0, body: 0, extra: 4 });
+    expect(RUNNER_ICON_SHAPES.extra[sideStripe].plates.length).toBeGreaterThan(0);
+  });
+
+  it("never lands a runner on a retired option by cycling", () => {
+    const onSideStripe = { head: 0, face: 0, body: 0, extra: 4 };
+    expect(cycleRunnerIconPart(onSideStripe, "extra", 1).extra).toBe(5);
+    expect(cycleRunnerIconPart(onSideStripe, "extra", -1).extra).toBe(3);
+    // And Surprise Me never offers it either.
+    let seed = 0;
+    const random = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      expect(randomRunnerIcon(random).extra).not.toBe(4);
     }
   });
 

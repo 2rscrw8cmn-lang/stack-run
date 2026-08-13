@@ -123,6 +123,43 @@ beforeEach(() => {
   current = controller();
 });
 
+describe("The runner's icon in the app header", () => {
+  /**
+   * The mark stands beside the gear as the account affordance — the same icon
+   * this runner's crewmates see. It is a button, not decoration, so it needs a
+   * real name; the icon itself stays decorative inside it.
+   */
+  it("shows the signed-in runner's icon next to Settings", () => {
+    render(<App />);
+    const runner = screen.getByRole("button", { name: /^Zack\. Account & Crew\.$/ });
+    expect(runner.querySelector(".runner-icon")).not.toBeNull();
+    expect(runner.querySelector(".runner-icon")).toHaveAttribute("aria-hidden", "true");
+    // It joins the existing header row rather than adding one.
+    expect(runner.closest(".app-shell__header-row")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("shows no runner mark when nobody is signed in", () => {
+    current = signedOut;
+    render(<App />);
+    expect(screen.queryByRole("button", { name: /Account & Crew\.$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("opens Account & Crew directly, and closes back to the app rather than into Settings", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /^Zack\. Account & Crew\.$/ }));
+    expect(await screen.findByRole("heading", { name: "Account & Crew" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    // Opened from the header, so dismissing it does not strand the runner in
+    // Settings — a sheet they never asked for.
+    expect(screen.queryByRole("heading", { name: "Settings" })).not.toBeInTheDocument();
+  });
+});
+
 describe("Crew as a conditional destination", () => {
   it("offers five destinations in order to an active crew member", () => {
     render(<App />);

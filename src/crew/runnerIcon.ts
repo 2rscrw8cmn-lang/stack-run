@@ -178,13 +178,35 @@ const BODIES: readonly RunnerIconShape[] = [
  */
 const EXTRAS: readonly RunnerIconShape[] = [
   { name: "None", plates: [] },
-  { name: "Bolt", plates: ["M78 45 H86 L81 55 H88 L75 72 L79 60 H72 Z"] },
-  { name: "Sweat", plates: ["M80 40 C85 47 87 50 87 54 A7 7 0 0 1 73 54 C73 50 75 47 80 40 Z"] },
-  { name: "Bib Stripe", plates: ["M38 76 H66 V81 H38 Z"] },
-  { name: "Side Stripe", plates: ["M27 45 H32 V80 H27 Z"] },
+  // Widened and squared off from the first pass: a bolt is only a bolt if its
+  // strokes survive at ~10px, and the original's thin waist did not.
+  { name: "Bolt", plates: ["M78 42 H89 L83 54 H91 L73 74 L78 58 H70 Z"] },
+  // A rounder, larger drop. The first pass's narrow teardrop read as a smudge
+  // once the icon dropped under about 30px.
+  { name: "Sweat", plates: ["M81 40 C87 51 90 55 90 60 A9 9 0 0 1 72 60 C72 55 75 51 81 40 Z"] },
+  // Was a 5px pinstripe across the chest — invisible at crew size. Now a band
+  // deep enough to register as a band.
+  { name: "Band", plates: ["M33 73 H71 V83 H33 Z"] },
+  {
+    // Retired: a thin vertical rule at the silhouette's left edge, which at
+    // real size was indistinguishable from the icon's own outline. The index
+    // stays put so anyone who saved it keeps decoding and drawing it.
+    name: "Side Stripe",
+    plates: ["M27 45 H32 V80 H27 Z"],
+    deprecated: true,
+  },
   {
     name: "Star",
-    plates: ["M81 43 L83.5 48.5 L89.5 49 L85 53 L86.4 59 L81 55.8 L75.6 59 L77 53 L72.5 49 L78.5 48.5 Z"],
+    plates: ["M81 42 L84 49 L91.5 49.5 L85.8 54.4 L87.6 61.7 L81 57.8 L74.4 61.7 L76.2 54.4 L70.5 49.5 L78 49 Z"],
+  },
+  {
+    // Four points on a tall axis, kept deliberately thick-waisted. A slender
+    // sparkle looked right at 90px and vanished at 26px, where thin diagonal
+    // arms carry almost no area; this reads as a bright four-point mark all
+    // the way down, and its symmetry keeps it distinct from the five-point
+    // Star above it.
+    name: "Spark",
+    plates: ["M82 42 L86 50 L91 54 L86 58 L82 66 L78 58 L73 54 L78 50 Z"],
   },
 ];
 
@@ -219,6 +241,14 @@ function availableIndices(part: RunnerIconPart): readonly number[] {
     if (!isDeprecated(part, index)) indices.push(index);
   }
   return indices;
+}
+
+/**
+ * The indices the editor and Surprise Me will actually offer for a part.
+ * Retired options are absent here but still decode and draw.
+ */
+export function selectableRunnerIconIndices(part: RunnerIconPart): readonly number[] {
+  return availableIndices(part);
 }
 
 export function runnerIconShape(part: RunnerIconPart, index: number): RunnerIconShape {

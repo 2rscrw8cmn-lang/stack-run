@@ -56,15 +56,15 @@ interface RunnerIconBuilderProps {
  * The Runner Icon editor.
  *
  * Four compact rows and a live mark kept in view while the runner works,
- * rather than a gallery of every part — twenty-four options laid out in full
- * would be a scrolling page on a phone, and the whole point of this mark is
- * that it is small.
+ * rather than a gallery of every part — every option laid out in full would
+ * be a scrolling page on a phone, and the whole point of this mark is that it
+ * is small.
  */
 export function RunnerIconBuilder({ icon, accent, onChange }: RunnerIconBuilderProps) {
   return (
     <div className="runner-icon-builder" data-member-color={accent}>
       <div className="runner-icon-builder__stage technical-grid">
-        <RunnerIcon icon={icon} accent={accent} size={104} label="Runner Icon preview" />
+        <RunnerIcon icon={icon} accent={accent} size={92} label="Runner Icon preview" />
       </div>
 
       <div className="runner-icon-builder__parts">

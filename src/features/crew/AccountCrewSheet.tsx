@@ -852,10 +852,7 @@ function RunnerIconPanel({ crew, onBack }: { crew: RaceCrewController; onBack: (
     <>
       <BackButton onClick={onBack} label="Back to Edit Profile" />
       <section className="crew-settings__section">
-        <p className="crew-settings__copy">
-          A small personal mark for Crew rows, Props and Member Builds. It uses
-          your color, so it always matches the blocks you build.
-        </p>
+        <p className="crew-settings__note">Your mark across Crew. Uses your color.</p>
         <RunnerIconBuilder icon={icon} accent={accent} onChange={setDraft} />
         <AccentColorPicker
           current={profile.accentColor}
@@ -1033,8 +1030,21 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
                       className="settings__row"
                       onClick={() => setView("profile")}
                     >
+                      {/* The runner's own mark, not a generic person glyph:
+                          this row is them, and they built this. */}
                       <span className="settings__row-icon" aria-hidden="true">
-                        <UserRound size={18} strokeWidth={1.9} />
+                        {crew.account ? (
+                          <RunnerIcon
+                            icon={crew.account.profile.runnerIcon}
+                            accent={crewMemberAccent(
+                              crew.account.profile.id,
+                              crew.account.profile.accentColor,
+                            )}
+                            size={24}
+                          />
+                        ) : (
+                          <UserRound size={18} strokeWidth={1.9} />
+                        )}
                       </span>
                       <span className="settings__row-text">
                         <span className="settings__row-label">

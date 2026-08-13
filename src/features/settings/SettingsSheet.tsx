@@ -9,7 +9,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Sheet } from "../../components/ui/Sheet";
 import {
   blockedDates,
@@ -57,6 +57,8 @@ interface SettingsSheetProps {
   lastSyncedAt?: string | null;
   onOpenAccountCrew?: () => void;
   accountCrewValue?: string;
+  /** The signed-in runner's icon, when there is one. */
+  accountCrewMark?: ReactNode;
   onReplayTour?: () => void;
 }
 
@@ -70,9 +72,14 @@ interface SettingsRowProps {
   value: string;
   onClick: () => void;
   danger?: boolean;
+  /**
+   * Stands in for the row's glyph. Only the account row uses it, to show the
+   * signed-in runner's own icon instead of a generic person symbol.
+   */
+  mark?: ReactNode;
 }
 
-function SettingsRow({ Icon, label, value, onClick, danger }: SettingsRowProps) {
+function SettingsRow({ Icon, label, value, onClick, danger, mark }: SettingsRowProps) {
   return (
     <li>
       <button
@@ -83,7 +90,7 @@ function SettingsRow({ Icon, label, value, onClick, danger }: SettingsRowProps) 
         onClick={onClick}
       >
         <span className="settings__row-icon" aria-hidden="true">
-          <Icon size={18} strokeWidth={1.9} />
+          {mark ?? <Icon size={18} strokeWidth={1.9} />}
         </span>
         <span className="settings__row-text">
           {/* The space is load bearing: without it the label and the value
@@ -166,6 +173,7 @@ export function SettingsSheet({
   lastSyncedAt = null,
   onOpenAccountCrew = () => undefined,
   accountCrewValue = "Not signed in",
+  accountCrewMark = null,
   onReplayTour = () => undefined,
 }: SettingsSheetProps) {
   const [child, setChild] = useState<Child | null>(null);
@@ -264,6 +272,7 @@ export function SettingsSheet({
             <ul className="settings__rows">
               <SettingsRow
                 Icon={Users}
+                mark={accountCrewMark}
                 label="Account & Crew"
                 value={accountCrewValue}
                 onClick={() => {

@@ -1,6 +1,5 @@
 import { UsersRound } from "lucide-react";
 import { useEffect } from "react";
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
 import { Button } from "../../components/ui/Button";
 import { Section } from "../../components/ui/Section";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
@@ -36,17 +35,21 @@ export function TodayCrewActivity({
     <Section className="today-crew-activity" icon={<UsersRound size={15} strokeWidth={2} />} title="Crew Activity">
       <ul className="today-crew-activity__list">
         {runs.map((run) => (
-          <li key={run.id} data-member-color={crewMemberAccent(run.userId, run.accentColor)}>
-            <span className="today-crew-activity__icon" data-type={run.activityType}>
-              <ActivityIcon type={run.activityType} size={17} />
-            </span>
+          <li
+            key={run.id}
+            data-type={run.activityType}
+            data-member-color={crewMemberAccent(run.userId, run.accentColor)}
+          >
+            {/* One icon, and it is the runner's — same rule as the Crew feed. */}
+            <RunnerIcon icon={run.runnerIcon} size={26} />
             <span className="today-crew-activity__body">
-              <span className="today-crew-activity__name">
-                <RunnerIcon icon={run.runnerIcon} size={26} />
-                {run.displayName}
-              </span>
+              <span className="today-crew-activity__name">{run.displayName}</span>
               <span className="machine-label">
-                {formatMiles(run.distanceMiles)} MI · {WORKOUT_TYPE_LABEL[run.activityType]} · {run.localDate === today ? "today" : "yesterday"}
+                <span className="today-crew-activity__type">
+                  {WORKOUT_TYPE_LABEL[run.activityType]}
+                </span>
+                {" · "}
+                {formatMiles(run.distanceMiles)} MI · {run.localDate === today ? "today" : "yesterday"}
               </span>
             </span>
             <PropsButton

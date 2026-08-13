@@ -32,6 +32,17 @@ identifying. Extras are the one part drawn in a non-accent tone
 rather than more of the runner's color; they are honestly a large-size detail
 and are never what distinguishes two runners on their own.
 
+The Extras set is held to the same size bar as everything else, checked by
+rendering it at 26/32/42px rather than by eye at full size. `Side Stripe` is
+retired — at real size a thin vertical rule at the silhouette's edge was
+indistinguishable from the icon's own outline. `Bib Stripe` became `Band`, deep
+enough to register as a band instead of a 5px pinstripe that vanished. `Sweat`
+and `Bolt` were thickened, and a `Spark` was added with a deliberately
+thick waist, because a slender four-point sparkle looked right at 90px and
+disappeared at 26px. A retired option keeps its index and keeps decoding and
+drawing — `selectableRunnerIconIndices` is what the editor and Surprise Me
+walk — so no already-saved icon ever changes meaning.
+
 `RunnerIcon.tsx` draws the mark at any size from one shared coordinate space,
 and sets `data-member-color` on the SVG itself rather than inheriting it, so an
 icon lifted out of a member-colored row is still the right color. It is
@@ -53,10 +64,44 @@ blocks and comparison bars as well as the icon.
 The icon now stands in for the retired `.crew-member-marker` dot in Crew member
 rows and the crew roster, Recent Crew Runs, Today's Crew Activity, crew
 comparisons, Member Build cards and the Member Build sheet, crew-safe Run Detail
-and the Crew Build legend. It does **not** go on Crew Build blocks: those stay
-member-colored with at most an initial per issue #65, and `CrewBuildRun`
-deliberately carries no `runnerIcon` so the boundary is structural rather than a
-convention.
+and the Crew Build legend. It does **not** go on Crew Build blocks, and
+`CrewBuildRun` deliberately carries no `runnerIcon` so that boundary is
+structural rather than a convention.
+
+**Crew Build blocks carry no mark at all.** The small corner initial is gone
+with `Brick`'s `monogram` prop: the whole block is already the runner's colour
+(issue #65), so an initial was a second ownership signal on the same object and
+the only thing keeping a Crew brick from looking like a Personal one. The
+runner's name still reaches assistive technology through each block's hidden
+label, and their icon lives in the legend beneath the tower.
+
+**One icon per row, not two.** A Crew run card used to carry an activity tile
+*and* a Runner Icon, which is what made it 72px tall. The Runner Icon takes the
+single icon slot; what kind of run it was moves to a thin left edge on
+`.crew-run-item` in the activity colour plus the type word leading the meta
+line, and the card drops from three text lines to two (name and date on one,
+`EASY · 4.2 mi · 39:12 · 9:20` on the next). Today's Crew Activity follows the
+same rule. The general form for Crew identity surfaces: **the icon says who,
+the colour says what kind.**
+
+**Comparison bars are coloured by person.** `--comparison-accent` is gone. The
+bars had been keyed to the metric, so four runners drew four identical bars in
+an activity colour and a runner changed colour whenever the metric tab moved;
+`.crew-comparison__bar-fill` now reads `--member-accent` off the row, matching
+that runner's icon, legend entry and Crew Build blocks. The metric keeps its own
+identity in the selector tabs (`--metric-option-color`). `crewComparisonStyling.test.ts`
+guards both halves — one bar geometry for every metric, and a fill keyed to the
+runner rather than the metric.
+
+**The icon is the signed-in runner across STACK, not only inside Crew.** It
+replaces the generic person glyph in the Account & Crew profile row and in
+Settings' account row (`SettingsRow` grew an optional `mark` slot for exactly
+this), and stands beside the gear in `AppShell`'s header as the account
+affordance, inside the existing row at the gear's own height. Because the header
+opens Account & Crew directly, `AppShell` now remembers whether a visit came
+from Settings and only returns there if it did — the same pattern Run Data
+already used. Personal Build gets no icon: those bricks are already all yours,
+and marking them would repeat the mistake removed from Crew Build above.
 
 `supabase/migrations/20260813170000_runner_icon.sql` adds `profiles.runner_icon`
 with a check pattern matching the code format. Null stays null — nothing is

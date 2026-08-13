@@ -503,6 +503,27 @@ describe("Crew comparisons and runs", () => {
     expect(runButtons[0]).toHaveTextContent("9:37 /MI");
   });
 
+  /**
+   * One icon per card, and it is the runner's. The activity tile that used to
+   * sit beside it is gone: what kind of run it was is carried by the item's
+   * activity colour and the type word, not by a second badge.
+   */
+  it("leads each crew run card with the runner icon and no activity tile", async () => {
+    await openCrew();
+    const card = screen
+      .getAllByRole("button", { name: /Open crew-safe run detail/ })[0]
+      .closest("li");
+
+    expect(card?.querySelectorAll(".runner-icon")).toHaveLength(1);
+    expect(card?.querySelector(".crew-run-row__icon")).toBeNull();
+    // The type is still named in the metadata, and typed on the item so the
+    // left edge can carry its colour.
+    expect(card).toHaveAttribute("data-type", "long");
+    expect(card?.querySelector(".crew-run-row__activity")).toHaveTextContent("Long Run");
+    // Distance, duration and pace all survive the compaction.
+    expect(card).toHaveTextContent("9:37 /MI");
+  });
+
   it("ranks Miles Built by communal placement rather than total shared mileage", async () => {
     const placedA = sharedRun("a-placed", "zack", "2026-08-09", {
       distanceMiles: 6,
@@ -766,13 +787,15 @@ describe("Shared Crew Build", () => {
     expect(brick?.style.getPropertyValue("--piece-color")).toBe(
       `var(--member-${blocks[0].getAttribute("data-member-color")})`,
     );
-    // Zack ran this one: the monogram badge carries his initial, not his
-    // activity color, which stays on the block face. The monogram is the
-    // shared brick primitive's, not a Crew-only class — Personal and Crew
-    // Build share one ownership-mark implementation.
-    const monogram = blocks[0].querySelector(".placed-block__monogram");
-    expect(monogram).toHaveTextContent("Z");
-    expect(monogram).toHaveAttribute("aria-hidden", "true");
+    // Colour is the whole of Crew ownership: no initial, no badge, nothing
+    // stamped on the face. A Crew brick is as clean as a Personal one, and
+    // the runner's identity lives in the legend instead.
+    expect(blocks[0].querySelector(".placed-block__monogram")).toBeNull();
+    // The visible face shows the mileage and nothing else. Zack's name still
+    // reaches a screen reader through the block's hidden label.
+    const face = blocks[0].querySelector(".placed-block__brick")?.textContent ?? "";
+    expect(face).toBe("4");
+    expect(blocks[0].querySelector(".visually-hidden")).toHaveTextContent("Zack");
   });
 
   /**

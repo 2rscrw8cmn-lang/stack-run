@@ -385,6 +385,22 @@ library for quantity, or add uploads, animation, cosmetics or a new navigation
 destination. No new dependency, no RLS change, no safe-projection field, no
 personal AppState migration.
 
+A second pass integrated the icon into STACK rather than layering it on top:
+
+- Crew Build blocks lost their corner initial — colour is the whole of
+  ownership, and `Brick`'s `monogram` prop is gone with it;
+- Recent Crew Runs and Today's Crew Activity dropped from three text lines and
+  two icons to two lines and one: the Runner Icon leads, and the activity type
+  moved to a thin left edge plus the type word (72px → ~56px cards);
+- comparison bars are coloured by runner instead of by metric, so a row matches
+  that runner's icon, legend entry and Crew Build blocks;
+- the icon replaces the generic person glyph in the Account & Crew profile row
+  and Settings' account row, and stands beside the header gear as the account
+  affordance;
+- Extras were pruned against a 26/32/42px legibility check: `Side Stripe`
+  retired, `Bib Stripe` → a deeper `Band`, `Sweat`/`Bolt` thickened, `Spark`
+  added. Retired options keep their index and keep rendering.
+
 Still owner review: a real-iPhone pass at 320px, 390px and desktop over the
 editor and the Crew surfaces the icon now appears on, and a two-account check
 that a saved icon shows up in a crewmate's roster.
