@@ -22,22 +22,29 @@ alter table public.crews alter column race_date drop not null;
 alter table public.crews alter column race_distance_miles drop not null;
 
 -- A race Crew keeps every race fact; a Run Club carries none of them. No
--- fake/default race is ever stored just to satisfy the schema.
-alter table public.crews
-  add constraint crews_race_fields_match_type
-  check (
-    (
-      crew_type = 'race'
-      and race_name is not null
-      and race_date is not null
-      and race_distance_miles is not null
-    ) or (
-      crew_type = 'club'
-      and race_name is null
-      and race_date is null
-      and race_distance_miles is null
-    )
-  );
+-- fake/default race is ever stored just to satisfy the schema. Guarded like
+-- the `if not exists` column adds above, so re-running this migration on a
+-- database that already has the constraint is a no-op rather than an error.
+do $$
+begin
+  alter table public.crews
+    add constraint crews_race_fields_match_type
+    check (
+      (
+        crew_type = 'race'
+        and race_name is not null
+        and race_date is not null
+        and race_distance_miles is not null
+      ) or (
+        crew_type = 'club'
+        and race_name is null
+        and race_date is null
+        and race_distance_miles is null
+      )
+    );
+exception
+  when duplicate_object then null;
+end $$;
 
 -- `crews_build_start_not_after_race` (build_start_date <= race_date) already
 -- tolerates a null race_date: a check constraint is satisfied whenever its
