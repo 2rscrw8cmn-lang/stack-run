@@ -13,8 +13,6 @@ interface BrickProps {
   topFace: readonly boolean[];
   /** One flag per course the block stands: true where nothing abuts it. */
   rightFace: readonly boolean[];
-  /** A small ownership mark on the face, e.g. a Crew member's initial. */
-  monogram?: string;
 }
 
 /**
@@ -22,12 +20,14 @@ interface BrickProps {
  * right, each drawn only where the geometry says something isn't already
  * covering it. This is the reusable half of Personal Build's `PlacedBlock` —
  * the visual markup and CSS extracted so Crew Build's blocks render with the
- * identical construction language, just under a different colour and an
- * optional ownership mark. The outer element (button vs. static span,
+ * identical construction language, just under a different colour. Crew
+ * ownership is the colour and nothing else — no initial, no badge, no mark on
+ * the face — so a Crew brick is as clean as a Personal one. The outer element
+ * (button vs. static span,
  * data-capstone, data-just-placed, grid position) stays with each caller,
  * since that is where Personal and Crew genuinely differ.
  */
-export function Brick({ pieceColor, label, topFace, rightFace, monogram }: BrickProps) {
+export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
   return (
     <span
       className="placed-block__brick"
@@ -42,11 +42,6 @@ export function Brick({ pieceColor, label, topFace, rightFace, monogram }: Brick
           </span>
         )}
       </span>
-      {monogram && (
-        <span className="placed-block__monogram" aria-hidden="true">
-          {monogram}
-        </span>
-      )}
       {/*
         One segment per grid cell along each edge, so a face stops exactly
         where a neighbour begins instead of sliding out from under it.

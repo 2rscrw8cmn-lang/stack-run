@@ -394,6 +394,55 @@ Still owner review: a second real-iPhone pass over the corrected Run Detail at 3
 
 UI-23 adds no Supabase/database migration, no new dependency, and no change to the Intervals API key/credential boundary, HR-zone calculation, run edit/delete behavior, or plan linking/unlinking rules.
 
+## Runner Icons — in review
+
+A personal identity mark for each STACK account, authorized by D-074 and scoped
+in `docs/CURRENT_APPLICATION_STRUCTURE.md`. Runners get a small modular
+arcade/totem icon — Head, Face, Body, Extra — drawn in the member accent they
+already have, editable at Settings → Account & Crew → Edit Profile → Runner
+Icon, and shown wherever a generic accent dot was previously doing the job of
+saying who someone is.
+
+What it adds:
+
+- `src/crew/runnerIcon.ts`: the part library, the `R1-…` code, tolerant
+  decoding, `runnerIconFromSeed` defaults and Surprise Me;
+- `RunnerIcon.tsx` (the mark) and `RunnerIconBuilder.tsx` (the compact editor),
+  plus a Runner Icon view under Edit Profile;
+- one column, `profiles.runner_icon`
+  (`supabase/migrations/20260813170000_runner_icon.sql`), self-only, nullable,
+  never backfilled;
+- runner icons in Crew member rows and roster, Recent Crew Runs, Today's Crew
+  Activity, comparisons, Member Build cards and sheet, crew-safe Run Detail and
+  the Crew Build legend, replacing `.crew-member-marker`.
+
+What it deliberately does not do: give the icon a color of its own (it uses
+`profiles.accent_color`, so icon and Crew Build ownership can never disagree),
+stamp the icon onto Crew Build blocks, touch Crew Emblems, expand the part
+library for quantity, or add uploads, animation, cosmetics or a new navigation
+destination. No new dependency, no RLS change, no safe-projection field, no
+personal AppState migration.
+
+A second pass integrated the icon into STACK rather than layering it on top:
+
+- Crew Build blocks lost their corner initial — colour is the whole of
+  ownership, and `Brick`'s `monogram` prop is gone with it;
+- Recent Crew Runs and Today's Crew Activity dropped from three text lines and
+  two icons to two lines and one: the Runner Icon leads, and the activity type
+  moved to a thin left edge plus the type word (72px → ~56px cards);
+- comparison bars are coloured by runner instead of by metric, so a row matches
+  that runner's icon, legend entry and Crew Build blocks;
+- the icon replaces the generic person glyph in the Account & Crew profile row
+  and Settings' account row, and stands beside the header gear as the account
+  affordance;
+- Extras were pruned against a 26/32/42px legibility check: `Side Stripe`
+  retired, `Bib Stripe` → a deeper `Band`, `Sweat`/`Bolt` thickened, `Spark`
+  added. Retired options keep their index and keep rendering.
+
+Still owner review: a real-iPhone pass at 320px, 390px and desktop over the
+editor and the Crew surfaces the icon now appears on, and a two-account check
+that a saved icon shows up in a crewmate's roster.
+
 ## Active source documents
 
 - `START_HERE.md`

@@ -14,6 +14,7 @@ function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
     userId: "runner-2",
     displayName: "Runner 2",
     accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
     localDate: "2026-08-10",
     activityType: "easy",
     distanceMiles: 4,

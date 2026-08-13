@@ -1,11 +1,14 @@
 import type { CrewEmblem } from "./emblem";
 import type { CrewMemberAccent } from "./memberAccent";
+import type { RunnerIcon } from "./runnerIcon";
 
 export interface CrewProfile {
   id: string;
   displayName: string;
   /** Null until the runner picks one in Settings; a stable hash fills in until then. */
   accentColor: CrewMemberAccent | null;
+  /** Always renderable: an account with no saved icon gets its stable derived one. */
+  runnerIcon: RunnerIcon;
 }
 
 /** `race`: the original race-centered Crew. `club`: an ongoing Run Club with no race required. */
@@ -34,6 +37,8 @@ export interface CrewMember {
   displayName: string;
   /** Null until the runner picks one in Settings; a stable hash fills in until then. */
   accentColor: CrewMemberAccent | null;
+  /** Always renderable: an account with no saved icon gets its stable derived one. */
+  runnerIcon: RunnerIcon;
 }
 
 export interface CrewInvite {
@@ -103,6 +108,7 @@ export interface CrewSharedRun {
   userId: string;
   displayName: string;
   accentColor: CrewMemberAccent | null;
+  runnerIcon: RunnerIcon;
   localDate: string;
   activityType: "easy" | "intervals" | "simulation" | "long" | "race";
   distanceMiles: number;
@@ -145,6 +151,11 @@ export interface CrewMiniBuildRun {
  * describes one runner's private arrangement and has no meaning in a tower
  * everybody contributes to, so the Crew Build cannot read it even by accident.
  * `createdAt` is present because it is the communal contribution order.
+ */
+/**
+ * `runnerIcon` is deliberately absent. A Crew Build block is member-colored
+ * and carries at most an initial; the runner's icon belongs in the legend and
+ * the identity UI around the tower, not stamped onto every brick.
  */
 export interface CrewBuildRun {
   id: string;

@@ -16,6 +16,7 @@ function run(
     userId,
     displayName: userId === "zack" ? "Zack" : "Drew",
     accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
     localDate,
     activityType: "easy",
     distanceMiles: 3.2,

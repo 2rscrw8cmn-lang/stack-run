@@ -6,9 +6,11 @@ import {
   loadCrewAccount,
   updateAccentColor,
   updateCrew,
+  updateRunnerIcon,
   validateCrewDetails,
 } from "./crewService";
 import { crewMemberAccent } from "./memberAccent";
+import { runnerIconFromSeed } from "./runnerIcon";
 import {
   DEFAULT_CREW_EMBLEM,
   crewEmblemFromSeed,
@@ -179,6 +181,35 @@ describe("Accent color", () => {
   });
 });
 
+describe("Runner Icon", () => {
+  it("persists approved option identifiers as a code, never markup", async () => {
+    const { client, chain } = profilesTable({ error: null });
+    await updateRunnerIcon(client, "user-1", { head: 1, face: 3, body: 5, extra: 2 });
+
+    expect(chain.update).toHaveBeenCalledWith({ runner_icon: "R1-1.3.5.2" });
+    expect(chain.eq).toHaveBeenCalledWith("id", "user-1");
+  });
+
+  /**
+   * The service encodes rather than accepting a string, so the only thing
+   * that can reach this column is four validated indices — a caller cannot
+   * smuggle SVG through it even by mistake.
+   */
+  it("clamps an out-of-range part instead of writing it", async () => {
+    const { client, chain } = profilesTable({ error: null });
+    await updateRunnerIcon(client, "user-1", { head: 99, face: 0, body: 0, extra: 0 });
+
+    expect(chain.update).toHaveBeenCalledWith({ runner_icon: "R1-0.0.0.0" });
+  });
+
+  it("surfaces a database rejection rather than reporting success", async () => {
+    const { client } = profilesTable({ error: { message: "violates check constraint" } });
+    await expect(
+      updateRunnerIcon(client, "user-1", { head: 0, face: 0, body: 0, extra: 0 }),
+    ).rejects.toThrow("violates check constraint");
+  });
+});
+
 interface QueryResult {
   data: unknown;
   error: { message: string } | null;
@@ -237,10 +268,18 @@ function crewRow(id: string, name: string, emblem: string | null) {
 function multiCrewResponses(): Record<string, QueryResult[]> {
   return {
     profiles: [
-      { data: { id: "user-1", display_name: "Runner", accent_color: "magenta" }, error: null },
+      {
+        data: {
+          id: "user-1",
+          display_name: "Runner",
+          accent_color: "magenta",
+          runner_icon: "R1-1.3.5.2",
+        },
+        error: null,
+      },
       {
         data: [
-          { id: "user-1", display_name: "Runner", accent_color: "magenta" },
+          { id: "user-1", display_name: "Runner", accent_color: "magenta", runner_icon: "R1-1.3.5.2" },
           { id: "user-2", display_name: "Second", accent_color: "sky" },
           { id: "user-3", display_name: "Third", accent_color: null },
         ],
@@ -318,6 +357,21 @@ describe("Loading an account with more than one crew", () => {
    * who has never opened the picker still renders with, and never includes
    * the viewer's own color.
    */
+  /**
+   * A saved icon decodes; a crewmate who has never built one still renders,
+   * from their user id. Neither case is allowed to leave a member without a
+   * mark, because Crew UI draws one for everybody.
+   */
+  it("resolves a runner icon for every member, saved or derived", async () => {
+    const { client } = fakeClient(multiCrewResponses());
+    const account = await loadCrewAccount(client, user, "crew-1");
+
+    expect(account.profile.runnerIcon).toEqual({ head: 1, face: 3, body: 5, extra: 2 });
+    const roster = new Map(account.members.map((member) => [member.userId, member.runnerIcon]));
+    expect(roster.get("user-1")).toEqual({ head: 1, face: 3, body: 5, extra: 2 });
+    expect(roster.get("user-3")).toEqual(runnerIconFromSeed("user-3"));
+  });
+
   it("collects taken accent colors across every crew, excluding the viewer", async () => {
     const { client } = fakeClient(multiCrewResponses());
     const account = await loadCrewAccount(client, user, "crew-1");

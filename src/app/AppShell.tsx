@@ -23,6 +23,8 @@ import { SettingsSheet } from "../features/settings/SettingsSheet";
 import { useEffect, useState } from "react";
 import type { RaceCrewController } from "../crew/useRaceCrew";
 import { AccountCrewSheet } from "../features/crew/AccountCrewSheet";
+import { RunnerIcon } from "../features/crew/RunnerIcon";
+import { crewMemberAccent } from "../crew/memberAccent";
 import { CrewScreen } from "../features/crew/CrewScreen";
 import type { PersonalSyncController } from "../personal-sync/types";
 
@@ -111,6 +113,15 @@ export function AppShell({
   // Run Data is reached from Today and from Settings. Dismissing it should go
   // back wherever it was opened from, so which one that was is remembered.
   const [runDataFromSettings, setRunDataFromSettings] = useState(false);
+  // Account & Crew has the same problem now that the header opens it directly:
+  // only a visit that came from Settings should land back in Settings.
+  const [accountCrewFromSettings, setAccountCrewFromSettings] = useState(false);
+
+  function openAccountCrew(fromSettings: boolean) {
+    setAccountCrewFromSettings(fromSettings);
+    if (!fromSettings) setSettingsOpen(false);
+    setAccountCrewOpen(true);
+  }
 
   const personalInitialization = personalSync?.initialization ?? null;
 
@@ -128,6 +139,9 @@ export function AppShell({
     setRunDataFromSettings(fromSettings);
     setRunDataOpen(true);
   }
+  // Present only for a signed-in account; personal STACK has no runner to show.
+  const runnerProfile = raceCrew.status === "signed-in" ? raceCrew.account?.profile ?? null : null;
+
   return (
     <div className="app-shell">
       {/*
@@ -149,13 +163,38 @@ export function AppShell({
             opens over whatever tab you are on and closes back to it — the tab
             never changes, so there is nothing to restore.
           */}
-          <IconButton
-            label="Settings"
-            icon={<SettingsIcon size={20} strokeWidth={1.8} />}
-            aria-haspopup="dialog"
-            aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen(true)}
-          />
+          <div className="app-shell__header-actions">
+            {/*
+              The signed-in runner's own icon, standing next to the gear as
+              the account affordance. It is the same mark their crewmates see,
+              which is the point: this is who STACK currently is. It sits
+              inside the existing row at the gear's own height, so the header
+              gains an identity without gaining a pixel.
+            */}
+            {runnerProfile && (
+              <button
+                type="button"
+                className="app-shell__runner"
+                aria-haspopup="dialog"
+                aria-expanded={accountCrewOpen}
+                aria-label={`${runnerProfile.displayName}. Account & Crew.`}
+                onClick={() => openAccountCrew(false)}
+              >
+                <RunnerIcon
+                  icon={runnerProfile.runnerIcon}
+                  accent={crewMemberAccent(runnerProfile.id, runnerProfile.accentColor)}
+                  size={24}
+                />
+              </button>
+            )}
+            <IconButton
+              label="Settings"
+              icon={<SettingsIcon size={20} strokeWidth={1.8} />}
+              aria-haspopup="dialog"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(true)}
+            />
+          </div>
         </div>
       </header>
       {notice}
@@ -216,10 +255,7 @@ export function AppShell({
         {activeTab === "crew" && crewAvailable && (
           <CrewScreen
             crew={raceCrew}
-            onOpenAccountCrew={() => {
-              setSettingsOpen(false);
-              setAccountCrewOpen(true);
-            }}
+            onOpenAccountCrew={() => openAccountCrew(false)}
           />
         )}
         {activeTab === "plan" && (
@@ -258,7 +294,16 @@ export function AppShell({
         onOpenRunData={() => openRunData(null, true)}
         isConnected={Boolean(intervalsConnection)}
         lastSyncedAt={appState.intervalsSync.lastSuccessfulActivitySyncAt}
-        onOpenAccountCrew={() => setAccountCrewOpen(true)}
+        onOpenAccountCrew={() => openAccountCrew(true)}
+        accountCrewMark={
+          runnerProfile ? (
+            <RunnerIcon
+              icon={runnerProfile.runnerIcon}
+              accent={crewMemberAccent(runnerProfile.id, runnerProfile.accentColor)}
+              size={22}
+            />
+          ) : null
+        }
         accountCrewValue={
           raceCrew.status !== "signed-in"
             ? "Not signed in"
@@ -275,7 +320,7 @@ export function AppShell({
         isOpen={accountCrewOpen}
         onClose={() => {
           setAccountCrewOpen(false);
-          setSettingsOpen(true);
+          if (accountCrewFromSettings) setSettingsOpen(true);
         }}
         crew={raceCrew}
         personalSync={personalSync}

@@ -77,6 +77,16 @@
   --member-vermilion: #e35f3b;
   --member-rust: #e3843b;
 
+  /*
+   * Runner Icon construction. The ink is darker than any app surface so an
+   * icon's outline and its cut-out slots hold on the sheet, the Crew card and
+   * the technical grid alike; the mark color is the one non-accent tone an
+   * icon may use, reserved for the Extra part so a bolt reads as applied
+   * hardware rather than more of the runner's color.
+   */
+  --runner-icon-ink: #04090d;
+  --runner-icon-mark: #f6f7f8;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 22px;
