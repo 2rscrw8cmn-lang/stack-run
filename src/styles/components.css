@@ -429,6 +429,15 @@
     border-radius: 999px;
     background: var(--border-strong);
   }
+
+  /*
+   * Every Training Signal detail is a different view of the same instrument,
+   * not a sheet whose height depends on how much that signal has to say. Pin
+   * them all to the same near-full-screen height and let the body scroll.
+   */
+  .sheet--instrument .sheet__panel {
+    height: 90%;
+  }
 }
 
 @media (min-width: 768px) {
@@ -3834,6 +3843,23 @@ textarea.run-input {
   transform: rotate(-90deg);
 }
 
+/* A large centered donut is the focal point of Run Mix and HR Zones: the
+   ring first, its legend beneath, rather than a small side-by-side pair. */
+.donut--large {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: var(--space-3);
+}
+
+.donut--large .donut__figure svg {
+  max-width: min(64vw, 240px);
+}
+
+.donut--large .donut__legend {
+  width: 100%;
+  max-width: 320px;
+}
+
 .donut__track,
 .donut__arc { fill: none; stroke-width: 16; }
 .donut__track { stroke: var(--surface-strong); }
@@ -3893,27 +3919,32 @@ textarea.run-input {
 .plan-actual-chart__key i { display: inline-block; width: 14px; height: 6px; background: var(--accent); }
 .plan-actual-chart__key i[data-kind="planned"] { height: 0; border-top: 2px dashed var(--text-muted); background: none; }
 
-.plan-actual-chart__selectors {
-  display: flex;
-  gap: var(--space-1);
-  margin-top: var(--space-3);
-  padding-bottom: var(--space-1);
-  overflow-x: auto;
-  scrollbar-width: thin;
+.plan-actual-chart__plot { position: relative; }
+
+/* Transparent, full-height hit targets over each chart column — the chart
+   itself is the week selector, so there is no separate visible pill row. */
+.plan-actual-chart__targets { position: absolute; inset: 0; }
+
+.plan-actual-chart__target {
+  position: absolute;
+  top: 0;
+  left: var(--target-left);
+  width: var(--target-width);
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.plan-actual-chart__target:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
-.plan-actual-chart__selector {
-  flex: 0 0 44px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 11px;
-}
-.plan-actual-chart__selector[aria-pressed="true"] { border-color: var(--accent); color: var(--text); background: var(--surface-strong); }
+.chart__tick--x-selected { fill: var(--accent); font-weight: 700; }
+
+.plan-actual-chart--intervals .plan-actual-chart__actual { fill: var(--intervals); }
+.plan-actual-chart--intervals .chart__tick--x-selected { fill: var(--intervals); }
 
 .selectable-line { position: relative; }
 .selectable-line__reference { fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 5 4; }
@@ -4257,7 +4288,6 @@ textarea.run-input {
 
 .chart__tick,
 .plan-actual-chart__key,
-.plan-actual-chart__selector,
 .donut__value,
 .consistency-grid__ratio,
 .consistency-grid__number,
@@ -4279,15 +4309,8 @@ textarea.run-input {
   stroke: var(--chart-reference);
 }
 
-.plan-actual-chart__selector {
-  border-radius: 4px;
-  background: var(--data-surface-strong);
-}
-
-.plan-actual-chart__selector[aria-pressed="true"] {
-  border-color: var(--selected-border);
-  background: color-mix(in srgb, var(--accent) 10%, var(--data-surface-strong));
-  box-shadow: 0 0 0 2px var(--selected-glow);
+.plan-actual-chart__actual--selected {
+  filter: drop-shadow(0 0 4px var(--selected-glow));
 }
 
 .chart__dot--selected {
@@ -4318,6 +4341,9 @@ textarea.run-input {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+.donut--large .donut__center-value { font-size: 20px; }
+.donut--large .donut__center-label { font-size: 10px; }
 
 .donut__swatch {
   border-radius: 1px;
@@ -4886,7 +4912,7 @@ textarea.run-input {
 .plan-actual-chart__figure {
   display: block;
   width: 100%;
-  min-height: 176px;
+  min-height: 192px;
 }
 
 .chart__grid-line {
@@ -4894,8 +4920,20 @@ textarea.run-input {
   stroke-width: 1;
 }
 
+.chart__tick--x {
+  font-size: 8px;
+}
+
 .plan-actual-chart__actual {
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 20%, transparent));
+}
+
+.plan-actual-chart--intervals .plan-actual-chart__actual {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--intervals) 20%, transparent));
+}
+
+.plan-actual-chart--intervals .plan-actual-chart__key i[data-kind="actual"] {
+  background: var(--intervals);
 }
 
 .plan-actual-chart__key {
@@ -4904,15 +4942,6 @@ textarea.run-input {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.plan-actual-chart__selectors {
-  margin-top: 8px;
-}
-
-.plan-actual-chart__selector {
-  min-height: 44px;
-  border-radius: 4px;
 }
 
 .signal-facts {

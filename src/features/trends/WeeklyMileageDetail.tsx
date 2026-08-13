@@ -50,6 +50,9 @@ export function WeeklyMileageDetail({
         selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
+      <p className="signal-detail__period machine-label">
+        {selected.label}{selected.isPartial ? " · in progress" : ""} · {formatMiles(selected.actualMiles)} mi
+      </p>
       <SignalFacts
         facts={[
           { label: selected.isPartial ? "Actual so far" : "Current", value: `${formatMiles(selected.actualMiles)} mi` },
@@ -58,11 +61,6 @@ export function WeeklyMileageDetail({
           ...(delta === null ? [] : [{ label: "Delta", value: signedMiles(delta) }]),
         ]}
       />
-      <DetailSection title="Select a week">
-        <p className="signal-detail__intro">
-          Tap a bar or week control to inspect the runs behind it. Solid lime is actual; the dashed marker is plan.
-        </p>
-      </DetailSection>
       <DetailSection
         title={<><span>{`${selected.label} runs`}</span><span>{` · ${formatMiles(selected.actualMiles)} mi`}</span></>}
       >

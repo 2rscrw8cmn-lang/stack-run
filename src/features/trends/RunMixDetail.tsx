@@ -22,6 +22,7 @@ export function RunMixDetail({ signals }: { signals: TrainingSignals }) {
     <div className="signal-detail">
       <p className="signal-detail__period machine-label">Last 4 weeks</p>
       <DonutChart
+        size="large"
         label="Last 4 weeks run mix"
         centerValue={`${Math.round(dominant.share * 100)}%`}
         centerLabel={WORKOUT_TYPE_LABEL[dominant.activityType]}

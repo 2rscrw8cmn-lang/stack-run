@@ -325,6 +325,13 @@ describe("Runs Training Signals", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps compact cards to a title, a value and a note — no mini charts", () => {
+    renderRuns(week1);
+    const card = screen.getByRole("button", { name: /^Weekly Mileage,/ });
+    expect(card.querySelector("svg")).toBeNull();
+    expect(card.querySelectorAll(".mini-bars, .mini-donut, .mini-sparkline, .mini-matrix")).toHaveLength(0);
+  });
+
   it("names the value and the specific destination on every card", () => {
     renderRuns(week1);
     const card = screen.getByRole("button", { name: /^Consistency/ });
@@ -434,5 +441,41 @@ describe("Runs Training Signals", () => {
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Weekly Mileage");
+  });
+
+  it("draws Training Load in Intervals blue, not the generic actual-data color", async () => {
+    const user = userEvent.setup();
+    const richRuns = [
+      run("e1", "2026-08-03", { importedMetrics: { trainingLoad: 30 } }),
+      run("e2", "2026-08-10", { importedMetrics: { trainingLoad: 32 } }),
+    ];
+    renderRuns(richRuns, { today: "2026-08-16" });
+
+    await user.click(screen.getByRole("button", { name: /^Training Load,/ }));
+    expect(document.querySelector(".plan-actual-chart--intervals")).toBeInTheDocument();
+  });
+
+  it("gives Run Mix and HR Zones a large centered donut, not the compact side-by-side one", async () => {
+    const user = userEvent.setup();
+    const richRuns = [
+      run("hr", "2026-08-03", { importedMetrics: { hrZoneSeconds: [0, 300, 900, 0, 0, 0, 0] } }),
+      run("long", "2026-08-09", { activityType: "long", distanceMiles: 5 }),
+    ];
+    renderRuns(richRuns, { today: "2026-08-10" });
+
+    await user.click(screen.getByRole("button", { name: /^HR Zones,/ }));
+    expect(document.querySelector(".donut--large")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    await user.click(screen.getByRole("button", { name: /^Run Mix,/ }));
+    expect(document.querySelector(".donut--large")).toBeInTheDocument();
+  });
+
+  it("removes the redundant select-a-week instructions now that the chart is the control", async () => {
+    const user = userEvent.setup();
+    renderRuns(week1);
+    await user.click(screen.getByRole("button", { name: /^Weekly Mileage,/ }));
+    expect(screen.queryByText(/tap a bar/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Select a week" })).not.toBeInTheDocument();
   });
 });

@@ -18,6 +18,7 @@ export function HeartRateZonesDetail({ signals }: { signals: TrainingSignals }) 
         {formatDateLabel(zones.startDate, { month: "short", day: "numeric" })} — {formatDateLabel(zones.endDate, { month: "short", day: "numeric" })}
       </p>
       <DonutChart
+        size="large"
         segments={zoneDonutSegments(zones.zoneSeconds)}
         label="Recent heart rate zone distribution"
         centerValue={`${dominantPercent}%`}

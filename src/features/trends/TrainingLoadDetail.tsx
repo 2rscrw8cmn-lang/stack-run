@@ -34,6 +34,7 @@ export function TrainingLoadDetail({
     <div className="signal-detail">
       <p className="signal-detail__note">Only runs with imported Training Load are included.</p>
       <PlanActualColumns
+        tone="intervals"
         columns={weeks.map((week) => ({
           key: week.key,
           shortLabel: week.shortLabel,
@@ -44,6 +45,9 @@ export function TrainingLoadDetail({
         selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
+      <p className="signal-detail__period machine-label">
+        {selected.label}{selected.isPartial ? " · in progress" : ""} · {selected.total === null ? "No load data" : `${selected.total} load`}
+      </p>
       <SignalFacts facts={[
         ...(selected.total === null ? [] : [{ label: selected.isPartial ? "Load so far" : "Weekly load", value: String(selected.total) }]),
         ...(average === null ? [] : [{ label: "Prior 4-week average", value: String(Math.round(average)) }]),
