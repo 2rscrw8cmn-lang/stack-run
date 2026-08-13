@@ -53,6 +53,31 @@ export interface IntervalsActivityDetail {
   intervals: IntervalsActivityInterval[];
 }
 
+/**
+ * One sample of the run over elapsed time. Every field but `timeSeconds` is
+ * optional: a sample carries whatever stream actually had a value at that
+ * index, never a guessed or interpolated one.
+ *
+ * `cadence` is carried in **whatever number Intervals reports, unconverted**.
+ * The August 13 HealthFit-originated activity reports an overall cadence of
+ * 79 with interval rows of 79/79/80, which is the value Intervals itself
+ * displays. STACK does not double it into a steps-per-minute figure and does
+ * not attach a unit it has not verified: the only source-verified fact is the
+ * number, so the number is what is shown. See
+ * `docs/CONNECTED_DATA_FIELDS.md`.
+ */
+export interface IntervalsRunProfileSample {
+  timeSeconds: number;
+  paceSecondsPerMile?: number;
+  heartRate?: number;
+  elevationFeet?: number;
+  cadence?: number;
+}
+
+export interface IntervalsRunProfile {
+  samples: IntervalsRunProfileSample[];
+}
+
 function positive(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
@@ -127,6 +152,112 @@ export function normalizeIntervalsActivityDetail(raw: unknown): IntervalsActivit
   });
   return { intervals };
 }
+
+/**
+ * Finds one named stream's raw sample array inside an upstream streams
+ * response, tolerant of the shapes a REST streams endpoint plausibly answers
+ * with — an array of `{ type, data }` descriptors, or a map keyed by stream
+ * name whose value is either the array itself or `{ data: [...] }`.
+ *
+ * Returns `undefined` rather than guessing when nothing matches, which is the
+ * whole point: this file never invents a shape it has not actually seen.
+ */
+function rawStream(source: unknown, names: readonly string[]): unknown[] | undefined {
+  if (Array.isArray(source)) {
+    for (const entry of source) {
+      if (!entry || typeof entry !== "object") continue;
+      const record = entry as Record<string, unknown>;
+      const type = record.type ?? record.stream_type ?? record.name;
+      if (typeof type === "string" && names.includes(type) && Array.isArray(record.data)) return record.data;
+    }
+    return undefined;
+  }
+  if (source && typeof source === "object") {
+    const record = source as Record<string, unknown>;
+    for (const name of names) {
+      const value = record[name];
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === "object" && Array.isArray((value as Record<string, unknown>).data)) {
+        return (value as Record<string, unknown>).data as unknown[];
+      }
+    }
+  }
+  return undefined;
+}
+
+/** A same-length numeric array, or `undefined` if the stream is missing/short. */
+function numericSamples(source: unknown, names: readonly string[], sampleCount: number): (number | undefined)[] | undefined {
+  const raw = rawStream(source, names);
+  if (!raw || raw.length !== sampleCount) return undefined;
+  return raw.map((value) => (typeof value === "number" && Number.isFinite(value) ? value : undefined));
+}
+
+const METERS_PER_SECOND_MINIMUM = 0.1;
+
+/**
+ * The activity-detail endpoint's per-second streams, narrowed to what
+ * `RunProfileChart` can plot honestly: pace derived from `velocity_smooth`
+ * (metres/second, an unambiguous unit), heart rate, elevation, and cadence.
+ *
+ * **Status: `Expected`, not `Verified`** — see `docs/CONNECTED_DATA_FIELDS.md`.
+ * The stream endpoint and field names below follow Intervals.icu's documented
+ * `/activity/{id}/streams` contract. The August 13 real-device review
+ * confirmed the *summary* aggregates this feature leans on — pace, average
+ * and max HR, elevation gain and cadence — but the per-sample stream shapes
+ * themselves still need checking against a real payload, so this normalizer
+ * stays deliberately conservative: a shape it does not recognize yields
+ * `null` rather than a guess, and the caller shows no Run Profile chart at
+ * all, exactly what happens for a run with no profile data today.
+ *
+ * Nothing here is used to compute a summary statistic. Streams give the
+ * *shape* of the run; the numbers stated beside them come from the imported
+ * activity aggregates, which are the source's own answer and the one that
+ * agrees with what Intervals and HealthFit show the runner.
+ */
+export function normalizeIntervalsRunProfile(raw: unknown): IntervalsRunProfile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const time = rawStream(raw, ["time"]);
+  if (!Array.isArray(time) || time.length < 2) return null;
+  const timeSeconds = time.map((value) => (typeof value === "number" && Number.isFinite(value) ? value : undefined));
+  if (timeSeconds.some((value) => value === undefined)) return null;
+
+  const heartRate = numericSamples(raw, ["heartrate", "heart_rate"], time.length);
+  const elevationMeters = numericSamples(raw, ["altitude"], time.length);
+  const velocity = numericSamples(raw, ["velocity_smooth", "velocity"], time.length);
+  const cadence = numericSamples(raw, ["cadence"], time.length);
+
+  const samples: IntervalsRunProfileSample[] = (timeSeconds as number[]).map((value, index) => {
+    const speed = velocity?.[index];
+    const elevation = elevationMeters?.[index];
+    const hr = heartRate?.[index];
+    const steps = cadence?.[index];
+    return {
+      timeSeconds: value,
+      ...(speed !== undefined && speed >= METERS_PER_SECOND_MINIMUM ? { paceSecondsPerMile: METERS_PER_MILE / speed } : {}),
+      ...(hr !== undefined && hr > 0 ? { heartRate: hr } : {}),
+      ...(elevation !== undefined ? { elevationFeet: elevation * FEET_PER_METER } : {}),
+      // Verbatim. A zero here means the runner was standing still rather than
+      // turning their legs over zero times a minute, so it is left out the
+      // same way a near-stopped velocity yields no pace — the chart then
+      // draws a gap instead of a plunge to the floor.
+      ...(steps !== undefined && steps > 0 ? { cadence: steps } : {}),
+    };
+  });
+
+  const hasProfile = samples.some((sample) =>
+    sample.paceSecondsPerMile !== undefined || sample.heartRate !== undefined ||
+    sample.elevationFeet !== undefined || sample.cadence !== undefined);
+  return hasProfile ? { samples } : null;
+}
+
+/**
+ * The stream types STACK asks Intervals for.
+ *
+ * `cadence` joined the list once the August 13 activity established what the
+ * source actually reports — 79, the same figure Intervals shows — so STACK
+ * had a verified convention to present rather than a guessed one.
+ */
+export const RUN_PROFILE_STREAM_TYPES = ["time", "heartrate", "altitude", "velocity_smooth", "cadence"] as const;
 
 /**
  * The activity ids STACK has already settled: imported, attached or ignored.
@@ -375,13 +506,18 @@ async function read(params: URLSearchParams, token: string, context: ReadContext
   }
 }
 
+type IntervalsResource = "status" | "activities" | "activity" | "activity-streams";
+
 function directUrl(
-  resource: "status" | "activities" | "activity",
+  resource: IntervalsResource,
   range?: { oldest: string; newest: string },
   activityId?: string,
 ): string {
   if (resource === "activity") {
     return `https://intervals.icu/api/v1/activity/${encodeURIComponent(activityId ?? "")}?intervals=true`;
+  }
+  if (resource === "activity-streams") {
+    return `https://intervals.icu/api/v1/activity/${encodeURIComponent(activityId ?? "")}/streams?types=${RUN_PROFILE_STREAM_TYPES.join(",")}`;
   }
   const directRange = range ?? (() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -392,7 +528,7 @@ function directUrl(
 }
 
 async function readDirect(
-  resource: "status" | "activities" | "activity",
+  resource: IntervalsResource,
   apiKey: string,
   context: ReadContext,
   range?: { oldest: string; newest: string },
@@ -446,4 +582,23 @@ export async function fetchIntervalsActivityDetail(activityId: string, connectio
   }
   const params = new URLSearchParams({ resource: "activity", id: activityId, intervals: "true" });
   return normalizeIntervalsActivityDetail(await read(params, connection.credential, "detail"));
+}
+
+/**
+ * The Run Profile's per-second streams, fetched only when a synced run's
+ * detail sheet is open — never during ordinary sync. See
+ * `normalizeIntervalsRunProfile` for the field-verification caveat: a shape
+ * this normalizer does not recognize resolves to `null`, and callers are
+ * expected to render nothing rather than surface that as an error, exactly
+ * like a run with no profile data at all.
+ */
+export async function fetchIntervalsRunProfile(activityId: string, connectionInput: IntervalsConnectionInput): Promise<IntervalsRunProfile | null> {
+  const connection = connectionFrom(connectionInput);
+  if (connection.mode === "local-api-key") {
+    return normalizeIntervalsRunProfile(
+      await readDirect("activity-streams", connection.credential, "detail", undefined, activityId),
+    );
+  }
+  const params = new URLSearchParams({ resource: "activity-streams", id: activityId });
+  return normalizeIntervalsRunProfile(await read(params, connection.credential, "detail"));
 }

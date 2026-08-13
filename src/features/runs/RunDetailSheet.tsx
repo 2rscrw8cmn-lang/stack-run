@@ -1,8 +1,5 @@
-import { useState } from "react";
 import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
-import { StackSelect } from "../../components/ui/StackSelect";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { availableWorkoutsForRunLog } from "../../domain/plan";
@@ -16,13 +13,13 @@ interface RunDetailSheetProps {
   /** Opens the existing run-entry sheet, which also owns deletion. */
   onEditRun: () => void;
   /**
-   * Needed to offer a manual link: the workouts this run could still satisfy
-   * depend on the whole plan and every other run's link.
+   * Needed to offer the compact plan-linking action: whether it appears at
+   * all depends on the whole plan and every other run's link.
    */
   plan?: TrainingPlan;
   runLogs?: RunLog[];
-  /** Connects an extra run to a scheduled workout after the fact. */
-  onLinkRun?: (runLogId: string, workoutId: string) => void;
+  /** Opens the compact plan-linking picker sub-sheet. */
+  onOpenConnectToPlan?: () => void;
   /** Undoes a link, turning the run back into an extra run. */
   onUnlinkRun?: (runLogId: string) => void;
   syncToken?: IntervalsConnection | string | null;
@@ -33,38 +30,32 @@ interface RunDetailSheetProps {
 /**
  * One recorded run, in full.
  *
- * The same shape Build's block detail has, for the same reason: this is the
- * activity's sheet, not the schedule's. The plan appears as context when the
- * run satisfied a workout and is simply absent when it did not.
+ * The header states the run's date, activity type, and plan status — `Plan`
+ * or `Extra` — as small tags rather than a standalone content section: what a
+ * run is is metadata, not something worth its own heading and paragraph.
  *
- * Everything below the date is `RunResultDetail` — the imported metrics, the
- * heart-rate zones and the on-demand interval detail are the ones UI-9 built,
- * not a second renderer that would drift from them.
+ * Everything below is `RunResultDetail` — the imported metrics, the Run
+ * Profile, heart-rate zones and the on-demand structured Intervals section
+ * are the ones UI-9/UI-23 built, not a second renderer that would drift from
+ * them. Plan linking is a compact action that opens `ConnectToPlanSheet`
+ * rather than an always-visible inline form.
  */
 export function RunDetailSheet({
   entry,
   onEditRun,
   plan,
   runLogs,
-  onLinkRun,
+  onOpenConnectToPlan,
   onUnlinkRun,
   syncToken,
   isOpen,
   onClose,
 }: RunDetailSheetProps) {
   const { runLog, workout } = entry;
-  const canLink = !workout && Boolean(plan) && Boolean(runLogs) && Boolean(onLinkRun);
-  const candidates = canLink
-    ? availableWorkoutsForRunLog(runLog, plan!, runLogs!)
-    : [];
-  const [pickedWorkoutId, setPickedWorkoutId] = useState("");
-  // The picker starts fresh on every run this sheet is opened for, rather
-  // than carrying over whatever a previous run left selected.
-  const [pickedFor, setPickedFor] = useState(runLog.id);
-  if (pickedFor !== runLog.id) {
-    setPickedFor(runLog.id);
-    setPickedWorkoutId("");
-  }
+  const canLink = !workout && Boolean(plan) && Boolean(runLogs) && Boolean(onOpenConnectToPlan);
+  const candidateCount = canLink
+    ? availableWorkoutsForRunLog(runLog, plan!, runLogs!).length
+    : 0;
 
   return (
     <Sheet
@@ -75,62 +66,42 @@ export function RunDetailSheet({
     >
       <div className="workout-detail">
         <div className="run-detail__context">
-          <p className="machine-label">
-            {formatDateLabel(runLog.completedDate, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
-          <span className="run-detail__type machine-label" data-type={runLog.activityType}>
-            {WORKOUT_TYPE_LABEL[runLog.activityType]}
-          </span>
+          <div className="run-detail__context-primary">
+            <p className="machine-label">
+              {formatDateLabel(runLog.completedDate, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+            {workout && (
+              <p className="run-detail__plan-line machine-label">
+                Week {workout.weekNumber} · {workout.title}
+              </p>
+            )}
+          </div>
+          <div className="run-detail__context-tags">
+            <span className="run-detail__type machine-label" data-type={runLog.activityType}>
+              {WORKOUT_TYPE_LABEL[runLog.activityType]}
+            </span>
+            <span className="run-detail__status-tag machine-label" data-status={workout ? "plan" : "extra"}>
+              {workout ? "Plan" : "Extra"}
+            </span>
+          </div>
         </div>
 
         <RunResultDetail run={runLog} syncToken={syncToken} />
-
-        <div className="workout-detail__result">
-          <h3 className="workout-detail__result-title">
-            {workout ? "Scheduled workout" : "Extra run"}
-          </h3>
-          <p className="workout-detail__instructions">
-            {workout
-              ? `Week ${workout.weekNumber} · ${workout.title}`
-              : "This run was not on the plan. It earned a block and counts toward your miles."}
-          </p>
-        </div>
-
-        {canLink && candidates.length > 0 && (
-          <div className="workout-detail__result">
-            <h3 className="workout-detail__result-title">Connect to plan</h3>
-            <FormField label="Scheduled workout">
-              <StackSelect
-                value={pickedWorkoutId}
-                onChange={(event) => setPickedWorkoutId(event.target.value)}
-              >
-                <option value="">Choose a workout…</option>
-                {candidates.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {formatDateLabel(item.date, { month: "short", day: "numeric" })} — {item.title}
-                  </option>
-                ))}
-              </StackSelect>
-            </FormField>
-            <Button
-              variant="secondary"
-              disabled={!pickedWorkoutId}
-              onClick={() => onLinkRun?.(runLog.id, pickedWorkoutId)}
-            >
-              Link Run
-            </Button>
-          </div>
-        )}
 
         <div className="workout-detail__actions">
           <Button variant="secondary" onClick={onEditRun}>
             Edit Run
           </Button>
+          {canLink && candidateCount > 0 && (
+            <Button variant="secondary" onClick={onOpenConnectToPlan}>
+              Connect to Plan
+            </Button>
+          )}
           {workout && onUnlinkRun && (
             <Button variant="ghost" onClick={() => onUnlinkRun(runLog.id)}>
               Unlink from Plan

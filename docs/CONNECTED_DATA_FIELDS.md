@@ -27,6 +27,64 @@ run rather than evidence about structured ones.
 
 No raw response, and no personal or location metadata, is recorded here.
 
+### Verified on the deployed app, August 13, 2026
+
+A second Apple Watch → HealthFit → Intervals.icu run was reviewed on a real
+iPhone against Intervals' and HealthFit's own displays of the same activity.
+This is the review that settled cadence and corrected how Run Detail states
+its numbers.
+
+What the three sources said about the same run:
+
+| Reading | STACK | Intervals.icu | HealthFit |
+|---|---|---|---|
+| Pace | ~10:59 /mi | 10:58 /mi | 11:00 /mi |
+| Average HR | 153 | 153 | 153 |
+| Max HR | 174 | 174 | 174 |
+| Elevation gain | ~116 ft (`Gain`) | 115 ft (`Climbing`) | 20 ft |
+| Cadence | 79 | 79 (interval rows 79 / 79 / 80) | — |
+
+The activity had no named interval groups, which is again the expected result
+for an unstructured run.
+
+#### Elevation gain is the source's, not a recomputation
+
+The altitude series for this run spans roughly **72–113 ft** across all three
+apps — a range of about 41 ft — while Intervals reports 115 ft of Climbing and
+HealthFit reports 20 ft. Those are three different questions, not three
+answers to one: climbing accumulates every rise over the whole run, the
+altitude range is a single low-to-high span, and HealthFit is applying its own
+much coarser threshold.
+
+STACK's 116 ft is therefore **not a conversion bug**. It is Intervals'
+`total_elevation_gain` converted to feet and rounded, and it agrees with
+Intervals to within the rounding. The rule this establishes:
+
+> Where STACK already holds an imported activity aggregate, that aggregate is
+> what STACK shows. Summary statistics are never recomputed from per-sample
+> stream data.
+
+Recreating gain by summing altitude deltas would produce a number that agrees
+with nothing the runner can check, and would silently depend on a smoothing
+threshold STACK has never verified. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+records the same rule for pace and heart rate.
+
+#### Cadence convention
+
+`average_cadence` came back as **79**, and Intervals' own interval rows for
+this activity read 79 / 79 / 80. That is the figure Intervals displays.
+
+STACK shows **79**.
+
+It does not double the value into a ~158 steps-per-minute figure, and it does
+not print a unit beside it. Both would be claims this pipeline has not
+verified: the only source-verified fact is the number itself and the fact that
+it matches what Intervals shows the same runner. If a later real payload
+establishes the unit, add it here first and only then in the UI.
+
+This is what moved cadence from `Expected` to `Verified` after five phases of
+being deliberately withheld.
+
 Do not paste the full raw API response into this repository: it can contain personal health/location metadata. Record field names, presence, units/semantics, and a harmless example shape only.
 
 ## Status values
@@ -56,10 +114,10 @@ UI-8 may not ship import until the first six concepts above are understood well 
 
 | STACK metric | Intervals candidate | Status | UI phase | Notes |
 |---|---|---|---|---|
-| Average HR | `average_heartrate` | Verified | UI-9 | bpm. |
-| Max HR | `max_heartrate` | Verified | UI-9 | bpm. |
-| Average cadence | `average_cadence` | Expected | UI-9 | **Verify running cadence semantics/units before displaying. UI-9 deliberately omits it while this remains Expected.** |
-| Elevation gain | `total_elevation_gain` | Verified | UI-9 | Meters; converted to feet for the current UI. |
+| Average HR | `average_heartrate` | Verified | UI-9 | bpm. 153 on the August 13 activity, agreeing across Intervals and HealthFit. |
+| Max HR | `max_heartrate` | Verified | UI-9 | bpm. 174 on the August 13 activity, agreeing across Intervals and HealthFit. |
+| Average cadence | `average_cadence` | Verified | UI-23 | Number, no unit stated by the source. **79** on the August 13 activity, matching the figure Intervals itself displays and its own interval rows (79 / 79 / 80). STACK renders the number verbatim — see "Cadence convention" below. |
+| Elevation gain | `total_elevation_gain` | Verified | UI-9 | Meters; converted to feet for the current UI. 115 ft as Intervals' Climbing, 116 ft as STACK's Gain after rounding — see "Elevation gain is the source's, not a recomputation" below. |
 | Training load | `icu_training_load` | Verified | UI-9 | Intervals-derived; labelled plainly as Training Load. |
 | HR zone times | `icu_hr_zone_times` | Verified | UI-9 | Seven entries, seconds, zone 1 first. Zeroes are real; STACK shows every zone rather than guessing which are meaningful. |
 | Average speed | `average_speed` | Expected | Deferred | STACK derives pace from distance/duration; use only if needed for diagnostics. |
@@ -92,6 +150,68 @@ Intervals.icu documents `icu_intervals` entries that may include:
 | Apple workout laps survive sync | Expected | UI-9 | Verify with an interval session. |
 
 Do not fetch detail for every activity during normal list sync.
+
+## Run Profile streams (Run Detail 2.0)
+
+Run Detail 2.0 added an on-demand chart of one metric over the run's elapsed
+time, with selectors for whichever metrics actually have data. The stream
+values come from a second endpoint, requested only when a synced run's detail
+sheet is open — never during ordinary sync, and never persisted beyond the
+open sheet's component state:
+
+```text
+GET /api/v1/activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth,cadence
+```
+
+| STACK concept | Intervals candidate | Status | UI phase | Notes |
+|---|---|---|---|---|
+| Elapsed-time axis | `time` stream | Expected | UI-23 | Seconds from run start. Required; the profile is not shown at all without it. Also supplies the `0:00 → duration` x-axis. |
+| Heart rate over time | `heartrate` stream | Expected | UI-23 | bpm per sample. Shape only — the stated Avg/Max come from the verified summary aggregates. |
+| Elevation over time | `altitude` stream | Expected | UI-23 | Meters per sample; converted to feet. The only series whose own low/high are stated, because those are properties of the series. Total gain is **not** derived from it. |
+| Pace over time | derived from `velocity_smooth` stream | Expected | UI-23 | Metres/second, an unambiguous unit; STACK derives seconds-per-mile rather than trusting an assumed-unit `pace` field. Shape only — the stated pace is the run's own. |
+| Cadence over time | `cadence` stream | Expected | UI-23 | Verbatim, per the verified convention above. A zero sample is a stop, so it is treated as absent and drawn as a gap. |
+
+**The per-sample stream shapes remain `Expected`, not `Verified`.** The August
+13 review verified the *summary aggregates* this feature states — pace, average
+and max HR, elevation gain, cadence — but it did not capture the streams
+payload itself, and this repository has no network path to Intervals.icu to
+check it (the same "cannot be performed in the secret-free repository
+environment" limitation recorded elsewhere in this file). The endpoint and
+field names follow Intervals.icu's documented streams contract, the way every
+other candidate here started.
+
+`normalizeIntervalsRunProfile` in `src/connected/intervals.ts` is written
+defensively for that reason: a shape it does not recognize resolves to `null`
+rather than a guess, and Run Detail simply shows no Run Profile section — the
+same as a run with no profile data. Because no stated number depends on the
+streams, an unverified stream shape can cost a chart but can never produce a
+wrong figure.
+
+### Streams give shape; aggregates give numbers
+
+The rule the August 13 review established, applied to every Run Profile metric:
+
+| Metric | Line comes from | Stated facts come from |
+|---|---|---|
+| Pace | `velocity_smooth` | `RunLog` distance ÷ duration — the run's own pace |
+| Heart Rate | `heartrate` | `average_heartrate`, `max_heartrate` |
+| Elevation | `altitude` | the series' own low and high |
+| Cadence | `cadence` | `average_cadence` |
+
+Two things this deliberately rules out. An arithmetic mean of instantaneous
+pace samples is not the run's pace and disagrees with every other screen. And
+the fastest and slowest single samples are a GPS artefact and a traffic light
+— they were being shown as 6:07 and 53:32 against a real 10:59 run, which is
+what prompted this rule.
+
+Missing values keep their time position and break the line. Nothing is
+interpolated across a gap, because a joined line would assert measurement
+where the source had none.
+
+One display-only exception, which changes no value: the pace chart scales its
+visible y-axis to the bulk of the series (Tukey IQR fences) so a handful of
+near-stops cannot flatten the rest into a flat line. Outlying samples are kept,
+clamped to the edge of the visible window, and still counted everywhere else.
 
 ## Wellness fields
 
@@ -173,9 +293,25 @@ UI-8 field discovery is complete when:
 - [ ] Distance unit is verified.
 - [ ] Moving/elapsed time behavior is verified.
 - [ ] Average/max HR presence is recorded.
-- [ ] Cadence presence and semantics are recorded.
+- [x] Cadence presence and semantics are recorded. (August 13: `average_cadence` = 79, source convention repeated verbatim — see "Cadence convention".)
 - [ ] Elevation gain presence/unit is recorded.
 - [ ] Training-load presence is recorded.
 - [ ] HR-zone field presence/shape is recorded.
 - [ ] A structured interval workout is checked later for `icu_intervals`.
 - [ ] Wellness coverage is checked before UI-12.
+
+## UI-23 discovery: Run Profile streams
+
+The August 13 review verified the summary aggregates Run Detail *states*. The
+per-sample stream shapes behind the *lines* are still outstanding. Complete
+before promoting the Run Profile streams rows above to `Verified`:
+
+- [ ] `GET /activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth,cadence` is confirmed reachable through the deployed `/api/intervals` proxy and the direct local-key path.
+- [ ] The response shape (array of `{type, data}` descriptors vs. a map) is recorded here.
+- [ ] `time` stream presence/units is confirmed on a real HealthFit-originated run.
+- [ ] `heartrate` stream presence is confirmed and spot-checked against the run's known average HR.
+- [ ] `altitude` stream presence/unit is confirmed, and its low/high span is checked against the ~72–113 ft the August 13 review saw.
+- [ ] `velocity_smooth` presence/unit is confirmed and the derived pace is spot-checked against the run's known average pace.
+- [ ] `cadence` stream presence is confirmed, and its values are checked to sit around the same 79 the summary field reports — **not** around 158. A doubled stream against an undoubled summary would be the clearest possible signal that the convention differs between the two, and must be recorded here before either is displayed differently.
+- [ ] A run genuinely lacking streams (e.g. an older or manually uploaded activity) is confirmed to render with no Run Profile section rather than an error.
+- [ ] A run whose stream drops out mid-activity is confirmed to render a visible gap rather than a line drawn across it.

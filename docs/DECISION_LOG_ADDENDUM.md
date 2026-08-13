@@ -463,6 +463,21 @@ Each crew also gets a designed emblem: four modular parts (crown, core, base, fr
 
 This is a Crew identity and membership change only. Personal STACK, schema 9, the safe projection contract, Build geometry and the never-send list are all unchanged.
 
+## D-073 — Run Detail 2.0 is new personal-only scope, not a data-model change
+
+**Decision:** UI-22 said no later phase was planned; a new owner request (Run Detail's visual hierarchy, `View intervals`, and plan-linking form all reading as unfinished) is exactly the kind of additional scope that note said requires a new decision. Run Detail 2.0 is personal-only — it touches `RunResultDetail`, `RunDetailSheet`, and the sheets they compose with, and leaves Crew's safe-projection `CrewRunDetailSheet` untouched.
+
+Four implementation choices worth recording:
+
+1. **Structured Intervals and the new Run Profile chart both stay on-demand, narrow, and unpersisted.** They fire once, when a synced run's detail sheet opens, replacing the old explicit `View intervals` tap rather than adding a second trigger; neither is added to AppState. This preserves the existing UI-9 rule ("Do not fetch detail for every activity during normal list sync") rather than relaxing it.
+2. **Streams give shape; imported aggregates give numbers.** Where STACK already holds an imported activity aggregate, that aggregate is what STACK states — never a statistic recomputed from per-sample stream data. The August 13 review is what forced this: Run Profile had been deriving pace facts from instantaneous samples and reporting 6:07 and 53:32 for a run whose real pace was 10:59, a figure Intervals (10:58) and HealthFit (11:00) both agree on. The same rule keeps `Gain` at Intervals' own 115 ft Climbing rather than a sum of altitude deltas — the altitude series spans about 41 ft, so a recomputed gain would agree with nothing the runner can check. Only elevation's low and high are stated from a series, because those genuinely are properties of the series. A display-only exception is allowed and bounded: the pace chart may scale its visible y-axis to the bulk of the series so outliers cannot flatten it, but no sample may be dropped, rewritten, or excluded from any stated number.
+3. **A stream's per-sample shape is verified separately from the aggregates it accompanies, and cadence is displayed only at the source's own convention.** The August 13 activity settled cadence after five phases of withholding it: `average_cadence` reports 79, matching Intervals' own display and its interval rows of 79/79/80. STACK shows 79 — not a doubled ~158 steps-per-minute figure, and not with a unit this pipeline has not verified, because the number and its agreement with Intervals are the only source-verified facts. The per-sample stream shapes remain `Expected` in `docs/CONNECTED_DATA_FIELDS.md` with an open checklist, and `normalizeIntervalsRunProfile` resolves an unrecognized shape to `null`. Since no stated number depends on a stream, an unverified shape can cost a chart but can never produce a wrong figure. Missing values keep their time position and break the line rather than being joined across, because a continuous line asserts measurement.
+4. **No Supabase migration.** Every change here is presentation plus one additional narrow client-side Intervals read; nothing about the schema, RLS, or the Crew-safe projection boundary needed to move.
+
+Interactive HR-zone selection is added to the shared `DonutChart` rather than to Run Detail, so Training Signals' HR Zones can adopt the same behaviour without a second donut implementation. Removing a chart's visible legend is permitted only where the equivalent text stays in the document for assistive technology; the visible legend is a presentation choice, never what makes the chart accessible.
+
+This decision authorizes UI-23 as scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not reopen UI-19/UI-20/UI-21 Crew scope, and it does not authorize a general Intervals streams feature beyond Run Profile.
+
 ## Active implementation order
 
 Complete:
@@ -476,6 +491,7 @@ Complete:
 - UI-19
 - UI-20
 - UI-21
+- UI-22
 
 Deferred/skipped:
 
@@ -486,8 +502,9 @@ Current acceptance:
 
 - **UI-20 — Props + Mini Builds** is complete and accepted (merged PR #37).
 - **UI-21 — Crew Destination + Shared Crew Build** is complete and accepted (merged PR #38).
-- **UI-22 — Final Product Polish + Onboarding** is the final planned phase and is in review.
-- No later phase is planned or authorized.
+- **UI-22 — Final Product Polish + Onboarding** is complete and accepted (merged PR #39).
+- **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
+- No later phase is planned or authorized beyond UI-23.
 
 See:
 

@@ -328,7 +328,33 @@ Implemented:
 
 UI-22 adds no new production dependency, router, global state, database migration or AppState migration. Personal STACK remains usable signed out and onboarding failure or Crew lifecycle errors cannot block the app.
 
-Repository verification passes `npm run check`: lint, 75 test files / 950 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in owner Edit/Delete presentation. No later phase is currently planned; additional scope requires a new decision.
+Repository verification passes `npm run check`: lint, 75 test files / 950 tests, TypeScript and the production build. Owner review still covers real iPhone Safari and signed-in owner Edit/Delete presentation.
+
+## UI-23 implementation status
+
+**UI-23 — Run Detail 2.0** (see `docs/CURRENT_APPLICATION_STRUCTURE.md`) is implemented for owner review, per D-073. Additional scope beyond the planned UI-18–UI-22 sequence, opened as a new decision the way the note above requires. A first pass was reviewed on a real iPhone against the August 13 HealthFit → Intervals activity; the corrections that review produced are folded in below.
+
+Implemented:
+
+- compact `Plan`/`Extra` status tags near the date/type, replacing the standalone `Extra Run` explanation section and the "Scheduled workout" heading/paragraph;
+- shortened secondary-metric labels (`Avg HR`, `Max HR`, `Gain`, `Load`) staying 2×2 across the whole phone range and widening only at 700px;
+- a Run Profile chart (`RunProfileChart`) with one chart area and selectors — Pace, Heart Rate, Elevation, Cadence — shown only for metrics the fetched stream data actually contains, plus a `0:00 → duration` elapsed-time axis;
+- **streams give shape, imported aggregates give numbers**: Pace states the run's own `RunLog` pace, Heart Rate states imported `average_heartrate`/`max_heartrate`, Cadence states imported `average_cadence`, and only Elevation's low/high come from the series. Generic Low/Avg/High is gone, and no near-stop or GPS spike can appear as a best or worst pace;
+- `Gain` kept as Intervals' own Climbing aggregate rather than recomputed from altitude deltas;
+- cadence displayed for the first time, verbatim at the source's convention (79, not a doubled 158, and with no unit this pipeline has not verified) — living in Run Profile so the summary grid stays a clean four, with a grid fallback when a run's stream carried no cadence;
+- gap-preserving profile lines: a missing value keeps its time position and breaks the line rather than being joined across, and a zero cadence or near-stopped velocity counts as absent rather than as a measured zero;
+- a robust pace display domain (Tukey IQR fences with outliers clamped for drawing only) so a few near-stops cannot flatten the legible majority — source samples untouched;
+- an interactive HR-zone donut: 44px selectable arcs, keyboard operable, defaulting to the dominant zone, centre reporting share/zone/time, restrained selected state, and the visible legend removed while the ordered list stays in the document for assistive technology. Built as an `interactive` mode on the shared `DonutChart` so Training Signals' HR Zones can reuse it;
+- automatic, on-demand structured Intervals detection replacing the `View intervals` button and its confusing empty-groups message; a real fetch failure still shows a concise `Retry`;
+- `Connect to Plan` moved from an always-visible inline form into a compact action opening `ConnectToPlanSheet`, a small picker sub-sheet.
+
+Verified on the deployed app, August 13: pace (10:59 against Intervals' 10:58 and HealthFit's 11:00), average HR 153, max HR 174, elevation gain 116 ft against Intervals' 115 ft Climbing, and cadence 79 against Intervals' own 79 / 79 / 80 interval rows. `docs/CONNECTED_DATA_FIELDS.md` records these and promotes `average_cadence` to `Verified`.
+
+Explicitly not verified in this environment, and recorded rather than assumed: the per-sample `/activity/{id}/streams` shapes behind the plotted lines remain `Expected`, not `Verified`. The August 13 review verified the summary aggregates STACK states, not the streams payload, and this repository has no credentials or network path to Intervals.icu to check it. `docs/CONNECTED_DATA_FIELDS.md` carries the outstanding checklist — including an explicit check that stream cadence sits around 79 rather than 158, which would signal the two fields use different conventions. The feature degrades safely either way: an unrecognized response shape renders no Run Profile section, identical to a run with no profile data, and because no stated number depends on a stream, an unverified shape can cost a chart but cannot produce a wrong figure.
+
+Still owner review: a second real-iPhone pass over the corrected Run Detail at 320px, 390px and desktop — the interactive donut's touch targets, the four-selector Run Profile, and the 2×2 metric grid in particular.
+
+UI-23 adds no Supabase/database migration, no new dependency, and no change to the Intervals API key/credential boundary, HR-zone calculation, run edit/delete behavior, or plan linking/unlinking rules.
 
 ## Active source documents
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
 import { addDaysToLocalDate } from "../domain/dates";
 import type { RunLog } from "../domain/types";
-import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_RUNNING_TYPES } from "./intervals";
+import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_RUNNING_TYPES } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
 
@@ -181,6 +181,94 @@ describe("Intervals activity detail request", () => {
   it.each([[500, "could not be loaded"], [429, "rate limiting"]])("describes detail error %s", async (status, message) => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status }));
     await expect(fetchIntervalsActivityDetail("activity-1", "token")).rejects.toThrow(message);
+    fetchMock.mockRestore();
+  });
+});
+
+describe("Run Profile streams", () => {
+  it("derives pace from velocity and keeps heart rate and elevation", () => {
+    const profile = normalizeIntervalsRunProfile({
+      time: [0, 30, 60],
+      heartrate: [140, 150, 160],
+      altitude: [100, 101, 99],
+      velocity_smooth: [3.0, 3.2, 0],
+    });
+    expect(profile).not.toBeNull();
+    expect(profile!.samples).toHaveLength(3);
+    expect(profile!.samples[0].heartRate).toBe(140);
+    expect(profile!.samples[0].paceSecondsPerMile).toBeCloseTo(1609.344 / 3.0, 3);
+    expect(profile!.samples[0].elevationFeet).toBeCloseTo(100 * 3.28084, 3);
+    // A stopped/near-zero velocity sample yields no pace rather than an infinite one.
+    expect(profile!.samples[2].paceSecondsPerMile).toBeUndefined();
+  });
+
+  it("carries cadence exactly as the source reports it, without doubling or converting", () => {
+    // The August 13 activity reports 79, and Intervals' own interval rows read
+    // 79 / 79 / 80. Whatever convention that is, it is the source's, and STACK
+    // repeats it rather than reinterpreting it as steps per minute.
+    const profile = normalizeIntervalsRunProfile({
+      time: [0, 30, 60, 90],
+      cadence: [79, 79, 80, 0],
+    });
+    expect(profile!.samples.map((sample) => sample.cadence)).toEqual([79, 79, 80, undefined]);
+    // Emphatically not 158/158/160.
+    expect(profile!.samples.some((sample) => sample.cadence === 158)).toBe(false);
+  });
+
+  it("treats a standing-still cadence as absent rather than as a measured zero", () => {
+    const profile = normalizeIntervalsRunProfile({ time: [0, 30, 60], cadence: [80, 0, 79] });
+    expect(profile!.samples[1].cadence).toBeUndefined();
+    expect(Object.keys(profile!.samples[1])).toEqual(["timeSeconds"]);
+  });
+
+  it("recognizes a cadence-only stream as a profile worth showing", () => {
+    expect(normalizeIntervalsRunProfile({ time: [0, 30], cadence: [79, 80] })).not.toBeNull();
+  });
+
+  it("tolerates an array-of-descriptors stream shape, not only a keyed map", () => {
+    const arrayShaped = normalizeIntervalsRunProfile([
+      { type: "time", data: [0, 60] },
+      { type: "heartrate", data: [140, 150] },
+    ]);
+    expect(arrayShaped?.samples.map((sample) => sample.heartRate)).toEqual([140, 150]);
+  });
+
+  it("resolves to null rather than guessing when the shape is unrecognized", () => {
+    expect(normalizeIntervalsRunProfile(null)).toBeNull();
+    expect(normalizeIntervalsRunProfile({})).toBeNull();
+    expect(normalizeIntervalsRunProfile({ time: [0] })).toBeNull(); // fewer than 2 samples
+    expect(normalizeIntervalsRunProfile({ time: [0, 30], other: [1, 2] })).toBeNull(); // no recognized metric
+    // A stream whose length disagrees with `time` is dropped rather than misaligned.
+    expect(normalizeIntervalsRunProfile({ time: [0, 30, 60], heartrate: [140, 150] })).toBeNull();
+  });
+
+  it("requests the streams endpoint only when called, separately from interval detail", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ time: [0, 60], heartrate: [140, 150] })),
+    );
+    await fetchIntervalsRunProfile("activity-1", "token");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/intervals?resource=activity-streams&id=activity-1",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+    fetchMock.mockRestore();
+  });
+
+  it("asks the direct personal-key path for exactly the four plotted series", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ time: [0, 60], heartrate: [140, 150] })),
+    );
+    await fetchIntervalsRunProfile("activity-1", { mode: "local-api-key", credential: "fake-personal-key" });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://intervals.icu/api/v1/activity/activity-1/streams?types=time,heartrate,altitude,velocity_smooth,cadence",
+    );
+    fetchMock.mockRestore();
+  });
+
+  it("returns null rather than a guess when the response carries no recognizable stream", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+    const profile = await fetchIntervalsRunProfile("activity-1", "token");
+    expect(profile).toBeNull();
     fetchMock.mockRestore();
   });
 });

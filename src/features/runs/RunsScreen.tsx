@@ -12,6 +12,7 @@ import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
+import { ConnectToPlanSheet } from "./ConnectToPlanSheet";
 import { RunDetailSheet } from "./RunDetailSheet";
 import { RunRow } from "./RunRow";
 import { TrendCards } from "./TrendCards";
@@ -65,6 +66,7 @@ export function RunsScreen({
 }: RunsScreenProps) {
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
+  const [isConnectOpen, setConnectOpen] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<TrainingSignalId | null>(null);
   const [isSignalOpen, setSignalOpen] = useState(false);
   const returnToSignal = useRef(false);
@@ -126,6 +128,18 @@ export function RunsScreen({
       returnToSignal.current = false;
       setSignalOpen(true);
     }
+  }
+
+  /** Hands off from Run Detail to its compact plan-linking picker. */
+  function openConnectToPlan() {
+    setDetailOpen(false);
+    setConnectOpen(true);
+  }
+
+  /** Back to the run's own detail either way — cancelling or linking. */
+  function closeConnectToPlan() {
+    setConnectOpen(false);
+    setDetailOpen(true);
   }
 
   /** The change was made: leave the sheets behind and show the result. */
@@ -232,13 +246,7 @@ export function RunsScreen({
           syncToken={syncToken}
           isOpen={isDetailOpen}
           onEditRun={() => openEntry(selected, true)}
-          onLinkRun={
-            onLinkRun &&
-            ((runLogId, workoutId) => {
-              onLinkRun(runLogId, workoutId);
-              setAnnouncement("Run connected to the plan.");
-            })
-          }
+          onOpenConnectToPlan={onLinkRun ? openConnectToPlan : undefined}
           onUnlinkRun={
             onUnlinkRun &&
             ((runLogId) => {
@@ -247,6 +255,21 @@ export function RunsScreen({
             })
           }
           onClose={closeDetail}
+        />
+      )}
+
+      {selected && onLinkRun && (
+        <ConnectToPlanSheet
+          runLog={selected.runLog}
+          plan={plan}
+          runLogs={runLogs}
+          isOpen={isConnectOpen}
+          onLink={(runLogId, workoutId) => {
+            onLinkRun(runLogId, workoutId);
+            setAnnouncement("Run connected to the plan.");
+            closeConnectToPlan();
+          }}
+          onClose={closeConnectToPlan}
         />
       )}
 

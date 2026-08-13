@@ -17,6 +17,16 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ACTIVITY_ID = /^[A-Za-z0-9_-]{1,120}$/;
 const MAX_RANGE_DAYS = 120;
 /**
+ * Run Profile's per-second series, kept deliberately narrow: this route asks
+ * for the four series STACK plots and nothing else. See
+ * `docs/CONNECTED_DATA_FIELDS.md` and `normalizeIntervalsRunProfile` in
+ * `src/connected/intervals.ts`. The per-sample stream shapes remain
+ * `Expected` rather than `Verified` — they follow Intervals.icu's documented
+ * streams contract, and the August 13 real-device review verified the summary
+ * aggregates rather than the stream payload itself.
+ */
+const RUN_PROFILE_STREAM_TYPES = "time,heartrate,altitude,velocity_smooth,cadence";
+/**
  * Intervals sits behind Cloudflare, which challenges clients that do not look
  * like anything in particular. This says what STACK is rather than pretending
  * to be a browser.
@@ -121,7 +131,12 @@ export async function readIntervals(request: Request, env: Environment = process
     if (!id || !ACTIVITY_ID.test(id)) return json(400, { error: "invalid_activity_id", message: "That activity id is not readable." });
     upstream = new URL(`${BASE}/activity/${encodeURIComponent(id)}`);
     if (url.searchParams.get("intervals") === "true") upstream.searchParams.set("intervals", "true");
-  } else return json(400, { error: "invalid_resource", message: "STACK Run Data reader: deployed and configured. Ask for resource=status, activities, activity or wellness." });
+  } else if (resource === "activity-streams") {
+    const id = url.searchParams.get("id");
+    if (!id || !ACTIVITY_ID.test(id)) return json(400, { error: "invalid_activity_id", message: "That activity id is not readable." });
+    upstream = new URL(`${BASE}/activity/${encodeURIComponent(id)}/streams`);
+    upstream.searchParams.set("types", RUN_PROFILE_STREAM_TYPES);
+  } else return json(400, { error: "invalid_resource", message: "STACK Run Data reader: deployed and configured. Ask for resource=status, activities, activity, activity-streams or wellness." });
 
   let response: Response;
   try {
