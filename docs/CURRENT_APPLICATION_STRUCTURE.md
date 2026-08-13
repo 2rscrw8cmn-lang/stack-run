@@ -1367,6 +1367,20 @@ Postgres, including tombstones. Training configuration and Intervals review
 state are revisioned documents; each run has its own revision; Personal Build
 structural writes are validated and reject stale revisions.
 
+The training row also carries the account reset generation. Every outbox write
+uses its last observed generation; reset increments it, so a never-synced run
+from an older offline device is backed up and rejected instead of being
+inserted. Run deletion batches tombstones and the existing deterministic
+Personal Build repack into one RPC, which returns the new Build revision and
+canonical placements. Mutations arriving during a request trigger one queued
+follow-up pass after the current request releases its in-flight guard.
+
+Canonical hydration reconstructs schema-9 and passes it through the shared
+storage migration/domain validation before replacement. Legacy unscoped
+Intervals credentials are adopted on first initialization or first canonical
+account adoption on that device, never uploaded, never overwrite a scoped
+credential, and are marked to prevent same-browser account leakage.
+
 Crew remains a separate narrow projection. `useRaceCrew` will not project until
 the active account cache is canonical. `reconcile_crew_run_identity` merges
 legacy shared rows in place, retaining a survivor UUID, Props, Member Build and

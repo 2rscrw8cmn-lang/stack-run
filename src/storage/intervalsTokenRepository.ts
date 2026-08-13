@@ -7,6 +7,24 @@ function storageKey(accountId: string | null): string {
     : INTERVALS_SYNC_TOKEN_STORAGE_KEY;
 }
 
+const LEGACY_OWNER_KEY = `${INTERVALS_SYNC_TOKEN_STORAGE_KEY}.legacy-owner`;
+
+function loadLegacyOwner(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_OWNER_KEY);
+  } catch (error) {
+    throw new StorageWriteError("This browser could not read the saved Run Data connection.", { cause: error });
+  }
+}
+
+function saveLegacyOwner(accountId: string): void {
+  try {
+    localStorage.setItem(LEGACY_OWNER_KEY, accountId);
+  } catch (error) {
+    throw new StorageWriteError("This browser could not adopt the saved Run Data connection.", { cause: error });
+  }
+}
+
 export function loadIntervalsSyncToken(accountId: string | null = null): string | null {
   try {
     return localStorage.getItem(storageKey(accountId));
@@ -34,12 +52,15 @@ export function forgetIntervalsSyncToken(accountId: string | null = null): void 
 export function adoptLegacyIntervalsSyncToken(accountId: string): string | null {
   const existing = loadIntervalsSyncToken(accountId);
   const legacy = loadIntervalsSyncToken(null);
+  const legacyOwner = loadLegacyOwner();
+  if (legacyOwner && legacyOwner !== accountId) return existing;
   if (existing) {
-    if (legacy) forgetIntervalsSyncToken(null);
+    if (legacy && !legacyOwner) saveLegacyOwner(accountId);
     return existing;
   }
   if (!legacy) return null;
   saveIntervalsSyncToken(legacy, accountId);
+  saveLegacyOwner(accountId);
   forgetIntervalsSyncToken(null);
   return legacy;
 }

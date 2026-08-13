@@ -13,10 +13,12 @@ import type {
 import type {
   PersonalCloudRun,
   PersonalCloudSnapshot,
+  PersonalDeleteResult,
   PersonalInitializationRun,
   PersonalIntervalsDocument,
   PersonalTrainingDocument,
 } from "./types";
+import { appStateFromCloud } from "./reconciliation";
 
 export type PersonalConflictKind =
   | "training"
@@ -24,7 +26,8 @@ export type PersonalConflictKind =
   | "intervals"
   | "run"
   | "deleted"
-  | "run-id";
+  | "run-id"
+  | "generation";
 
 export class PersonalCloudConflictError extends Error {
   readonly kind: PersonalConflictKind;
@@ -59,6 +62,9 @@ function throwCloudError(error: { message?: string } | null): never {
   }
   if (message.includes("personal_run_id_conflict")) {
     throw new PersonalCloudConflictError("run-id", message);
+  }
+  if (message.includes("personal_generation_conflict")) {
+    throw new PersonalCloudConflictError("generation", message);
   }
   throw new Error(message);
 }
@@ -365,7 +371,7 @@ export async function loadPersonalCloudSnapshot(
 ): Promise<PersonalCloudSnapshot | null> {
   const trainingResult = await client
     .from("personal_training_state")
-    .select("settings,plan,race_setup,availability,run_days,revision")
+    .select("settings,plan,race_setup,availability,run_days,revision,account_generation")
     .maybeSingle();
   if (trainingResult.error) throw new Error(trainingResult.error.message);
   if (!trainingResult.data) return null;
@@ -385,7 +391,10 @@ export async function loadPersonalCloudSnapshot(
   const training = parseTrainingRow(trainingResult.data);
   const build = parseBuildRow(buildResult.data);
   const intervals = parseIntervalsRow(intervalsResult.data);
-  return {
+  const accountGeneration = revision(trainingResult.data.account_generation);
+  if (!accountGeneration) throw new Error("Cloud account generation is malformed.");
+  const snapshot: PersonalCloudSnapshot = {
+    accountGeneration,
     training: training.document,
     trainingRevision: training.revision,
     runs: Array.isArray(runsResult.data) ? runsResult.data.map(parseRunRow) : [],
@@ -394,6 +403,8 @@ export async function loadPersonalCloudSnapshot(
     intervals: intervals.document,
     intervalsRevision: intervals.revision,
   };
+  appStateFromCloud(snapshot);
+  return snapshot;
 }
 
 export async function initializePersonalCloud(
@@ -416,10 +427,12 @@ export async function initializePersonalCloud(
 
 export async function savePersonalTrainingDocument(
   client: SupabaseClient,
+  accountGeneration: number,
   expectedRevision: number,
   training: PersonalTrainingDocument,
 ): Promise<number> {
   const result = await client.rpc("save_personal_training_state", {
+    p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_training: training,
   });
@@ -431,10 +444,12 @@ export async function savePersonalTrainingDocument(
 
 export async function savePersonalBuildDocument(
   client: SupabaseClient,
+  accountGeneration: number,
   expectedRevision: number,
   placements: readonly BlockPlacement[],
 ): Promise<number> {
   const result = await client.rpc("save_personal_build_state", {
+    p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_placements: placements,
   });
@@ -446,10 +461,12 @@ export async function savePersonalBuildDocument(
 
 export async function savePersonalIntervalsDocument(
   client: SupabaseClient,
+  accountGeneration: number,
   expectedRevision: number,
   intervals: PersonalIntervalsDocument,
 ): Promise<number> {
   const result = await client.rpc("save_personal_intervals_state", {
+    p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_last_sync: intervals.lastSuccessfulActivitySyncAt,
     p_ignored_activity_ids: intervals.ignoredActivityIds,
@@ -463,10 +480,12 @@ export async function savePersonalIntervalsDocument(
 
 export async function savePersonalRun(
   client: SupabaseClient,
+  accountGeneration: number,
   expectedRevision: number,
   run: RunLog,
 ): Promise<PersonalCloudRun> {
   const result = await client.rpc("save_personal_run", {
+    p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_run: run,
   });
@@ -474,25 +493,47 @@ export async function savePersonalRun(
   return parseRunRow(result.data);
 }
 
-export async function deletePersonalRun(
+export async function deletePersonalRuns(
   client: SupabaseClient,
-  runId: string,
-): Promise<PersonalCloudRun | null> {
-  const result = await client.rpc("delete_personal_run", { p_run_id: runId });
+  accountGeneration: number,
+  expectedBuildRevision: number,
+  runIds: readonly string[],
+  placements: readonly BlockPlacement[],
+): Promise<PersonalDeleteResult> {
+  const result = await client.rpc("delete_personal_runs", {
+    p_expected_generation: accountGeneration,
+    p_expected_build_revision: expectedBuildRevision,
+    p_run_ids: runIds,
+    p_placements: placements,
+  });
   if (result.error) throwCloudError(result.error);
-  return result.data ? parseRunRow(result.data) : null;
+  const data = record(result.data);
+  const buildRevision = revision(data?.buildRevision);
+  if (!data || !buildRevision || !Array.isArray(data.placements)) {
+    throw new Error("Personal run deletion returned malformed Build data.");
+  }
+  const parsed = data.placements.map(parsePlacement);
+  if (parsed.some((item) => item === null)) {
+    throw new Error("Personal run deletion returned malformed Build data.");
+  }
+  return { buildRevision, placements: parsed as BlockPlacement[] };
 }
 
 export async function resetPersonalCloud(
   client: SupabaseClient,
+  accountGeneration: number,
   training: PersonalTrainingDocument,
   intervals: PersonalIntervalsDocument,
-): Promise<void> {
+): Promise<number> {
   const result = await client.rpc("reset_personal_stack", {
+    p_expected_generation: accountGeneration,
     p_training: training,
     p_intervals: intervals,
   });
   if (result.error) throwCloudError(result.error);
+  const next = revision(result.data);
+  if (!next) throw new Error("Personal reset returned an invalid generation.");
+  return next;
 }
 
 export async function reconcileCrewRunIdentity(

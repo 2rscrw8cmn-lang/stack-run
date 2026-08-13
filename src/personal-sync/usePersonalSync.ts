@@ -28,7 +28,7 @@ import {
   savePersonalOutbox,
 } from "../storage/personalSyncRepository";
 import {
-  deletePersonalRun,
+  deletePersonalRuns,
   initializePersonalCloud,
   loadPersonalCloudSnapshot,
   PersonalCloudConflictError,
@@ -45,6 +45,7 @@ import {
   mergeIntervalsDocuments,
   mergeMissingRunPlacements,
   reconcileLegacyRuns,
+  repairCanonicalPlacements,
   rewritePlacementRunIds,
 } from "./reconciliation";
 import {
@@ -80,6 +81,7 @@ function metadataFromSnapshot(snapshot: PersonalCloudSnapshot): PersonalCacheMet
   return {
     version: 1,
     initialized: true,
+    accountGeneration: snapshot.accountGeneration,
     revisions: {
       training: snapshot.trainingRevision,
       build: snapshot.buildRevision,
@@ -139,6 +141,7 @@ export function usePersonalSync({
   const latest = useRef({ state, userId, pendingCandidates });
   const inFlight = useRef<Promise<void> | null>(null);
   const syncTimer = useRef<number | null>(null);
+  const syncNowRef = useRef<() => Promise<void>>(async () => undefined);
 
   useEffect(() => {
     latest.current = { state, userId, pendingCandidates };
@@ -164,7 +167,7 @@ export function usePersonalSync({
       const nextState = appStateFromCloud(snapshot);
       const metadata = metadataFromSnapshot(snapshot);
       savePersonalMetadata(nextUserId, metadata);
-      savePersonalOutbox(nextUserId, emptyPersonalOutbox());
+      savePersonalOutbox(nextUserId, emptyPersonalOutbox(snapshot.accountGeneration));
       replaceForAccount(nextUserId, nextState, snapshot.intervals.pendingCandidates);
       for (const [canonicalId, aliases] of activeAliases(snapshot)) {
         await reconcileCrewRunIdentity(availability.client!, canonicalId, aliases);
@@ -191,7 +194,9 @@ export function usePersonalSync({
       const reconciliation = reconcileLegacyRuns(localState.runLogs, snapshot.runs);
       const uploadedIds = new Set<string>();
       for (const run of reconciliation.aliasRunsToRegister) {
-        const saved = await savePersonalRun(availability.client!, 0, run);
+        const saved = await savePersonalRun(
+          availability.client!, snapshot.accountGeneration, 0, run,
+        );
         reconciliation.localToCanonical[run.id] = saved.run.id;
         await reconcileCrewRunIdentity(
           availability.client!,
@@ -200,7 +205,9 @@ export function usePersonalSync({
         );
       }
       for (const run of reconciliation.runsToUpload) {
-        const saved = await savePersonalRun(availability.client!, 0, run);
+        const saved = await savePersonalRun(
+          availability.client!, snapshot.accountGeneration, 0, run,
+        );
         uploadedIds.add(saved.run.id);
         if (saved.run.id !== run.id) {
           reconciliation.localToCanonical[run.id] = saved.run.id;
@@ -217,6 +224,7 @@ export function usePersonalSync({
         try {
           await savePersonalBuildDocument(
             availability.client!,
+            snapshot.accountGeneration,
             snapshot.buildRevision,
             nextPlacements,
           );
@@ -238,6 +246,7 @@ export function usePersonalSync({
         try {
           await savePersonalIntervalsDocument(
             availability.client!,
+            snapshot.accountGeneration,
             snapshot.intervalsRevision,
             mergedIntervals,
           );
@@ -266,36 +275,41 @@ export function usePersonalSync({
       return;
     }
 
+    let queueFollowUp = false;
     const request = (async () => {
       setStatus("syncing");
       setError(null);
       const started = loadPersonalOutbox(activeUserId);
-      if (!hasPersonalOutboxWork(started)) {
-        const snapshot = await loadPersonalCloudSnapshot(availability.client!);
-        if (snapshot) await adoptSnapshot(activeUserId, snapshot);
-        return;
-      }
+      const startedGeneration = started.generation;
       const metadata = loadPersonalMetadata(activeUserId);
 
       try {
+        if (!hasPersonalOutboxWork(started)) {
+          const snapshot = await loadPersonalCloudSnapshot(availability.client!);
+          if (snapshot) await adoptSnapshot(activeUserId, snapshot);
+          return;
+        }
         if (started.reset) {
           const current = latest.current.state;
-          await resetPersonalCloud(
+          metadata.accountGeneration = await resetPersonalCloud(
             availability.client!,
+            started.accountGeneration,
             trainingDocumentFrom(current),
             intervalsDocumentFrom(current, latest.current.pendingCandidates),
           );
         } else {
+          const deletedRunIds = Object.entries(started.runs)
+            .filter(([, mutation]) => mutation.kind === "delete")
+            .map(([runId]) => runId);
+          let deletionPlacements: Readonly<AppState["blockPlacements"]> | null = null;
           for (const [runId, mutation] of Object.entries(started.runs)) {
-            if (mutation.kind === "delete") {
-              await deletePersonalRun(availability.client!, runId);
-              continue;
-            }
+            if (mutation.kind === "delete") continue;
             const currentRun = latest.current.state.runLogs.find((run) => run.id === runId);
             if (!currentRun) continue;
             try {
               const saved = await savePersonalRun(
                 availability.client!,
+                started.accountGeneration,
                 mutation.expectedRevision,
                 currentRun,
               );
@@ -306,7 +320,7 @@ export function usePersonalSync({
               // created or the next pass would reject and discard that edit.
               const concurrentOutbox = loadPersonalOutbox(activeUserId);
               const concurrentMutation = concurrentOutbox.runs[runId];
-              if (concurrentOutbox.generation !== started.generation && concurrentMutation) {
+              if (concurrentOutbox.generation !== startedGeneration && concurrentMutation) {
                 delete concurrentOutbox.runs[runId];
                 concurrentOutbox.runs[saved.run.id] = concurrentMutation.kind === "upsert"
                   ? { ...concurrentMutation, expectedRevision: saved.revision }
@@ -345,10 +359,48 @@ export function usePersonalSync({
             }
           }
 
+          if (deletedRunIds.length > 0) {
+            const beforeDelete = await loadPersonalCloudSnapshot(availability.client!);
+            if (!beforeDelete) throw new Error("Canonical personal STACK is unavailable.");
+            if (beforeDelete.accountGeneration !== started.accountGeneration) {
+              throw new PersonalCloudConflictError(
+                "generation",
+                "personal_generation_conflict",
+              );
+            }
+            const requested = new Set(deletedRunIds);
+            const deletedCanonicalIds = new Set(
+              beforeDelete.runs
+                .filter((item) =>
+                  requested.has(item.run.id) || item.aliases.some((alias) => requested.has(alias)),
+                )
+                .map((item) => item.run.id),
+            );
+            const activeAfterDelete = new Set(
+              beforeDelete.runs
+                .filter((item) => item.deletedAt === null && !deletedCanonicalIds.has(item.run.id))
+                .map((item) => item.run.id),
+            );
+            const repaired = repairCanonicalPlacements(
+              beforeDelete.placements,
+              activeAfterDelete,
+            );
+            const deleted = await deletePersonalRuns(
+              availability.client!,
+              started.accountGeneration,
+              beforeDelete.buildRevision,
+              deletedRunIds,
+              repaired,
+            );
+            metadata.revisions.build = deleted.buildRevision;
+            deletionPlacements = deleted.placements;
+          }
+
           if (started.training) {
             try {
               metadata.revisions.training = await savePersonalTrainingDocument(
                 availability.client!,
+                started.accountGeneration,
                 metadata.revisions.training,
                 trainingDocumentFrom(latest.current.state),
               );
@@ -368,6 +420,7 @@ export function usePersonalSync({
             try {
               metadata.revisions.intervals = await savePersonalIntervalsDocument(
                 availability.client!,
+                started.accountGeneration,
                 metadata.revisions.intervals,
                 intervalsDocumentFrom(
                   latest.current.state,
@@ -396,6 +449,7 @@ export function usePersonalSync({
               );
               metadata.revisions.intervals = await savePersonalIntervalsDocument(
                 availability.client!,
+                started.accountGeneration,
                 refreshed.intervalsRevision,
                 merged,
               );
@@ -403,21 +457,30 @@ export function usePersonalSync({
           }
 
           if (started.build) {
-            try {
-              metadata.revisions.build = await savePersonalBuildDocument(
-                availability.client!,
-                metadata.revisions.build,
-                latest.current.state.blockPlacements,
-              );
-            } catch (reason) {
-              if (reason instanceof PersonalCloudConflictError && reason.kind === "build") {
-                backupPersonalState(
-                  activeUserId,
-                  latest.current.state,
-                  "Personal Build change rejected because another device saved a newer revision",
+            if (
+              deletionPlacements !== null &&
+              !jsonChanged(deletionPlacements, latest.current.state.blockPlacements)
+            ) {
+              // The atomic delete already stored this exact deterministic
+              // repack and returned its new Build revision.
+            } else {
+              try {
+                metadata.revisions.build = await savePersonalBuildDocument(
+                  availability.client!,
+                  started.accountGeneration,
+                  metadata.revisions.build,
+                  latest.current.state.blockPlacements,
                 );
-                setMessage("Your Build changed on another device. Choose the spot again.");
-              } else throw reason;
+              } catch (reason) {
+                if (reason instanceof PersonalCloudConflictError && reason.kind === "build") {
+                  backupPersonalState(
+                    activeUserId,
+                    latest.current.state,
+                    "Personal Build change rejected because another device saved a newer revision",
+                  );
+                  setMessage("Your Build changed on another device. Choose the spot again.");
+                } else throw reason;
+              }
             }
           }
         }
@@ -425,8 +488,11 @@ export function usePersonalSync({
         metadata.updatedAt = new Date().toISOString();
         savePersonalMetadata(activeUserId, metadata);
         const currentOutbox = loadPersonalOutbox(activeUserId);
-        if (currentOutbox.generation === started.generation) {
-          savePersonalOutbox(activeUserId, emptyPersonalOutbox());
+        if (currentOutbox.generation === startedGeneration) {
+          savePersonalOutbox(
+            activeUserId,
+            emptyPersonalOutbox(metadata.accountGeneration),
+          );
         }
         const canonical = await loadPersonalCloudSnapshot(availability.client!);
         if (!canonical) throw new Error("Canonical personal STACK is unavailable.");
@@ -438,8 +504,23 @@ export function usePersonalSync({
         } else {
           savePersonalMetadata(activeUserId, metadataFromSnapshot(canonical));
           setStatus("offline-pending");
+          queueFollowUp = true;
         }
       } catch (reason) {
+        if (reason instanceof PersonalCloudConflictError && reason.kind === "generation") {
+          backupPersonalState(
+            activeUserId,
+            latest.current.state,
+            "Offline changes rejected because the account was reset on another device",
+          );
+          const canonical = await loadPersonalCloudSnapshot(availability.client!);
+          if (!canonical) {
+            throw new Error("Canonical personal STACK is unavailable.", { cause: reason });
+          }
+          await adoptSnapshot(activeUserId, canonical);
+          setMessage("This account was reset on another device. Your attempted local state was backed up.");
+          return;
+        }
         setError(messageOf(reason));
         setStatus(hasPersonalOutboxWork(loadPersonalOutbox(activeUserId))
           ? "offline-pending"
@@ -452,15 +533,32 @@ export function usePersonalSync({
     } finally {
       inFlight.current = null;
     }
+    if (
+      queueFollowUp &&
+      online() &&
+      latest.current.userId === activeUserId &&
+      loadPersonalMetadata(activeUserId).initialized &&
+      hasPersonalOutboxWork(loadPersonalOutbox(activeUserId))
+    ) {
+      if (syncTimer.current !== null) window.clearTimeout(syncTimer.current);
+      syncTimer.current = window.setTimeout(() => {
+        syncTimer.current = null;
+        void syncNowRef.current();
+      }, 0);
+    }
   }, [adoptSnapshot, availability, replaceForAccount]);
+
+  useEffect(() => {
+    syncNowRef.current = syncNow;
+  }, [syncNow]);
 
   const scheduleSync = useCallback(() => {
     if (syncTimer.current !== null) window.clearTimeout(syncTimer.current);
     syncTimer.current = window.setTimeout(() => {
       syncTimer.current = null;
-      void syncNow();
+      void syncNowRef.current();
     }, 0);
-  }, [syncNow]);
+  }, []);
 
   const recordMutation = useCallback(
     (previous: AppState, next: AppState): void => {
@@ -471,6 +569,9 @@ export function usePersonalSync({
       const metadata = loadPersonalMetadata(activeUserId);
       if (!metadata.initialized) return;
       const outbox = loadPersonalOutbox(activeUserId);
+      if (!hasPersonalOutboxWork(outbox)) {
+        outbox.accountGeneration = metadata.accountGeneration;
+      }
       if (jsonChanged(trainingDocumentFrom(previous), trainingDocumentFrom(next))) {
         outbox.training = true;
       }
@@ -516,6 +617,9 @@ export function usePersonalSync({
       savePendingIntervalsCandidates(next, activeUserId);
       if (!activeUserId || !loadPersonalMetadata(activeUserId).initialized) return;
       const outbox = loadPersonalOutbox(activeUserId);
+      if (!hasPersonalOutboxWork(outbox)) {
+        outbox.accountGeneration = loadPersonalMetadata(activeUserId).accountGeneration;
+      }
       outbox.intervals = true;
       outbox.generation += 1;
       outbox.updatedAt = new Date().toISOString();
@@ -567,7 +671,9 @@ export function usePersonalSync({
     const activeUserId = latest.current.userId;
     if (!activeUserId || !loadPersonalMetadata(activeUserId).initialized) return;
     replaceForAccount(activeUserId, fresh, []);
+    const metadata = loadPersonalMetadata(activeUserId);
     const outbox = loadPersonalOutbox(activeUserId);
+    outbox.accountGeneration = metadata.accountGeneration;
     outbox.reset = true;
     outbox.training = false;
     outbox.build = false;
@@ -630,8 +736,27 @@ export function usePersonalSync({
           setStatus("initialization-required");
           return;
         }
+        // Validate the reconstructed schema-9 state before reconciliation can
+        // write anything or canonical hydration can replace a valid cache.
+        appStateFromCloud(snapshot);
+        adoptLegacyIntervalsApiKey(userId);
+        adoptLegacyIntervalsSyncToken(userId);
         const metadata = loadPersonalMetadata(userId);
         const outbox = loadPersonalOutbox(userId);
+        if (
+          metadata.initialized &&
+          hasPersonalOutboxWork(outbox) &&
+          snapshot.accountGeneration > metadata.accountGeneration
+        ) {
+          backupPersonalState(
+            userId,
+            candidate,
+            "Offline changes rejected because the account was reset on another device",
+          );
+          await adoptSnapshot(userId, snapshot);
+          setMessage("This account was reset on another device. Your attempted local state was backed up.");
+          return;
+        }
         if (metadata.initialized && hasPersonalOutboxWork(outbox)) {
           setInitialized(true);
           setStatus(online() ? "ready" : "offline-pending");

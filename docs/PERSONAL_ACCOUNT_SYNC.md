@@ -10,10 +10,12 @@ supabase db push
 
 Existing projects that already applied
 `20260813150000_personal_account_sync.sql` must also apply the follow-up
-`20260813173000_personal_table_write_privileges.sql`. It removes inherited
+`20260813173000_personal_table_write_privileges.sql` and correctness migration
+`20260813190000_personal_sync_correctness.sql`. The first removes inherited
 browser-role DML grants and replaces the initial self-write RLS policies with
-self-read policies; authenticated writes continue exclusively through the
-revision-enforcing RPCs.
+self-read policies. The second adds the account reset generation and the
+atomic run-delete/Personal-Build-repair RPC. Authenticated writes continue
+exclusively through revision- and generation-enforcing RPCs.
 
 It adds:
 
@@ -60,7 +62,8 @@ Use one real account in a desktop browser and real iPhone Safari.
    stale placement from the other device and confirm the newer tower wins and
    the rejected local state was backed up.
 6. Delete the run, then open/sync the stale device and confirm the run does not
-   return.
+   return. Also delete a supporting placed block and confirm both devices show
+   the same compact, valid survivor tower without a false Build-conflict notice.
 7. Save the Intervals key on only one device. Sync there, then review the
    pending candidate on the device without the key. Confirm ignored ids also
    appear on both devices and Forget Connection leaves pending reviews intact.
@@ -72,6 +75,10 @@ Use one real account in a desktop browser and real iPhone Safari.
    the first account appears.
 10. Confirm a signed-out browser and a signed-in account with no Crew both keep
     full personal functionality.
+11. While one device is offline, create a run there, Reset the account from the
+    other device, then reconnect the stale device. Confirm its attempted state
+    is backed up, the pre-reset run does not return, and a new run logged after
+    the reset does sync.
 
 Do not remove the legacy Intervals proxy until its separate production iPhone
 Safari deprecation checklist is complete.

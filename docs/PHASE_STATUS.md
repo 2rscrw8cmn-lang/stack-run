@@ -42,7 +42,11 @@ Status: **Implemented / PR review and real-device QA pending.**
 - Training, Intervals and Personal Build documents use optimistic revisions;
   runs have independent revisions and durable tombstones. A persistent
   account-scoped outbox retries on mutation, load, online, focus, foreground
-  and Sync Now.
+  and Sync Now, including a queued follow-up pass for edits made during an
+  active request. Account reset advances a server generation so old offline
+  mutations cannot re-enter the reset account.
+- Run deletion and deterministic Personal Build survivor repacking commit in
+  one RPC and return the canonical Build revision/placements to the client.
 - Pending Intervals candidates and ignored ids are account-wide. API keys and
   legacy proxy tokens remain account-scoped on that device and never enter
   Supabase or backups; Forget Connection removes only the credential.
@@ -51,10 +55,11 @@ Status: **Implemented / PR review and real-device QA pending.**
   changed communal footprints demote to READY and support healing remains in
   force.
 - Forward migrations `20260813150000_personal_account_sync.sql` and
-  `20260813173000_personal_table_write_privileges.sql`, plus transactional
-  verification `0012_personal_account_sync.sql`, cover privacy, RPC-only writes,
-  revisions, external uniqueness, tombstones, Crew reconciliation and account
-  reset.
+  `20260813173000_personal_table_write_privileges.sql` and
+  `20260813190000_personal_sync_correctness.sql`, plus transactional verification
+  `0012_personal_account_sync.sql`, cover privacy, RPC-only writes, revisions,
+  atomic Build repair, reset generations, external uniqueness, tombstones,
+  Crew reconciliation and account reset.
 - No Realtime, OAuth, service worker, CRDT, new destination or UI redesign.
 
 See `docs/PERSONAL_ACCOUNT_SYNC.md` for deployment and remaining QA.

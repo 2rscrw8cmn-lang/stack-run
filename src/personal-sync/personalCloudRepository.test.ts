@@ -20,6 +20,7 @@ function rows(overrides: Partial<Record<string, unknown>> = {}) {
       availability: seed.availability,
       run_days: seed.runDays,
       revision: 2,
+      account_generation: 3,
     },
     personal_runs: [{
       user_id: "user-a",
@@ -75,6 +76,7 @@ describe("personal cloud hydration", () => {
     const snapshot = await loadPersonalCloudSnapshot(readClient(rows()));
     expect(snapshot).toMatchObject({
       trainingRevision: 2,
+      accountGeneration: 3,
       buildRevision: 4,
       intervalsRevision: 5,
       intervals: { ignoredActivityIds: ["ignored-1"] },
@@ -102,6 +104,41 @@ describe("personal cloud hydration", () => {
     await expect(loadPersonalCloudSnapshot(readClient(malformed))).rejects.toThrow("malformed");
     expect(loadAccountAppState("user-a")?.plan.name).toBe("Offline cache survives");
   });
+
+  it("rejects malformed nested plan, week, workout, race, and config data", async () => {
+    const malformedRows = [
+      (() => {
+        const value = structuredClone(rows().personal_training_state);
+        value.plan.weeks = "not-weeks" as never;
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(rows().personal_training_state);
+        value.plan.weeks[0].weekNumber = "one" as never;
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(rows().personal_training_state);
+        value.plan.weeks[0].workouts[0].build.span = "wide" as never;
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(rows().personal_training_state);
+        value.plan.race.distanceMiles = "far" as never;
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(rows().personal_training_state);
+        value.run_days = [9] as never;
+        return value;
+      })(),
+    ];
+    for (const personalTrainingState of malformedRows) {
+      await expect(loadPersonalCloudSnapshot(readClient(rows({
+        personal_training_state: personalTrainingState,
+      })))).rejects.toThrow("malformed");
+    }
+  });
 });
 
 describe("optimistic concurrency client", () => {
@@ -111,14 +148,14 @@ describe("optimistic concurrency client", () => {
 
   it("classifies stale plan and Personal Build writes", async () => {
     const seed = createInitialAppState();
-    await expect(savePersonalTrainingDocument(rpcClient("personal_training_revision_conflict"), 1, {
+    await expect(savePersonalTrainingDocument(rpcClient("personal_training_revision_conflict"), 3, 1, {
       settings: seed.settings,
       plan: seed.plan,
       raceSetup: seed.raceSetup,
       availability: seed.availability,
       runDays: seed.runDays,
     })).rejects.toMatchObject({ kind: "training" } satisfies Partial<PersonalCloudConflictError>);
-    await expect(savePersonalBuildDocument(rpcClient("personal_build_revision_conflict"), 1, []))
+    await expect(savePersonalBuildDocument(rpcClient("personal_build_revision_conflict"), 3, 1, []))
       .rejects.toMatchObject({ kind: "build" } satisfies Partial<PersonalCloudConflictError>);
   });
 
@@ -129,7 +166,17 @@ describe("optimistic concurrency client", () => {
     await expect(savePersonalRun(
       rpcClient("personal_run_deleted"),
       3,
+      3,
       snapshot!.runs[0].run,
     )).rejects.toMatchObject({ kind: "deleted" } satisfies Partial<PersonalCloudConflictError>);
+  });
+
+  it("classifies an account generation rejection", async () => {
+    await expect(savePersonalBuildDocument(
+      rpcClient("personal_generation_conflict"),
+      2,
+      4,
+      [],
+    )).rejects.toMatchObject({ kind: "generation" } satisfies Partial<PersonalCloudConflictError>);
   });
 });

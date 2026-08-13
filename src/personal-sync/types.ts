@@ -26,9 +26,15 @@ export interface PersonalCloudRun {
   aliases: string[];
 }
 
+export interface PersonalDeleteResult {
+  buildRevision: number;
+  placements: BlockPlacement[];
+}
+
 export type PersonalInitializationRun = RunLog & { legacyAliases?: string[] };
 
 export interface PersonalCloudSnapshot {
+  accountGeneration: number;
   training: PersonalTrainingDocument;
   trainingRevision: number;
   runs: PersonalCloudRun[];
@@ -52,6 +58,7 @@ export interface PersonalRunMutation {
 
 export interface PersonalOutbox {
   version: 1;
+  accountGeneration: number;
   generation: number;
   reset: boolean;
   training: boolean;
@@ -64,6 +71,7 @@ export interface PersonalOutbox {
 export interface PersonalCacheMetadata {
   version: 1;
   initialized: boolean;
+  accountGeneration: number;
   revisions: PersonalRevisionState;
   aliasesByCanonicalId: Record<string, string[]>;
   updatedAt: string;

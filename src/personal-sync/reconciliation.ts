@@ -2,6 +2,7 @@ import { mergeCandidates, unresolvedCandidates, type IntervalsCandidate } from "
 import { InvalidPlacementError, assertPlacementFits, repackPlacements } from "../domain/placement";
 import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import { createRunLogId } from "../storage/appStateRepository";
+import { migrateAppState } from "../storage/migrations";
 import type {
   PersonalCloudRun,
   PersonalCloudSnapshot,
@@ -250,7 +251,7 @@ export function appStateFromCloud(snapshot: PersonalCloudSnapshot): AppState {
     .filter((item) => item.deletedAt === null)
     .map((item) => item.run);
   const activeIds = new Set(activeRuns.map((run) => run.id));
-  return {
+  return migrateAppState({
     schemaVersion: 9,
     settings: snapshot.training.settings,
     plan: snapshot.training.plan,
@@ -264,5 +265,5 @@ export function appStateFromCloud(snapshot: PersonalCloudSnapshot): AppState {
         snapshot.intervals.lastSuccessfulActivitySyncAt,
       ignoredActivityIds: [...snapshot.intervals.ignoredActivityIds],
     },
-  };
+  });
 }

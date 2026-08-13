@@ -176,6 +176,7 @@ describe("canonical hydration and account-wide Intervals state", () => {
     const seed = createInitialAppState();
     const canonicalRun = run("canonical");
     const snapshot: PersonalCloudSnapshot = {
+      accountGeneration: 1,
       training: {
         settings: seed.settings,
         plan: { ...seed.plan, name: "Cloud plan" },

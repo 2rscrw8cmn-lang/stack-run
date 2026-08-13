@@ -14,6 +14,8 @@ Issue #50 / DATA-1 supersedes the former signed-in local-only boundary.
   complete AppState is never stored as one opaque cloud blob.
 - Local mutations are immediate and enter the account-scoped persistent
   `stack.personal-outbox.v1.<user-id>` outbox.
+- Outbox mutations carry the last observed account generation. Reset advances
+  that generation, rejecting stale pre-reset inserts before canonical refresh.
 
 Key:
 
@@ -102,8 +104,11 @@ stack.intervals.sync-token.v1
 
 For signed-in accounts both the proxy token and personal API key use an
 account-scoped suffix on that device. They are never uploaded. The old
-unscoped credential is moved into exactly one account only after the runner
-explicitly chooses that device to initialize the account.
+unscoped credential is adopted into exactly one account either after the
+runner explicitly initializes from that device or when that device first
+adopts an already initialized canonical account. Existing scoped credentials
+are never overwritten, and the unscoped value is removed only after a
+successful adoption.
 
 This authorizes the existing protected Vercel proxy.
 

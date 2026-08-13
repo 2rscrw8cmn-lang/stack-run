@@ -7,6 +7,30 @@ function storageKey(accountId: string | null): string {
     : INTERVALS_API_KEY_STORAGE_KEY;
 }
 
+const LEGACY_OWNER_KEY = `${INTERVALS_API_KEY_STORAGE_KEY}.legacy-owner`;
+
+function loadLegacyOwner(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_OWNER_KEY);
+  } catch (error) {
+    throw new StorageWriteError(
+      "This browser could not read the saved Intervals.icu connection.",
+      { cause: error },
+    );
+  }
+}
+
+function saveLegacyOwner(accountId: string): void {
+  try {
+    localStorage.setItem(LEGACY_OWNER_KEY, accountId);
+  } catch (error) {
+    throw new StorageWriteError(
+      "This browser could not adopt the saved Intervals.icu connection.",
+      { cause: error },
+    );
+  }
+}
+
 /**
  * The private-hobby Intervals credential is deliberately independent from
  * schema-9 AppState. That keeps it out of personal backups and, more
@@ -49,16 +73,18 @@ export function forgetIntervalsApiKey(accountId: string | null = null): void {
   }
 }
 
-/** Called only after the user explicitly chooses this device's data. */
 export function adoptLegacyIntervalsApiKey(accountId: string): string | null {
   const existing = loadIntervalsApiKey(accountId);
   const legacy = loadIntervalsApiKey(null);
+  const legacyOwner = loadLegacyOwner();
+  if (legacyOwner && legacyOwner !== accountId) return existing;
   if (existing) {
-    if (legacy) forgetIntervalsApiKey(null);
+    if (legacy && !legacyOwner) saveLegacyOwner(accountId);
     return existing;
   }
   if (!legacy) return null;
   saveIntervalsApiKey(legacy, accountId);
+  saveLegacyOwner(accountId);
   forgetIntervalsApiKey(null);
   return legacy;
 }

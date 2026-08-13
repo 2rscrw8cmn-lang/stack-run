@@ -61,4 +61,15 @@ describe("Intervals credential repository", () => {
     expect(adoptLegacyIntervalsApiKey("user-b")).toBeNull();
     expect(loadIntervalsApiKey("user-b")).toBeNull();
   });
+
+  it("does not overwrite a scoped key or expose the remaining legacy key after account switching", () => {
+    saveIntervalsApiKey("legacy-local-key");
+    saveIntervalsApiKey("already-scoped-a", "user-a");
+
+    expect(adoptLegacyIntervalsApiKey("user-a")).toBe("already-scoped-a");
+    expect(loadIntervalsApiKey()).toBe("legacy-local-key");
+    expect(adoptLegacyIntervalsApiKey("user-b")).toBeNull();
+    expect(loadIntervalsApiKey("user-b")).toBeNull();
+    expect(loadIntervalsApiKey()).toBe("legacy-local-key");
+  });
 });

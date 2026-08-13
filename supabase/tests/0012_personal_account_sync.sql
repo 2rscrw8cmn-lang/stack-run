@@ -77,6 +77,13 @@ begin
     raise exception 'anonymous personal table read was allowed';
   exception when insufficient_privilege then null;
   end;
+  if has_function_privilege(
+    'anon',
+    'public.delete_personal_runs(bigint,bigint,text[],jsonb)',
+    'execute'
+  ) then
+    raise exception 'anonymous role could execute atomic personal deletion';
+  end if;
 end;
 $$;
 
@@ -86,6 +93,13 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '95000000-0000-0000-0000-000000000001';
 do $$
 begin
+  if has_function_privilege(
+    'authenticated',
+    'public.save_personal_run(bigint,jsonb)',
+    'execute'
+  ) then
+    raise exception 'pre-generation personal run RPC remained executable';
+  end if;
   begin
     update public.personal_build_state set revision = 99 where user_id = auth.uid();
     raise exception 'direct personal table write was allowed';
@@ -97,10 +111,10 @@ $$;
 do $$
 declare v_revision bigint;
 begin
-  v_revision := public.save_personal_build_state(1, '[]'::jsonb);
+  v_revision := public.save_personal_build_state(1, 1, '[]'::jsonb);
   if v_revision <> 2 then raise exception 'Build revision did not advance'; end if;
   begin
-    perform public.save_personal_build_state(1, '[]'::jsonb);
+    perform public.save_personal_build_state(1, 1, '[]'::jsonb);
     raise exception 'stale Build write was accepted';
   exception when others then
     if sqlerrm = 'stale Build write was accepted' then raise; end if;
@@ -109,11 +123,12 @@ begin
 
   v_revision := public.save_personal_training_state(
     1,
+    1,
     '{"settings":{"units":"miles","theme":"dark"},"plan":{"schemaVersion":1,"id":"new","name":"new","race":{},"weeks":[{}]},"raceSetup":null,"availability":null,"runDays":null}'::jsonb
   );
   if v_revision <> 2 then raise exception 'training revision did not advance'; end if;
   begin
-    perform public.save_personal_training_state(1, '{}'::jsonb);
+    perform public.save_personal_training_state(1, 1, '{}'::jsonb);
     raise exception 'stale training write was accepted';
   exception when others then
     if sqlerrm = 'stale training write was accepted' then raise; end if;
@@ -127,7 +142,7 @@ $$;
 do $$
 declare v_saved jsonb;
 begin
-  v_saved := public.save_personal_run(0, '{
+  v_saved := public.save_personal_run(1, 0, '{
     "id":"canonical-run","workoutId":null,"completedDate":"2026-08-10",
     "activityType":"long","distanceMiles":8,"durationSeconds":4200,
     "effort":"solid","notes":"","source":"intervals",
@@ -136,7 +151,7 @@ begin
   }'::jsonb);
   if v_saved ->> 'run_id' <> 'canonical-run' then raise exception 'canonical run insert failed'; end if;
 
-  v_saved := public.save_personal_run(0, '{
+  v_saved := public.save_personal_run(1, 0, '{
     "id":"legacy-device-run","workoutId":null,"completedDate":"2026-08-10",
     "activityType":"long","distanceMiles":8,"durationSeconds":4200,
     "effort":"solid","notes":"","source":"intervals",
@@ -158,7 +173,7 @@ $$;
 do $$
 declare v_saved jsonb;
 begin
-  v_saved := public.save_personal_run(2, '{
+  v_saved := public.save_personal_run(1, 2, '{
     "id":"canonical-run","workoutId":"workout-42","completedDate":"2026-08-10",
     "activityType":"long","distanceMiles":8,"durationSeconds":4200,
     "effort":"great","notes":"edited elsewhere","source":"intervals",
@@ -169,7 +184,7 @@ begin
     raise exception 'cross-device run edit/link did not advance independently';
   end if;
   begin
-    perform public.save_personal_run(2, '{
+    perform public.save_personal_run(1, 2, '{
       "id":"canonical-run","workoutId":"workout-stale","completedDate":"2026-08-10",
       "activityType":"long","distanceMiles":8,"durationSeconds":4200,
       "effort":"solid","notes":"stale edit","source":"intervals",
@@ -181,7 +196,7 @@ begin
     if sqlerrm = 'stale individual run edit was accepted' then raise; end if;
     if sqlerrm not like '%personal_run_revision_conflict%' then raise; end if;
   end;
-  v_saved := public.save_personal_run(3, '{
+  v_saved := public.save_personal_run(1, 3, '{
     "id":"canonical-run","workoutId":null,"completedDate":"2026-08-10",
     "activityType":"long","distanceMiles":8,"durationSeconds":4200,
     "effort":"great","notes":"unlinked elsewhere","source":"intervals",
@@ -195,11 +210,11 @@ end;
 $$;
 
 -- Tombstones win over stale cached upserts and retain external uniqueness.
-select public.delete_personal_run('canonical-run');
+select public.delete_personal_runs(1, 2, array['canonical-run'], '[]'::jsonb);
 do $$
 begin
   begin
-    perform public.save_personal_run(1, '{
+    perform public.save_personal_run(1, 1, '{
       "id":"legacy-device-run","workoutId":null,"completedDate":"2026-08-10",
       "activityType":"long","distanceMiles":8,"durationSeconds":4200,
       "effort":"solid","notes":"stale","source":"intervals",
@@ -211,6 +226,50 @@ begin
     if sqlerrm = 'a stale device resurrected a tombstoned run' then raise; end if;
     if sqlerrm not like '%personal_run_deleted%' then raise; end if;
   end;
+end;
+$$;
+
+-- Deleting a supporting middle block atomically stores the same deterministic
+-- survivor repack used by the browser, without changing frozen geometry.
+do $$
+declare
+  v_revision bigint;
+  v_result jsonb;
+begin
+  perform public.save_personal_run(1, 0, '{"id":"build-a","workoutId":null,"completedDate":"2026-08-11","activityType":"easy","distanceMiles":2,"durationSeconds":1200,"effort":"solid","notes":"","source":"manual","externalSource":null,"importedMetrics":null,"createdAt":"2026-08-11T10:00:00Z","updatedAt":"2026-08-11T10:00:00Z"}'::jsonb);
+  perform public.save_personal_run(1, 0, '{"id":"build-b","workoutId":null,"completedDate":"2026-08-12","activityType":"easy","distanceMiles":2,"durationSeconds":1200,"effort":"solid","notes":"","source":"manual","externalSource":null,"importedMetrics":null,"createdAt":"2026-08-12T10:00:00Z","updatedAt":"2026-08-12T10:00:00Z"}'::jsonb);
+  perform public.save_personal_run(1, 0, '{"id":"build-c","workoutId":null,"completedDate":"2026-08-13","activityType":"easy","distanceMiles":2,"durationSeconds":1200,"effort":"solid","notes":"","source":"manual","externalSource":null,"importedMetrics":null,"createdAt":"2026-08-13T10:00:00Z","updatedAt":"2026-08-13T10:00:00Z"}'::jsonb);
+  v_revision := public.save_personal_build_state(1, 3, '[
+    {"runLogId":"build-a","row":0,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-11T10:00:00Z"},
+    {"runLogId":"build-b","row":1,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-12T10:00:00Z"},
+    {"runLogId":"build-c","row":2,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-13T10:00:00Z"}
+  ]'::jsonb);
+  if v_revision <> 4 then raise exception 'support tower setup revision was wrong'; end if;
+  begin
+    perform public.delete_personal_runs(1, 4, array['build-b'], '[
+      {"runLogId":"build-a","row":0,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-11T10:00:00Z"}
+    ]'::jsonb);
+    raise exception 'atomic delete silently dropped a surviving placed block';
+  exception when others then
+    if sqlerrm = 'atomic delete silently dropped a surviving placed block' then raise; end if;
+    if sqlerrm not like '%personal_build_survivor_mismatch%' then raise; end if;
+  end;
+  v_result := public.delete_personal_runs(1, 4, array['build-b'], '[
+    {"runLogId":"build-a","row":0,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-11T10:00:00Z"},
+    {"runLogId":"build-c","row":1,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-13T10:00:00Z"}
+  ]'::jsonb);
+  if (v_result ->> 'buildRevision')::bigint <> 5 then
+    raise exception 'atomic delete did not return the repaired Build revision';
+  end if;
+  if (select placements from public.personal_build_state where user_id = auth.uid()) <> v_result -> 'placements' then
+    raise exception 'canonical Build differs from atomic delete result';
+  end if;
+  if v_result -> 'placements' <> '[
+    {"runLogId":"build-a","row":0,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-11T10:00:00Z"},
+    {"runLogId":"build-c","row":1,"columnStart":1,"width":4,"height":1,"placedAt":"2026-08-13T10:00:00Z"}
+  ]'::jsonb then
+    raise exception 'middle-block delete left unexpected Personal Build geometry';
+  end if;
 end;
 $$;
 
@@ -273,6 +332,7 @@ $$;
 -- Reset propagates through the account and explicitly removes this runner's
 -- Crew projection; stale devices retain tombstones rather than reviving it.
 select public.reset_personal_stack(
+  1,
   '{"settings":{"units":"miles","theme":"dark"},"plan":{"schemaVersion":1,"id":"reset","name":"Reset","race":{},"weeks":[{}]},"raceSetup":null,"availability":null,"runDays":null}'::jsonb,
   '{"ignoredActivityIds":[]}'::jsonb
 );
@@ -286,6 +346,34 @@ begin
   end if;
   if exists (select 1 from public.shared_runs where user_id = auth.uid()) then
     raise exception 'account reset left Crew contributions';
+  end if;
+end;
+$$;
+
+-- Reset generation rejects both never-synced pre-reset inserts and stale
+-- tombstoned upserts, while a run created after observing generation 2 saves.
+do $$
+begin
+  if (select account_generation from public.personal_training_state where user_id = auth.uid()) <> 2 then
+    raise exception 'account reset did not advance generation';
+  end if;
+  begin
+    perform public.save_personal_run(1, 0, '{"id":"offline-before-reset","workoutId":null,"completedDate":"2026-08-13","activityType":"easy","distanceMiles":3,"durationSeconds":1800,"effort":"solid","notes":"","source":"manual","externalSource":null,"importedMetrics":null,"createdAt":"2026-08-13T11:00:00Z","updatedAt":"2026-08-13T11:00:00Z"}'::jsonb);
+    raise exception 'never-synced pre-reset run was resurrected';
+  exception when others then
+    if sqlerrm = 'never-synced pre-reset run was resurrected' then raise; end if;
+    if sqlerrm not like '%personal_generation_conflict%' then raise; end if;
+  end;
+  begin
+    perform public.save_personal_run(2, 1, '{"id":"build-a","workoutId":null,"completedDate":"2026-08-11","activityType":"easy","distanceMiles":2,"durationSeconds":1200,"effort":"solid","notes":"stale","source":"manual","externalSource":null,"importedMetrics":null,"createdAt":"2026-08-11T10:00:00Z","updatedAt":"2026-08-13T11:00:00Z"}'::jsonb);
+    raise exception 'reset tombstone was resurrected';
+  exception when others then
+    if sqlerrm = 'reset tombstone was resurrected' then raise; end if;
+    if sqlerrm not like '%personal_run_deleted%' then raise; end if;
+  end;
+  perform public.save_personal_run(2, 0, '{"id":"after-reset","workoutId":null,"completedDate":"2026-08-13","activityType":"easy","distanceMiles":3,"durationSeconds":1800,"effort":"solid","notes":"","source":"manual","externalSource":null,"importedMetrics":null,"createdAt":"2026-08-13T12:00:00Z","updatedAt":"2026-08-13T12:00:00Z"}'::jsonb);
+  if not exists (select 1 from public.personal_runs where user_id = auth.uid() and run_id = 'after-reset' and deleted_at is null) then
+    raise exception 'post-reset run did not sync under the observed generation';
   end if;
 end;
 $$;

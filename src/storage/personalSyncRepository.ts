@@ -66,6 +66,7 @@ export function emptyPersonalMetadata(): PersonalCacheMetadata {
   return {
     version: 1,
     initialized: false,
+    accountGeneration: 1,
     revisions: { ...EMPTY_PERSONAL_REVISIONS, runs: {} },
     aliasesByCanonicalId: {},
     updatedAt: new Date(0).toISOString(),
@@ -97,7 +98,12 @@ export function loadPersonalMetadata(userId: string): PersonalCacheMetadata {
     ) {
       return emptyPersonalMetadata();
     }
-    return parsed as PersonalCacheMetadata;
+    return {
+      ...(parsed as PersonalCacheMetadata),
+      accountGeneration: isPositiveInteger(parsed.accountGeneration) && parsed.accountGeneration > 0
+        ? parsed.accountGeneration
+        : 1,
+    };
   } catch {
     return emptyPersonalMetadata();
   }
@@ -110,9 +116,10 @@ export function savePersonalMetadata(
   localStorage.setItem(scoped(METADATA_PREFIX, userId), JSON.stringify(metadata));
 }
 
-export function emptyPersonalOutbox(): PersonalOutbox {
+export function emptyPersonalOutbox(accountGeneration = 1): PersonalOutbox {
   return {
     version: 1,
+    accountGeneration,
     generation: 0,
     reset: false,
     training: false,
@@ -140,7 +147,12 @@ export function loadPersonalOutbox(userId: string): PersonalOutbox {
     ) {
       return emptyPersonalOutbox();
     }
-    return parsed as PersonalOutbox;
+    return {
+      ...(parsed as PersonalOutbox),
+      accountGeneration: isPositiveInteger(parsed.accountGeneration) && parsed.accountGeneration > 0
+        ? parsed.accountGeneration
+        : 1,
+    };
   } catch {
     return emptyPersonalOutbox();
   }
