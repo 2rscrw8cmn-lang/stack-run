@@ -43,6 +43,22 @@ export type PlacementCandidate = Pick<
   "runLogId" | "columnStart" | "row" | "width" | "height"
 >;
 
+/**
+ * Everything the shared tower geometry needs to know about one block, and
+ * nothing else — no ownership, no run identity. `BlockPlacement` (Personal)
+ * and `CrewBuildBlock` (Crew) both satisfy this structurally, which is what
+ * lets skyline, landing, face-culling and void math run unmodified for
+ * either tower rather than being reimplemented per feature.
+ */
+export interface GridFootprint {
+  /** 0-based course, counted up from the ground. */
+  row: number;
+  /** 1-based, inclusive. */
+  columnStart: number;
+  width: number;
+  height: number;
+}
+
 export function lastColumnOf(placement: {
   columnStart: number;
   width: number;
@@ -55,8 +71,11 @@ export function topOf(placement: { row: number; height: number }): number {
 }
 
 /** The height of each column, ground first. Index 0 is column 1. */
-export function skylineOf(placements: BlockPlacement[]): number[] {
-  const skyline = new Array<number>(GRID_COLUMNS).fill(0);
+export function skylineOf(
+  placements: readonly GridFootprint[],
+  columns = GRID_COLUMNS,
+): number[] {
+  const skyline = new Array<number>(columns).fill(0);
   for (const placement of placements) {
     for (
       let column = placement.columnStart;
@@ -64,12 +83,95 @@ export function skylineOf(placements: BlockPlacement[]): number[] {
       column += 1
     ) {
       const index = column - 1;
-      if (index >= 0 && index < GRID_COLUMNS) {
+      if (index >= 0 && index < columns) {
         skyline[index] = Math.max(skyline[index], topOf(placement));
       }
     }
   }
   return skyline;
+}
+
+/** Every cell any placement fills, as `"column:row"` keys. Shared by face
+ * culling (a face draws only where nothing abuts it) and void detection (a
+ * cell the skyline covers that nothing actually fills). */
+export function occupiedCellsOf(placements: readonly GridFootprint[]): Set<string> {
+  const filled = new Set<string>();
+  for (const placement of placements) {
+    for (
+      let column = placement.columnStart;
+      column <= lastColumnOf(placement);
+      column += 1
+    ) {
+      for (let row = placement.row; row < topOf(placement); row += 1) {
+        filled.add(`${column}:${row}`);
+      }
+    }
+  }
+  return filled;
+}
+
+export interface FaceVisibility {
+  /** One flag per column the block spans: true where nothing rests above it. */
+  topFace: boolean[];
+  /** One flag per course the block stands: true where nothing abuts it. */
+  rightFace: boolean[];
+}
+
+/**
+ * Which of one placement's top and right edges actually show, given every
+ * cell the rest of the tower fills. One flag per grid cell along each edge
+ * rather than one per block: a three-wide brick can have another resting on
+ * two of its columns and open sky over the third, and an all-or-nothing top
+ * face would draw a sliver of itself out from under its neighbour.
+ */
+export function faceVisibilityOf(
+  placement: GridFootprint,
+  filled: ReadonlySet<string>,
+  columns = GRID_COLUMNS,
+): FaceVisibility {
+  const topFace: boolean[] = [];
+  for (
+    let column = placement.columnStart;
+    column <= lastColumnOf(placement);
+    column += 1
+  ) {
+    topFace.push(!filled.has(`${column}:${topOf(placement)}`));
+  }
+
+  const rightColumn = lastColumnOf(placement) + 1;
+  const rightFace: boolean[] = [];
+  for (let row = placement.row; row < topOf(placement); row += 1) {
+    rightFace.push(rightColumn > columns || !filled.has(`${rightColumn}:${row}`));
+  }
+
+  return { topFace, rightFace };
+}
+
+export interface GridVoid {
+  row: number;
+  column: number;
+}
+
+/**
+ * Empty cells with tower above them: openings a bridging block spans rather
+ * than floats over. Derived from the skyline so a void only appears under
+ * courses the tower has actually reached.
+ */
+export function voidsOf(
+  placements: readonly GridFootprint[],
+  filled: ReadonlySet<string>,
+  columns = GRID_COLUMNS,
+): GridVoid[] {
+  const skyline = skylineOf(placements, columns);
+  const voids: GridVoid[] = [];
+  for (let column = 1; column <= columns; column += 1) {
+    for (let row = 0; row < skyline[column - 1]; row += 1) {
+      if (!filled.has(`${column}:${row}`)) {
+        voids.push({ row, column });
+      }
+    }
+  }
+  return voids;
 }
 
 export function fitsInGrid(columnStart: number, width: number): boolean {
@@ -97,12 +199,13 @@ export function landingRow(
 export function placementOptions(
   width: BlockWidth,
   height: number,
-  placements: BlockPlacement[],
+  placements: readonly GridFootprint[],
+  columns = GRID_COLUMNS,
 ): PlacementOption[] {
-  const skyline = skylineOf(placements);
+  const skyline = skylineOf(placements, columns);
   const options: PlacementOption[] = [];
 
-  for (let columnStart = 1; columnStart + width - 1 <= GRID_COLUMNS; columnStart += 1) {
+  for (let columnStart = 1; columnStart + width - 1 <= columns; columnStart += 1) {
     const row = landingRow(skyline, columnStart, width);
     const top = row + height;
 
@@ -115,7 +218,7 @@ export function placementOptions(
     const rightIndex = columnStart + width - 1;
     const leftFlush = columnStart === 1 || (skyline[leftIndex] ?? 0) >= top;
     const rightFlush =
-      columnStart + width - 1 === GRID_COLUMNS || (skyline[rightIndex] ?? 0) >= top;
+      columnStart + width - 1 === columns || (skyline[rightIndex] ?? 0) >= top;
 
     options.push({
       row,

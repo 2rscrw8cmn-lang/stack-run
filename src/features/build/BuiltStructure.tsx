@@ -1,16 +1,18 @@
 import { Blocks } from "lucide-react";
-import type { CSSProperties, PointerEvent } from "react";
+import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Section } from "../../components/ui/Section";
-import type {
-  EarnedBlock,
-  PlacedBlock as PlacedBlockData,
-  TowerVoid,
+import {
+  WORKOUT_TYPE_LABEL,
+  type EarnedBlock,
+  type PlacedBlock as PlacedBlockData,
+  type TowerVoid,
 } from "../../domain/build";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
 import { PlacedBlock } from "./PlacedBlock";
 import { LandingSlot } from "./LandingSlot";
+import { useColumnDragPlacement } from "./useColumnDragPlacement";
 
 export interface StructurePlacing {
   block: EarnedBlock;
@@ -31,21 +33,6 @@ interface BuiltStructureProps {
   onSelectBlock: (runLogId: string) => void;
   /** Set while a block is hovering over the tower, waiting to be dropped. */
   placing?: StructurePlacing;
-}
-
-/**
- * How far a pointer has to travel before it counts as a drag rather than a
- * tap. Below this a finger that wobbles on the way up is still a tap, and a
- * tap must never commit a placement — it selects, and the user commits with
- * `Drop`. Above it the user is unmistakably carrying the block somewhere.
- */
-const DRAG_THRESHOLD_PX = 8;
-
-interface DragSession {
-  pointerId: number;
-  startX: number;
-  /** Set once the pointer has travelled past the threshold. */
-  isDrag: boolean;
 }
 
 /**
@@ -71,7 +58,6 @@ export function BuiltStructure({
 }: BuiltStructureProps) {
   const skylineRef = useRef<HTMLDivElement>(null);
   const towerRef = useRef<HTMLUListElement>(null);
-  const dragRef = useRef<DragSession | null>(null);
 
   const candidate = placing?.candidate ?? null;
   // While placing, the grid has to be tall enough to show the hovering block.
@@ -90,99 +76,20 @@ export function BuiltStructure({
     skylineRef.current?.scrollIntoView({ block: "center" });
   }, [candidateKey]);
 
-  /**
-   * Dragging the hovering block, snapped to the same valid columns tapping
-   * offers. The pointer only picks a column: where the block lands is still
-   * gravity's answer, so a drag can never place a block somewhere the keyboard
-   * could not. Tap, the left/right steppers, and `Auto Place` all stay live —
-   * this is a layer over the choices, never the only way to make them.
-   */
-  function dragToColumn(clientX: number) {
-    const tower = towerRef.current;
-    if (!tower || !placing || placing.options.length === 0) {
-      return;
-    }
-    const bounds = tower.getBoundingClientRect();
-    const columnWidth = bounds.width / GRID_COLUMNS;
-    if (columnWidth <= 0) {
-      return;
-    }
-
-    const width = placing.block.footprint.width;
-    // Centre the block under the finger rather than pinning its left edge.
-    const wanted = Math.round(
-      (clientX - bounds.left) / columnWidth - width / 2 + 1,
-    );
-    const nearest = placing.options.reduce((best, option) =>
-      Math.abs(option.columnStart - wanted) <
-      Math.abs(best.columnStart - wanted)
-        ? option
-        : best,
-    );
-    if (nearest.columnStart !== placing.candidate?.columnStart) {
-      placing.onChoose(nearest);
-    }
-  }
-
-  /**
-   * Picking the block up, from wherever the finger went down.
-   *
-   * Every landing gets this, not only the chosen one. A block three columns
-   * wide has a landing starting at six different columns and they overlap, so
-   * the topmost thing under a finger is usually not the slot the block is
-   * currently sitting in — gating this on "chosen" meant a press in most of
-   * the tower started no drag at all. Pressing anywhere brings the block to
-   * the finger and takes hold of it, which is also what "drag the block where
-   * you want it" ought to mean.
-   *
-   * Capture is taken on the slot the press landed on so the block keeps
-   * following a finger that slides off it. The move and release handlers live
-   * on the tower rather than the slot for the same reason: the slot that was
-   * grabbed stops being the chosen one the moment the drag reaches the next
-   * column.
-   */
-  function grab(event: PointerEvent<HTMLElement>, option: PlacementOption) {
-    if (!placing) {
-      return;
-    }
-    if (option.columnStart !== placing.candidate?.columnStart) {
-      placing.onChoose(option);
-    }
-    dragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      isDrag: false,
-    };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  }
-
-  function trackDrag(event: PointerEvent<HTMLElement>) {
-    const session = dragRef.current;
-    // `buttons` is 0 for a mouse merely passing over the tower.
-    if (!session || session.pointerId !== event.pointerId || event.buttons === 0) {
-      return;
-    }
-    if (Math.abs(event.clientX - session.startX) >= DRAG_THRESHOLD_PX) {
-      session.isDrag = true;
-    }
-    if (session.isDrag) {
-      dragToColumn(event.clientX);
-    }
-  }
-
-  /**
-   * Letting go. Release commits only after a deliberate drag, per D-045 — a
-   * plain tap on a landing selects it and leaves `Drop` to commit, which is
-   * what keeps the tap and keyboard paths honest.
-   */
-  function release(event: PointerEvent<HTMLElement>) {
-    const session = dragRef.current;
-    dragRef.current = null;
-    if (!session || session.pointerId !== event.pointerId || !session.isDrag) {
-      return;
-    }
-    placing?.onCommit();
-  }
+  // The pointer only ever picks a column: where the block lands is still
+  // gravity's answer, so a drag can never place a block somewhere the
+  // keyboard could not. Tap, the left/right steppers, and `Auto Place` all
+  // stay live — this is a layer over the choices, never the only way to make
+  // them. `useColumnDragPlacement` is the same hook Crew Build's tower uses.
+  const { grab, trackDrag, release, cancelDrag } = useColumnDragPlacement({
+    containerRef: towerRef,
+    gridColumns: GRID_COLUMNS,
+    width: placing?.block.footprint.width ?? 1,
+    options: placing?.options ?? [],
+    chosenColumnStart: placing?.candidate?.columnStart,
+    onChoose: (option) => placing?.onChoose(option),
+    onCommit: () => placing?.onCommit(),
+  });
 
   // An empty site with a ground line and nothing on it reads as a rendering
   // fault rather than a beginning, so the first-run state says so in words.
@@ -222,7 +129,7 @@ export function BuiltStructure({
             aria-label="Built blocks"
             onPointerMove={placing ? trackDrag : undefined}
             onPointerUp={placing ? release : undefined}
-            onPointerCancel={placing ? () => { dragRef.current = null; } : undefined}
+            onPointerCancel={placing ? cancelDrag : undefined}
             style={
               {
                 "--grid-columns": GRID_COLUMNS,
@@ -258,9 +165,12 @@ export function BuiltStructure({
               <LandingSlot
                 key={option.columnStart}
                 option={option}
-                block={placing.block}
+                width={placing.block.footprint.width}
+                height={placing.block.footprint.height}
+                pieceColor={`var(--${placing.block.runLog.activityType})`}
                 courses={drawnCourses}
                 isChosen={option.columnStart === candidate?.columnStart}
+                blockDescription={`${WORKOUT_TYPE_LABEL[placing.block.runLog.activityType]} block`}
                 onChoose={placing.onChoose}
                 onGrab={grab}
               />

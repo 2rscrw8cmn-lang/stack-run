@@ -1,15 +1,19 @@
 import type { CSSProperties, PointerEvent } from "react";
-import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
 import type { PlacementOption } from "../../domain/placement";
 
 interface LandingSlotProps {
   option: PlacementOption;
-  block: EarnedBlock;
+  width: number;
+  height: number;
+  /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */
+  pieceColor: string;
   /** Courses drawn in the grid, needed to flip row into a grid line. */
   courses: number;
   isChosen: boolean;
+  /** e.g. "Easy block" — composed with the column into the slot's name. */
+  blockDescription: string;
   onChoose: (option: PlacementOption) => void;
-  /** Takes hold of the block here. The tower handles the drag from there. */
+  /** Takes hold of the block here. The shared container handles the drag from there. */
   onGrab?: (event: PointerEvent<HTMLElement>, option: PlacementOption) => void;
 }
 
@@ -31,17 +35,22 @@ function columnPhrase(option: PlacementOption): string {
  * The name says the column and nothing else. Which course a block lands on is
  * gravity's business, not a choice being offered, and naming it here made the
  * option list read as a packing readout.
+ *
+ * Generic over which tower it belongs to — Personal or Crew Build compose it
+ * with their own colour and description — so the landing interaction has one
+ * implementation rather than a per-feature copy.
  */
 export function LandingSlot({
   option,
-  block,
+  width,
+  height,
+  pieceColor,
   courses,
   isChosen,
+  blockDescription,
   onChoose,
   onGrab,
 }: LandingSlotProps) {
-  const { width, height } = block.footprint;
-
   return (
     <li
       className="built-tower__slot"
@@ -51,7 +60,7 @@ export function LandingSlot({
           gridColumn: `${option.columnStart} / span ${width}`,
           gridRow: `${courses - option.row - height + 1} / span ${height}`,
           zIndex: option.row + height,
-          "--piece-color": `var(--${block.runLog.activityType})`,
+          "--piece-color": pieceColor,
         } as CSSProperties
       }
     >
@@ -62,7 +71,7 @@ export function LandingSlot({
         onPointerDown={onGrab ? (event) => onGrab(event, option) : undefined}
       >
         <span className="visually-hidden">
-          {`Place ${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block in ${columnPhrase(option)}`}
+          {`Place ${blockDescription} in ${columnPhrase(option)}`}
         </span>
       </button>
     </li>

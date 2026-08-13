@@ -1446,6 +1446,31 @@ textarea.run-input {
 }
 
 /*
+ * An optional ownership mark on the front face — Crew Build's small runner
+ * initial. Absent on Personal Build, where nothing sets it. Positioned in the
+ * corner rather than over the mileage the face already shows, and above the
+ * front face but below nothing: no face draws over this corner.
+ */
+.placed-block__monogram {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: clamp(9px, 2.6vw, 12px);
+  height: clamp(9px, 2.6vw, 12px);
+  border-radius: 2px;
+  background: var(--member-accent, var(--text-muted));
+  color: #020609;
+  font-family: var(--font-data);
+  font-size: clamp(6px, 1.8vw, 8px);
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+
+/*
  * The top face: a parallelogram sheared along the depth axis. skewX at
  * atan(2) = 63.435deg moves the far edge exactly --iso-run to the right while
  * the near edge stays put, so the run:rise stays 2:1. Drawn only where
@@ -1730,6 +1755,17 @@ textarea.run-input {
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* A server-rejected placement — Crew Build's stale-collision retry. Personal
+   Build never sets this: nothing here commits over the network. */
+.placement-bar__error {
+  margin: 0;
+  padding: 0 var(--space-3);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 /* Blocks Ready tray */
@@ -6073,6 +6109,27 @@ textarea.run-input {
     rgba(0, 0, 0, 0.22);
   background-size: 12.5% var(--crew-build-course);
 }
+/*
+ * Plain sky above the tower, the same washed treatment Personal Build's
+ * `.build-site__sky` uses — scenery, not a projection of what is to come.
+ * Crew's field stays shorter than the dedicated Build tab (there is other
+ * content below it), but it no longer reads as a compressed table either.
+ */
+.crew-build__sky {
+  height: 46px;
+  mask-image: linear-gradient(180deg, transparent, #000 75%);
+  background: radial-gradient(
+    120% 60% at 50% 100%,
+    color-mix(in srgb, var(--accent) 6%, transparent),
+    transparent 70%
+  );
+}
+/* Scroll anchor: placement opens framed on the top of what is built, same as
+   Personal Build's `.build-site__skyline`. */
+.crew-build__skyline {
+  height: 1px;
+  scroll-margin-block: 30vh;
+}
 .crew-build__viewport {
   height: calc(var(--crew-build-visible-courses) * var(--crew-build-course));
   max-height: min(56dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
@@ -6100,114 +6157,18 @@ textarea.run-input {
   min-height: 0;
   padding: 1px;
 }
-.crew-build__tower li[data-type="easy"] { --piece-color: var(--easy); }
-.crew-build__tower li[data-type="intervals"] { --piece-color: var(--intervals); }
-.crew-build__tower li[data-type="simulation"] { --piece-color: var(--simulation); }
-.crew-build__tower li[data-type="long"] { --piece-color: var(--long); }
-.crew-build__tower li[data-type="race"] { --piece-color: var(--race); }
-.crew-build__tower button,
-.crew-build__block {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--bg) 80%, transparent);
-  border-radius: 2px;
-  /* The same lit-front-face depth the personal Build's bricks carry. */
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, #fff 14%, var(--piece-color)),
-      var(--piece-color) 62%,
-      color-mix(in srgb, var(--bg) 22%, var(--piece-color))
-    );
-  color: #020609;
-  font-family: var(--font-data);
-  font-size: clamp(7px, 2.3vw, 10px);
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  cursor: pointer;
-  /* No member-accent ring here on purpose: a full-block outline in the
-     runner's color read as a selection/error/highlight state on some
-     block/member combinations (red on lime, notably), and it was redundant
-     with the monogram badge and legend below, which already carry identity
-     in the same stable accent. Depth only, on a normal placed block. */
-  box-shadow:
-    inset 0 1px color-mix(in srgb, #fff 34%, transparent),
-    inset -5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
-    0 4px 8px rgba(0, 0, 0, 0.34);
-}
-.crew-build__block { cursor: default; }
-.crew-build__tower button::before,
-.crew-build__block::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 6px;
-  background: color-mix(in srgb, #fff 28%, var(--piece-color));
-  clip-path: polygon(0 100%, 5px 0, 100% 0, calc(100% - 5px) 100%);
-  opacity: 0.9;
-}
-.crew-build__tower button::after,
-.crew-build__block::after {
-  content: "";
-  position: absolute;
-  inset: 5px 0 0 auto;
-  width: 5px;
-  background: color-mix(in srgb, var(--bg) 30%, var(--piece-color));
-  opacity: 0.82;
-}
-.crew-build__tower button:hover { filter: brightness(1.12); }
-.crew-build__tower button:focus-visible {
-  z-index: 2;
-  outline: 3px solid #fff;
-  outline-offset: -4px;
-}
-/* The runner's initial: a small badge in their stable accent, in the
-   corner rather than over the face text the block already shows. Clamped
-   between the mobile course height (26px) and the desktop one (38px) so it
-   never overflows a one-course-tall block. */
-.crew-build__monogram {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: clamp(9px, 2.6vw, 12px);
-  height: clamp(9px, 2.6vw, 12px);
-  border-radius: 2px;
-  background: var(--member-accent, var(--text-muted));
-  color: #020609;
-  font-family: var(--font-data);
-  font-size: clamp(6px, 1.8vw, 8px);
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: inset 0 -1px color-mix(in srgb, var(--bg) 55%, transparent);
-}
-.crew-build__face {
-  position: relative;
-  z-index: 1;
-  padding-top: 2px;
-  overflow: hidden;
-  white-space: nowrap;
-}
+/*
+ * Crew blocks render with Personal Build's own `.placed-block`/`Brick`
+ * markup (issue #65) rather than a parallel implementation, so the 3D
+ * front/top/right faces, mileage label and monogram all come from
+ * `components.css`'s Build section above. Only what genuinely differs stays
+ * here: a taller course grid, the runner-colour source, and the
+ * recently-placed treatment below.
+ */
 .crew-build__tower[data-placement-grid="true"] { cursor: crosshair; }
-.crew-build__tower[data-placement-grid="true"] > li:not(.crew-build__preview) {
+.crew-build__tower[data-placement-grid="true"] > .placed-block {
   pointer-events: none;
   opacity: 0.82;
-}
-.crew-build__preview { pointer-events: none; z-index: 3; }
-/* The placement-selection state is carried entirely by `--accent` — an
-   inset outline plus an outer glow — so it stays obvious without leaning
-   on the (removed) member-accent ownership ring. */
-.crew-build__preview .crew-build__block {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  filter: brightness(1.1);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 34%, transparent);
 }
 .crew-build[data-placing="true"] .crew-build__stage {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
@@ -6232,25 +6193,6 @@ textarea.run-input {
     linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px);
   background-size: 12.5% var(--crew-build-course);
-}
-.crew-build__placement-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-.crew-build__placement-controls > .button:nth-child(3),
-.crew-build__placement-controls > p { grid-column: 1 / -1; }
-.crew-build__placement-controls > p { margin: 0; }
-.crew-build__placement-controls > .machine-label {
-  color: var(--accent);
-  text-align: center;
-}
-.crew-build__placement-error {
-  color: var(--danger);
-  font-size: 11px;
-  line-height: 1.4;
-  text-align: center;
 }
 .crew-build__empty,
 .crew-build__unavailable,
@@ -7192,14 +7134,10 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 .crew-build__ready > div > .machine-label { font-size: 9px; }
 .crew-build__stage { margin-top: 8px; }
-.crew-build__tower li[data-recent="true"] button {
-  filter: brightness(1.07);
-  box-shadow:
-    inset 0 2px color-mix(in srgb, #fff 55%, transparent),
-    inset -5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
-    0 0 11px color-mix(in srgb, var(--piece-color) 22%, transparent);
+.crew-build__tower li[data-recent="true"] .placed-block__brick {
+  filter: brightness(1.07) drop-shadow(0 0 6px color-mix(in srgb, var(--piece-color) 30%, transparent));
 }
-.crew-build__tower li[data-recent="true"] .crew-build__monogram {
+.crew-build__tower li[data-recent="true"] .placed-block__monogram {
   filter: brightness(1.25);
 }
 

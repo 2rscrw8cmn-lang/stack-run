@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatCompactMiles, formatMiles } from "../../domain/distance";
+import { Brick, type BrickFaceLabel } from "./Brick";
 
 interface PlacedBlockProps {
   block: PlacedBlockData;
@@ -50,9 +51,7 @@ function blockLabel(block: PlacedBlockData): string {
  * mileage the runner already knows, and the word is what makes it read as the
  * capstone rather than another wide brick.
  */
-function faceLabel(
-  block: PlacedBlockData,
-): { text: string; unit: boolean } | null {
+function faceLabel(block: PlacedBlockData): BrickFaceLabel | null {
   const { runLog, placement } = block;
   if (runLog.activityType === "race") {
     return { text: "RACE", unit: false };
@@ -91,7 +90,6 @@ export function PlacedBlock({
           gridColumn: `${placement.columnStart} / span ${placement.width}`,
           gridRow: `${courses - placement.row - placement.height + 1} / span ${placement.height}`,
           zIndex: depth,
-          "--piece-color": `var(--${runLog.activityType})`,
         } as CSSProperties
       }
     >
@@ -101,52 +99,12 @@ export function PlacedBlock({
         onClick={() => onSelect(runLog.id)}
       >
         <span className="visually-hidden">{blockLabel(block)}</span>
-        <span className="placed-block__brick" aria-hidden="true">
-          <span className="placed-block__face placed-block__face--front">
-            {label && (
-              <span className="placed-block__label">
-                {label.text}
-                {label.unit && (
-                  <span className="placed-block__unit">MI</span>
-                )}
-              </span>
-            )}
-          </span>
-          {/*
-            One segment per grid cell along each edge, so a face stops exactly
-            where a neighbour begins instead of sliding out from under it.
-          */}
-          {topFace.map(
-            (visible, column) =>
-              visible && (
-                <span
-                  key={`top-${column}`}
-                  className="placed-block__face placed-block__face--top"
-                  style={
-                    {
-                      "--face-offset": column,
-                      "--face-cells": topFace.length,
-                    } as CSSProperties
-                  }
-                />
-              ),
-          )}
-          {rightFace.map(
-            (visible, row) =>
-              visible && (
-                <span
-                  key={`right-${row}`}
-                  className="placed-block__face placed-block__face--right"
-                  style={
-                    {
-                      "--face-offset": row,
-                      "--face-cells": rightFace.length,
-                    } as CSSProperties
-                  }
-                />
-              ),
-          )}
-        </span>
+        <Brick
+          pieceColor={`var(--${runLog.activityType})`}
+          label={label}
+          topFace={topFace}
+          rightFace={rightFace}
+        />
       </button>
     </li>
   );

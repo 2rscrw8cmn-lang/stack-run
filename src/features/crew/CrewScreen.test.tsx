@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
@@ -743,7 +743,7 @@ describe("Shared Crew Build", () => {
     expect(blocks[0]).toHaveAttribute("data-row", "0");
   });
 
-  it("marks identity separately from activity color", () => {
+  it("colors the whole block by the runner's stable member accent, not activity type", () => {
     openCrew(crewWithBuild());
     const blocks = within(
       screen.getByRole("list", { name: "Crew Build blocks" }),
@@ -751,14 +751,23 @@ describe("Shared Crew Build", () => {
 
     const colors = blocks.map((block) => block.getAttribute("data-member-color"));
     expect(colors.every(Boolean)).toBe(true);
-    // Two runners, two accents, and neither replaces the activity color.
+    // Two runners, two accents.
     expect(blocks[0].getAttribute("data-member-color")).not.toBe(
       blocks[1].getAttribute("data-member-color"),
     );
+    // Activity type is still on the run, but per issue #65 it no longer
+    // drives the block's colour — the member accent does, set on the shared
+    // brick primitive's `--piece-color`.
     expect(blocks[0].getAttribute("data-type")).toBe("easy");
+    const brick = blocks[0].querySelector<HTMLElement>(".placed-block__brick");
+    expect(brick?.style.getPropertyValue("--piece-color")).toBe(
+      `var(--member-${blocks[0].getAttribute("data-member-color")})`,
+    );
     // Zack ran this one: the monogram badge carries his initial, not his
-    // activity color, which stays on the block face.
-    const monogram = blocks[0].querySelector(".crew-build__monogram");
+    // activity color, which stays on the block face. The monogram is the
+    // shared brick primitive's, not a Crew-only class — Personal and Crew
+    // Build share one ownership-mark implementation.
+    const monogram = blocks[0].querySelector(".placed-block__monogram");
     expect(monogram).toHaveTextContent("Z");
     expect(monogram).toHaveAttribute("aria-hidden", "true");
   });
@@ -888,7 +897,7 @@ describe("Shared Crew Build", () => {
     expect(screen.queryByRole("button", { name: /Place Block|Build Now/ })).not.toBeInTheDocument();
   });
 
-  it("opens focused placement, selects a valid snapped spot and confirms through the RPC", async () => {
+  it("opens focused placement with a gravity-computed landing and confirms through the RPC", async () => {
     const place = vi.fn(async () => true);
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
@@ -901,18 +910,18 @@ describe("Shared Crew Build", () => {
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Next Open Spot" }));
-    expect(screen.getByText("Row 1 · Column 1")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Confirm Placement" }));
+    // Gravity already picked a landing — flush against the left edge of empty
+    // ground — the same Auto Place default Personal Build uses, with no row
+    // to choose.
+    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
     expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
   });
 
-  it("rejects an invalid tapped anchor before calling the server", async () => {
+  it("slides the hovering block sideways with the step controls, never offering a row to pick", async () => {
     const place = vi.fn(async () => true);
-    const ready = sharedRun("wide-ready", "zack", "2026-08-08", {
-      distanceMiles: 8,
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
     });
@@ -920,19 +929,21 @@ describe("Shared Crew Build", () => {
       crewData: dashboard({ runs: [ready] }),
       placeCrewBuildBlock: place,
     }));
+
     await user.click(screen.getByRole("button", { name: "Place Block" }));
-    const grid = screen.getByRole("list", { name: "Choose a Crew Build position" });
-    vi.spyOn(grid, "getBoundingClientRect").mockReturnValue({
-      x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 180,
-      width: 320, height: 180, toJSON: () => ({}),
-    });
-    fireEvent.click(grid, { clientX: 319, clientY: 170 });
-    expect(screen.getByText("That spot is blocked. Choose an open grid space.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
-    expect(place).not.toHaveBeenCalled();
+    const tower = screen.getByRole("list", { name: "Choose a Crew Build position" });
+    // One landing per column, none of them a choice of course.
+    const slots = within(tower).getAllByRole("button", { name: /^Place Easy/ });
+    expect(slots).toHaveLength(7);
+    expect(slots[0]).toHaveAccessibleName("Place Easy block in columns 1 through 2");
+
+    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    expect(screen.getByText("Column 2")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 2);
   });
 
-  it("keeps a block READY and shows the specific server collision message", async () => {
+  it("keeps a block READY, shows the specific server collision message, and recomputes a fresh landing to retry", async () => {
     const place = vi.fn(async () => false);
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
@@ -944,10 +955,12 @@ describe("Shared Crew Build", () => {
       crewBuildPlacementError: "That space was just taken. Choose another spot.",
     }));
     await user.click(screen.getByRole("button", { name: "Place Block" }));
-    await user.click(screen.getByRole("button", { name: "Next Open Spot" }));
-    await user.click(screen.getByRole("button", { name: "Confirm Placement" }));
+    await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(screen.getByText("That space was just taken. Choose another spot.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm Placement" })).toBeDisabled();
+    // The block stays in hand with a freshly recomputed gravity landing —
+    // "refresh, recompute, retry" per issue #65 — rather than stranded with
+    // nothing to drop.
+    expect(screen.getByText("Column 1")).toBeInTheDocument();
     expect(screen.queryByText("1 built · 0 ready")).not.toBeInTheDocument();
   });
 

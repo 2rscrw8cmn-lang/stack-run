@@ -40,14 +40,13 @@ import { crewMemberAccent } from "../../crew/memberAccent";
 import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
 import { runDaysByUserId, RUN_DAYS_WINDOW } from "../../crew/runDays";
 import {
-  canPlaceCrewBuildBlock,
-  crewBuildPlacementOptions,
+  crewBuildLandingOptions,
   deriveCrewBuild,
   EMPTY_CREW_BUILD,
-  type CrewBuildPlacement,
 } from "../../crew/crewBuild";
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance";
+import { autoPlaceOption } from "../../domain/placement";
 import { CrewBuild } from "./CrewBuild";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
@@ -177,7 +176,10 @@ export function CrewScreen({
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const [isCrewPickerOpen, setCrewPickerOpen] = useState(false);
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
-  const [placementSelection, setPlacementSelection] = useState<CrewBuildPlacement | null>(null);
+  // The chosen column, held as a key rather than the full landing option, so
+  // it survives the options list being recomputed on every render — the same
+  // pattern Personal Build's `BuildScreen` uses.
+  const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
   const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
@@ -333,61 +335,65 @@ export function CrewScreen({
   const viewerReadyRuns = build.viewerReadyRuns;
   const placingRun = dashboardData.crewBuildRuns.find((run) => run.id === placingRunId) ?? null;
 
+  // A block being moved does not block its own current position — the same
+  // rule Personal Build's `BuildScreen` applies before computing options.
+  const placementBlocks = placingRun
+    ? build.blocks.filter((block) => block.id !== placingRun.id)
+    : build.blocks;
+  const placementOptions = placingRun
+    ? crewBuildLandingOptions(placingRun, placementBlocks)
+    : [];
+  const placementCandidate =
+    placementOptions.find((option) => String(option.columnStart) === candidateColumn) ??
+    autoPlaceOption(placementOptions) ??
+    null;
+  const placementCandidateIndex = placementCandidate
+    ? placementOptions.findIndex(
+      (option) => option.columnStart === placementCandidate.columnStart,
+    )
+    : -1;
+
   function startPlacement(run: CrewBuildRun) {
     crew!.clearCrewBuildPlacementError();
     setPlacementLocalError(null);
     setPlacingRunId(run.id);
-    setPlacementSelection(
-      run.crewBuildRow === null || run.crewBuildColumnStart === null
-        ? null
-        : { row: run.crewBuildRow, columnStart: run.crewBuildColumnStart },
+    setCandidateColumn(
+      run.crewBuildColumnStart === null ? null : String(run.crewBuildColumnStart),
     );
   }
 
   function cancelPlacement() {
     crew!.clearCrewBuildPlacementError();
     setPlacementLocalError(null);
-    setPlacementSelection(null);
+    setCandidateColumn(null);
     setPlacingRunId(null);
   }
 
-  function selectPlacement(next: CrewBuildPlacement) {
-    if (!placingRun) return;
-    if (!canPlaceCrewBuildBlock(placingRun, next, build.blocks)) {
-      setPlacementLocalError("That spot is blocked. Choose an open grid space.");
-      return;
-    }
+  function choosePlacement(option: { columnStart: number }) {
     crew!.clearCrewBuildPlacementError();
     setPlacementLocalError(null);
-    setPlacementSelection(next);
+    setCandidateColumn(String(option.columnStart));
   }
 
-  function selectNextOpenSpot() {
-    if (!placingRun) return;
-    const options = crewBuildPlacementOptions(placingRun, build.blocks);
-    if (options.length === 0) {
-      setPlacementLocalError("No open spot is visible. Scroll higher and try again.");
-      return;
-    }
-    const currentIndex = placementSelection
-      ? options.findIndex(
-        (option) =>
-          option.row === placementSelection.row &&
-          option.columnStart === placementSelection.columnStart,
-      )
-      : -1;
-    selectPlacement(options[(currentIndex + 1) % options.length]);
+  function stepPlacement(direction: -1 | 1) {
+    const next = placementOptions[placementCandidateIndex + direction];
+    if (next) choosePlacement(next);
+  }
+
+  function autoPlacePlacement() {
+    const automatic = autoPlaceOption(placementOptions);
+    if (automatic) choosePlacement(automatic);
   }
 
   async function confirmPlacement() {
-    if (!placingRun || !placementSelection) return;
+    if (!placingRun || !placementCandidate) return;
     const placed = await crew!.placeCrewBuildBlock(
       placingRun.id,
-      placementSelection.row,
-      placementSelection.columnStart,
+      placementCandidate.row,
+      placementCandidate.columnStart,
     );
     if (placed) cancelPlacement();
-    else setPlacementSelection(null);
+    else setCandidateColumn(null);
   }
 
   function changeMetricFromKeyboard(
@@ -514,11 +520,13 @@ export function CrewScreen({
         available={dashboardData.sharedRunsAvailable}
         placement={placingRun ? {
           run: placingRun,
-          selection: placementSelection,
+          options: placementOptions,
+          candidate: placementCandidate,
           pending: crew.crewBuildPlacementPending,
           error: crew.crewBuildPlacementError ?? placementLocalError,
-          onSelect: selectPlacement,
-          onNextOpenSpot: selectNextOpenSpot,
+          onChoose: choosePlacement,
+          onStep: stepPlacement,
+          onAutoPlace: autoPlacePlacement,
           onConfirm: () => void confirmPlacement(),
           onCancel: cancelPlacement,
         } : null}

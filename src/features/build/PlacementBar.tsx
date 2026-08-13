@@ -2,42 +2,57 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
-import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
-import type { PlacementOption } from "../../domain/placement";
 
 interface PlacementBarProps {
-  block: EarnedBlock;
-  isMove: boolean;
-  candidate: PlacementOption | null;
+  /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */
+  pieceColor: string;
+  width: number;
+  height: number;
+  /** e.g. "Place Easy" or "Move Easy". */
+  title: string;
+  /** e.g. "Column 3", or null when nothing fits. */
+  positionLabel: string | null;
   canStepBack: boolean;
   canStepForward: boolean;
   onStep: (direction: -1 | 1) => void;
   onAutoPlace: () => void;
   onDrop: () => void;
   onCancel: () => void;
+  /** True while a server round-trip for the drop is in flight. */
+  pending?: boolean;
+  /** A server-rejected placement, shown under the controls. */
+  error?: string | null;
 }
 
 /**
- * The controls for a block that is hovering over the tower.
+ * The controls for a block that is hovering over a tower.
  *
- * A deliberate drag on the tower now commits on release, so these are the tap
- * and keyboard path: step the block along with the arrows, see it in position,
- * and commit with `Drop`. Both paths are complete on their own.
+ * A deliberate drag on the tower commits on release, so these are the tap
+ * and keyboard path: step the block along with the arrows, see it in
+ * position, and commit with `Drop`. Both paths are complete on their own.
  *
  * The readout names the column and stops there. The course it will land on is
  * gravity's answer rather than a choice, and saying it turned this into a
  * packing readout.
+ *
+ * Generic over which tower it belongs to, so Personal and Crew Build share
+ * one placement control rather than a bar apiece — Crew layers a pending
+ * state and a server error message on top for its round-trip to the RPC.
  */
 export function PlacementBar({
-  block,
-  isMove,
-  candidate,
+  pieceColor,
+  width,
+  height,
+  title,
+  positionLabel,
   canStepBack,
   canStepForward,
   onStep,
   onAutoPlace,
   onDrop,
   onCancel,
+  pending = false,
+  error = null,
 }: PlacementBarProps) {
   return (
     <div className="placement-bar" role="group" aria-label="Place your block">
@@ -46,28 +61,24 @@ export function PlacementBar({
           className="placement-bar__chip"
           style={
             {
-              "--piece-color": `var(--${block.runLog.activityType})`,
-              "--piece-span": block.footprint.width,
-              "--piece-height": block.footprint.height,
+              "--piece-color": pieceColor,
+              "--piece-span": width,
+              "--piece-height": height,
             } as CSSProperties
           }
           aria-hidden="true"
         />
         <div className="placement-bar__detail">
-          <p className="placement-bar__title">
-            {isMove ? "Move" : "Place"}{" "}
-            {WORKOUT_TYPE_LABEL[block.runLog.activityType]}
-          </p>
+          <p className="placement-bar__title">{title}</p>
           <p className="placement-bar__position">
-            {candidate
-              ? `Column ${candidate.columnStart}`
-              : "No room left in the tower"}
+            {positionLabel ?? "No room left in the tower"}
           </p>
         </div>
         <IconButton
           label="Cancel placing"
           icon={<X size={20} strokeWidth={1.8} />}
           onClick={onCancel}
+          disabled={pending}
         />
       </div>
 
@@ -75,16 +86,16 @@ export function PlacementBar({
         <IconButton
           label="Move block left"
           icon={<ChevronLeft size={22} strokeWidth={2} />}
-          disabled={!canStepBack}
+          disabled={!canStepBack || pending}
           onClick={() => onStep(-1)}
         />
-        <Button onClick={onDrop} disabled={candidate === null}>
-          Drop
+        <Button onClick={onDrop} disabled={positionLabel === null || pending}>
+          {pending ? "Placing…" : "Drop"}
         </Button>
         <IconButton
           label="Move block right"
           icon={<ChevronRight size={22} strokeWidth={2} />}
-          disabled={!canStepForward}
+          disabled={!canStepForward || pending}
           onClick={() => onStep(1)}
         />
       </div>
@@ -93,10 +104,16 @@ export function PlacementBar({
         type="button"
         className="placement-bar__auto"
         onClick={onAutoPlace}
-        disabled={candidate === null}
+        disabled={positionLabel === null || pending}
       >
         Auto Place
       </button>
+
+      {error && (
+        <p className="placement-bar__error" role="status">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
