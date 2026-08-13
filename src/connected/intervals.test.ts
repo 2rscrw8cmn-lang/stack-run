@@ -186,7 +186,7 @@ describe("Intervals activity detail request", () => {
 });
 
 describe("Run Profile streams", () => {
-  it("derives pace from velocity, keeps heart rate and elevation, and never invents cadence", () => {
+  it("derives pace from velocity and keeps heart rate and elevation", () => {
     const profile = normalizeIntervalsRunProfile({
       time: [0, 30, 60],
       heartrate: [140, 150, 160],
@@ -200,7 +200,29 @@ describe("Run Profile streams", () => {
     expect(profile!.samples[0].elevationFeet).toBeCloseTo(100 * 3.28084, 3);
     // A stopped/near-zero velocity sample yields no pace rather than an infinite one.
     expect(profile!.samples[2].paceSecondsPerMile).toBeUndefined();
-    expect(Object.keys(profile!.samples[0])).not.toContain("cadence");
+  });
+
+  it("carries cadence exactly as the source reports it, without doubling or converting", () => {
+    // The August 13 activity reports 79, and Intervals' own interval rows read
+    // 79 / 79 / 80. Whatever convention that is, it is the source's, and STACK
+    // repeats it rather than reinterpreting it as steps per minute.
+    const profile = normalizeIntervalsRunProfile({
+      time: [0, 30, 60, 90],
+      cadence: [79, 79, 80, 0],
+    });
+    expect(profile!.samples.map((sample) => sample.cadence)).toEqual([79, 79, 80, undefined]);
+    // Emphatically not 158/158/160.
+    expect(profile!.samples.some((sample) => sample.cadence === 158)).toBe(false);
+  });
+
+  it("treats a standing-still cadence as absent rather than as a measured zero", () => {
+    const profile = normalizeIntervalsRunProfile({ time: [0, 30, 60], cadence: [80, 0, 79] });
+    expect(profile!.samples[1].cadence).toBeUndefined();
+    expect(Object.keys(profile!.samples[1])).toEqual(["timeSeconds"]);
+  });
+
+  it("recognizes a cadence-only stream as a profile worth showing", () => {
+    expect(normalizeIntervalsRunProfile({ time: [0, 30], cadence: [79, 80] })).not.toBeNull();
   });
 
   it("tolerates an array-of-descriptors stream shape, not only a keyed map", () => {
@@ -228,6 +250,17 @@ describe("Run Profile streams", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/intervals?resource=activity-streams&id=activity-1",
       expect.objectContaining({ cache: "no-store" }),
+    );
+    fetchMock.mockRestore();
+  });
+
+  it("asks the direct personal-key path for exactly the four plotted series", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ time: [0, 60], heartrate: [140, 150] })),
+    );
+    await fetchIntervalsRunProfile("activity-1", { mode: "local-api-key", credential: "fake-personal-key" });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://intervals.icu/api/v1/activity/activity-1/streams?types=time,heartrate,altitude,velocity_smooth,cadence",
     );
     fetchMock.mockRestore();
   });

@@ -17,14 +17,15 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ACTIVITY_ID = /^[A-Za-z0-9_-]{1,120}$/;
 const MAX_RANGE_DAYS = 120;
 /**
- * Run Profile's per-second series. Cadence is intentionally absent — see
+ * Run Profile's per-second series, kept deliberately narrow: this route asks
+ * for the four series STACK plots and nothing else. See
  * `docs/CONNECTED_DATA_FIELDS.md` and `normalizeIntervalsRunProfile` in
- * `src/connected/intervals.ts` for why. This whole resource remains
- * `Expected`, not `Verified`: it follows Intervals.icu's documented streams
- * contract, but nothing in this repository has exercised it against a real
- * HealthFit-originated activity.
+ * `src/connected/intervals.ts`. The per-sample stream shapes remain
+ * `Expected` rather than `Verified` — they follow Intervals.icu's documented
+ * streams contract, and the August 13 real-device review verified the summary
+ * aggregates rather than the stream payload itself.
  */
-const RUN_PROFILE_STREAM_TYPES = "time,heartrate,altitude,velocity_smooth";
+const RUN_PROFILE_STREAM_TYPES = "time,heartrate,altitude,velocity_smooth,cadence";
 /**
  * Intervals sits behind Cloudflare, which challenges clients that do not look
  * like anything in particular. This says what STACK is rather than pretending

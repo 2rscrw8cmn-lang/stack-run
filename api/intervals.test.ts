@@ -51,7 +51,7 @@ describe("Intervals proxy", () => {
     const response = await readIntervals(request("resource=activity-streams&id=activity-1"), env, fetcher);
     const url = new URL(String(fetcher.mock.calls[0]?.[0]));
     expect(url.pathname).toBe("/api/v1/activity/activity-1/streams");
-    expect(url.searchParams.get("types")).toBe("time,heartrate,altitude,velocity_smooth");
+    expect(url.searchParams.get("types")).toBe("time,heartrate,altitude,velocity_smooth,cadence");
     expect(response.status).toBe(200);
   });
   it("tests the connection against the activity endpoint sync itself uses", async () => {

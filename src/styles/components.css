@@ -3800,11 +3800,18 @@ textarea.run-input {
   gap: var(--space-4);
 }
 
-.donut__figure svg {
-  display: block;
+/* The plot box, not the svg, carries the size: it is also the positioning
+   context the interactive arc targets are placed against. */
+.donut__plot {
+  position: relative;
   width: 100%;
   max-width: 180px;
   margin: 0 auto;
+}
+
+.donut__figure svg {
+  display: block;
+  width: 100%;
   transform: rotate(-90deg);
 }
 
@@ -3816,13 +3823,20 @@ textarea.run-input {
   gap: var(--space-3);
 }
 
-.donut--large .donut__figure svg {
+.donut--large .donut__plot {
   max-width: min(64vw, 240px);
 }
 
 .donut--large .donut__legend {
   width: 100%;
   max-width: 320px;
+}
+
+/* Selecting an arc replaces the legend, so the ring itself is the whole
+   control and there is no second column to reserve room for. */
+.donut--interactive {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
 }
 
 .donut__track,
@@ -3834,8 +3848,37 @@ textarea.run-input {
   stroke-dashoffset: var(--donut-offset);
 }
 
+/* Restrained: the selected arc thickens slightly and lifts, rather than
+   changing colour and breaking the zone palette's meaning. */
+.donut__arc--selected {
+  stroke-width: 22;
+  filter: drop-shadow(0 0 4px var(--selected-glow));
+}
+
+.donut__targets { position: absolute; inset: 0; }
+
+.donut__target {
+  position: absolute;
+  left: var(--target-x);
+  top: var(--target-y);
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.donut__target:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -13px;
+}
+
 .donut__center-value,
-.donut__center-label {
+.donut__center-label,
+.donut__center-detail {
   fill: var(--text);
   transform: rotate(90deg);
   transform-origin: 56px 56px;
@@ -3843,6 +3886,7 @@ textarea.run-input {
 }
 .donut__center-value { font-size: 14px; font-weight: 700; }
 .donut__center-label { font-size: 8px; fill: var(--text-subtle); }
+.donut__center-detail { font-size: 9px; fill: var(--text-muted); }
 
 .donut__legend {
   display: grid;
@@ -3946,7 +3990,7 @@ textarea.run-input {
   .signal-facts,
   .consistency-grid { grid-template-columns: 1fr; }
   .donut { grid-template-columns: 1fr; }
-  .donut__figure svg { max-width: 156px; }
+  .donut__plot { max-width: 156px; }
 }
 
 @media (min-width: 700px) {
@@ -4291,7 +4335,8 @@ textarea.run-input {
 }
 
 .donut__center-value,
-.donut__center-label {
+.donut__center-label,
+.donut__center-detail {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums slashed-zero;
 }
@@ -4308,6 +4353,7 @@ textarea.run-input {
 
 .donut--large .donut__center-value { font-size: 20px; }
 .donut--large .donut__center-label { font-size: 10px; }
+.donut--large .donut__center-detail { font-size: 11px; }
 
 .donut__swatch {
   border-radius: 1px;
@@ -4964,9 +5010,6 @@ textarea.run-input {
   font-size: 9px;
 }
 
-/* 2 columns fits every current secondary metric comfortably from 320px up;
-   3 opens up once there is room, rather than compressing up to four short
-   labels into one cramped row. */
 .run-result-detail__secondary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 0;
@@ -4974,24 +5017,34 @@ textarea.run-input {
   border-bottom: 1px solid var(--border-strong);
 }
 
-.run-result-detail__secondary > div:nth-child(n+3) {
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-.run-result-detail__secondary > div:nth-child(2n+1) { border-left: 0; }
-
 .run-result-detail__secondary dd {
   font-size: clamp(15px, 4.4vw, 20px);
   font-weight: 700;
   white-space: nowrap;
 }
 
-@media (min-width: 400px) {
-  .run-result-detail__secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .run-result-detail__secondary > div:nth-child(2n+1) { border-left: 1px solid var(--border); }
-  .run-result-detail__secondary > div:nth-child(3n+1) { border-left: 0; }
-  .run-result-detail__secondary > div:nth-child(n+4) { border-top: 1px solid var(--border); padding-top: 8px; }
-  .run-result-detail__secondary > div:nth-child(-n+3) { border-top: 0; padding-top: 0; }
+/* Phones stay 2×2. Three metrics across with a lone fourth stranded
+   underneath reads as a layout accident rather than a decision, and two
+   columns of short labels are comfortable all the way down to 320px. */
+@media (max-width: 699px) {
+  .run-result-detail__secondary > div:nth-child(2n+1) { border-left: 0; }
+  .run-result-detail__secondary > div:nth-child(n+3) {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  /* A fifth metric — cadence, on the runs whose stream carried none — spans
+     the row rather than sitting alone in the left column. */
+  .run-result-detail__secondary > div:nth-child(5):last-child { grid-column: 1 / -1; }
+}
+
+/* Genuine tablet/desktop width, where one row really does fit. */
+@media (min-width: 700px) {
+  .run-result-detail__secondary {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0;
+  }
 }
 
 .run-result-detail__profile,
@@ -5043,11 +5096,24 @@ textarea.run-input {
   width: 100%;
 }
 
+/* One fact for pace or cadence, two for heart rate or elevation: the row
+   divides itself rather than reserving three slots it may not fill. */
 .run-profile-chart__facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 4px;
   margin: var(--space-2) 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.run-profile-chart__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  color: var(--text-subtle);
+  font-size: 8px;
 }
 
 .run-profile-chart__facts > div {

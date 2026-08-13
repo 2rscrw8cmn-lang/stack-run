@@ -2,7 +2,7 @@
 
 ## Current state
 
-**UI-23 — Run Detail 2.0 is implemented for owner review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened to fit mobile, a Run Profile chart adds on-demand pace/HR/elevation visualization when source-verified stream data is available, HR-zone distribution moves to the large centered donut treatment, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. See `## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
+**UI-23 — Run Detail 2.0 is implemented for owner review, corrected against the August 13 real-device review.** It reworks personal Run Detail into a richer activity-analysis view: compact `Plan`/`Extra` status tags replace the old standalone explanatory sections, secondary metric labels are shortened and stay 2×2 on phones, a Run Profile chart adds on-demand pace/HR/elevation/cadence visualization with gap-preserving lines, HR zones become an interactive donut with no visible legend, the confusing `View intervals` button/empty-message flow is replaced by an automatic conditional Intervals section, and `Connect to Plan` moved from an always-visible inline form into a compact action and picker sub-sheet. Cadence is displayed for the first time, verbatim at the source's own convention. The governing rule, from that review: **streams give shape, imported aggregates give numbers** — no summary statistic is recomputed from per-sample data. See `## UI-23 — Run Detail 2.0` below. It adds no Supabase migration and no new dependency.
 
 **UI-22 Final Product Polish + Onboarding is complete in merged PR #39.** It adds no product capability or data migration: Runs has a compact entry hierarchy, selectors/sheets/copy/formatters follow one product-wide system, and genuinely new users receive a short device-local conceptual introduction. Existing users migrate quietly and can replay the tour from Settings. UI-21 Crew Destination + Shared Crew Build and its runner-owned placement correction are complete and owner-accepted in merged PR #38. Personal STACK remains local-first at AppState schema 9 and works without Supabase configuration or an account. The Crew cross-device integrity hotfix, Run Data review-persistence/plan-matching hotfix, and focused Crew/Training Signals polish described below are implemented for owner review and predate UI-23.
 
@@ -1237,6 +1237,10 @@ richer activity analysis and a cleaner mobile hierarchy. Crew-safe run detail
 (`CrewRunDetailSheet.tsx`) is untouched — this phase is personal-only, and the
 Crew-safe projection boundary carries no new field.
 
+The August 13 real-device review against a HealthFit → Intervals activity
+corrected several things the first pass got wrong; `docs/CONNECTED_DATA_FIELDS.md`
+records the readings, and D-073 records the rule they established.
+
 **Header and status are metadata again, not a section.** The old standalone
 `Extra Run`/`Scheduled workout` heading-and-paragraph block is gone.
 `run-detail__context` now carries the date and, when the run satisfied a
@@ -1244,41 +1248,86 @@ workout, one concise `Week N · Title` line, plus two small tags next to the
 activity type: `Plan` for a linked scheduled run, `Extra` for one the plan
 never asked for.
 
-**Secondary metrics fit mobile.** `Elevation gain`/`Training Load` are
-shortened to `Gain`/`Load` (`Average HR` was already short enough to read as
-`Avg HR` once machine-label uppercasing applies); nothing shows a metric
-STACK cannot verify — cadence stays hidden everywhere, exactly as before,
-because `average_cadence` remains `Expected` in
-`docs/CONNECTED_DATA_FIELDS.md`. The secondary grid is 2 columns from 320px
-and 3 once there is room (`min-width: 400px`), rather than cramming up to
-four short labels into one row.
+**Secondary metrics fit mobile, two by two.** `Elevation gain`/`Training Load`
+are shortened to `Gain`/`Load`, and the grid stays two columns for the whole
+phone range, widening only at 700px. Three across with a stranded fourth
+underneath read as a layout accident. `Gain` remains the imported Intervals
+aggregate: on the August 13 run Intervals reports 115 ft of Climbing and STACK
+shows 116, while the altitude series only spans about 41 ft — three different
+questions, and recomputing gain from the stream would produce a number
+agreeing with nothing the runner can check.
 
-**Run Profile** (`src/components/charts/RunProfileChart.tsx`) is a new, single
-chart area with metric selectors (`Pace`, `Heart Rate`, `Elevation`) that only
-appear for metrics the fetched data actually contains — never a fixed set of
-buttons. It plots one metric over the run's elapsed time with a `Low`/`Avg`/
-`High` text fact row as the accessible authority. The data comes from
-`fetchIntervalsRunProfile` in `src/connected/intervals.ts`, a second on-demand
-Intervals read (`GET /activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth`)
-alongside the existing `?intervals=true` detail read — both fire once, when a
-synced run's detail sheet opens, never during ordinary sync, and neither is
-persisted past the open sheet's component state. **This stream contract is
-`Expected`, not `Verified`** — see the UI-23 discovery checklist in
-`docs/CONNECTED_DATA_FIELDS.md`. `normalizeIntervalsRunProfile` is written so
-an unrecognized shape resolves to `null` rather than a guess, and Run Detail
-renders no Run Profile section at all in that case — exactly what a run
-without profile data looks like today. Cadence is deliberately absent from
-Run Profile for the identical reason it is absent from the metric grid.
+**Streams give shape; aggregates give numbers.** This is the rule the review
+established and the one the whole Run Profile hangs on. `RunProfileChart`
+never derives a summary statistic:
 
-**HR-zone distribution** now uses `DonutChart`'s existing `size="large"`
-treatment — the same large centered ring and legend Training Signals' HR
-Zones card already uses — rather than a bespoke smaller side-by-side layout,
-so the improved mobile donut is one implementation, not two that could drift.
+- **Pace** states the run's own `RunLog` pace (10:59 /mi, against Intervals'
+  10:58 and HealthFit's 11:00). It does not state a mean of instantaneous
+  samples, and it never presents the fastest or slowest single sample as a
+  best or worst — those had been showing as 6:07 and 53:32 for a run that was
+  neither.
+- **Heart Rate** states the imported `average_heartrate` and `max_heartrate`
+  (153 and 174).
+- **Elevation** states the series' own low and high (72 ft, 113 ft), which
+  genuinely are properties of the series. Total gain stays in the grid above.
+- **Cadence** states the imported `average_cadence` verbatim.
+
+**Cadence is no longer hidden.** Five phases of withholding it ended when the
+August 13 activity established what the source actually reports: 79, matching
+Intervals' own display and its interval rows of 79 / 79 / 80. STACK shows 79.
+It does not double the figure into a steps-per-minute reading and prints no
+unit beside it, because the number and its agreement with Intervals are the
+only source-verified facts. Cadence lives in Run Profile, which keeps the
+summary grid at a clean four; a run whose stream carried no cadence but whose
+imported average exists shows it in the grid instead, spanning the row rather
+than stranding a fifth cell.
+
+**Run Profile** (`src/components/charts/RunProfileChart.tsx`) is one chart
+area with selectors — `Pace`, `Heart Rate`, `Elevation`, `Cadence` — that
+appear only for metrics the fetched data actually contains, never as a fixed
+set of buttons. An `0:00 → duration` axis gives elapsed-time context. Two
+display rules matter:
+
+- **Gaps are preserved.** A time position whose value is missing breaks the
+  line instead of joining its neighbours, so a stream that stopped recording
+  is never drawn as though it kept going. A zero cadence or a near-stopped
+  velocity is treated as absent for the same reason — the runner was stopped,
+  not measured at zero.
+- **The pace axis is robust, and the data is not touched.** A few near-stops
+  were flattening the useful majority of the series into a flat line. The
+  visible y-domain now comes from Tukey IQR fences, and outlying samples are
+  clamped to the edge of that window for drawing only. No sample is dropped,
+  rewritten, or excluded from anything else. A fixed high percentile was tried
+  first and rejected: on a short series it interpolates straight back into the
+  outlier it was meant to exclude.
+
+The data comes from `fetchIntervalsRunProfile` in `src/connected/intervals.ts`,
+a second on-demand Intervals read alongside the existing `?intervals=true`
+detail read — both fire once, when a synced run's detail sheet opens, never
+during ordinary sync, and neither is persisted past the open sheet's component
+state. The per-sample stream *shapes* remain `Expected` rather than `Verified`:
+the review confirmed the aggregates STACK states, not the streams payload, and
+this repository has no network path to check it. `normalizeIntervalsRunProfile`
+resolves an unrecognized shape to `null`, so Run Detail renders no Run Profile
+section — exactly what a run without profile data looks like. Because no
+stated number depends on a stream, an unverified shape can cost a chart but
+cannot produce a wrong figure.
+
+**Heart-rate zones are the donut, without a legend beside it.** `DonutChart`
+gained an `interactive` mode rather than a second donut implementation, so the
+behaviour stays available to Training Signals' HR Zones. Each arc carries a
+44px hit target, the ring opens on the dominant zone, and the centre reports
+that zone's share, name and time (`26%` / `ZONE 3` / `7:43`); tapping or
+keyboard-activating another arc moves the centre to it. Selection is weight
+and a soft glow, never a colour change, so the zone palette keeps its meaning.
+The six-row visible legend is gone — the ordered list stays in the document as
+`visually-hidden`, so a screen reader still gets the complete composition and
+the visible legend is not what made the chart accessible.
 
 **`View intervals` is gone.** The explicit button and its
-"No understandable interval groups were found" empty state are replaced by
-the same on-demand `fetchIntervalsActivityDetail` call firing automatically
-when the sheet opens (still never during sync): a source-verified structured
+"No understandable interval groups were found" empty state are replaced by the
+same on-demand `fetchIntervalsActivityDetail` call firing automatically when
+the sheet opens (still never during sync): a source-verified structured
 `Intervals` section appears only when `icu_intervals` actually produced rows,
 and nothing is shown for an ordinary run with none. A genuine fetch failure
 still surfaces a concise error with a `Retry` action.
@@ -1291,10 +1340,8 @@ same `availableWorkoutsForRunLog` candidate logic Run Detail used inline.
 `RunsScreen` orchestrates the hand-off the same way `PlanScreen` hands off
 from a workout's detail sheet to its edit/move sheets — only one `<dialog>`
 is ever open, and confirming or cancelling the picker returns to the run's
-own detail. `Unlink from Plan` remains inline and visually secondary, as
-before.
+own detail. `Unlink from Plan` remains inline and visually secondary.
 
 No Supabase migration, no new dependency, and no change to Intervals
 credential handling, HR-zone calculation, run edit/delete, or plan
-linking/unlinking rules — this phase reworks presentation and adds one
-narrow, defensively-normalized on-demand read.
+linking/unlinking rules.

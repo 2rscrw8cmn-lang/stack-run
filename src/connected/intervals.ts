@@ -58,15 +58,20 @@ export interface IntervalsActivityDetail {
  * optional: a sample carries whatever stream actually had a value at that
  * index, never a guessed or interpolated one.
  *
- * Cadence is deliberately absent here, same as everywhere else in STACK:
- * `docs/CONNECTED_DATA_FIELDS.md` still lists cadence semantics/units as
- * `Expected`, not `Verified`, so nothing renders it yet.
+ * `cadence` is carried in **whatever number Intervals reports, unconverted**.
+ * The August 13 HealthFit-originated activity reports an overall cadence of
+ * 79 with interval rows of 79/79/80, which is the value Intervals itself
+ * displays. STACK does not double it into a steps-per-minute figure and does
+ * not attach a unit it has not verified: the only source-verified fact is the
+ * number, so the number is what is shown. See
+ * `docs/CONNECTED_DATA_FIELDS.md`.
  */
 export interface IntervalsRunProfileSample {
   timeSeconds: number;
   paceSecondsPerMile?: number;
   heartRate?: number;
   elevationFeet?: number;
+  cadence?: number;
 }
 
 export interface IntervalsRunProfile {
@@ -192,17 +197,22 @@ const METERS_PER_SECOND_MINIMUM = 0.1;
 /**
  * The activity-detail endpoint's per-second streams, narrowed to what
  * `RunProfileChart` can plot honestly: pace derived from `velocity_smooth`
- * (metres/second, an unambiguous unit), heart rate, and elevation.
+ * (metres/second, an unambiguous unit), heart rate, elevation, and cadence.
  *
  * **Status: `Expected`, not `Verified`** — see `docs/CONNECTED_DATA_FIELDS.md`.
  * The stream endpoint and field names below follow Intervals.icu's documented
- * `/activity/{id}/streams` contract, but this repository has no way to
- * exercise it against a real HealthFit-originated activity; that check still
- * needs to happen against the deployed app, the same way every other
- * connected field in this file was verified before UI-9. Until then this
- * normalizer is deliberately conservative: a shape it does not recognize
- * yields `null` rather than a guess, and the caller shows no Run Profile
- * chart at all — exactly what happens for a run with no profile data today.
+ * `/activity/{id}/streams` contract. The August 13 real-device review
+ * confirmed the *summary* aggregates this feature leans on — pace, average
+ * and max HR, elevation gain and cadence — but the per-sample stream shapes
+ * themselves still need checking against a real payload, so this normalizer
+ * stays deliberately conservative: a shape it does not recognize yields
+ * `null` rather than a guess, and the caller shows no Run Profile chart at
+ * all, exactly what happens for a run with no profile data today.
+ *
+ * Nothing here is used to compute a summary statistic. Streams give the
+ * *shape* of the run; the numbers stated beside them come from the imported
+ * activity aggregates, which are the source's own answer and the one that
+ * agrees with what Intervals and HealthFit show the runner.
  */
 export function normalizeIntervalsRunProfile(raw: unknown): IntervalsRunProfile | null {
   if (!raw || typeof raw !== "object") return null;
@@ -214,26 +224,40 @@ export function normalizeIntervalsRunProfile(raw: unknown): IntervalsRunProfile 
   const heartRate = numericSamples(raw, ["heartrate", "heart_rate"], time.length);
   const elevationMeters = numericSamples(raw, ["altitude"], time.length);
   const velocity = numericSamples(raw, ["velocity_smooth", "velocity"], time.length);
+  const cadence = numericSamples(raw, ["cadence"], time.length);
 
   const samples: IntervalsRunProfileSample[] = (timeSeconds as number[]).map((value, index) => {
     const speed = velocity?.[index];
     const elevation = elevationMeters?.[index];
     const hr = heartRate?.[index];
+    const steps = cadence?.[index];
     return {
       timeSeconds: value,
       ...(speed !== undefined && speed >= METERS_PER_SECOND_MINIMUM ? { paceSecondsPerMile: METERS_PER_MILE / speed } : {}),
       ...(hr !== undefined && hr > 0 ? { heartRate: hr } : {}),
       ...(elevation !== undefined ? { elevationFeet: elevation * FEET_PER_METER } : {}),
+      // Verbatim. A zero here means the runner was standing still rather than
+      // turning their legs over zero times a minute, so it is left out the
+      // same way a near-stopped velocity yields no pace — the chart then
+      // draws a gap instead of a plunge to the floor.
+      ...(steps !== undefined && steps > 0 ? { cadence: steps } : {}),
     };
   });
 
   const hasProfile = samples.some((sample) =>
-    sample.paceSecondsPerMile !== undefined || sample.heartRate !== undefined || sample.elevationFeet !== undefined);
+    sample.paceSecondsPerMile !== undefined || sample.heartRate !== undefined ||
+    sample.elevationFeet !== undefined || sample.cadence !== undefined);
   return hasProfile ? { samples } : null;
 }
 
-/** The stream types STACK asks Intervals for. Cadence is intentionally absent — see the module doc above. */
-export const RUN_PROFILE_STREAM_TYPES = ["time", "heartrate", "altitude", "velocity_smooth"] as const;
+/**
+ * The stream types STACK asks Intervals for.
+ *
+ * `cadence` joined the list once the August 13 activity established what the
+ * source actually reports — 79, the same figure Intervals shows — so STACK
+ * had a verified convention to present rather than a guessed one.
+ */
+export const RUN_PROFILE_STREAM_TYPES = ["time", "heartrate", "altitude", "velocity_smooth", "cadence"] as const;
 
 /**
  * The activity ids STACK has already settled: imported, attached or ignored.
