@@ -121,7 +121,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -190,6 +190,8 @@ export async function loadCrewDashboard(
       updatedAt: requiredString(item, "updated_at"),
       buildRow: nullableInteger(item, "build_row"),
       buildColumnStart: nullableInteger(item, "build_column_start"),
+      buildWidth: nullableInteger(item, "build_width") as 1 | 2 | 3 | 4 | null,
+      buildHeight: nullableInteger(item, "build_height") as 1 | 2 | 3 | null,
       crewBuildRow: nullableInteger(item, "crew_build_row"),
       crewBuildColumnStart: nullableInteger(item, "crew_build_column_start"),
       crewBuildPlacedAt:
@@ -240,6 +242,8 @@ export async function loadCrewDashboard(
     distanceMiles: run.distanceMiles,
     buildRow: run.buildRow,
     buildColumnStart: run.buildColumnStart,
+    buildWidth: run.buildWidth,
+    buildHeight: run.buildHeight,
   }));
 
   // The communal tower's own contract. Personal placement is dropped here;

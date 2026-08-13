@@ -25,7 +25,7 @@ set local request.jwt.claim.role = 'authenticated';
 -- Owner creates a crew, a teammate run target and one invite.
 set local request.jwt.claim.sub = '20000000-0000-0000-0000-000000000001';
 insert into props_test_ids (crew_id)
-values (public.create_crew('Props Crew', 'Props Race', '2026-12-05', 13.1, '2026-01-01'));
+values (public.create_crew('Props Crew', 'race', 'Props Race', '2026-12-05', 13.1, '2026-01-01'));
 
 -- Keep crew creation and the first policy-protected write in separate SQL
 -- statements. The create_crew RPC inserts the owner membership; combining it

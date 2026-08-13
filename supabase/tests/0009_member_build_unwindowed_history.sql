@@ -25,7 +25,7 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '82000000-0000-0000-0000-000000000001';
 insert into member_build_test_ids (crew_id)
 values (public.create_crew(
-  'Unwindowed History Crew', 'Test Race', '2026-12-05', 13.1, '2026-08-10'
+  'Unwindowed History Crew', 'race', 'Test Race', '2026-12-05', 13.1, '2026-08-10'
 ));
 
 reset role;

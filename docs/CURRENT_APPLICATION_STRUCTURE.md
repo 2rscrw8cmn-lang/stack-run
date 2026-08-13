@@ -1345,3 +1345,31 @@ own detail. `Unlink from Plan` remains inline and visually secondary.
 No Supabase migration, no new dependency, and no change to Intervals
 credential handling, HR-zone calculation, run edit/delete, or plan
 linking/unlinking rules.
+
+## DATA-1 — Personal account sync
+
+`src/personal-sync/usePersonalSync.ts` owns the signed-in lifecycle. It switches
+the browser to an account-scoped schema-9 cache before paint, performs explicit
+initialization or second-device reconciliation, records local changes in a
+persistent outbox, and rehydrates only validated server snapshots. Failed or
+malformed hydration leaves the last valid account cache visible.
+
+`src/personal-sync/personalCloudRepository.ts` is the sole browser boundary for
+the four private personal tables and their revision-enforcing RPCs.
+`reconciliation.ts` owns legacy external aliases, ambiguous manual collisions,
+tombstones, placement reference rewrites and no-repack second-device Build
+adoption. `src/storage/personalSyncRepository.ts` owns account cache metadata,
+revisions, outboxes and recoverable backups.
+
+New RunLogs are `run-<random UUID>` and no production code parses their shape.
+Imported identity is independently constrained by user/provider/external id in
+Postgres, including tombstones. Training configuration and Intervals review
+state are revisioned documents; each run has its own revision; Personal Build
+structural writes are validated and reject stale revisions.
+
+Crew remains a separate narrow projection. `useRaceCrew` will not project until
+the active account cache is canonical. `reconcile_crew_run_identity` merges
+legacy shared rows in place, retaining a survivor UUID, Props, Member Build and
+Crew Build position where possible. Shared Member Build rows freeze width and
+height; editing a placed communal contribution across a footprint boundary
+demotes it to READY before recursive support healing.

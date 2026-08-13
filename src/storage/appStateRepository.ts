@@ -22,6 +22,18 @@ import {
   backupStorageKey,
   listBackupStorageKeys,
 } from "./storageKeys";
+import {
+  accountAppStateStorageKey,
+  loadActivePersonalOwner,
+  LOCAL_PERSONAL_OWNER,
+} from "./personalSyncRepository";
+
+function activeAppStateStorageKey(): string {
+  const owner = loadActivePersonalOwner();
+  return owner === LOCAL_PERSONAL_OWNER
+    ? APP_STATE_STORAGE_KEY
+    : accountAppStateStorageKey(owner);
+}
 
 /**
  * Why the stored state could not be turned into an app.
@@ -63,7 +75,7 @@ export class StorageWriteError extends Error {
  */
 export function hasStoredAppState(): boolean {
   try {
-    return localStorage.getItem(APP_STATE_STORAGE_KEY) !== null;
+    return localStorage.getItem(activeAppStateStorageKey()) !== null;
   } catch {
     return true;
   }
@@ -104,7 +116,7 @@ export function onStorageWriteError(
 export function loadAppState(): AppState {
   let raw: string | null;
   try {
-    raw = localStorage.getItem(APP_STATE_STORAGE_KEY);
+    raw = localStorage.getItem(activeAppStateStorageKey());
   } catch (error) {
     throw new StorageLoadError(
       `This browser will not give the app its local storage: ${describe(error)}`,
@@ -183,7 +195,7 @@ export function readBackup(backupKey: string): string | null {
 export function saveAppState(state: AppState): void {
   const serialized = JSON.stringify(state);
   try {
-    localStorage.setItem(APP_STATE_STORAGE_KEY, serialized);
+    localStorage.setItem(activeAppStateStorageKey(), serialized);
   } catch (error) {
     // A full quota is the one write failure with something to try: the
     // backups this app took are the largest thing it owns that nothing reads
@@ -248,17 +260,13 @@ function findExistingRunLog(
   return state.runLogs.find((runLog) => runLog.workoutId === input.workoutId);
 }
 
-/** Unique without a clock or a crypto dependency: extend until it is free. */
-function nextExtraRunId(state: AppState, completedDate: string): string {
-  const taken = new Set(state.runLogs.map((runLog) => runLog.id));
-  const base = `run-extra-${completedDate}`;
-  let candidate = base;
-  let suffix = 2;
-  while (taken.has(candidate)) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
+/**
+ * New activity identity is opaque and collision-resistant on every device.
+ * Existing deterministic ids remain valid data, but no new behavior depends
+ * on a date or workout being encoded in the id.
+ */
+export function createRunLogId(): string {
+  return `run-${globalThis.crypto.randomUUID()}`;
 }
 
 /**
@@ -291,10 +299,7 @@ export function saveRunLog(state: AppState, input: RunLogInput): AppState {
     ? { ...existing, ...values, updatedAt: now }
     : {
         ...values,
-        id:
-          values.workoutId === null
-            ? nextExtraRunId(state, values.completedDate)
-            : `run-${values.workoutId}`,
+        id: createRunLogId(),
         createdAt: now,
         updatedAt: now,
       };
@@ -353,7 +358,15 @@ export function placeBlock(
 
   const placement: BlockPlacement = {
     ...input,
-    placedAt: new Date().toISOString(),
+    // Placement order is structural. Two fast local writes can share a wall-
+    // clock millisecond, so advance past the latest stored timestamp rather
+    // than using an id-based tie-breaker (run ids are intentionally opaque).
+    placedAt: new Date(
+      Math.max(
+        Date.now(),
+        ...state.blockPlacements.map((item) => Date.parse(item.placedAt) + 1),
+      ),
+    ).toISOString(),
   };
 
   const next: AppState = {

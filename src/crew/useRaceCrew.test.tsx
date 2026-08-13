@@ -58,6 +58,11 @@ vi.mock("./projection", async (importOriginal) => ({
   deleteCrewRunProjection: mocks.deleteCrewRunProjection,
 }));
 
+vi.mock("../storage/personalSyncRepository", () => ({
+  loadActivePersonalOwner: () => "owner-1",
+  loadPersonalMetadata: () => ({ initialized: true }),
+}));
+
 const { useRaceCrew } = await import("./useRaceCrew");
 
 const ownerCrew: RaceCrew = {

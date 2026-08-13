@@ -115,12 +115,16 @@ describe("Race Crew projection", () => {
       durationSeconds: 4200,
       buildRow: 3,
       buildColumnStart: 2,
+      buildWidth: 4,
+      buildHeight: 1,
     });
     expect(Object.keys(projected).sort()).toEqual(
       [
         "activityType",
         "buildColumnStart",
+        "buildHeight",
         "buildRow",
+        "buildWidth",
         "distanceMiles",
         "durationSeconds",
         "localDate",
@@ -234,6 +238,8 @@ describe("Race Crew projection", () => {
       duration_seconds: 4200,
       build_row: 2,
       build_column_start: 3,
+      build_width: 4,
+      build_height: 1,
     }]);
     expect(JSON.stringify(shared)).not.toMatch(
       /placedAt|blockPlacements|heart|load|effort|notes|source|private-placement-time/i,

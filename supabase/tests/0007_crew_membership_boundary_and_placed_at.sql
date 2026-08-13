@@ -24,7 +24,7 @@ set local request.jwt.claim.sub = '70000000-0000-0000-0000-000000000001';
 
 insert into crew_placed_at_test_ids (crew_id)
 values (public.create_crew(
-  'Placed At Crew', 'Test Race', '2026-12-05', 13.1, '2026-08-01'
+  'Placed At Crew', 'race', 'Test Race', '2026-12-05', 13.1, '2026-08-01'
 ));
 
 with inserted as (

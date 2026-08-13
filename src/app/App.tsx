@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AvailabilityCalendar } from "../domain/availability";
 import type { AppState, RunLog } from "../domain/types";
 import {
@@ -39,7 +39,6 @@ import {
   loadIntervalsApiKey,
   saveIntervalsApiKey,
 } from "../storage/intervalsCredentialRepository";
-import { clearPendingIntervalsCandidates } from "../storage/intervalsPendingRepository";
 import {
   loadOnboarding,
   saveOnboarding,
@@ -48,6 +47,7 @@ import {
 } from "../storage/onboardingRepository";
 import { WelcomeSheet } from "../features/onboarding/WelcomeSheet";
 import { TourCoachmark } from "../features/onboarding/TourCoachmark";
+import { usePersonalSync } from "../personal-sync/usePersonalSync";
 
 export type TabId = "today" | "build" | "runs" | "crew" | "plan";
 
@@ -104,10 +104,11 @@ export function App() {
     useState(initialLegacyPending);
   const [tourStep, setTourStep] = useState<number | null>(initialTourStep);
   const [writeError, setWriteError] = useState<string | null>(null);
-  const [syncToken, setSyncToken] = useState<string | null>(() => { try { return loadIntervalsSyncToken(); } catch { return null; } });
-  const [intervalsApiKey, setIntervalsApiKey] = useState<string | null>(() => {
-    try { return loadIntervalsApiKey(); } catch { return null; }
-  });
+  // Credential scope is selected only after auth identifies the current
+  // account. Starting empty prevents even a transient render of the previous
+  // account's device-local Intervals connection.
+  const [syncToken, setSyncToken] = useState<string | null>(null);
+  const [intervalsApiKey, setIntervalsApiKey] = useState<string | null>(null);
   const [accomplishments, setAccomplishments] = useState<Moment[]>([]);
   const previousRunLogs = useRef<RunLog[]>(
     boot.kind === "ready" ? boot.state.runLogs : [],
@@ -115,6 +116,23 @@ export function App() {
 
   const appState = boot.kind === "ready" ? boot.state : null;
   const raceCrew = useRaceCrew(appState);
+  const replacePersonalState = useCallback((next: AppState) => {
+    previousRunLogs.current = next.runLogs;
+    setBoot((current) => ({
+      kind: "ready",
+      state: next,
+      isNew: current.kind === "ready" ? current.isNew : false,
+    }));
+  }, []);
+  const personalSync = usePersonalSync({
+    // Crew profile/dashboard reads may still be loading after Supabase has
+    // already identified the account. Personal cache ownership must switch at
+    // that earlier boundary.
+    sessionStatus: raceCrew.userId ? "signed-in" : raceCrew.status,
+    userId: raceCrew.userId ?? null,
+    state: appState ?? createInitialAppState(),
+    onReplaceState: replacePersonalState,
+  });
   /**
    * Crew is a destination only while there is a crew to be in. Membership is
    * the account's to lose — signing out, leaving, or being removed all take it
@@ -122,6 +140,8 @@ export function App() {
    */
   const crewAvailable =
     raceCrew.status === "signed-in" && Boolean(raceCrew.account?.crew);
+  const raceCrewUserId = raceCrew.userId;
+  const refreshCrewData = raceCrew.refreshCrewData;
 
   function persistOnboarding(next: OnboardingState) {
     setOnboarding(next);
@@ -158,10 +178,32 @@ export function App() {
   const setAppState = useCallback((next: (current: AppState) => AppState) => {
     setBoot((current) =>
       current.kind === "ready"
-        ? { kind: "ready", state: next(current.state), isNew: current.isNew }
+        ? (() => {
+            const updated = next(current.state);
+            personalSync.recordMutation(current.state, updated);
+            return { kind: "ready" as const, state: updated, isNew: current.isNew };
+          })()
         : current,
     );
-  }, []);
+  }, [personalSync]);
+
+  useLayoutEffect(() => {
+    const accountId = raceCrewUserId;
+    queueMicrotask(() => {
+      try {
+        setIntervalsApiKey(loadIntervalsApiKey(accountId ?? null));
+        setSyncToken(loadIntervalsSyncToken(accountId ?? null));
+      } catch {
+        setIntervalsApiKey(null);
+        setSyncToken(null);
+      }
+    });
+  }, [raceCrewUserId]);
+
+  useEffect(() => {
+    if (!personalSync.initialized || !raceCrewUserId) return;
+    void refreshCrewData(true);
+  }, [personalSync.initialized, raceCrewUserId, refreshCrewData]);
 
   useEffect(() => onStorageWriteError((error) => setWriteError(error.message)), []);
 
@@ -213,6 +255,9 @@ export function App() {
         : null,
     state: appState,
     onSynced: recordSync,
+    accountId: raceCrew.userId ?? null,
+    pendingSeed: personalSync.pendingCandidates,
+    onPendingChanged: personalSync.recordPendingCandidates,
   });
 
   if (boot.kind === "recovering") {
@@ -230,6 +275,21 @@ export function App() {
         }
         onRetry={() => window.location.reload()}
       />
+    );
+  }
+
+  if (raceCrew.configured && raceCrew.status === "loading" && !raceCrew.userId) {
+    return (
+      <main className="app-loading" aria-live="polite">
+        <p>Loading your STACK…</p>
+      </main>
+    );
+  }
+  if (raceCrew.userId && personalSync.status === "loading") {
+    return (
+      <main className="app-loading" aria-live="polite">
+        <p>Loading personal data…</p>
+      </main>
     );
   }
 
@@ -296,6 +356,7 @@ export function App() {
             ? ignoreIntervalsActivity(current, run.externalSource.activityId)
             : current;
         const deleted = deleteRunLog(next, runLogId);
+        personalSync.recordMutation(current, deleted);
         setBoot({ kind: "ready", state: deleted, isNew: boot.isNew });
         // Personal deletion is already durable above. Crew cleanup is a
         // separate best-effort projection event and can never restore it.
@@ -320,7 +381,11 @@ export function App() {
         setAppState((current) => saveRunDays(current, runDays, plan))
       }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
-      onResetPlan={() => setBoot({ kind: "ready", state: resetAppState(), isNew: false })}
+      onResetPlan={() => {
+        const fresh = resetAppState();
+        setBoot({ kind: "ready", state: fresh, isNew: false });
+        if (personalSync.initialized) void personalSync.resetAccount(fresh);
+      }}
       onPlaceBlock={(request) =>
         setAppState((current) => placeBlock(current, request))
       }
@@ -337,9 +402,10 @@ export function App() {
       }
       connectedSync={connectedSync}
       raceCrew={raceCrew}
+      personalSync={personalSync}
       onConnectIntervalsApiKey={(apiKey) => {
         try {
-          saveIntervalsApiKey(apiKey);
+          saveIntervalsApiKey(apiKey, raceCrew.userId ?? null);
           setIntervalsApiKey(apiKey.trim());
         } catch (error) {
           setWriteError(error instanceof Error ? error.message : "Connection could not be saved.");
@@ -347,18 +413,16 @@ export function App() {
       }}
       onForgetIntervalsApiKey={() => {
         try {
-          forgetIntervalsApiKey();
-          // Forgetting Run Data forgets what Run Data found. The queue holds
-          // one Intervals account's activities, and the next key entered here
-          // may well be a different runner's.
-          clearPendingIntervalsCandidates();
+          forgetIntervalsApiKey(raceCrew.userId ?? null);
+          // Pending review is personal account data. Forgetting a credential
+          // removes only this device's ability to fetch anything new.
           setIntervalsApiKey(null);
         } catch (error) {
           setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten.");
         }
       }}
-      onConnectIntervals={(token) => { try { saveIntervalsSyncToken(token); setSyncToken(token); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be saved."); } }}
-      onForgetIntervals={() => { try { forgetIntervalsSyncToken(); clearPendingIntervalsCandidates(); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
+      onConnectIntervals={(token) => { try { saveIntervalsSyncToken(token, raceCrew.userId ?? null); setSyncToken(token); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be saved."); } }}
+      onForgetIntervals={() => { try { forgetIntervalsSyncToken(raceCrew.userId ?? null); setSyncToken(null); } catch (error) { setWriteError(error instanceof Error ? error.message : "Connection could not be forgotten."); } }}
       onImportIntervals={(candidate, workoutId, type, effort, notes) => setAppState((current) => acceptIntervalsRun(current, candidate, workoutId, type, effort, notes))}
       onAttachIntervals={(candidate, runLogId) => setAppState((current) => attachIntervalsRun(current, candidate, runLogId))}
       onIgnoreIntervals={(id) => setAppState((current) => ignoreIntervalsActivity(current, id))}

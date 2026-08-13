@@ -24,7 +24,7 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '50000000-0000-0000-0000-000000000001';
 
 insert into crew_owner_management_test values (
-  public.create_crew('Original Crew', 'Original Race', '2026-12-05', 13.1, '2026-01-01')
+  public.create_crew('Original Crew', 'race', 'Original Race', '2026-12-05', 13.1, '2026-01-01')
 );
 
 select public.create_crew_invite(

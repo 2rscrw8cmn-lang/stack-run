@@ -20,10 +20,11 @@ import type { IntervalsCandidate, IntervalsConnection } from "../connected/inter
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
 import { SettingsSheet } from "../features/settings/SettingsSheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { RaceCrewController } from "../crew/useRaceCrew";
 import { AccountCrewSheet } from "../features/crew/AccountCrewSheet";
 import { CrewScreen } from "../features/crew/CrewScreen";
+import type { PersonalSyncController } from "../personal-sync/types";
 
 interface AppShellProps {
   activeTab: TabId;
@@ -69,6 +70,7 @@ interface AppShellProps {
   onConnectIntervalsApiKey: (apiKey: string) => void;
   onForgetIntervalsApiKey: () => void;
   raceCrew: RaceCrewController;
+  personalSync?: PersonalSyncController;
   onImportIntervals: (candidate: IntervalsCandidate, workoutId: string | null, type: RunActivityType, effort: Effort, notes: string) => void;
   onAttachIntervals: (candidate: IntervalsCandidate, runLogId: string) => void; onIgnoreIntervals: (id: string) => void; onClearIgnoredIntervals: () => void;
 }
@@ -97,7 +99,7 @@ export function AppShell({
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
-  appState, syncToken, intervalsConnection, connectedSync, onConnectIntervals, onForgetIntervals, onConnectIntervalsApiKey, onForgetIntervalsApiKey, raceCrew, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
+  appState, syncToken, intervalsConnection, connectedSync, onConnectIntervals, onForgetIntervals, onConnectIntervalsApiKey, onForgetIntervalsApiKey, raceCrew, personalSync, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
 }: AppShellProps) {
   const [runDataOpen, setRunDataOpen] = useState(false);
   // A review handed in from Today, and a counter that remounts the sheet so it
@@ -109,6 +111,16 @@ export function AppShell({
   // Run Data is reached from Today and from Settings. Dismissing it should go
   // back wherever it was opened from, so which one that was is remembered.
   const [runDataFromSettings, setRunDataFromSettings] = useState(false);
+
+  const personalInitialization = personalSync?.initialization ?? null;
+
+  useEffect(() => {
+    if (personalInitialization === null) return;
+    queueMicrotask(() => {
+      setSettingsOpen(false);
+      setAccountCrewOpen(true);
+    });
+  }, [personalInitialization]);
 
   function openRunData(next: RunDataReview | null, fromSettings = false) {
     setReview(next);
@@ -266,6 +278,7 @@ export function AppShell({
           setSettingsOpen(true);
         }}
         crew={raceCrew}
+        personalSync={personalSync}
         localRace={plan.race}
       />
       <RunDataSheet

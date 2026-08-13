@@ -2,6 +2,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Database,
   LogIn,
   LogOut,
   Pencil,
@@ -33,11 +34,13 @@ import type { CrewType, RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
+import type { PersonalSyncController } from "../../personal-sync/types";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   crew: RaceCrewController;
+  personalSync?: PersonalSyncController;
   localRace: Race | null;
 }
 
@@ -87,8 +90,8 @@ function AuthPanel({ crew }: { crew: RaceCrewController }) {
         </button>
       </div>
       <p className="crew-settings__copy">
-        An account adds Race Crew identity only. Your plan, runs and Build stay
-        on this device and personal STACK still works signed out.
+        An account saves one canonical personal STACK across your devices.
+        Signed-out personal STACK still works locally.
       </p>
       {mode === "create" && (
         <FormField label="Display name">
@@ -139,6 +142,79 @@ function AuthPanel({ crew }: { crew: RaceCrewController }) {
       >
         {mode === "create" ? "Create STACK Account" : "Sign In"}
       </Button>
+    </section>
+  );
+}
+
+function PersonalDataPanel({ sync }: { sync: PersonalSyncController }) {
+  const initialization = sync.initialization;
+  if (initialization) {
+    return (
+      <section className="crew-settings__section" aria-labelledby="personal-data-title">
+        <div className="crew-settings__section-heading">
+          <Database size={20} aria-hidden="true" />
+          <div>
+            <p className="machine-label" id="personal-data-title">Save STACK to your account</p>
+            <p className="crew-settings__copy">
+              This device has {initialization.runCount} {initialization.runCount === 1 ? "run" : "runs"} and{" "}
+              {initialization.blockCount} built {initialization.blockCount === 1 ? "block" : "blocks"}.
+            </p>
+            <p className="crew-settings__note">{initialization.raceName}</p>
+          </div>
+        </div>
+        <p className="crew-settings__copy">
+          Choose this only if this is the device whose current personal data
+          should initialize the account. A recoverable local backup is created first.
+        </p>
+        <div className="crew-settings__account-actions">
+          <Button
+            isLoading={sync.status === "syncing"}
+            onClick={() => void sync.initializeFromThisDevice()}
+          >
+            Use This Device&apos;s Data
+          </Button>
+          <Button variant="secondary" onClick={sync.deferInitialization}>
+            Not Now
+          </Button>
+        </div>
+        {sync.error && (
+          <p role="alert" className="crew-settings__message crew-settings__message--error">
+            {sync.error}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  const statusCopy =
+    sync.status === "syncing"
+      ? "Syncing…"
+      : sync.status === "offline-pending"
+        ? "Offline changes waiting"
+        : sync.status === "error"
+          ? "Sync needs attention"
+          : sync.initialized
+            ? "Saved to your STACK account"
+            : "Account initialization not finished";
+  return (
+    <section className="crew-settings__section" aria-labelledby="personal-data-title">
+      <p className="machine-label" id="personal-data-title">Personal Data</p>
+      <p className="crew-settings__copy">{statusCopy}</p>
+      {sync.error && (
+        <p role="alert" className="crew-settings__message crew-settings__message--error">
+          {sync.error}
+        </p>
+      )}
+      {sync.message && <p role="status" className="crew-settings__message">{sync.message}</p>}
+      {sync.initialized && (
+        <Button
+          variant="secondary"
+          isLoading={sync.status === "syncing"}
+          onClick={() => void sync.syncNow()}
+        >
+          Sync Now
+        </Button>
+      )}
     </section>
   );
 }
@@ -480,7 +556,7 @@ function DeleteCrewPanel({
   return (
     <section className="crew-settings__section crew-settings__delete-confirmation">
       <h3>Delete {raceCrew.name}?</h3>
-      <p>This removes the Crew and its shared data for everyone. Personal STACK data stays on each runner&apos;s device.</p>
+      <p>This removes the Crew and its shared data for everyone. Each runner&apos;s personal STACK stays with their account or local-only browser.</p>
       <p>This can&apos;t be undone.</p>
       <div className="crew-settings__form-actions">
         <Button variant="secondary" disabled={crew.busy} onClick={onCancel}>Cancel</Button>
@@ -802,7 +878,7 @@ function sheetTitle(view: View): string {
   }
 }
 
-export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
+export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRace }: Props) {
   const signedIn = crew.status === "signed-in";
   const [view, setView] = useState<View>("main");
   const [createStartCount, setCreateStartCount] = useState<number | null>(null);
@@ -920,6 +996,7 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
 
             {crew.configured && signedIn && (
               <>
+                {personalSync && <PersonalDataPanel sync={personalSync} />}
                 <ul className="settings__rows">
                   <li>
                     <button

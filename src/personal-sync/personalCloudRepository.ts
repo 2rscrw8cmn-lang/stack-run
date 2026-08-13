@@ -1,0 +1,509 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { IntervalsCandidate } from "../connected/intervals";
+import type {
+  AppSettings,
+  BlockPlacement,
+  Effort,
+  ImportedRunMetrics,
+  RunActivityType,
+  RunLog,
+  RunSource,
+  TrainingPlan,
+} from "../domain/types";
+import type {
+  PersonalCloudRun,
+  PersonalCloudSnapshot,
+  PersonalInitializationRun,
+  PersonalIntervalsDocument,
+  PersonalTrainingDocument,
+} from "./types";
+
+export type PersonalConflictKind =
+  | "training"
+  | "build"
+  | "intervals"
+  | "run"
+  | "deleted"
+  | "run-id";
+
+export class PersonalCloudConflictError extends Error {
+  readonly kind: PersonalConflictKind;
+
+  constructor(kind: PersonalConflictKind, message: string) {
+    super(message);
+    this.name = "PersonalCloudConflictError";
+    this.kind = kind;
+  }
+}
+
+function errorMessage(error: { message?: string } | null): string | null {
+  return error?.message ?? null;
+}
+
+function throwCloudError(error: { message?: string } | null): never {
+  const message = errorMessage(error) ?? "Personal data could not be saved.";
+  if (message.includes("personal_training_revision_conflict")) {
+    throw new PersonalCloudConflictError("training", message);
+  }
+  if (message.includes("personal_build_revision_conflict")) {
+    throw new PersonalCloudConflictError("build", message);
+  }
+  if (message.includes("personal_intervals_revision_conflict")) {
+    throw new PersonalCloudConflictError("intervals", message);
+  }
+  if (message.includes("personal_run_revision_conflict")) {
+    throw new PersonalCloudConflictError("run", message);
+  }
+  if (message.includes("personal_run_deleted")) {
+    throw new PersonalCloudConflictError("deleted", message);
+  }
+  if (message.includes("personal_run_id_conflict")) {
+    throw new PersonalCloudConflictError("run-id", message);
+  }
+  throw new Error(message);
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function string(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function nullableString(value: unknown): string | null {
+  return value === null || value === undefined ? null : string(value);
+}
+
+function finite(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function revision(value: unknown): number | null {
+  const parsed = finite(value);
+  return parsed !== null && Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+const ACTIVITY_TYPES = new Set<RunActivityType>([
+  "easy",
+  "intervals",
+  "simulation",
+  "long",
+  "race",
+]);
+const EFFORTS = new Set<Effort>(["rough", "solid", "great"]);
+const SOURCES = new Set<RunSource>(["manual", "intervals"]);
+
+function parseMetrics(value: unknown): ImportedRunMetrics | null {
+  if (value === null || value === undefined) return null;
+  const candidate = record(value);
+  if (!candidate) throw new Error("Cloud run metrics are malformed.");
+  const result: ImportedRunMetrics = {};
+  const scalarKeys = [
+    "averageHeartRate",
+    "maxHeartRate",
+    "averageCadence",
+    "elevationGainFeet",
+    "elapsedTimeSeconds",
+    "trainingLoad",
+  ] as const;
+  for (const key of scalarKeys) {
+    if (candidate[key] === undefined) continue;
+    const valueNumber = finite(candidate[key]);
+    if (valueNumber === null) throw new Error("Cloud run metrics are malformed.");
+    result[key] = valueNumber;
+  }
+  if (candidate.hrZoneSeconds !== undefined) {
+    if (
+      !Array.isArray(candidate.hrZoneSeconds) ||
+      candidate.hrZoneSeconds.some((item) => finite(item) === null)
+    ) {
+      throw new Error("Cloud run metrics are malformed.");
+    }
+    result.hrZoneSeconds = candidate.hrZoneSeconds.map((item) => Number(item));
+  }
+  return result;
+}
+
+function parseRunRow(value: unknown): PersonalCloudRun {
+  const row = record(value);
+  if (!row) throw new Error("Cloud run data is malformed.");
+  const id = string(row.run_id);
+  const completedDate = string(row.completed_date);
+  const activityType = string(row.activity_type) as RunActivityType | null;
+  const distanceMiles = finite(row.distance_miles);
+  const durationSeconds = finite(row.duration_seconds);
+  const effort = string(row.effort) as Effort | null;
+  const source = string(row.source) as RunSource | null;
+  const runRevision = revision(row.revision);
+  const createdAt = string(row.created_at);
+  const updatedAt = string(row.updated_at);
+  if (
+    !id ||
+    !completedDate ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(completedDate) ||
+    !activityType ||
+    !ACTIVITY_TYPES.has(activityType) ||
+    distanceMiles === null ||
+    distanceMiles <= 0 ||
+    durationSeconds === null ||
+    !Number.isInteger(durationSeconds) ||
+    durationSeconds <= 0 ||
+    !effort ||
+    !EFFORTS.has(effort) ||
+    !source ||
+    !SOURCES.has(source) ||
+    !runRevision ||
+    !createdAt ||
+    !updatedAt ||
+    !Number.isFinite(Date.parse(createdAt)) ||
+    !Number.isFinite(Date.parse(updatedAt))
+  ) {
+    throw new Error("Cloud run data is malformed.");
+  }
+
+  const provider = nullableString(row.external_provider);
+  const activityId = nullableString(row.external_activity_id);
+  const sourceUpdatedAt = nullableString(row.external_source_updated_at);
+  const importedAt = nullableString(row.external_imported_at);
+  if ((provider === null) !== (activityId === null) || (provider && provider !== "intervals")) {
+    throw new Error("Cloud run external identity is malformed.");
+  }
+  if (
+    (sourceUpdatedAt !== null && !Number.isFinite(Date.parse(sourceUpdatedAt))) ||
+    (importedAt !== null && !Number.isFinite(Date.parse(importedAt)))
+  ) throw new Error("Cloud run external timestamps are malformed.");
+  const aliases = Array.isArray(row.legacy_aliases)
+    ? row.legacy_aliases.filter((item): item is string => typeof item === "string" && item.length > 0)
+    : [];
+
+  return {
+    run: {
+      id,
+      workoutId: nullableString(row.workout_id),
+      completedDate,
+      activityType,
+      distanceMiles,
+      durationSeconds,
+      effort,
+      notes: typeof row.notes === "string" ? row.notes : "",
+      source,
+      externalSource:
+        provider && activityId
+          ? {
+              provider: "intervals",
+              activityId,
+              sourceUpdatedAt,
+              importedAt: importedAt ?? createdAt,
+            }
+          : null,
+      importedMetrics: parseMetrics(row.imported_metrics),
+      createdAt,
+      updatedAt,
+    },
+    revision: runRevision,
+    deletedAt: nullableString(row.deleted_at),
+    aliases,
+  };
+}
+
+function isSettings(value: unknown): value is AppSettings {
+  const candidate = record(value);
+  return candidate?.units === "miles" && candidate.theme === "dark";
+}
+
+function isPlan(value: unknown): value is TrainingPlan {
+  const candidate = record(value);
+  return (
+    candidate?.schemaVersion === 1 &&
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    Array.isArray(candidate.weeks) &&
+    candidate.weeks.length > 0 &&
+    record(candidate.race) !== null
+  );
+}
+
+function parseTrainingRow(value: unknown): {
+  document: PersonalTrainingDocument;
+  revision: number;
+} {
+  const row = record(value);
+  const rowRevision = revision(row?.revision);
+  if (!row || !rowRevision || !isSettings(row.settings) || !isPlan(row.plan)) {
+    throw new Error("Cloud training data is malformed.");
+  }
+  if (
+    row.race_setup !== null && row.race_setup !== undefined && !record(row.race_setup)
+  ) {
+    throw new Error("Cloud race data is malformed.");
+  }
+  if (
+    row.availability !== null && row.availability !== undefined && !record(row.availability)
+  ) {
+    throw new Error("Cloud availability data is malformed.");
+  }
+  if (
+    row.run_days !== null &&
+    row.run_days !== undefined &&
+    !Array.isArray(row.run_days)
+  ) {
+    throw new Error("Cloud run-day data is malformed.");
+  }
+  return {
+    revision: rowRevision,
+    document: {
+      settings: row.settings,
+      plan: row.plan,
+      raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
+      availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
+      runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],
+    },
+  };
+}
+
+function parsePlacement(value: unknown): BlockPlacement | null {
+  const item = record(value);
+  if (!item) return null;
+  const runLogId = string(item.runLogId);
+  const row = finite(item.row);
+  const columnStart = finite(item.columnStart);
+  const width = finite(item.width);
+  const height = finite(item.height);
+  const placedAt = string(item.placedAt);
+  return runLogId &&
+    row !== null && Number.isInteger(row) && row >= 0 &&
+    columnStart !== null && Number.isInteger(columnStart) && columnStart >= 1 && columnStart <= 8 &&
+    width !== null && [1, 2, 3, 4].includes(width) &&
+    height !== null && [1, 2, 3].includes(height) &&
+    placedAt && Number.isFinite(Date.parse(placedAt))
+    ? {
+        runLogId,
+        row,
+        columnStart,
+        width: width as BlockPlacement["width"],
+        height: height as BlockPlacement["height"],
+        placedAt,
+      }
+    : null;
+}
+
+function parseBuildRow(value: unknown): { placements: BlockPlacement[]; revision: number } {
+  const row = record(value);
+  const rowRevision = revision(row?.revision);
+  if (!row || !rowRevision || !Array.isArray(row.placements)) {
+    throw new Error("Cloud Personal Build is malformed.");
+  }
+  const placements = row.placements.map(parsePlacement);
+  if (placements.some((item) => item === null)) {
+    throw new Error("Cloud Personal Build is malformed.");
+  }
+  return { placements: placements as BlockPlacement[], revision: rowRevision };
+}
+
+function parseCandidate(value: unknown): IntervalsCandidate | null {
+  const item = record(value);
+  const externalId = string(item?.externalId);
+  const sourceType = string(item?.sourceType);
+  const completedDate = string(item?.completedDate);
+  const distanceMiles = finite(item?.distanceMiles);
+  const durationSeconds = finite(item?.durationSeconds);
+  const metrics = record(item?.metrics);
+  const sourceUpdatedAt = nullableString(item?.sourceUpdatedAt);
+  if (
+    !externalId || !sourceType || !completedDate ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(completedDate) ||
+    distanceMiles === null || distanceMiles <= 0 ||
+    durationSeconds === null || durationSeconds <= 0 || !metrics ||
+    (sourceUpdatedAt !== null && !Number.isFinite(Date.parse(sourceUpdatedAt)))
+  ) return null;
+  return {
+    externalId,
+    sourceType,
+    completedDate,
+    distanceMiles,
+    durationSeconds,
+    sourceUpdatedAt,
+    metrics: parseMetrics(metrics) ?? {},
+  };
+}
+
+function parseIntervalsRow(value: unknown): {
+  document: PersonalIntervalsDocument;
+  revision: number;
+} {
+  const row = record(value);
+  const rowRevision = revision(row?.revision);
+  const lastSync = nullableString(row?.last_successful_activity_sync_at);
+  if (!row || !rowRevision || !Array.isArray(row.ignored_activity_ids) || !Array.isArray(row.pending_candidates)) {
+    throw new Error("Cloud Intervals state is malformed.");
+  }
+  if (lastSync !== null && !Number.isFinite(Date.parse(lastSync))) {
+    throw new Error("Cloud Intervals sync timestamp is malformed.");
+  }
+  const pending = row.pending_candidates.map(parseCandidate);
+  if (pending.some((item) => item === null)) {
+    throw new Error("Cloud Intervals state is malformed.");
+  }
+  return {
+    revision: rowRevision,
+    document: {
+      lastSuccessfulActivitySyncAt: lastSync,
+      ignoredActivityIds: row.ignored_activity_ids.filter(
+        (item): item is string => typeof item === "string" && item.length > 0,
+      ),
+      pendingCandidates: pending as IntervalsCandidate[],
+    },
+  };
+}
+
+export async function loadPersonalCloudSnapshot(
+  client: SupabaseClient,
+): Promise<PersonalCloudSnapshot | null> {
+  const trainingResult = await client
+    .from("personal_training_state")
+    .select("settings,plan,race_setup,availability,run_days,revision")
+    .maybeSingle();
+  if (trainingResult.error) throw new Error(trainingResult.error.message);
+  if (!trainingResult.data) return null;
+
+  const [runsResult, buildResult, intervalsResult] = await Promise.all([
+    client.from("personal_runs").select("*"),
+    client.from("personal_build_state").select("placements,revision").single(),
+    client
+      .from("personal_intervals_state")
+      .select("last_successful_activity_sync_at,ignored_activity_ids,pending_candidates,revision")
+      .single(),
+  ]);
+  if (runsResult.error) throw new Error(runsResult.error.message);
+  if (buildResult.error) throw new Error(buildResult.error.message);
+  if (intervalsResult.error) throw new Error(intervalsResult.error.message);
+
+  const training = parseTrainingRow(trainingResult.data);
+  const build = parseBuildRow(buildResult.data);
+  const intervals = parseIntervalsRow(intervalsResult.data);
+  return {
+    training: training.document,
+    trainingRevision: training.revision,
+    runs: Array.isArray(runsResult.data) ? runsResult.data.map(parseRunRow) : [],
+    placements: build.placements,
+    buildRevision: build.revision,
+    intervals: intervals.document,
+    intervalsRevision: intervals.revision,
+  };
+}
+
+export async function initializePersonalCloud(
+  client: SupabaseClient,
+  input: {
+    training: PersonalTrainingDocument;
+    runs: readonly PersonalInitializationRun[];
+    placements: readonly BlockPlacement[];
+    intervals: PersonalIntervalsDocument;
+  },
+): Promise<void> {
+  const result = await client.rpc("initialize_personal_stack", {
+    p_training: input.training,
+    p_runs: input.runs,
+    p_build_placements: input.placements,
+    p_intervals: input.intervals,
+  });
+  if (result.error) throwCloudError(result.error);
+}
+
+export async function savePersonalTrainingDocument(
+  client: SupabaseClient,
+  expectedRevision: number,
+  training: PersonalTrainingDocument,
+): Promise<number> {
+  const result = await client.rpc("save_personal_training_state", {
+    p_expected_revision: expectedRevision,
+    p_training: training,
+  });
+  if (result.error) throwCloudError(result.error);
+  const next = revision(result.data);
+  if (!next) throw new Error("Personal training save returned an invalid revision.");
+  return next;
+}
+
+export async function savePersonalBuildDocument(
+  client: SupabaseClient,
+  expectedRevision: number,
+  placements: readonly BlockPlacement[],
+): Promise<number> {
+  const result = await client.rpc("save_personal_build_state", {
+    p_expected_revision: expectedRevision,
+    p_placements: placements,
+  });
+  if (result.error) throwCloudError(result.error);
+  const next = revision(result.data);
+  if (!next) throw new Error("Personal Build save returned an invalid revision.");
+  return next;
+}
+
+export async function savePersonalIntervalsDocument(
+  client: SupabaseClient,
+  expectedRevision: number,
+  intervals: PersonalIntervalsDocument,
+): Promise<number> {
+  const result = await client.rpc("save_personal_intervals_state", {
+    p_expected_revision: expectedRevision,
+    p_last_sync: intervals.lastSuccessfulActivitySyncAt,
+    p_ignored_activity_ids: intervals.ignoredActivityIds,
+    p_pending_candidates: intervals.pendingCandidates,
+  });
+  if (result.error) throwCloudError(result.error);
+  const next = revision(result.data);
+  if (!next) throw new Error("Intervals state save returned an invalid revision.");
+  return next;
+}
+
+export async function savePersonalRun(
+  client: SupabaseClient,
+  expectedRevision: number,
+  run: RunLog,
+): Promise<PersonalCloudRun> {
+  const result = await client.rpc("save_personal_run", {
+    p_expected_revision: expectedRevision,
+    p_run: run,
+  });
+  if (result.error) throwCloudError(result.error);
+  return parseRunRow(result.data);
+}
+
+export async function deletePersonalRun(
+  client: SupabaseClient,
+  runId: string,
+): Promise<PersonalCloudRun | null> {
+  const result = await client.rpc("delete_personal_run", { p_run_id: runId });
+  if (result.error) throwCloudError(result.error);
+  return result.data ? parseRunRow(result.data) : null;
+}
+
+export async function resetPersonalCloud(
+  client: SupabaseClient,
+  training: PersonalTrainingDocument,
+  intervals: PersonalIntervalsDocument,
+): Promise<void> {
+  const result = await client.rpc("reset_personal_stack", {
+    p_training: training,
+    p_intervals: intervals,
+  });
+  if (result.error) throwCloudError(result.error);
+}
+
+export async function reconcileCrewRunIdentity(
+  client: SupabaseClient,
+  canonicalRunId: string,
+  aliases: readonly string[],
+): Promise<void> {
+  if (aliases.length === 0) return;
+  const result = await client.rpc("reconcile_crew_run_identity", {
+    p_canonical_run_id: canonicalRunId,
+    p_legacy_run_ids: aliases,
+  });
+  if (result.error) throw new Error(result.error.message);
+}

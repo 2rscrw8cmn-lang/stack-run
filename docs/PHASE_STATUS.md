@@ -26,6 +26,37 @@
 
 Current personal AppState: **schema 9**.
 
+## DATA-1 — Personal Account Sync / Multi-Device (issue #50)
+
+Status: **Implemented / PR review and real-device QA pending.**
+
+- One signed-in account owns one canonical personal STACK across four private
+  self-only Supabase tables; schema-9 remains the local cache and signed-out
+  local-only mode is unchanged.
+- First-device initialization is explicit, counted and backed up; a second
+  device reconciles runs before adopting canonical plan/configuration and the
+  established Personal Build.
+- New runs use opaque UUID-backed ids. Intervals runs are unique by account +
+  provider + external activity id, with legacy aliases; ambiguous manual id
+  collisions preserve both activities.
+- Training, Intervals and Personal Build documents use optimistic revisions;
+  runs have independent revisions and durable tombstones. A persistent
+  account-scoped outbox retries on mutation, load, online, focus, foreground
+  and Sync Now.
+- Pending Intervals candidates and ignored ids are account-wide. API keys and
+  legacy proxy tokens remain account-scoped on that device and never enter
+  Supabase or backups; Forget Connection removes only the credential.
+- Crew projection waits for canonical personal hydration. Legacy duplicate
+  Crew rows reconcile in place, preserving Props and placement where possible;
+  changed communal footprints demote to READY and support healing remains in
+  force.
+- Forward migration `20260813150000_personal_account_sync.sql` and transactional
+  verification `0012_personal_account_sync.sql` cover privacy, revisions,
+  external uniqueness, tombstones, Crew reconciliation and account reset.
+- No Realtime, OAuth, service worker, CRDT, new destination or UI redesign.
+
+See `docs/PERSONAL_ACCOUNT_SYNC.md` for deployment and remaining QA.
+
 ## Post-connected core revision
 
 | Phase | Name | Status |

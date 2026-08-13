@@ -63,7 +63,7 @@ set local request.jwt.claim.role = 'authenticated';
 set local request.jwt.claim.sub = '80000000-0000-0000-0000-000000000001';
 insert into crew_build_start_test_ids (crew_id)
 values (public.create_crew(
-  'Build Start Crew', 'Test Race', '2026-12-05', 13.1, '2026-08-01'
+  'Build Start Crew', 'race', 'Test Race', '2026-12-05', 13.1, '2026-08-01'
 ));
 
 reset role;
@@ -210,7 +210,7 @@ begin
 
   begin
     perform public.create_crew(
-      'Invalid Date Crew', 'Race', '2026-08-20', 13.1, '2026-08-21'
+      'Invalid Date Crew', 'race', 'Race', '2026-08-20', 13.1, '2026-08-21'
     );
     raise exception 'Build start after race was accepted';
   exception when others then

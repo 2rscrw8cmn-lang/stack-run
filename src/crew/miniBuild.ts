@@ -57,7 +57,7 @@ export function deriveCrewMiniBuild(
         Number.isInteger(run.buildColumnStart) &&
         run.buildColumnStart !== null &&
         run.buildColumnStart >= 1 &&
-        run.buildColumnStart + widthForMiles(run.distanceMiles) - 1 <= 8,
+        run.buildColumnStart + (run.buildWidth ?? widthForMiles(run.distanceMiles)) - 1 <= 8,
     )
     .sort(
       (left, right) =>
@@ -68,8 +68,8 @@ export function deriveCrewMiniBuild(
     .slice(0, Math.max(0, limit));
 
   const blocks: CrewMiniBuildBlock[] = bounded.map((run) => {
-    const width = widthForMiles(run.distanceMiles);
-    const height = heightForActivityType(run.activityType);
+    const width = run.buildWidth ?? widthForMiles(run.distanceMiles);
+    const height = run.buildHeight ?? heightForActivityType(run.activityType);
     return {
       id: run.id,
       activityType: run.activityType,

@@ -233,7 +233,16 @@ After UI-18 is deployed:
 4. Enter display name, email and an 8-digit PIN.
 5. Sign in.
 
-Existing schema-9 AppState must remain untouched. Signing in adds cloud identity; it does not replace or migrate the local plan/runs/Build into Supabase.
+On first sign-in, STACK checks whether the account has canonical personal data.
+If it does not, Account & Crew reports this device's run and Personal Build
+counts and asks whether to use this device's data. Nothing uploads until that
+choice is made. STACK creates a recoverable local backup, uploads normalized
+training/runs/Build/Intervals review state, then rehydrates from the server.
+
+If the account is already initialized, STACK backs up this device, merges
+genuinely missing runs, dedupes Intervals activities by external identity,
+preserves distinct manual activities and adopts the canonical plan and Build.
+The Intervals key remains device-local and account-scoped.
 
 ## 8. Connect the new local Intervals credential
 
