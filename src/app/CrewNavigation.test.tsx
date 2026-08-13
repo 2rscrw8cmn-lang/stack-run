@@ -8,8 +8,8 @@ import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "../crew/typ
 const action = vi.fn(async () => undefined);
 
 const members = [
-  { userId: "zack", displayName: "Zack", role: "owner" as const, joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
-  { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
+  { userId: "zack", displayName: "Zack", role: "owner" as const, joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
 ];
 
 const raceCrew: RaceCrew = {
@@ -25,7 +25,7 @@ const raceCrew: RaceCrew = {
 };
 
 const account: LoadedCrewAccount = {
-  profile: { id: "zack", displayName: "Zack", accentColor: null },
+  profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
   memberships: [{ crew: raceCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: raceCrew,
   role: "owner",
@@ -71,6 +71,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signOut: action,
     saveDisplayName: action,
     saveAccentColor: action,
+    saveRunnerIcon: action,
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
@@ -120,6 +121,43 @@ beforeEach(() => {
     crewTourSeen: true,
   }));
   current = controller();
+});
+
+describe("The runner's icon in the app header", () => {
+  /**
+   * The mark stands beside the gear as the account affordance — the same icon
+   * this runner's crewmates see. It is a button, not decoration, so it needs a
+   * real name; the icon itself stays decorative inside it.
+   */
+  it("shows the signed-in runner's icon next to Settings", () => {
+    render(<App />);
+    const runner = screen.getByRole("button", { name: /^Zack\. Account & Crew\.$/ });
+    expect(runner.querySelector(".runner-icon")).not.toBeNull();
+    expect(runner.querySelector(".runner-icon")).toHaveAttribute("aria-hidden", "true");
+    // It joins the existing header row rather than adding one.
+    expect(runner.closest(".app-shell__header-row")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("shows no runner mark when nobody is signed in", () => {
+    current = signedOut;
+    render(<App />);
+    expect(screen.queryByRole("button", { name: /Account & Crew\.$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("opens Account & Crew directly, and closes back to the app rather than into Settings", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /^Zack\. Account & Crew\.$/ }));
+    expect(await screen.findByRole("heading", { name: "Account & Crew" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    // Opened from the header, so dismissing it does not strand the runner in
+    // Settings — a sheet they never asked for.
+    expect(screen.queryByRole("heading", { name: "Settings" })).not.toBeInTheDocument();
+  });
 });
 
 describe("Crew as a conditional destination", () => {

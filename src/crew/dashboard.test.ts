@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import { loadCrewDashboard } from "./dashboard";
+import { runnerIconFromSeed } from "./runnerIcon";
 
 interface QueryCall {
   table: string;
@@ -123,6 +124,8 @@ describe("Crew dashboard query", () => {
       userId: "user-1",
       displayName: "Runner",
       accentColor: null,
+      // No saved icon on this profile row, so the stable derived mark stands in.
+      runnerIcon: runnerIconFromSeed("user-1"),
       localDate: "2026-08-09",
       activityType: "long",
       distanceMiles: 6.1,

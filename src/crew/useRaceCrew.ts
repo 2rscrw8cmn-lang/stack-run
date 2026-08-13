@@ -20,9 +20,11 @@ import {
   updateAccentColor,
   updateCrew as updateCrewRecord,
   updateDisplayName,
+  updateRunnerIcon,
   type CrewDetailsInput,
 } from "./crewService";
 import type { CrewMemberAccent } from "./memberAccent";
+import type { RunnerIcon } from "./runnerIcon";
 import {
   captureInviteFromLocation,
   clearPendingInvite,
@@ -98,6 +100,7 @@ export interface RaceCrewController {
   signOut: () => Promise<void>;
   saveDisplayName: (displayName: string) => Promise<void>;
   saveAccentColor: (accentColor: CrewMemberAccent) => Promise<void>;
+  saveRunnerIcon: (runnerIcon: RunnerIcon) => Promise<void>;
   createCrew: (input: CrewDetailsInput) => Promise<void>;
   updateCrew: (input: CrewDetailsInput) => Promise<boolean>;
   deleteCrew: () => Promise<boolean>;
@@ -656,6 +659,15 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       lastDashboard.current.loadedAt = 0;
       await refreshCrewData(true);
     }, "Color updated."),
+    saveRunnerIcon: (runnerIcon) => operate(async () => {
+      if (!availability.configured || !user) return;
+      await updateRunnerIcon(availability.client, user.id, runnerIcon);
+      await reloadAccount(user);
+      // Crewmates see this icon in rosters and legends, so the same forced
+      // refresh the accent uses applies here.
+      lastDashboard.current.loadedAt = 0;
+      await refreshCrewData(true);
+    }, "Runner Icon saved."),
     createCrew: (input) => operate(async () => {
       if (!availability.configured || !user) return;
       const createdCrewId = await createCrew(availability.client, input);

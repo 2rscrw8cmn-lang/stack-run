@@ -39,7 +39,21 @@ describe("Crew comparison styling (issue #55)", () => {
     );
     const body = ruleBody(".crew-comparison__bar-fill {");
     expect(body).not.toMatch(/repeating-linear-gradient/);
-    expect(body).toMatch(/background: var\(--comparison-accent\)/);
+  });
+
+  /**
+   * These charts compare people, so a bar is coloured by whose it is, not by
+   * which metric is showing. The metric keeps its identity in the selector
+   * tabs; activity colours stay reserved for what kind of run something was.
+   */
+  it("colours each bar by the runner rather than by the metric", () => {
+    expect(ruleBody(".crew-comparison__bar-fill {")).toMatch(/--member-accent/);
+    expect(css).not.toMatch(/--comparison-accent/);
+    for (const metric of ["longest-run", "consistency", "miles-built"]) {
+      expect(css).not.toMatch(
+        new RegExp(`\\.crew-comparison\\[data-metric="${metric}"\\]`),
+      );
+    }
   });
 
   it("does not double the divider beneath the last comparison row", () => {

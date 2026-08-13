@@ -26,13 +26,20 @@ import {
 import {
   MEMBER_ACCENTS,
   MEMBER_ACCENT_LABEL,
+  crewMemberAccent,
   type CrewMemberAccent,
 } from "../../crew/memberAccent";
+import {
+  sameRunnerIcon,
+  type RunnerIcon as RunnerIconModel,
+} from "../../crew/runnerIcon";
 import { compareCrewRace } from "../../crew/raceMatch";
 import type { CrewType, RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
+import { RunnerIcon } from "./RunnerIcon";
+import { RunnerIconBuilder } from "./RunnerIconBuilder";
 
 interface Props {
   isOpen: boolean;
@@ -47,7 +54,16 @@ interface Props {
  * profile and each crew's settings stay reachable with one Back tap and one
  * Close.
  */
-type View = "main" | "profile" | "join" | "create" | "crew" | "edit" | "emblem" | "delete";
+type View =
+  | "main"
+  | "profile"
+  | "icon"
+  | "join"
+  | "create"
+  | "crew"
+  | "edit"
+  | "emblem"
+  | "delete";
 
 function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: string }) {
   return (
@@ -561,7 +577,11 @@ function CrewSettingsPanel({
           <h4>Members</h4>
           <ul>
             {account.members.map((member) => (
-              <li key={member.userId}>
+              <li
+                key={member.userId}
+                data-member-color={crewMemberAccent(member.userId, member.accentColor)}
+              >
+                <RunnerIcon icon={member.runnerIcon} size={28} />
                 <span>
                   <strong>{member.displayName}</strong>
                   <small>{member.role === "owner" ? "Owner" : "Member"}</small>
@@ -746,13 +766,22 @@ function AccentColorPicker({
 }
 
 /** The Edit Profile sub-sheet: account-scoped controls only, never Crew-specific ones. */
-function AccountProfilePanel({ crew, onBack }: { crew: RaceCrewController; onBack: () => void }) {
+function AccountProfilePanel({
+  crew,
+  onBack,
+  onEditIcon,
+}: {
+  crew: RaceCrewController;
+  onBack: () => void;
+  onEditIcon: () => void;
+}) {
   const [displayName, setDisplayName] = useState(
     crew.account?.profile.displayName ?? "",
   );
   // Explicit picks across every crew this account is in — the same union the
   // database enforces, so the picker cannot offer a color it would reject.
   const takenAccents = new Set(crew.account?.takenAccentColors ?? []);
+  const profile = crew.account?.profile ?? null;
   return (
     <>
       <BackButton onClick={onBack} />
@@ -770,8 +799,27 @@ function AccountProfilePanel({ crew, onBack }: { crew: RaceCrewController; onBac
             Sign Out
           </Button>
         </div>
+        {profile && (
+          <button
+            type="button"
+            className="crew-settings__icon-row"
+            data-member-color={crewMemberAccent(profile.id, profile.accentColor)}
+            onClick={onEditIcon}
+          >
+            <RunnerIcon
+              icon={profile.runnerIcon}
+              accent={crewMemberAccent(profile.id, profile.accentColor)}
+              size={38}
+            />
+            <span className="crew-settings__icon-row-body">
+              <strong>Runner Icon</strong>
+              <small>Your personal mark across Crew</small>
+            </span>
+            <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+          </button>
+        )}
         <AccentColorPicker
-          current={crew.account?.profile.accentColor ?? null}
+          current={profile?.accentColor ?? null}
           taken={takenAccents}
           busy={crew.busy}
           onPick={(accentColor) => void crew.saveAccentColor(accentColor)}
@@ -781,10 +829,57 @@ function AccountProfilePanel({ crew, onBack }: { crew: RaceCrewController; onBac
   );
 }
 
+/**
+ * The Runner Icon editor, one level below Edit Profile.
+ *
+ * Parts are drafted and committed with Save Icon; the color is not. A color
+ * change repaints Crew Build blocks, comparison bars and every other
+ * member-colored surface, so it is the same immediate, single-source control
+ * it is on the profile panel — the runner has one identity color, and this
+ * screen shows it rather than owning a second one.
+ */
+function RunnerIconPanel({ crew, onBack }: { crew: RaceCrewController; onBack: () => void }) {
+  const profile = crew.account?.profile ?? null;
+  const saved = profile?.runnerIcon ?? null;
+  const [draft, setDraft] = useState<RunnerIconModel | null>(saved);
+  if (!profile || !saved) return <BackButton onClick={onBack} label="Back to Edit Profile" />;
+
+  const icon = draft ?? saved;
+  const accent = crewMemberAccent(profile.id, profile.accentColor);
+  const unsaved = !sameRunnerIcon(icon, saved);
+
+  return (
+    <>
+      <BackButton onClick={onBack} label="Back to Edit Profile" />
+      <section className="crew-settings__section">
+        <p className="crew-settings__note">Your mark across Crew. Uses your color.</p>
+        <RunnerIconBuilder icon={icon} accent={accent} onChange={setDraft} />
+        <AccentColorPicker
+          current={profile.accentColor}
+          taken={new Set(crew.account?.takenAccentColors ?? [])}
+          busy={crew.busy}
+          onPick={(accentColor) => void crew.saveAccentColor(accentColor)}
+        />
+        <div className="crew-settings__form-actions">
+          <Button
+            disabled={!unsaved}
+            isLoading={crew.busy}
+            onClick={() => void crew.saveRunnerIcon(icon)}
+          >
+            Save Icon
+          </Button>
+        </div>
+      </section>
+    </>
+  );
+}
+
 function sheetTitle(view: View): string {
   switch (view) {
     case "profile":
       return "Edit Profile";
+    case "icon":
+      return "Runner Icon";
     case "join":
       return "Join Crew";
     case "create":
@@ -847,7 +942,15 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
     >
       <div className="crew-settings">
         {visibleView === "profile" && (
-          <AccountProfilePanel crew={crew} onBack={() => setView("main")} />
+          <AccountProfilePanel
+            crew={crew}
+            onBack={() => setView("main")}
+            onEditIcon={() => setView("icon")}
+          />
+        )}
+
+        {visibleView === "icon" && (
+          <RunnerIconPanel crew={crew} onBack={() => setView("profile")} />
         )}
 
         {visibleView === "join" && (
@@ -927,8 +1030,21 @@ export function AccountCrewSheet({ isOpen, onClose, crew, localRace }: Props) {
                       className="settings__row"
                       onClick={() => setView("profile")}
                     >
+                      {/* The runner's own mark, not a generic person glyph:
+                          this row is them, and they built this. */}
                       <span className="settings__row-icon" aria-hidden="true">
-                        <UserRound size={18} strokeWidth={1.9} />
+                        {crew.account ? (
+                          <RunnerIcon
+                            icon={crew.account.profile.runnerIcon}
+                            accent={crewMemberAccent(
+                              crew.account.profile.id,
+                              crew.account.profile.accentColor,
+                            )}
+                            size={24}
+                          />
+                        ) : (
+                          <UserRound size={18} strokeWidth={1.9} />
+                        )}
                       </span>
                       <span className="settings__row-text">
                         <span className="settings__row-label">

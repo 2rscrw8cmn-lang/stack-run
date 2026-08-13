@@ -15,9 +15,9 @@ import { CrewScreen } from "./CrewScreen";
 const TODAY = "2026-08-10";
 
 const members: CrewMember[] = [
-  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
-  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
-  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null },
+  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
 ];
 
 function summary(
@@ -49,6 +49,7 @@ function sharedRun(
     userId,
     displayName: members.find((member) => member.userId === userId)?.displayName ?? "Runner",
     accentColor: members.find((member) => member.userId === userId)?.accentColor ?? null,
+    runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
     localDate,
     activityType: "easy",
     distanceMiles: 4,
@@ -182,7 +183,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     message: null,
     email: "zack@example.test",
     account: {
-      profile: { id: "zack", displayName: "Zack", accentColor: null },
+      profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
       memberships: [{ crew: crewOne, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
       crew: crewOne,
       role: "owner",
@@ -205,6 +206,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     signOut: action,
     saveDisplayName: action,
     saveAccentColor: action,
+    saveRunnerIcon: action,
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
@@ -240,7 +242,7 @@ describe("Crew destination states", () => {
   it("shows the intentional no-crew state", () => {
     const noCrew = controller({
       account: {
-        profile: { id: "zack", displayName: "Zack", accentColor: null },
+        profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
         memberships: [],
         crew: null,
         role: null,
@@ -309,6 +311,7 @@ describe("Crew comparisons and runs", () => {
           role: index === 0 ? "owner" : "member",
           joinedAt: `2026-08-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
           accentColor: null,
+          runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
         }),
       );
       const expandedSummaries = expandedMembers.map((member) => ({
@@ -498,6 +501,27 @@ describe("Crew comparisons and runs", () => {
     expect(runButtons[0]).toHaveAccessibleName(expect.stringContaining("Sunday, August 9"));
     expect(runButtons[1]).toHaveAccessibleName(expect.stringContaining("Saturday, August 8"));
     expect(runButtons[0]).toHaveTextContent("9:37 /MI");
+  });
+
+  /**
+   * One icon per card, and it is the runner's. The activity tile that used to
+   * sit beside it is gone: what kind of run it was is carried by the item's
+   * activity colour and the type word, not by a second badge.
+   */
+  it("leads each crew run card with the runner icon and no activity tile", async () => {
+    await openCrew();
+    const card = screen
+      .getAllByRole("button", { name: /Open crew-safe run detail/ })[0]
+      .closest("li");
+
+    expect(card?.querySelectorAll(".runner-icon")).toHaveLength(1);
+    expect(card?.querySelector(".crew-run-row__icon")).toBeNull();
+    // The type is still named in the metadata, and typed on the item so the
+    // left edge can carry its colour.
+    expect(card).toHaveAttribute("data-type", "long");
+    expect(card?.querySelector(".crew-run-row__activity")).toHaveTextContent("Long Run");
+    // Distance, duration and pace all survive the compaction.
+    expect(card).toHaveTextContent("9:37 /MI");
   });
 
   it("ranks Miles Built by communal placement rather than total shared mileage", async () => {
@@ -763,13 +787,38 @@ describe("Shared Crew Build", () => {
     expect(brick?.style.getPropertyValue("--piece-color")).toBe(
       `var(--member-${blocks[0].getAttribute("data-member-color")})`,
     );
-    // Zack ran this one: the monogram badge carries his initial, not his
-    // activity color, which stays on the block face. The monogram is the
-    // shared brick primitive's, not a Crew-only class — Personal and Crew
-    // Build share one ownership-mark implementation.
-    const monogram = blocks[0].querySelector(".placed-block__monogram");
-    expect(monogram).toHaveTextContent("Z");
-    expect(monogram).toHaveAttribute("aria-hidden", "true");
+    // Colour is the whole of Crew ownership: no initial, no badge, nothing
+    // stamped on the face. A Crew brick is as clean as a Personal one, and
+    // the runner's identity lives in the legend instead.
+    expect(blocks[0].querySelector(".placed-block__monogram")).toBeNull();
+    // The visible face shows the mileage and nothing else. Zack's name still
+    // reaches a screen reader through the block's hidden label.
+    const face = blocks[0].querySelector(".placed-block__brick")?.textContent ?? "";
+    expect(face).toBe("4");
+    expect(blocks[0].querySelector(".visually-hidden")).toHaveTextContent("Zack");
+  });
+
+  /**
+   * Issue #71's explicit boundary: the runner's icon belongs in the legend and
+   * the identity UI around the tower, never stamped onto every brick. Blocks
+   * stay member-colored with at most an initial.
+   */
+  it("keeps the Crew Build blocks clean and puts the runner icons in the legend", () => {
+    openCrew(crewWithBuild());
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+    expect(tower.querySelectorAll(".runner-icon")).toHaveLength(0);
+
+    const legend = screen.getByRole("list", { name: "Crew Build runners" });
+    const entries = within(legend).getAllByRole("listitem");
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      // One icon per runner, decorative, beside a name that does the naming.
+      const mark = entry.querySelector(".runner-icon");
+      expect(mark).not.toBeNull();
+      expect(mark).toHaveAttribute("aria-hidden", "true");
+      expect(entry).toHaveAttribute("data-member-color");
+      expect(entry.textContent).toMatch(/\S/);
+    }
   });
 
   it("names each block for a screen reader without exposing its decoration", () => {

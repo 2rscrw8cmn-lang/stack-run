@@ -53,9 +53,15 @@ describe("Crew Build ownership styling (issue #65, superseding #54)", () => {
     expect(body).toMatch(/opacity/);
   });
 
-  it("keeps ownership legible in the legend marker", () => {
-    const body = ruleBody(".crew-member-marker {");
-    expect(body).toMatch(/--member-accent/);
+  /**
+   * The legend's generic member dot became the runner's own icon (issue #71).
+   * Ownership still has to be readable there, and it now rides on the icon's
+   * plates — the same `--member-accent` the blocks in the tower use, so a
+   * runner's legend entry and their bricks can never disagree.
+   */
+  it("keeps ownership legible in the legend mark", () => {
+    expect(css.includes(".crew-member-marker {"), "the retired member dot reappeared").toBe(false);
+    expect(ruleBody(".runner-icon__plate {")).toMatch(/--member-accent/);
   });
 
   it("keeps recently placed blocks subtly distinct on the shared brick, without a colour ring", () => {

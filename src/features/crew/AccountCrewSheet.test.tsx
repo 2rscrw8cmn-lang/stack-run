@@ -20,12 +20,12 @@ const ownerCrew: RaceCrew = {
 };
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
   memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: ownerCrew,
   role: "owner",
   members: [
-    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
+    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
   ],
   invites: [],
   takenAccentColors: [],
@@ -33,11 +33,11 @@ const ownerAccount: LoadedCrewAccount = {
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "member-1", displayName: "Member", accentColor: null },
+  profile: { id: "member-1", displayName: "Member", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
   role: "member",
   members: [
     ...ownerAccount.members,
-    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null },
+    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
   ],
 };
 
@@ -87,6 +87,7 @@ function controller(
     signOut: action,
     saveDisplayName: action,
     saveAccentColor: vi.fn(async () => undefined),
+    saveRunnerIcon: vi.fn(async () => undefined),
     createCrew: action,
     updateCrew: vi.fn(async () => true),
     deleteCrew: vi.fn(async () => true),
@@ -150,7 +151,7 @@ describe("Account & Crew settings", () => {
       status: "signed-in",
       email: "runner@example.test",
       account: {
-        profile: { id: "user-1", displayName: "Runner", accentColor: null },
+        profile: { id: "user-1", displayName: "Runner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
         memberships: [],
         crew: null,
         role: null,
@@ -318,7 +319,7 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
             memberships: [],
             crew: null,
             role: null,
@@ -345,7 +346,7 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
             memberships: [],
             crew: null,
             role: null,
@@ -426,6 +427,7 @@ describe("Account & Crew settings", () => {
       userId: "owner-1",
       displayName: "Owner",
       accentColor: null,
+      runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
       localDate: "2026-08-05",
       activityType: "easy" as const,
       distanceMiles: 3,
@@ -535,10 +537,10 @@ describe("Account & Crew settings", () => {
     const saveAccentColor = vi.fn(async () => undefined);
     const account: LoadedCrewAccount = {
       ...memberAccount,
-      profile: { id: "member-1", displayName: "Member", accentColor: "aqua" },
+      profile: { id: "member-1", displayName: "Member", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
       members: [
-        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta" },
-        { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua" },
+        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta", runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+        { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
       ],
       // Spans every crew this account is in, not only the one on screen.
       takenAccentColors: ["magenta"],
@@ -579,9 +581,9 @@ describe("Account & Crew settings", () => {
     // forever: "taken" is read live off the current roster, not a history.
     const account: LoadedCrewAccount = {
       ...ownerAccount,
-      profile: { id: "owner-1", displayName: "Owner", accentColor: null },
+      profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
       members: [
-        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null },
+        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
       ],
     };
     const user = userEvent.setup();
@@ -739,6 +741,111 @@ describe("Crew emblems", () => {
     expect(screen.getByRole("button", { name: "Previous base shape" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Previous frame shape" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "TOTEM" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Runner Icon editor", () => {
+  const iconAccount: LoadedCrewAccount = {
+    ...memberAccount,
+    profile: {
+      id: "member-1",
+      displayName: "Member",
+      accentColor: "aqua",
+      runnerIcon: { head: 1, face: 2, body: 3, extra: 0 },
+    },
+  };
+
+  async function openEditor(
+    overrides: Partial<RaceCrewController> = {},
+    account: LoadedCrewAccount = iconAccount,
+  ) {
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account, ...overrides })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /^Member\b/ }));
+    await user.click(screen.getByRole("button", { name: /Runner Icon/ }));
+    return user;
+  }
+
+  it("reaches the editor from Edit Profile and shows the four parts by name", async () => {
+    await openEditor();
+    expect(screen.getByRole("heading", { name: "Runner Icon" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Runner Icon preview" })).toBeInTheDocument();
+    // The current part of each row is named, not just drawn.
+    expect(screen.getByText("Visor")).toBeInTheDocument();
+    expect(screen.getByText("Single Slot")).toBeInTheDocument();
+    expect(screen.getByText("Center Tab")).toBeInTheDocument();
+    expect(screen.getByText("None")).toBeInTheDocument();
+    for (const part of ["head", "face", "body", "extra"]) {
+      expect(screen.getByRole("button", { name: `Previous ${part}` })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: `Next ${part}` })).toBeInTheDocument();
+    }
+  });
+
+  /**
+   * The whole point of the compact editor: four rows, not a gallery of every
+   * option. Twenty-four part buttons on screen would be the design this
+   * feature was specifically not supposed to become.
+   */
+  it("cycles parts in place rather than listing every option", async () => {
+    const user = await openEditor();
+    expect(screen.queryByText("Twin Peak")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next head" }));
+    expect(screen.getByText("Center Step")).toBeInTheDocument();
+    expect(screen.queryByText("Visor")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Previous head" }));
+    expect(screen.getByText("Visor")).toBeInTheDocument();
+  });
+
+  it("saves the drafted icon, and only once it differs from the saved one", async () => {
+    const saveRunnerIcon = vi.fn(async () => undefined);
+    const user = await openEditor({ saveRunnerIcon });
+
+    // Nothing changed yet, so there is nothing to save.
+    expect(screen.getByRole("button", { name: "Save Icon" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Next body" }));
+    const save = screen.getByRole("button", { name: "Save Icon" });
+    expect(save).toBeEnabled();
+    await user.click(save);
+    expect(saveRunnerIcon).toHaveBeenCalledWith({ head: 1, face: 2, body: 4, extra: 0 });
+  });
+
+  it("draws a random but valid icon from Surprise Me", async () => {
+    const user = await openEditor();
+    await user.click(screen.getByRole("button", { name: /Surprise Me/ }));
+    // Whatever it landed on, it is a real named option in every row.
+    expect(screen.getByRole("img", { name: "Runner Icon preview" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^(Next|Previous) / })).toHaveLength(8);
+  });
+
+  /**
+   * One identity color, not two. The editor shows the member accent picker
+   * itself rather than offering a separate avatar color, so a runner cannot
+   * end up with an icon that disagrees with their Crew Build blocks.
+   */
+  it("colors the icon from the member accent picker, with no second color control", async () => {
+    const saveAccentColor = vi.fn(async () => undefined);
+    const user = await openEditor({ saveAccentColor });
+
+    const picker = screen.getByRole("list", { name: "Your color" });
+    expect(within(picker).getAllByRole("button")).toHaveLength(16);
+    expect(screen.getAllByRole("list", { name: /color/i })).toHaveLength(1);
+
+    await user.click(within(picker).getByRole("button", { name: "Green" }));
+    expect(saveAccentColor).toHaveBeenCalledWith("green");
+  });
+
+  it("goes back to Edit Profile rather than all the way out", async () => {
+    const user = await openEditor();
+    await user.click(screen.getByRole("button", { name: "Back to Edit Profile" }));
+    expect(screen.getByRole("heading", { name: "Edit Profile" })).toBeInTheDocument();
   });
 });
 

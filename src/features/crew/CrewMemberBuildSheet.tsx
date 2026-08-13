@@ -6,6 +6,7 @@ import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import type { CrewMiniBuildModel } from "../../crew/miniBuild";
 import type { CrewMember } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
+import { RunnerIcon } from "./RunnerIcon";
 
 interface CrewMemberBuildSheetProps {
   member: CrewMember | null;
@@ -47,7 +48,7 @@ export function CrewMemberBuildSheet({
       >
         <header className="crew-member-build__heading">
           <p className="crew-member-build__name">
-            <span className="crew-member-marker" aria-hidden="true" />
+            <RunnerIcon icon={member.runnerIcon} size={32} />
             <span>{member.displayName}</span>
           </p>
           <p className="crew-member-build__miles data-value">

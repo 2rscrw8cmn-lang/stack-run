@@ -8,6 +8,7 @@ import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import { PropsButton } from "./PropsButton";
+import { RunnerIcon } from "./RunnerIcon";
 import { Button } from "../../components/ui/Button";
 
 interface CrewRunDetailSheetProps {
@@ -51,7 +52,7 @@ export function CrewRunDetailSheet({
           </span>
           <div>
             <p className="crew-run-detail__name">
-              <span className="crew-member-marker" aria-hidden="true" />
+              <RunnerIcon icon={run.runnerIcon} size={34} />
               <span>{run.displayName}</span>
             </p>
             <p className="machine-label">

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RunActivityType } from "../domain/types";
 import { accentColorFrom, type CrewMemberAccent } from "./memberAccent";
+import { resolveRunnerIcon, runnerIconFromSeed, type RunnerIcon } from "./runnerIcon";
 import type {
   CrewDashboardData,
   CrewMember,
@@ -110,7 +111,7 @@ export async function loadCrewDashboard(
   );
 
   const [profileResult, summaryResult, runResult] = await Promise.all([
-    client.from("profiles").select("id,display_name,accent_color").in("id", userIds),
+    client.from("profiles").select("id,display_name,accent_color,runner_icon").in("id", userIds),
     client
       .from("crew_member_summaries")
       .select(
@@ -135,14 +136,25 @@ export async function loadCrewDashboard(
   const sharedRunsAvailable = !runResult.error;
 
   const profiles = new Map(
-    rows(profileResult.data).map((item) => [
-      requiredString(item, "id"),
-      { displayName: nullableName(item), accentColor: accentColorFrom(item.accent_color) },
-    ] as const),
+    rows(profileResult.data).map((item) => {
+      const id = requiredString(item, "id");
+      return [
+        id,
+        {
+          displayName: nullableName(item),
+          accentColor: accentColorFrom(item.accent_color),
+          runnerIcon: resolveRunnerIcon(item.runner_icon, id),
+        },
+      ] as const;
+    }),
   );
   const displayName = (userId: string) => profiles.get(userId)?.displayName ?? "Runner";
   const accentColorOf = (userId: string): CrewMemberAccent | null =>
     profiles.get(userId)?.accentColor ?? null;
+  // A member whose profile row did not come back still gets a real icon
+  // rather than an empty slot, derived from the id the roster already has.
+  const runnerIconOf = (userId: string): RunnerIcon =>
+    profiles.get(userId)?.runnerIcon ?? runnerIconFromSeed(userId);
 
   const members: CrewMember[] = memberRows.map((item) => {
     const userId = requiredString(item, "user_id");
@@ -152,6 +164,7 @@ export async function loadCrewDashboard(
       joinedAt: requiredString(item, "joined_at"),
       displayName: displayName(userId),
       accentColor: accentColorOf(userId),
+      runnerIcon: runnerIconOf(userId),
     };
   });
   const summaries: CrewMemberSummary[] = rows(summaryResult.data).map((item) => {
@@ -182,6 +195,7 @@ export async function loadCrewDashboard(
       userId,
       displayName: displayName(userId),
       accentColor: accentColorOf(userId),
+      runnerIcon: runnerIconOf(userId),
       localDate,
       activityType: activityTypeFrom(item.activity_type),
       distanceMiles: requiredNumber(item, "distance_miles"),
