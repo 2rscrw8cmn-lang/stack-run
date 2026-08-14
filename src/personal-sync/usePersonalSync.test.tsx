@@ -25,7 +25,15 @@ const cloud = vi.hoisted(() => ({
   deleteRuns: vi.fn(),
   reset: vi.fn(),
   reconcileCrew: vi.fn(),
+  reconcileCrewContributions: vi.fn(),
 }));
+
+vi.mock("../crew/projection", async () => {
+  const actual = await vi.importActual<typeof import("../crew/projection")>(
+    "../crew/projection",
+  );
+  return { ...actual, reconcileCrewContributions: cloud.reconcileCrewContributions };
+});
 
 vi.mock("../crew/supabaseClient", () => ({
   getSupabaseAvailability: () => ({
@@ -144,6 +152,7 @@ beforeEach(() => {
   cloud.deleteRuns.mockResolvedValue({ buildRevision: 2, placements: [] });
   cloud.reset.mockResolvedValue(2);
   cloud.reconcileCrew.mockResolvedValue(undefined);
+  cloud.reconcileCrewContributions.mockResolvedValue(0);
 });
 
 describe("personal sync lifecycle", () => {
@@ -212,6 +221,27 @@ describe("personal sync lifecycle", () => {
     );
     expect(loadIntervalsApiKey("user-a")).toBe("second-device-key");
     expect(loadIntervalsApiKey()).toBeNull();
+  });
+
+  it("reconciles every Crew contribution on adoption, not only snapshot aliases", async () => {
+    // The duplicate a pre-DATA-1 device left behind carries a local id no
+    // canonical run ever recorded, so an alias-driven repair never reaches it.
+    const canonical = snapshot([manualRun("run-canonical")]);
+    expect(canonical.runs.every((item) => item.aliases.length === 0)).toBe(true);
+    cloud.load.mockResolvedValue(canonical);
+    const local = structuredClone(createInitialAppState());
+    const onReplaceState = vi.fn();
+
+    const { result } = renderHook(() => usePersonalSync({
+      sessionStatus: "signed-in",
+      userId: "user-a",
+      state: local,
+      onReplaceState,
+    }));
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(cloud.reconcileCrewContributions).toHaveBeenCalledWith(expect.anything());
+    expect(cloud.reconcileCrew).not.toHaveBeenCalled();
   });
 
   it("atomically deletes a supporting run with the canonical deterministic Build repack", async () => {

@@ -10,12 +10,15 @@ supabase db push
 
 Existing projects that already applied
 `20260813150000_personal_account_sync.sql` must also apply the follow-up
-`20260813173000_personal_table_write_privileges.sql` and correctness migration
-`20260813190000_personal_sync_correctness.sql`. The first removes inherited
+`20260813173000_personal_table_write_privileges.sql`, correctness migration
+`20260813190000_personal_sync_correctness.sql` and Crew identity migration
+`20260814120000_crew_contribution_identity.sql`. The first removes inherited
 browser-role DML grants and replaces the initial self-write RLS policies with
 self-read policies. The second adds the account reset generation and the
-atomic run-delete/Personal-Build-repair RPC. Authenticated writes continue
-exclusively through revision- and generation-enforcing RPCs.
+atomic run-delete/Personal-Build-repair RPC. The third repairs Crew
+contributions a pre-DATA-1 device left under its own local run ids, which
+otherwise double Crew mileage and duplicate Recent Crew Runs. Authenticated
+writes continue exclusively through revision- and generation-enforcing RPCs.
 
 It adds:
 
@@ -67,7 +70,11 @@ Use one real account in a desktop browser and real iPhone Safari.
 7. Save the Intervals key on only one device. Sync there, then review the
    pending candidate on the device without the key. Confirm ignored ids also
    appear on both devices and Forget Connection leaves pending reviews intact.
-8. Confirm the Crew contribution exists exactly once. If a run edit changes a
+8. Confirm the Crew contribution exists exactly once, including for runs that
+   were shared by a device before this account existed: open Crew on a runner
+   who had a duplicated card, and confirm one card remains, Weekly Miles and
+   Miles Built count that run once, its Props survived, and its Member Build /
+   Crew Build position is either preserved or READY. If a run edit changes a
    placed Crew block's footprint, confirm it becomes READY rather than resizing
    into the communal tower; Props and unrelated placements remain.
 9. Sign into a second STACK account in the same browser and confirm no plan,
