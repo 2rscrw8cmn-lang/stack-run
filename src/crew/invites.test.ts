@@ -3,6 +3,7 @@ import {
   clearPendingInvite,
   createInviteToken,
   hashInviteToken,
+  inviteTokenFromLocation,
   inviteTokenFromHash,
   loadPendingInvite,
   rememberPendingInvite,
@@ -33,5 +34,10 @@ describe("crew invites", () => {
     expect(loadPendingInvite()).toBe("private_token");
     clearPendingInvite();
     expect(loadPendingInvite()).toBeNull();
+  });
+
+  it("accepts server-rendered join paths and the post-preview query handoff", () => {
+    expect(inviteTokenFromLocation({ pathname: "/join/private_token", search: "", hash: "" } as Location)).toBe("private_token");
+    expect(inviteTokenFromLocation({ pathname: "/", search: "?join=private_token", hash: "" } as Location)).toBe("private_token");
   });
 });

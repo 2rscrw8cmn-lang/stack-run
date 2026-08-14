@@ -1553,3 +1553,23 @@ server rows back, so Weekly Miles, Miles Built, comparisons and Recent Crew Runs
 are derived from repaired stored data. Canonical adoption in
 `usePersonalSync` reconciles the whole account for the same reason. Nothing is
 deduplicated in the dashboard: the stored projection is the crew's data.
+
+## Reusable Crew invites and share previews (issues #77, #81)
+
+`src/crew/invites.ts` makes private links `/join/<capability>`. Vercel rewrites
+that path to `api/crew-invite.ts`, which resolves only a valid capability
+through the public-safe `preview_crew_invite` RPC, emits the first-response OG
+and Twitter metadata, then returns the browser to STACK with the capability
+captured in session storage. `api/og/crew-invite.ts` returns the 1200×630
+identity card. Both it and `CrewEmblem.tsx` call the same emblem SVG markup in
+`src/crew/emblem.ts`; its cache version is the encoded saved emblem, so an
+emblem change receives a distinct image URL.
+
+`20260814010000_reusable_crew_invites.sql` makes one active reusable capability
+per Crew. The owner-only RPC returns that current link on future visits and
+`reset_crew_invite` immediately revokes the prior capability before issuing a
+new one. `redeem_crew_invite` adds a membership idempotently without consuming
+the link. The full invite landing lives in `CrewInviteLanding.tsx`, ahead of
+the normal shell: it shows Crew identity first, then create/sign-in or join;
+the pending capability binds to the first authenticated account so it cannot
+leak to a later account in a shared browser.

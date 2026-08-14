@@ -4,6 +4,7 @@ import {
   CREW_EMBLEM_FRAMES,
   CREW_EMBLEM_PRESETS,
   CREW_EMBLEM_SHAPES,
+  crewEmblemSvgMarkup,
   crewEmblemFromSeed,
   cycleEmblemShape,
   decodeCrewEmblem,
@@ -76,6 +77,14 @@ describe("Derived crew emblems", () => {
       expect(CREW_EMBLEM_FRAMES[derived.frame.shape]).toBeDefined();
       expect(CREW_EMBLEM_COLORS[derived.frame.color]).toBeDefined();
     }
+  });
+});
+
+describe("Crew emblem SVG", () => {
+  it("renders the saved emblem from the same geometry used by invite previews", () => {
+    const markup = crewEmblemSvgMarkup(emblem);
+    expect(markup).toContain(CREW_EMBLEM_SHAPES.top[emblem.top.shape].d);
+    expect(markup).toContain(CREW_EMBLEM_FRAMES[emblem.frame.shape].d);
   });
 });
 

@@ -94,7 +94,7 @@ function controller(
     deleteCrew: vi.fn(async () => true),
     switchCrew: action,
     createInvite: action,
-    revokeInvite: action,
+    resetInvite: action,
     joinPendingInvite: action,
     leaveCrew: action,
     removeMember: action,
@@ -218,6 +218,7 @@ describe("Account & Crew settings", () => {
       },
       pendingInvite: {
         token: "private-token",
+        accountId: null,
         error: null,
         preview: {
           crewId: "crew-1",

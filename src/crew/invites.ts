@@ -33,7 +33,10 @@ export function inviteTokenFromHash(hash: string): string | null {
 }
 
 export function inviteUrl(token: string, location: Location = window.location): string {
-  return `${location.origin}${location.pathname}#${JOIN_FRAGMENT_KEY}=${encodeURIComponent(token)}`;
+  // A path is deliberate: the invitation function must receive the token in
+  // the first request so Messages and other Open Graph clients can see the
+  // Crew-specific metadata before the React app starts.
+  return `${location.origin}/join/${encodeURIComponent(token)}`;
 }
 
 export function rememberPendingInvite(token: string): void {
@@ -48,10 +51,21 @@ export function clearPendingInvite(): void {
   sessionStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
 }
 
+export function inviteTokenFromLocation(location: Location = window.location): string | null {
+  const fromPath = /^\/join\/([^/?#]+)$/.exec(location.pathname)?.[1];
+  const fromQuery = new URLSearchParams(location.search).get(JOIN_FRAGMENT_KEY)?.trim();
+  return fromPath ? decodeURIComponent(fromPath) : fromQuery || inviteTokenFromHash(location.hash);
+}
+
 export function captureInviteFromLocation(location: Location = window.location): string | null {
-  const token = inviteTokenFromHash(location.hash);
+  const token = inviteTokenFromLocation(location);
   if (!token) return loadPendingInvite();
   rememberPendingInvite(token);
-  history.replaceState(null, "", `${location.pathname}${location.search}`);
+  const query = new URLSearchParams(location.search);
+  query.delete(JOIN_FRAGMENT_KEY);
+  const isJoinPath = /^\/join\/[^/?#]+$/.test(location.pathname);
+  const cleanPath = isJoinPath ? "/" : location.pathname;
+  const cleanQuery = query.toString();
+  history.replaceState(null, "", `${cleanPath}${cleanQuery ? `?${cleanQuery}` : ""}`);
   return token;
 }
