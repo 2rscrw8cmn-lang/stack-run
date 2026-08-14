@@ -44,8 +44,8 @@ describe("placement landing weight (issue #76)", () => {
   it("holds the mark for at least as long as the stylesheet animates", () => {
     // The longest animation on `[data-just-placed]` is the impact glow. If the
     // stylesheet grows past this the landing would be cut off mid-glow.
-    expect(PLACEMENT_DROP_MS).toBeGreaterThanOrEqual(560);
+    expect(PLACEMENT_DROP_MS).toBeGreaterThanOrEqual(640);
     // ...and the whole interaction still has to feel like part of the tap.
-    expect(PLACEMENT_DROP_MS).toBeLessThanOrEqual(700);
+    expect(PLACEMENT_DROP_MS).toBeLessThanOrEqual(800);
   });
 });

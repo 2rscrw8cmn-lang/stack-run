@@ -474,8 +474,13 @@ A focused interaction polish pass on Build placement, not a Build redesign and
 not UI-23.
 
 - a confirmed placement now falls into its landing, takes the impact, rebounds
-  once and settles: ~300ms fall, ~75ms squash, ~125ms rebound, with an impact
-  glow gone by 560ms;
+  once and settles: ~380ms fall, ~75ms squash, ~125ms rebound, with an impact
+  glow gone by 640ms. The fall is two and a half to three and a half courses,
+  bounded by `--drop-fall-max`, which is also the sky both sites hold open
+  above their towers so a fall never starts behind a clipped edge;
+- Personal Build no longer collapses its stage to nothing while a block is in
+  hand. The floor is the same field Crew holds open, capped against the
+  viewport so the landing still clears the fixed placement bar;
 - one implementation serves both Builds. `src/features/build/placementDrop.ts`
   derives the marks (`data-just-placed`, `data-impact`) from the footprint, and
   `components.css` animates them on the shared `.placed-block` class that

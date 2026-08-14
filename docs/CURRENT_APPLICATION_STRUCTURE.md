@@ -79,8 +79,13 @@ label, and their icon lives in the legend beneath the tower.
 
 **Both Builds land a block the same way (issue #76).** Placement is physical
 now: the block falls into the position gravity already chose, squashes briefly
-on impact, rebounds once and settles — about 300ms of fall, 75ms of squash and
-125ms of rebound, with an impact glow gone by 560ms. There is one
+on impact, rebounds once and settles — about 380ms of fall, 75ms of squash and
+125ms of rebound, with an impact glow gone by 640ms. It falls two and a half to
+three and a half courses; `--drop-fall-max` caps that and is also the minimum
+sky each site keeps above its tower, so the start of a fall is never clipped by
+the stage or the Crew field's scroll edge. Personal Build's stage keeps a
+Crew-sized field open while a block is in hand rather than collapsing around
+the tower. There is one
 implementation. `src/features/build/placementDrop.ts` turns "this block is
 landing" plus its footprint into `data-just-placed` and `data-impact`, both
 Builds spread those marks onto the shared `.placed-block` element they already

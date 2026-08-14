@@ -27,7 +27,7 @@ export type PlacementImpact = "light" | "normal" | "heavy";
  * `components.css`; callers hold the mark at least this long so the block is
  * never cut off mid-landing.
  */
-export const PLACEMENT_DROP_MS = 600;
+export const PLACEMENT_DROP_MS = 700;
 
 /** Cells the footprint covers, which is the whole weight rule. */
 function cellsOf(footprint: { width: number; height: number }): number {

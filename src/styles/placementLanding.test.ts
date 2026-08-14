@@ -70,6 +70,54 @@ describe("shared Build landing (issue #76)", () => {
     expect(squashOf(heavy)).toBeGreaterThan(0.85);
   });
 
+  /**
+   * The fall has to be tall enough to watch and short enough to stay inside
+   * the site. `--drop-fall-max` is both halves of that bargain: the ceiling on
+   * every fall, and the headroom each sky holds open above its tower.
+   */
+  it("never falls further than the sky it falls through", () => {
+    const coursesIn = (body: string, property: string) =>
+      Number(
+        new RegExp(
+          `${property}:\\s*calc\\(var\\(--course-height\\) \\* ([\\d.]+)\\)`,
+        ).exec(body)![1],
+      );
+    const max = coursesIn(ruleBody(".build-site {"), "--drop-fall-max");
+    expect(coursesIn(ruleBody(".crew-build {"), "--drop-fall-max")).toBe(max);
+
+    // High enough to enjoy — this is a fall, not a nudge.
+    expect(max).toBeGreaterThanOrEqual(3);
+
+    const fallOf = (selector: string) =>
+      coursesIn(ruleBody(selector), "--drop-fall");
+    expect(fallOf('.placed-block[data-just-placed="true"] {')).toBeLessThanOrEqual(max);
+    expect(
+      fallOf('.placed-block[data-just-placed="true"][data-impact="light"] {'),
+    ).toBeLessThanOrEqual(max);
+    // The heaviest block falls the whole height there is.
+    expect(
+      ruleBody('.placed-block[data-just-placed="true"][data-impact="heavy"] {'),
+    ).toMatch(/--drop-fall:\s*var\(--drop-fall-max\)/);
+
+    // Both sites hold that much sky open, so neither clips the start of a fall.
+    expect(ruleBody(".build-site__sky {")).toMatch(
+      /min-height:\s*var\(--drop-fall-max\)/,
+    );
+    expect(ruleBody(".crew-build__sky {")).toMatch(
+      /min-height:\s*var\(--drop-fall-max\)/,
+    );
+  });
+
+  it("keeps a field open on Personal Build while a block is in hand", () => {
+    // Collapsing the stage to nothing left Personal placement in a box half
+    // the height of Crew's field, with no room for the block to fall from.
+    const body = ruleBody(
+      '.build-screen[data-placing="true"] .build-site__stage {',
+    );
+    expect(body).not.toMatch(/min-height:\s*0/);
+    expect(body).toMatch(/min-height:\s*min\(/);
+  });
+
   it("answers the landing on both grounds and nowhere else", () => {
     // The site response is subtle and shared: no screen shake, no camera.
     expect(css).toMatch(
