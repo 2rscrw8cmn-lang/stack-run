@@ -1187,12 +1187,16 @@ textarea.run-input {
 }
 
 /*
- * The sky is the first thing to give while placing. A tower two courses tall
- * does not need half a viewport of it to read as an object, and on a short
- * screen that sky is what pushes the block being placed down behind the bar.
+ * The sky gives while placing, but it does not close up.
+ *
+ * Collapsing the floor to zero shrank the site around the tower, so Personal
+ * placement happened in a box half the height of Crew's field and the block
+ * had nowhere to fall from. The floor is now the same ten courses of field
+ * Crew holds open, capped against the viewport so the landing still clears
+ * the fixed placement bar on a short screen.
  */
 .build-screen[data-placing="true"] .build-site__stage {
-  min-height: 0;
+  min-height: min(38dvh, calc(var(--course-height) * 11));
 }
 
 /* Build opens on the miles the tower is made of. */
@@ -1269,6 +1273,13 @@ textarea.run-input {
   /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
   --iso-run: 16px;
   --iso-rise: 8px;
+  /*
+   * How far a block falls when it is placed, at most (issue #76). It is a
+   * construction token rather than an animation detail because it is also the
+   * headroom the sky holds open above the tower: a fall taller than the sky
+   * would start behind the top edge of the stage, which clips.
+   */
+  --drop-fall-max: calc(var(--course-height) * 3.4);
 }
 
 /*
@@ -1307,9 +1318,15 @@ textarea.run-input {
   min-width: 0;
 }
 
-/* Plain sky above the tower: scenery, not a projection of what is to come. */
+/*
+ * Plain sky above the tower: scenery, not a projection of what is to come —
+ * and, since issue #76, the room a placed block falls through. A tall tower
+ * eats the free space above the stage but never this, so the fall starts
+ * inside the site rather than behind its clipped top edge.
+ */
 .build-site__sky {
   height: 88px;
+  min-height: var(--drop-fall-max);
   mask-image: linear-gradient(180deg, transparent, #000 70%);
 }
 
@@ -1536,47 +1553,113 @@ textarea.run-input {
 }
 
 /*
- * The payoff: the block settles into place, lands, and glows for a moment.
+ * The landing: the block falls into place, takes the impact and settles.
  *
- * Roughly 340ms end to end — a 200ms drop with a short squash at the impact,
- * and a glow that has faded by 340ms. It is the newest brick only, it plays
- * once, and it leaves nothing behind: the tower a second later looks exactly
- * as it will tomorrow. The glow used to be permanent, which made "newest" a
- * badge rather than a moment.
+ * Personal Build and Crew Build both wear `[data-just-placed]` on this same
+ * `.placed-block` class, so both towers land the same way from one rule
+ * (issue #76) — there is no second Crew animation to keep in step.
+ *
+ * About 580ms of movement inside a 640ms moment: roughly 380ms of fall, a
+ * 75ms squash at the impact, a 125ms rebound, and a glow that has faded by
+ * the end. It plays once, only for a block this session intentionally placed,
+ * and it leaves nothing behind — the tower a second later looks exactly as it
+ * will tomorrow, and exactly as the deterministic renderer drew it.
+ *
+ * The fall is two and a half to three and a half courses — high enough to
+ * watch, and bounded by `--drop-fall-max`, which is also the headroom both
+ * sites hold open above their towers so the fall is never clipped.
  */
+.placed-block[data-just-placed="true"] {
+  --drop-fall: calc(var(--course-height) * 3);
+  --drop-squash: 0.94;
+  --drop-stretch: 1.025;
+  --drop-rebound: -1px;
+  --drop-glow: 55%;
+}
+
+/*
+ * Weight, from footprint alone: a short easy run is one small brick, a race
+ * or a wide hard session is a large object. `data-impact` is set beside
+ * `data-just-placed` by `placementDrop.ts`, so both Builds band it the same
+ * way. The spread between light and heavy is a few hundredths of a scale
+ * factor — felt, not counted, and nowhere near cartoon physics.
+ */
+.placed-block[data-just-placed="true"][data-impact="light"] {
+  --drop-fall: calc(var(--course-height) * 2.5);
+  --drop-squash: 0.965;
+  --drop-stretch: 1.015;
+  --drop-rebound: -0.5px;
+  --drop-glow: 42%;
+}
+
+.placed-block[data-just-placed="true"][data-impact="heavy"] {
+  --drop-fall: var(--drop-fall-max);
+  --drop-squash: 0.915;
+  --drop-stretch: 1.035;
+  --drop-rebound: -1.5px;
+  --drop-glow: 68%;
+}
+
 .placed-block[data-just-placed="true"] .placed-block__brick {
-  animation: placed-block-settle 200ms cubic-bezier(0.3, 0.9, 0.4, 1);
+  /* Compression happens against the course below, not around the middle. */
+  transform-origin: bottom center;
+  animation: placed-block-drop 580ms linear;
 }
 
 .placed-block[data-just-placed="true"] .placed-block__face--front {
-  animation: placed-block-glow 340ms ease-out;
+  animation: placed-block-impact-glow 640ms linear;
 }
 
-@keyframes placed-block-settle {
-  from {
-    transform: translateY(-20px);
-    opacity: 0.4;
+/*
+ * One curve per phase, carried on the keyframes: the fall accelerates the way
+ * a falling thing does, the impact arrives hard, and the rebound eases out.
+ */
+@keyframes placed-block-drop {
+  0% {
+    transform: translateY(calc(-1 * var(--drop-fall))) scale(1, 1);
+    opacity: 0.3;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.85, 0.4);
   }
-  80% {
-    transform: translateY(0);
+  /* 380ms: contact. */
+  65.5% {
+    transform: translateY(0) scale(1, 1);
     opacity: 1;
+    animation-timing-function: cubic-bezier(0.35, 0, 0.3, 1);
   }
-  /* The impact: the brick takes the landing and comes back. */
+  /* 455ms: the brick takes the landing. */
+  78.5% {
+    transform: translateY(0) scale(var(--drop-stretch), var(--drop-squash));
+    animation-timing-function: ease-out;
+  }
+  /* 520ms: a single small rebound, never a bounce. */
   90% {
-    transform: scaleY(0.94);
+    transform: translateY(var(--drop-rebound)) scale(1, 1.01);
+    animation-timing-function: ease-in;
   }
-  to {
-    transform: scaleY(1);
+  100% {
+    transform: translateY(0) scale(1, 1);
   }
 }
 
-@keyframes placed-block-glow {
-  from {
+/*
+ * The impact glow: nothing at all during the fall, a short bloom at contact,
+ * gone by the end. Keyed to the piece colour, so a Crew block glows in its
+ * runner's colour and a Personal block in its activity's.
+ */
+@keyframes placed-block-impact-glow {
+  /* Dark until contact at 380ms, bloomed by 460ms, gone by the end. */
+  0%,
+  59% {
     box-shadow:
       inset 0 0 0 1px rgba(0, 0, 0, 0.45),
-      0 0 20px color-mix(in srgb, var(--piece-color) 85%, transparent);
+      0 0 0 color-mix(in srgb, var(--piece-color) 0%, transparent);
   }
-  to {
+  72% {
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+      0 0 18px color-mix(in srgb, var(--piece-color) var(--drop-glow), transparent);
+  }
+  100% {
     box-shadow:
       inset 0 0 0 1px rgba(0, 0, 0, 0.45),
       0 0 0 color-mix(in srgb, var(--piece-color) 0%, transparent);
@@ -1584,9 +1667,56 @@ textarea.run-input {
 }
 
 /*
- * Reduced motion: the block is simply there, already placed. No drop, no
- * impact, no fading glow — a static ring marks which brick is new, and the
- * live region says what was added.
+ * The site answers the landing.
+ *
+ * Both Builds stand on the same skewed ground plane, so both take the impact
+ * the same way: a short brightening under the tower, timed to the moment of
+ * contact, and — for the largest footprints only — a 1px settle of the plane
+ * itself. That is the whole "stage bump": no screen shake, no camera move,
+ * nothing that moves a block off the position it was placed at.
+ */
+.build-site__ground[data-impact],
+.crew-build__ground[data-impact] {
+  animation: build-ground-impact 380ms ease-out 360ms;
+}
+
+.build-site__ground[data-impact="heavy"],
+.crew-build__ground[data-impact="heavy"] {
+  animation:
+    build-ground-impact 380ms ease-out 360ms,
+    build-ground-settle 220ms ease-out 360ms;
+}
+
+@keyframes build-ground-impact {
+  0% {
+    filter: brightness(1);
+  }
+  18% {
+    filter: brightness(1.35);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes build-ground-settle {
+  /* The skew is the ground's resting transform; only the 1px is new. */
+  0% {
+    transform: translateY(0) skewX(-63.435deg);
+  }
+  30% {
+    transform: translateY(1px) skewX(-63.435deg);
+  }
+  100% {
+    transform: translateY(0) skewX(-63.435deg);
+  }
+}
+
+/*
+ * Reduced motion: the block is simply there, already placed. No fall, no
+ * impact, no fading glow, and no movement of the ground — a static ring marks
+ * which brick is new for as long as the moment lasts, and the live region
+ * says what was added.
  */
 @media (prefers-reduced-motion: reduce) {
   .placed-block[data-just-placed="true"] .placed-block__brick {
@@ -1598,6 +1728,11 @@ textarea.run-input {
     box-shadow:
       inset 0 0 0 1px rgba(0, 0, 0, 0.45),
       inset 0 0 0 2px var(--accent);
+  }
+
+  .build-site__ground[data-impact],
+  .crew-build__ground[data-impact] {
+    animation: none;
   }
 }
 
@@ -6126,6 +6261,8 @@ textarea.run-input {
   --course-height: 28px;
   --iso-run: 16px;
   --iso-rise: 8px;
+  /* The headroom a landing block falls through — see `.build-site`. */
+  --drop-fall-max: calc(var(--course-height) * 3.4);
   /* Kept as the viewport/field sizing unit, in step with the course. */
   --crew-build-course: var(--course-height);
   min-width: 0;
@@ -6262,7 +6399,9 @@ textarea.run-input {
  */
 .crew-build__sky {
   flex: 1 1 auto;
-  min-height: 26px;
+  /* Never less than the room a landing block needs to fall through, so the
+     shared landing is not clipped by the field's own scroll edge (#76). */
+  min-height: var(--drop-fall-max);
   mask-image: linear-gradient(180deg, transparent, #000 70%);
 }
 /* Scroll anchor: placement opens framed on the top of what is built, same as

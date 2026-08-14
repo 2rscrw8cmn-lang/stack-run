@@ -472,6 +472,46 @@ Still owner review: a real-iPhone pass at 320px, 390px and desktop over the
 editor and the Crew surfaces the icon now appears on, and a two-account check
 that a saved icon shows up in a crewmate's roster.
 
+## Shared Build placement landing (issue #76) — in review
+
+A focused interaction polish pass on Build placement, not a Build redesign and
+not UI-23.
+
+- a confirmed placement now falls into its landing, takes the impact, rebounds
+  once and settles: ~380ms fall, ~75ms squash, ~125ms rebound, with an impact
+  glow gone by 640ms. The fall is two and a half to three and a half courses,
+  bounded by `--drop-fall-max`, which is also the sky both sites hold open
+  above their towers so a fall never starts behind a clipped edge;
+- Personal Build no longer collapses its stage to nothing while a block is in
+  hand. The floor is the same field Crew holds open, capped against the
+  viewport so the landing still clears the fixed placement bar;
+- one implementation serves both Builds. `src/features/build/placementDrop.ts`
+  derives the marks (`data-just-placed`, `data-impact`) from the footprint, and
+  `components.css` animates them on the shared `.placed-block` class that
+  Personal Build and Crew Build already both render. There is no Crew-only
+  animation, and `src/styles/placementLanding.test.ts` guards against one
+  appearing;
+- impact scales by footprint cells — light (≤2), normal, heavy (≥6) — so a
+  race or a wide simulation block lands harder than a short easy run. The
+  spread is a few hundredths of a scale factor plus a brief brightening of the
+  ground, and a 1px settle of the ground plane for heavy footprints only;
+- only an intentional placement animates. Personal Build marks the block inside
+  its existing placement payoff; Crew marks it in `useJustPlaced` for the
+  length of the landing after `place_crew_build_block` succeeds. Page load,
+  account hydration, Crew refresh and multi-device sync bring every tower back
+  already standing. A Crew block another runner places while the viewer is
+  watching deliberately does not animate — surprise motion, not payoff;
+- Reduce Motion switches the whole landing off: no fall, no squash, no glow, no
+  ground movement — the block is simply there, with a static ring marking it
+  and the live region still saying what was added;
+- placement geometry, gravity, Crew support rules, ownership colour and
+  persistence are untouched, so an interrupted or skipped landing still leaves
+  the deterministic position. No physics library, no new dependency, no
+  migration, no AppState change.
+
+Still owner review: a real iPhone Safari pass at 320px, 390px and desktop
+covering a Personal placement, a Crew placement and a Reduce Motion placement.
+
 ## Active source documents
 
 - `START_HERE.md`

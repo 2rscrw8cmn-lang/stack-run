@@ -21,6 +21,7 @@ import { Button } from "../../components/ui/Button";
 import { Brick, type BrickFaceLabel } from "../build/Brick";
 import { LandingSlot } from "../build/LandingSlot";
 import { PlacementBar } from "../build/PlacementBar";
+import { dropMarks, placementImpact } from "../build/placementDrop";
 import { useColumnDragPlacement } from "../build/useColumnDragPlacement";
 
 const MAX_VISIBLE_COURSES = 14;
@@ -44,6 +45,12 @@ interface CrewBuildProps {
   members: CrewMember[];
   available: boolean;
   placement: CrewBuildPlacementMode | null;
+  /**
+   * The contribution this viewer just placed, while its landing plays. Only
+   * an intentional placement sets it: a refresh or a fresh load of the same
+   * tower brings every block back already standing (issue #76).
+   */
+  justPlacedRunId?: string | null;
   onStartReady: () => void;
   onSelectRun: (runId: string) => void;
 }
@@ -94,6 +101,7 @@ export function CrewBuild({
   members,
   available,
   placement,
+  justPlacedRunId = null,
   onStartReady,
   onSelectRun,
 }: CrewBuildProps) {
@@ -127,6 +135,10 @@ export function CrewBuild({
     MAX_VISIBLE_COURSES,
     Math.max(CREW_BUILD_MIN_VISIBLE_COURSES, drawnCourses + 1),
   );
+  // The block that is landing right now, if it is one of ours and still in
+  // the tower — the shared site response reads its footprint for weight.
+  const justPlaced =
+    model.blocks.find((block) => block.id === justPlacedRunId) ?? null;
   const firstReady = model.viewerReadyRuns[0] ?? null;
   const contributionCount = model.placedCount + model.readyCount;
 
@@ -251,6 +263,9 @@ export function CrewBuild({
                   data-column-start={block.columnStart}
                   data-member-color={crewMemberAccent(block.userId, block.accentColor)}
                   data-recent={block.recentlyPlaced || undefined}
+                  // Personal Build's landing marks, on Personal Build's block
+                  // class: the shared Build language, not a Crew copy of it.
+                  {...dropMarks(block.id === justPlacedRunId, block)}
                   style={
                     {
                       gridColumn: `${block.columnStart} / span ${block.width}`,
@@ -292,7 +307,12 @@ export function CrewBuild({
                 ))}
             </ul>
           </div>
-          <div className="crew-build__ground" aria-hidden="true" />
+          <div
+            key={justPlaced ? `ground-${justPlaced.id}` : "ground"}
+            className="crew-build__ground"
+            aria-hidden="true"
+            data-impact={justPlaced ? placementImpact(justPlaced) : undefined}
+          />
           {!placement && (model.blocks.length === 0 || drawnCourses > MAX_VISIBLE_COURSES) && (
             <p className="crew-build__caption">
               {model.blocks.length === 0

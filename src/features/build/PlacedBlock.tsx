@@ -3,6 +3,7 @@ import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../d
 import { formatDateLabel } from "../../domain/dates";
 import { formatCompactMiles, formatMiles } from "../../domain/distance";
 import { Brick, type BrickFaceLabel } from "./Brick";
+import { dropMarks } from "./placementDrop";
 
 interface PlacedBlockProps {
   block: PlacedBlockData;
@@ -84,7 +85,9 @@ export function PlacedBlock({
       // been logged and its placement committed, so there is no capstone to
       // show before the race has been run.
       data-capstone={isRace ? "true" : undefined}
-      data-just-placed={isJustPlaced ? "true" : undefined}
+      // The landing, per issue #76: the same marks Crew Build's blocks wear,
+      // so one stylesheet rule drops both towers' bricks into place.
+      {...dropMarks(isJustPlaced, placement)}
       style={
         {
           gridColumn: `${placement.columnStart} / span ${placement.width}`,
