@@ -11,7 +11,6 @@ import { RunnerIcon } from "./RunnerIcon";
 interface CrewMemberBuildSheetProps {
   member: CrewMember | null;
   model: CrewMiniBuildModel | null;
-  milesBuilt: number;
   isOpen: boolean;
   onClose: () => void;
   onSelectRun: (runId: string) => void;
@@ -27,7 +26,6 @@ function blockLabel(memberName: string, block: CrewMiniBuildModel["blocks"][numb
 export function CrewMemberBuildSheet({
   member,
   model,
-  milesBuilt,
   isOpen,
   onClose,
   onSelectRun,
@@ -52,7 +50,7 @@ export function CrewMemberBuildSheet({
             <span>{member.displayName}</span>
           </p>
           <p className="crew-member-build__miles data-value">
-            {formatMilesBuilt(milesBuilt)} <span className="machine-label">miles built</span>
+            {formatMilesBuilt(model.totalMiles)} <span className="machine-label">miles built</span>
           </p>
         </header>
 

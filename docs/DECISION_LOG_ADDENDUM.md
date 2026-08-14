@@ -533,6 +533,12 @@ Current acceptance:
 - **Runner Icons** are authorized by D-074 and are in review.
 - No later phase is planned or authorized beyond UI-23.
 
+## D-075 — Member Build mileage derives from its own blocks, not the Crew comparison summary
+
+**Decision:** This is a focused correction, not a new UI phase. `CrewMemberSummary.milesBuilt` is a Crew-windowed communal number — it powers the Crew comparison metric alone (D-070) — but the compact Member Build card and the expanded Member Build sheet were both displaying it beside a tower drawn from unwindowed `miniBuildRuns` (D-071). A runner with Personal Build blocks predating the Crew's Build start date could show a tower representing far fewer (or more) miles than the number printed next to it.
+
+`CrewMiniBuildModel` now exposes `totalMiles`, the sum of the exact blocks it renders. Both Member Build surfaces read `model.totalMiles` and no longer take a separate `milesBuilt` value at all — there is only one source for "how many miles does this tower show," so the label can never drift from the blocks again. The Crew comparison `Miles Built` metric is untouched: it still reads `CrewMemberSummary.milesBuilt`, still means physically placed communal mileage since the Crew's Build start date, and still says something different from Member Build mileage on purpose.
+
 See:
 
 - `docs/NEXT_PRODUCT_PROGRAM.md`

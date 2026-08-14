@@ -109,7 +109,7 @@ describe("Crew Mini Build derivation", () => {
       [run("unplaced", "2026-08-01", 4, "easy", "runner-1", null, null)],
       "runner-1",
     );
-    expect(model).toEqual({ blocks: [], courses: 0, sourceRunCount: 0 });
+    expect(model).toEqual({ blocks: [], courses: 0, sourceRunCount: 0, totalMiles: 0 });
   });
 
   it("returns an honest zero-run state and never invents blocks", () => {
@@ -117,7 +117,27 @@ describe("Crew Mini Build derivation", () => {
       blocks: [],
       courses: 0,
       sourceRunCount: 0,
+      totalMiles: 0,
     });
+  });
+
+  it("totals mileage from the exact displayed blocks, including runs from before Crew Build start", () => {
+    // deriveCrewMiniBuild has no notion of a Crew Build start date at all: it
+    // sums whatever sanitized Personal Build blocks it is given, whether they
+    // predate the Crew or not, so the tower and the printed total can never
+    // disagree.
+    const runs = [
+      run("before-crew-start", "2026-06-01", 3.2, "easy", "runner-1", 0, 1),
+      run("after-crew-start", "2026-08-05", 6.1, "long", "runner-1", 1, 1),
+    ];
+    const model = deriveCrewMiniBuild(runs, "runner-1");
+
+    expect(model.totalMiles).toBeCloseTo(9.3, 5);
+    expect(model.blocks).toHaveLength(2);
+  });
+
+  it("shows zero total miles for an empty Member Build", () => {
+    expect(deriveCrewMiniBuild([], "runner-1").totalMiles).toBe(0);
   });
 
   it("puts the current runner first without ranking the rest by miles", () => {
