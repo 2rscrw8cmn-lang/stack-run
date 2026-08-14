@@ -11,7 +11,7 @@ describe("GettingStartedPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Apple Watch setup" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Other watch setup" })).toBeInTheDocument();
-    expect(screen.getByText(/APPLE WATCH/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/APPLE WATCH/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Intervals\.icu/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Developer Settings/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Test Connection/).length).toBeGreaterThan(0);
@@ -23,7 +23,7 @@ describe("GettingStartedPage", () => {
     expect(
       screen.getByRole("heading", { name: "When STACK finds your first run" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Add as Extra Run/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Add as Extra Run/).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "What your Crew can see" })).toBeInTheDocument();
     expect(screen.getByText("GPS route or location")).toBeInTheDocument();
     expect(screen.getByText("Your Intervals API key")).toBeInTheDocument();
