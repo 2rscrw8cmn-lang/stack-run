@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   CalendarCheck,
   CalendarClock,
   ChevronRight,
@@ -286,6 +287,14 @@ export function SettingsSheet({
           <section className="settings__group">
             <h3 className="settings__group-title">App</h3>
             <ul className="settings__rows">
+              <SettingsRow
+                Icon={BookOpen}
+                label="Getting Started"
+                value="Setup · Run Data · Help"
+                onClick={() => {
+                  window.location.assign("/getting-started");
+                }}
+              />
               <SettingsRow
                 Icon={Compass}
                 label="App Tour"
