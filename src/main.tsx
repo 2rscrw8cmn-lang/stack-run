@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
+import { GettingStartedPage } from "./features/help/GettingStartedPage";
 import "@fontsource/space-mono/400.css";
 import "@fontsource/space-mono/700.css";
 import "./styles/tokens.css";
@@ -14,10 +15,13 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
+const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+const content = pathname === "/getting-started" ? <GettingStartedPage /> : <App />;
+
 createRoot(rootElement).render(
   <StrictMode>
     <AppErrorBoundary>
-      <App />
+      {content}
     </AppErrorBoundary>
   </StrictMode>,
 );
