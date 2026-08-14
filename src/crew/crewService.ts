@@ -6,7 +6,7 @@ import {
   resolveCrewEmblem,
   type CrewEmblem,
 } from "./emblem";
-import { createInviteToken, hashInviteToken, inviteUrl } from "./invites";
+import { hashInviteToken, inviteUrl } from "./invites";
 import {
   accentColorFrom,
   crewMemberAccent,
@@ -474,16 +474,24 @@ export async function createCrewInvite(
   client: SupabaseClient,
   crewId: string,
 ): Promise<{ url: string; expiresAt: string }> {
-  const token = createInviteToken();
-  const tokenHash = await hashInviteToken(token);
-  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60_000).toISOString();
-  const result = await client.rpc("create_crew_invite", {
-    p_crew_id: crewId,
-    p_token_hash: tokenHash,
-    p_expires_at: expiresAt,
-  });
+  const result = await client.rpc("current_crew_invite", { p_crew_id: crewId });
   if (result.error) throw new Error(result.error.message);
-  return { url: inviteUrl(token), expiresAt };
+  const current = rows(result.data)[0];
+  const token = current && requiredString(current, "invite_token");
+  if (!token || !current) throw new Error("Crew invite could not be created.");
+  return { url: inviteUrl(token), expiresAt: requiredString(current, "expires_at") };
+}
+
+export async function resetCrewInvite(
+  client: SupabaseClient,
+  crewId: string,
+): Promise<{ url: string; expiresAt: string }> {
+  const result = await client.rpc("reset_crew_invite", { p_crew_id: crewId });
+  if (result.error) throw new Error(result.error.message);
+  const current = rows(result.data)[0];
+  const token = current && requiredString(current, "invite_token");
+  if (!token || !current) throw new Error("Crew invite could not be reset.");
+  return { url: inviteUrl(token), expiresAt: requiredString(current, "expires_at") };
 }
 
 export async function previewCrewInvite(

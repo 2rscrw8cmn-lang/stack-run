@@ -16,7 +16,7 @@ import {
   previewCrewInvite,
   redeemCrewInvite,
   removeCrewMember,
-  revokeCrewInvite,
+  resetCrewInvite,
   updateAccentColor,
   updateCrew as updateCrewRecord,
   updateDisplayName,
@@ -78,6 +78,8 @@ export interface PendingCrewInvite {
   token: string;
   preview: CrewInvitePreview | null;
   error: string | null;
+  /** Bound after auth so a shared browser cannot hand this capability onward. */
+  accountId: string | null;
 }
 
 export interface RaceCrewController {
@@ -112,7 +114,7 @@ export interface RaceCrewController {
   /** Changes which crew this device is looking at. */
   switchCrew: (crewId: string) => Promise<void>;
   createInvite: () => Promise<void>;
-  revokeInvite: (inviteId: string) => Promise<void>;
+  resetInvite: () => Promise<void>;
   joinPendingInvite: () => Promise<void>;
   leaveCrew: () => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
@@ -143,7 +145,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const [message, setMessage] = useState<string | null>(null);
   const [pendingInvite, setPendingInvite] = useState<PendingCrewInvite | null>(
     initialInviteToken
-      ? { token: initialInviteToken, preview: null, error: null }
+      ? { token: initialInviteToken, preview: null, error: null, accountId: null }
       : null,
   );
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
@@ -224,6 +226,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       }
       const nextUser = data.session?.user ?? null;
       setUser(nextUser);
+      if (nextUser) {
+        setPendingInvite((current) => current && current.accountId === null
+          ? { ...current, accountId: nextUser.id }
+          : current);
+      }
       if (!nextUser) {
         setStatus("signed-out");
         return;
@@ -247,6 +254,15 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         setLatestInviteUrl(null);
       }
       setUser(nextUser);
+      setPendingInvite((current) => {
+        if (!current) return null;
+        if (!nextUser) return current;
+        if (current.accountId && current.accountId !== nextUser.id) {
+          clearPendingInvite();
+          return null;
+        }
+        return current.accountId ? current : { ...current, accountId: nextUser.id };
+      });
       if (!nextUser) {
         setAccount(null);
         setStatus("signed-out");
@@ -269,11 +285,23 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   useEffect(() => {
     if (!availability.configured || !initialInviteToken) return;
     void previewCrewInvite(availability.client, initialInviteToken)
-      .then((preview) => setPendingInvite({ token: initialInviteToken, preview, error: null }))
+      .then((preview) => setPendingInvite((current) => ({ token: initialInviteToken, preview, error: null, accountId: current?.accountId ?? user?.id ?? null })))
       .catch((reason) =>
-        setPendingInvite({ token: initialInviteToken, preview: null, error: messageOf(reason) }),
+        setPendingInvite((current) => ({ token: initialInviteToken, preview: null, error: messageOf(reason), accountId: current?.accountId ?? user?.id ?? null })),
       );
-  }, [availability, initialInviteToken]);
+  }, [availability, initialInviteToken, user?.id]);
+
+  // Owners always get their Crew's durable link back on a later visit. The
+  // RPC returns the existing capability or establishes one exactly once.
+  const ownerCrewId = account?.role === "owner" ? account.crew?.id ?? null : null;
+  useEffect(() => {
+    if (!availability.configured || !user || !ownerCrewId) return;
+    let active = true;
+    void createCrewInvite(availability.client, ownerCrewId)
+      .then((invite) => { if (active) setLatestInviteUrl(invite.url); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [availability, ownerCrewId, user]);
 
   /**
    * Shares the canonical account cache's safe projection with every crew the
@@ -777,13 +805,12 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       // Creating an invite is roster-neutral. Pin the reload to this Crew so a
       // saved preference or a simultaneous foreground event cannot switch it.
       if (user) await reloadAccount(user, crewId, "mutation");
-    }, "Private invite created. It expires in 14 days."),
-    revokeInvite: (inviteId) => operate(async () => {
-      if (!availability.configured) return;
-      await revokeCrewInvite(availability.client, inviteId);
-      setLatestInviteUrl(null);
-      if (user) await reloadAccount(user);
-    }, "Invite revoked."),
+    }, "Invite link ready."),
+    resetInvite: () => operate(async () => {
+      if (!availability.configured || !account?.crew) return;
+      const invite = await resetCrewInvite(availability.client, account.crew.id);
+      setLatestInviteUrl(invite.url);
+    }, "Invite link reset. The previous link no longer works."),
     joinPendingInvite: () => operate(async () => {
       if (!availability.configured || !pendingInvite || !user) return;
       const joinedCrewId = await redeemCrewInvite(availability.client, pendingInvite.token);

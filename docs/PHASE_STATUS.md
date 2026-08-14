@@ -512,6 +512,24 @@ not UI-23.
 Still owner review: a real iPhone Safari pass at 320px, 390px and desktop
 covering a Personal placement, a Crew placement and a Reduce Motion placement.
 
+## Crew invite link + rich preview correction (issues #77, #81) — in review
+
+- Each Crew owner now has one durable reusable link, with Copy Link and Reset
+  Link rather than an anonymous collection of single-use rows. Reset revokes
+  the old capability immediately; joining is idempotent and no longer spends
+  the invite.
+- A valid link opens a dedicated Crew invitation screen before Settings. It
+  carries the saved Crew emblem, Run Club/Race Crew context, existing race
+  mismatch behavior, create/sign-in, Join Crew, and an already-member Open
+  Crew state.
+- `/join/<token>` produces initial server-rendered Open Graph and Twitter
+  metadata and a 1200×630 Crew-specific SVG preview. The server-safe crest
+  preserves the Crew's saved emblem palette; invalid, expired, reset or
+  revoked links expose only generic STACK fallback metadata.
+- Requires applying `20260814010000_reusable_crew_invites.sql` and configuring
+  the Vercel function with the same Supabase URL and publishable key available
+  to the deployment. `npm run check` passes (95 files, 1282 tests).
+
 ## Active source documents
 
 - `START_HERE.md`

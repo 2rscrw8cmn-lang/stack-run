@@ -445,6 +445,44 @@ export function resolveCrewEmblem(stored: unknown, seed: string): CrewEmblem {
   return decodeCrewEmblem(stored) ?? crewEmblemFromSeed(seed);
 }
 
+/**
+ * The canonical emblem drawing, shared by the React mark and invite images.
+ *
+ * The values below all come from the same shape and color tables used by the
+ * in-app editor; only trusted, finite table values are interpolated. Keeping
+ * this as SVG markup lets the serverless OG renderer use the real Crew mark
+ * without growing a second set of artwork.
+ */
+export function crewEmblemSvgMarkup(emblem: CrewEmblem): string {
+  const lighten = (hex: string, amount: number): string => {
+    const value = Number.parseInt(hex.slice(1), 16);
+    const channels = [
+      (value >> 16) + amount,
+      ((value >> 8) & 255) + amount,
+      (value & 255) + amount,
+    ].map((channel) => Math.max(0, Math.min(255, channel)));
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+  };
+  const frame = CREW_EMBLEM_FRAMES[emblem.frame.shape] ?? CREW_EMBLEM_FRAMES[0];
+  const frameColor = crewEmblemColor(emblem.frame.color).value;
+  const frameMarkup = frame.d
+    ? `<g class="crew-emblem__frame"><path d="${frame.d}" fill="none" stroke="${CREW_EMBLEM_INK}" stroke-width="${frame.inkWidth}" stroke-linejoin="miter"${frame.linecap ? ` stroke-linecap="${frame.linecap}"` : ""}/><path d="${frame.d}" fill="none" stroke="${frameColor}" stroke-width="${frame.colorWidth}" stroke-linejoin="miter"${frame.linecap ? ` stroke-linecap="${frame.linecap}"` : ""}/></g>`
+    : "";
+  const offsets: Record<Exclude<CrewEmblemSection, "frame">, number> = {
+    top: -4,
+    middle: 0,
+    bottom: 2,
+  };
+  const plates = CREW_EMBLEM_BODY_SECTIONS.map((section) => {
+    const shape = CREW_EMBLEM_SHAPES[section][emblem[section].shape]
+      ?? CREW_EMBLEM_SHAPES[section][0];
+    const color = crewEmblemColor(emblem[section].color).value;
+    const rule = shape.rule ?? "nonzero";
+    return `<g class="crew-emblem__plate" transform="translate(0 ${offsets[section]})"><path d="${shape.d}" fill="${CREW_EMBLEM_INK}" fill-rule="${rule}" transform="translate(0 5)"/><path d="${shape.d}" fill="${lighten(color, 16)}" fill-rule="${rule}" transform="translate(0 -2)" stroke="${CREW_EMBLEM_INK}" stroke-width="2.6" stroke-linejoin="round"/><path d="${shape.d}" fill="${color}" fill-rule="${rule}" stroke="${CREW_EMBLEM_INK}" stroke-width="2.6" stroke-linejoin="round"/></g>`;
+  }).join("");
+  return `${frameMarkup}${plates}<g class="crew-emblem__seams"><path d="M78 68 H102 V79 H78 Z" fill="${CREW_EMBLEM_INK}"/><path d="M82 68 H98 V76 H82 Z" fill="${CREW_EMBLEM_SEAM}"/><path d="M78 132 H102 V145 H78 Z" fill="${CREW_EMBLEM_INK}"/><path d="M82 135 H98 V143 H82 Z" fill="${CREW_EMBLEM_SEAM}"/></g>`;
+}
+
 /** The fully-enclosing frames wide enough to crowd a busy core. */
 const WIDE_ENCLOSING_FRAMES = new Set([5, 6, 7]); // Heavy Keyline, Slim Shield, Clipped Box
 

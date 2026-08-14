@@ -34,6 +34,7 @@ import { useConnectedSync } from "../features/connected/useConnectedSync";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
 import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
 import { useRaceCrew } from "../crew/useRaceCrew";
+import { CrewInviteLanding } from "../features/crew/CrewInviteLanding";
 import {
   forgetIntervalsApiKey,
   loadIntervalsApiKey,
@@ -290,6 +291,16 @@ export function App() {
       <main className="app-loading" aria-live="polite">
         <p>Loading personal data…</p>
       </main>
+    );
+  }
+
+  if (raceCrew.pendingInvite) {
+    return (
+      <CrewInviteLanding
+        crew={raceCrew}
+        localRace={boot.state.plan.race}
+        onOpenCrew={() => setActiveTab("crew")}
+      />
     );
   }
 

@@ -5,8 +5,20 @@
     },
     "api/intervals.ts": {
       "maxDuration": 30
+    },
+    "api/crew-invite.ts": {
+      "maxDuration": 10
+    },
+    "api/og/crew-invite.ts": {
+      "maxDuration": 10
     }
   },
+  "rewrites": [
+    {
+      "source": "/join/:token",
+      "destination": "/api/crew-invite?token=:token"
+    }
+  ],
   "headers": [
     {
       "source": "/manifest.webmanifest",

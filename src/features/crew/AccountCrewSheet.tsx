@@ -618,9 +618,6 @@ function CrewSettingsPanel({
       </>
     );
   }
-  const activeInvites = account.invites.filter(
-    (invite) => !invite.revokedAt && !invite.redeemedAt,
-  );
   return (
     <>
       <BackButton onClick={onBack} />
@@ -676,10 +673,7 @@ function CrewSettingsPanel({
       {account.role === "owner" && (
         <section className="crew-settings__section">
           <div className="crew-settings__owner-tools">
-            <h4>Invites</h4>
-            <Button variant="secondary" icon={<UserPlus size={18} />} isLoading={crew.busy} onClick={() => void crew.createInvite()}>
-              Create Private Invite
-            </Button>
+            <h4>Invite Link</h4>
             {crew.latestInviteUrl && (
               <div className="crew-settings__invite-link">
                 <label htmlFor="crew-invite-url">Invite link</label>
@@ -687,18 +681,16 @@ function CrewSettingsPanel({
                 <Button variant="secondary" icon={<Copy size={18} />} onClick={() => void navigator.clipboard.writeText(crew.latestInviteUrl ?? "")}>
                   Copy Link
                 </Button>
-                <p>Raw invite tokens are shown only here and are not stored in the database.</p>
+                <Button variant="danger" onClick={() => void crew.resetInvite()}>
+                  Reset Link
+                </Button>
+                <p>Anyone with this link can join. Resetting it immediately disables the old link.</p>
               </div>
             )}
-            {activeInvites.length > 0 && (
-              <ul className="crew-settings__invites" aria-label="Active invites">
-                {activeInvites.map((invite) => (
-                  <li key={invite.id}>
-                    <span>Expires {new Date(invite.expiresAt).toLocaleDateString()}</span>
-                    <button type="button" onClick={() => void crew.revokeInvite(invite.id)}>Revoke</button>
-                  </li>
-                ))}
-              </ul>
+            {!crew.latestInviteUrl && (
+              <Button variant="secondary" icon={<UserPlus size={18} />} isLoading={crew.busy} onClick={() => void crew.createInvite()}>
+                Get Invite Link
+              </Button>
             )}
             <div className="crew-settings__danger">
               <p className="machine-label">Danger zone</p>
