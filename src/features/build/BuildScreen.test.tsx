@@ -1034,4 +1034,83 @@ describe("the placement payoff", () => {
       vi.useRealTimers();
     }
   });
+
+  /**
+   * The landing, per issue #76. The motion itself is the stylesheet's; what
+   * the screen owes it is an honest description of which block is arriving
+   * and how big it is.
+   */
+  it("weighs the landing by the block's own footprint, ground included", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <BuildHarness
+          // Three columns wide and two courses tall: one of the largest
+          // objects a training block can be.
+          runLogs={[
+            extraRun("extra-sim", {
+              activityType: "simulation",
+              distanceMiles: 6,
+            }),
+          ]}
+          placingRunLogId="extra-sim"
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Drop" }));
+      expect(
+        document.querySelector('[data-just-placed="true"]'),
+      ).toHaveAttribute("data-impact", "heavy");
+      // The site answers with the same weight, so the block and the ground
+      // can never disagree about what just landed.
+      expect(document.querySelector(".build-site__ground")).toHaveAttribute(
+        "data-impact",
+        "heavy",
+      );
+
+      act(() => void vi.advanceTimersByTime(3000));
+      expect(
+        document.querySelector(".build-site__ground"),
+      ).not.toHaveAttribute("data-impact");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("lands a short run more lightly than a large one", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <BuildHarness
+          runLogs={[runLogFor("workout-002", { distanceMiles: 2.1 })]}
+          placingRunLogId="run-workout-002"
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Drop" }));
+      expect(
+        document.querySelector('[data-just-placed="true"]'),
+      ).toHaveAttribute("data-impact", "light");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never lands a block that was already standing there", () => {
+    // A tower that arrives with the page — hydration, a reload, a restored
+    // backup — is a tower that has already been built. Nothing falls.
+    renderBuild({
+      runLogs: [
+        runLogFor("workout-002", { distanceMiles: 2.1 }),
+        extraRun("extra-001", { distanceMiles: 5.5 }),
+      ],
+      blockPlacements: [
+        placementFor("run-workout-002", 1, 1),
+        placementFor("extra-001", 3, 3),
+      ],
+    });
+
+    expect(document.querySelector("[data-just-placed]")).toBeNull();
+    expect(document.querySelector("[data-impact]")).toBeNull();
+  });
 });

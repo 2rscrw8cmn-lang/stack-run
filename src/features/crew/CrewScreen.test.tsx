@@ -1031,6 +1031,41 @@ describe("Shared Crew Build", () => {
     expect(within(screen.getByRole("dialog", { name: "Run Detail" })).queryByRole("button", { name: "Move Block" })).not.toBeInTheDocument();
   });
 
+  /**
+   * The landing, per issue #76: Crew inherits Personal Build's, marks and
+   * all, rather than growing one of its own.
+   */
+  it("lands the block this runner just placed, using Personal Build's own marks", async () => {
+    const own = sharedRun("own", "zack", "2026-08-08", {
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [own] }) }));
+
+    await user.click(screen.getByRole("button", { name: "Zack, Easy, 4 miles, August 8" }));
+    await user.click(screen.getByRole("button", { name: "Move Block" }));
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+
+    const landed = document.querySelector('[data-just-placed="true"]');
+    // The same attributes Personal Build's bricks wear, on the same shared
+    // `.placed-block` class, so one stylesheet rule drops both towers.
+    expect(landed).toHaveClass("placed-block");
+    expect(landed).toHaveAttribute("data-impact", "light");
+    expect(document.querySelector(".crew-build__ground")).toHaveAttribute(
+      "data-impact",
+      "light",
+    );
+  });
+
+  it("leaves the shared tower standing on load, sync and refresh", () => {
+    // Blocks other runners placed days ago, and this runner's own placed
+    // blocks, arrive already built. A refresh must never rain the crew's
+    // tower back down.
+    openCrew(crewWithBuild());
+    expect(document.querySelector("[data-just-placed]")).toBeNull();
+    expect(document.querySelector("[data-impact]")).toBeNull();
+  });
+
   it("holds a tall construction field open under a small tower", () => {
     openCrew(crewWithBuild());
     const stage = screen.getByRole("list", { name: "Crew Build blocks" }).closest(".crew-build__stage");

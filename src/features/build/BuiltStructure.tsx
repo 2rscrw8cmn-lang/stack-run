@@ -12,6 +12,7 @@ import {
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
 import { PlacedBlock } from "./PlacedBlock";
 import { LandingSlot } from "./LandingSlot";
+import { placementImpact } from "./placementDrop";
 import { useColumnDragPlacement } from "./useColumnDragPlacement";
 
 export interface StructurePlacing {
@@ -60,6 +61,15 @@ export function BuiltStructure({
   const towerRef = useRef<HTMLUListElement>(null);
 
   const candidate = placing?.candidate ?? null;
+
+  // The site's own answer to a landing (issue #76): the ground takes the
+  // weight of the block that just arrived. Keyed by that block so a second
+  // placement replays it rather than inheriting a finished animation, and
+  // absent entirely the rest of the time.
+  const justPlaced =
+    blocks.find((block) => block.placement.runLogId === justPlacedRunLogId) ??
+    null;
+
   // While placing, the grid has to be tall enough to show the hovering block.
   const drawnCourses = Math.max(
     1,
@@ -177,7 +187,14 @@ export function BuiltStructure({
             ))}
           </ul>
 
-          <div className="build-site__ground" aria-hidden="true" />
+          <div
+            key={justPlaced ? `ground-${justPlaced.placement.runLogId}` : "ground"}
+            className="build-site__ground"
+            aria-hidden="true"
+            data-impact={
+              justPlaced ? placementImpact(justPlaced.placement) : undefined
+            }
+          />
         </div>
       </div>
 

@@ -77,6 +77,31 @@ the only thing keeping a Crew brick from looking like a Personal one. The
 runner's name still reaches assistive technology through each block's hidden
 label, and their icon lives in the legend beneath the tower.
 
+**Both Builds land a block the same way (issue #76).** Placement is physical
+now: the block falls into the position gravity already chose, squashes briefly
+on impact, rebounds once and settles — about 300ms of fall, 75ms of squash and
+125ms of rebound, with an impact glow gone by 560ms. There is one
+implementation. `src/features/build/placementDrop.ts` turns "this block is
+landing" plus its footprint into `data-just-placed` and `data-impact`, both
+Builds spread those marks onto the shared `.placed-block` element they already
+render, and `components.css` animates them once. `data-impact` bands the
+footprint by cells — light (≤2), normal, heavy (≥6) — so a race lands harder
+than a short easy run without anything approaching cartoon physics; the site
+answers with a short brightening of the ground plane, plus a 1px settle of that
+plane for heavy footprints only.
+
+The landing is a moment, never a state. Only an intentional placement sets it:
+Personal Build marks the block inside its existing placement payoff, and Crew
+marks it through `useJustPlaced` for the length of the landing once
+`place_crew_build_block` has succeeded. Page load, account hydration, Crew
+refresh and multi-device sync therefore bring back a tower that is already
+standing, and a Crew block another runner places while the viewer is watching
+deliberately does not animate. Reduce Motion switches the whole thing off — no
+fall, no squash, no glow, no ground movement, just a static ring on the new
+brick and the live region's sentence. Because the motion is entirely CSS over
+the deterministic position, an interrupted, skipped or reduced-motion landing
+leaves exactly the same tower as a completed one.
+
 **One icon per row, not two.** A Crew run card used to carry an activity tile
 *and* a Runner Icon, which is what made it 72px tall. The Runner Icon takes the
 single icon slot; what kind of run it was moves to a thin left edge on

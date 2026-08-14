@@ -48,6 +48,7 @@ import {
 import { todayLocalDate } from "../../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { autoPlaceOption } from "../../domain/placement";
+import { useJustPlaced } from "../build/useJustPlaced";
 import { CrewBuild } from "./CrewBuild";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
@@ -182,6 +183,9 @@ export function CrewScreen({
   // pattern Personal Build's `BuildScreen` uses.
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
   const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
+  // Only a placement this viewer just confirmed lands; refreshes and reloads
+  // of the same shared tower never do (issue #76).
+  const { justPlacedId, markJustPlaced } = useJustPlaced();
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
@@ -393,8 +397,10 @@ export function CrewScreen({
       placementCandidate.row,
       placementCandidate.columnStart,
     );
-    if (placed) cancelPlacement();
-    else setCandidateColumn(null);
+    if (placed) {
+      markJustPlaced(placingRun.id);
+      cancelPlacement();
+    } else setCandidateColumn(null);
   }
 
   function changeMetricFromKeyboard(
@@ -519,6 +525,7 @@ export function CrewScreen({
         model={build}
         members={members}
         available={dashboardData.sharedRunsAvailable}
+        justPlacedRunId={justPlacedId}
         placement={placingRun ? {
           run: placingRun,
           options: placementOptions,
