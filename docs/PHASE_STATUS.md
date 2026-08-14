@@ -166,6 +166,10 @@ Required owner acceptance still includes applying/verifying the new migration
 and same-account Device A ↔ Device B QA on desktop/iPhone Safari. Do not merge
 until those checks pass.
 
+## Issue #78 — Invite membership integrity
+
+Status: **Implemented / verification pending.** Invite creation remains a database-only insert into `crew_invites`; it never mutates `crew_members`. The client now pins the post-invite account reload to the creating Crew and rejects a foreground roster response that began before that mutation. Hook coverage exercises that out-of-order response, and the repeatable RLS transaction verifies multiple invite creations leave the exact membership set unchanged. No migration is required; run the existing repeatable SQL verification after deploying the application change.
+
 ## Post-UI-22 polish — Crew Build, Today activity and Training Signals
 
 Status: **Implemented / owner visual review pending.** This is focused product/data correction, not UI-23.
