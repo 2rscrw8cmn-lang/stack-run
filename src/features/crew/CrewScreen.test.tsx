@@ -439,9 +439,9 @@ describe("Crew comparisons and runs", () => {
 
     await user.click(screen.getByRole("tab", { name: "Consistency" }));
     expect(screen.getByText("88%")).toBeInTheDocument();
-    expect(screen.getByText("14 / 16")).toBeInTheDocument();
+    expect(screen.getByText("· 14/16")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
-    expect(screen.getByText("12 / 16")).toBeInTheDocument();
+    expect(screen.getByText("· 12/16")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
 
@@ -490,7 +490,7 @@ describe("Crew comparisons and runs", () => {
       expect.stringContaining("Travis"),
     ]);
     expect(within(rows[0]).getByText("3")).toBeInTheDocument();
-    expect(within(rows[0]).getByText("of 28 days")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("· 28D")).toBeInTheDocument();
     expect(within(rows[1]).getByText("1")).toBeInTheDocument();
     expect(within(rows[2]).getByText("0")).toBeInTheDocument();
   });
@@ -602,9 +602,16 @@ describe("Crew comparisons and runs", () => {
     // Drew's only miniBuildRun ("new") is a 6.1mi long run, so the card
     // mileage must match that block, not his 140.0 comparison summary.
     expect(cards[1]).toHaveTextContent("6.1 MI BUILT");
+    // Mileage and block count read together on one compact footer line,
+    // rather than mileage sitting up in the identity row (issue #86).
+    expect(cards[1]).toHaveTextContent("6.1 MI BUILT1 block");
     expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
     expect(cards[1]).toHaveAttribute("data-member-color");
     expect(screen.queryByText("Each runner's own Build.")).not.toBeInTheDocument();
+    // One construction grid per card: the outer card no longer draws its own
+    // `technical-grid` background behind CrewMiniBuild's field grid.
+    const card = screen.getByRole("button", { name: "Open Drew's Build" });
+    expect(card.className).not.toMatch(/technical-grid/);
   });
 
   it("opens an exact read-only Member Build and resolves its block to crew-safe Run Detail", async () => {

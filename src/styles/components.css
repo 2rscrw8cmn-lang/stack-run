@@ -6704,10 +6704,18 @@ textarea.run-input {
    runner's own icon carries both the shape and the same accent color, so
    every surface that had a dot beside a name now has the person instead. */
 
+/*
+ * Consistency and Run Days carry a supporting fact (`3/4`, `28D`) that used
+ * to drop onto a second stacked line, making their rows taller than the
+ * single-value metrics (Weekly Miles, Longest Run, Miles Built). Reading the
+ * detail on the same baseline keeps every metric's row — and the bar under
+ * it — at identical height (issue #86).
+ */
 .crew-comparison__reading {
-  display: grid;
-  justify-items: end;
-  gap: 1px;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
   white-space: nowrap;
 }
 .crew-comparison__reading .data-value { font-size: 15px; }
@@ -7026,11 +7034,18 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   font-size: 11px;
   text-align: center;
 }
+/*
+ * Issue #86: the rail's cards used to size to 84% of the viewport (max
+ * 286px), which on a phone left almost nothing of the next card in view —
+ * the rail read as a single full-bleed panel rather than something
+ * swipeable. Capping well below the old max and dropping the mobile share
+ * keeps a full card plus a real peek of the next one on-screen together.
+ */
 .crew-builds__rail {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: min(84%, 286px);
-  gap: 9px;
+  grid-auto-columns: min(70%, 228px);
+  gap: 8px;
   margin: 0;
   padding: 0 2px 7px;
   overflow-x: auto;
@@ -7039,13 +7054,18 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   scrollbar-width: thin;
   list-style: none;
 }
+/*
+ * One intentional construction grid per card: `CrewMiniBuild` draws the
+ * field grid itself, so the card is a plain bordered surface around it
+ * rather than a second `technical-grid` background stacked behind it.
+ */
 .crew-build-card {
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-rows: auto minmax(80px, 96px) auto;
-  gap: 5px;
-  padding: 10px;
+  grid-template-rows: auto minmax(64px, 84px) auto;
+  gap: 6px;
+  padding: 8px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background-color: var(--data-surface);
@@ -7063,13 +7083,6 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   border-left: 2px solid var(--accent);
   background-color: color-mix(in srgb, var(--accent) 3%, var(--data-surface));
 }
-.crew-build-card__heading {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 8px;
-}
 .crew-build-card__name {
   min-width: 0;
   display: flex;
@@ -7084,25 +7097,36 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   white-space: nowrap;
 }
 .crew-build-card__you { color: var(--accent); font-size: 8px; }
+/* Mileage and block count share one compact footer line rather than the
+   mileage sitting up in the identity row. */
+.crew-build-card__context {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--text-subtle);
+  font-size: 8px;
+}
 .crew-build-card__miles {
   color: var(--text);
   font-size: 12px;
   white-space: nowrap;
 }
 .crew-build-card__miles span { color: var(--text-muted); font-size: 8px; }
-.crew-build-card__context {
-  margin: 0;
-  color: var(--text-subtle);
-  font-size: 8px;
-  text-align: right;
-}
+.crew-build-card__blocks { white-space: nowrap; }
 
+/*
+ * No border here: the outer `.crew-build-card` already frames the card, so a
+ * second border around the mini tower drew a box-inside-a-box (issue #86).
+ * The dark fill still gives the field grid contrast against the card.
+ */
 .crew-mini-build {
   min-width: 0;
-  height: 96px;
+  height: 84px;
   padding: 4px 5px 2px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border-radius: 3px;
   background: rgba(0, 0, 0, 0.18);
 }
 .crew-mini-build svg { width: 100%; height: 100%; display: block; }
@@ -7121,11 +7145,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .crew-mini-build__blocks rect[data-type="race"] { fill: var(--race); }
 .crew-mini-build__ground { stroke: var(--border-strong); stroke-width: 1; }
 .crew-mini-build__empty {
-  min-height: 80px;
+  min-height: 64px;
   display: grid;
   place-items: center;
   margin: 0;
-  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.18);
   color: var(--text-muted);
   font-size: 11px;
 }
@@ -7442,7 +7467,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 
 @media (min-width: 620px) {
   .crew-comparison__selector { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .crew-builds__rail { grid-auto-columns: min(48%, 286px); }
+  .crew-builds__rail { grid-auto-columns: min(38%, 232px); }
   /* Desktop gets a bigger tower rather than a different app. */
   .crew-build {
     --course-height: 34px;
