@@ -12,7 +12,6 @@ import {
   type ComparisonMetric,
   type ComparisonSummary,
 } from "../../crew/comparisons";
-import { CREW_BUILD_MIN_VISIBLE_COURSES } from "../../crew/crewBuild";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import {
   faceCulledMiniBuildTower,
@@ -101,10 +100,11 @@ export function CrewMemberProfileSheet({
 
   const tower = faceCulledMiniBuildTower(model);
   const courses = Math.max(1, tower.courses);
-  const visibleCourses = Math.min(
-    MAX_VISIBLE_COURSES,
-    Math.max(CREW_BUILD_MIN_VISIBLE_COURSES, courses + 1),
-  );
+  // Personal Build's own framing rule (`BuiltStructure`): the field opens on
+  // the tower's own height plus a little sky, never a fabricated minimum.
+  // `CREW_BUILD_MIN_VISIBLE_COURSES` exists for the communal Crew Build
+  // construction site, not a read-only member profile (issue #93).
+  const visibleCourses = Math.min(MAX_VISIBLE_COURSES, courses + 1);
   const stageStyle = { "--crew-build-visible-courses": visibleCourses } as CSSProperties;
 
   const weeklyMiles = formatComparisonReading("weekly-miles", summary);

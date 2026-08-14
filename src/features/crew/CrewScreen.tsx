@@ -155,6 +155,12 @@ export function CrewScreen({
   const [metric, setMetric] = useState<ComparisonMetric>("weekly-miles");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  // Run Detail opened from inside Crew Profile is a drill-down, not a
+  // replacement: the member stays selected underneath it, and closing Run
+  // Detail restores the same profile rather than dropping to the Crew page
+  // (issue #93). Run Detail opened from the main Recent Crew Runs feed
+  // never sets this, so it still closes back to the Crew page as before.
+  const [runDetailFromProfile, setRunDetailFromProfile] = useState(false);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const [isCrewPickerOpen, setCrewPickerOpen] = useState(false);
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
@@ -460,20 +466,35 @@ export function CrewScreen({
               </div>
             </>
           )}
-          <IconButton
-            className="crew-view__refresh"
-            label="Refresh crew data"
-            icon={
-              <RefreshCw
-                className={crew.crewDataStatus === "loading" ? "crew-comparison__refresh-icon--loading" : undefined}
-                size={16}
-                strokeWidth={1.8}
-              />
-            }
-            disabled={crew.crewDataStatus === "loading"}
-            aria-busy={crew.crewDataStatus === "loading"}
-            onClick={() => void crew.refreshCrewData(true)}
-          />
+          {/*
+            Freshness lives beside the control that fixes it (issue #93):
+            it used to sit below the comparison rows, detached from both
+            Refresh and its own meaning. It appears exactly once.
+          */}
+          <div className="crew-view__refresh-group">
+            {freshness && (
+              <p
+                className="crew-view__freshness machine-label"
+                data-warning={freshness.warning || undefined}
+              >
+                {freshness.label}
+              </p>
+            )}
+            <IconButton
+              className="crew-view__refresh"
+              label="Refresh crew data"
+              icon={
+                <RefreshCw
+                  className={crew.crewDataStatus === "loading" ? "crew-comparison__refresh-icon--loading" : undefined}
+                  size={16}
+                  strokeWidth={1.8}
+                />
+              }
+              disabled={crew.crewDataStatus === "loading"}
+              aria-busy={crew.crewDataStatus === "loading"}
+              onClick={() => void crew.refreshCrewData(true)}
+            />
+          </div>
         </div>
       </header>
 
@@ -618,14 +639,6 @@ export function CrewScreen({
           </ol>
         </div>
 
-        {freshness && (
-          <p
-            className="crew-comparison__freshness machine-label"
-            data-warning={freshness.warning || undefined}
-          >
-            {freshness.label}
-          </p>
-        )}
         {crew.crewDataError && (
           <p className="crew-comparison__error" role="status">
             Crew data unavailable. Showing the last loaded view.
@@ -633,38 +646,11 @@ export function CrewScreen({
         )}
       </section>
 
-      <Section
-        className="crew-recent"
-        icon={<History size={15} strokeWidth={2} />}
-        title="Recent Crew Runs"
-      >
-        {!dashboardData.sharedRunsAvailable ? (
-          <p className="crew-recent__empty">Recent crew runs unavailable.</p>
-        ) : dashboardData.runs.length === 0 ? (
-          <p className="crew-recent__empty">No crew runs yet.</p>
-        ) : (
-          <ul className="crew-recent__list">
-            {recentRuns.map((run) => (
-              <CrewRunRow
-                key={run.id}
-                run={run}
-                currentUserId={currentUserId ?? ""}
-                propsPending={crew.propsPendingRunIds.includes(run.id)}
-                propsError={crew.propsErrors[run.id] ?? null}
-                propsAvailable={dashboardData.propsAvailable}
-                onOpen={() => setSelectedRunId(run.id)}
-                onToggleProps={() => void crew.toggleProps(run.id)}
-              />
-            ))}
-          </ul>
-        )}
-        {hiddenRecentRunCount > 0 && (
-          <Button variant="ghost" onClick={() => setShowAllRecentRuns(true)}>
-            Show {hiddenRecentRunCount} more
-          </Button>
-        )}
-      </Section>
-
+      {/*
+        The Crew now sits above Recent Crew Runs (issue #93): who is here
+        outranks what they just did, now that tapping a member opens a real
+        profile rather than just a mini Build widget.
+      */}
       <Section
         className="crew-builds"
         icon={<Layers3 size={15} strokeWidth={2} />}
@@ -715,6 +701,38 @@ export function CrewScreen({
         </ul>}
       </Section>
 
+      <Section
+        className="crew-recent"
+        icon={<History size={15} strokeWidth={2} />}
+        title="Recent Crew Runs"
+      >
+        {!dashboardData.sharedRunsAvailable ? (
+          <p className="crew-recent__empty">Recent crew runs unavailable.</p>
+        ) : dashboardData.runs.length === 0 ? (
+          <p className="crew-recent__empty">No crew runs yet.</p>
+        ) : (
+          <ul className="crew-recent__list">
+            {recentRuns.map((run) => (
+              <CrewRunRow
+                key={run.id}
+                run={run}
+                currentUserId={currentUserId ?? ""}
+                propsPending={crew.propsPendingRunIds.includes(run.id)}
+                propsError={crew.propsErrors[run.id] ?? null}
+                propsAvailable={dashboardData.propsAvailable}
+                onOpen={() => setSelectedRunId(run.id)}
+                onToggleProps={() => void crew.toggleProps(run.id)}
+              />
+            ))}
+          </ul>
+        )}
+        {hiddenRecentRunCount > 0 && (
+          <Button variant="ghost" onClick={() => setShowAllRecentRuns(true)}>
+            Show {hiddenRecentRunCount} more
+          </Button>
+        )}
+      </Section>
+
       <CrewMemberProfileSheet
         key={selectedMember?.userId ?? "none"}
         member={selectedMember}
@@ -723,10 +741,22 @@ export function CrewScreen({
         summary={selectedMemberSummary}
         consistencyMetric={profileMetric}
         runs={selectedMemberRuns}
-        isOpen={selectedMember !== null}
-        onClose={() => setSelectedMemberId(null)}
-        onSelectRun={(runId) => {
+        // Visually closed while its own Run Detail drill-down is open, so
+        // only one dialog is ever interactive at a time (issue #93). The
+        // member stays selected underneath, so this sheet reopens on the
+        // same profile — same scroll position — once Run Detail closes.
+        isOpen={selectedMember !== null && !runDetailFromProfile}
+        onClose={() => {
+          // The native <dialog> fires this same "close" event whether a
+          // person dismissed it or the drill-down above just hid it
+          // programmatically. Only the former should drop the member
+          // selection — otherwise opening Run Detail from inside the
+          // profile would itself clear the profile it is drilling into.
+          if (runDetailFromProfile) return;
           setSelectedMemberId(null);
+        }}
+        onSelectRun={(runId) => {
+          setRunDetailFromProfile(true);
           setSelectedRunId(runId);
         }}
         currentUserId={currentUserId ?? ""}
@@ -750,11 +780,19 @@ export function CrewScreen({
           ? () => {
             const source = dashboardData.crewBuildRuns.find((run) => run.id === selectedRun!.id);
             if (!source) return;
+            // Moving a block leaves the read-only profile for the main
+            // Crew Build's placement flow, so the drill-down ends here
+            // rather than reopening the profile underneath it.
+            setSelectedMemberId(null);
+            setRunDetailFromProfile(false);
             setSelectedRunId(null);
             startPlacement(source);
           }
           : undefined}
-        onClose={() => setSelectedRunId(null)}
+        onClose={() => {
+          setSelectedRunId(null);
+          setRunDetailFromProfile(false);
+        }}
       />
     </div>
   );

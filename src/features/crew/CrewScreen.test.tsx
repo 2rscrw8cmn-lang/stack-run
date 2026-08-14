@@ -1285,3 +1285,114 @@ describe("Switching between crews", () => {
     expect(document.querySelectorAll(".crew-emblem")).toHaveLength(1);
   });
 });
+
+describe("Crew page polish (issue #93)", () => {
+  it("draws a Member Build card's mini tower without a technical construction grid", () => {
+    openCrew();
+    const card = screen.getByRole("button", { name: "Open Drew's Build" });
+
+    expect(card.querySelector(".crew-mini-build__grid")).toBeNull();
+    expect(card.querySelector(".crew-mini-build__blocks rect")).toBeInTheDocument();
+    expect(card.querySelector(".crew-mini-build__ground")).toBeInTheDocument();
+  });
+
+  it("sizes the mini Build field to the tower's own course count, not a fabricated floor", () => {
+    // Drew's default run is a single ground-row block (row 0, height 1), so
+    // an honest field is one course tall plus modest headroom — not the old
+    // 5-course minimum that dwarfed a short tower.
+    openCrew();
+    const card = screen.getByRole("button", { name: "Open Drew's Build" });
+    expect(card.querySelector(".crew-mini-build svg")).toHaveAttribute("viewBox", "0 0 80 16");
+  });
+
+  it("orders The Crew above Recent Crew Runs", () => {
+    openCrew();
+    const titles = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    const crewIndex = titles.indexOf("The Crew");
+    const recentIndex = titles.indexOf("Recent Crew Runs");
+
+    expect(crewIndex).toBeGreaterThanOrEqual(0);
+    expect(recentIndex).toBeGreaterThan(crewIndex);
+  });
+
+  it("shows crew data freshness once, beside Refresh, not repeated below the comparisons", () => {
+    vi.useFakeTimers();
+    try {
+      // An hour after the dashboard's default summaries were loaded: stale
+      // enough to surface the label, without the warning threshold.
+      vi.setSystemTime(new Date("2026-08-10T15:00:00Z"));
+      openCrew();
+
+      const refreshGroup = document.querySelector(".crew-view__refresh-group");
+      expect(refreshGroup).not.toBeNull();
+      expect(within(refreshGroup as HTMLElement).getByText(/Updated/)).toBeInTheDocument();
+      expect(
+        within(refreshGroup as HTMLElement).getByRole("button", { name: "Refresh crew data" }),
+      ).toBeInTheDocument();
+
+      // Exactly one freshness label on the page, and it is not the old
+      // location under the comparison rows.
+      expect(screen.getAllByText(/Updated/)).toHaveLength(1);
+      expect(document.querySelector(".crew-comparison")?.textContent ?? "").not.toMatch(/Updated/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("treats Member Profile → Run Detail as a reversible drill-down", async () => {
+    const exact = sharedRun("placed-run", "drew", "2026-08-07", {
+      activityType: "intervals",
+      distanceMiles: 5,
+      buildRow: 6,
+      buildColumnStart: 4,
+    });
+    const user = openCrew(
+      controller({
+        crewData: dashboard({
+          runs: [exact],
+          miniBuildRuns: [{
+            id: exact.id,
+            userId: exact.userId,
+            localDate: exact.localDate,
+            activityType: exact.activityType,
+            distanceMiles: exact.distanceMiles,
+            buildRow: exact.buildRow,
+            buildColumnStart: exact.buildColumnStart,
+          }],
+        }),
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open Drew's Build" }));
+    expect(screen.getByRole("dialog", { name: "Crew Profile" })).toBeInTheDocument();
+
+    const profile = within(screen.getByRole("dialog", { name: "Crew Profile" }));
+    await user.click(
+      profile.getByRole("button", { name: /Open Drew's Intervals on Friday, August 7, 5 miles/ }),
+    );
+
+    // Run Detail is the only interactive dialog while it is open: Crew
+    // Profile closes rather than stacking a second modal underneath it.
+    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Crew Profile" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    // Closing Run Detail restores the same member profile rather than
+    // dropping all the way back to the main Crew page.
+    expect(screen.queryByRole("dialog", { name: "Run Detail" })).not.toBeInTheDocument();
+    const restored = screen.getByRole("dialog", { name: "Crew Profile" });
+    expect(restored.querySelector(".crew-member-profile__name")).toHaveTextContent("Drew");
+  });
+
+  it("still closes back to the main Crew page when Run Detail opens from Recent Crew Runs", async () => {
+    const user = openCrew();
+    await user.click(screen.getAllByRole("button", { name: /Open crew-safe run detail/ })[0]);
+    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(screen.queryByRole("dialog", { name: "Run Detail" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Crew Profile" })).not.toBeInTheDocument();
+  });
+});
