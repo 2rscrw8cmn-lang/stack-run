@@ -17,6 +17,10 @@
     {
       "source": "/join/:token",
       "destination": "/api/crew-invite?token=:token"
+    },
+    {
+      "source": "/getting-started",
+      "destination": "/"
     }
   ],
   "headers": [
