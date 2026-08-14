@@ -389,6 +389,36 @@
   background: color-mix(in srgb, var(--accent) 3%, transparent);
 }
 
+.getting-started__shot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.getting-started__shot {
+  width: 168px;
+  margin: 14px 0 0;
+}
+
+.getting-started__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: #000;
+}
+
+.getting-started__shot figcaption {
+  margin-top: 7px;
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .getting-started__text-link {
   display: inline-block;
   margin-top: 10px;
@@ -659,7 +689,9 @@
 
   .getting-started__topbar,
   .getting-started__open-app,
-  .getting-started__primary-link {
+  .getting-started__primary-link,
+  .getting-started__shot-row,
+  .getting-started__shot {
     display: none;
   }
 
@@ -693,7 +725,10 @@
   .getting-started__device-key p,
   .getting-started__help p,
   .getting-started__section-heading > p:not(.machine-label),
-  .getting-started__troubleshooting details p {
+  .getting-started__troubleshooting details p,
+  .getting-started__note,
+  .getting-started__tip,
+  .getting-started__security-callout p {
     color: #333 !important;
   }
 
@@ -703,7 +738,11 @@
   .getting-started__chain,
   .getting-started__workflow > div,
   .getting-started__troubleshooting details,
-  .getting-started__help {
+  .getting-started__help,
+  .getting-started__note,
+  .getting-started__tip,
+  .getting-started__device-key,
+  .getting-started__security-callout {
     background: transparent;
     border-color: #bbb;
   }

@@ -17,6 +17,26 @@ import {
 import type { ReactNode } from "react";
 import { StackMark } from "../../components/shared/StackMark";
 import "./getting-started.css";
+import settingsRunData from "./screens/settings-run-data.webp";
+import pathChooser from "./screens/path-chooser.webp";
+import appleStep1Healthfit from "./screens/apple-step1-healthfit.webp";
+import appleStep2Intervals from "./screens/apple-step2-intervals.webp";
+import appleStep3CheckRun from "./screens/apple-step3-check-run.webp";
+import appleStep4Connect from "./screens/apple-step4-connect.webp";
+import otherStep1Connect from "./screens/other-step1-connect.webp";
+import otherStep2CheckRun from "./screens/other-step2-check-run.webp";
+import otherStep3Connect from "./screens/other-step3-connect.webp";
+import settingsConnected from "./screens/settings-connected.webp";
+import invalidKey from "./screens/invalid-key.webp";
+
+function Screenshot({ src, alt, caption }: { src: string; alt: string; caption: string }) {
+  return (
+    <figure className="getting-started__shot">
+      <img src={src} alt={alt} loading="lazy" width={559} height={1213} />
+      <figcaption>{caption}</figcaption>
+    </figure>
+  );
+}
 
 function DataChain({ apple }: { apple: boolean }) {
   const labels = apple
@@ -169,6 +189,19 @@ export function GettingStartedPage() {
               <ArrowRight size={18} aria-hidden="true" />
             </a>
           </div>
+
+          <div className="getting-started__shot-row">
+            <Screenshot
+              src={settingsRunData}
+              alt="STACK Settings screen with Intervals.icu listed under Run Data, showing Not connected"
+              caption="Settings gear → Intervals.icu"
+            />
+            <Screenshot
+              src={pathChooser}
+              alt="STACK screen asking How do you record runs, with Apple Watch and Garmin / COROS / Other buttons"
+              caption="This is the exact question STACK asks"
+            />
+          </div>
         </section>
 
         <section id="apple-watch" className="getting-started__section" aria-labelledby="apple-title">
@@ -185,6 +218,11 @@ export function GettingStartedPage() {
               <div>
                 <h3>Install HealthFit</h3>
                 <p>On your iPhone, install <strong>HealthFit</strong> and allow it to read the Apple Health workout and fitness data it requests. You do not need a separate HealthFit account.</p>
+                <Screenshot
+                  src={appleStep1Healthfit}
+                  alt="STACK wizard step 1 of 4, titled HealthFit, explaining that HealthFit moves Apple Health workouts to Intervals.icu"
+                  caption="STACK · 1 of 4"
+                />
               </div>
             </li>
             <li>
@@ -193,6 +231,11 @@ export function GettingStartedPage() {
                 <h3>Create or sign in to Intervals.icu</h3>
                 <p>Intervals.icu is the data bridge STACK reads. You do not need to make it your training app; it simply needs to receive your runs.</p>
                 <a className="getting-started__text-link" href="https://intervals.icu" target="_blank" rel="noreferrer">Open Intervals.icu</a>
+                <Screenshot
+                  src={appleStep2Intervals}
+                  alt="STACK wizard step 2 of 4, titled Intervals.icu, explaining that Intervals.icu is the activity-data bridge STACK reads"
+                  caption="STACK · 2 of 4"
+                />
               </div>
             </li>
             <li>
@@ -207,6 +250,11 @@ export function GettingStartedPage() {
               <div>
                 <h3>Checkpoint: see one run in Intervals.icu</h3>
                 <p><strong>Do not continue until at least one Apple Watch run is visible in Intervals.icu.</strong> If the run is not there, STACK cannot see it yet.</p>
+                <Screenshot
+                  src={appleStep3CheckRun}
+                  alt="STACK wizard step 3 of 4, titled Check one run, asking you to make sure one Apple Watch run is visible in Intervals.icu"
+                  caption="STACK · 3 of 4"
+                />
               </div>
             </li>
             <li>
@@ -226,6 +274,11 @@ export function GettingStartedPage() {
                 <h3>Connect STACK</h3>
                 <p>In STACK, open <strong>Settings gear → Run Data → Apple Watch</strong>. Continue through the setup, paste your API key and tap <strong>Test Connection</strong>.</p>
                 <p>Once connected, tap <strong>Sync Now</strong>.</p>
+                <Screenshot
+                  src={appleStep4Connect}
+                  alt="STACK wizard step 4 of 4, titled Connect STACK, with a field for a personal Intervals API key and a Test Connection button"
+                  caption="STACK · 4 of 4"
+                />
               </div>
             </li>
           </ol>
@@ -239,10 +292,43 @@ export function GettingStartedPage() {
           </div>
           <DataChain apple={false} />
           <ol className="getting-started__steps getting-started__steps--compact">
-            <li><span className="getting-started__step-number">1</span><div><h3>Connect your service to Intervals.icu</h3><p>Create or sign in to Intervals.icu, then connect Garmin, COROS or your usual training service using Intervals.icu's integration settings.</p></div></li>
-            <li><span className="getting-started__step-number">2</span><div><h3>Check one real run</h3><p>Make sure at least one recent running activity is visible in Intervals.icu.</p></div></li>
+            <li>
+              <span className="getting-started__step-number">1</span>
+              <div>
+                <h3>Connect your service to Intervals.icu</h3>
+                <p>Create or sign in to Intervals.icu, then connect Garmin, COROS or your usual training service using Intervals.icu's integration settings.</p>
+                <Screenshot
+                  src={otherStep1Connect}
+                  alt="STACK wizard step 1 of 3, titled Connect Intervals.icu, explaining you should connect Garmin, COROS, or your usual service without needing HealthFit"
+                  caption="STACK · 1 of 3"
+                />
+              </div>
+            </li>
+            <li>
+              <span className="getting-started__step-number">2</span>
+              <div>
+                <h3>Check one real run</h3>
+                <p>Make sure at least one recent running activity is visible in Intervals.icu.</p>
+                <Screenshot
+                  src={otherStep2CheckRun}
+                  alt="STACK wizard step 2 of 3, titled Check one run, asking you to make sure one recent run is visible in Intervals.icu"
+                  caption="STACK · 2 of 3"
+                />
+              </div>
+            </li>
             <li><span className="getting-started__step-number">3</span><div><h3>Copy your API key</h3><p>Go to <strong>Intervals.icu → Settings → Developer Settings</strong> and copy your personal API key.</p></div></li>
-            <li><span className="getting-started__step-number">4</span><div><h3>Connect STACK</h3><p>Open <strong>STACK → Settings gear → Run Data → Garmin / COROS / Other</strong>, paste the key, tap <strong>Test Connection</strong>, then <strong>Sync Now</strong>.</p></div></li>
+            <li>
+              <span className="getting-started__step-number">4</span>
+              <div>
+                <h3>Connect STACK</h3>
+                <p>Open <strong>STACK → Settings gear → Run Data → Garmin / COROS / Other</strong>, paste the key, tap <strong>Test Connection</strong>, then <strong>Sync Now</strong>.</p>
+                <Screenshot
+                  src={otherStep3Connect}
+                  alt="STACK wizard step 3 of 3, titled Connect STACK, with a field for a personal Intervals API key and a Test Connection button"
+                  caption="STACK · 3 of 3"
+                />
+              </div>
+            </li>
           </ol>
         </section>
 
@@ -331,7 +417,14 @@ export function GettingStartedPage() {
             </details>
             <details>
               <summary>STACK says my API key is invalid</summary>
-              <div><p>Copy or regenerate the key from Intervals.icu Developer Settings, make sure no spaces were copied before or after it, then try Test Connection again.</p></div>
+              <div>
+                <p>Copy or regenerate the key from Intervals.icu Developer Settings, make sure no spaces were copied before or after it, then try Test Connection again. This is exactly what that looks like:</p>
+                <Screenshot
+                  src={invalidKey}
+                  alt="STACK Run Data screen showing the error message: Intervals.icu did not accept that personal API key. Copy a new key from Developer Settings and try again."
+                  caption="STACK · rejected key"
+                />
+              </div>
             </details>
             <details>
               <summary>I got a new phone or cleared Safari data</summary>
@@ -349,6 +442,11 @@ export function GettingStartedPage() {
           <p className="machine-label">Setup complete</p>
           <h2 id="done-title">Run. Sync. Review. Build.</h2>
           <p>Once your watch data is connected, that is the normal STACK loop.</p>
+          <Screenshot
+            src={settingsConnected}
+            alt="STACK Settings screen showing the Intervals.icu row as Connected on this device"
+            caption="What it looks like when it's done"
+          />
           <a className="getting-started__primary-link" href="/">Open STACK <ArrowRight size={17} aria-hidden="true" /></a>
         </section>
 
