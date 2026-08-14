@@ -659,6 +659,9 @@ describe("Crew comparisons and runs", () => {
     // The Build hero reuses Personal/Crew Build's own 3D brick primitive
     // rather than the old flat CSS-grid renderer.
     expect(block.querySelector(".placed-block__brick")).toBeInTheDocument();
+    // Profiles keep the same viewing frame whether a member has one course
+    // or a tall Build; the tower itself scrolls within that frame.
+    expect(block.closest(".crew-build__stage")).toHaveStyle("--crew-build-visible-courses: 10");
 
     await user.click(block);
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
@@ -1303,6 +1306,16 @@ describe("Crew page polish (issue #93)", () => {
     openCrew();
     const card = screen.getByRole("button", { name: "Open Drew's Build" });
     expect(card.querySelector(".crew-mini-build svg")).toHaveAttribute("viewBox", "0 0 80 16");
+  });
+
+  it("keeps a short Crew Profile Build in the same fixed-height frame", async () => {
+    const user = await openCrew();
+    await user.click(screen.getByRole("button", { name: "Open Drew's Build" }));
+
+    const profile = screen.getByRole("dialog", { name: "Crew Profile" });
+    expect(profile.querySelector(".crew-build__stage")).toHaveStyle(
+      "--crew-build-visible-courses: 10",
+    );
   });
 
   it("orders The Crew above Recent Crew Runs", () => {

@@ -23,7 +23,9 @@ import { Brick, type BrickFaceLabel } from "../build/Brick";
 import { CrewRunRow } from "./CrewRunRow";
 import { RunnerIcon } from "./RunnerIcon";
 
-const MAX_VISIBLE_COURSES = 14;
+// Profiles are compared side by side, so their Build field keeps one stable
+// frame. Taller towers remain readable through the viewport's own scroll.
+const PROFILE_VISIBLE_COURSES = 10;
 const DEFAULT_VISIBLE_RUNS = 5;
 
 /** The Race Crew / Run Club stat the profile's third strip cell shows (issue #87). */
@@ -100,12 +102,9 @@ export function CrewMemberProfileSheet({
 
   const tower = faceCulledMiniBuildTower(model);
   const courses = Math.max(1, tower.courses);
-  // Personal Build's own framing rule (`BuiltStructure`): the field opens on
-  // the tower's own height plus a little sky, never a fabricated minimum.
-  // `CREW_BUILD_MIN_VISIBLE_COURSES` exists for the communal Crew Build
-  // construction site, not a read-only member profile (issue #93).
-  const visibleCourses = Math.min(MAX_VISIBLE_COURSES, courses + 1);
-  const stageStyle = { "--crew-build-visible-courses": visibleCourses } as CSSProperties;
+  const stageStyle = {
+    "--crew-build-visible-courses": PROFILE_VISIBLE_COURSES,
+  } as CSSProperties;
 
   const weeklyMiles = formatComparisonReading("weekly-miles", summary);
   const longestRun = formatComparisonReading("longest-run", summary);
