@@ -6,15 +6,24 @@ interface CrewMiniBuildProps {
 
 const FIELD_WIDTH = 80;
 const COURSE_HEIGHT = 8;
-const MIN_COURSES = 5;
+/** Sky above the tallest course — modest breathing room, not a fabricated floor. */
+const HEADROOM_COURSES = 1;
 
+/**
+ * A miniature finished Build, not a technical diagram (issue #93): the field
+ * carries only the dark ground and the actual blocks, sized to the tower's
+ * own course count plus a little headroom rather than a fixed minimum. A
+ * 2-block Build and a 15-block Build both read as intentionally composed —
+ * neither drowns in fabricated empty courses nor gets a second construction
+ * grid stacked behind the card's own frame.
+ */
 export function CrewMiniBuild({ model }: CrewMiniBuildProps) {
   if (model.blocks.length === 0) {
     return <p className="crew-mini-build__empty">No blocks yet.</p>;
   }
 
-  const courses = Math.max(MIN_COURSES, model.courses);
-  const fieldHeight = courses * COURSE_HEIGHT;
+  const courses = Math.max(1, model.courses);
+  const fieldHeight = (courses + HEADROOM_COURSES) * COURSE_HEIGHT;
 
   return (
     <div className="crew-mini-build" aria-hidden="true">
@@ -23,20 +32,6 @@ export function CrewMiniBuild({ model }: CrewMiniBuildProps) {
         preserveAspectRatio="xMidYMax meet"
         focusable="false"
       >
-        <g className="crew-mini-build__grid">
-          {Array.from({ length: 9 }, (_, index) => (
-            <line key={`column-${index}`} x1={index * 10} x2={index * 10} y1="0" y2={fieldHeight} />
-          ))}
-          {Array.from({ length: courses + 1 }, (_, index) => (
-            <line
-              key={`course-${index}`}
-              x1="0"
-              x2={FIELD_WIDTH}
-              y1={fieldHeight - index * COURSE_HEIGHT}
-              y2={fieldHeight - index * COURSE_HEIGHT}
-            />
-          ))}
-        </g>
         <g className="crew-mini-build__blocks">
           {model.blocks.map((block) => (
             <rect

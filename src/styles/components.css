@@ -6276,6 +6276,23 @@ textarea.run-input {
 }
 .crew-view__countdown[data-kind="race-day"] { color: var(--race); }
 .crew-view__countdown[data-kind="complete"] { color: var(--text-subtle); }
+/* Freshness sits beside the control that fixes it (issue #93), not below
+   the comparison rows it used to detach from. Compact on narrow phones: a
+   short right-aligned label, never a second line. */
+.crew-view__refresh-group {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.crew-view__freshness {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+.crew-view__freshness[data-warning="true"] { color: var(--long); }
 .crew-view__refresh { flex: 0 0 44px; color: var(--text-muted); }
 .crew-view__refresh:disabled { cursor: wait; opacity: 0.55; }
 
@@ -6737,13 +6754,6 @@ textarea.run-input {
 }
 .crew-comparison__bar[data-empty="true"] .crew-comparison__bar-fill { width: 2px; }
 .crew-comparison__bar[data-unavailable="true"] .crew-comparison__bar-fill { display: none; }
-.crew-comparison__freshness {
-  margin: 7px 0 0;
-  color: var(--text-subtle);
-  font-size: 8px;
-  text-align: right;
-}
-.crew-comparison__freshness[data-warning="true"] { color: var(--long); }
 .crew-comparison__error {
   margin: 9px 0 0;
   color: var(--danger);
@@ -7130,10 +7140,6 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   background: rgba(0, 0, 0, 0.18);
 }
 .crew-mini-build svg { width: 100%; height: 100%; display: block; }
-.crew-mini-build__grid line {
-  stroke: var(--technical-grid-line);
-  stroke-width: 0.45;
-}
 .crew-mini-build__blocks rect {
   stroke: color-mix(in srgb, var(--bg) 82%, transparent);
   stroke-width: 0.75;
