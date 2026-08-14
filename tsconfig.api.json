@@ -5,6 +5,9 @@
     // The function runs on Node, which supplies fetch, Request and Response.
     // The DOM lib is how those are typed without adding a dependency for it.
     "lib": ["ES2023", "DOM"],
+    // The invite share image is encoded with Node's own zlib, which is the
+    // only place these functions reach outside the standard web platform.
+    "types": ["node"],
     "module": "ESNext",
     "skipLibCheck": true,
 

@@ -523,12 +523,36 @@ covering a Personal placement, a Crew placement and a Reduce Motion placement.
   mismatch behavior, create/sign-in, Join Crew, and an already-member Open
   Crew state.
 - `/join/<token>` produces initial server-rendered Open Graph and Twitter
-  metadata and a 1200×630 Crew-specific SVG preview. The server-safe crest
-  preserves the Crew's saved emblem palette; invalid, expired, reset or
+  metadata and a 1200×630 Crew-specific preview. Invalid, expired, reset or
   revoked links expose only generic STACK fallback metadata.
 - Requires applying `20260814010000_reusable_crew_invites.sql` and configuring
   the Vercel function with the same Supabase URL and publishable key available
-  to the deployment. `npm run check` passes (95 files, 1282 tests).
+  to the deployment.
+
+### Share image correction (issue #84)
+
+- The share image is now a **PNG**, drawn on the server rather than served as
+  SVG: Messages resolved the invite's title and then sat on a spinner where the
+  card should have been. `og:image:type=image/png` is declared alongside the
+  existing 1200×630 dimensions, and `og:url` is the `/join/<token>` link rather
+  than the `/?join=` URL the browser is redirected to.
+- The card draws the Crew's **exact saved emblem**, from the same
+  `crewEmblemDrawing()` operations `CrewEmblem.tsx` renders in the app, instead
+  of a generic crest that only reused the saved palette. Layout is emblem-left,
+  identity-right: Crew name, `RACE CREW`/`RUN CLUB`, race name and date/distance
+  for Race Crews only, with the STACK mark subordinate.
+- `api/_render/` rasterises it with no new dependency — path flattening,
+  stroking, an anti-aliased scanline fill, and Node's zlib for PNG, following
+  `scripts/generate-icons.mjs`. Card text is set in the app's own Space Mono
+  from outlines `scripts/generate-og-font.mjs` extracts from the same font file
+  the browser loads.
+- Relative imports inside `api/` now carry `.js` extensions and shared modules
+  are underscore-prefixed. Vercel compiles API files individually instead of
+  bundling them, so the previous extensionless imports could not resolve at
+  runtime; that is what had forced the duplicated, palette-only crest.
+- Still owner verification: share a freshly generated invite in iMessage after
+  deploy, since Link Presentation caches an earlier failed preview per URL.
+- `npm run check` passes (102 files, 1385 tests).
 
 ## Active source documents
 

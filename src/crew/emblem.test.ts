@@ -4,6 +4,7 @@ import {
   CREW_EMBLEM_FRAMES,
   CREW_EMBLEM_PRESETS,
   CREW_EMBLEM_SHAPES,
+  crewEmblemDrawing,
   crewEmblemSvgMarkup,
   crewEmblemFromSeed,
   cycleEmblemShape,
@@ -85,6 +86,53 @@ describe("Crew emblem SVG", () => {
     const markup = crewEmblemSvgMarkup(emblem);
     expect(markup).toContain(CREW_EMBLEM_SHAPES.top[emblem.top.shape].d);
     expect(markup).toContain(CREW_EMBLEM_FRAMES[emblem.frame.shape].d);
+  });
+
+  /**
+   * The drawing is the single description of a crew's mark: the React
+   * component serialises it and the invite share image rasterises it, so a
+   * shape or colour missing here would be missing from a shared link too.
+   */
+  it("describes the saved shape and colour of every section", () => {
+    const drawing = crewEmblemDrawing(emblem);
+    for (const section of ["top", "middle", "bottom"] as const) {
+      const shape = CREW_EMBLEM_SHAPES[section][emblem[section].shape];
+      const plates = drawing.filter((operation) => operation.d === shape.d);
+      // A shadow, a highlight and the face itself.
+      expect(plates).toHaveLength(3);
+      expect(plates.some((plate) => plate.fill === CREW_EMBLEM_COLORS[emblem[section].color].value))
+        .toBe(true);
+    }
+    const frame = drawing.filter((operation) => operation.part === "frame");
+    expect(frame.map((operation) => operation.d)).toEqual([
+      CREW_EMBLEM_FRAMES[emblem.frame.shape].d,
+      CREW_EMBLEM_FRAMES[emblem.frame.shape].d,
+    ]);
+    expect(frame[1].stroke).toBe(CREW_EMBLEM_COLORS[emblem.frame.color].value);
+  });
+
+  it("draws the frame behind the plates and the seams over them", () => {
+    const parts = crewEmblemDrawing(emblem).map((operation) => operation.part);
+    expect(parts.indexOf("frame")).toBeLessThan(parts.indexOf("plate"));
+    expect(parts.lastIndexOf("plate")).toBeLessThan(parts.indexOf("seams"));
+  });
+
+  it("has no frame to draw when the crew chose none", () => {
+    const drawing = crewEmblemDrawing({ ...emblem, frame: { shape: 0, color: 0 } });
+    expect(drawing.some((operation) => operation.part === "frame")).toBe(false);
+  });
+
+  it("marks a cut-out shape so its holes stay holes", () => {
+    const drawing = crewEmblemDrawing({ ...emblem, middle: { shape: 0, color: 0 } });
+    const plate = drawing.find((operation) => operation.d === CREW_EMBLEM_SHAPES.middle[0].d);
+    expect(plate?.fillRule).toBe("evenodd");
+    expect(crewEmblemSvgMarkup({ ...emblem, middle: { shape: 0, color: 0 } })).toContain(
+      'fill-rule="evenodd"',
+    );
+  });
+
+  it("serialises a stroke-only path without filling it", () => {
+    expect(crewEmblemSvgMarkup(emblem)).toContain(`fill="none"`);
   });
 });
 

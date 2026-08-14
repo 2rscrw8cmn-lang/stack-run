@@ -445,42 +445,136 @@ export function resolveCrewEmblem(stored: unknown, seed: string): CrewEmblem {
   return decodeCrewEmblem(stored) ?? crewEmblemFromSeed(seed);
 }
 
+/** One drawn path of an emblem, in the emblem's own view box coordinates. */
+export interface CrewEmblemDrawOp {
+  /** SVG path data, straight from the shape and frame tables above. */
+  d: string;
+  /** Vertical offset applied to this path before it is drawn. */
+  dy: number;
+  fill?: string;
+  fillRule?: "nonzero" | "evenodd";
+  stroke?: string;
+  strokeWidth?: number;
+  strokeLinejoin?: "miter" | "round";
+  strokeLinecap?: "square";
+  /** Which part of the mark this path belongs to. */
+  part: "frame" | "plate" | "seams";
+}
+
+/** The plates are offset from each other so the mark reads as stacked layers. */
+const PLATE_OFFSET: Record<Exclude<CrewEmblemSection, "frame">, number> = {
+  top: -4,
+  middle: 0,
+  bottom: 2,
+};
+
+/** The seam shadows between the plates: fixed geometry, not a crew's choice. */
+const SEAMS: readonly { d: string; fill: string }[] = [
+  { d: "M78 68 H102 V79 H78 Z", fill: CREW_EMBLEM_INK },
+  { d: "M82 68 H98 V76 H82 Z", fill: CREW_EMBLEM_SEAM },
+  { d: "M78 132 H102 V145 H78 Z", fill: CREW_EMBLEM_INK },
+  { d: "M82 135 H98 V143 H82 Z", fill: CREW_EMBLEM_SEAM },
+];
+
+function lighten(hex: string, amount: number): string {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const channels = [
+    (value >> 16) + amount,
+    ((value >> 8) & 255) + amount,
+    (value & 255) + amount,
+  ].map((channel) => Math.max(0, Math.min(255, channel)));
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
+
 /**
- * The canonical emblem drawing, shared by the React mark and invite images.
+ * The canonical emblem drawing: every path, in order, with its own paint.
  *
- * The values below all come from the same shape and color tables used by the
- * in-app editor; only trusted, finite table values are interpolated. Keeping
- * this as SVG markup lets the serverless OG renderer use the real Crew mark
- * without growing a second set of artwork.
+ * This is the one description of what a crew's mark looks like. The React
+ * component serialises it to SVG and the invite share image rasterises it, so
+ * an emblem cannot be one shape in the app and another in a shared link.
  */
-export function crewEmblemSvgMarkup(emblem: CrewEmblem): string {
-  const lighten = (hex: string, amount: number): string => {
-    const value = Number.parseInt(hex.slice(1), 16);
-    const channels = [
-      (value >> 16) + amount,
-      ((value >> 8) & 255) + amount,
-      (value & 255) + amount,
-    ].map((channel) => Math.max(0, Math.min(255, channel)));
-    return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
-  };
+export function crewEmblemDrawing(emblem: CrewEmblem): CrewEmblemDrawOp[] {
+  const operations: CrewEmblemDrawOp[] = [];
   const frame = CREW_EMBLEM_FRAMES[emblem.frame.shape] ?? CREW_EMBLEM_FRAMES[0];
-  const frameColor = crewEmblemColor(emblem.frame.color).value;
-  const frameMarkup = frame.d
-    ? `<g class="crew-emblem__frame"><path d="${frame.d}" fill="none" stroke="${CREW_EMBLEM_INK}" stroke-width="${frame.inkWidth}" stroke-linejoin="miter"${frame.linecap ? ` stroke-linecap="${frame.linecap}"` : ""}/><path d="${frame.d}" fill="none" stroke="${frameColor}" stroke-width="${frame.colorWidth}" stroke-linejoin="miter"${frame.linecap ? ` stroke-linecap="${frame.linecap}"` : ""}/></g>`
-    : "";
-  const offsets: Record<Exclude<CrewEmblemSection, "frame">, number> = {
-    top: -4,
-    middle: 0,
-    bottom: 2,
-  };
-  const plates = CREW_EMBLEM_BODY_SECTIONS.map((section) => {
+  if (frame.d) {
+    // Twice over: the ink outline first, then the crew's colour inside it.
+    for (const [stroke, strokeWidth] of [
+      [CREW_EMBLEM_INK, frame.inkWidth],
+      [crewEmblemColor(emblem.frame.color).value, frame.colorWidth],
+    ] as const) {
+      operations.push({
+        part: "frame",
+        d: frame.d,
+        dy: 0,
+        stroke,
+        strokeWidth,
+        strokeLinejoin: "miter",
+        strokeLinecap: frame.linecap,
+      });
+    }
+  }
+
+  for (const section of CREW_EMBLEM_BODY_SECTIONS) {
     const shape = CREW_EMBLEM_SHAPES[section][emblem[section].shape]
       ?? CREW_EMBLEM_SHAPES[section][0];
     const color = crewEmblemColor(emblem[section].color).value;
-    const rule = shape.rule ?? "nonzero";
-    return `<g class="crew-emblem__plate" transform="translate(0 ${offsets[section]})"><path d="${shape.d}" fill="${CREW_EMBLEM_INK}" fill-rule="${rule}" transform="translate(0 5)"/><path d="${shape.d}" fill="${lighten(color, 16)}" fill-rule="${rule}" transform="translate(0 -2)" stroke="${CREW_EMBLEM_INK}" stroke-width="2.6" stroke-linejoin="round"/><path d="${shape.d}" fill="${color}" fill-rule="${rule}" stroke="${CREW_EMBLEM_INK}" stroke-width="2.6" stroke-linejoin="round"/></g>`;
-  }).join("");
-  return `${frameMarkup}${plates}<g class="crew-emblem__seams"><path d="M78 68 H102 V79 H78 Z" fill="${CREW_EMBLEM_INK}"/><path d="M82 68 H98 V76 H82 Z" fill="${CREW_EMBLEM_SEAM}"/><path d="M78 132 H102 V145 H78 Z" fill="${CREW_EMBLEM_INK}"/><path d="M82 135 H98 V143 H82 Z" fill="${CREW_EMBLEM_SEAM}"/></g>`;
+    const fillRule = shape.rule ?? "nonzero";
+    const offset = PLATE_OFFSET[section];
+    // A dropped shadow, a lifted highlight, then the face itself.
+    operations.push({ part: "plate", d: shape.d, dy: offset + 5, fill: CREW_EMBLEM_INK, fillRule });
+    for (const [fill, dy] of [[lighten(color, 16), offset - 2], [color, offset]] as const) {
+      operations.push({
+        part: "plate",
+        d: shape.d,
+        dy,
+        fill,
+        fillRule,
+        stroke: CREW_EMBLEM_INK,
+        strokeWidth: 2.6,
+        strokeLinejoin: "round",
+      });
+    }
+  }
+
+  for (const seam of SEAMS) {
+    operations.push({ part: "seams", d: seam.d, dy: 0, fill: seam.fill });
+  }
+  return operations;
+}
+
+function drawOpMarkup(operation: CrewEmblemDrawOp): string {
+  const attributes = [
+    `d="${operation.d}"`,
+    operation.dy ? `transform="translate(0 ${operation.dy})"` : "",
+    `fill="${operation.fill ?? "none"}"`,
+    operation.fill && operation.fillRule ? `fill-rule="${operation.fillRule}"` : "",
+    operation.stroke ? `stroke="${operation.stroke}"` : "",
+    operation.strokeWidth ? `stroke-width="${operation.strokeWidth}"` : "",
+    operation.strokeLinejoin ? `stroke-linejoin="${operation.strokeLinejoin}"` : "",
+    operation.strokeLinecap ? `stroke-linecap="${operation.strokeLinecap}"` : "",
+  ].filter(Boolean);
+  return `<path ${attributes.join(" ")}/>`;
+}
+
+/**
+ * The canonical drawing as SVG markup, for the React mark.
+ *
+ * The values interpolated here are all trusted table constants and colours
+ * from the tables above — never crew-supplied text — so the markup is safe to
+ * hand to `dangerouslySetInnerHTML`.
+ */
+export function crewEmblemSvgMarkup(emblem: CrewEmblem): string {
+  let markup = "";
+  let open: CrewEmblemDrawOp["part"] | null = null;
+  for (const operation of crewEmblemDrawing(emblem)) {
+    if (operation.part !== open) {
+      if (open) markup += "</g>";
+      markup += `<g class="crew-emblem__${operation.part}">`;
+      open = operation.part;
+    }
+    markup += drawOpMarkup(operation);
+  }
+  return open ? `${markup}</g>` : markup;
 }
 
 /** The fully-enclosing frames wide enough to crowd a busy core. */
