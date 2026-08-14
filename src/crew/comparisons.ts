@@ -1,4 +1,6 @@
+import { formatMiles, formatMilesBuilt } from "../domain/distance";
 import type { CrewMember, CrewMemberSummary } from "./types";
+import { RUN_DAYS_WINDOW } from "./runDays";
 
 export type ComparisonMetric =
   | "weekly-miles"
@@ -46,6 +48,42 @@ export function comparisonBarPercent(
   const scale = metric === "consistency" ? 1 : maxDisplayedValue;
   if (scale <= 0) return 0;
   return Math.min(100, Math.max(0, (value / scale) * 100));
+}
+
+export interface FormattedComparison {
+  value: string;
+  /** A short qualifier read on the same line as `value` — never a second stacked line (issue #86). */
+  detail: string | null;
+}
+
+/**
+ * The one reading every comparison metric prints: the compact comparison
+ * rows and the Member Profile stat strip (issue #87) both format their
+ * numbers this way, so a runner's Consistency or Miles Built never reads
+ * differently in two places.
+ */
+export function formatComparisonReading(
+  metric: ComparisonMetric,
+  summary: ComparisonSummary | null,
+): FormattedComparison {
+  const value = comparisonValue(metric, summary);
+  if (value === null || !summary) return { value: "—", detail: null };
+  if (metric === "consistency") {
+    return {
+      value: `${Math.round(value * 100)}%`,
+      detail: `${summary.consistencyCompleted}/${summary.consistencyDue}`,
+    };
+  }
+  if (metric === "run-days") {
+    return {
+      value: `${value}`,
+      detail: `${RUN_DAYS_WINDOW}D`,
+    };
+  }
+  return {
+    value: `${metric === "miles-built" ? formatMilesBuilt(value) : formatMiles(value)} MI`,
+    detail: null,
+  };
 }
 
 /** Descending factual order; equal values remain in membership order. */

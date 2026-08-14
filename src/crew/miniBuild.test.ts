@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CrewMember, CrewMiniBuildRun } from "./types";
 import {
   deriveCrewMiniBuild,
+  faceCulledMiniBuildTower,
   MEMBER_BUILD_BLOCK_LIMIT,
   orderedMiniBuildMembers,
 } from "./miniBuild";
@@ -151,6 +152,49 @@ describe("Crew Mini Build derivation", () => {
       "a",
       "b",
     ]);
+  });
+
+  it("culls faces between adjoining blocks the same way Personal/Crew Build do", () => {
+    // Two width-1 blocks side by side on the ground, one stacked on top of
+    // the left one: the shared edges must not draw, exactly like a real
+    // tower's neighbour-aware faces.
+    const model = deriveCrewMiniBuild(
+      [
+        run("left", "2026-08-01", 2, "easy", "runner-1", 0, 1),
+        run("right", "2026-08-01", 2, "easy", "runner-1", 0, 2),
+        run("stacked", "2026-08-01", 2, "easy", "runner-1", 1, 1),
+      ],
+      "runner-1",
+    );
+    const tower = faceCulledMiniBuildTower(model);
+    const left = tower.blocks.find((block) => block.id === "left")!;
+    const right = tower.blocks.find((block) => block.id === "right")!;
+    const stacked = tower.blocks.find((block) => block.id === "stacked")!;
+
+    // The left block's top is covered by "stacked" and its right edge abuts
+    // "right", so neither face should draw.
+    expect(left.topFace).toEqual([false]);
+    expect(left.rightFace).toEqual([false]);
+    // "right" has open sky above and open air to its right (column 3 empty).
+    expect(right.topFace).toEqual([true]);
+    expect(right.rightFace).toEqual([true]);
+    // "stacked" sits on top with nothing above or beside it.
+    expect(stacked.topFace).toEqual([true]);
+    expect(stacked.rightFace).toEqual([true]);
+    expect(tower.courses).toBe(model.courses);
+    expect(tower.voids).toEqual([]);
+  });
+
+  it("reports a void where the skyline has grown past an empty cell", () => {
+    const model = deriveCrewMiniBuild(
+      [
+        run("tall", "2026-08-01", 8, "long", "runner-1", 0, 5),
+        run("bridge", "2026-08-02", 8, "long", "runner-1", 1, 1),
+      ],
+      "runner-1",
+    );
+    const tower = faceCulledMiniBuildTower(model);
+    expect(tower.voids.length).toBeGreaterThan(0);
   });
 
   it("cannot carry private RunLog or personal placement fields into its output", () => {

@@ -4,6 +4,13 @@ import {
   type BlockHeight,
   type BlockWidth,
 } from "../domain/footprint";
+import {
+  faceVisibilityOf,
+  occupiedCellsOf,
+  topOf,
+  voidsOf,
+  type GridVoid,
+} from "../domain/placement";
 import type { RunActivityType } from "../domain/types";
 import type { CrewMember, CrewMiniBuildRun } from "./types";
 
@@ -93,5 +100,46 @@ export function deriveCrewMiniBuild(
     courses: blocks.reduce((highest, block) => Math.max(highest, block.row + block.height), 0),
     sourceRunCount: bounded.length,
     totalMiles: blocks.reduce((total, block) => total + block.distanceMiles, 0),
+  };
+}
+
+export interface CrewMiniBuildFacedBlock extends CrewMiniBuildBlock {
+  /**
+   * Visible faces, computed with the same neighbour-aware culling Personal
+   * and Crew Build use (`faceVisibilityOf`), so a Member Profile's hero tower
+   * reads as one physical structure rather than a stack of flat rectangles.
+   */
+  topFace: boolean[];
+  rightFace: boolean[];
+  /** Paint order — see `PlacedBlock.depth` in Personal Build for why. */
+  depth: number;
+}
+
+export interface CrewMiniBuildTower {
+  blocks: CrewMiniBuildFacedBlock[];
+  /** Openings the tower spans, drawn so a bridging block is not left floating. */
+  voids: GridVoid[];
+  courses: number;
+}
+
+/**
+ * Adds the 3D face/void geometry a read-only hero tower needs on top of
+ * `CrewMiniBuildModel`'s bare block placements — the same derivation
+ * `deriveCrewBuild` runs for the communal tower, over one member's frozen
+ * Personal Build blocks instead. Kept as a separate step from
+ * `deriveCrewMiniBuild` so that function's tested `{ blocks, courses,
+ * sourceRunCount, totalMiles }` shape never has to grow fields most callers
+ * (the compact member card) don't use.
+ */
+export function faceCulledMiniBuildTower(model: CrewMiniBuildModel): CrewMiniBuildTower {
+  const filled = occupiedCellsOf(model.blocks);
+  const blocks: CrewMiniBuildFacedBlock[] = model.blocks.map((block) => {
+    const { topFace, rightFace } = faceVisibilityOf(block, filled);
+    return { ...block, topFace, rightFace, depth: topOf(block) };
+  });
+  return {
+    blocks,
+    voids: voidsOf(model.blocks, filled),
+    courses: model.courses,
   };
 }

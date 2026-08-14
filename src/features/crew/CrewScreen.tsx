@@ -31,6 +31,7 @@ import type { CrewBuildRun, CrewType } from "../../crew/types";
 import {
   comparisonBarPercent,
   comparisonValue,
+  formatComparisonReading,
   orderedComparisonRows,
   type ComparisonMetric,
   type ComparisonSummary,
@@ -46,7 +47,7 @@ import {
   EMPTY_CREW_BUILD,
 } from "../../crew/crewBuild";
 import { todayLocalDate } from "../../domain/dates";
-import { formatMiles, formatMilesBuilt } from "../../domain/distance";
+import { formatMilesBuilt } from "../../domain/distance";
 import { autoPlaceOption } from "../../domain/placement";
 import { useJustPlaced } from "../build/useJustPlaced";
 import { CrewBuild } from "./CrewBuild";
@@ -54,7 +55,7 @@ import { CrewEmblem } from "./CrewEmblem";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
 import { CrewMiniBuild } from "./CrewMiniBuild";
-import { CrewMemberBuildSheet } from "./CrewMemberBuildSheet";
+import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
 import {
   deriveCrewMiniBuild,
   orderedMiniBuildMembers,
@@ -109,33 +110,6 @@ interface CrewScreenProps {
   onOpenAccountCrew: () => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
-}
-
-// Consistency and Run Days used to drop their supporting fact onto a second
-// stacked line ("14 / 16" / "of 28 days" under the headline value), which
-// made those two metrics' rows taller than Weekly Miles/Longest Run/Miles
-// Built — a single value with nothing below it. `detail` now reads on the
-// same line as `value` (see `.crew-comparison__reading`), so every metric's
-// row keeps identical height and the bars land at the same baseline.
-function formattedComparison(metric: ComparisonMetric, summary: ComparisonSummary | null) {
-  const value = comparisonValue(metric, summary);
-  if (value === null || !summary) return { value: "—", detail: null };
-  if (metric === "consistency") {
-    return {
-      value: `${Math.round(value * 100)}%`,
-      detail: `${summary.consistencyCompleted}/${summary.consistencyDue}`,
-    };
-  }
-  if (metric === "run-days") {
-    return {
-      value: `${value}`,
-      detail: `${RUN_DAYS_WINDOW}D`,
-    };
-  }
-  return {
-    value: `${metric === "miles-built" ? formatMilesBuilt(value) : formatMiles(value)} MI`,
-    detail: null,
-  };
 }
 
 function CrewAccessState({
@@ -315,6 +289,12 @@ export function CrewScreen({
   const freshness = crewFreshness(dashboardData.summaries);
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
   const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
+  const selectedMemberSummary = selectedMember
+    ? comparisonSummaries.find((row) => row.userId === selectedMember.userId) ?? null
+    : null;
+  const selectedMemberRuns = selectedMember
+    ? dashboardData.runs.filter((run) => run.userId === selectedMember.userId)
+    : [];
   const recentRunPool = dashboardData.runs.slice(0, MAX_RECENT_RUNS);
   const recentRuns = showAllRecentRuns
     ? recentRunPool
@@ -329,6 +309,12 @@ export function CrewScreen({
   // so it states a compact non-race context instead — never both, never
   // a fabricated countdown for a Crew with no race.
   const isRaceCrew = currentCrew.crewType === "race";
+  // The Member Profile's stat strip mirrors the comparison section's own
+  // Race Crew / Run Club split: Consistency needs a training plan, Run Club
+  // has none, so Run Days takes that slot instead (issue #87).
+  const profileMetric = isRaceCrew
+    ? { id: "consistency" as const, label: "Consistency" }
+    : { id: "run-days" as const, label: "Run Days" };
   const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
   const countdown = isRaceCrew && currentCrew.raceDate
     ? raceCountdown(currentCrew.raceDate, today)
@@ -594,7 +580,7 @@ export function CrewScreen({
             aria-label={`${METRIC_LABEL[activeMetric]} comparison`}
           >
             {comparisonRows.map(({ member, summary }) => {
-              const formatted = formattedComparison(activeMetric, summary);
+              const formatted = formatComparisonReading(activeMetric, summary);
               const isYou = member.userId === currentUserId;
               const percent = comparisonBarPercent(activeMetric, summary, maxDisplayedValue);
               const barStyle = { "--crew-bar-value": `${percent}%` } as CSSProperties;
@@ -729,15 +715,25 @@ export function CrewScreen({
         </ul>}
       </Section>
 
-      <CrewMemberBuildSheet
+      <CrewMemberProfileSheet
+        key={selectedMember?.userId ?? "none"}
         member={selectedMember}
+        isYou={selectedMember?.userId === currentUserId}
         model={selectedMember ? deriveCrewMiniBuild(dashboardData.miniBuildRuns, selectedMember.userId) : null}
+        summary={selectedMemberSummary}
+        consistencyMetric={profileMetric}
+        runs={selectedMemberRuns}
         isOpen={selectedMember !== null}
         onClose={() => setSelectedMemberId(null)}
         onSelectRun={(runId) => {
           setSelectedMemberId(null);
           setSelectedRunId(runId);
         }}
+        currentUserId={currentUserId ?? ""}
+        propsPendingRunIds={crew.propsPendingRunIds}
+        propsErrors={crew.propsErrors}
+        propsAvailable={dashboardData.propsAvailable}
+        onToggleProps={(runId) => void crew.toggleProps(runId)}
       />
 
       <CrewRunDetailSheet
