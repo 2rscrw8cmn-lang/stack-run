@@ -14,6 +14,8 @@ import unwindowedMigration from "../../supabase/migrations/20260812190000_member
 import unwindowedVerification from "../../supabase/tests/0009_member_build_unwindowed_history.sql?raw";
 import crewTypeMigration from "../../supabase/migrations/20260812220000_crew_type_run_club.sql?raw";
 import crewTypeVerification from "../../supabase/tests/0011_crew_type_run_club.sql?raw";
+import identityMigration from "../../supabase/migrations/20260814120000_crew_contribution_identity.sql?raw";
+import identityVerification from "../../supabase/tests/0013_crew_contribution_identity.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -287,5 +289,101 @@ describe("Crew type / Run Club SQL", () => {
     expect(crewTypeVerification).toMatch(/editing a Run Club changed its crew_type/i);
     expect(crewTypeVerification).toMatch(/invite preview invented race facts for a Run Club/i);
     expect(crewTypeVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew contribution identity SQL", () => {
+  it("resolves a contribution through registered aliases and through crew-safe facts", () => {
+    expect(identityMigration).toMatch(
+      /create or replace function public\.reconcile_crew_contributions\(p_crew_id uuid default null\)/i,
+    );
+    expect(identityMigration).toMatch(
+      /m\.local_run_id = c\.run_id or m\.local_run_id = any\(c\.legacy_aliases\)/i,
+    );
+    expect(identityMigration).toMatch(
+      /c\.completed_date = m\.local_date[\s\S]*c\.activity_type = m\.activity_type[\s\S]*c\.distance_miles = m\.distance_miles[\s\S]*c\.duration_seconds = m\.duration_seconds/i,
+    );
+    // Two indistinguishable canonical runs never license a guess.
+    expect(identityMigration).toMatch(/group by m\.id\s*\n\s*having count\(\*\) = 1/i);
+    expect(identityMigration).toMatch(
+      /where user_id = v_user_id and deleted_at is null/i,
+    );
+  });
+
+  it("preserves Props and both placement systems before removing a duplicate", () => {
+    const merge = identityMigration.match(
+      /create or replace function public\.merge_crew_contribution_group[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(merge).toMatch(
+      /set build_row = coalesce\(build_row, v_duplicate\.build_row\)[\s\S]*crew_build_placed_at = coalesce\(crew_build_placed_at, v_duplicate\.crew_build_placed_at\)/i,
+    );
+    expect(merge).toMatch(
+      /insert into public\.crew_reactions[\s\S]*on conflict \(shared_run_id, user_id\) do nothing;[\s\S]*delete from public\.shared_runs where id = v_duplicate\.id/i,
+    );
+    expect(merge).toMatch(
+      /update public\.shared_runs set local_run_id = p_canonical_run_id/i,
+    );
+    // The established row survives, so its shared-run UUID keeps its Props and
+    // construction instead of being deleted and recreated.
+    expect(merge).toMatch(
+      /order by \(sr\.crew_build_row is not null\) desc,[\s\S]*\(sr\.build_row is not null\) desc,[\s\S]*crew_reactions r where r\.shared_run_id = sr\.id\) desc,[\s\S]*sr\.created_at/i,
+    );
+  });
+
+  it("heals unsupported communal construction through the established demotion", () => {
+    expect(identityMigration).toMatch(
+      /create or replace function public\.heal_crew_build_support\(p_crew_id uuid\)/i,
+    );
+    expect(identityMigration).toMatch(
+      /if v_repaired then perform public\.heal_crew_build_support\(v_crew_id\); end if;/i,
+    );
+    expect(identityMigration).toMatch(
+      /create or replace function public\.heal_crew_build_support_after_run_change[\s\S]*perform public\.heal_crew_build_support\(new\.crew_id\)/i,
+    );
+    expect(identityMigration).toMatch(
+      /perform pg_advisory_xact_lock\(hashtextextended\(p_crew_id::text, 0\)\)/i,
+    );
+  });
+
+  it("exposes only the account-wide repair to a browser role", () => {
+    expect(identityMigration).toMatch(/v_user_id uuid := auth\.uid\(\)/i);
+    expect(identityMigration).toMatch(
+      /revoke all on function public\.merge_crew_contribution_group\(uuid, uuid, text, uuid\[\]\)\s*\n?\s*from public, anon, authenticated/i,
+    );
+    expect(identityMigration).toMatch(
+      /revoke all on function public\.heal_crew_build_support\(uuid\) from public, anon, authenticated/i,
+    );
+    expect(identityMigration).toMatch(
+      /grant execute on function public\.reconcile_crew_contributions\(uuid\) to authenticated/i,
+    );
+    // Crew rows stay limited to the safe projection; no private run data is read
+    // into them and personal revisions are not rewritten from here.
+    expect(identityMigration).not.toMatch(
+      /external|imported_metrics|notes|effort|update public\.personal_runs/i,
+    );
+  });
+
+  it("ships transactional verification for every reconciliation guarantee", () => {
+    expect(identityVerification).toMatch(/Crew still holds duplicate contributions/i);
+    expect(identityVerification).toMatch(/Crew mileage still counts a duplicated run/i);
+    expect(identityVerification).toMatch(
+      /Member Build or Crew Build placement was not preserved/i,
+    );
+    expect(identityVerification).toMatch(
+      /the duplicate Prop was not repointed onto the survivor/i,
+    );
+    expect(identityVerification).toMatch(/a lone legacy contribution was not rekeyed in place/i);
+    expect(identityVerification).toMatch(/unsupported Crew construction was left standing/i);
+    expect(identityVerification).toMatch(
+      /an ambiguous legacy contribution was merged by guessing/i,
+    );
+    expect(identityVerification).toMatch(
+      /repeated reconciliation changed already-canonical state/i,
+    );
+    expect(identityVerification).toMatch(/canonical projection inserted a second contribution/i);
+    expect(identityVerification).toMatch(
+      /another runner reconciliation touched these contributions/i,
+    );
+    expect(identityVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

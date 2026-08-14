@@ -49,11 +49,12 @@ function fakeProjectionClient(input: {
   serverRuns?: unknown[];
   existingSummary?: unknown;
   calls: ProjectionCall[];
+  onRpc?: (name: string) => number;
 }): SupabaseClient {
   return {
     rpc: vi.fn((name: string, value: unknown) => {
       input.calls.push({ table: name, operation: "rpc", value });
-      return Promise.resolve({ data: 0, error: null });
+      return Promise.resolve({ data: input.onRpc?.(name) ?? 0, error: null });
     }),
     from: vi.fn((table: string) => {
       let operation = "select";
@@ -249,6 +250,57 @@ describe("Race Crew projection", () => {
       defaultToNull: false,
     });
     expect(JSON.stringify(shared)).not.toMatch(/crew_build/i);
+  });
+
+  it("repairs stored alias duplicates before any crew total is derived from them", async () => {
+    // The QA case: one canonical 4.03 mi run, two stored `shared_runs` rows.
+    const duplicated = { ...privateRun, id: "run-canonical", distanceMiles: 4.03 };
+    const serverRuns = [
+      { local_run_id: "legacy-device-run", local_date: "2026-08-10", distance_miles: 4.03 },
+      { local_run_id: "run-canonical", local_date: "2026-08-10", distance_miles: 4.03 },
+    ];
+    const calls: ProjectionCall[] = [];
+    const client = fakeProjectionClient({
+      calls,
+      serverRuns,
+      onRpc: (name) => {
+        if (name !== "reconcile_crew_contributions") return 0;
+        serverRuns.splice(
+          serverRuns.findIndex((run) => run.local_run_id === "legacy-device-run"),
+          1,
+        );
+        return 1;
+      },
+    });
+
+    await syncCrewProjection(client, {
+      state: { ...createInitialAppState(), runLogs: [duplicated] },
+      crewId: "crew-1",
+      userId: "user-1",
+      buildStartDate: "2026-08-01",
+      today: "2026-08-10",
+    });
+
+    const sequence = calls
+      .filter((call) =>
+        call.operation === "rpc" ||
+        (call.table === "shared_runs" && call.operation !== "eq:crew_id" && call.operation !== "eq:user_id"),
+      )
+      .map((call) => `${call.table}:${call.operation}`);
+    expect(sequence).toEqual([
+      "shared_runs:upsert",
+      "reconcile_crew_contributions:rpc",
+      "shared_runs:select",
+    ]);
+    expect(calls.find((call) => call.operation === "rpc")?.value).toEqual({
+      p_crew_id: "crew-1",
+    });
+    // Weekly Miles and Miles Built count the real run once, and no crew row was
+    // hidden rather than repaired.
+    expect(calls.find(
+      (call) => call.table === "crew_member_summaries" && call.operation === "upsert",
+    )?.value).toMatchObject({ weekly_miles: 4.03, miles_built: 4.03 });
+    expect(calls.some((call) => call.operation === "delete")).toBe(false);
   });
 
   it("never infers deletion from an empty or partial secondary device", async () => {

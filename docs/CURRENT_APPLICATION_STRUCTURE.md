@@ -1499,3 +1499,27 @@ legacy shared rows in place, retaining a survivor UUID, Props, Member Build and
 Crew Build position where possible. Shared Member Build rows freeze width and
 height; editing a placed communal contribution across a footprint boundary
 demotes it to READY before recursive support healing.
+
+## Crew contribution identity
+
+A canonical personal run contributes to a crew exactly once.
+`reconcile_crew_contributions` resolves every one of the runner's stored
+`shared_runs` rows to the canonical run it represents: by run id, by a
+registered legacy alias, or — for a row a pre-DATA-1 device wrote under an id
+the account never recorded — by the crew-safe facts the row already shares, and
+only when exactly one canonical run has those facts. Anything ambiguous is left
+untouched, because an unreconciled duplicate is repairable later and a wrong
+merge is not.
+
+Each resolved group collapses onto the richest existing row rather than a
+freshly projected one, so its shared-run UUID, Props and both placement systems
+survive. Props move and placements fill before any duplicate is removed, and
+removal is followed by the established support healing, so a communal block
+left unsupported becomes READY instead of invalid construction. Personal
+revisions are never rewritten from here.
+
+`src/crew/projection.ts` reconciles after upserting and before reading the
+server rows back, so Weekly Miles, Miles Built, comparisons and Recent Crew Runs
+are derived from repaired stored data. Canonical adoption in
+`usePersonalSync` reconciles the whole account for the same reason. Nothing is
+deduplicated in the dashboard: the stored projection is the crew's data.

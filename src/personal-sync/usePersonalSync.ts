@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { IntervalsCandidate } from "../connected/intervals";
 import { mergeCandidates } from "../connected/intervals";
 import type { AppState, RunLog } from "../domain/types";
+import { reconcileCrewContributions } from "../crew/projection";
 import { getSupabaseAvailability } from "../crew/supabaseClient";
 import {
   adoptLegacyIntervalsApiKey,
@@ -115,12 +116,6 @@ function rekeyRunInState(
   };
 }
 
-function activeAliases(snapshot: PersonalCloudSnapshot): Array<[string, string[]]> {
-  return snapshot.runs
-    .filter((item) => item.deletedAt === null && item.aliases.length > 0)
-    .map((item) => [item.run.id, item.aliases]);
-}
-
 export function usePersonalSync({
   sessionStatus,
   userId,
@@ -169,9 +164,12 @@ export function usePersonalSync({
       savePersonalMetadata(nextUserId, metadata);
       savePersonalOutbox(nextUserId, emptyPersonalOutbox(snapshot.accountGeneration));
       replaceForAccount(nextUserId, nextState, snapshot.intervals.pendingCandidates);
-      for (const [canonicalId, aliases] of activeAliases(snapshot)) {
-        await reconcileCrewRunIdentity(availability.client!, canonicalId, aliases);
-      }
+      // Canonical runs are now this account's identity everywhere. Registered
+      // aliases are only part of that: a duplicate left by a pre-DATA-1 device
+      // carries an id no canonical run ever recorded, so reconciliation resolves
+      // the whole account's contributions rather than the aliases this snapshot
+      // happens to know about.
+      await reconcileCrewContributions(availability.client!);
       setInitialized(true);
       setStatus("ready");
       setError(null);

@@ -64,6 +64,31 @@ Status: **Implemented / PR review and real-device QA pending.**
 
 See `docs/PERSONAL_ACCOUNT_SYNC.md` for deployment and remaining QA.
 
+## DATA-1 follow-up — Duplicate Crew contributions (issue #74)
+
+Status: **Implemented / real-account QA pending.**
+
+- A crew could still hold two `shared_runs` rows for one canonical personal
+  run, doubling Weekly Miles and Miles Built, duplicating Recent Crew Runs and
+  splitting Props. The duplicate came from a pre-DATA-1 device whose local run
+  id no canonical run ever recorded as an alias, so the existing alias-driven
+  `reconcile_crew_run_identity` never reached it.
+- `20260814120000_crew_contribution_identity.sql` adds
+  `reconcile_crew_contributions`, which resolves the runner's own contributions
+  by canonical id, by registered alias, and by the crew-safe facts a legacy row
+  already shares when exactly one canonical run has those facts. Ambiguous rows
+  are left untouched.
+- Each group collapses onto the richest existing row, keeping its shared-run
+  UUID, Props, Member Build and Crew Build placement; support healing demotes
+  anything the removal left unsupported to READY. Reconciliation is idempotent
+  and rewrites no personal revisions.
+- Crew projection reconciles before deriving any crew-visible total, and
+  canonical account adoption reconciles the whole account. Nothing is
+  deduplicated in the dashboard.
+- Transactional verification `0013_crew_contribution_identity.sql` covers alias
+  and legacy-id collapse, in-place rekeying, Props, placement, structural
+  healing, ambiguity, idempotency, cross-runner isolation and grants.
+
 ## Post-connected core revision
 
 | Phase | Name | Status |

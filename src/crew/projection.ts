@@ -282,6 +282,25 @@ export function projectServerBackedSummary(
 }
 
 /**
+ * Collapses this runner's stored contributions onto one row per canonical
+ * personal run. A crew still holds the rows a pre-DATA-1 device projected under
+ * its own local run ids, and those rows are real data: they double Weekly Miles
+ * and Miles Built, duplicate Recent Crew Runs and split Props. The server owns
+ * the repair so Props, Member Build and Crew Build placement survive it — a
+ * dashboard that merely hid the extra card would leave every crew number wrong.
+ */
+export async function reconcileCrewContributions(
+  client: SupabaseClient,
+  crewId: string | null = null,
+): Promise<number> {
+  const result = await client.rpc("reconcile_crew_contributions", {
+    p_crew_id: crewId,
+  });
+  if (result.error) throw new Error(result.error.message);
+  return typeof result.data === "number" ? result.data : 0;
+}
+
+/**
  * Adds or updates only the authenticated runner's safe rows. Absence from one
  * browser is never deletion authority; explicit run deletion owns that path.
  * RLS independently enforces the Crew-owned Build start boundary.
@@ -327,6 +346,11 @@ export async function syncCrewProjection(
     );
     if (error) throw new Error(error.message);
   }
+
+  // Reconcile before reading the server rows back: every crew-visible total
+  // below is derived from them, so a legacy duplicate left standing here would
+  // be counted as a second real contribution.
+  await reconcileCrewContributions(client, input.crewId);
 
   const serverRuns = await client
     .from("shared_runs")
