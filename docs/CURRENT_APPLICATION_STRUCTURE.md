@@ -1554,16 +1554,37 @@ are derived from repaired stored data. Canonical adoption in
 `usePersonalSync` reconciles the whole account for the same reason. Nothing is
 deduplicated in the dashboard: the stored projection is the crew's data.
 
-## Reusable Crew invites and share previews (issues #77, #81)
+## Reusable Crew invites and share previews (issues #77, #81, #84)
 
 `src/crew/invites.ts` makes private links `/join/<capability>`. Vercel rewrites
 that path to `api/crew-invite.ts`, which resolves only a valid capability
 through the public-safe `preview_crew_invite` RPC, emits the first-response OG
 and Twitter metadata, then returns the browser to STACK with the capability
-captured in session storage. `api/og/crew-invite.ts` returns the 1200×630
-identity card. Its self-contained server-safe crest preserves the Crew's saved
-emblem palette without requiring Vercel to load browser UI modules; the image
-URL includes the saved emblem code as its cache version.
+captured in session storage. The shared metadata is canonical: `og:url` is the
+`/join/<token>` link itself, not the `/?join=` app URL the browser is then sent
+to.
+
+`api/og/crew-invite.ts` returns the 1200×630 identity card as **PNG**. Messages
+would resolve an invite's title and then hang on an SVG `og:image`, so the card
+is rasterised on the server and declared with `og:image:type=image/png`. The
+emblem on it is the crew's own: `crewEmblemDrawing()` in `src/crew/emblem.ts` is
+the one description of a crew's mark, and `CrewEmblem.tsx` serialises it to SVG
+while the card rasterises the same operations. The image URL carries the saved
+emblem code as its cache version, so an emblem change is a new image URL.
+
+`api/_render/` is the renderer, and adds no dependency: `geometry.ts` flattens
+SVG path data and converts strokes to fillable outlines, `canvas.ts` is an
+anti-aliased scanline fill, `png.ts` encodes with Node's zlib the way
+`scripts/generate-icons.mjs` does, and `text.ts` sets Space Mono from glyph
+outlines that `scripts/generate-og-font.mjs` extracts from the same font file
+the browser loads. Files under `api/` whose names begin with an underscore are
+shared modules rather than functions, which is how Vercel treats them.
+
+Relative imports inside `api/` carry an explicit `.js` extension. Vercel
+compiles each API file separately rather than bundling it and leaves the
+specifier as written, so an extensionless relative import resolves during the
+build and then fails at runtime; TypeScript and Vite map `.js` back to the
+`.ts` file.
 
 `20260814010000_reusable_crew_invites.sql` makes one active reusable capability
 per Crew. The owner-only RPC returns that current link on future visits and

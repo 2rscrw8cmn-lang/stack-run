@@ -1,9 +1,12 @@
+// Vercel compiles each API file on its own and leaves the import specifiers
+// alone, so relative imports need the extension Node's ESM resolver expects at
+// runtime. TypeScript and Vite both map `.js` back to the `.ts` file.
 import {
   encodeCrewEmblem,
   resolveCrewEmblem,
   type CrewEmblem,
-} from "../src/crew/emblem";
-import type { CrewType } from "../src/crew/types";
+} from "../src/crew/emblem.js";
+import type { CrewType } from "../src/crew/types.js";
 
 type Environment = {
   SUPABASE_URL?: string;
@@ -84,11 +87,25 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 }
 
-export function formatRace(preview: InvitePreview): string | null {
-  if (preview.crewType === "club" || !preview.raceName || !preview.raceDate) return null;
+/** The race a Race Crew is built around; a Run Club never has one. */
+export function raceNameOf(preview: InvitePreview): string | null {
+  return preview.crewType === "club" ? null : preview.raceName;
+}
+
+/** When and how far, on its own: `Dec 5, 2026 · 13.1 mi`. */
+export function formatRaceDetail(preview: InvitePreview): string | null {
+  if (preview.crewType === "club" || !preview.raceDate) return null;
   const date = new Date(`${preview.raceDate}T12:00:00Z`);
   const dateLabel = Number.isNaN(date.valueOf())
     ? preview.raceDate
     : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
-  return `${preview.raceName} · ${dateLabel}${preview.raceDistanceMiles ? ` · ${preview.raceDistanceMiles} mi` : ""}`;
+  return `${dateLabel}${preview.raceDistanceMiles ? ` · ${preview.raceDistanceMiles} mi` : ""}`;
+}
+
+/** The one-line race summary the invite page's description uses. */
+export function formatRace(preview: InvitePreview): string | null {
+  const raceName = raceNameOf(preview);
+  const detail = formatRaceDetail(preview);
+  if (!raceName || !detail) return null;
+  return `${raceName} · ${detail}`;
 }
