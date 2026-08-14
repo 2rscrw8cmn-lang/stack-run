@@ -315,9 +315,6 @@ export function CrewScreen({
     : recentRunPool.slice(0, DEFAULT_RECENT_RUNS);
   const hiddenRecentRunCount = recentRunPool.length - recentRuns.length;
   const miniBuildMembers = orderedMiniBuildMembers(members, currentUserId);
-  const summariesByUserId = new Map(
-    dashboardData.summaries.map((summary) => [summary.userId, summary] as const),
-  );
   const maxDisplayedValue = comparisonRows.reduce((maximum, row) => {
     const value = comparisonValue(activeMetric, row.summary);
     return value === null ? maximum : Math.max(maximum, value);
@@ -686,7 +683,6 @@ export function CrewScreen({
           <p className="crew-builds__unavailable">Member Builds unavailable.</p>
         ) : <ul className="crew-builds__rail" aria-label="Member Builds">
           {miniBuildMembers.map((member) => {
-            const summary = summariesByUserId.get(member.userId) ?? null;
             const model = deriveCrewMiniBuild(dashboardData.miniBuildRuns, member.userId);
             const isYou = member.userId === currentUserId;
             return (
@@ -709,7 +705,7 @@ export function CrewScreen({
                       {isYou && <span className="crew-build-card__you machine-label">You</span>}
                     </span>
                     <span className="crew-build-card__miles data-value">
-                      {formatMilesBuilt(summary?.milesBuilt ?? 0)} MI <span>BUILT</span>
+                      {formatMilesBuilt(model.totalMiles)} MI <span>BUILT</span>
                     </span>
                   </span>
                   <CrewMiniBuild model={model} />
@@ -728,7 +724,6 @@ export function CrewScreen({
       <CrewMemberBuildSheet
         member={selectedMember}
         model={selectedMember ? deriveCrewMiniBuild(dashboardData.miniBuildRuns, selectedMember.userId) : null}
-        milesBuilt={selectedMember ? summariesByUserId.get(selectedMember.userId)?.milesBuilt ?? 0 : 0}
         isOpen={selectedMember !== null}
         onClose={() => setSelectedMemberId(null)}
         onSelectRun={(runId) => {

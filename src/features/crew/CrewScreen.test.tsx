@@ -593,9 +593,15 @@ describe("Crew comparisons and runs", () => {
     expect(cards).toHaveLength(3);
     expect(cards[0]).toHaveTextContent("Zack");
     expect(cards[0]).toHaveTextContent("You");
-    expect(cards[0]).toHaveTextContent("122.0 MI BUILT");
+    // Zack has no miniBuildRuns in this fixture, so the tower is empty and
+    // the mileage next to it must say the same thing rather than the
+    // Crew-windowed comparison summary (122.0) attached to his card.
+    expect(cards[0]).toHaveTextContent("0.0 MI BUILT");
     expect(cards[0]).toHaveTextContent("No blocks yet.");
     expect(cards[1]).toHaveTextContent("Drew");
+    // Drew's only miniBuildRun ("new") is a 6.1mi long run, so the card
+    // mileage must match that block, not his 140.0 comparison summary.
+    expect(cards[1]).toHaveTextContent("6.1 MI BUILT");
     expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
     expect(cards[1]).toHaveAttribute("data-member-color");
     expect(screen.queryByText("Each runner's own Build.")).not.toBeInTheDocument();
@@ -632,7 +638,9 @@ describe("Crew comparisons and runs", () => {
 
     const build = within(screen.getByRole("dialog", { name: "Member Build" }));
     expect(build.getByText("Drew")).toBeInTheDocument();
-    expect(build.getByText(/140\.0/)).toBeInTheDocument();
+    // The sheet's mileage must match its one displayed 5mi block, not Drew's
+    // 140.0 Crew-windowed comparison summary.
+    expect(build.getByText(/^5\.0/)).toBeInTheDocument();
     const block = build.getByRole("button", {
       name: /Open Drew's Intervals on Friday, August 7, 5 miles/,
     });
@@ -642,6 +650,54 @@ describe("Crew comparisons and runs", () => {
     await user.click(block);
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
     expect(screen.getByText("5 MI")).toBeInTheDocument();
+  });
+
+  it("matches Member Build mileage to its tower on both sides of Crew Build start while Crew comparison mileage stays Crew-windowed", async () => {
+    const beforeCrewStart = sharedRun("before-crew-start", "drew", "2026-06-01", {
+      activityType: "easy",
+      distanceMiles: 3.2,
+      buildRow: 0,
+      buildColumnStart: 1,
+      // Predates the Crew's Build start date, so it never landed on the
+      // communal tower — only on Drew's own sanitized Personal Build.
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const afterCrewStart = sharedRun("after-crew-start", "drew", "2026-08-09", {
+      activityType: "long",
+      distanceMiles: 6.1,
+      buildRow: 1,
+      buildColumnStart: 1,
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
+    });
+    const user = await openCrew(
+      controller({
+        crewData: dashboard({ runs: [beforeCrewStart, afterCrewStart] }),
+      }),
+    );
+
+    const card = screen.getByRole("button", { name: "Open Drew's Build" });
+    // The card's tower shows both blocks, so its mileage must total both —
+    // not Drew's Crew-windowed comparison summary.
+    expect(card).toHaveTextContent("9.3 MI BUILT");
+
+    await user.click(card);
+    const sheet = within(screen.getByRole("dialog", { name: "Member Build" }));
+    expect(sheet.getByText(/^9\.3/)).toBeInTheDocument();
+    expect(sheet.getAllByRole("button", { name: /Open Drew's/ })).toHaveLength(2);
+    await user.keyboard("{Escape}");
+
+    // The Crew comparison metric is untouched: only the physically placed,
+    // Crew-windowed block (6.1mi) counts there, so it legitimately differs
+    // from the 9.3mi Member Build tower above.
+    await user.click(screen.getByRole("tab", { name: "Miles Built" }));
+    const rows = within(screen.getByRole("list", { name: "Miles Built comparison" })).getAllByRole(
+      "listitem",
+    );
+    expect(rows).toEqual(
+      expect.arrayContaining([expect.objectContaining({ textContent: expect.stringMatching(/Drew.*6\.1 MI/) })]),
+    );
   });
 
   it("keeps Member Build cards keyboard reachable and opens with Enter", async () => {

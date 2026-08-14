@@ -24,6 +24,12 @@ export interface CrewMiniBuildModel {
   blocks: CrewMiniBuildBlock[];
   courses: number;
   sourceRunCount: number;
+  /**
+   * Total mileage represented by `blocks`. This is the only mileage value
+   * Member Build surfaces should show — it always matches the displayed
+   * tower, unlike the Crew-windowed comparison `milesBuilt` summary.
+   */
+  totalMiles: number;
 }
 
 /** Current runner first, then the stable membership order from joined_at. */
@@ -86,5 +92,6 @@ export function deriveCrewMiniBuild(
     blocks,
     courses: blocks.reduce((highest, block) => Math.max(highest, block.row + block.height), 0),
     sourceRunCount: bounded.length,
+    totalMiles: blocks.reduce((total, block) => total + block.distanceMiles, 0),
   };
 }
