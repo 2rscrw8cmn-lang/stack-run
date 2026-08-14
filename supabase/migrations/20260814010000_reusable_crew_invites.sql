@@ -8,9 +8,15 @@
 alter table public.crew_invites
   add column if not exists reusable_token text;
 
-alter table public.crew_invites
-  add constraint crew_invites_reusable_token_format
-  check (reusable_token is null or reusable_token ~ '^[A-Za-z0-9_-]{32,}$');
+do $$
+begin
+  alter table public.crew_invites
+    add constraint crew_invites_reusable_token_format
+    check (reusable_token is null or reusable_token ~ '^[A-Za-z0-9_-]{32,}$');
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 create unique index if not exists crew_invites_one_active_reusable_per_crew_idx
   on public.crew_invites (crew_id)
@@ -22,7 +28,12 @@ language sql
 volatile
 set search_path = public, pg_temp
 as $$
-  select rtrim(translate(encode(gen_random_bytes(32), 'base64'), '+/', '-_'), '=');
+  -- `gen_random_uuid()` is available on this Supabase Postgres build whereas
+  -- `gen_random_bytes()` is not exposed on its function search path. Two UUIDv4
+  -- values still provide 244 random bits after their fixed version/variant
+  -- bits, well beyond the 128-bit capability-security floor, and are URL-safe.
+  select replace(gen_random_uuid()::text, '-', '')
+    || replace(gen_random_uuid()::text, '-', '');
 $$;
 
 create or replace function public.current_crew_invite(p_crew_id uuid)
