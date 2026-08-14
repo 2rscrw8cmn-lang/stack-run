@@ -5,6 +5,12 @@
 -- one-time rows cannot be recovered from their hashes, so they are revoked
 -- once an owner asks STACK to establish this Crew's reusable link.
 
+-- Supabase installs pgcrypto in the `extensions` schema. The original Crew
+-- foundation migration enables it, but this keeps the follow-up migration
+-- independently deployable and lets the security-definer functions below
+-- qualify the hash function without relying on their restricted search paths.
+create extension if not exists pgcrypto with schema extensions;
+
 alter table public.crew_invites
   add column if not exists reusable_token text;
 
@@ -69,7 +75,7 @@ begin
     crew_id, token_hash, reusable_token, created_by, expires_at
   ) values (
     p_crew_id,
-    encode(digest(v_token, 'sha256'), 'hex'),
+    encode(extensions.digest(v_token, 'sha256'), 'hex'),
     v_token,
     auth.uid(),
     now() + interval '365 days'
@@ -96,7 +102,7 @@ begin
     crew_id, token_hash, reusable_token, created_by, expires_at
   ) values (
     p_crew_id,
-    encode(digest(v_token, 'sha256'), 'hex'),
+    encode(extensions.digest(v_token, 'sha256'), 'hex'),
     v_token,
     auth.uid(),
     now() + interval '365 days'
