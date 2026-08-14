@@ -523,8 +523,8 @@ covering a Personal placement, a Crew placement and a Reduce Motion placement.
   mismatch behavior, create/sign-in, Join Crew, and an already-member Open
   Crew state.
 - `/join/<token>` produces initial server-rendered Open Graph and Twitter
-  metadata and a 1200×630 Crew-specific SVG preview. The canonical emblem
-  geometry is shared with the in-app renderer; invalid, expired, reset or
+  metadata and a 1200×630 Crew-specific SVG preview. The server-safe crest
+  preserves the Crew's saved emblem palette; invalid, expired, reset or
   revoked links expose only generic STACK fallback metadata.
 - Requires applying `20260814010000_reusable_crew_invites.sql` and configuring
   the Vercel function with the same Supabase URL and publishable key available
