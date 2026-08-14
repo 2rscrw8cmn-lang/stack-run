@@ -8,8 +8,8 @@
  * second personal color — a runner has exactly one identity color, and it is
  * the accent already stored on their profile.
  *
- * An icon is four indices (head, face, body, extra) into fixed shape
- * libraries, so the stored form is a short opaque code the database can
+ * An icon is five indices (head, face, body, flair, background) into fixed
+ * shape libraries, so the stored form is a short opaque code the database can
  * validate with a regular expression and every client can draw offline. It is
  * account-level: one icon per STACK account, the same in every crew.
  *
@@ -19,21 +19,30 @@
  * throwing.
  */
 
-export type RunnerIconPart = "head" | "face" | "body" | "extra";
+export type RunnerIconPart = "head" | "face" | "body" | "flair" | "background";
 
 export interface RunnerIcon {
   head: number;
   face: number;
   body: number;
-  extra: number;
+  flair: number;
+  background: number;
 }
 
 export interface RunnerIconShape {
   name: string;
-  /** Filled plates, drawn in the runner's accent color (or ink for `extra`). */
+  /**
+   * Filled plates: the runner's accent for the chassis parts, the mark tone
+   * for `flair`, and the dark field with an accent edge for `background`.
+   */
   plates: readonly string[];
   /** Holes punched through the plates above, drawn in ink. */
   cuts?: readonly string[];
+  /**
+   * Accent chips drawn back on top of a cut — the lit pupil inside a dark eye
+   * socket. Always the last thing drawn for a part.
+   */
+  pips?: readonly string[];
   /**
    * Retired from the editor and Surprise Me, but the index stays put so a
    * runner who already saved this shape keeps decoding and drawing it.
@@ -41,180 +50,232 @@ export interface RunnerIconShape {
   deprecated?: boolean;
 }
 
-export const RUNNER_ICON_PARTS: readonly RunnerIconPart[] = ["head", "face", "body", "extra"];
+/** Code order, and the order the editor lists parts in. */
+export const RUNNER_ICON_PARTS: readonly RunnerIconPart[] = [
+  "head",
+  "face",
+  "body",
+  "flair",
+  "background",
+];
+
+/**
+ * Paint order, which is not code order: the backdrop is behind the runner and
+ * flair is in front of everything it touches.
+ */
+export const RUNNER_ICON_DRAW_ORDER: readonly RunnerIconPart[] = [
+  "background",
+  "head",
+  "face",
+  "body",
+  "flair",
+];
 
 export const RUNNER_ICON_PART_LABEL: Record<RunnerIconPart, string> = {
   head: "Head",
   face: "Face",
   body: "Body",
-  extra: "Extra",
+  flair: "Flair",
+  background: "Backdrop",
 };
 
 /**
  * The icon's own coordinate space, shared by every size it is drawn at.
  *
- * The figure runs x 27–73 and y 16–97; the box widens to the right because
- * the side extras (bolt, sweat, star) hang off that shoulder. One box for all
- * four parts means a runner's icon is the same size with or without an extra,
- * so a roster of icons never jitters between rows.
+ * Square, because a backdrop is a badge and a badge is not lopsided. Inside
+ * it every part is laid out against fixed landmarks rather than by eye, and
+ * those landmarks are what make the library composable:
+ *
+ * - the chassis is x 30–70, so head, face and body always stack flush;
+ * - the head sits above y 34, the face plate is exactly y 38–64, and every
+ *   body's top twelve units are the full chassis width;
+ * - anything drawn on the runner attaches to one of those edges;
+ * - anything not drawn on the runner lives outside x 76 (or its mirror), so
+ *   detached flair reads as detached instead of as a collision;
+ * - the whole figure clears every backdrop's outline with room to spare.
  */
-export const RUNNER_ICON_VIEW_BOX = "20 12 72 90";
-export const RUNNER_ICON_VIEW_BOX_WIDTH = 72;
-export const RUNNER_ICON_VIEW_BOX_HEIGHT = 90;
+export const RUNNER_ICON_VIEW_BOX = "0 0 100 100";
+export const RUNNER_ICON_VIEW_BOX_WIDTH = 100;
+export const RUNNER_ICON_VIEW_BOX_HEIGHT = 100;
 
 /**
- * The head sits above the face with a deliberate seam at y 35–41, and the
- * body below one at y 65–70. Those gaps are what make the mark read as a
- * stacked totem rather than a single silhouette, and they survive at 32px
- * where almost no interior detail does.
+ * Six silhouettes, not six trims on one silhouette: a boxy cap, a flared
+ * visor, an antenna mast, twin peaks, side pods, a one-sided wedge. Two heads
+ * that differ only in detail are the same head at the size this mark is
+ * actually used. Each one meets the face plate at y 34, leaving the 4-unit
+ * seam that makes the mark read as a stacked machine rather than a blob.
  */
 const HEADS: readonly RunnerIconShape[] = [
-  // Each head is a different silhouette, not a different detail on the same
-  // one: a boxy crown, a bare flared brim, a tall spike, twin peaks, a thin
-  // band, a one-sided wedge. Two heads that differ only in trim would be the
-  // same head at the size this mark is actually used.
   {
     name: "Flat Cap",
-    plates: ["M28 26 H76 V35 H28 Z", "M37 15 H67 V26 H37 Z"],
+    plates: ["M32 28 H68 V34 H32 Z", "M40 16 H60 V28 H40 Z"],
   },
   {
     name: "Visor",
-    plates: ["M26 35 L30 26 H74 L78 35 Z"],
+    plates: ["M30 34 L35 26 H65 L70 34 Z"],
   },
   {
-    name: "Center Step",
-    plates: ["M31 27 H73 V35 H31 Z", "M46 14 H58 V27 H46 Z"],
+    name: "Antenna",
+    plates: ["M35 28 H65 V34 H35 Z", "M47 18 H53 V28 H47 Z", "M43 12 H57 V18 H43 Z"],
   },
   {
     name: "Twin Peak",
-    plates: ["M30 35 H74 V22 L64 30 L52 15 L40 30 L30 22 Z"],
+    plates: ["M32 34 H68 V20 L59 29 L50 14 L41 29 L32 20 Z"],
   },
   {
-    name: "Headband",
-    plates: ["M30 29 H74 V35 H30 Z", "M64 27 L79 20 L76 31 Z"],
+    name: "Side Lamps",
+    plates: ["M35 28 H65 V34 H35 Z", "M26 18 H35 V30 H26 Z", "M65 18 H74 V30 H65 Z"],
   },
   {
     name: "Slant Cap",
-    plates: ["M30 35 V29 L74 16 V35 Z"],
+    plates: ["M32 34 V26 L68 14 V34 Z"],
   },
 ];
 
 /**
- * Every face is the same plate with different holes in it. The plate is the
- * part of the mark that carries the accent color at small sizes, so it stays
- * constant and the cut pattern does the identifying.
+ * Every face is the same beveled plate with different holes in it. The plate
+ * is the part of the mark that carries the accent color at small sizes, so it
+ * stays constant and the cut pattern does the identifying — and because it
+ * never moves, flair can attach to its edges exactly.
  */
-const FACE_PLATE =
-  "M34 41 H70 A3 3 0 0 1 73 44 V62 A3 3 0 0 1 70 65 H34 A3 3 0 0 1 31 62 V44 A3 3 0 0 1 34 41 Z";
+const FACE_PLATE = "M34 38 H66 L70 42 V60 L66 64 H34 L30 60 V42 Z";
 
 const FACES: readonly RunnerIconShape[] = [
   {
     name: "Two Slots",
     plates: [FACE_PLATE],
-    cuts: ["M38 48 H47 V55 H38 Z", "M57 48 H66 V55 H57 Z"],
+    cuts: ["M36 46 H47 V55 H36 Z", "M53 46 H64 V55 H53 Z"],
   },
   {
-    name: "Shades",
+    name: "Visor Band",
     plates: [FACE_PLATE],
-    cuts: ["M35 47 H49 V56 H35 Z", "M55 47 H69 V56 H55 Z", "M49 50 H55 V53 H49 Z"],
+    cuts: ["M35 46 H65 V55 H35 Z"],
   },
   {
-    name: "Single Slot",
-    plates: [FACE_PLATE],
-    cuts: ["M39 49 H65 V56 H39 Z"],
-  },
-  {
+    // The single centered eye, lit: the socket is cut through the plate and
+    // the pupil is the runner's color put back inside it.
     name: "One Eye",
     plates: [FACE_PLATE],
-    cuts: ["M46 53 A6 6 0 0 1 58 53 A6 6 0 0 1 46 53 Z"],
+    cuts: ["M41 41 H59 V61 H41 Z"],
+    pips: ["M46 47 H54 V55 H46 Z"],
   },
   {
-    name: "Chevron",
+    name: "Bot Eyes",
     plates: [FACE_PLATE],
-    cuts: ["M39 46 L52 55 L65 46 L65 53 L52 62 L39 53 Z"],
+    cuts: ["M36 44 H47 V57 H36 Z", "M53 44 H64 V57 H53 Z"],
+    pips: ["M39 47 H44 V54 H39 Z", "M56 47 H61 V54 H56 Z"],
   },
   {
-    name: "Blank",
+    name: "Scan",
     plates: [FACE_PLATE],
+    cuts: ["M34 44 L50 54 L66 44 V51 L50 61 L34 51 Z"],
+  },
+  {
+    name: "Grille",
+    plates: [FACE_PLATE],
+    cuts: ["M36 44 H64 V49 H36 Z", "M36 52 H64 V57 H36 Z"],
   },
 ];
 
+/**
+ * Every body is the full chassis width for its first twelve units, so the
+ * chest band lands on all six identically and the seam under the face is
+ * always the same seam. Below that they are free to differ.
+ */
 const BODIES: readonly RunnerIconShape[] = [
   {
     // The plainest option on purpose: a runner who wants the mark to be all
     // head and face should be able to choose a body that says nothing.
     name: "Flat Base",
-    plates: ["M31 70 H73 V95 H31 Z"],
+    plates: ["M30 68 H70 V90 H30 Z"],
   },
   {
     name: "Clipped Base",
-    plates: ["M31 70 H73 V86 L66 93 H38 L31 86 Z"],
+    plates: ["M30 68 H70 V82 L62 90 H38 L30 82 Z"],
   },
   {
     name: "Wide Foot",
-    plates: ["M34 70 H70 V86 H77 V94 H27 V86 H34 Z"],
-  },
-  {
-    name: "Center Tab",
-    plates: ["M31 70 H73 V89 H59 V96 H45 V89 H31 Z"],
+    plates: ["M30 68 H70 V80 H74 V88 H26 V80 H30 Z"],
   },
   {
     name: "Split Foot",
-    plates: ["M31 70 H73 V88 H60 V96 H45 V88 H31 Z"],
-    cuts: ["M49 86 H55 V96 H49 Z"],
+    plates: ["M30 68 H70 V90 H57 V78 H43 V90 H30 Z"],
+  },
+  {
+    name: "Center Tab",
+    plates: ["M30 68 H70 V82 H58 V90 H42 V82 H30 Z"],
   },
   {
     name: "Short Point",
-    plates: ["M31 70 H73 V87 L52 97 L31 87 Z"],
+    plates: ["M30 68 H70 V80 L50 90 L30 80 Z"],
   },
 ];
 
 /**
- * Extras are drawn in the mark color rather than the accent, so they read as
- * applied hardware instead of another slab of the runner's color. They are
- * the one part that is honestly a large-size detail — at 32px an extra is a
- * few bright pixels, which is why it is never the thing distinguishing two
- * runners on its own.
+ * Flair is drawn in the mark tone rather than the accent, so it reads as
+ * applied hardware instead of another slab of the runner's color.
+ *
+ * It splits cleanly in two, and the split is the whole reason this part
+ * stopped looking accidental: a piece is either *on* the runner, in which
+ * case it is flush against a landmark edge — pods on the face plate's sides,
+ * a band across the chassis-width top of the body — or it is *off* the
+ * runner, in which case it clears x 76 so there is honest space between the
+ * runner and the mark. Nothing floats halfway.
  */
-const EXTRAS: readonly RunnerIconShape[] = [
+const FLAIR: readonly RunnerIconShape[] = [
   { name: "None", plates: [] },
-  // Widened and squared off from the first pass: a bolt is only a bolt if its
-  // strokes survive at ~10px, and the original's thin waist did not.
-  { name: "Bolt", plates: ["M78 42 H89 L83 54 H91 L73 74 L78 58 H70 Z"] },
-  // A rounder, larger drop. The first pass's narrow teardrop read as a smudge
-  // once the icon dropped under about 30px.
-  { name: "Sweat", plates: ["M81 40 C87 51 90 55 90 60 A9 9 0 0 1 72 60 C72 55 75 51 81 40 Z"] },
-  // Was a 5px pinstripe across the chest — invisible at crew size. Now a band
-  // deep enough to register as a band.
-  { name: "Band", plates: ["M33 73 H71 V83 H33 Z"] },
+  // Off the runner: a blocky bolt in the right channel, thick enough to
+  // survive at ~10px, where the first pass's thin waist did not.
+  { name: "Bolt", plates: ["M88 38 L78 52 H84 L80 66 L92 50 H86 Z"] },
+  // On the runner: flush to the face plate's straight left and right edges,
+  // centered on the plate.
+  { name: "Ear Pods", plates: ["M24 44 H30 V58 H24 Z", "M70 44 H76 V58 H70 Z"] },
+  // On the runner: the body's top is the chassis width on every body, so this
+  // band lands identically no matter what is chosen below it.
+  { name: "Chest Band", plates: ["M30 72 H70 V80 H30 Z"] },
   {
     // Retired: a thin vertical rule at the silhouette's left edge, which at
     // real size was indistinguishable from the icon's own outline. The index
     // stays put so anyone who saved it keeps decoding and drawing it.
     name: "Side Stripe",
-    plates: ["M27 45 H32 V80 H27 Z"],
+    plates: ["M18 44 H26 V72 H18 Z"],
     deprecated: true,
   },
+  // Off the runner: a four-point spark whose waist is cut in deep enough to
+  // read as points rather than as a diamond, with its widest span exactly at
+  // the vertical center — which is where every backdrop is widest too.
   {
-    name: "Star",
-    plates: ["M81 42 L84 49 L91.5 49.5 L85.8 54.4 L87.6 61.7 L81 57.8 L74.4 61.7 L76.2 54.4 L70.5 49.5 L78 49 Z"],
-  },
-  {
-    // Four points on a tall axis, kept deliberately thick-waisted. A slender
-    // sparkle looked right at 90px and vanished at 26px, where thin diagonal
-    // arms carry almost no area; this reads as a bright four-point mark all
-    // the way down, and its symmetry keeps it distinct from the five-point
-    // Star above it.
     name: "Spark",
-    plates: ["M82 42 L86 50 L91 54 L86 58 L82 66 L78 58 L73 54 L78 50 Z"],
+    plates: ["M84 40 L86 49 L93 51 L86 53 L84 62 L82 53 L75 51 L82 49 Z"],
   },
+  // Off the runner, both sides, equidistant from the center line.
+  { name: "Orbit", plates: ["M12 47 H22 V57 H12 Z", "M78 47 H88 V57 H78 Z"] },
+];
+
+/**
+ * The backdrop: a badge plate behind the runner, drawn as a dark field with
+ * an accent edge rather than an accent fill — a solid accent shape would
+ * swallow the accent-colored runner standing on it.
+ *
+ * Every one of them clears the whole figure, including the widest head pods
+ * and the widest foot, which is why the set has no needle-pointed diamond in
+ * it: the shapes a runner can pick all have to hold the same runner.
+ */
+const BACKGROUNDS: readonly RunnerIconShape[] = [
+  { name: "None", plates: [] },
+  { name: "Disc", plates: ["M3 50 A47 47 0 1 0 97 50 A47 47 0 1 0 3 50 Z"] },
+  { name: "Hex", plates: ["M28 4 H72 L96 50 L72 96 H28 L4 50 Z"] },
+  { name: "Shield", plates: ["M6 6 H94 V60 L72 92 H28 L6 60 Z"] },
+  { name: "Bevel Box", plates: ["M14 4 H86 L96 14 V86 L86 96 H14 L4 86 V14 Z"] },
+  { name: "Arch", plates: ["M6 32 A44 28 0 0 1 94 32 V94 H6 Z"] },
 ];
 
 export const RUNNER_ICON_SHAPES: Record<RunnerIconPart, readonly RunnerIconShape[]> = {
   head: HEADS,
   face: FACES,
   body: BODIES,
-  extra: EXTRAS,
+  flair: FLAIR,
+  background: BACKGROUNDS,
 };
 
 /** An index this library does not have draws as that part's first option. */
@@ -263,6 +324,15 @@ export function runnerIconOptionCount(part: RunnerIconPart): number {
   return shapeCount(part);
 }
 
+/** Sets one part to a chosen option, leaving every other part alone. */
+export function setRunnerIconPart(
+  icon: RunnerIcon,
+  part: RunnerIconPart,
+  index: number,
+): RunnerIcon {
+  return { ...icon, [part]: readIndex(index, shapeCount(part)) };
+}
+
 /**
  * Steps one part forward or backward through its options, wrapping. Retired
  * shapes are skipped in both directions, so a runner sitting on one from a
@@ -282,10 +352,12 @@ export function cycleRunnerIconPart(
   return { ...icon, [part]: next };
 }
 
-const RUNNER_ICON_CODE_PATTERN = /^R1-\d{1,2}\.\d{1,2}\.\d{1,2}\.\d{1,2}$/;
+const RUNNER_ICON_CODE_PATTERN = /^R2-\d{1,2}\.\d{1,2}\.\d{1,2}\.\d{1,2}\.\d{1,2}$/;
+/** The four-part code shipped before backdrops existed. Still decodes. */
+const RUNNER_ICON_V1_CODE_PATTERN = /^R1-\d{1,2}\.\d{1,2}\.\d{1,2}\.\d{1,2}$/;
 
 /**
- * The stored form: `R1-<head>.<face>.<body>.<extra>`.
+ * The stored form: `R2-<head>.<face>.<body>.<flair>.<background>`.
  *
  * No color rides along on purpose. The runner's color is their member accent
  * on `profiles.accent_color`, and duplicating it here is exactly how an icon
@@ -293,19 +365,27 @@ const RUNNER_ICON_CODE_PATTERN = /^R1-\d{1,2}\.\d{1,2}\.\d{1,2}\.\d{1,2}$/;
  */
 export function encodeRunnerIcon(icon: RunnerIcon): string {
   const parts = RUNNER_ICON_PARTS.map((part) => readIndex(icon[part], shapeCount(part)));
-  return `R1-${parts.join(".")}`;
+  return `R2-${parts.join(".")}`;
 }
 
-/** Parses a stored code, or null when it is absent or not an icon at all. */
+/**
+ * Parses a stored code, or null when it is absent or not an icon at all.
+ *
+ * An `R1-` code is a runner who saved before backdrops existed: their four
+ * choices are theirs and are kept, and the backdrop they never picked reads
+ * as the empty one rather than as a shape chosen for them.
+ */
 export function decodeRunnerIcon(value: unknown): RunnerIcon | null {
-  if (typeof value !== "string" || !RUNNER_ICON_CODE_PATTERN.test(value)) return null;
-  const parts = value.slice(3).split(".").map(Number);
-  const [head, face, body, extra] = parts;
+  if (typeof value !== "string") return null;
+  const isV1 = RUNNER_ICON_V1_CODE_PATTERN.test(value);
+  if (!isV1 && !RUNNER_ICON_CODE_PATTERN.test(value)) return null;
+  const [head, face, body, flair, background] = value.slice(3).split(".").map(Number);
   return {
     head: readIndex(head, shapeCount("head")),
     face: readIndex(face, shapeCount("face")),
     body: readIndex(body, shapeCount("body")),
-    extra: readIndex(extra, shapeCount("extra")),
+    flair: readIndex(flair, shapeCount("flair")),
+    background: isV1 ? 0 : readIndex(background, shapeCount("background")),
   };
 }
 
@@ -337,8 +417,10 @@ export function runnerIconFromSeed(seed: string): RunnerIcon {
     head: pick("head", 7),
     face: pick("face", 53),
     body: pick("body", 389),
-    // Defaults stay quiet: an icon nobody chose does not also wear a bolt.
-    extra: 0,
+    // Defaults stay quiet: an icon nobody chose does not also wear a bolt or
+    // stand on a badge.
+    flair: 0,
+    background: 0,
   };
 }
 
@@ -357,7 +439,8 @@ export function randomRunnerIcon(random: () => number = Math.random): RunnerIcon
     head: pick("head"),
     face: pick("face"),
     body: pick("body"),
-    extra: pick("extra"),
+    flair: pick("flair"),
+    background: pick("background"),
   };
 }
 

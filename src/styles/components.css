@@ -5973,16 +5973,27 @@ textarea.run-input {
 .runner-icon__plate {
   fill: var(--member-accent, var(--text-muted));
   stroke: var(--runner-icon-ink);
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linejoin: round;
 }
 .runner-icon__cut { fill: var(--runner-icon-ink); }
+/* The lit chip set back inside a cut, so a socket reads as an eye. */
+.runner-icon__pip { fill: var(--member-accent, var(--text-muted)); }
 .runner-icon__mark {
   fill: var(--runner-icon-mark);
   stroke: var(--runner-icon-ink);
-  stroke-width: 1;
+  stroke-width: 1.2;
   stroke-linejoin: round;
 }
+/* The backdrop wears the accent on its edge; a filled one would swallow the
+   accent-colored runner standing on it. */
+.runner-icon__field {
+  fill: var(--runner-icon-field);
+  stroke: var(--member-accent, var(--text-muted));
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.runner-icon__ghost { fill: var(--runner-icon-ghost); }
 
 .crew-settings__icon-row {
   width: 100%;
@@ -6003,78 +6014,83 @@ textarea.run-input {
 .crew-settings__icon-row-body { min-width: 0; display: grid; gap: 2px; }
 .crew-settings__icon-row-body small { color: var(--text-muted); }
 
+/*
+ * The Runner Icon editor: one screen, every option visible.
+ *
+ * The mark being built stays pinned at the top while the option grids scroll
+ * under it, because every choice here is judged against the whole figure and
+ * a preview that scrolls away turns the grids into guesswork.
+ */
 .runner-icon-builder { display: grid; gap: var(--space-2); min-width: 0; }
 .runner-icon-builder > * { min-width: 0; }
 .runner-icon-builder__stage {
-  display: grid;
-  place-items: center;
   position: sticky;
   top: 0;
   z-index: 1;
-  min-height: 104px;
+  display: grid;
+  place-items: center;
+  gap: var(--space-2);
+  /* Kept deliberately short: it is pinned above the grids, so every pixel it
+     takes is a pixel of options the runner cannot see while choosing. */
+  min-height: 118px;
   padding: var(--space-2);
   border: 1px solid var(--data-border);
   background-color: var(--data-surface);
 }
-.runner-icon-builder__parts { display: grid; gap: var(--space-2); }
-/*
- * Sized for 320px first. Four fixed columns plus one flexible name leaves the
- * part name about 86px at the narrowest supported width, which every name in
- * the library clears on one line at 13px — and the name is what tells the
- * runner which part they are on, so it is the thing that must not wrap.
- */
-.runner-icon-builder__row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-}
-.runner-icon-builder__row .machine-label { margin: 0; font-size: 10px; }
-.runner-icon-builder__selector {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 38px;
-  align-items: center;
-  gap: var(--space-2);
-}
-.runner-icon-builder__arrow {
-  min-height: 44px;
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-.runner-icon-builder__option {
-  margin: 0;
-  min-height: 48px;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-  padding-inline: var(--space-2);
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-  color: var(--text);
-  font-size: 13px;
-}
-.runner-icon-builder__option span { min-width: 0; }
-.runner-icon-builder__mark { width: 34px; height: 32px; overflow: visible; }
 .runner-icon-builder__random {
-  justify-self: start;
-  min-height: 38px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   padding-inline: var(--space-3);
   border: 1px solid var(--border);
-  background: transparent;
+  background: var(--surface);
   color: var(--text-muted);
   font-size: var(--text-sm);
   cursor: pointer;
 }
 .runner-icon-builder__random:hover { color: var(--text); }
+
+.runner-icon-builder__row { display: grid; gap: 4px; }
+.runner-icon-builder__row .machine-label { margin: 0; font-size: 10px; }
+/*
+ * Six columns at every width, sized for 320px first: the whole library for a
+ * part is one glance, never a carousel, and the columns line up across rows
+ * so the grids read as one control instead of five.
+ */
+.runner-icon-builder__grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+.runner-icon-builder__thumb {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 2px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  cursor: pointer;
+}
+.runner-icon-builder__thumb[aria-pressed="true"] {
+  border-color: var(--member-accent, var(--text));
+  box-shadow: inset 0 0 0 1px var(--member-accent, var(--text));
+  background: var(--data-surface);
+}
+/* Clipped to its own window on purpose: a thumbnail shows one part in the
+   context of the runner, and the context that falls outside the window is the
+   next row's business, not this tile's. */
+.runner-icon-builder__thumb-mark {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+/* A thumbnail's strokes are the icon's own, scaled up by the crop; thinning
+   them keeps a 44px tile from reading as an outline drawing. */
+.runner-icon-builder__thumb-mark .runner-icon__plate,
+.runner-icon-builder__thumb-mark .runner-icon__mark,
+.runner-icon-builder__thumb-mark .runner-icon__field { stroke-width: 1.6; }
 
 .run-data-setup__paths { display: grid; gap: var(--space-2); }
 .run-data-setup__paths button {

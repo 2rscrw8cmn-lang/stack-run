@@ -15,9 +15,9 @@ import { CrewScreen } from "./CrewScreen";
 const TODAY = "2026-08-10";
 
 const members: CrewMember[] = [
-  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
-  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
-  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "zack", displayName: "Zack", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  { userId: "drew", displayName: "Drew", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  { userId: "travis", displayName: "Travis", role: "member", joinedAt: "2026-08-03T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
 ];
 
 function summary(
@@ -49,7 +49,7 @@ function sharedRun(
     userId,
     displayName: members.find((member) => member.userId === userId)?.displayName ?? "Runner",
     accentColor: members.find((member) => member.userId === userId)?.accentColor ?? null,
-    runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
     localDate,
     activityType: "easy",
     distanceMiles: 4,
@@ -183,7 +183,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     message: null,
     email: "zack@example.test",
     account: {
-      profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+      profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
       memberships: [{ crew: crewOne, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
       crew: crewOne,
       role: "owner",
@@ -242,7 +242,7 @@ describe("Crew destination states", () => {
   it("shows the intentional no-crew state", () => {
     const noCrew = controller({
       account: {
-        profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+        profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
         memberships: [],
         crew: null,
         role: null,
@@ -311,7 +311,7 @@ describe("Crew comparisons and runs", () => {
           role: index === 0 ? "owner" : "member",
           joinedAt: `2026-08-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
           accentColor: null,
-          runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
+          runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
         }),
       );
       const expandedSummaries = expandedMembers.map((member) => ({

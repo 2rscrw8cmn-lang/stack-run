@@ -21,12 +21,12 @@ const ownerCrew: RaceCrew = {
 };
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: ownerCrew,
   role: "owner",
   members: [
-    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   ],
   invites: [],
   takenAccentColors: [],
@@ -34,11 +34,11 @@ const ownerAccount: LoadedCrewAccount = {
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "member-1", displayName: "Member", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  profile: { id: "member-1", displayName: "Member", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   role: "member",
   members: [
     ...ownerAccount.members,
-    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   ],
 };
 
@@ -208,7 +208,7 @@ describe("Account & Crew settings", () => {
       status: "signed-in",
       email: "runner@example.test",
       account: {
-        profile: { id: "user-1", displayName: "Runner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+        profile: { id: "user-1", displayName: "Runner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
         memberships: [],
         crew: null,
         role: null,
@@ -377,7 +377,7 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
             memberships: [],
             crew: null,
             role: null,
@@ -404,7 +404,7 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
             memberships: [],
             crew: null,
             role: null,
@@ -485,7 +485,7 @@ describe("Account & Crew settings", () => {
       userId: "owner-1",
       displayName: "Owner",
       accentColor: null,
-      runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
+      runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
       localDate: "2026-08-05",
       activityType: "easy" as const,
       distanceMiles: 3,
@@ -595,10 +595,10 @@ describe("Account & Crew settings", () => {
     const saveAccentColor = vi.fn(async () => undefined);
     const account: LoadedCrewAccount = {
       ...memberAccount,
-      profile: { id: "member-1", displayName: "Member", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+      profile: { id: "member-1", displayName: "Member", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
       members: [
-        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta", runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
-        { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta", runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+        { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
       ],
       // Spans every crew this account is in, not only the one on screen.
       takenAccentColors: ["magenta"],
@@ -639,9 +639,9 @@ describe("Account & Crew settings", () => {
     // forever: "taken" is read live off the current roster, not a history.
     const account: LoadedCrewAccount = {
       ...ownerAccount,
-      profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+      profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
       members: [
-        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+        { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
       ],
     };
     const user = userEvent.setup();
@@ -809,7 +809,7 @@ describe("Runner Icon editor", () => {
       id: "member-1",
       displayName: "Member",
       accentColor: "aqua",
-      runnerIcon: { head: 1, face: 2, body: 3, extra: 0 },
+      runnerIcon: { head: 1, face: 2, body: 3, flair: 0, background: 0 },
     },
   };
 
@@ -831,34 +831,45 @@ describe("Runner Icon editor", () => {
     return user;
   }
 
-  it("reaches the editor from Edit Profile and shows the four parts by name", async () => {
+  /**
+   * The editor's one promise: the icon and every option that could change it
+   * are on the same screen. Five parts of six options is thirty tiles, and
+   * all thirty are reachable without a carousel, a name, or a second view.
+   */
+  it("puts the whole library on one screen with the mark being built", async () => {
     await openEditor();
     expect(screen.getByRole("heading", { name: "Runner Icon" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Runner Icon preview" })).toBeInTheDocument();
-    // The current part of each row is named, not just drawn.
-    expect(screen.getByText("Visor")).toBeInTheDocument();
-    expect(screen.getByText("Single Slot")).toBeInTheDocument();
-    expect(screen.getByText("Center Tab")).toBeInTheDocument();
-    expect(screen.getByText("None")).toBeInTheDocument();
-    for (const part of ["head", "face", "body", "extra"]) {
-      expect(screen.getByRole("button", { name: `Previous ${part}` })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: `Next ${part}` })).toBeInTheDocument();
+    for (const part of ["Head", "Face", "Body", "Flair", "Backdrop"]) {
+      const group = screen.getByRole("group", { name: part });
+      expect(within(group).getAllByRole("button")).toHaveLength(6);
     }
+    // Shapes are the choice; nothing is labelled on screen with a part name.
+    expect(screen.queryByText("Twin Peak")).not.toBeInTheDocument();
+    expect(screen.queryByText("Chest Band")).not.toBeInTheDocument();
+    // The retired option is not one of the six offered for flair.
+    expect(
+      screen.queryByRole("button", { name: /Side Stripe/ }),
+    ).not.toBeInTheDocument();
   });
 
-  /**
-   * The whole point of the compact editor: four rows, not a gallery of every
-   * option. Twenty-four part buttons on screen would be the design this
-   * feature was specifically not supposed to become.
-   */
-  it("cycles parts in place rather than listing every option", async () => {
+  it("marks the runner's current option in every part", async () => {
     const user = await openEditor();
-    expect(screen.queryByText("Twin Peak")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Next head" }));
-    expect(screen.getByText("Center Step")).toBeInTheDocument();
-    expect(screen.queryByText("Visor")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Previous head" }));
-    expect(screen.getByText("Visor")).toBeInTheDocument();
+    const heads = screen.getByRole("group", { name: "Head" });
+    // The account opens on head 1, the Visor.
+    expect(within(heads).getByRole("button", { name: /^Visor/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(within(heads).getByRole("button", { name: /^Twin Peak/ }));
+    expect(within(heads).getByRole("button", { name: /^Twin Peak/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(heads).getByRole("button", { name: /^Visor/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
   it("saves the drafted icon, and only once it differs from the saved one", async () => {
@@ -868,19 +879,33 @@ describe("Runner Icon editor", () => {
     // Nothing changed yet, so there is nothing to save.
     expect(screen.getByRole("button", { name: "Save Icon" })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Next body" }));
+    const backdrops = screen.getByRole("group", { name: "Backdrop" });
+    await user.click(within(backdrops).getByRole("button", { name: /^Shield/ }));
     const save = screen.getByRole("button", { name: "Save Icon" });
     expect(save).toBeEnabled();
     await user.click(save);
-    expect(saveRunnerIcon).toHaveBeenCalledWith({ head: 1, face: 2, body: 4, extra: 0 });
+    expect(saveRunnerIcon).toHaveBeenCalledWith({
+      head: 1,
+      face: 2,
+      body: 3,
+      flair: 0,
+      background: 3,
+    });
   });
 
   it("draws a random but valid icon from Surprise Me", async () => {
     const user = await openEditor();
     await user.click(screen.getByRole("button", { name: /Surprise Me/ }));
-    // Whatever it landed on, it is a real named option in every row.
     expect(screen.getByRole("img", { name: "Runner Icon preview" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /^(Next|Previous) / })).toHaveLength(8);
+    // Whatever it landed on is a real option in every part, so every part
+    // still has exactly one of its six tiles pressed.
+    for (const part of ["Head", "Face", "Body", "Flair", "Backdrop"]) {
+      const group = screen.getByRole("group", { name: part });
+      const pressed = within(group)
+        .getAllByRole("button")
+        .filter((button) => button.getAttribute("aria-pressed") === "true");
+      expect(pressed).toHaveLength(1);
+    }
   });
 
   /**

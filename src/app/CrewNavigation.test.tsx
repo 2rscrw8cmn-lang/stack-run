@@ -8,8 +8,8 @@ import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "../crew/typ
 const action = vi.fn(async () => undefined);
 
 const members = [
-  { userId: "zack", displayName: "Zack", role: "owner" as const, joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
-  { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  { userId: "zack", displayName: "Zack", role: "owner" as const, joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  { userId: "drew", displayName: "Drew", role: "member" as const, joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
 ];
 
 const raceCrew: RaceCrew = {
@@ -25,7 +25,7 @@ const raceCrew: RaceCrew = {
 };
 
 const account: LoadedCrewAccount = {
-  profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   memberships: [{ crew: raceCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: raceCrew,
   role: "owner",

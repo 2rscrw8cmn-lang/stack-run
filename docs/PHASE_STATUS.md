@@ -427,20 +427,22 @@ UI-23 adds no Supabase/database migration, no new dependency, and no change to t
 
 A personal identity mark for each STACK account, authorized by D-074 and scoped
 in `docs/CURRENT_APPLICATION_STRUCTURE.md`. Runners get a small modular
-arcade/totem icon — Head, Face, Body, Extra — drawn in the member accent they
+arcade/totem icon — Head, Face, Body, Flair, Backdrop — drawn in the member
+accent they
 already have, editable at Settings → Account & Crew → Edit Profile → Runner
 Icon, and shown wherever a generic accent dot was previously doing the job of
 saying who someone is.
 
 What it adds:
 
-- `src/crew/runnerIcon.ts`: the part library, the `R1-…` code, tolerant
+- `src/crew/runnerIcon.ts`: the part library, the `R2-…` code, tolerant
   decoding, `runnerIconFromSeed` defaults and Surprise Me;
-- `RunnerIcon.tsx` (the mark) and `RunnerIconBuilder.tsx` (the compact editor),
-  plus a Runner Icon view under Edit Profile;
+- `RunnerIcon.tsx` (the mark) and `RunnerIconBuilder.tsx` (the one-screen
+  editor), plus a Runner Icon view under Edit Profile;
 - one column, `profiles.runner_icon`
-  (`supabase/migrations/20260813170000_runner_icon.sql`), self-only, nullable,
-  never backfilled;
+  (`supabase/migrations/20260813170000_runner_icon.sql`, widened for the
+  five-part code in `20260814120000_runner_icon_backdrop.sql`), self-only,
+  nullable, never backfilled;
 - runner icons in Crew member rows and roster, Recent Crew Runs, Today's Crew
   Activity, comparisons, Member Build cards and sheet, crew-safe Run Detail and
   the Crew Build legend, replacing `.crew-member-marker`.
@@ -467,6 +469,26 @@ A second pass integrated the icon into STACK rather than layering it on top:
 - Extras were pruned against a 26/32/42px legibility check: `Side Stripe`
   retired, `Bib Stripe` → a deeper `Band`, `Sweat`/`Bolt` thickened, `Spark`
   added. Retired options keep their index and keep rendering.
+
+A third pass redrew the library and rebuilt the editor, against owner review of
+the mark itself:
+
+- every part is now laid out in one square space against fixed landmarks — the
+  chassis at x 30–70, the face plate at y 38–64, the chassis-width top of every
+  body — so parts compose instead of merely coexisting. The landmarks are
+  asserted as geometry in `runnerIcon.test.ts`;
+- the figure reads as a small robot: a hat, a center eye section, a base, drawn
+  blocky and rectilinear for an arcade read a step short of literal 8-bit;
+- `Extra` is now `Flair`, and a flair option is either attached flush to a
+  landmark edge (`Ear Pods`, `Chest Band`) or clears the chassis by real space
+  (`Bolt`, `Spark`, `Orbit`). Nothing floats halfway, and a test enforces it;
+- a fifth part, the backdrop: five badge shapes plus none, drawn as a dark
+  field with the accent on its edge. The stored code becomes
+  `R2-<head>.<face>.<body>.<flair>.<background>`; `R1-` codes still decode with
+  no backdrop, nothing is backfilled, and the check constraint accepts both;
+- the editor is one screen — a pinned preview over five grids of six tiles,
+  each tile drawing its option in place on the runner being built with the rest
+  dimmed. No arrows, no option names on screen, six columns at 320px.
 
 Still owner review: a real-iPhone pass at 320px, 390px and desktop over the
 editor and the Crew surfaces the icon now appears on, and a two-account check

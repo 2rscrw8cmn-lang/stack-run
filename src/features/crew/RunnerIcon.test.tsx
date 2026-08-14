@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { RUNNER_ICON_SHAPES, type RunnerIcon as RunnerIconModel } from "../../crew/runnerIcon";
 import { RunnerIcon } from "./RunnerIcon";
 
-const icon: RunnerIconModel = { head: 1, face: 3, body: 5, extra: 2 };
+const icon: RunnerIconModel = { head: 1, face: 3, body: 5, flair: 2, background: 3 };
 
 function svgOf(container: HTMLElement): SVGSVGElement {
   const svg = container.querySelector("svg");
@@ -40,32 +40,52 @@ describe("RunnerIcon", () => {
     expect(svgOf(container)).toHaveAttribute("data-member-color", "orchid");
   });
 
-  it("draws every part, with the extra kept off the accent-colored plates", () => {
+  /**
+   * Three tones, three jobs: the chassis is the runner's color, flair is
+   * applied hardware in the mark tone, and the backdrop is a dark field
+   * wearing the accent on its edge. Mixing them is how an icon stops reading
+   * as a figure standing on a badge.
+   */
+  it("draws every part, with flair and the backdrop off the accent-colored plates", () => {
     const { container } = render(<RunnerIcon icon={icon} accent="aqua" />);
     const svg = svgOf(container);
-    for (const part of ["head", "face", "body", "extra"]) {
+    for (const part of ["background", "head", "face", "body", "flair"]) {
       expect(svg.querySelector(`.runner-icon__part--${part}`)).not.toBeNull();
     }
-    // Bolt is an `extra`, so it renders as a mark rather than another plate.
-    const extra = svg.querySelector(".runner-icon__part--extra");
-    expect(extra?.querySelector(".runner-icon__mark")).not.toBeNull();
-    expect(extra?.querySelector(".runner-icon__plate")).toBeNull();
-    // Single Slot punches one hole through the face plate.
+    const flair = svg.querySelector(".runner-icon__part--flair");
+    expect(flair?.querySelector(".runner-icon__mark")).not.toBeNull();
+    expect(flair?.querySelector(".runner-icon__plate")).toBeNull();
+    const background = svg.querySelector(".runner-icon__part--background");
+    expect(background?.querySelector(".runner-icon__field")).not.toBeNull();
+    expect(background?.querySelector(".runner-icon__plate")).toBeNull();
+    // Bot Eyes punches two sockets through the face plate and lights each one.
     const face = svg.querySelector(".runner-icon__part--face");
-    expect(face?.querySelectorAll(".runner-icon__cut")).toHaveLength(1);
+    expect(face?.querySelectorAll(".runner-icon__cut")).toHaveLength(2);
+    expect(face?.querySelectorAll(".runner-icon__pip")).toHaveLength(2);
   });
 
-  it("scales on its own aspect ratio rather than being squashed into a square", () => {
+  /** The backdrop is a badge, so the box it is drawn in is square. */
+  it("draws in a square box at the size it is asked for", () => {
     const { container } = render(<RunnerIcon icon={icon} size={90} />);
     const svg = svgOf(container);
     expect(svg).toHaveAttribute("height", "90");
-    expect(svg).toHaveAttribute("width", "72");
+    expect(svg).toHaveAttribute("width", "90");
+  });
+
+  /** The runner is painted on the backdrop, never under it. */
+  it("puts the backdrop behind the runner", () => {
+    const { container } = render(<RunnerIcon icon={icon} />);
+    const parts = Array.from(svgOf(container).querySelectorAll("g")).map(
+      (group) => group.getAttribute("class"),
+    );
+    expect(parts[0]).toContain("runner-icon__part--background");
+    expect(parts[parts.length - 1]).toContain("runner-icon__part--flair");
   });
 
   /** An icon saved against a later library must still draw, not crash. */
   it("degrades an option this client does not have to a drawable one", () => {
     const { container } = render(
-      <RunnerIcon icon={{ head: 99, face: 99, body: 99, extra: 99 }} />,
+      <RunnerIcon icon={{ head: 99, face: 99, body: 99, flair: 99, background: 0 }} />,
     );
     const svg = svgOf(container);
     const firstHead = RUNNER_ICON_SHAPES.head[0];
@@ -75,9 +95,12 @@ describe("RunnerIcon", () => {
     );
   });
 
-  it("renders the empty extra without drawing anything", () => {
-    const { container } = render(<RunnerIcon icon={{ ...icon, extra: 0 }} />);
-    const extra = svgOf(container).querySelector(".runner-icon__part--extra");
-    expect(extra?.children).toHaveLength(0);
+  it("renders the empty flair and backdrop without drawing anything", () => {
+    const { container } = render(
+      <RunnerIcon icon={{ ...icon, flair: 0, background: 0 }} />,
+    );
+    const svg = svgOf(container);
+    expect(svg.querySelector(".runner-icon__part--flair")?.children).toHaveLength(0);
+    expect(svg.querySelector(".runner-icon__part--background")?.children).toHaveLength(0);
   });
 });
