@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   encodeCrewEmblem,
   resolveCrewEmblem,
@@ -42,10 +41,13 @@ export async function resolveInvitePreview(token: string | null): Promise<Invite
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return null;
-  // Vercel invokes these files on its Node runtime. Use Node's explicit crypto
-  // API rather than assuming the runtime exposes Web Crypto as a global.
-  const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
   try {
+    // Vercel's current Node runtime exposes Web Crypto, while browser code uses
+    // the same standard API. Keep every runtime-dependent operation inside the
+    // safe preview boundary: an unavailable preview must not turn a valid
+    // capability link into a platform 500.
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const tokenHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
     const response = await fetch(`${url.replace(/\/$/, "")}/rest/v1/rpc/preview_crew_invite`, {
       method: "POST",
       headers: {
