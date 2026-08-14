@@ -111,19 +111,25 @@ interface CrewScreenProps {
   today?: string;
 }
 
+// Consistency and Run Days used to drop their supporting fact onto a second
+// stacked line ("14 / 16" / "of 28 days" under the headline value), which
+// made those two metrics' rows taller than Weekly Miles/Longest Run/Miles
+// Built — a single value with nothing below it. `detail` now reads on the
+// same line as `value` (see `.crew-comparison__reading`), so every metric's
+// row keeps identical height and the bars land at the same baseline.
 function formattedComparison(metric: ComparisonMetric, summary: ComparisonSummary | null) {
   const value = comparisonValue(metric, summary);
   if (value === null || !summary) return { value: "—", detail: null };
   if (metric === "consistency") {
     return {
       value: `${Math.round(value * 100)}%`,
-      detail: `${summary.consistencyCompleted} / ${summary.consistencyDue}`,
+      detail: `${summary.consistencyCompleted}/${summary.consistencyDue}`,
     };
   }
   if (metric === "run-days") {
     return {
       value: `${value}`,
-      detail: `of ${RUN_DAYS_WINDOW} days`,
+      detail: `${RUN_DAYS_WINDOW}D`,
     };
   }
   return {
@@ -606,7 +612,9 @@ export function CrewScreen({
                     </span>
                     <span className="crew-comparison__reading">
                       <span className="data-value">{formatted.value}</span>
-                      {formatted.detail && <span className="machine-label">{formatted.detail}</span>}
+                      {formatted.detail && (
+                        <span className="machine-label">· {formatted.detail}</span>
+                      )}
                     </span>
                   </div>
                   <span
@@ -693,27 +701,27 @@ export function CrewScreen({
               >
                 <button
                   type="button"
-                  className="crew-build-card technical-grid"
+                  className="crew-build-card"
                   data-you={isYou || undefined}
                   aria-label={`Open ${member.displayName}'s Build`}
                   onClick={() => setSelectedMemberId(member.userId)}
                 >
-                  <span className="crew-build-card__heading">
-                    <span className="crew-build-card__name">
-                      <RunnerIcon icon={member.runnerIcon} size={28} />
-                      <span>{member.displayName}</span>
-                      {isYou && <span className="crew-build-card__you machine-label">You</span>}
-                    </span>
+                  <span className="crew-build-card__name">
+                    <RunnerIcon icon={member.runnerIcon} size={24} />
+                    <span>{member.displayName}</span>
+                    {isYou && <span className="crew-build-card__you machine-label">You</span>}
+                  </span>
+                  <CrewMiniBuild model={model} />
+                  <span className="crew-build-card__context machine-label">
                     <span className="crew-build-card__miles data-value">
                       {formatMilesBuilt(model.totalMiles)} MI <span>BUILT</span>
                     </span>
+                    {model.sourceRunCount > 0 && (
+                      <span className="crew-build-card__blocks">
+                        {model.sourceRunCount} {model.sourceRunCount === 1 ? "block" : "blocks"}
+                      </span>
+                    )}
                   </span>
-                  <CrewMiniBuild model={model} />
-                  {model.sourceRunCount > 0 && (
-                    <span className="crew-build-card__context machine-label">
-                      {model.sourceRunCount} {model.sourceRunCount === 1 ? "block" : "blocks"}
-                    </span>
-                  )}
                 </button>
               </li>
             );
