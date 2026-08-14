@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     user,
     client,
     loadCrewAccount: vi.fn(),
+    createCrewInvite: vi.fn(async () => ({ url: "https://stack.test/#join=token", expiresAt: "2026-08-28T00:00:00Z" })),
     updateCrew: vi.fn(async () => undefined),
     deleteCrew: vi.fn(async () => undefined),
     loadCrewDashboard: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock("./supabaseClient", () => ({
 vi.mock("./crewService", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./crewService")>()),
   loadCrewAccount: mocks.loadCrewAccount,
+  createCrewInvite: mocks.createCrewInvite,
   updateCrew: mocks.updateCrew,
   deleteCrew: mocks.deleteCrew,
 }));
@@ -105,6 +107,14 @@ const memberAccount: LoadedCrewAccount = {
   role: "member",
   members: [
     { userId: "owner-1", displayName: "Former Owner", role: "member", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  ],
+};
+
+const fullOwnerAccount: LoadedCrewAccount = {
+  ...ownerAccount,
+  members: [
+    ...ownerAccount.members,
+    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 1, face: 2, body: 3, extra: 4 } },
   ],
 };
 
@@ -260,6 +270,30 @@ describe("Race Crew owner lifecycle", () => {
     await waitFor(() => expect(result.current.account?.crew).toBeNull());
     expect(result.current.status).toBe("signed-in");
     expect(result.current.crewData).toBeNull();
+  });
+
+  it("keeps the full roster when a pre-invite foreground refresh resolves last", async () => {
+    let resolveForeground: ((account: LoadedCrewAccount) => void) | undefined;
+    const foreground = new Promise<LoadedCrewAccount>((resolve) => {
+      resolveForeground = resolve;
+    });
+    mocks.loadCrewAccount
+      .mockResolvedValueOnce(fullOwnerAccount)
+      .mockReturnValueOnce(foreground)
+      .mockResolvedValueOnce(fullOwnerAccount);
+
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.members).toHaveLength(2));
+
+    act(() => window.dispatchEvent(new Event("focus")));
+    await act(async () => {
+      await result.current.createInvite();
+    });
+    resolveForeground?.(ownerAccount);
+
+    await waitFor(() => expect(result.current.account?.members).toHaveLength(2));
+    expect(result.current.account?.members.map((member) => member.userId)).toEqual(["owner-1", "member-1"]);
+    expect(mocks.createCrewInvite).toHaveBeenCalledWith(mocks.client, "crew-1");
   });
 });
 

@@ -158,6 +158,12 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const [crewBuildPlacementPending, setCrewBuildPlacementPending] = useState(false);
   const [crewBuildPlacementError, setCrewBuildPlacementError] = useState<string | null>(null);
   const latest = useRef({ appState, user, account });
+  /**
+   * Foreground events can arrive while an explicit Crew mutation is reloading
+   * the roster. A response started before that mutation must never replace the
+   * post-mutation account when it eventually resolves.
+   */
+  const accountMutationEpoch = useRef(0);
   /** Freshness is per crew: each one owns its Build window and its own sync. */
   const lastProjection = useRef(new Map<string, { fingerprint: string; syncedAt: number }>());
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
@@ -184,10 +190,18 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const reloadAccount = useCallback(async (
     nextUser: User,
     preferredCrewId?: string,
+    source: "foreground" | "mutation" | "normal" = "normal",
   ): Promise<void> => {
     if (!availability.configured) return;
+    const mutationEpoch = source === "mutation"
+      ? ++accountMutationEpoch.current
+      : accountMutationEpoch.current;
     const preferred = preferredCrewId ?? loadActiveCrewId(nextUser.id) ?? undefined;
     const loaded = await loadCrewAccount(availability.client, nextUser, preferred);
+    // A focus/visibility request that began before an explicit mutation may
+    // contain an older or incomplete roster. The mutation reload is canonical.
+    if (source === "foreground" && mutationEpoch !== accountMutationEpoch.current) return;
+    if (latest.current.user && latest.current.user.id !== nextUser.id) return;
     // Remember what actually resolved, so a crew that was left, deleted or
     // never joined stops being asked for on the next load.
     if (loaded.crew && loaded.crew.id !== preferred) {
@@ -476,11 +490,11 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (!availability.configured || !account?.crew || !user) return;
     const refreshMembership = () => {
       if (document.visibilityState === "hidden") return;
-      void loadCrewAccount(availability.client, user, account.crew?.id)
-        .then((loaded) => {
-          setAccount(loaded);
-          setStatus("signed-in");
-          if (!loaded.crew) resetCrewClientState();
+      const current = latest.current;
+      if (!current.user || !current.account?.crew) return;
+      void reloadAccount(current.user, current.account.crew.id, "foreground")
+        .then(() => {
+          if (!latest.current.account?.crew) resetCrewClientState();
         })
         .catch((reason) => setError(messageOf(reason)));
     };
@@ -490,7 +504,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       window.removeEventListener("focus", refreshMembership);
       document.removeEventListener("visibilitychange", refreshMembership);
     };
-  }, [account?.crew, availability, resetCrewClientState, user]);
+  }, [account?.crew, availability, reloadAccount, resetCrewClientState, user]);
 
   async function operate(action: () => Promise<void>, success?: string): Promise<void> {
     setBusy(true);
@@ -757,9 +771,12 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }, "Crew deleted."),
     createInvite: () => operate(async () => {
       if (!availability.configured || !account?.crew) return;
-      const created = await createCrewInvite(availability.client, account.crew.id);
+      const crewId = account.crew.id;
+      const created = await createCrewInvite(availability.client, crewId);
       setLatestInviteUrl(created.url);
-      if (user) await reloadAccount(user);
+      // Creating an invite is roster-neutral. Pin the reload to this Crew so a
+      // saved preference or a simultaneous foreground event cannot switch it.
+      if (user) await reloadAccount(user, crewId, "mutation");
     }, "Private invite created. It expires in 14 days."),
     revokeInvite: (inviteId) => operate(async () => {
       if (!availability.configured) return;

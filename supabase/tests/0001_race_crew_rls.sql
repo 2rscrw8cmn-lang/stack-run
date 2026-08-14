@@ -128,6 +128,32 @@ $$;
 
 -- Removing a member deletes their Crew A projections and immediately revokes access.
 set local request.jwt.claim.sub = '10000000-0000-0000-0000-000000000001';
+do $$
+declare
+  before_members uuid[];
+  after_members uuid[];
+begin
+  select array_agg(user_id order by user_id) into before_members
+  from public.crew_members
+  where crew_id = (select crew_id from race_crew_test_ids where label = 'a');
+
+  perform public.create_crew_invite(
+    (select crew_id from race_crew_test_ids where label = 'a'),
+    repeat('c', 64)
+  );
+  perform public.create_crew_invite(
+    (select crew_id from race_crew_test_ids where label = 'a'),
+    repeat('d', 64)
+  );
+
+  select array_agg(user_id order by user_id) into after_members
+  from public.crew_members
+  where crew_id = (select crew_id from race_crew_test_ids where label = 'a');
+  if before_members is distinct from after_members then
+    raise exception 'Invite integrity failure: creating invites changed crew membership';
+  end if;
+end;
+$$;
 select public.remove_crew_member(
   (select crew_id from race_crew_test_ids where label = 'a'),
   '10000000-0000-0000-0000-000000000002'
