@@ -10,51 +10,79 @@ Crews had emblems and runners had colors; runners had no mark of their own, so
 every compact Crew identity surface fell back to a 7px accent dot. `Runner
 Icons` replace that dot with the person. D-074 records the decision.
 
-`src/crew/runnerIcon.ts` owns the model: six heads, six faces, six bodies and
-six extras, and the `R1-<head>.<face>.<body>.<extra>` code that
+`src/crew/runnerIcon.ts` owns the model: six heads, six faces, six bodies, six
+flair options and six backdrops, and the
+`R2-<head>.<face>.<body>.<flair>.<background>` code that
 `profiles.runner_icon` stores. It holds no color at all — the runner's color is
 `profiles.accent_color`, so an icon and the Crew Build blocks that runner owns
 cannot disagree. Decoding is deliberately tolerant in the same way emblems are:
-an index this client does not have degrades to that part's first option, and
+an index this client does not have degrades to that part's first option, the
+four-part `R1-` code that predates backdrops still decodes (keeping its four
+choices, taking the empty backdrop for the one its owner never made), and
 `resolveRunnerIcon` falls back to `runnerIconFromSeed(userId)`, a stable
 derivation that is why accounts predating this feature needed no backfill, are
 never blocked on setup, and look the same in every crewmate's roster.
-Seed-derived icons deliberately leave `extra` empty — an icon nobody chose does
-not also wear a bolt.
+Seed-derived icons deliberately leave `flair` and `background` empty — an icon
+nobody chose does not also wear a bolt or stand on a badge.
+
+**The mark is a small robot, and it is drawn against landmarks rather than by
+eye.** One square coordinate space holds every part, with fixed edges the
+library composes against: the chassis runs x 30–70, the head meets the face at
+y 34, the face plate is exactly y 38–64, and every body's first twelve units
+are the full chassis width. Those edges are the whole reason one chest band
+lands identically on six different bodies and pods sit flush on the face plate
+under any head, so `runnerIcon.test.ts` asserts them as geometry — a path
+nudged two units still looks fine alone and is exactly the change that makes
+flair look pasted on. The drawing is deliberately blocky and rectilinear: an
+arcade-console read, a step short of literal 8-bit.
 
 The library is small on purpose. Every part has to survive at the 26–34px the
 Crew surfaces actually use, so there are six options each and no expansion for
-quantity; the six heads are six different silhouettes (boxy crown, bare flared
-brim, tall spike, twin peaks, thin band, one-sided wedge) rather than one
+quantity; the six heads are six different silhouettes (boxy cap, flared visor,
+antenna mast, twin peaks, side lamps, one-sided wedge) rather than one
 silhouette with six trims, because two heads differing only in trim are the same
-head at that size. Every face is the same plate with different cut-outs, so the
-part carrying the accent color stays constant and the cut pattern does the
-identifying. Extras are the one part drawn in a non-accent tone
-(`--runner-icon-mark`), which is what makes a bolt read as applied hardware
-rather than more of the runner's color; they are honestly a large-size detail
-and are never what distinguishes two runners on their own.
+head at that size. Every face is the same beveled plate with different cut-outs
+— slots, a visor band, one big lit eye, two lit eyes, a scan chevron, a grille —
+so the part carrying the accent color stays constant and the cut pattern does
+the identifying. A cut is drawn in ink rather than punched through, and a `pip`
+sets the accent back inside it, which is what makes a socket read as a lit eye.
 
-The Extras set is held to the same size bar as everything else, checked by
-rendering it at 26/32/42px rather than by eye at full size. `Side Stripe` is
-retired — at real size a thin vertical rule at the silhouette's edge was
-indistinguishable from the icon's own outline. `Bib Stripe` became `Band`, deep
-enough to register as a band instead of a 5px pinstripe that vanished. `Sweat`
-and `Bolt` were thickened, and a `Spark` was added with a deliberately
-thick waist, because a slender four-point sparkle looked right at 90px and
-disappeared at 26px. A retired option keeps its index and keeps decoding and
+**Flair is either on the runner or off it, never halfway.** This is the part
+the previous library got wrong: pieces that neither touched the figure nor
+cleared it. An attached option (`Ear Pods`, `Chest Band`) is flush against a
+landmark edge; a detached one (`Bolt`, `Spark`, `Orbit`) clears the chassis by
+real space, so it reads as a mark beside the runner rather than a chip out of
+their shoulder. Flair is also the one part drawn in a non-accent tone
+(`--runner-icon-mark`), which is what makes a bolt read as applied hardware
+rather than more of the runner's color. `Side Stripe` is retired — at real size
+a thin vertical rule at the silhouette's edge was indistinguishable from the
+icon's own outline. A retired option keeps its index and keeps decoding and
 drawing — `selectableRunnerIconIndices` is what the editor and Surprise Me
 walk — so no already-saved icon ever changes meaning.
 
-`RunnerIcon.tsx` draws the mark at any size from one shared coordinate space,
+**A backdrop is a badge plate behind the runner**: a dark field
+(`--runner-icon-field`) with the accent on its *edge*, because a solid accent
+shape would swallow the accent-colored runner standing on it. Five shapes plus
+none, all of them wide enough at the middle to hold the widest head, the widest
+foot and the furthest-out flair; that constraint is why there is no
+needle-pointed diamond in the set.
+
+`RunnerIcon.tsx` draws the mark at any size from one shared square coordinate
+space, paints the backdrop behind the runner and flair in front of everything,
 and sets `data-member-color` on the SVG itself rather than inheriting it, so an
 icon lifted out of a member-colored row is still the right color. It is
 decorative by default and only exposes itself as an image when given a label —
 which in practice is the editor preview alone, because everywhere else the
-runner's name is already beside it. `RunnerIconBuilder.tsx` is the editor: a
-sticky live preview, four compact cycling rows with the current part named, and
-Surprise Me. It is sized for 320px first — four fixed columns and one flexible
-name column leave about 86px for the part name, which every name in the library
-clears on one line.
+runner's name is already beside it.
+
+`RunnerIconBuilder.tsx` is the editor, and it is one screen: a preview pinned
+above five grids of six tiles, plus Surprise Me. Choosing a part is a
+comparison, and the arrows-and-labels version it replaces made the runner hold
+six shapes in their head and read a name to find out what they were looking at.
+Each tile draws its option in place on the runner being built with the rest of
+the figure dimmed, cropped to that part's own window, so a choice is judged in
+combination rather than as an isolated shape in a box. Nothing is named on
+screen — names exist for assistive technology only. Six columns hold at 320px.
 
 Editing lives at Settings → Account & Crew → Edit Profile → Runner Icon, one
 level below the profile panel, reached from a row that previews the current

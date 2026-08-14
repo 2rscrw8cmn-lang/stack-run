@@ -86,6 +86,12 @@
    */
   --runner-icon-ink: #04090d;
   --runner-icon-mark: #f6f7f8;
+  /* The backdrop plate: dark enough that an accent-colored runner still
+     stands off it, with the accent carried on its edge instead of its fill. */
+  --runner-icon-field: #0b131a;
+  /* Context in an editor thumbnail: present enough to read as the rest of the
+     runner, quiet enough that the option being chosen is the bright thing. */
+  --runner-icon-ghost: #2a3640;
 
   --radius-sm: 6px;
   --radius-md: 10px;

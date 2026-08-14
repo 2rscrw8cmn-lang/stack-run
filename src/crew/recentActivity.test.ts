@@ -8,7 +8,7 @@ function run(id: string, userId: string, localDate: string): CrewSharedRun {
     userId,
     displayName: userId,
     accentColor: null,
-    runnerIcon: { head: 0, face: 0, body: 0, extra: 0 },
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
     localDate,
     activityType: "easy",
     distanceMiles: 3.2,

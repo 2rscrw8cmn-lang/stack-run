@@ -80,12 +80,12 @@ const ownerCrew: RaceCrew = {
 };
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: ownerCrew,
   role: "owner",
   members: [
-    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+    { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   ],
   invites: [],
   takenAccentColors: [],
@@ -103,10 +103,10 @@ const noCrewAccount: LoadedCrewAccount = {
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "owner-1", displayName: "Former Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+  profile: { id: "owner-1", displayName: "Former Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   role: "member",
   members: [
-    { userId: "owner-1", displayName: "Former Owner", role: "member", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, extra: 0 } },
+    { userId: "owner-1", displayName: "Former Owner", role: "member", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
   ],
 };
 
@@ -114,7 +114,7 @@ const fullOwnerAccount: LoadedCrewAccount = {
   ...ownerAccount,
   members: [
     ...ownerAccount.members,
-    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 1, face: 2, body: 3, extra: 4 } },
+    { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: null, runnerIcon: { head: 1, face: 2, body: 3, flair: 4, background: 0 } },
   ],
 };
 
