@@ -9,6 +9,8 @@ export interface CrewProfile {
   accentColor: CrewMemberAccent | null;
   /** Always renderable: an account with no saved icon gets its stable derived one. */
   runnerIcon: RunnerIcon;
+  /** Props on the runner's own shared runs created after this are unread. */
+  propsSeenAt: string;
 }
 
 /** `race`: the original race-centered Crew. `club`: an ongoing Run Club with no race required. */
@@ -171,6 +173,20 @@ export interface CrewBuildRun {
   crewBuildPlacedAt: string | null;
 }
 
+/** One teammate's Props on one of the viewer's own shared runs. */
+export interface CrewPropNotification {
+  id: string;
+  runId: string;
+  runLocalDate: string;
+  runActivityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  runDistanceMiles: number;
+  actorUserId: string;
+  actorDisplayName: string;
+  actorAccentColor: CrewMemberAccent | null;
+  actorRunnerIcon: RunnerIcon;
+  createdAt: string;
+}
+
 export interface CrewDashboardData {
   members: CrewMember[];
   summaries: CrewMemberSummary[];
@@ -181,5 +197,7 @@ export interface CrewDashboardData {
   /** True when the safety ceiling was reached and older shared runs were not read. */
   sharedRunsTruncated: boolean;
   propsAvailable: boolean;
+  /** Props on the viewer's own runs only, newest first. */
+  propNotifications: CrewPropNotification[];
   loadedAt: string;
 }

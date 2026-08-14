@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => {
     createCrewInvite: vi.fn(async () => ({ url: "https://stack.test/#join=token", expiresAt: "2026-08-28T00:00:00Z" })),
     updateCrew: vi.fn(async () => undefined),
     deleteCrew: vi.fn(async () => undefined),
+    updatePropsSeenAt: vi.fn(async () => undefined),
     loadCrewDashboard: vi.fn(),
     syncCrewProjection: vi.fn(async () => undefined),
     deleteCrewRunProjection: vi.fn(async () => undefined),
@@ -46,6 +47,7 @@ vi.mock("./crewService", async (importOriginal) => ({
   createCrewInvite: mocks.createCrewInvite,
   updateCrew: mocks.updateCrew,
   deleteCrew: mocks.deleteCrew,
+  updatePropsSeenAt: mocks.updatePropsSeenAt,
 }));
 
 vi.mock("./dashboard", async (importOriginal) => ({
@@ -80,7 +82,13 @@ const ownerCrew: RaceCrew = {
 };
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  profile: {
+    id: "owner-1",
+    displayName: "Owner",
+    accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+    propsSeenAt: "2026-08-11T00:00:00Z",
+  },
   memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: ownerCrew,
   role: "owner",
@@ -103,7 +111,13 @@ const noCrewAccount: LoadedCrewAccount = {
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "owner-1", displayName: "Former Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  profile: {
+    id: "owner-1",
+    displayName: "Former Owner",
+    accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+    propsSeenAt: "2026-08-11T00:00:00Z",
+  },
   role: "member",
   members: [
     { userId: "owner-1", displayName: "Former Owner", role: "member", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
@@ -127,6 +141,7 @@ const dashboard: CrewDashboardData = {
   sharedRunsAvailable: true,
   sharedRunsTruncated: false,
   propsAvailable: true,
+  propNotifications: [],
   loadedAt: "2026-08-11T12:00:00Z",
 };
 
@@ -294,6 +309,41 @@ describe("Race Crew owner lifecycle", () => {
     await waitFor(() => expect(result.current.account?.members).toHaveLength(2));
     expect(result.current.account?.members.map((member) => member.userId)).toEqual(["owner-1", "member-1"]);
     expect(mocks.createCrewInvite).toHaveBeenCalledWith(mocks.client, "crew-1");
+  });
+
+  it("surfaces unread Props and clears them on markPropsSeen", async () => {
+    mocks.loadCrewAccount.mockResolvedValue(ownerAccount);
+    mocks.loadCrewDashboard.mockResolvedValue({
+      ...dashboard,
+      propNotifications: [
+        {
+          id: "run-1:teammate-1",
+          runId: "run-1",
+          runLocalDate: "2026-08-11",
+          runActivityType: "long",
+          runDistanceMiles: 6.1,
+          actorUserId: "teammate-1",
+          actorDisplayName: "Jamie",
+          actorAccentColor: null,
+          actorRunnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+          createdAt: "2026-08-11T13:00:00Z",
+        },
+      ],
+    });
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.crew?.id).toBe("crew-1"));
+    await act(async () => {
+      await result.current.refreshCrewData(true);
+    });
+    expect(result.current.crewData?.propNotifications).toHaveLength(1);
+    expect(result.current.unreadPropNotifications).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.markPropsSeen();
+    });
+
+    expect(mocks.updatePropsSeenAt).toHaveBeenCalledWith(mocks.client, "owner-1", expect.any(String));
+    expect(result.current.unreadPropNotifications).toHaveLength(0);
   });
 });
 

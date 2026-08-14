@@ -175,9 +175,14 @@ export function AppShell({
               <button
                 type="button"
                 className="app-shell__runner"
+                data-unread={raceCrew.unreadPropNotifications.length > 0 || undefined}
                 aria-haspopup="dialog"
                 aria-expanded={accountCrewOpen}
-                aria-label={`${runnerProfile.displayName}. Account & Crew.`}
+                aria-label={
+                  raceCrew.unreadPropNotifications.length > 0
+                    ? `${runnerProfile.displayName}. Account & Crew. New Props received.`
+                    : `${runnerProfile.displayName}. Account & Crew.`
+                }
                 onClick={() => openAccountCrew(false)}
               >
                 <RunnerIcon

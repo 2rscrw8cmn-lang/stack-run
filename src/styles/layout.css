@@ -40,6 +40,7 @@
   gap: var(--space-1);
 }
 .app-shell__runner {
+  position: relative;
   min-width: 44px;
   min-height: 44px;
   display: grid;
@@ -50,6 +51,18 @@
   cursor: pointer;
 }
 .app-shell__runner:hover { filter: brightness(1.12); }
+
+/* An unread Prop rings the runner's own icon rather than adding a badge —
+   the mark itself is the notification, not a decoration on top of it. */
+.app-shell__runner[data-unread="true"]::after {
+  content: "";
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--danger);
+  border-radius: 50%;
+  pointer-events: none;
+}
 
 /* The gear's 44px target is larger than the gear; pull the padding back off
    the edge so the icon sits where the eye expects it, not the box. */

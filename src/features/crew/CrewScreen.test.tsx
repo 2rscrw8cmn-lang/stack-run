@@ -128,6 +128,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
     sharedRunsAvailable: true,
     sharedRunsTruncated: false,
     propsAvailable: true,
+    propNotifications: [],
     loadedAt: "2026-08-10T14:00:00Z",
     ...overrides,
     runs,
@@ -183,7 +184,13 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     message: null,
     email: "zack@example.test",
     account: {
-      profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+      profile: {
+        id: "zack",
+        displayName: "Zack",
+        accentColor: null,
+        runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+        propsSeenAt: "2026-08-10T14:00:00Z",
+      },
       memberships: [{ crew: crewOne, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
       crew: crewOne,
       role: "owner",
@@ -199,6 +206,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     crewDataError: null,
     propsPendingRunIds: [],
     propsErrors: {},
+    unreadPropNotifications: [],
     crewBuildPlacementPending: false,
     crewBuildPlacementError: null,
     createAccount: action,
@@ -219,6 +227,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     deleteRunContribution: action,
     refreshCrewData: action,
     toggleProps: action,
+    markPropsSeen: action,
     placeCrewBuildBlock: vi.fn(async () => true),
     clearCrewBuildPlacementError: vi.fn(),
     clearMessage: vi.fn(),
@@ -242,7 +251,13 @@ describe("Crew destination states", () => {
   it("shows the intentional no-crew state", () => {
     const noCrew = controller({
       account: {
-        profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+        profile: {
+          id: "zack",
+          displayName: "Zack",
+          accentColor: null,
+          runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+          propsSeenAt: "2026-08-10T14:00:00Z",
+        },
         memberships: [],
         crew: null,
         role: null,

@@ -20,10 +20,12 @@ import {
   updateAccentColor,
   updateCrew as updateCrewRecord,
   updateDisplayName,
+  updatePropsSeenAt,
   updateRunnerIcon,
   type CrewDetailsInput,
 } from "./crewService";
 import type { CrewMemberAccent } from "./memberAccent";
+import { unreadPropNotifications } from "./notifications";
 import type { RunnerIcon } from "./runnerIcon";
 import {
   captureInviteFromLocation,
@@ -63,6 +65,7 @@ import {
 import type {
   CrewDashboardData,
   CrewInvitePreview,
+  CrewPropNotification,
   LoadedCrewAccount,
 } from "./types";
 
@@ -100,6 +103,8 @@ export interface RaceCrewController {
   crewDataError: string | null;
   propsPendingRunIds: readonly string[];
   propsErrors: Readonly<Record<string, string>>;
+  /** Props on the viewer's own runs since they last opened a surface that shows them. */
+  unreadPropNotifications: readonly CrewPropNotification[];
   crewBuildPlacementPending: boolean;
   crewBuildPlacementError: string | null;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
@@ -121,6 +126,7 @@ export interface RaceCrewController {
   deleteRunContribution: (localRunId: string) => Promise<void>;
   refreshCrewData: (force?: boolean) => Promise<void>;
   toggleProps: (runId: string) => Promise<void>;
+  markPropsSeen: () => Promise<void>;
   placeCrewBuildBlock: (runId: string, row: number, columnStart: number) => Promise<boolean>;
   clearCrewBuildPlacementError: () => void;
   clearMessage: () => void;
@@ -616,6 +622,26 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }
   }
 
+  const unread = account
+    ? unreadPropNotifications(crewData?.propNotifications ?? [], account.profile.propsSeenAt)
+    : [];
+
+  async function markPropsSeen(): Promise<void> {
+    if (!availability.configured || !user || unread.length === 0) return;
+    const seenAt = new Date().toISOString();
+    try {
+      await updatePropsSeenAt(availability.client, user.id, seenAt);
+      setAccount((current) =>
+        current
+          ? { ...current, profile: { ...current.profile, propsSeenAt: seenAt } }
+          : current,
+      );
+    } catch {
+      // Best-effort bookkeeping; the notification simply stays unread and
+      // this retries the next time a Props surface is opened.
+    }
+  }
+
   async function placeBlockInCrewBuild(
     runId: string,
     row: number,
@@ -677,6 +703,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     crewDataError,
     propsPendingRunIds,
     propsErrors,
+    unreadPropNotifications: unread,
     crewBuildPlacementPending,
     crewBuildPlacementError,
     createAccount: (input) => operate(async () => {
@@ -838,6 +865,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     deleteRunContribution,
     refreshCrewData,
     toggleProps,
+    markPropsSeen,
     placeCrewBuildBlock: placeBlockInCrewBuild,
     clearCrewBuildPlacementError: () => setCrewBuildPlacementError(null),
     clearMessage: () => {

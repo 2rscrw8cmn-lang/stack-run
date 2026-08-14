@@ -42,6 +42,7 @@ function dashboard(runs: CrewSharedRun[]): CrewDashboardData {
     sharedRunsAvailable: true,
     sharedRunsTruncated: false,
     propsAvailable: true,
+    propNotifications: [],
     loadedAt: "now",
   };
 }

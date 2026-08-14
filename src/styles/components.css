@@ -7603,6 +7603,53 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .today-crew-activity__list .crew-props__error { grid-column: 2 / -1; }
 .today-crew-activity > .button { justify-self: start; }
 
+.prop-notifications.section {
+  gap: 7px;
+  padding-top: 10px;
+  border-top-color: var(--border-strong);
+}
+.prop-notifications__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.prop-notifications__list > li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.prop-notifications__list > li:last-child {
+  border-bottom: 0;
+}
+.prop-notifications__body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.prop-notifications__body strong { font-weight: 700; }
+.prop-notifications__body .machine-label {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+.prop-notifications__unread {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  opacity: 0;
+}
+.prop-notifications__list > li[data-unread="true"] .prop-notifications__unread {
+  opacity: 1;
+}
+
 @media (max-width: 699px) {
   /* Narrow enough that roughly 1.5–1.8 cards show at once — the peeking
      next card is the affordance that this is a rail, not a full row. */

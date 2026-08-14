@@ -36,7 +36,7 @@ const CREW_COLUMNS =
   "id,owner_user_id,name,crew_type,race_name,race_date,race_distance_miles,build_start_date,emblem";
 
 /** Everything Crew is allowed to know about a person, and nothing else. */
-const PROFILE_COLUMNS = "id,display_name,accent_color,runner_icon";
+const PROFILE_COLUMNS = "id,display_name,accent_color,runner_icon,props_seen_at";
 
 export interface CrewDetailsInput {
   name: string;
@@ -150,6 +150,7 @@ function profileFrom(source: Row): CrewProfile {
     displayName: requiredString(source, "display_name"),
     accentColor: accentColorFrom(source.accent_color),
     runnerIcon: resolveRunnerIcon(source.runner_icon, id),
+    propsSeenAt: nullableString(source, "props_seen_at") ?? new Date(0).toISOString(),
   };
 }
 
@@ -415,6 +416,19 @@ export async function updateRunnerIcon(
   const result = await client
     .from("profiles")
     .update({ runner_icon: encodeRunnerIcon(runnerIcon) })
+    .eq("id", userId);
+  if (result.error) throw new Error(result.error.message);
+}
+
+/** Marks Props on the caller's own runs as seen, up to this moment. */
+export async function updatePropsSeenAt(
+  client: SupabaseClient,
+  userId: string,
+  seenAt: string,
+): Promise<void> {
+  const result = await client
+    .from("profiles")
+    .update({ props_seen_at: seenAt })
     .eq("id", userId);
   if (result.error) throw new Error(result.error.message);
 }
