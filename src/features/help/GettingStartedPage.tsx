@@ -5,7 +5,6 @@ import {
   CalendarDays,
   Check,
   CircleHelp,
-  Database,
   Footprints,
   KeyRound,
   LockKeyhole,
@@ -15,6 +14,7 @@ import {
   UsersRound,
   Watch,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { StackMark } from "../../components/shared/StackMark";
 import "./getting-started.css";
 
@@ -35,7 +35,7 @@ function DataChain({ apple }: { apple: boolean }) {
   );
 }
 
-function ChecklistItem({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
+function ChecklistItem({ number, title, children }: { number: string; title: string; children: ReactNode }) {
   return (
     <li className="getting-started__check-item">
       <span className="getting-started__check-number" aria-hidden="true">{number}</span>
@@ -47,7 +47,7 @@ function ChecklistItem({ number, title, children }: { number: string; title: str
   );
 }
 
-function AppDestination({ icon, name, question, children }: { icon: React.ReactNode; name: string; question: string; children: React.ReactNode }) {
+function AppDestination({ icon, name, question, children }: { icon: ReactNode; name: string; question: string; children: ReactNode }) {
   return (
     <li className="getting-started__destination">
       <span className="getting-started__destination-icon" aria-hidden="true">{icon}</span>
