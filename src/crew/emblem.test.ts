@@ -32,6 +32,7 @@ import {
 const emblem: CrewEmblem = {
   main: { shape: 4, color: 2 },
   secondary: { shape: 7, color: 0 },
+  secondaryTwo: { shape: 12, color: 6 },
   background: { shape: 3, color: 5 },
   outline: true,
 };
@@ -121,23 +122,33 @@ function everyShape(layer: CrewEmblemLayer): readonly { name: string; d: string 
 }
 
 describe("Crew emblem codes", () => {
-  it("round-trips all three layers and the ink style through the stored code", () => {
-    expect(encodeCrewEmblem(emblem)).toBe("E2-4.2-7.0-3.5-0");
+  it("round-trips every layer and the ink style through the stored code", () => {
+    expect(encodeCrewEmblem(emblem)).toBe("E2-4.2-7.0-3.5-0-12.6");
     expect(decodeCrewEmblem(encodeCrewEmblem(emblem))).toEqual(emblem);
 
     const clean = setCrewEmblemOutline(emblem, false);
-    expect(encodeCrewEmblem(clean)).toBe("E2-4.2-7.0-3.5-1");
+    expect(encodeCrewEmblem(clean)).toBe("E2-4.2-7.0-3.5-1-12.6");
     expect(decodeCrewEmblem(encodeCrewEmblem(clean))).toEqual(clean);
     expect(sameCrewEmblem(emblem, clean)).toBe(false);
   });
 
   /**
-   * Codes saved between the three-layer rebuild and the ink style have no
-   * trailing group. They are the inked emblems those crews designed, not
-   * emblems missing a decision.
+   * The code grows at its end, so each older generation still decodes to
+   * exactly what its crew designed: an absent group is a decision that did not
+   * exist to make, not a decision missing.
    */
-  it("reads a code with no ink style as the inked emblem it was", () => {
-    expect(decodeCrewEmblem("E2-4.2-7.0-3.5")).toEqual(emblem);
+  it("reads every older generation of code as what its crew designed", () => {
+    const oneAccent = setCrewEmblemShape(emblem, "secondaryTwo", 0);
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5-0")).toEqual({
+      ...oneAccent,
+      secondaryTwo: { shape: 0, color: 0 },
+    });
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5")).toEqual({
+      ...oneAccent,
+      secondaryTwo: { shape: 0, color: 0 },
+      outline: true,
+    });
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5-1")?.outline).toBe(false);
   });
 
   it("rejects anything that is not a three-layer emblem code", () => {
@@ -146,6 +157,10 @@ describe("Crew emblem codes", () => {
     expect(decodeCrewEmblem("E2-4.2-7.0")).toBeNull();
     expect(decodeCrewEmblem("E2-4.2-7.0-3.5-1.1")).toBeNull();
     expect(decodeCrewEmblem("E2-4.2-7.0-3.5-0-0")).toBeNull();
+    // A second accent with no style group ahead of it would read positionally
+    // as a style, so it is refused rather than quietly misread.
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5-12.6")).toBeNull();
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5-0-12.6-1.1")).toBeNull();
     expect(decodeCrewEmblem("E3-4.2-7.0-3.5")).toBeNull();
     expect(decodeCrewEmblem({ main: 1 })).toBeNull();
   });
@@ -166,19 +181,20 @@ describe("Crew emblem codes", () => {
    * option — which for the two optional layers is `None`.
    */
   it("degrades a future unknown index to a drawable one", () => {
-    expect(decodeCrewEmblem("E2-999.99-999.99-999.99-99")).toEqual({
+    expect(decodeCrewEmblem("E2-999.99-999.99-999.99-99-999.99")).toEqual({
       main: { shape: 0, color: 0 },
       secondary: { shape: 0, color: 0 },
+      secondaryTwo: { shape: 0, color: 0 },
       background: { shape: 0, color: 0 },
       // A style this client has never heard of draws as the inked emblem, so a
       // future style can never render as a broken current one.
       outline: true,
     });
-    expect(() => crewEmblemDrawing(decodeCrewEmblem("E2-999.0-999.0-999.0-9")!)).not.toThrow();
+    expect(() => crewEmblemDrawing(decodeCrewEmblem("E2-999.0-999.0-999.0-9-999.0")!)).not.toThrow();
   });
 
   it("prefers a saved emblem and falls back to the neutral default", () => {
-    expect(resolveCrewEmblem("E2-4.2-7.0-3.5-0")).toEqual(emblem);
+    expect(resolveCrewEmblem("E2-4.2-7.0-3.5-0-12.6")).toEqual(emblem);
     expect(resolveCrewEmblem(null)).toEqual(DEFAULT_CREW_EMBLEM);
     expect(resolveCrewEmblem("nonsense")).toEqual(DEFAULT_CREW_EMBLEM);
     expect(sameCrewEmblem(resolveCrewEmblem(undefined), DEFAULT_CREW_EMBLEM)).toBe(true);
@@ -285,13 +301,6 @@ describe("Crew emblem libraries", () => {
 });
 
 describe("Crew emblem drawing", () => {
-  it("paints the field first and the mark last", () => {
-    const parts = crewEmblemDrawing(emblem).map((operation) => operation.part);
-    expect(parts.indexOf("background")).toBeLessThan(parts.indexOf("secondary"));
-    expect(parts.indexOf("secondary")).toBeLessThan(parts.indexOf("main"));
-    expect(CREW_EMBLEM_DRAW_ORDER).toEqual(["background", "secondary", "main"]);
-  });
-
   /**
    * The drawing is the single description of a crew's mark: the React
    * component serialises it and the invite share image rasterises it, so a
@@ -312,11 +321,37 @@ describe("Crew emblem drawing", () => {
   });
 
   it("has nothing to draw for a layer set to None", () => {
-    const bare = { ...emblem, secondary: { shape: 0, color: 1 }, background: { shape: 0, color: 1 } };
+    const bare = {
+      ...emblem,
+      secondary: { shape: 0, color: 1 },
+      secondaryTwo: { shape: 0, color: 1 },
+      background: { shape: 0, color: 1 },
+    };
     const parts = crewEmblemDrawing(bare).map((operation) => operation.part);
     expect(parts).not.toContain("secondary");
+    expect(parts).not.toContain("secondaryTwo");
     expect(parts).not.toContain("background");
     expect(parts).toContain("main");
+  });
+
+  /**
+   * Both accents sit behind the mark, second over first, so a crew can add one
+   * without it ever costing them the symbol they picked.
+   */
+  it("paints the second accent over the first and both under the mark", () => {
+    const parts = crewEmblemDrawing(emblem).map((operation) => operation.part);
+    expect(parts.indexOf("secondary")).toBeLessThan(parts.indexOf("secondaryTwo"));
+    expect(parts.indexOf("secondaryTwo")).toBeLessThan(parts.indexOf("main"));
+    expect(CREW_EMBLEM_DRAW_ORDER).toEqual([
+      "background",
+      "secondary",
+      "secondaryTwo",
+      "main",
+    ]);
+  });
+
+  it("draws both accents from the one accent library", () => {
+    expect(CREW_EMBLEM_SHAPES.secondaryTwo).toBe(CREW_EMBLEM_SHAPES.secondary);
   });
 
   it("marks a cut-out shape so its holes stay holes", () => {
@@ -336,7 +371,7 @@ describe("Crew emblem drawing", () => {
    */
   it("drops the ink from the foreground layers when the outline is off", () => {
     const clean = crewEmblemDrawing(setCrewEmblemOutline(emblem, false));
-    for (const layer of ["main", "secondary"] as const) {
+    for (const layer of ["main", "secondary", "secondaryTwo"] as const) {
       const painted = clean.filter((operation) => operation.part === layer);
       expect(painted, layer).toHaveLength(1);
       expect(painted[0].stroke, layer).toBeUndefined();
@@ -369,7 +404,13 @@ describe("Crew emblem editing", () => {
     const changed = setCrewEmblemShape(emblem, "secondary", 3);
     expect(changed.secondary).toEqual({ shape: 3, color: 0 });
     expect(changed.main).toEqual(emblem.main);
+    expect(changed.secondaryTwo).toEqual(emblem.secondaryTwo);
     expect(changed.background).toEqual(emblem.background);
+
+    // The two accents are separate decisions drawn from one library.
+    const second = setCrewEmblemShape(emblem, "secondaryTwo", 3);
+    expect(second.secondaryTwo).toEqual({ shape: 3, color: 6 });
+    expect(second.secondary).toEqual(emblem.secondary);
   });
 
   it("changes one layer's colour and leaves the others alone", () => {
@@ -434,8 +475,10 @@ describe("Surprise Me", () => {
       expect(
         crewEmblemColorContrast(candidate.main.color, candidate.background.color),
       ).toBeGreaterThanOrEqual(1.6);
-      expect(candidate.secondary.color).not.toBe(candidate.main.color);
-      expect(candidate.secondary.color).not.toBe(candidate.background.color);
+      for (const layer of ["secondary", "secondaryTwo"] as const) {
+        expect(candidate[layer].color).not.toBe(candidate.main.color);
+        expect(candidate[layer].color).not.toBe(candidate.background.color);
+      }
     }
   });
 
@@ -443,6 +486,18 @@ describe("Surprise Me", () => {
     const styles = new Set<boolean>();
     for (let index = 0; index < 200; index += 1) styles.add(randomCrewEmblem().outline);
     expect(styles).toEqual(new Set([true, false]));
+  });
+
+  /**
+   * Two random accents stacked on each other is how a shuffle turns into a
+   * scribble, so the second one is mostly absent — but it has to be reachable,
+   * or the button cannot find the emblems the second accent exists for.
+   */
+  it("keeps the second accent rare without putting it out of reach", () => {
+    const shapes = Array.from({ length: 400 }, () => randomCrewEmblem().secondaryTwo.shape);
+    const used = shapes.filter((shape) => shape !== 0).length;
+    expect(used).toBeGreaterThan(0);
+    expect(used).toBeLessThan(shapes.length / 2);
   });
 
   it("has readable recipes to choose from at all", () => {

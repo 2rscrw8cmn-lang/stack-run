@@ -767,7 +767,8 @@ describe("Crew emblems", () => {
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
     await user.click(screen.getByRole("button", { name: "Bolt main mark" }));
-    await user.click(screen.getByRole("button", { name: "Burst secondary" }));
+    await user.click(screen.getByRole("button", { name: "Burst secondary 1" }));
+    await user.click(screen.getByRole("button", { name: "Under Stripe secondary 2" }));
     await user.click(screen.getByRole("button", { name: "Teal background color" }));
     await user.click(screen.getByRole("button", { name: "Clean edges" }));
     await user.click(screen.getByRole("button", { name: "Done" }));
@@ -779,6 +780,10 @@ describe("Crew emblems", () => {
         emblem: {
           main: { ...DEFAULT_CREW_EMBLEM.main, shape: MAIN_SHAPES.indexOf("Bolt") },
           secondary: { ...DEFAULT_CREW_EMBLEM.secondary, shape: SECONDARY_SHAPES.indexOf("Burst") },
+          secondaryTwo: {
+            ...DEFAULT_CREW_EMBLEM.secondaryTwo,
+            shape: SECONDARY_SHAPES.indexOf("Under Stripe"),
+          },
           background: { ...DEFAULT_CREW_EMBLEM.background, color: EMBLEM_COLORS.indexOf("Teal") },
           outline: false,
         },
@@ -791,7 +796,7 @@ describe("Crew emblems", () => {
    * one pinned preview, and every option in every layer reachable as its own
    * button rather than by stepping through a list to find out what is in it.
    */
-  it("offers all three layers as visual choices under one pinned preview", async () => {
+  it("offers every layer as visual choices under one pinned preview", async () => {
     const user = userEvent.setup();
     render(
       <AccountCrewSheet
@@ -813,7 +818,8 @@ describe("Crew emblems", () => {
 
     for (const [label, shapes] of [
       ["main mark", MAIN_SHAPES],
-      ["secondary", SECONDARY_SHAPES],
+      ["secondary 1", SECONDARY_SHAPES],
+      ["secondary 2", SECONDARY_SHAPES],
       ["background", BACKGROUND_SHAPES],
     ] as const) {
       const group = screen.getByRole("group", { name: new RegExp(`^${label}$`, "i") });
@@ -825,7 +831,12 @@ describe("Crew emblems", () => {
 
     // Colour lives beside the layer it recolours; there is no separate mode to
     // enter first, which is what the old builder made an owner do.
-    for (const label of ["Main mark color", "Secondary color", "Background color"]) {
+    for (const label of [
+      "Main mark color",
+      "Secondary 1 color",
+      "Secondary 2 color",
+      "Background color",
+    ]) {
       const swatches = screen.getByRole("group", { name: label });
       expect(within(swatches).getAllByRole("button")).toHaveLength(EMBLEM_COLORS.length);
     }

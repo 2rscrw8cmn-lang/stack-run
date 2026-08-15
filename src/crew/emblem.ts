@@ -1,10 +1,10 @@
 /**
  * Crew emblems — the combinatorial insignia a crew designs for itself.
  *
- * An emblem is three independently coloured layers, drawn back to front:
+ * An emblem is four independently coloured layers, drawn back to front:
  *
  * - a **background** field the badge sits on (or none at all);
- * - a **secondary** accent that frames, underlines or haloes the mark;
+ * - two **secondary** accents that frame, underline or halo the mark;
  * - a **main** mark, the dominant symbol and the largest library.
  *
  * The whole identity is a short opaque code the database can validate with a
@@ -18,7 +18,7 @@
  * the two optional layers is `None`, the one choice that can never look wrong.
  */
 
-export type CrewEmblemLayer = "main" | "secondary" | "background";
+export type CrewEmblemLayer = "main" | "secondary" | "secondaryTwo" | "background";
 
 export interface CrewEmblemPiece {
   shape: number;
@@ -27,7 +27,16 @@ export interface CrewEmblemPiece {
 
 export interface CrewEmblem {
   main: CrewEmblemPiece;
+  /**
+   * Two accents, from one library and coloured independently.
+   *
+   * Two rather than one because a single piece can only do one job: a ring
+   * *or* a lower stripe, a burst *or* a pair of rails. Both are drawn behind
+   * the mark, second over first, so adding one can never cost a crew its
+   * main mark.
+   */
   secondary: CrewEmblemPiece;
+  secondaryTwo: CrewEmblemPiece;
   background: CrewEmblemPiece;
   /**
    * Whether the two foreground layers are inked.
@@ -53,27 +62,30 @@ export interface CrewEmblemColor {
   value: string;
 }
 
-/** Code order, and the order the builder lists the layers in. */
+/** The order the builder lists the layers in. */
 export const CREW_EMBLEM_LAYERS: readonly CrewEmblemLayer[] = [
   "main",
   "secondary",
+  "secondaryTwo",
   "background",
 ];
 
 /**
- * Paint order, which is not code order: the field is behind everything and the
- * main mark is in front of everything, so the mark can never be obscured by a
- * choice made on another layer.
+ * Paint order, which is neither builder order nor code order: the field is
+ * behind everything and the main mark is in front of everything, so the mark
+ * can never be obscured by a choice made on another layer.
  */
 export const CREW_EMBLEM_DRAW_ORDER: readonly CrewEmblemLayer[] = [
   "background",
   "secondary",
+  "secondaryTwo",
   "main",
 ];
 
 export const CREW_EMBLEM_LAYER_LABEL: Record<CrewEmblemLayer, string> = {
   main: "Main mark",
-  secondary: "Secondary",
+  secondary: "Secondary 1",
+  secondaryTwo: "Secondary 2",
   background: "Background",
 };
 
@@ -82,18 +94,19 @@ export const CREW_EMBLEM_LAYER_LABEL: Record<CrewEmblemLayer, string> = {
  *
  * Square, because a badge is not lopsided, and 200 units so the whole library
  * can be written in whole numbers. Inside it three concentric budgets keep the
- * layers composable instead of merely stacked:
+ * layers composable instead of merely stacked — three budgets rather than four,
+ * because both accents come from one library and share one of them:
  *
  * - a **main** mark lives inside x/y 58–142, whose corners are 59 units from
  *   the centre — small enough that every background silhouette contains it;
- * - a **secondary** piece stays within 74 units of the centre, so it can reach
- *   past the mark on any side without leaving the field behind it;
+ * - an **accent** stays within 74 units of the centre, so either of them can
+ *   reach past the mark on any side without leaving the field behind it;
  * - a **background** fills 4–196, and every silhouette in the library holds a
- *   78-unit disc, which is the widest a Main + Secondary pair can ever be.
+ *   78-unit disc, which is the widest the foreground can ever be.
  *
  * Those three numbers are the whole compatibility story: any combination of
- * the three libraries composes, and a new shape is safe if it respects the
- * budget for its layer.
+ * the libraries composes, and a new shape is safe if it respects the budget
+ * for its layer.
  */
 export const CREW_EMBLEM_VIEW_BOX = "0 0 200 200";
 export const CREW_EMBLEM_VIEW_BOX_WIDTH = 200;
@@ -513,7 +526,11 @@ const BACKGROUND_FIELDS: readonly CrewEmblemShape[] = [
 
 export const CREW_EMBLEM_SHAPES: Record<CrewEmblemLayer, readonly CrewEmblemShape[]> = {
   main: MAIN_MARKS,
+  // One library, offered twice. Two accent libraries would be two half-sized
+  // ones, and the interesting pairs are the ones this way round allows: a ring
+  // under a lower stripe, rails either side of a burst.
   secondary: SECONDARY_PIECES,
+  secondaryTwo: SECONDARY_PIECES,
   background: BACKGROUND_FIELDS,
 };
 
@@ -533,6 +550,7 @@ function indexOfShape(layer: CrewEmblemLayer, name: string): number {
 export const DEFAULT_CREW_EMBLEM: CrewEmblem = {
   main: { shape: indexOfShape("main", "Stack"), color: 0 },
   secondary: { shape: 0, color: 4 },
+  secondaryTwo: { shape: 0, color: 6 },
   background: { shape: indexOfShape("background", "Hex"), color: 7 },
   outline: true,
 };
@@ -594,34 +612,48 @@ export function setCrewEmblemOutline(emblem: CrewEmblem, outline: boolean): Crew
 }
 
 /**
- * The stored form: `E2-<main>-<secondary>-<background>-<style>`, each layer
- * written `shape.color` and the style a single digit.
+ * The stored form, which grows at its end rather than in its middle:
+ *
+ * ```text
+ * E2-<main>-<secondary>-<background>-<style>-<secondaryTwo>
+ * ```
+ *
+ * Each layer is written `shape.color` and the style is a single digit. The
+ * order is not the builder's order and is not pretty, and that is the point:
+ * the first three positions are where already-saved emblems keep their layers,
+ * so anything added later is appended and everything before it keeps meaning
+ * exactly what it meant. Every group after the third is optional on the way
+ * in, which is how each generation of saved code stays readable — no style
+ * group means the inked emblem that crew designed, no second accent means the
+ * one accent they chose.
  *
  * Short, human-inspectable, and cheap for the database to validate — the
  * `crews.emblem` check constraint is this same pattern. Three digits of shape
- * are allowed so this library can grow to any size a person would actually
- * scroll through without needing another migration.
- *
- * The style group is optional on the way in, which is how the codes saved
- * before the ink style existed keep their meaning: no group is the inked
- * emblem those crews designed.
+ * are allowed so a library can grow to any size a person would actually scroll
+ * through without needing another migration.
  */
 const EMBLEM_CODE_PATTERN =
-  /^E2-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}(?:-\d{1,2})?$/;
+  /^E2-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}(?:-\d{1,2}(?:-\d{1,3}\.\d{1,2})?)?$/;
 
 /** Style digits. Anything else fails soft to the inked default. */
 const STYLE_OUTLINED = 0;
 const STYLE_CLEAN = 1;
 
 export function encodeCrewEmblem(emblem: CrewEmblem): string {
-  const parts = CREW_EMBLEM_LAYERS.map((layer) => {
+  const group = (layer: CrewEmblemLayer): string => {
     const value = emblem[layer];
     const shape = readIndex(value.shape, shapeCount(layer));
     const color = readIndex(value.color, CREW_EMBLEM_COLORS.length);
     return `${shape}.${color}`;
-  });
-  parts.push(String(emblem.outline ? STYLE_OUTLINED : STYLE_CLEAN));
-  return `E2-${parts.join("-")}`;
+  };
+  return [
+    "E2",
+    group("main"),
+    group("secondary"),
+    group("background"),
+    String(emblem.outline ? STYLE_OUTLINED : STYLE_CLEAN),
+    group("secondaryTwo"),
+  ].join("-");
 }
 
 /**
@@ -634,9 +666,11 @@ export function encodeCrewEmblem(emblem: CrewEmblem): string {
  */
 export function decodeCrewEmblem(value: unknown): CrewEmblem | null {
   if (typeof value !== "string" || !EMBLEM_CODE_PATTERN.test(value)) return null;
-  const [main, secondary, background, style] = value.slice(3).split("-");
-  const piece = (layer: CrewEmblemLayer, raw: string): CrewEmblemPiece => {
-    const [shape, color] = raw.split(".");
+  const [main, secondary, background, style, secondaryTwo] = value.slice(3).split("-");
+  const piece = (layer: CrewEmblemLayer, raw: string | undefined): CrewEmblemPiece => {
+    // An absent group is a layer that did not exist when this was saved, and
+    // `None` is what the crew chose by not choosing it.
+    const [shape, color] = (raw ?? "0.0").split(".");
     return {
       shape: readIndex(Number(shape), shapeCount(layer)),
       color: readIndex(Number(color), CREW_EMBLEM_COLORS.length),
@@ -645,6 +679,7 @@ export function decodeCrewEmblem(value: unknown): CrewEmblem | null {
   return {
     main: piece("main", main),
     secondary: piece("secondary", secondary),
+    secondaryTwo: piece("secondaryTwo", secondaryTwo),
     background: piece("background", background),
     // A style digit this client does not know is the inked emblem, same as an
     // absent one — a future style must never render as a broken current one.
@@ -699,15 +734,23 @@ export function crewEmblemColorContrast(left: number, right: number): number {
 const MAIN_ON_BACKGROUND_CONTRAST = 1.6;
 const ADJACENT_CONTRAST = 1.35;
 
-export type CrewEmblemColorRecipe = readonly [main: number, secondary: number, background: number];
+export type CrewEmblemColorRecipe = readonly [
+  main: number,
+  secondary: number,
+  secondaryTwo: number,
+  background: number,
+];
 
 let readableRecipes: CrewEmblemColorRecipe[] | null = null;
 
 /**
- * Every colour triple that stays readable at crew-card size.
+ * Every colour set that stays readable at crew-card size.
  *
  * Computed once from the palette rather than hand-listed, so adding a colour
- * cannot silently leave a stale recipe table behind.
+ * cannot silently leave a stale recipe table behind. Both accents are drawn
+ * from the same qualifying set and may land on the same colour: they are
+ * different shapes in different places, and two accents sharing a colour reads
+ * as one accent system rather than as a mistake.
  */
 export function readableCrewEmblemColorRecipes(): readonly CrewEmblemColorRecipe[] {
   if (readableRecipes) return readableRecipes;
@@ -715,11 +758,17 @@ export function readableCrewEmblemColorRecipes(): readonly CrewEmblemColorRecipe
   for (let main = 0; main < CREW_EMBLEM_COLORS.length; main += 1) {
     for (let background = 0; background < CREW_EMBLEM_COLORS.length; background += 1) {
       if (crewEmblemColorContrast(main, background) < MAIN_ON_BACKGROUND_CONTRAST) continue;
-      for (let secondary = 0; secondary < CREW_EMBLEM_COLORS.length; secondary += 1) {
-        if (secondary === main || secondary === background) continue;
-        if (crewEmblemColorContrast(secondary, main) < ADJACENT_CONTRAST) continue;
-        if (crewEmblemColorContrast(secondary, background) < ADJACENT_CONTRAST) continue;
-        recipes.push([main, secondary, background]);
+      const accents: number[] = [];
+      for (let accent = 0; accent < CREW_EMBLEM_COLORS.length; accent += 1) {
+        if (accent === main || accent === background) continue;
+        if (crewEmblemColorContrast(accent, main) < ADJACENT_CONTRAST) continue;
+        if (crewEmblemColorContrast(accent, background) < ADJACENT_CONTRAST) continue;
+        accents.push(accent);
+      }
+      for (const secondary of accents) {
+        for (const secondaryTwo of accents) {
+          recipes.push([main, secondary, secondaryTwo, background]);
+        }
       }
     }
   }
@@ -738,10 +787,18 @@ export function readableCrewEmblemColorRecipes(): readonly CrewEmblemColorRecipe
 export function randomCrewEmblem(random: () => number = Math.random): CrewEmblem {
   const pick = (count: number): number => Math.min(count - 1, Math.floor(random() * count));
   const recipes = readableCrewEmblemColorRecipes();
-  const [main, secondary, background] = recipes[pick(recipes.length)];
+  const [main, secondary, secondaryTwo, background] = recipes[pick(recipes.length)];
   return {
     main: { shape: pick(shapeCount("main")), color: main },
     secondary: { shape: pick(shapeCount("secondary")), color: secondary },
+    // The second accent is quieter than the first on purpose: two random
+    // pieces on top of each other is how a shuffle turns into a scribble, so
+    // most of the time this one is `None` and the emblem stays a mark with an
+    // accent rather than a mark with two.
+    secondaryTwo: {
+      shape: random() < 0.4 ? pick(shapeCount("secondaryTwo")) : 0,
+      color: secondaryTwo,
+    },
     background: { shape: pick(shapeCount("background")), color: background },
     // Both ink styles are reachable: the recipes already guarantee the mark
     // separates from its field, so a flat emblem is a different look rather
@@ -774,6 +831,7 @@ export interface CrewEmblemDrawOp {
 const OUTLINE: Record<CrewEmblemLayer, number> = {
   background: 5,
   secondary: 4,
+  secondaryTwo: 4,
   main: 4.5,
 };
 

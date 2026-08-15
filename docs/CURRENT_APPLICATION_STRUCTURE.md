@@ -1619,12 +1619,15 @@ leak to a later account in a shared browser.
 
 ## The three-layer Crew Emblem (issue #96)
 
-A Crew Emblem is three independently colored layers rather than four stacked
+A Crew Emblem is four independently colored layers rather than four stacked
 plates: a **main** mark (29 options, half of them running and training — stride,
 tread, shoe, track, lanes, finish, checker, stopwatch, split, route, peak, pace,
-pulse, podium), a **secondary** accent (15 plus `None`), and a **background**
-field (12 plus `None`). Eight crew colors — four light, four dark — apply one
-per layer. `src/crew/emblem.ts` owns all of it: the libraries, the `E2-…` code,
+pulse, podium), **two secondary** accents drawn from one library of 15 plus
+`None`, and a **background** field (12 plus `None`). Eight crew colors — four
+light, four dark — apply one per layer. Two accents rather than one because a
+single piece can only do one job: a ring *or* a lower stripe, a burst *or* a
+pair of rails. One library offered twice rather than two libraries, because two
+would be two half-sized ones. `src/crew/emblem.ts` owns all of it: the libraries, the `E2-…` code,
 the drawing, and the color arithmetic.
 
 One 200×200 coordinate space, and three concentric budgets, are what make the
@@ -1632,9 +1635,9 @@ libraries free to combine rather than merely stacked:
 
 - a main mark is drawn inside x/y 58–142, whose corners sit 59 units from the
   center;
-- a secondary piece stays within 74 units of the center, so it can reach past
-  the mark on any side — a ring, a burst, a crossbar, a rail — without leaving
-  the field behind it;
+- an accent stays within 74 units of the center, so either of them can reach
+  past the mark on any side — a ring, a burst, a crossbar, a rail — without
+  leaving the field behind it;
 - every background silhouette holds a 78-unit disc, which is the widest a Main
   and Secondary pair can ever be.
 
@@ -1644,8 +1647,10 @@ layer. It also holds every shape to the small path grammar the invite card
 rasteriser understands (`M/L/H/V/Q/C/Z`), because a shape written with anything
 else would look right in the app and lose part of itself in a shared preview.
 
-Layers paint background → secondary → main, so the mark is never obscured by a
-choice made on another layer, and each layer is wrapped in its own SVG group.
+Layers paint background → secondary → secondaryTwo → main, so the mark is never
+obscured by a choice made on another layer and a crew can add an accent without
+it costing them the symbol they picked. Each layer is wrapped in its own SVG
+group.
 `CrewEmblem.tsx` takes an optional `focusLayer`, which is only a `data-` hook:
 the builder's tiles dim the two layers they are not offering entirely in CSS.
 

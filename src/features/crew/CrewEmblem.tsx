@@ -4,6 +4,7 @@ import {
   CREW_EMBLEM_VIEW_BOX_WIDTH,
   crewEmblemSvgMarkup,
   type CrewEmblem as CrewEmblemModel,
+  type CrewEmblemLayer,
 } from "../../crew/emblem";
 
 interface CrewEmblemProps {
@@ -18,7 +19,7 @@ interface CrewEmblemProps {
    * the named layer stays lit and the rest of the emblem dims behind it, so a
    * tile shows a candidate in context instead of a shape in a void.
    */
-  focusLayer?: "main" | "secondary" | "background";
+  focusLayer?: CrewEmblemLayer;
 }
 
 /**

@@ -11,7 +11,7 @@ import {
 } from "../../crew/emblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
 
-const emblem: CrewEmblem = decodeCrewEmblem("E2-4.2-7.0-3.5-0")!;
+const emblem: CrewEmblem = decodeCrewEmblem("E2-4.2-7.0-3.5-0-12.6")!;
 
 function tile(layerLabel: string, name: string): HTMLElement {
   return screen.getByRole("button", { name: `${name} ${layerLabel}` });
@@ -32,6 +32,9 @@ describe("Crew Emblem builder", () => {
     );
     expect(mark.innerHTML).toContain(CREW_EMBLEM_SHAPES.background[emblem.background.shape].d);
     expect(mark.innerHTML).toContain(CREW_EMBLEM_SHAPES.secondary[emblem.secondary.shape].d);
+    expect(mark.innerHTML).toContain(
+      CREW_EMBLEM_SHAPES.secondaryTwo[emblem.secondaryTwo.shape].d,
+    );
   });
 
   it("changes only the layer whose option was tapped", async () => {
@@ -39,10 +42,19 @@ describe("Crew Emblem builder", () => {
     const onChange = vi.fn();
     render(<CrewEmblemBuilder emblem={emblem} onChange={onChange} />);
 
-    await user.click(tile("secondary", "Halo"));
+    await user.click(tile("secondary 1", "Halo"));
     expect(onChange).toHaveBeenCalledWith({
       ...emblem,
       secondary: { ...emblem.secondary, shape: 2 },
+    });
+
+    // The two accents are separate decisions offered from one library, so
+    // choosing on one rail must not move the other.
+    onChange.mockClear();
+    await user.click(tile("secondary 2", "Halo"));
+    expect(onChange).toHaveBeenCalledWith({
+      ...emblem,
+      secondaryTwo: { ...emblem.secondaryTwo, shape: 2 },
     });
 
     onChange.mockClear();
@@ -53,11 +65,12 @@ describe("Crew Emblem builder", () => {
     });
   });
 
-  /** `None` is a real choice on both optional layers, not an absent one. */
-  it("offers None on the two optional layers and nowhere else", () => {
+  /** `None` is a real choice on every optional layer, not an absent one. */
+  it("offers None on the optional layers and nowhere else", () => {
     render(<CrewEmblemBuilder emblem={emblem} onChange={vi.fn()} />);
-    expect(tile("secondary", "None")).toBeInTheDocument();
-    expect(tile("background", "None")).toBeInTheDocument();
+    for (const label of ["secondary 1", "secondary 2", "background"]) {
+      expect(tile(label, "None")).toBeInTheDocument();
+    }
     expect(screen.queryByRole("button", { name: "None main mark" })).not.toBeInTheDocument();
   });
 

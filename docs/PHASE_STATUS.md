@@ -580,14 +580,15 @@ covering a Personal placement, a Crew placement and a Reduce Motion placement.
 
 A hard reset of the Crew emblem system, authorized by D-076 and scoped in
 `docs/CURRENT_APPLICATION_STRUCTURE.md`. The four-part Crown/Core/Base/Frame
-model is replaced by three independently colored layers — Main mark, Secondary,
-Background — with a far larger library, and a builder that follows the rebuilt
-`RunnerIconBuilder` instead of the old arrow cycler.
+model is replaced by four independently colored layers — Main mark, two
+Secondary accents, Background — with a far larger library, and a builder that
+follows the rebuilt `RunnerIconBuilder` instead of the old arrow cycler.
 
 What it adds:
 
 - `src/crew/emblem.ts`, rewritten: 29 main marks (14 of them running and
-  training), 15 secondary pieces plus `None`, 12 background fields plus `None`,
+  training), 15 secondary pieces plus `None` offered on two accent layers,
+  12 background fields plus `None`,
   an eight-color crew palette, the `E2-…` code, tolerant decoding, the
   contrast-checked color recipes `Surprise Me` draws from, and the canonical
   drawing both renderers share;
@@ -602,8 +603,9 @@ What it adds:
 - `supabase/migrations/20260815000000_three_layer_crew_emblem.sql`, which clears
   every legacy `E1-` value to null and replaces `crews_emblem_check` in place
   with the `E2-` pattern, and `20260815120000_crew_emblem_ink_style.sql`, which
-  widens it for the optional trailing ink-style group; `supabase/tests/0014_…`
-  and `0015_…` verify them;
+  widens it for the optional trailing ink-style group, and
+  `20260815160000_crew_emblem_second_accent.sql`, which widens it again for the
+  appended second accent; `supabase/tests/0014_…` through `0016_…` verify them;
 - `src/styles/crewEmblemBuilderStyling.test.ts`, guarding the mobile rail
   behaviour that has no visual-regression harness.
 

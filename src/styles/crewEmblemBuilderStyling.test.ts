@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CREW_EMBLEM_LAYERS } from "../crew/emblem";
 
 /**
  * There is no CSS/visual-regression harness in this repository (no Playwright,
@@ -72,17 +73,20 @@ describe("Crew Emblem builder styling (issue #96)", () => {
   });
 
   /**
-   * The tile shows the candidate against the rest of the current emblem: a
-   * secondary piece is only a good choice in combination, so the two layers it
-   * is not offering stay visible but dimmed.
+   * The tile shows the candidate against the rest of the current emblem: an
+   * accent is only a good choice in combination, so the layers it is not
+   * offering stay visible but dimmed.
    */
   it("dims the layers a tile is not offering rather than hiding them", () => {
-    const body = ruleBody('.crew-emblem-builder__thumb-mark[data-focus-layer="main"]');
-    const opacity = Number(body.match(/opacity:\s*([\d.]+)/)?.[1]);
+    const dimmed = ruleBody(".crew-emblem-builder__thumb-mark[data-focus-layer] > g > g {");
+    const opacity = Number(dimmed.match(/opacity:\s*([\d.]+)/)?.[1]);
     expect(opacity).toBeGreaterThan(0);
     expect(opacity).toBeLessThan(1);
-    for (const layer of ["main", "secondary", "background"]) {
-      expect(css).toContain(`.crew-emblem-builder__thumb-mark[data-focus-layer="${layer}"]`);
+    // Every layer can be the lit one, including any added since.
+    for (const layer of CREW_EMBLEM_LAYERS) {
+      expect(css).toContain(
+        `.crew-emblem-builder__thumb-mark[data-focus-layer="${layer}"] .crew-emblem__${layer}`,
+      );
     }
   });
 

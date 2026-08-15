@@ -5922,16 +5922,19 @@ textarea.run-input {
 .crew-emblem-builder__thumb-mark { width: 100%; height: 100%; }
 /*
  * The tile shows the candidate against the rest of the current emblem, dimmed:
- * a secondary piece is only a good choice in combination, so the tile shows
- * the combination rather than an isolated shape in a box.
+ * an accent is only a good choice in combination, so the tile shows the
+ * combination rather than an isolated shape in a box.
+ *
+ * Dim every layer, then light the one this rail is offering — the alternative
+ * is one rule per (focus, layer) pair, which is a table that grows by the
+ * square every time the emblem gains a layer.
  */
-.crew-emblem-builder__thumb-mark[data-focus-layer="main"] .crew-emblem__background,
-.crew-emblem-builder__thumb-mark[data-focus-layer="main"] .crew-emblem__secondary,
-.crew-emblem-builder__thumb-mark[data-focus-layer="secondary"] .crew-emblem__background,
-.crew-emblem-builder__thumb-mark[data-focus-layer="secondary"] .crew-emblem__main,
-.crew-emblem-builder__thumb-mark[data-focus-layer="background"] .crew-emblem__secondary,
-.crew-emblem-builder__thumb-mark[data-focus-layer="background"] .crew-emblem__main {
-  opacity: 0.34;
+.crew-emblem-builder__thumb-mark[data-focus-layer] > g > g { opacity: 0.34; }
+.crew-emblem-builder__thumb-mark[data-focus-layer="main"] .crew-emblem__main,
+.crew-emblem-builder__thumb-mark[data-focus-layer="secondary"] .crew-emblem__secondary,
+.crew-emblem-builder__thumb-mark[data-focus-layer="secondaryTwo"] .crew-emblem__secondaryTwo,
+.crew-emblem-builder__thumb-mark[data-focus-layer="background"] .crew-emblem__background {
+  opacity: 1;
 }
 
 /* Colour sits beside the layer it recolours, never behind a mode the owner
