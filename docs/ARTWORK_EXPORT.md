@@ -4,7 +4,7 @@ STACK's Crew emblems and Runner Icons are vector artwork already. The exporter w
 
 ## Phone-first export
 
-The primary interface is a private utility page that is deliberately absent from normal STACK navigation:
+The interface is a private utility page that is deliberately absent from normal STACK navigation:
 
 ```text
 https://<your-stack-host>/#artwork
@@ -49,26 +49,4 @@ The SVG is the right master file for Illustrator, screen print, vinyl, stickers 
 
 ## Security boundary
 
-The phone exporter uses the normal persisted Supabase session and existing RLS. It does not use a service-role key and does not read private personal training/health data. If sign-in is required, the PIN goes through the same Supabase password-auth path as normal STACK and is not stored by the exporter.
-
-## Optional local CLI
-
-The repository also keeps the command-line exporter as a secondary developer tool:
-
-```bash
-npm run export:artwork
-```
-
-It reads public Supabase configuration from `.env.local`, prompts for the normal STACK account, and writes files to:
-
-```text
-exports/<crew>/
-```
-
-`exports/` is gitignored. To choose a Crew directly:
-
-```bash
-npm run export:artwork -- --crew FASTboyz
-```
-
-The value may be an exact Crew name or Crew id. Use the id when more than one Crew has the same name.
+The exporter uses the normal persisted Supabase session and existing RLS. It does not use a service-role key and does not read private personal training/health data. If sign-in is required, the PIN goes through the same Supabase password-auth path as normal STACK and is not stored by the exporter.
