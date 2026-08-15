@@ -1,7 +1,6 @@
 import {
   CREW_EMBLEM_VIEW_BOX,
   crewEmblemSvgMarkup,
-  type CrewEmblem,
 } from "../crew/emblem";
 import {
   MEMBER_ACCENTS,
@@ -12,7 +11,6 @@ import {
   RUNNER_ICON_DRAW_ORDER,
   RUNNER_ICON_VIEW_BOX,
   runnerIconShape,
-  type RunnerIcon,
   type RunnerIconPart,
 } from "../crew/runnerIcon";
 import type { CrewMember, RaceCrew } from "../crew/types";
@@ -73,7 +71,7 @@ export function readArtworkPalette(root: Element = document.documentElement): Ar
 export function crewEmblemArtwork(
   crew: Pick<RaceCrew, "name" | "emblem">,
 ): ArtworkFile {
-  const content = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CREW_EMBLEM_VIEW_BOX}">\n<title>${xml(crew.name)} crew emblem</title>\n${crewEmblemSvgMarkup(crew.emblem as CrewEmblem)}\n</svg>\n`;
+  const content = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CREW_EMBLEM_VIEW_BOX}">\n<title>${xml(crew.name)} crew emblem</title>\n${crewEmblemSvgMarkup(crew.emblem)}\n</svg>\n`;
   return {
     filename: `${artworkSlug(crew.name)}-emblem.svg`,
     mimeType: "image/svg+xml",
