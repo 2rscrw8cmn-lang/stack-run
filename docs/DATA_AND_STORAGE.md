@@ -307,7 +307,7 @@ so it cannot offer a color the database would reject.
 `crews.emblem` stores a short opaque code, not an image:
 
 ```text
-E2-<main>-<secondary>-<background>     each layer written as shape.color
+E2-<main>-<secondary>-<background>-<style>   layers as shape.color, style 0|1
 ```
 
 Constrained by a check pattern in the migration and parsed by the same rules
@@ -316,6 +316,12 @@ draws one fixed neutral default until its owner designs a mark. A shape index a
 client does not have degrades to that layer's first option — `None` on the two
 optional layers — rather than failing the emblem, and the pattern allows three
 digits so the libraries can grow without another migration.
+
+The trailing style group is the emblem's ink: `0` outlines the two foreground
+layers, `1` draws them as flat colour. It is optional on the way in, which is
+how codes saved before the ink style existed keep their meaning — an absent
+group, or a style digit this client has never heard of, is the outlined
+emblem.
 
 The retired four-part `E1-<top>-<middle>-<bottom>-<frame>` format is not
 readable by any client. That library was replaced rather than extended, so

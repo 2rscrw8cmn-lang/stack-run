@@ -597,11 +597,13 @@ What it adds:
   grammar the invite-card rasteriser understands;
 - `CrewEmblemBuilder.tsx`, rebuilt: pinned preview, `Surprise Me`, one
   horizontal rail of visual tiles per layer with the layer's colors beneath it,
-  each tile drawing the candidate against the rest of the current emblem;
+  each tile drawing the candidate against the rest of the current emblem, and a
+  final Outline row offering the emblem drawn inked and flat;
 - `supabase/migrations/20260815000000_three_layer_crew_emblem.sql`, which clears
   every legacy `E1-` value to null and replaces `crews_emblem_check` in place
-  with the `E2-` pattern; `supabase/tests/0014_three_layer_crew_emblem.sql`
-  verifies both;
+  with the `E2-` pattern, and `20260815120000_crew_emblem_ink_style.sql`, which
+  widens it for the optional trailing ink-style group; `supabase/tests/0014_…`
+  and `0015_…` verify them;
 - `src/styles/crewEmblemBuilderStyling.test.ts`, guarding the mobile rail
   behaviour that has no visual-regression harness.
 

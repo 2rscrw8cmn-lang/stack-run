@@ -23,6 +23,7 @@ import {
   resolveCrewEmblem,
   sameCrewEmblem,
   setCrewEmblemColor,
+  setCrewEmblemOutline,
   setCrewEmblemShape,
   type CrewEmblem,
   type CrewEmblemLayer,
@@ -32,6 +33,7 @@ const emblem: CrewEmblem = {
   main: { shape: 4, color: 2 },
   secondary: { shape: 7, color: 0 },
   background: { shape: 3, color: 5 },
+  outline: true,
 };
 
 interface Point {
@@ -119,9 +121,23 @@ function everyShape(layer: CrewEmblemLayer): readonly { name: string; d: string 
 }
 
 describe("Crew emblem codes", () => {
-  it("round-trips all three layers through the stored code", () => {
-    expect(encodeCrewEmblem(emblem)).toBe("E2-4.2-7.0-3.5");
+  it("round-trips all three layers and the ink style through the stored code", () => {
+    expect(encodeCrewEmblem(emblem)).toBe("E2-4.2-7.0-3.5-0");
     expect(decodeCrewEmblem(encodeCrewEmblem(emblem))).toEqual(emblem);
+
+    const clean = setCrewEmblemOutline(emblem, false);
+    expect(encodeCrewEmblem(clean)).toBe("E2-4.2-7.0-3.5-1");
+    expect(decodeCrewEmblem(encodeCrewEmblem(clean))).toEqual(clean);
+    expect(sameCrewEmblem(emblem, clean)).toBe(false);
+  });
+
+  /**
+   * Codes saved between the three-layer rebuild and the ink style have no
+   * trailing group. They are the inked emblems those crews designed, not
+   * emblems missing a decision.
+   */
+  it("reads a code with no ink style as the inked emblem it was", () => {
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5")).toEqual(emblem);
   });
 
   it("rejects anything that is not a three-layer emblem code", () => {
@@ -129,6 +145,7 @@ describe("Crew emblem codes", () => {
     expect(decodeCrewEmblem("")).toBeNull();
     expect(decodeCrewEmblem("E2-4.2-7.0")).toBeNull();
     expect(decodeCrewEmblem("E2-4.2-7.0-3.5-1.1")).toBeNull();
+    expect(decodeCrewEmblem("E2-4.2-7.0-3.5-0-0")).toBeNull();
     expect(decodeCrewEmblem("E3-4.2-7.0-3.5")).toBeNull();
     expect(decodeCrewEmblem({ main: 1 })).toBeNull();
   });
@@ -149,16 +166,19 @@ describe("Crew emblem codes", () => {
    * option — which for the two optional layers is `None`.
    */
   it("degrades a future unknown index to a drawable one", () => {
-    expect(decodeCrewEmblem("E2-999.99-999.99-999.99")).toEqual({
+    expect(decodeCrewEmblem("E2-999.99-999.99-999.99-99")).toEqual({
       main: { shape: 0, color: 0 },
       secondary: { shape: 0, color: 0 },
       background: { shape: 0, color: 0 },
+      // A style this client has never heard of draws as the inked emblem, so a
+      // future style can never render as a broken current one.
+      outline: true,
     });
-    expect(() => crewEmblemDrawing(decodeCrewEmblem("E2-999.0-999.0-999.0")!)).not.toThrow();
+    expect(() => crewEmblemDrawing(decodeCrewEmblem("E2-999.0-999.0-999.0-9")!)).not.toThrow();
   });
 
   it("prefers a saved emblem and falls back to the neutral default", () => {
-    expect(resolveCrewEmblem("E2-4.2-7.0-3.5")).toEqual(emblem);
+    expect(resolveCrewEmblem("E2-4.2-7.0-3.5-0")).toEqual(emblem);
     expect(resolveCrewEmblem(null)).toEqual(DEFAULT_CREW_EMBLEM);
     expect(resolveCrewEmblem("nonsense")).toEqual(DEFAULT_CREW_EMBLEM);
     expect(sameCrewEmblem(resolveCrewEmblem(undefined), DEFAULT_CREW_EMBLEM)).toBe(true);
@@ -308,6 +328,32 @@ describe("Crew emblem drawing", () => {
     );
   });
 
+  /**
+   * Turning the outline off is a style, not a downgrade: the two foreground
+   * layers become flat colour, and the field keeps its own edge because that
+   * edge separates the badge from the surface it sits on rather than
+   * separating the layers from each other.
+   */
+  it("drops the ink from the foreground layers when the outline is off", () => {
+    const clean = crewEmblemDrawing(setCrewEmblemOutline(emblem, false));
+    for (const layer of ["main", "secondary"] as const) {
+      const painted = clean.filter((operation) => operation.part === layer);
+      expect(painted, layer).toHaveLength(1);
+      expect(painted[0].stroke, layer).toBeUndefined();
+      expect(painted[0].fill, layer).toBe(CREW_EMBLEM_COLORS[emblem[layer].color].value);
+    }
+    const field = clean.filter((operation) => operation.part === "background");
+    expect(field[0].stroke).toBe(CREW_EMBLEM_INK);
+
+    // Inked, the mark carries a dropped shadow as well as its outline.
+    const inked = crewEmblemDrawing(emblem).filter((operation) => operation.part === "main");
+    expect(inked).toHaveLength(2);
+    expect(inked[0].fill).toBe(CREW_EMBLEM_INK);
+    expect(crewEmblemSvgMarkup(setCrewEmblemOutline(emblem, false))).not.toContain(
+      `stroke="${CREW_EMBLEM_INK}" stroke-width="${4.5}"`,
+    );
+  });
+
   it("groups each layer so a builder tile can dim the ones it is not offering", () => {
     const markup = crewEmblemSvgMarkup(emblem);
     for (const layer of CREW_EMBLEM_LAYERS) {
@@ -331,6 +377,15 @@ describe("Crew emblem editing", () => {
     expect(changed.background).toEqual({ shape: 3, color: 6 });
     expect(changed.main).toEqual(emblem.main);
     expect(changed.secondary).toEqual(emblem.secondary);
+  });
+
+  it("changes the ink style and leaves every layer alone", () => {
+    const clean = setCrewEmblemOutline(emblem, false);
+    expect(clean.outline).toBe(false);
+    expect(clean.main).toEqual(emblem.main);
+    expect(clean.secondary).toEqual(emblem.secondary);
+    expect(clean.background).toEqual(emblem.background);
+    expect(setCrewEmblemOutline(clean, true)).toEqual(emblem);
   });
 
   it("refuses an out-of-range choice rather than storing one", () => {
@@ -382,6 +437,12 @@ describe("Surprise Me", () => {
       expect(candidate.secondary.color).not.toBe(candidate.main.color);
       expect(candidate.secondary.color).not.toBe(candidate.background.color);
     }
+  });
+
+  it("can reach both ink styles", () => {
+    const styles = new Set<boolean>();
+    for (let index = 0; index < 200; index += 1) styles.add(randomCrewEmblem().outline);
+    expect(styles).toEqual(new Set([true, false]));
   });
 
   it("has readable recipes to choose from at all", () => {

@@ -29,6 +29,15 @@ export interface CrewEmblem {
   main: CrewEmblemPiece;
   secondary: CrewEmblemPiece;
   background: CrewEmblemPiece;
+  /**
+   * Whether the two foreground layers are inked.
+   *
+   * On, the mark and its accent are outlined and the mark carries a dropped
+   * shadow — the arcade badge. Off, they are flat colour straight onto the
+   * field, which is a different mark rather than a worse one, so it is a
+   * crew's choice and rides along in the stored code.
+   */
+  outline: boolean;
 }
 
 export interface CrewEmblemShape {
@@ -137,9 +146,17 @@ const MAIN_MARKS: readonly CrewEmblemShape[] = [
   {
     name: "Stride",
     d: [
-      "M100 58 H124 V82 H100 Z",
-      "M118 76 H142 V92 H118 Z",
-      "M92 84 H120 L110 110 L136 132 L124 142 L96 118 L78 142 H58 L86 104 L78 92 Z",
+      // A small round head clear of the shoulders. The first pass drew it big
+      // enough for the leading arm to cross it, which read as a mask.
+      "M110 58 C117.2 58 123 63.8 123 71 C123 78.2 117.2 84 110 84 C102.8 84 97 78.2 97 71 C97 63.8 102.8 58 110 58 Z",
+      // Torso, then four limbs that each overlap it. The pairs are deliberately
+      // asymmetric — leading arm and leg forward, trailing pair back — because
+      // a figure with matching limbs on both sides is a jumping jack.
+      "M92 86 H116 L104 116 H80 Z",
+      "M106 88 L138 80 L142 94 L110 102 Z",
+      "M86 92 L58 108 L64 120 L92 104 Z",
+      "M96 110 H120 L138 132 L126 142 L104 124 Z",
+      "M80 110 H100 L86 142 H62 Z",
     ].join(" "),
   },
   {
@@ -149,19 +166,23 @@ const MAIN_MARKS: readonly CrewEmblemShape[] = [
   {
     name: "Tread",
     d: [
-      "M62 58 H138 V142 H62 Z",
-      "M72 72 L100 60 L128 72 V84 L100 72 L72 84 Z",
-      "M72 100 L100 88 L128 100 V112 L100 100 L72 112 Z",
-      "M72 126 H128 V136 H72 Z",
+      // An outsole, not a rectangle: the waist pinched at the arch is what
+      // separates this from every other plate-with-slots in the library.
+      "M100 58 Q138 58 138 88 Q138 102 128 110 Q120 118 120 130 Q120 142 100 142 Q80 142 80 130 Q80 118 72 110 Q62 102 62 88 Q62 58 100 58 Z",
+      "M76 80 L100 70 L124 80 V90 L100 80 L76 90 Z",
+      "M78 104 L100 94 L122 104 V114 L100 104 L78 114 Z",
+      "M86 124 H114 V134 H86 Z",
     ].join(" "),
     rule: "evenodd",
   },
   {
     name: "Shoe",
     d: [
-      "M58 114 V70 H86 V86 H108 L128 96 H136 Q142 98 142 114 Z",
-      "M58 114 H142 V130 H58 Z",
-      "M92 92 H116 V100 H92 Z",
+      // Toe left, heel right, and the heel collar rounded rather than a tall
+      // block — the square heel is what made the first pass read as a boot.
+      "M58 122 V110 Q58 100 72 98 L100 92 L110 74 Q114 66 124 66 H130 Q142 66 142 82 V122 Z",
+      "M58 122 H142 V136 H58 Z",
+      "M96 100 H126 V108 H96 Z",
     ].join(" "),
     rule: "evenodd",
   },
@@ -214,10 +235,12 @@ const MAIN_MARKS: readonly CrewEmblemShape[] = [
   {
     name: "Stopwatch",
     d: [
-      "M90 58 H110 V70 H90 Z",
-      "M100 70 C121 70 138 87 138 108 C138 129 121 142 100 142 C79 142 62 129 62 108 C62 87 79 70 100 70 Z",
-      "M96 86 H104 V104 H96 Z",
-      "M100 104 H124 V112 H100 Z",
+      // A crown wide enough to survive the outline, and hands thick enough to
+      // still be hands once the whole mark is 24px across.
+      "M86 58 H114 V74 H86 Z",
+      "M100 74 C118.8 74 134 89.2 134 108 C134 126.8 118.8 142 100 142 C81.2 142 66 126.8 66 108 C66 89.2 81.2 74 100 74 Z",
+      "M94 86 H106 V102 H94 Z",
+      "M100 102 H126 V112 H100 Z",
     ].join(" "),
     rule: "evenodd",
   },
@@ -245,7 +268,9 @@ const MAIN_MARKS: readonly CrewEmblemShape[] = [
   },
   {
     name: "Peak",
-    d: ["M58 134 L84 82 L100 108 L118 60 L142 134 Z", "M58 126 H142 V142 H58 Z"].join(" "),
+    // One ridge, no ground bar: the bar overlapped the ridge's own outline and
+    // drew a stack of stripes under the mountain.
+    d: "M58 140 L86 76 L104 108 L120 72 L142 140 Z",
   },
   {
     name: "Pace",
@@ -336,10 +361,13 @@ const MAIN_MARKS: readonly CrewEmblemShape[] = [
   {
     name: "Pulse",
     d: [
-      "M58 92 H84 V110 H58 Z",
-      "M74 110 L90 58 L106 58 L90 110 Z",
-      "M90 58 L106 58 L124 142 L108 142 Z",
-      "M114 92 H142 V110 H114 Z",
+      // Baseline, spike up, spike down, back to baseline. The first pass ran
+      // off the bottom instead of returning, which read as a crossed bar.
+      "M58 93 H88 V107 H58 Z",
+      "M80 107 L90 60 L102 60 L94 107 Z",
+      "M90 60 L102 60 L114 140 L102 140 Z",
+      "M102 140 L112 100 L124 100 L114 140 Z",
+      "M116 93 H142 V107 H116 Z",
     ].join(" "),
   },
   {
@@ -506,6 +534,7 @@ export const DEFAULT_CREW_EMBLEM: CrewEmblem = {
   main: { shape: indexOfShape("main", "Stack"), color: 0 },
   secondary: { shape: 0, color: 4 },
   background: { shape: indexOfShape("background", "Hex"), color: 7 },
+  outline: true,
 };
 
 function shapeCount(layer: CrewEmblemLayer): number {
@@ -559,15 +588,30 @@ export function setCrewEmblemColor(
   };
 }
 
+/** Sets the ink style, leaving every layer alone. */
+export function setCrewEmblemOutline(emblem: CrewEmblem, outline: boolean): CrewEmblem {
+  return { ...emblem, outline };
+}
+
 /**
- * The stored form: `E2-<main>-<secondary>-<background>`, each `shape.color`.
+ * The stored form: `E2-<main>-<secondary>-<background>-<style>`, each layer
+ * written `shape.color` and the style a single digit.
  *
  * Short, human-inspectable, and cheap for the database to validate — the
  * `crews.emblem` check constraint is this same pattern. Three digits of shape
  * are allowed so this library can grow to any size a person would actually
  * scroll through without needing another migration.
+ *
+ * The style group is optional on the way in, which is how the codes saved
+ * before the ink style existed keep their meaning: no group is the inked
+ * emblem those crews designed.
  */
-const EMBLEM_CODE_PATTERN = /^E2-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}$/;
+const EMBLEM_CODE_PATTERN =
+  /^E2-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}-\d{1,3}\.\d{1,2}(?:-\d{1,2})?$/;
+
+/** Style digits. Anything else fails soft to the inked default. */
+const STYLE_OUTLINED = 0;
+const STYLE_CLEAN = 1;
 
 export function encodeCrewEmblem(emblem: CrewEmblem): string {
   const parts = CREW_EMBLEM_LAYERS.map((layer) => {
@@ -576,6 +620,7 @@ export function encodeCrewEmblem(emblem: CrewEmblem): string {
     const color = readIndex(value.color, CREW_EMBLEM_COLORS.length);
     return `${shape}.${color}`;
   });
+  parts.push(String(emblem.outline ? STYLE_OUTLINED : STYLE_CLEAN));
   return `E2-${parts.join("-")}`;
 }
 
@@ -589,19 +634,21 @@ export function encodeCrewEmblem(emblem: CrewEmblem): string {
  */
 export function decodeCrewEmblem(value: unknown): CrewEmblem | null {
   if (typeof value !== "string" || !EMBLEM_CODE_PATTERN.test(value)) return null;
-  const pieces = value.slice(3).split("-").map((part) => {
-    const [shape, color] = part.split(".");
-    return { shape: Number(shape), color: Number(color) };
-  });
-  const [main, secondary, background] = pieces;
-  const piece = (layer: CrewEmblemLayer, raw: CrewEmblemPiece): CrewEmblemPiece => ({
-    shape: readIndex(raw.shape, shapeCount(layer)),
-    color: readIndex(raw.color, CREW_EMBLEM_COLORS.length),
-  });
+  const [main, secondary, background, style] = value.slice(3).split("-");
+  const piece = (layer: CrewEmblemLayer, raw: string): CrewEmblemPiece => {
+    const [shape, color] = raw.split(".");
+    return {
+      shape: readIndex(Number(shape), shapeCount(layer)),
+      color: readIndex(Number(color), CREW_EMBLEM_COLORS.length),
+    };
+  };
   return {
     main: piece("main", main),
     secondary: piece("secondary", secondary),
     background: piece("background", background),
+    // A style digit this client does not know is the inked emblem, same as an
+    // absent one — a future style must never render as a broken current one.
+    outline: Number(style) !== STYLE_CLEAN,
   };
 }
 
@@ -696,6 +743,11 @@ export function randomCrewEmblem(random: () => number = Math.random): CrewEmblem
     main: { shape: pick(shapeCount("main")), color: main },
     secondary: { shape: pick(shapeCount("secondary")), color: secondary },
     background: { shape: pick(shapeCount("background")), color: background },
+    // Both ink styles are reachable: the recipes already guarantee the mark
+    // separates from its field, so a flat emblem is a different look rather
+    // than an unreadable one, and leaving it out would put half the design
+    // space beyond a button whose whole job is finding the rest of it.
+    outline: random() < 0.5,
   };
 }
 
@@ -742,7 +794,11 @@ export function crewEmblemDrawing(emblem: CrewEmblem): CrewEmblemDrawOp[] {
     if (!shape.d) continue;
     const fillRule = shape.rule ?? "nonzero";
     const color = crewEmblemColor(emblem[layer].color).value;
-    if (layer === "main") {
+    // The field keeps its edge either way: that outline separates the badge
+    // from whatever surface it is sitting on, which is not what the crew is
+    // turning off. The ink style is about the two foreground layers.
+    const inked = layer === "background" || emblem.outline;
+    if (layer === "main" && inked) {
       operations.push({ part: layer, d: shape.d, dy: MAIN_DROP, fill: CREW_EMBLEM_INK, fillRule });
     }
     operations.push({
@@ -751,9 +807,13 @@ export function crewEmblemDrawing(emblem: CrewEmblem): CrewEmblemDrawOp[] {
       dy: 0,
       fill: color,
       fillRule,
-      stroke: CREW_EMBLEM_INK,
-      strokeWidth: OUTLINE[layer],
-      strokeLinejoin: "round",
+      ...(inked
+        ? {
+            stroke: CREW_EMBLEM_INK,
+            strokeWidth: OUTLINE[layer],
+            strokeLinejoin: "round" as const,
+          }
+        : {}),
     });
   }
   return operations;

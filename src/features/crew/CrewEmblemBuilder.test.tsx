@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
+  CREW_EMBLEM_INK,
   CREW_EMBLEM_SHAPES,
   DEFAULT_CREW_EMBLEM,
   decodeCrewEmblem,
@@ -10,7 +11,7 @@ import {
 } from "../../crew/emblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
 
-const emblem: CrewEmblem = decodeCrewEmblem("E2-4.2-7.0-3.5")!;
+const emblem: CrewEmblem = decodeCrewEmblem("E2-4.2-7.0-3.5-0")!;
 
 function tile(layerLabel: string, name: string): HTMLElement {
   return screen.getByRole("button", { name: `${name} ${layerLabel}` });
@@ -68,6 +69,31 @@ describe("Crew Emblem builder", () => {
     await user.click(screen.getByRole("button", { name: "Surprise Me" }));
     const shuffled = onChange.mock.calls[0][0] as CrewEmblem;
     expect(decodeCrewEmblem(encodeCrewEmblem(shuffled))).toEqual(shuffled);
+  });
+
+  /**
+   * The ink style is a look, not a setting, so it is offered as the emblem
+   * drawn both ways rather than as a switch the owner has to imagine the
+   * result of.
+   */
+  it("offers the ink style as the emblem drawn both ways", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<CrewEmblemBuilder emblem={emblem} onChange={onChange} />);
+
+    const outlined = screen.getByRole("button", { name: "Outlined edges" });
+    const clean = screen.getByRole("button", { name: "Clean edges" });
+    expect(outlined).toHaveAttribute("aria-pressed", "true");
+    expect(clean).toHaveAttribute("aria-pressed", "false");
+
+    // Each tile draws what choosing it produces: the mark is inked in one and
+    // flat in the other, both against the crew's current field.
+    const inkOf = (tile: HTMLElement): number =>
+      (tile.querySelector("svg")!.innerHTML.match(new RegExp(CREW_EMBLEM_INK, "g")) ?? []).length;
+    expect(inkOf(clean)).toBeLessThan(inkOf(outlined));
+
+    await user.click(clean);
+    expect(onChange).toHaveBeenCalledWith({ ...emblem, outline: false });
   });
 
   /**

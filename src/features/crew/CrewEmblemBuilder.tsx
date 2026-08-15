@@ -8,6 +8,7 @@ import {
   crewEmblemShapeName,
   randomCrewEmblem,
   setCrewEmblemColor,
+  setCrewEmblemOutline,
   setCrewEmblemShape,
   type CrewEmblem,
   type CrewEmblemLayer,
@@ -50,6 +51,48 @@ export function CrewEmblemBuilder({ emblem, onChange }: CrewEmblemBuilderProps) 
       {CREW_EMBLEM_LAYERS.map((layer) => (
         <LayerRow key={layer} layer={layer} emblem={emblem} onChange={onChange} />
       ))}
+      <OutlineRow emblem={emblem} onChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * The ink style, offered the same way everything else here is: as the emblem
+ * drawn both ways, rather than a switch labelled with a word for a look.
+ */
+function OutlineRow({
+  emblem,
+  onChange,
+}: {
+  emblem: CrewEmblem;
+  onChange: (emblem: CrewEmblem) => void;
+}) {
+  return (
+    <div className="crew-emblem-builder__row">
+      <p className="machine-label" id="crew-emblem-outline-label">
+        Outline
+      </p>
+      <div
+        className="crew-emblem-builder__rail"
+        role="group"
+        aria-labelledby="crew-emblem-outline-label"
+      >
+        {([true, false] as const).map((outline) => (
+          <button
+            key={String(outline)}
+            type="button"
+            className="crew-emblem-builder__thumb"
+            aria-pressed={emblem.outline === outline}
+            aria-label={outline ? "Outlined edges" : "Clean edges"}
+            onClick={() => onChange(setCrewEmblemOutline(emblem, outline))}
+          >
+            <CrewEmblemMark
+              className="crew-emblem-builder__thumb-mark"
+              emblem={setCrewEmblemOutline(emblem, outline)}
+            />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

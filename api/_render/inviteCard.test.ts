@@ -65,6 +65,18 @@ describe("Crew invite share image", () => {
     );
   });
 
+  /**
+   * The ink style is part of what a crew designed, not a client rendering
+   * preference, so a flat emblem has to arrive flat in the shared preview too.
+   */
+  it("carries the crew's ink style into the share image", () => {
+    const clean = decodeCrewEmblem("E2-4.2-7.0-3.5-1") as CrewEmblem;
+    expect(clean.outline).toBe(false);
+    expect(renderInviteCard({ ...raceCrew, emblem: clean })).not.toEqual(
+      renderInviteCard(raceCrew),
+    );
+  });
+
   it("leaves race context off a Run Club card", () => {
     const club: InviteCard = {
       crewName: "OUC Half",

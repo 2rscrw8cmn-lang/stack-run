@@ -1664,6 +1664,15 @@ secondary clears 1.35 against both neighbours, and `Surprise Me` draws from
 that list — which is the only thing standing between a shuffle and a violet
 mark on a blue field.
 
+A fourth choice sits beside the three layers: the **ink style**. On, the mark
+and its accent are outlined and the mark carries a dropped shadow; off, both
+are flat colour straight onto the field. The background keeps its own edge
+either way, because that edge separates the badge from the surface it is
+sitting on rather than separating the layers from each other. The style rides
+along in the stored code as a trailing group, and the builder offers it the way
+it offers everything else — the emblem drawn both ways, not a switch labelled
+with a word for a look.
+
 `resolveCrewEmblem(stored)` returns the saved emblem or one fixed neutral
 default. There is deliberately no decoder for the retired `E1-` codes and no
 crew-id-derived mark: the old library is gone, so translating a retired Crown
@@ -1671,5 +1680,7 @@ into the nearest new piece would be inventing a decision the crew never made.
 `20260815000000_three_layer_crew_emblem.sql` clears every legacy value to null
 and replaces `crews_emblem_check` in place with the `E2-` pattern, which allows
 three digits of shape index so these libraries can grow without another
-migration. A future index this client does not have still fails soft to its
-layer's first option.
+migration; `20260815120000_crew_emblem_ink_style.sql` widens it again for the
+optional trailing style group. A future index — or a future style digit — this
+client does not have still fails soft, to that layer's first option and to the
+outlined emblem respectively.

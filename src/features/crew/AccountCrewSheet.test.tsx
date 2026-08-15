@@ -769,6 +769,7 @@ describe("Crew emblems", () => {
     await user.click(screen.getByRole("button", { name: "Bolt main mark" }));
     await user.click(screen.getByRole("button", { name: "Burst secondary" }));
     await user.click(screen.getByRole("button", { name: "Teal background color" }));
+    await user.click(screen.getByRole("button", { name: "Clean edges" }));
     await user.click(screen.getByRole("button", { name: "Done" }));
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
@@ -779,6 +780,7 @@ describe("Crew emblems", () => {
           main: { ...DEFAULT_CREW_EMBLEM.main, shape: MAIN_SHAPES.indexOf("Bolt") },
           secondary: { ...DEFAULT_CREW_EMBLEM.secondary, shape: SECONDARY_SHAPES.indexOf("Burst") },
           background: { ...DEFAULT_CREW_EMBLEM.background, color: EMBLEM_COLORS.indexOf("Teal") },
+          outline: false,
         },
       }),
     );
@@ -827,6 +829,15 @@ describe("Crew emblems", () => {
       const swatches = screen.getByRole("group", { name: label });
       expect(within(swatches).getAllByRole("button")).toHaveLength(EMBLEM_COLORS.length);
     }
+
+    // The ink style is offered the same way: the emblem drawn both ways, not a
+    // switch labelled with a word for a look.
+    const style = screen.getByRole("group", { name: /^outline$/i });
+    expect(within(style).getAllByRole("button")).toHaveLength(2);
+    expect(within(style).getByRole("button", { name: "Outlined edges" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     expect(screen.getByRole("button", { name: "Surprise Me" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Previous .* shape/ })).not.toBeInTheDocument();
