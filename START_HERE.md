@@ -1,32 +1,89 @@
 # STACK — Start Here
 
-This repository is the source of truth for **STACK**, a mobile-first running plan app with the tagline **Build your race.**
+This branch is the source of truth for the **STACK Next** product program.
 
-## Current project state
+## Branch context
 
-Implemented/accepted:
+You are working from:
 
-- UI-0 through UI-21, including Connected Training, Performance Arcade and Race Crew;
-- UI-21 Crew Destination + Shared Crew Build, including runner-owned placement (merged PR #38).
+```text
+feature/stack-next
+```
 
-In review:
+This is a long-lived integration branch created from `main` so the current working STACK application can remain stable while a major new direction is developed and tested.
 
-- UI-22 Final Product Polish + Onboarding, the final planned product phase.
+Do **not** treat this branch as a replacement for `main` yet.
 
-Intentionally skipped/deferred:
+Do **not** merge STACK Next implementation work directly to `main`.
 
-- UI-12 Wellness / Recovery Context;
-- UI-15 Optional Plan Export Investigation.
+Substantial phases should branch from `feature/stack-next` and merge back into it.
 
-Current primary destinations:
+## The product shift
 
-> **Today / Build / Runs / Plan**, plus **Crew** for a signed-in active crew member
+The current application grew around one active race plan.
 
-Settings is an icon-only top-right gear.
+STACK Next changes the hierarchy:
 
-Current personal AppState: **schema 9**.
+> **The runner and the runner's actual historical training are foundational. The training plan remains useful, but it no longer takes the front seat or defines the runner.**
 
-## Current connected-data path
+Historical Intervals.icu activity data should become a durable personal context layer that can support runner history, longitudinal signals, a better Today experience and plan comparison without forcing every run into the plan model.
+
+## Required reading for STACK Next work
+
+Read in this order:
+
+1. `docs/STACK_NEXT.md`
+2. `docs/INTERVALS_DATA_STRATEGY.md`
+3. `docs/STACK_NEXT_IMPLEMENTATION.md`
+4. `docs/STACK_NEXT_AGENT_PROMPT.md` when implementing NEXT-1
+5. `docs/CONNECTED_DATA_FIELDS.md` for verified Intervals fields/semantics
+6. `docs/INTERVALS_INTEGRATION.md` for existing import behavior
+7. `docs/DATA_AND_STORAGE.md` for existing persistence behavior not superseded by STACK Next
+8. `docs/PRODUCT_AND_SCOPE.md` for the current-product baseline
+9. `docs/ENGINEERING_STANDARDS.md`
+10. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+11. `AGENTS.md`
+
+Older phase/program documents remain useful historical/current-behavior references, but they do not override the STACK Next packet on this branch.
+
+## Authority order on this branch
+
+When documents conflict:
+
+1. `docs/STACK_NEXT.md`
+2. `docs/INTERVALS_DATA_STRATEGY.md`
+3. `docs/STACK_NEXT_IMPLEMENTATION.md`
+4. `docs/CONNECTED_DATA_FIELDS.md` for exact verified source fields and source semantics
+5. `docs/INTERVALS_INTEGRATION.md` for existing connected-data mechanics
+6. `docs/DATA_AND_STORAGE.md` where not superseded
+7. `docs/PRODUCT_AND_SCOPE.md` as the current app baseline
+8. `docs/NEXT_PRODUCT_PROGRAM.md`, Race Crew docs and other existing program docs for systems that STACK Next has not replaced
+9. older historical phase docs
+10. existing code
+
+The STACK Next docs supersede older statements such as "No UI-23 is planned" or plan-first hierarchy language when those statements conflict with the new program.
+
+## Current application baseline
+
+The existing application is still valuable and should remain usable while STACK Next is built.
+
+Current capabilities include:
+
+- Today / Build / Runs / Plan;
+- conditional Crew destination for active crew members;
+- manual run logging;
+- HealthFit → Intervals.icu connected data;
+- user-confirmed scheduled/extra/attach behavior;
+- run history and rich Run Detail;
+- Training Signals;
+- deterministic personal Build;
+- editable race plan;
+- Race Crew with Supabase/RLS and a shared Crew Build;
+- local-first personal data.
+
+STACK Next should evolve these systems deliberately rather than replacing them wholesale.
+
+## Connected-data path
 
 Apple Watch:
 
@@ -34,130 +91,171 @@ Apple Watch:
 Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
 
-Other watch/training services may skip HealthFit when they already sync directly into Intervals.icu.
+Other services may sync directly to Intervals and skip HealthFit.
 
 Manual logging remains a full fallback.
 
-## Active phase
+`docs/CONNECTED_DATA_FIELDS.md` remains authoritative for what has actually been verified in the owner's real pipeline.
 
-**UI-22 — Final Product Polish + Onboarding** is the final planned product phase. It adds no new product capability: it resolves accumulated hierarchy, selector, copy, accessibility and responsive inconsistencies, then gives genuinely new users a short local introduction to the existing Plan → Run → Build → Today loop.
+## STACK Next data hierarchy
 
-Read first:
+### Foundation
 
-```text
-docs/PRODUCT_AND_SCOPE.md
-docs/NEXT_PRODUCT_PROGRAM.md
-docs/RACE_CREW.md
-docs/RACE_CREW_SETUP.md
-docs/RUN_DATA_SETUP.md
-docs/RACE_CREW_IMPLEMENTATION.md
-docs/DATA_AND_STORAGE.md
-docs/DECISION_LOG_ADDENDUM.md
-```
+Prioritize normalized historical activity facts:
 
-Existing users are migrated quietly and are never forced through the tour. The tour can be replayed from Settings; Crew receives one contextual explanation only when an eligible runner first opens it. Onboarding preferences live in a small repository separate from personal AppState schema 9.
-
-## Race Crew hobby architecture
-
-Race Crew v1 is for roughly ten known friends, not a public app.
-
-```text
-PERSONAL DATA
-watch → Intervals.icu → personal API key on that runner's device → STACK
-
-CREW DATA
-STACK → narrow safe projection → Supabase Auth/Postgres/RLS → Crew
-```
-
-Locked decisions:
-
-- Supabase Auth + Postgres + RLS;
-- optional account: email + exactly 8 numeric digits presented as STACK PIN;
-- no normal magic-link login;
-- personal plan/runs/Build stay local;
-- no full cloud sync;
-- each runner's Intervals personal API key stays only on their own device;
-- no Intervals key in Supabase;
-- direct `/api/v1/` browser mode for new hobby users after real Safari verification;
-- keep current owner Vercel proxy working during migration;
-- Race Crew gets only explicitly safe run/summary projections.
-
-Intervals officially recommends OAuth for apps intended for multiple users. The owner has intentionally accepted personal keys as a private-hobby shortcut. Revisit OAuth before public/open/commercial/stranger onboarding.
-
-## UI-22 polish rules
-
-- preserve the Performance Arcade direction while reducing noise and duplication;
-- keep Runs personal and compact, with Log Run immediately available but no oversized page title;
-- use segmented controls for small finite choices, the shared STACK native select for longer lists, and native date controls for dates;
-- use the shared ActivityTypePicker and EffortPicker everywhere those concepts are edited;
-- hide normal fresh-status timestamps and show relative age only when it is useful;
-- keep every interactive target at least 44 CSS px and every destination usable at 320 CSS px;
-- add no router, global state, feature system, database migration or AppState migration.
-
-## Run Data setup is part of the product
-
-The three-app Apple Watch path is acceptable only if STACK explains it well.
-
-`docs/RUN_DATA_SETUP.md` is the content source for the in-app onboarding wizard.
-
-For Apple Watch friends, explain each job:
-
-- Apple Watch records the run;
-- HealthFit moves Apple Health workouts to Intervals;
-- Intervals is STACK's activity-data bridge;
-- STACK provides plan/history/trends/Build/Crew.
-
-A user must verify one run is visible in Intervals before connecting STACK.
-
-## Privacy boundary
-
-Crew-safe:
-
-- display name;
-- date;
-- run type;
+- source activity identity;
+- local date/time;
+- run type/name where useful;
 - distance;
 - duration;
-- derived pace;
-- approved comparison summaries.
+- average/max HR when present;
+- HR-zone duration when present;
+- elevation gain from the source aggregate;
+- cadence using the verified Intervals convention;
+- source training load.
 
-Never share/upload by default:
+### High-value enrichment
 
-- Intervals key/external ids;
-- GPS/routes/location;
-- exact start time;
-- HR/HR zones/Training Load;
-- wellness;
-- effort;
-- notes;
-- raw source data;
-- availability-calendar details;
-- full AppState.
+Use selectively:
 
-## Authority order
+- structured intervals/laps;
+- on-demand run profile streams;
+- reversible activity classification;
+- longitudinal derived metrics.
 
-When documents conflict:
+### Optional later context
 
-1. `docs/PRODUCT_AND_SCOPE.md`
-2. `docs/NEXT_PRODUCT_PROGRAM.md`
-3. `docs/RACE_CREW.md`
-4. `docs/RACE_CREW_IMPLEMENTATION.md`
-5. `docs/RACE_CREW_SETUP.md`
-6. `docs/RUN_DATA_SETUP.md`
-7. `docs/DATA_AND_STORAGE.md`
-8. `docs/DECISION_LOG_ADDENDUM.md`
-9. connected-data engineering docs for existing import semantics
-10. older historical phase docs
-11. existing code
+Only after verified coverage and a clear product need:
 
-`docs/CONNECTED_DATA_FIELDS.md` remains authoritative for verified imported metrics.
+- HRV;
+- resting HR;
+- sleep;
+- running power;
+- stride length;
+- ground contact time;
+- vertical oscillation.
 
-## TRNRBOI reference
+### Avoid by default
 
-`drewwest289/TRNRBOI-8000` remains design/product inspiration only.
+Do not make the normal STACK Next model a dump of:
 
-Do not copy its code, assets, Strava implementation, backend/auth, Game Boy shell or calculations.
+- raw Intervals payloads;
+- GPS routes/coordinates;
+- raw FIT files;
+- large persisted streams;
+- arbitrary custom fields;
+- source social data;
+- unrelated activity types;
+- every sophisticated Intervals fitness/form metric merely because it exists.
+
+## Active implementation sequence
+
+### NEXT-0 — Direction + data contract
+
+Documentation package on `feature/stack-next`.
+
+### NEXT-1 — Historical Data Foundation
+
+Recommended child branch:
+
+```text
+feature/historical-data
+```
+
+Target PR:
+
+```text
+feature/stack-next
+```
+
+Purpose:
+
+- configurable historical lookback;
+- pagination/range-safe Intervals retrieval;
+- normalized Tier 1 activity summaries;
+- dedupe and reconciliation;
+- a clean historical activity repository boundary;
+- fixtures/tests and data-coverage visibility;
+- no new dashboard yet.
+
+Use `docs/STACK_NEXT_AGENT_PROMPT.md` for the full implementation prompt.
+
+### Later phases
+
+Planned order:
+
+```text
+NEXT-2  Runner History + Profile Foundation
+NEXT-3  Training Signals v2
+NEXT-4  Today / Home revision
+NEXT-5  Plan role revision
+NEXT-6  Build + Crew compatibility
+NEXT-7  Integration + release candidate
+```
+
+See `docs/STACK_NEXT_IMPLEMENTATION.md`.
+
+## Branch workflow
+
+Use:
+
+```text
+main
+└── feature/stack-next
+    ├── feature/historical-data
+    ├── feature/runner-profile
+    ├── feature/training-signals-v2
+    ├── feature/today-next
+    ├── feature/plan-next
+    └── experiment/...
+```
+
+Rules:
+
+- `main` stays stable;
+- `feature/stack-next` is the integration branch;
+- child branches start from the latest `feature/stack-next`;
+- child PRs target `feature/stack-next`;
+- experiments can be discarded without destabilizing the integrated program;
+- periodically reconcile relevant `main` fixes into `feature/stack-next` so the branches do not drift unnecessarily;
+- only consider merging `feature/stack-next` to `main` after owner acceptance of the whole direction.
+
+## Engineering guardrails
+
+Preserve unless a phase explicitly changes them:
+
+- React + TypeScript + Vite;
+- phone-first responsive behavior;
+- current local-first personal state;
+- current Crew Supabase/RLS boundary;
+- manual logging fallback;
+- existing connected-run import compatibility;
+- Build and Crew behavior;
+- current secret handling;
+- no raw private payloads in fixtures;
+- no automatic plan mutation from health data;
+- no medical/readiness claims;
+- no unnecessary framework/backend expansion.
+
+## Source-truth rule
+
+For connected metrics:
+
+> **Source aggregates state summary facts. Streams provide shape.**
+
+Do not recompute source summary values from per-sample streams when the verified aggregate exists.
+
+Missing metrics remain missing; never convert absence to zero.
 
 ## Delivery rule
 
-Use one branch and one PR per implementation phase unless the owner explicitly requests otherwise.
+Each NEXT implementation phase should be independently reviewable and should update the docs it changes.
+
+Before review:
+
+```bash
+npm install
+npm run check
+```
+
+Real Intervals verification is a separate deployed smoke test using the owner's connection. Never commit API keys, raw private payloads, GPS coordinates or other sensitive data.
