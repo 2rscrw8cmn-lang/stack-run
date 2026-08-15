@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// Secondary local interface for the same production artwork available at
+// `#artwork`. The phone-first page is the normal owner workflow; this command
+// remains useful when a desktop folder of SVGs is more convenient.
+
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -182,7 +186,7 @@ async function exportAll(crew, members, mod, colors) {
 async function main() {
   const options = args();
   if (options.help) {
-    console.log("Usage: npm run export:artwork [-- --crew <name-or-id>]\n\nExports the selected live Crew emblem and every member Runner Icon to ./exports/<crew>/ as standalone SVG files.");
+    console.log("Usage: npm run export:artwork [-- --crew <name-or-id>]\n\nSecondary desktop utility. Exports the selected live Crew emblem and every member Runner Icon to ./exports/<crew>/ as standalone SVG files. For phone use, open STACK at #artwork.");
     return;
   }
   await loadEnv();
