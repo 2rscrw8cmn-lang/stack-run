@@ -51,12 +51,94 @@ No product code was required.
 
 ### NEXT-1 — Historical Data Foundation
 
-**Status: active next engineering phase.**  
-**Recommended branch:** `feature/historical-data`
+**Status: implemented on `feature/historical-data`, awaiting the deployed
+real-data smoke test and owner acceptance.**  
+**Branch:** `feature/historical-data` → PR into `feature/stack-next`.
 
 Goal:
 
 > Give STACK a trustworthy, normalized history of actual running activity that extends beyond the active plan.
+
+#### What was built
+
+A headless history layer in `src/history/`, behind one service boundary, with
+no screen in front of it. `docs/CURRENT_APPLICATION_STRUCTURE.md` describes the
+modules; the behavioural contract is:
+
+- **Lookback is an argument, not an assumption.** `syncHistoricalActivities`
+  takes `lookbackDays`, defaulting to `DEFAULT_HISTORICAL_LOOKBACK_DAYS` (365).
+  Raising it changes no type, no stored record and no call site.
+- **Pagination is by date window.** The Intervals activities endpoint pages by
+  range, and `api/intervals.ts` refuses a span over 120 days, so a historical
+  read is a sequence of ≤90-day windows read newest-first, one at a time. No
+  code assumes a single response holds the history.
+- **A failed window stops the sync.** Rate limits, dead connections and
+  rejected credentials all fail the next window too. Everything already read is
+  reconciled and persisted, and the result names the window that stopped it and
+  how many were left.
+- **Tier 1 only, in source units.** Source id, local date, local start time,
+  source type, name, distance (m), moving/elapsed time (s), average and max HR,
+  HR-zone durations, elevation gain (m), cadence verbatim, training load,
+  `sourceUpdatedAt`. Every optional field is explicitly `null` when absent and
+  is never converted to zero.
+- **`provider + sourceId` is the only dedupe identity.** Repeated sync produces
+  no duplicates; date and distance are never matched on.
+- **Upstream changes are mirrored in place.** A known id whose source facts
+  differ has them replaced under the same id, keeping `firstSeenAt`, moving
+  `lastSeenAt` and stamping `reconciledAt`. A field that has gone missing
+  upstream is written back to `null` rather than left stale. This is safe
+  precisely because the record holds nothing a person decided.
+- **History outside a window is kept, never pruned.** A narrower lookback is a
+  smaller question, not a deletion.
+- **Source facts stay separate from derived ones.** The stored record carries no
+  STACK classification, no derived pace, no plan link and no Build state. The
+  run-log link is derived at read time in `historicalLinks.ts`.
+- **Nothing existing moved.** No AppState migration, no schema change, no change
+  to Run Data sync, the review queue, matching, manual runs, Build, Crew or the
+  safe projection. Newly discovered history earns no Build block, and the
+  history slot lives outside AppState so it is not in backup, export or Crew.
+
+Deliberately **not** built: any classification/labelling of historical runs
+(NEXT-2's information architecture decides that), any Build backfill, and any
+user-facing surface.
+
+#### Deployed real-data smoke test (still outstanding)
+
+Automated tests use fake fixtures and fake credentials only. The following can
+only be run by the owner on the deployed app, against their own Intervals
+connection. It is deliberately opt-in and prints aggregates only.
+
+1. On the deployed app, in the browser console:
+   `localStorage.setItem("stack.history.diagnostics.v1", "on")`, then reload.
+   Without this, `window.__stackHistory` does not exist for anybody.
+2. Confirm the device is connected in Settings → Run Data first. The diagnostic
+   reuses the credential already stored on the device and never accepts or
+   prints one.
+3. `await __stackHistory.sync({ lookbackDays: 365 })`.
+   Check: `windows: N/N read` with N > 1 (paging really happened), an activity
+   count plausible for the owner's real training, `persisted: true`, and
+   `no failures`.
+4. Run the same command again. Check `added: 0`, `unchanged` equal to the first
+   run's total, and the same activity count — repeated sync creating no
+   duplicates is the single most important result here.
+5. Read the coverage block. Confirm the metrics
+   `docs/CONNECTED_DATA_FIELDS.md` records as Verified are populated at a
+   plausible rate, and that cadence values sit around the source's own
+   convention (≈79) rather than doubled (≈158).
+6. `__stackHistory.coverage()` after a reload, to confirm the history survived.
+7. Spot-check one activity against Intervals itself for distance, average HR and
+   elevation gain.
+8. Confirm nothing private was printed: the diagnostic returns counts, ratios
+   and a date range only — no activity name, id, start time, route or
+   credential — so the output is safe to paste into the phase notes. Do not
+   paste a raw API response anywhere in this repository.
+9. `__stackHistory.clear()` and `localStorage.removeItem("stack.history.diagnostics.v1")`
+   when finished, if a clean device is wanted.
+
+Update `docs/CONNECTED_DATA_FIELDS.md` **only** if this run establishes a source
+fact that is not already recorded there — a field verified for the first time, a
+unit confirmed, or a documented candidate found absent. Field names, presence
+and units only; never a payload.
 
 Required work:
 
@@ -92,6 +174,10 @@ Acceptance:
 - current connected-run import remains compatible;
 - `npm run check` passes;
 - real deployed smoke test can verify a historical range without committing private payloads.
+
+Acceptance status: every item above is met in code and covered by fake-data
+tests except the last, which is the outstanding owner smoke test described
+above. `npm run check` passes (1,462 tests).
 
 ### NEXT-2 — Runner History + Profile Foundation
 

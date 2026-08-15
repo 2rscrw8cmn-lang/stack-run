@@ -623,9 +623,53 @@ freshly generated invite after deploy (Link Presentation caches per URL).
 
 - `npm run check` passes.
 
+## STACK Next program (`feature/stack-next`)
+
+A separate program from the UI phases above. `main` remains the stable
+application; STACK Next reorganizes the product around the runner's actual
+history rather than around the training plan, and is not merged to `main` until
+the owner accepts the new direction as a whole. `docs/STACK_NEXT.md` is its
+product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
+
+| Phase | Name | Branch | Status |
+|---|---|---|---|
+| NEXT-0 | Direction + data contract | `feature/stack-next` | Complete — August 15, 2026 |
+| NEXT-1 | Historical Data Foundation | `feature/historical-data` | Implemented; deployed smoke test and owner acceptance outstanding |
+| NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Not started |
+| NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Not started |
+| NEXT-4 | Today / Home revision | `feature/today-next` | Not started |
+| NEXT-5 | Plan role revision | `feature/plan-next` | Not started |
+| NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Not started |
+| NEXT-7 | Product integration + release candidate | — | Not started |
+
+### NEXT-1 — implemented, awaiting real-data verification
+
+`src/history/` adds a headless historical activity layer behind one service
+boundary: configurable lookback (365 days by default), date-window pagination
+inside the reader's 120-day limit, normalized Tier 1 source facts in source
+units with missing values staying null, dedupe and in-place reconciliation on
+`provider + sourceId`, and persistence at `stack.history.activities.v1` outside
+AppState. `docs/CURRENT_APPLICATION_STRUCTURE.md` describes the modules.
+
+No AppState migration, no schema change, no Supabase migration, no dependency,
+no UI. Manual runs, accepted connected runs, plan links, Build, Crew and the
+safe projection are unchanged, and newly discovered history earns no Build
+block — historical Build backfill remains a NEXT-6 product decision.
+
+- `npm run check` passes: 111 files, 1,462 tests, 59 of them new and all on
+  fake fixtures and fake credentials.
+- **Outstanding:** the deployed smoke test against the owner's real Intervals
+  connection, documented step by step in `docs/STACK_NEXT_IMPLEMENTATION.md`.
+  Until it runs, the lookback, paging, plausible activity counts, repeated-sync
+  dedupe and real optional-metric coverage are verified against fixtures only.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact, because it made no real API call.
+
 ## Active source documents
 
 - `START_HERE.md`
+- `docs/STACK_NEXT.md` — and `docs/INTERVALS_DATA_STRATEGY.md`,
+  `docs/STACK_NEXT_IMPLEMENTATION.md`, for work on `feature/stack-next`
 - `docs/NEXT_PRODUCT_PROGRAM.md`
 - `docs/RACE_CREW.md`
 - `docs/RACE_CREW_SETUP.md`
