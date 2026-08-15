@@ -1,81 +1,19 @@
 import { Shuffle } from "lucide-react";
-import { useState } from "react";
+import type { CSSProperties } from "react";
 import {
   CREW_EMBLEM_COLORS,
-  CREW_EMBLEM_FRAMES,
-  CREW_EMBLEM_INK,
-  CREW_EMBLEM_SECTIONS,
-  CREW_EMBLEM_SECTION_LABEL,
-  CREW_EMBLEM_SHAPES,
-  CREW_EMBLEM_VIEW_BOX,
-  crewEmblemColor,
-  cycleEmblemShape,
+  CREW_EMBLEM_LAYERS,
+  CREW_EMBLEM_LAYER_LABEL,
+  crewEmblemShapeIndices,
+  crewEmblemShapeName,
   randomCrewEmblem,
-  setEmblemColor,
-  shapeName,
+  setCrewEmblemColor,
+  setCrewEmblemOutline,
+  setCrewEmblemShape,
   type CrewEmblem,
-  type CrewEmblemSection,
+  type CrewEmblemLayer,
 } from "../../crew/emblem";
 import { CrewEmblem as CrewEmblemMark } from "./CrewEmblem";
-
-/** One section in isolation, framed on its own band of the drawing. */
-const SECTION_VIEW_BOX: Record<CrewEmblemSection, string> = {
-  top: "10 15 160 65",
-  middle: "10 70 160 68",
-  bottom: "10 136 160 70",
-  frame: CREW_EMBLEM_VIEW_BOX,
-};
-
-function SectionMark({
-  emblem,
-  section,
-}: {
-  emblem: CrewEmblem;
-  section: CrewEmblemSection;
-}) {
-  const color = crewEmblemColor(emblem[section].color).value;
-  if (section === "frame") {
-    const frame = CREW_EMBLEM_FRAMES[emblem.frame.shape] ?? CREW_EMBLEM_FRAMES[0];
-    return (
-      <svg
-        className="crew-emblem-builder__mark"
-        viewBox={SECTION_VIEW_BOX.frame}
-        aria-hidden="true"
-        focusable="false"
-      >
-        {frame.d && (
-          <path
-            d={frame.d}
-            fill="none"
-            stroke={color}
-            strokeWidth={Math.max(frame.colorWidth, 8)}
-            strokeLinejoin="miter"
-            strokeLinecap={frame.linecap}
-          />
-        )}
-      </svg>
-    );
-  }
-  const options = CREW_EMBLEM_SHAPES[section];
-  const shape = options[emblem[section].shape] ?? options[0];
-  return (
-    <svg
-      className="crew-emblem-builder__mark"
-      viewBox={SECTION_VIEW_BOX[section]}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d={shape.d}
-        fill={color}
-        fillRule={shape.rule ?? "nonzero"}
-        stroke={CREW_EMBLEM_INK}
-        strokeWidth={3}
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 interface CrewEmblemBuilderProps {
   emblem: CrewEmblem;
@@ -83,97 +21,142 @@ interface CrewEmblemBuilderProps {
 }
 
 /**
- * The crew emblem designer.
+ * The Crew Emblem designer.
  *
- * Four parts, one color at a time, and a live mark kept in view while the
- * runner works. Each part is a compact row so the whole emblem remains
- * legible on a phone.
+ * Three layers, every option on screen, and the mark being built pinned above
+ * them — the same shape as the Runner Icon builder, because building an emblem
+ * is a comparison and the arrows-and-a-name cycler it replaces made an owner
+ * hold three libraries in their head. Nothing is named on screen: the shapes
+ * are the choice, and the names live in the accessible names where they belong.
+ *
+ * Each option tile draws the whole emblem with that candidate swapped in and
+ * the other two layers dimmed, so a secondary piece is judged against the mark
+ * it will actually sit behind rather than floating in an empty box.
  */
 export function CrewEmblemBuilder({ emblem, onChange }: CrewEmblemBuilderProps) {
-  const [selected, setSelected] = useState<CrewEmblemSection>("middle");
-
   return (
     <div className="crew-emblem-builder">
       <div className="crew-emblem-builder__stage technical-grid">
-        <CrewEmblemMark emblem={emblem} size={106} label="Crew emblem preview" />
+        <CrewEmblemMark emblem={emblem} size={104} label="Crew emblem preview" />
+        <button
+          type="button"
+          className="crew-emblem-builder__random"
+          onClick={() => onChange(randomCrewEmblem())}
+        >
+          <Shuffle size={14} strokeWidth={2} aria-hidden="true" />
+          Surprise Me
+        </button>
       </div>
 
-      <div className="crew-emblem-builder__sections">
-        {CREW_EMBLEM_SECTIONS.map((section) => (
-          <div className="crew-emblem-builder__row" key={section}>
-            <p className="machine-label">{CREW_EMBLEM_SECTION_LABEL[section]}</p>
-            <div className="crew-emblem-builder__selector">
-              <button
-                type="button"
-                className="crew-emblem-builder__arrow"
-                aria-label={`Previous ${CREW_EMBLEM_SECTION_LABEL[section].toLowerCase()} shape`}
-                onClick={() => {
-                  setSelected(section);
-                  onChange(cycleEmblemShape(emblem, section, -1));
-                }}
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="crew-emblem-builder__option"
-                aria-pressed={selected === section}
-                onClick={() => setSelected(section)}
-              >
-                <SectionMark emblem={emblem} section={section} />
-                <span className="crew-emblem-builder__option-label">
-                  {shapeName(section, emblem[section].shape)}
-                  <span
-                    className="crew-emblem-builder__color-indicator"
-                    data-emblem-color={emblem[section].color}
-                    aria-hidden="true"
-                  />
-                </span>
-              </button>
-              <button
-                type="button"
-                className="crew-emblem-builder__arrow"
-                aria-label={`Next ${CREW_EMBLEM_SECTION_LABEL[section].toLowerCase()} shape`}
-                onClick={() => {
-                  setSelected(section);
-                  onChange(cycleEmblemShape(emblem, section, 1));
-                }}
-              >
-                ›
-              </button>
-            </div>
-          </div>
+      {CREW_EMBLEM_LAYERS.map((layer) => (
+        <LayerRow key={layer} layer={layer} emblem={emblem} onChange={onChange} />
+      ))}
+      <OutlineRow emblem={emblem} onChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * The ink style, offered the same way everything else here is: as the emblem
+ * drawn both ways, rather than a switch labelled with a word for a look.
+ */
+function OutlineRow({
+  emblem,
+  onChange,
+}: {
+  emblem: CrewEmblem;
+  onChange: (emblem: CrewEmblem) => void;
+}) {
+  return (
+    <div className="crew-emblem-builder__row">
+      <p className="machine-label" id="crew-emblem-outline-label">
+        Outline
+      </p>
+      <div
+        className="crew-emblem-builder__rail"
+        role="group"
+        aria-labelledby="crew-emblem-outline-label"
+      >
+        {([true, false] as const).map((outline) => (
+          <button
+            key={String(outline)}
+            type="button"
+            className="crew-emblem-builder__thumb"
+            aria-pressed={emblem.outline === outline}
+            aria-label={outline ? "Outlined edges" : "Clean edges"}
+            onClick={() => onChange(setCrewEmblemOutline(emblem, outline))}
+          >
+            <CrewEmblemMark
+              className="crew-emblem-builder__thumb-mark"
+              emblem={setCrewEmblemOutline(emblem, outline)}
+            />
+          </button>
         ))}
       </div>
+    </div>
+  );
+}
 
-      <div className="crew-emblem-builder__colors">
-        <p className="machine-label">
-          {CREW_EMBLEM_SECTION_LABEL[selected]} color
-        </p>
-        <ul aria-label={`${CREW_EMBLEM_SECTION_LABEL[selected]} color`}>
-          {CREW_EMBLEM_COLORS.map((color, index) => (
-            <li key={color.name}>
-              <button
-                type="button"
-                className="crew-emblem-builder__swatch"
-                data-emblem-color={index}
-                aria-label={color.name}
-                aria-pressed={emblem[selected].color === index}
-                onClick={() => onChange(setEmblemColor(emblem, selected, index))}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <button
-        type="button"
-        className="crew-emblem-builder__random"
-        onClick={() => onChange(randomCrewEmblem())}
+function LayerRow({
+  layer,
+  emblem,
+  onChange,
+}: {
+  layer: CrewEmblemLayer;
+  emblem: CrewEmblem;
+  onChange: (emblem: CrewEmblem) => void;
+}) {
+  const label = CREW_EMBLEM_LAYER_LABEL[layer];
+  const lowerLabel = label.toLowerCase();
+  return (
+    <div className="crew-emblem-builder__row">
+      <p className="machine-label" id={`crew-emblem-${layer}-label`}>
+        {label}
+      </p>
+      {/*
+        A rail rather than a grid: the main library is thirty marks, and the
+        alternative to scrolling sideways is thumbnails too small to judge the
+        art on a phone. It wraps into a grid where there is room for one.
+      */}
+      <div
+        className="crew-emblem-builder__rail"
+        role="group"
+        aria-labelledby={`crew-emblem-${layer}-label`}
       >
-        <Shuffle size={15} strokeWidth={2} aria-hidden="true" />
-        Surprise Me
-      </button>
+        {crewEmblemShapeIndices(layer).map((index) => (
+          <button
+            key={index}
+            type="button"
+            className="crew-emblem-builder__thumb"
+            aria-pressed={emblem[layer].shape === index}
+            aria-label={`${crewEmblemShapeName(layer, index)} ${lowerLabel}`}
+            onClick={() => onChange(setCrewEmblemShape(emblem, layer, index))}
+          >
+            <CrewEmblemMark
+              className="crew-emblem-builder__thumb-mark"
+              emblem={setCrewEmblemShape(emblem, layer, index)}
+              focusLayer={layer}
+            />
+          </button>
+        ))}
+      </div>
+      <div
+        className="crew-emblem-builder__colors"
+        role="group"
+        aria-label={`${label} color`}
+      >
+        {CREW_EMBLEM_COLORS.map((color, index) => (
+          <button
+            key={color.name}
+            type="button"
+            className="crew-emblem-builder__swatch"
+            style={{ "--crew-emblem-swatch": color.value } as CSSProperties}
+            aria-pressed={emblem[layer].color === index}
+            aria-label={`${color.name} ${lowerLabel} color`}
+            onClick={() => onChange(setCrewEmblemColor(emblem, layer, index))}
+          />
+        ))}
+      </div>
     </div>
   );
 }

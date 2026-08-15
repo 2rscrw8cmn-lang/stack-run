@@ -13,7 +13,6 @@ import { crewMemberAccent } from "./memberAccent";
 import { runnerIconFromSeed } from "./runnerIcon";
 import {
   DEFAULT_CREW_EMBLEM,
-  crewEmblemFromSeed,
   decodeCrewEmblem,
   encodeCrewEmblem,
 } from "./emblem";
@@ -307,7 +306,7 @@ function multiCrewResponses(): Record<string, QueryResult[]> {
     crews: [
       {
         data: [
-          crewRow("crew-1", "Road Crew", "E1-1.2-3.0-5.4-2.1"),
+          crewRow("crew-1", "Road Crew", "E2-4.2-7.0-3.5"),
           crewRow("crew-2", "Trail Crew", null),
         ],
         error: null,
@@ -342,14 +341,35 @@ describe("Loading an account with more than one crew", () => {
     expect(account.memberships).toHaveLength(2);
   });
 
-  it("resolves each crew's emblem, saved or derived", async () => {
+  /**
+   * A crew that has not designed an emblem gets the new system's neutral
+   * default, and a crew still holding a retired four-part code is treated as
+   * unset rather than translated into an approximation of a mark it never
+   * chose.
+   */
+  it("resolves each crew's emblem, saved or unset", async () => {
     const { client } = fakeClient(multiCrewResponses());
     const account = await loadCrewAccount(client, user, "crew-1");
 
-    expect(account.memberships[0].crew.emblem).toEqual(
-      decodeCrewEmblem("E1-1.2-3.0-5.4-2.1"),
-    );
-    expect(account.memberships[1].crew.emblem).toEqual(crewEmblemFromSeed("crew-2"));
+    expect(account.memberships[0].crew.emblem).toEqual(decodeCrewEmblem("E2-4.2-7.0-3.5"));
+    expect(account.memberships[1].crew.emblem).toEqual(DEFAULT_CREW_EMBLEM);
+  });
+
+  it("falls a legacy four-part emblem code back to the neutral default", async () => {
+    const responses = multiCrewResponses();
+    responses.crews = [
+      {
+        data: [
+          crewRow("crew-1", "Road Crew", "E1-1.2-3.0-5.4-2.1"),
+          crewRow("crew-2", "Trail Crew", null),
+        ],
+        error: null,
+      },
+    ];
+    const { client } = fakeClient(responses);
+    const account = await loadCrewAccount(client, user, "crew-1");
+
+    expect(account.memberships[0].crew.emblem).toEqual(DEFAULT_CREW_EMBLEM);
   });
 
   /**

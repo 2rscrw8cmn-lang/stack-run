@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { DEFAULT_CREW_EMBLEM, crewEmblemFromSeed } from "../../crew/emblem";
+import { DEFAULT_CREW_EMBLEM, decodeCrewEmblem } from "../../crew/emblem";
 import type {
   CrewDashboardData,
   CrewMember,
@@ -156,7 +156,7 @@ const crewTwo: RaceCrew = {
   raceDate: "2027-04-10",
   raceDistanceMiles: 31,
   buildStartDate: "2026-11-01",
-  emblem: crewEmblemFromSeed("crew-2"),
+  emblem: decodeCrewEmblem("E2-14.2-4.6-5.3")!,
 };
 
 /** A Run Club counterpart: no race fields, so the header and comparisons swap accordingly. */
@@ -169,7 +169,7 @@ const runClub: RaceCrew = {
   raceDate: null,
   raceDistanceMiles: null,
   buildStartDate: "2026-08-01",
-  emblem: crewEmblemFromSeed("crew-3"),
+  emblem: decodeCrewEmblem("E2-8.4-0.1-9.1")!,
 };
 
 function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewController {

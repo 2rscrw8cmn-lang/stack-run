@@ -2,11 +2,20 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
+import {
+  CREW_EMBLEM_COLORS,
+  CREW_EMBLEM_SHAPES,
+  DEFAULT_CREW_EMBLEM,
+} from "../../crew/emblem";
 import type { LoadedCrewAccount, RaceCrew } from "../../crew/types";
 import type { PersonalSyncController } from "../../personal-sync/types";
 import { todayLocalDate } from "../../domain/dates";
 import { AccountCrewSheet } from "./AccountCrewSheet";
+
+const MAIN_SHAPES = CREW_EMBLEM_SHAPES.main.map((shape) => shape.name);
+const SECONDARY_SHAPES = CREW_EMBLEM_SHAPES.secondary.map((shape) => shape.name);
+const BACKGROUND_SHAPES = CREW_EMBLEM_SHAPES.background.map((shape) => shape.name);
+const EMBLEM_COLORS = CREW_EMBLEM_COLORS.map((color) => color.name);
 
 const ownerCrew: RaceCrew = {
   id: "crew-1",
@@ -757,7 +766,11 @@ describe("Crew emblems", () => {
     await openCrewSettings(user, "OUC Race Crew");
     await user.click(screen.getByRole("button", { name: "Edit Crew" }));
     await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
-    await user.click(screen.getByRole("button", { name: "Next core shape" }));
+    await user.click(screen.getByRole("button", { name: "Bolt main mark" }));
+    await user.click(screen.getByRole("button", { name: "Burst secondary 1" }));
+    await user.click(screen.getByRole("button", { name: "Under Stripe secondary 2" }));
+    await user.click(screen.getByRole("button", { name: "Teal background color" }));
+    await user.click(screen.getByRole("button", { name: "Clean edges" }));
     await user.click(screen.getByRole("button", { name: "Done" }));
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
@@ -765,17 +778,25 @@ describe("Crew emblems", () => {
       expect.objectContaining({
         name: "OUC Race Crew",
         emblem: {
-          ...DEFAULT_CREW_EMBLEM,
-          middle: {
-            ...DEFAULT_CREW_EMBLEM.middle,
-            shape: DEFAULT_CREW_EMBLEM.middle.shape + 1,
+          main: { ...DEFAULT_CREW_EMBLEM.main, shape: MAIN_SHAPES.indexOf("Bolt") },
+          secondary: { ...DEFAULT_CREW_EMBLEM.secondary, shape: SECONDARY_SHAPES.indexOf("Burst") },
+          secondaryTwo: {
+            ...DEFAULT_CREW_EMBLEM.secondaryTwo,
+            shape: SECONDARY_SHAPES.indexOf("Under Stripe"),
           },
+          background: { ...DEFAULT_CREW_EMBLEM.background, color: EMBLEM_COLORS.indexOf("Teal") },
+          outline: false,
         },
       }),
     );
   });
 
-  it("keeps all four compact controls in the dedicated editor without presets", async () => {
+  /**
+   * The builder is the Runner Icon builder's shape, not the old arrow cycler:
+   * one pinned preview, and every option in every layer reachable as its own
+   * button rather than by stepping through a list to find out what is in it.
+   */
+  it("offers every layer as visual choices under one pinned preview", async () => {
     const user = userEvent.setup();
     render(
       <AccountCrewSheet
@@ -794,11 +815,70 @@ describe("Crew emblems", () => {
     await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
     expect(screen.getByRole("heading", { name: "Edit Emblem" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Crew emblem preview" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous crown shape" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous core shape" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous base shape" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous frame shape" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "TOTEM" })).not.toBeInTheDocument();
+
+    for (const [label, shapes] of [
+      ["main mark", MAIN_SHAPES],
+      ["secondary 1", SECONDARY_SHAPES],
+      ["secondary 2", SECONDARY_SHAPES],
+      ["background", BACKGROUND_SHAPES],
+    ] as const) {
+      const group = screen.getByRole("group", { name: new RegExp(`^${label}$`, "i") });
+      expect(within(group).getAllByRole("button")).toHaveLength(shapes.length);
+      expect(
+        within(group).getByRole("button", { name: `${shapes[1]} ${label}` }),
+      ).toBeInTheDocument();
+    }
+
+    // Colour lives beside the layer it recolours; there is no separate mode to
+    // enter first, which is what the old builder made an owner do.
+    for (const label of [
+      "Main mark color",
+      "Secondary 1 color",
+      "Secondary 2 color",
+      "Background color",
+    ]) {
+      const swatches = screen.getByRole("group", { name: label });
+      expect(within(swatches).getAllByRole("button")).toHaveLength(EMBLEM_COLORS.length);
+    }
+
+    // The ink style is offered the same way: the emblem drawn both ways, not a
+    // switch labelled with a word for a look.
+    const style = screen.getByRole("group", { name: /^outline$/i });
+    expect(within(style).getAllByRole("button")).toHaveLength(2);
+    expect(within(style).getByRole("button", { name: "Outlined edges" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    expect(screen.getByRole("button", { name: "Surprise Me" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Previous .* shape/ })).not.toBeInTheDocument();
+  });
+
+  it("marks the chosen option in each layer without leaning on a visible label", async () => {
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", account: ownerAccount })}
+      />,
+    );
+
+    await openCrewSettings(user, "OUC Race Crew");
+    await user.click(screen.getByRole("button", { name: "Edit Crew" }));
+    await user.click(screen.getByRole("button", { name: "Edit Emblem" }));
+
+    const chosen = screen.getByRole("button", {
+      name: `${MAIN_SHAPES[DEFAULT_CREW_EMBLEM.main.shape]} main mark`,
+    });
+    expect(chosen).toHaveAttribute("aria-pressed", "true");
+
+    const bolt = screen.getByRole("button", { name: "Bolt main mark" });
+    expect(bolt).toHaveAttribute("aria-pressed", "false");
+    await user.click(bolt);
+    expect(bolt).toHaveAttribute("aria-pressed", "true");
+    expect(chosen).toHaveAttribute("aria-pressed", "false");
   });
 });
 

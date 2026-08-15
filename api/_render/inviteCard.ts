@@ -102,12 +102,11 @@ function background(canvas: Canvas): void {
 function drawEmblem(canvas: Canvas, emblem: CrewEmblem, left: number, width: number): void {
   const scale = width / CREW_EMBLEM_VIEW_BOX_WIDTH;
   const height = CREW_EMBLEM_VIEW_BOX_HEIGHT * scale;
-  // The view box starts at -20,-4; place its origin, not its corner.
   const placement: Placement = {
     scaleX: scale,
     scaleY: scale,
-    x: left + 20 * scale,
-    y: (CARD_HEIGHT - height) / 2 + 4 * scale,
+    x: left,
+    y: (CARD_HEIGHT - height) / 2,
   };
   for (const operation of crewEmblemDrawing(emblem)) {
     const contours = flattenPath(operation.d, translated(placement, 0, operation.dy));
@@ -123,7 +122,6 @@ function drawEmblem(canvas: Canvas, emblem: CrewEmblem, left: number, width: num
       strokePolygons(contour, {
         width: operation.strokeWidth! * scale,
         join: operation.strokeLinejoin === "round" ? "round" : "miter",
-        cap: operation.strokeLinecap === "square" ? "square" : "butt",
       }),
     );
     fillPolygons(canvas, outline, { color: operation.stroke });

@@ -164,7 +164,7 @@ function crewFrom(source: Row): RaceCrew {
     raceDate: nullableString(source, "race_date"),
     raceDistanceMiles: nullableNumber(source, "race_distance_miles"),
     buildStartDate: requiredString(source, "build_start_date"),
-    emblem: resolveCrewEmblem(source.emblem, id),
+    emblem: resolveCrewEmblem(source.emblem),
   };
 }
 
@@ -513,7 +513,7 @@ export async function previewCrewInvite(
     raceDate: nullableString(preview, "race_date"),
     raceDistanceMiles: nullableNumber(preview, "race_distance_miles"),
     expiresAt: requiredString(preview, "expires_at"),
-    emblem: resolveCrewEmblem(preview.emblem, crewId),
+    emblem: resolveCrewEmblem(preview.emblem),
     alreadyMember: preview.already_member === true,
   };
 }

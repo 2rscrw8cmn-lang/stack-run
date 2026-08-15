@@ -540,6 +540,26 @@ Current acceptance:
 - **Runner Icons** are authorized by D-074 and are in review.
 - No later phase is planned or authorized beyond UI-23.
 
+## D-076 — The Crew Emblem is three layers, and the four-part library is retired outright
+
+**Decision:** The Crown/Core/Base/Frame emblem from D-072 is replaced, not extended. A Crew Emblem is now three independently colored layers — a **Main mark**, a **Secondary** accent and a **Background** field — with a much larger library, stored as `E2-<main>-<secondary>-<background>` with each layer written as `shape.color`.
+
+The replacement is deliberately clean. The old art, shape indices, presets and retired pieces are deleted, there is no decoder for `E1-` codes, and the migration clears every stored legacy value to null rather than translating it: those indices no longer point at anything, so an automatic translation would be inventing a decision the crew never made. An unset crew draws one fixed neutral default until its owner designs a mark — the crew-id-derived emblem from D-072 is gone too, because a randomly assembled stand-in reads as a decision that has already been made. This was an unfinished creative system, not a mature user-authored asset format.
+
+Three identity concepts still stay separate and keep their jobs (D-074): a **Crew Emblem** answers *which crew*, a **Runner Icon** answers *which person*, and a **member accent** answers *which person, at a glance, in one color*. The emblem palette remains its own crew-only set, now eight colors rather than five, and it is applied per layer rather than per part.
+
+Two rules make the larger libraries safe. First, one 200×200 coordinate space with a declared budget per layer — a main mark inside 58–142, a secondary piece within radius 74, every background silhouette holding a radius-78 disc — so any Main + Secondary + Background combination composes and a new shape is safe exactly when it respects its layer's budget. Second, colors are paired rather than picked independently: `Surprise Me` draws from computed triples that clear a contrast floor, so a shuffle cannot hand back a violet mark on a blue field.
+
+There are **two** secondary accents, not one, drawn from a single library rather than two half-sized ones: a single piece can only do one job, and the interesting emblems are the pairs — a ring under a lower stripe, rails either side of a burst. Both paint behind the main mark, second over first, so adding an accent can never cost a crew the symbol they picked. Both share the accent layer's geometry budget, so nothing about composition changes by having two.
+
+The stored code grows at its end rather than in its middle. The first three layer positions are where already-saved emblems keep their layers, so each addition is appended and every group past the third is optional on the way in; that is what keeps every generation of saved code readable without a second decoder. An ambiguous code — a second accent with no style group ahead of it — is refused rather than read positionally.
+
+A crew also chooses the emblem's **ink style**: outlined, or flat colour on the two foreground layers. This is a fourth design decision rather than a rendering preference — the same three layers read as an arcade badge one way and as a clean modern mark the other — so it is stored with them, as a trailing style group that is optional on the way in so codes saved before it keep their meaning. The background keeps its outline either way, because that edge separates the badge from the surface it sits on rather than separating the layers from each other.
+
+The builder follows the rebuilt Runner Icon builder rather than the arrow cycler: a pinned live preview, visual tiles that draw each candidate against the rest of the current emblem, and the layer's colors directly beneath its shapes — no mode to enter first. Large libraries scroll sideways on a phone instead of shrinking into unreadable tiles.
+
+No emblem consumer changes shape: Crew header, Crew switcher, Account & Crew, the invite landing and the OG/iMessage invite card all keep drawing from the same `crewEmblemDrawing()` operations, so a shared preview cannot show a different silhouette than STACK does. Membership, permissions, Build logic, member accents and Runner Icons are untouched.
+
 ## D-075 — Member Build mileage derives from its own blocks, not the Crew comparison summary
 
 **Decision:** This is a focused correction, not a new UI phase. `CrewMemberSummary.milesBuilt` is a Crew-windowed communal number — it powers the Crew comparison metric alone (D-070) — but the compact Member Build card and the expanded Member Build sheet were both displaying it beside a tower drawn from unwindowed `miniBuildRuns` (D-071). A runner with Personal Build blocks predating the Crew's Build start date could show a tower representing far fewer (or more) miles than the number printed next to it.

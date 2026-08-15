@@ -5840,122 +5840,135 @@ textarea.run-input {
   background: var(--surface-strong);
 }
 
-/* The emblem designer: a live mark, five recipes, then the four parts. */
-/* Grid and flex children default to a min-content floor, which a row that is
-   meant to scroll would otherwise impose on the whole sheet — that is how a
-   five-chip preset rail turns into sideways scroll on a 320px phone. */
+/*
+ * The Crew Emblem designer: one screen, every option visible.
+ *
+ * The mark being built stays pinned at the top while the libraries scroll
+ * under it, because every choice here is judged against the whole emblem and
+ * a preview that scrolls away turns the tiles into guesswork. Grid and flex
+ * children default to a min-content floor, which a row that is meant to
+ * scroll would otherwise impose on the whole sheet — that is how a thirty-mark
+ * library turns into sideways scroll on a 320px phone, so every level of this
+ * tree floors itself at zero.
+ */
 .crew-emblem-builder { display: grid; gap: var(--space-3); min-width: 0; }
 .crew-emblem-builder > * { min-width: 0; }
 .crew-emblem-builder__stage {
   display: grid;
   place-items: center;
+  gap: var(--space-2);
   position: sticky;
   top: 0;
   z-index: 1;
-  min-height: 118px;
+  /* Kept deliberately short: it is pinned above the rails, so every pixel it
+     takes is a pixel of options the owner cannot see while choosing. */
+  min-height: 126px;
   padding: var(--space-2);
   border: 1px solid var(--data-border);
   background-color: var(--data-surface);
 }
-.crew-emblem-builder__sections { display: grid; gap: var(--space-2); }
-.crew-emblem-builder__row {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-}
-.crew-emblem-builder__row .machine-label { margin: 0; }
-.crew-emblem-builder__selector {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: var(--space-2);
-}
-.crew-emblem-builder__arrow {
-  min-height: 44px;
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-.crew-emblem-builder__option {
-  min-height: 48px;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-  padding-inline: var(--space-2);
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-  color: var(--text);
-  font-size: var(--text-sm);
-  text-align: left;
-  cursor: pointer;
-}
-.crew-emblem-builder__option[aria-pressed="true"] {
-  border-color: var(--data-border);
-  background: var(--data-surface-strong);
-}
-.crew-emblem-builder__option-label {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  overflow-wrap: anywhere;
-}
-.crew-emblem-builder__mark { width: 44px; height: 30px; }
-.crew-emblem-builder__color-indicator {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  border: 1px solid var(--border-strong);
-}
-
-.crew-emblem-builder__colors { display: grid; gap: var(--space-2); }
-.crew-emblem-builder ul { margin: 0; padding: 0; list-style: none; }
-.crew-emblem-builder__colors ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.crew-emblem-builder__swatch {
-  width: 40px;
-  height: 40px;
-  border: 2px solid transparent;
-  outline: 1px solid var(--border-strong);
-  outline-offset: -1px;
-  cursor: pointer;
-}
-.crew-emblem-builder__swatch[data-emblem-color="0"] { background: #a6ff1a; }
-.crew-emblem-builder__swatch[data-emblem-color="1"] { background: #287dff; }
-.crew-emblem-builder__swatch[data-emblem-color="2"] { background: #ffd21a; }
-.crew-emblem-builder__swatch[data-emblem-color="3"] { background: #a14cff; }
-.crew-emblem-builder__swatch[data-emblem-color="4"] { background: #f6f7f8; }
-.crew-emblem-builder__swatch[aria-pressed="true"] { border-color: var(--text); }
-.crew-emblem-builder__color-indicator[data-emblem-color="0"] { background: #a6ff1a; }
-.crew-emblem-builder__color-indicator[data-emblem-color="1"] { background: #287dff; }
-.crew-emblem-builder__color-indicator[data-emblem-color="2"] { background: #ffd21a; }
-.crew-emblem-builder__color-indicator[data-emblem-color="3"] { background: #a14cff; }
-.crew-emblem-builder__color-indicator[data-emblem-color="4"] { background: #f6f7f8; }
-
 .crew-emblem-builder__random {
-  justify-self: start;
-  min-height: 40px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   padding-inline: var(--space-3);
   border: 1px solid var(--border);
-  background: transparent;
+  background: var(--surface);
   color: var(--text-muted);
   font-size: var(--text-sm);
   cursor: pointer;
 }
 .crew-emblem-builder__random:hover { color: var(--text); }
+
+.crew-emblem-builder__row { display: grid; gap: 4px; min-width: 0; }
+.crew-emblem-builder__row .machine-label { margin: 0; font-size: 10px; }
+
+/*
+ * A horizontal rail, not a grid. Thirty main marks in a fixed grid on a 320px
+ * phone is a wall of 40px tiles nobody can judge art from; a rail keeps the
+ * tile big enough to see and lets the library grow. The next tile always peeks
+ * past the edge so the sideways scroll is discoverable, and the rail itself is
+ * the only thing that scrolls — the page never does.
+ */
+.crew-emblem-builder__rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 62px;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding-bottom: 2px;
+}
+.crew-emblem-builder__thumb {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 2px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+.crew-emblem-builder__thumb[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--data-surface);
+}
+.crew-emblem-builder__thumb-mark { width: 100%; height: 100%; }
+/*
+ * The tile shows the candidate against the rest of the current emblem, dimmed:
+ * an accent is only a good choice in combination, so the tile shows the
+ * combination rather than an isolated shape in a box.
+ *
+ * Dim every layer, then light the one this rail is offering — the alternative
+ * is one rule per (focus, layer) pair, which is a table that grows by the
+ * square every time the emblem gains a layer.
+ */
+.crew-emblem-builder__thumb-mark[data-focus-layer] > g > g { opacity: 0.34; }
+.crew-emblem-builder__thumb-mark[data-focus-layer="main"] .crew-emblem__main,
+.crew-emblem-builder__thumb-mark[data-focus-layer="secondary"] .crew-emblem__secondary,
+.crew-emblem-builder__thumb-mark[data-focus-layer="secondaryTwo"] .crew-emblem__secondaryTwo,
+.crew-emblem-builder__thumb-mark[data-focus-layer="background"] .crew-emblem__background {
+  opacity: 1;
+}
+
+/* Colour sits beside the layer it recolours, never behind a mode the owner
+   has to enter first. Fixed swatches that wrap rather than eight columns that
+   divide: a 320px phone would make those too small to hit. */
+.crew-emblem-builder__colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.crew-emblem-builder__swatch {
+  flex: 1 1 30px;
+  min-width: 30px;
+  max-width: 46px;
+  aspect-ratio: 1;
+  border: 1px solid var(--border-strong);
+  background: var(--crew-emblem-swatch, var(--text));
+  cursor: pointer;
+}
+.crew-emblem-builder__swatch[aria-pressed="true"] {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
+}
+
+/* Desktop has room to lay a library out flat, and a wrapped grid is easier to
+   scan than a rail when nothing has to scroll. */
+@media (min-width: 560px) {
+  .crew-emblem-builder__rail {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    overflow-x: visible;
+  }
+}
 
 /*
  * Runner Icons — the personal mark, drawn in the runner's member accent.

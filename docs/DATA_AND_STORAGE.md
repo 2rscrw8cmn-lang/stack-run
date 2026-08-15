@@ -307,14 +307,36 @@ so it cannot offer a color the database would reject.
 `crews.emblem` stores a short opaque code, not an image:
 
 ```text
-E1-<top>-<middle>-<bottom>-<frame>     each part written as shape.color
+E2-<main>-<secondary>-<background>-<style>-<secondaryTwo>
 ```
 
+Each layer is written `shape.color` and the style is a single digit. The order
+is not the builder's order and is not pretty, and that is the point: the code
+grows at its end, so the first three positions stay where already-saved
+emblems keep their layers and everything before an addition keeps meaning what
+it meant.
+
 Constrained by a check pattern in the migration and parsed by the same rules
-on every client. Null is a valid, permanent state: a crew with no saved
-emblem renders a stable mark derived from its crew id, identical on every
-device, so pre-emblem crews needed no backfill. An index a client does not
-have degrades to that section's first option rather than failing the emblem.
+on every client. Null is a valid, permanent state: a crew with no saved emblem
+draws one fixed neutral default until its owner designs a mark. A shape index a
+client does not have degrades to that layer's first option — `None` on the two
+optional layers — rather than failing the emblem, and the pattern allows three
+digits so the libraries can grow without another migration.
+
+Every group after the third is optional on the way in, which is how each
+generation of saved code stays readable. The style group is the emblem's ink:
+`0` outlines the two foreground layers, `1` draws them as flat colour; an
+absent group, or a style digit this client has never heard of, is the outlined
+emblem. An absent second accent is the one accent that crew chose.
+
+A second accent with no style group ahead of it is refused rather than read
+positionally, because that would silently turn an accent into a style.
+
+The retired four-part `E1-<top>-<middle>-<bottom>-<frame>` format is not
+readable by any client. That library was replaced rather than extended, so
+`20260815000000_three_layer_crew_emblem.sql` cleared every stored `E1-` value
+to null instead of translating it into an approximation of a mark the crew
+never chose.
 
 The emblem is crew identity only. It carries no personal data, is visible to
 anyone holding a valid invite (the invite preview shows it before joining),

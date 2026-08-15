@@ -8,7 +8,7 @@ import {
 } from "../../src/crew/emblem.js";
 import { CARD_HEIGHT, CARD_WIDTH, renderInviteCard, type InviteCard } from "./inviteCard.js";
 
-const emblem = decodeCrewEmblem("E1-1.2-3.0-5.4-5.1") as CrewEmblem;
+const emblem = decodeCrewEmblem("E2-4.2-7.0-3.5") as CrewEmblem;
 
 const raceCrew: InviteCard = {
   crewName: "OUC Half",
@@ -44,8 +44,8 @@ describe("Crew invite share image", () => {
    * and different shapes have to produce different images.
    */
   it("draws the crew's saved emblem geometry, not just its palette", () => {
-    const shapes = decodeCrewEmblem("E1-0.2-0.0-0.4-5.1") as CrewEmblem;
-    const otherShapes = decodeCrewEmblem("E1-4.2-4.0-4.4-8.1") as CrewEmblem;
+    const shapes = decodeCrewEmblem("E2-0.2-1.0-1.5") as CrewEmblem;
+    const otherShapes = decodeCrewEmblem("E2-14.2-9.0-6.5") as CrewEmblem;
     expect(renderInviteCard({ ...raceCrew, emblem: shapes })).not.toEqual(
       renderInviteCard({ ...raceCrew, emblem: otherShapes }),
     );
@@ -53,13 +53,26 @@ describe("Crew invite share image", () => {
 
   it("takes that geometry from the emblem module every client draws from", () => {
     const drawing = crewEmblemDrawing(emblem);
-    expect(drawing.some((operation) => operation.d === CREW_EMBLEM_SHAPES.top[1].d)).toBe(true);
-    expect(drawing.some((operation) => operation.d === CREW_EMBLEM_SHAPES.bottom[5].d)).toBe(true);
+    expect(drawing.some((operation) => operation.d === CREW_EMBLEM_SHAPES.main[4].d)).toBe(true);
+    expect(drawing.some((operation) => operation.d === CREW_EMBLEM_SHAPES.secondary[7].d)).toBe(true);
+    expect(drawing.some((operation) => operation.d === CREW_EMBLEM_SHAPES.background[3].d)).toBe(true);
   });
 
   it("changes when the crew changes its emblem colours", () => {
-    const recoloured = decodeCrewEmblem("E1-1.3-3.1-5.2-5.4") as CrewEmblem;
+    const recoloured = decodeCrewEmblem("E2-4.3-7.1-3.4") as CrewEmblem;
     expect(renderInviteCard({ ...raceCrew, emblem: recoloured })).not.toEqual(
+      renderInviteCard(raceCrew),
+    );
+  });
+
+  /**
+   * The ink style is part of what a crew designed, not a client rendering
+   * preference, so a flat emblem has to arrive flat in the shared preview too.
+   */
+  it("carries the crew's ink style into the share image", () => {
+    const clean = decodeCrewEmblem("E2-4.2-7.0-3.5-1") as CrewEmblem;
+    expect(clean.outline).toBe(false);
+    expect(renderInviteCard({ ...raceCrew, emblem: clean })).not.toEqual(
       renderInviteCard(raceCrew),
     );
   });
