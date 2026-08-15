@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
+import { ArtworkExportPage } from "./features/artwork/ArtworkExportPage";
 import { GettingStartedPage } from "./features/help/GettingStartedPage";
 import "@fontsource/space-mono/400.css";
 import "@fontsource/space-mono/700.css";
@@ -9,6 +10,7 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/layout.css";
 import "./styles/components.css";
+import "./styles/artwork.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -16,7 +18,12 @@ if (!rootElement) {
 }
 
 const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
-const content = pathname === "/getting-started" ? <GettingStartedPage /> : <App />;
+const content =
+  window.location.hash === "#artwork"
+    ? <ArtworkExportPage />
+    : pathname === "/getting-started"
+      ? <GettingStartedPage />
+      : <App />;
 
 createRoot(rootElement).render(
   <StrictMode>
