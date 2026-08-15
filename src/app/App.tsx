@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AvailabilityCalendar } from "../domain/availability";
-import type { AppState, RunLog } from "../domain/types";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import {
   deleteRunLog,
   linkRunLogToWorkout,
@@ -49,8 +49,13 @@ import {
 import { WelcomeSheet } from "../features/onboarding/WelcomeSheet";
 import { TourCoachmark } from "../features/onboarding/TourCoachmark";
 import { usePersonalSync } from "../personal-sync/usePersonalSync";
+import { useRunnerHistory } from "../features/runs/useRunnerHistory";
 
 export type TabId = "today" | "build" | "runs" | "crew" | "plan";
+
+/** Stable empties, so a boot state with no app yet does not churn the history hook. */
+const NO_RUN_LOGS: RunLog[] = [];
+const NO_BLOCK_PLACEMENTS: BlockPlacement[] = [];
 
 /**
  * Either an app, or the reason there isn't one.
@@ -246,19 +251,35 @@ export function App() {
     [setAppState],
   );
 
+  const intervalsConnection = intervalsApiKey
+    ? ({ mode: "local-api-key", credential: intervalsApiKey } as const)
+    : syncToken
+      ? ({ mode: "legacy-proxy", credential: syncToken } as const)
+      : null;
+
   // One sync for the whole app: Today offers what it found, Run Data reviews
   // the rest, and neither can be looking at a different answer than the other.
   const connectedSync = useConnectedSync({
-    connection: intervalsApiKey
-      ? { mode: "local-api-key", credential: intervalsApiKey }
-      : syncToken
-        ? { mode: "legacy-proxy", credential: syncToken }
-        : null,
+    connection: intervalsConnection,
     state: appState,
     onSynced: recordSync,
     accountId: raceCrew.userId ?? null,
     pendingSeed: personalSync.pendingCandidates,
     onPendingChanged: personalSync.recordPendingCandidates,
+  });
+
+  /**
+   * The runner's history, which is a different question from the review queue
+   * above and is answered on its own conservative schedule. It never blocks:
+   * a device with no connection, a failed read and a browser that refuses to
+   * store all leave a fully usable app and a history built from STACK's own
+   * runs. See `src/history/historySyncPolicy.ts` for when it reads at all.
+   */
+  const runnerHistory = useRunnerHistory({
+    connection: intervalsConnection,
+    accountId: raceCrew.userId ?? null,
+    runLogs: appState?.runLogs ?? NO_RUN_LOGS,
+    blockPlacements: appState?.blockPlacements ?? NO_BLOCK_PLACEMENTS,
   });
 
   if (boot.kind === "recovering") {
@@ -404,16 +425,11 @@ export function App() {
       onPlacingChange={setPlacingRunLogId}
       appState={boot.state}
       syncToken={syncToken}
-      intervalsConnection={
-        intervalsApiKey
-          ? { mode: "local-api-key", credential: intervalsApiKey }
-          : syncToken
-            ? { mode: "legacy-proxy", credential: syncToken }
-            : null
-      }
+      intervalsConnection={intervalsConnection}
       connectedSync={connectedSync}
       raceCrew={raceCrew}
       personalSync={personalSync}
+      runnerHistory={runnerHistory}
       onConnectIntervalsApiKey={(apiKey) => {
         try {
           saveIntervalsApiKey(apiKey, raceCrew.userId ?? null);

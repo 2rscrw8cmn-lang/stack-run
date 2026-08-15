@@ -77,9 +77,18 @@ export function PlanActualColumns({
               ? null
               : y(column.planned);
             const isSelected = column.key === selectedKey;
-            // Sparse labels: first, last, the selected week, and an even spread between.
-            const showLabel = index === 0 || index === count - 1 ||
-              index === selectedIndex || index % labelStep === 0;
+            /**
+             * Sparse labels: first, last, the selected week, and an even spread
+             * between. A stepped label immediately beside the last or the
+             * selected one is dropped — at 320px with twelve columns those two
+             * dates print on top of each other, and the always-shown label is
+             * the one worth keeping.
+             */
+            const isAlwaysShown = index === 0 || index === count - 1 || index === selectedIndex;
+            const crowdsAnAlwaysShownLabel =
+              Math.abs(index - (count - 1)) === 1 || Math.abs(index - selectedIndex) === 1;
+            const showLabel =
+              isAlwaysShown || (index % labelStep === 0 && !crowdsAnAlwaysShownLabel);
             return (
               <g key={column.key}>
                 {isSelected && (

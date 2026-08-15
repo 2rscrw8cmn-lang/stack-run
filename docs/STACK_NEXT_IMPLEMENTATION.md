@@ -51,8 +51,9 @@ No product code was required.
 
 ### NEXT-1 — Historical Data Foundation
 
-**Status: implemented on `feature/historical-data`, awaiting the deployed
-real-data smoke test and owner acceptance.**  
+**Status: accepted and merged into `feature/stack-next` (PR #100) on August 15,
+2026. The deployed real-data smoke test remains outstanding — see
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md`.**  
 **Branch:** `feature/historical-data` → PR into `feature/stack-next`.
 
 Goal:
@@ -181,26 +182,180 @@ above. `npm run check` passes (1,462 tests).
 
 ### NEXT-2 — Runner History + Profile Foundation
 
-**Recommended branch:** `feature/runner-profile`
+**Status: implemented on `feature/runner-profile`, awaiting owner acceptance.**  
+**Branch:** `feature/runner-profile` → PR into `feature/stack-next`.
 
 Goal:
 
 > Turn the historical data set into an understandable picture of the runner without making the plan the organizing model.
 
-Likely work:
+This is the first user-facing STACK Next phase. It adds no navigation
+destination: the whole of it lands on the existing Runs screen.
 
-- chronological historical run browsing;
-- compact runner summary;
-- weekly/monthly volume;
-- frequency/consistency;
-- long-run history/progression;
-- simple comparable-run pace and HR baselines;
-- clear data coverage states;
-- source-vs-derived labeling where needed.
+#### The unified actual-history read model
 
-This phase should establish the information architecture before any broad Today redesign.
+`src/history/runnerRun.ts` answers one question — *what runs has this runner
+actually done?* — over both records NEXT-1 left STACK holding.
 
-Avoid a giant analytics dashboard. Start with the smallest useful hierarchy.
+- **One physical run is one row.** An accepted Intervals run has a `RunLog`
+  *and* a `HistoricalActivity`; that is one run that happened once. They are
+  reconciled on `externalSource.activityId` against `sourceId`, the same
+  external identity the existing import already dedupes on. Date and distance
+  are never matched on: two real runs on one day at one distance are two runs.
+- **The run log wins where the two disagree about the same fact.** Distance and
+  duration come from the `RunLog` when there is one, because that is the number
+  Build, Crew, the plan and Training Signals already count and the runner may
+  have corrected it after importing. The mirror contributes what the run log has
+  no place for — local start time, the source's own name and type — and fills in
+  any metric the run log was imported without.
+- **STACK-owned facts are overlaid at read time, never written down.** Effort,
+  notes, the plan link and whether the earned block has been placed are attached
+  to the row and never written into the historical mirror. Nothing in the module
+  writes anything; it reads two lists and returns a third.
+- **Missing stays missing.** Every optional metric is `null` when neither record
+  supplied it. Nothing is defaulted to zero.
+- **A historical run needs no acceptance to be history**, and earns no Build
+  block. Historical Build backfill remains NEXT-6's explicit decision.
+
+#### Metric definitions, windows and coverage thresholds
+
+All of it is pure and React-free, in `src/history/`, so NEXT-3 can build on the
+same functions rather than reimplementing them beside a chart.
+
+| Metric | Definition | Window |
+|---|---|---|
+| Weekly mileage | Sum of `distanceMiles` in a Monday–Sunday calendar week; the current week counts only through today | 12 calendar weeks by default |
+| Trailing 7-day mileage | Sum over `today - 6 … today`, inclusive | 7 days |
+| Trailing 28-day mileage | Sum over `today - 27 … today`, inclusive | 28 days |
+| Run count | Rows in the window | stated per figure |
+| Runs per week | `runCount ÷ elapsedWeeks`, one decimal; null when the window has no runs | 8 calendar weeks by default |
+| Elapsed weeks | Complete weeks + `daysIntoCurrentWeek ÷ 7`, two decimals | the same window |
+| Active weeks | Calendar weeks in the window with ≥ 1 run | the same window |
+| Longest run per week | The week's largest `distanceMiles`; `null`, never `0`, for a week with no running. Ties go to the earlier run | 12 calendar weeks |
+| Longest recent run | Largest `distanceMiles` over `today - 27 … today` | 28 days |
+| Metric coverage | `present ÷ total` for one optional metric | 90 days for the report |
+
+Two deliberate choices behind those rows. **Monday-start weeks** are the
+product-wide boundary (`mondayOfLocalDate`), shared with Training Signals so the
+two cannot report different mileage for the same seven days. **Elapsed weeks**
+rather than whole weeks is the frequency denominator: dividing eight weeks of
+runs by eight when only 7.86 have happened reports a rate the runner has never
+run at, and sags a little further every Monday.
+
+Coverage thresholds live in `src/history/runnerCoverage.ts`, in the domain layer
+and not inside JSX. A metric is presentable only when **both** hold:
+
+- `RUNNER_METRIC_MINIMUM_RUNS = 8` runs carry it, and
+- `RUNNER_METRIC_MINIMUM_RATIO = 0.6` of the window's runs carry it.
+
+Either alone is insufficient: eight of eighty passes the count and describes a
+tenth of the training; eight of eight passes the share and is not enough runs.
+
+#### Pace and heart rate: coverage shown, comparison deferred
+
+NEXT-2 states **no aggregate pace or HR comparison**, and this is a documented
+omission rather than an oversight.
+
+A historical activity carries no STACK activity type — NEXT-1 stored none on
+purpose, so classification would stay an open decision. Without one there is no
+comparable-run grouping, and every grouping available from source facts alone
+fails: *all runs* compares a 400m session with a 20-mile Sunday; *a distance
+band* controls distance and nothing else; *a pace band* is circular.
+
+So the phase contract's own remedy applies — show coverage, defer the metric.
+Per-run pace and per-run heart rate are facts about a single run and appear on
+every row and in every detail. The comparison belongs to NEXT-3, which is the
+phase that gets to decide how historical runs are classified. When it does, the
+two thresholds above are the floor it must qualify against, and its grouping
+must document which runs qualify, the window, the minimum sample count and the
+coverage requirement.
+
+#### Historical sync lifecycle
+
+`src/history/historySyncPolicy.ts` is the decision NEXT-1 deliberately left
+open. It is pure; `src/features/runs/useRunnerHistory.ts` is the thin React
+layer that performs it, and it is the only thing in the product that triggers a
+historical sync.
+
+- **No connection, no request.** A manual-only runner never causes one, and gets
+  a full history and profile from their own `RunLog`s.
+- **Event-driven, never polled.** The app opening and the app returning to the
+  front — the same two moments the existing connected sync uses. No timer.
+- **A full year at most once.** `DEFAULT_HISTORICAL_LOOKBACK_DAYS` (365, five
+  windows) runs when this device has never *completed* a read. Afterwards a
+  refresh reads `HISTORY_REFRESH_LOOKBACK_DAYS` (45) — one window, one request.
+  Safe because reconciliation keeps history outside the window.
+- **Fresh history is left alone.** `HISTORY_STALE_AFTER_MS` is 24 hours. Today's
+  run reaches STACK through the ordinary 14-day Run Data sync within half an
+  hour; nothing a runner did today changes what last March looked like.
+- **A failure buys quiet, not a retry storm.** Any attempt starts a
+  `HISTORY_RETRY_AFTER_MS` (1 hour) cooling-off period. A rate limit, a dead
+  connection and a rejected credential all fail the next attempt too.
+- **A failed sync never blocks anything.** `syncHistoricalActivities` already
+  persists every window it read before stopping, so a partial sync leaves the
+  runner with more history than before, not less.
+- **A runner-initiated refresh** skips freshness and cooling off, but still
+  cannot run without a connection or while one is in flight.
+
+Six states are exposed, because "no history" has causes that deserve different
+words: `no-connection`, `never-synced`, `syncing`, `fresh`, `stale`, `partial`.
+Bookkeeping lives in `stack.history.sync.v1` (account-scoped, outside AppState,
+best-effort writes); the hook also holds an in-session attempt floor so a
+browser that refuses writes cannot loop.
+
+#### UI surfaces
+
+All on the existing Runs destination, top to bottom:
+
+1. **Runner snapshot** — four readings, each labelled with its own window: last
+   7 days, last 28 days, runs/week over 8 weeks, longest run of 28 days. A
+   missing value is `—`, never `0`. Beneath it, how far back the history reaches
+   and a status line that is silent when there is nothing to say. The whole
+   block opens the profile detail.
+2. **Recent Volume** — twelve calendar weeks of actual mileage, reusing
+   `PlanActualColumns` with no planned series. Weeks before the runner's first
+   recorded run are dropped rather than drawn as zeroes.
+3. **Run History** — the unified history, 25 rows at a time. A run STACK does
+   not own opens a compact factual sheet with no import, edit or link action.
+4. **Training Signals** — unchanged, and now below the history rather than above
+   it, per the actuals-before-intentions ordering rule.
+
+The profile sheet ("Your Running") holds Volume, Frequency, Long runs and *What
+STACK has* — the per-metric coverage report and the deferral note above.
+
+#### Deliberately not built
+
+NEXT-3 Training Signals v2, NEXT-4 Today, NEXT-5 Plan, historical Build
+backfill, automatic plan changes, AI coaching, readiness/recovery, wellness,
+GPS/routes, Crew changes, cloud storage of historical data, and any new
+persistent navigation destination.
+
+#### NEXT-1 real-data smoke test remains outstanding
+
+The deployed 365-day Intervals verification recorded in
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` has still not been run. NEXT-2 does not
+depend on it: no source fact was promoted to Verified on fixture evidence,
+cadence and source-unit semantics are unchanged, every optional metric is
+coverage-gated, and no NEXT-2 number requires an optional metric to exist. It
+must still be completed before STACK Next is considered for release to `main`,
+and preferably before NEXT-3 makes claims about real metric coverage.
+
+#### Tests
+
+108 new tests. `runnerRun.test.ts` (dedupe, overlay without mutation, run-log
+precedence, gap filling, nulls, chronology), `runnerVolume.test.ts` (calendar
+weeks, partial current week, trailing boundary dates, mixed records),
+`runnerFrequency.test.ts` (counts, elapsed-week denominator, partial weeks,
+empty history), `runnerLongRuns.test.ts` (per week, ties, sparse data, gaps not
+zeroes), `runnerCoverage.test.ts` (missing/partial/sufficient HR, no optional
+metrics), `historySyncPolicy.test.ts` (every trigger and phase rule),
+`historySyncStateRepository.test.ts`, `useRunnerHistory.test.tsx` (no
+connection, first sync, fresh avoids refetch, stale refresh, partial sync keeps
+what it read, app usable after failure), `runnerCompatibility.test.ts` (AppState
+byte-identical, Build, plan, Crew projection and Training Signals unchanged,
+manual-only device) and `RunnerHistory.test.tsx` (the screen).
+
+`npm run check` passes: 121 files, 1,570 tests.
 
 ### NEXT-3 — Training Signals v2
 

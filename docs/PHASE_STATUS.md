@@ -634,15 +634,15 @@ product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
 | Phase | Name | Branch | Status |
 |---|---|---|---|
 | NEXT-0 | Direction + data contract | `feature/stack-next` | Complete — August 15, 2026 |
-| NEXT-1 | Historical Data Foundation | `feature/historical-data` | Implemented; deployed smoke test and owner acceptance outstanding |
-| NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Not started |
+| NEXT-1 | Historical Data Foundation | `feature/historical-data` | Accepted and merged (PR #100), August 15, 2026; deployed smoke test outstanding |
+| NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Implemented; owner acceptance outstanding |
 | NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Not started |
 | NEXT-4 | Today / Home revision | `feature/today-next` | Not started |
 | NEXT-5 | Plan role revision | `feature/plan-next` | Not started |
 | NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Not started |
 | NEXT-7 | Product integration + release candidate | — | Not started |
 
-### NEXT-1 — implemented, awaiting real-data verification
+### NEXT-1 — accepted, awaiting real-data verification
 
 `src/history/` adds a headless historical activity layer behind one service
 boundary: configurable lookback (365 days by default), date-window pagination
@@ -664,6 +664,56 @@ block — historical Build backfill remains a NEXT-6 product decision.
   dedupe and real optional-metric coverage are verified against fixtures only.
 - `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
   source fact, because it made no real API call.
+
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-1
+into `feature/stack-next` with the smoke test tracked as a pre-release item.
+
+### NEXT-2 — implemented, awaiting owner acceptance
+
+The first user-facing STACK Next phase, and it adds **no navigation
+destination**: all of it lands on the existing Runs screen.
+
+`src/history/runnerRun.ts` is a unified actual-history read model over both
+records NEXT-1 left STACK holding — connected history and `RunLog`s reconciled
+on the external activity id into one row per physical run, with STACK-owned
+facts (effort, notes, plan link, Build placement) overlaid at read time and
+never written into the source mirror. Beside it, four pure calculation modules
+that NEXT-3 is meant to reuse: `runnerVolume.ts`, `runnerFrequency.ts`,
+`runnerLongRuns.ts` and `runnerCoverage.ts`, all React-free and all stating the
+window they were computed over.
+
+`src/history/historySyncPolicy.ts` settles the trigger question NEXT-1
+deliberately left open: no connection means no request, sync is attempted only
+on app open and return-to-front with no polling anywhere, a full year is read at
+most once per device and refreshed thereafter with a single 45-day window,
+history stays fresh for 24 hours, and every attempt starts a one-hour
+cooling-off period. A failure never blocks the app and never discards the
+history a partial read managed to store.
+
+Runs now leads with a compact four-reading runner snapshot (each reading
+carrying its own window), a twelve-week actual-volume strip, the unified run
+history including runs the runner never reviewed, and the existing Training
+Signals retained below it. A profile sheet holds the deeper volume, frequency,
+long-run and data-coverage detail.
+
+- Pace and HR are shown per run and **not compared across runs**. A historical
+  activity carries no STACK activity type, so no comparable-run grouping can be
+  defined cleanly yet; coverage is shown and the comparison is deferred to
+  NEXT-3, which must document its qualifying runs, window, sample minimum and
+  coverage requirement.
+- Coverage thresholds live in the domain layer: a metric needs 8 runs **and**
+  60% of the window's runs before STACK will say anything aggregate about it.
+- No AppState migration, no schema change, no Supabase migration, no dependency.
+  Build, plan, Crew projection, the Run Data review queue and existing Run
+  Detail are unchanged, and no historical run earns a Build block.
+- `npm run check` passes: 121 files, 1,570 tests, 108 of them new and all on
+  fake fixtures and fake credentials.
+- **Outstanding:** owner acceptance, and NEXT-1's deployed real-data smoke test,
+  which NEXT-2 does not depend on — no source fact was promoted on fixture
+  evidence, cadence and source-unit semantics are unchanged, and no NEXT-2
+  number requires an optional metric to exist.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact either.
 
 ## Active source documents
 

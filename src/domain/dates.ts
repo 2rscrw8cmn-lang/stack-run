@@ -42,6 +42,20 @@ export function addDaysToLocalDate(dateString: string, days: number): string {
   return formatLocalDate(date);
 }
 
+/**
+ * The Monday of the calendar week containing this date.
+ *
+ * One definition of "a week" for the whole product. Training Signals has used
+ * Monday-start weeks since Trends 2.0, so the runner history built on top of the
+ * same runs has to agree with it or the two would report different weekly
+ * mileage for the same seven days.
+ */
+export function mondayOfLocalDate(dateString: string): string {
+  const date = parseLocalDate(dateString);
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  return formatLocalDate(date);
+}
+
 export function daysBetweenLocalDates(from: string, to: string): number {
   const millisecondsPerDay = 24 * 60 * 60 * 1000;
   return Math.round(
