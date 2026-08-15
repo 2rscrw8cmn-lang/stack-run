@@ -36,20 +36,22 @@ Do not merge `feature/stack-next` to `main` until the complete new direction is 
 
 ### NEXT-0 — Direction + data contract
 
-**Status: documentation phase.**
+**Status: complete — August 15, 2026.**
 
-Deliverables:
+Delivered:
 
 - `docs/STACK_NEXT.md`;
 - `docs/INTERVALS_DATA_STRATEGY.md`;
 - this implementation roadmap;
 - first coding-agent prompt;
-- README / Start Here branch guidance.
+- README / Start Here branch guidance;
+- STACK Next-specific `AGENTS.md` authority, branching and safety instructions.
 
-No product code required.
+No product code was required.
 
 ### NEXT-1 — Historical Data Foundation
 
+**Status: active next engineering phase.**  
 **Recommended branch:** `feature/historical-data`
 
 Goal:
