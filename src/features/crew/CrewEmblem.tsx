@@ -13,16 +13,28 @@ interface CrewEmblemProps {
   /** Provide a name to expose the mark; omit it for decorative use. */
   label?: string;
   className?: string;
+  /**
+   * Which layer this drawing is about, for the builder's option thumbnails:
+   * the named layer stays lit and the rest of the emblem dims behind it, so a
+   * tile shows a candidate in context instead of a shape in a void.
+   */
+  focusLayer?: "main" | "secondary" | "background";
 }
 
 /**
- * A crew's emblem, drawn from its four choices.
+ * A crew's emblem, drawn from its three layers.
  *
- * Deliberately presentational and self-contained: the same component draws
- * the 24 px switcher chip and the 200 px builder preview, so a crew's mark
- * can never be one shape in the header and another on the card.
+ * Deliberately presentational and self-contained: the same component draws the
+ * 24 px switcher chip and the builder's large preview, so a crew's mark can
+ * never be one shape in the header and another on the card.
  */
-export function CrewEmblem({ emblem, size = 40, label, className }: CrewEmblemProps) {
+export function CrewEmblem({
+  emblem,
+  size = 40,
+  label,
+  className,
+  focusLayer,
+}: CrewEmblemProps) {
   return (
     <svg
       className={["crew-emblem", className].filter(Boolean).join(" ")}
@@ -33,6 +45,7 @@ export function CrewEmblem({ emblem, size = 40, label, className }: CrewEmblemPr
       aria-label={label}
       aria-hidden={label ? undefined : true}
       focusable="false"
+      data-focus-layer={focusLayer}
     >
       <g dangerouslySetInnerHTML={{ __html: crewEmblemSvgMarkup(emblem) }} />
     </svg>

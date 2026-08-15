@@ -1373,16 +1373,9 @@ account is not in, remembers the choice, clears crew-scoped client state and
 reloads. The dashboard in-flight guard is now keyed by crew id, so switching
 crews can no longer be answered with the previous crew's load.
 
-`src/crew/emblem.ts` owns crew emblems: six crowns, six cores, six bases and six
-frames, five colors drawn from the product palette, and the `E1-…` code that
-`crews.emblem` stores. Decoding is deliberately tolerant — an index this client
-does not have degrades to that section's first option — and `resolveCrewEmblem`
-falls back to `crewEmblemFromSeed(crewId)`, a stable derivation that is why
-crews created before emblems existed needed no backfill and look the same on
-every device. `CrewEmblem.tsx` draws it at any size from one shared coordinate
-space, so a crew's mark is identical in a 22px switcher chip and the builder's
-preview; `CrewEmblemBuilder.tsx` is the designer, with five presets, per-part
-arrows, a color row for the selected part and Surprise Me.
+`src/crew/emblem.ts` owns crew emblems. See "The three-layer Crew Emblem"
+below for the current model; the four-part `E1-…` library this section
+originally described was replaced outright.
 
 Crew shows a switcher rail only when there is more than one crew to switch
 between, and the viewed crew's emblem now stands beside its name. Account & Crew
@@ -1622,3 +1615,61 @@ the link. The full invite landing lives in `CrewInviteLanding.tsx`, ahead of
 the normal shell: it shows Crew identity first, then create/sign-in or join;
 the pending capability binds to the first authenticated account so it cannot
 leak to a later account in a shared browser.
+
+
+## The three-layer Crew Emblem (issue #96)
+
+A Crew Emblem is three independently colored layers rather than four stacked
+plates: a **main** mark (29 options, half of them running and training — stride,
+tread, shoe, track, lanes, finish, checker, stopwatch, split, route, peak, pace,
+pulse, podium), a **secondary** accent (15 plus `None`), and a **background**
+field (12 plus `None`). Eight crew colors — four light, four dark — apply one
+per layer. `src/crew/emblem.ts` owns all of it: the libraries, the `E2-…` code,
+the drawing, and the color arithmetic.
+
+One 200×200 coordinate space, and three concentric budgets, are what make the
+libraries free to combine rather than merely stacked:
+
+- a main mark is drawn inside x/y 58–142, whose corners sit 59 units from the
+  center;
+- a secondary piece stays within 74 units of the center, so it can reach past
+  the mark on any side — a ring, a burst, a crossbar, a rail — without leaving
+  the field behind it;
+- every background silhouette holds a 78-unit disc, which is the widest a Main
+  and Secondary pair can ever be.
+
+`src/crew/emblem.test.ts` asserts those three budgets against every path in the
+library, so a new shape is safe exactly when it respects the budget for its
+layer. It also holds every shape to the small path grammar the invite card
+rasteriser understands (`M/L/H/V/Q/C/Z`), because a shape written with anything
+else would look right in the app and lose part of itself in a shared preview.
+
+Layers paint background → secondary → main, so the mark is never obscured by a
+choice made on another layer, and each layer is wrapped in its own SVG group.
+`CrewEmblem.tsx` takes an optional `focusLayer`, which is only a `data-` hook:
+the builder's tiles dim the two layers they are not offering entirely in CSS.
+
+`CrewEmblemBuilder.tsx` follows `RunnerIconBuilder.tsx` rather than the arrow
+cycler it replaces: a pinned preview with Surprise Me, then one row per layer —
+a horizontal rail of option tiles, each drawing the whole emblem with that
+candidate swapped in, and the layer's color swatches directly beneath it. The
+rails scroll sideways on a phone and wrap into a grid at 560px; thirty tiles in
+a fixed grid at 320px would be too small to judge art from.
+`src/styles/crewEmblemBuilderStyling.test.ts` guards that, since there is no
+visual-regression harness here.
+
+Colors are paired, not picked independently. `readableCrewEmblemColorRecipes()`
+computes every triple whose main-on-background contrast clears 1.6 and whose
+secondary clears 1.35 against both neighbours, and `Surprise Me` draws from
+that list — which is the only thing standing between a shuffle and a violet
+mark on a blue field.
+
+`resolveCrewEmblem(stored)` returns the saved emblem or one fixed neutral
+default. There is deliberately no decoder for the retired `E1-` codes and no
+crew-id-derived mark: the old library is gone, so translating a retired Crown
+into the nearest new piece would be inventing a decision the crew never made.
+`20260815000000_three_layer_crew_emblem.sql` clears every legacy value to null
+and replaces `crews_emblem_check` in place with the `E2-` pattern, which allows
+three digits of shape index so these libraries can grow without another
+migration. A future index this client does not have still fails soft to its
+layer's first option.

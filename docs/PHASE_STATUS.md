@@ -576,6 +576,49 @@ covering a Personal placement, a Crew placement and a Reduce Motion placement.
   deploy, since Link Presentation caches an earlier failed preview per URL.
 - `npm run check` passes (102 files, 1385 tests).
 
+## Three-layer Crew Emblem (issue #96) — in review
+
+A hard reset of the Crew emblem system, authorized by D-076 and scoped in
+`docs/CURRENT_APPLICATION_STRUCTURE.md`. The four-part Crown/Core/Base/Frame
+model is replaced by three independently colored layers — Main mark, Secondary,
+Background — with a far larger library, and a builder that follows the rebuilt
+`RunnerIconBuilder` instead of the old arrow cycler.
+
+What it adds:
+
+- `src/crew/emblem.ts`, rewritten: 29 main marks (14 of them running and
+  training), 15 secondary pieces plus `None`, 12 background fields plus `None`,
+  an eight-color crew palette, the `E2-…` code, tolerant decoding, the
+  contrast-checked color recipes `Surprise Me` draws from, and the canonical
+  drawing both renderers share;
+- one 200×200 coordinate space with declared per-layer budgets (main inside
+  58–142, secondary within radius 74, every background holding a radius-78
+  disc), asserted per shape in `src/crew/emblem.test.ts` along with the path
+  grammar the invite-card rasteriser understands;
+- `CrewEmblemBuilder.tsx`, rebuilt: pinned preview, `Surprise Me`, one
+  horizontal rail of visual tiles per layer with the layer's colors beneath it,
+  each tile drawing the candidate against the rest of the current emblem;
+- `supabase/migrations/20260815000000_three_layer_crew_emblem.sql`, which clears
+  every legacy `E1-` value to null and replaces `crews_emblem_check` in place
+  with the `E2-` pattern; `supabase/tests/0014_three_layer_crew_emblem.sql`
+  verifies both;
+- `src/styles/crewEmblemBuilderStyling.test.ts`, guarding the mobile rail
+  behaviour that has no visual-regression harness.
+
+What it deliberately does not do: preserve the old art, shape indices, presets
+or saved combinations; decode `E1-` codes; keep the crew-id-derived default (an
+unset crew now draws one fixed neutral emblem); or touch membership, permissions,
+Build logic, member accents or Runner Icons. The invite/OG renderer draws the
+same `crewEmblemDrawing()` operations as the app, so a shared preview cannot
+show a different silhouette than STACK does; only its view-box placement moved
+with the new square coordinate space.
+
+Owner verification still outstanding: apply the migration on the deployed
+project, confirm existing crews fall back to the neutral default, and share a
+freshly generated invite after deploy (Link Presentation caches per URL).
+
+- `npm run check` passes.
+
 ## Active source documents
 
 - `START_HERE.md`

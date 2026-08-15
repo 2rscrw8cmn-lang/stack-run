@@ -67,7 +67,7 @@ export async function resolveInvitePreview(token: string | null): Promise<Invite
     const crewName = text(row?.crew_name);
     const crewType = row?.crew_type === "club" ? "club" : row?.crew_type === "race" ? "race" : null;
     if (!crewId || !crewName || !crewType) return null;
-    const emblem = resolveCrewEmblem(row?.emblem, crewId);
+    const emblem = resolveCrewEmblem(row?.emblem);
     return {
       crewId,
       crewName,

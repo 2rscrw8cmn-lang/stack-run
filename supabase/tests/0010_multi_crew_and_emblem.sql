@@ -30,7 +30,7 @@ set local request.jwt.claim.sub = '92000000-0000-0000-0000-000000000001';
 
 -- One account creates two crews. Nothing about the first blocks the second.
 update multi_crew_test_ids set road_crew_id = public.create_crew(
-  'Road Crew', 'race', 'Winter Half', '2026-12-05', 13.1, '2026-08-10', 'E1-1.2-3.0-5.4-2.1'
+  'Road Crew', 'race', 'Winter Half', '2026-12-05', 13.1, '2026-08-10', 'E2-4.0-1.4-3.7'
 );
 update multi_crew_test_ids set trail_crew_id = public.create_crew(
   'Trail Crew', 'race', 'Ridge 50K', '2027-04-10', 31, '2026-11-01'
@@ -44,11 +44,11 @@ begin
   end if;
   if (select emblem from public.crews
       where id = (select road_crew_id from multi_crew_test_ids))
-     <> 'E1-1.2-3.0-5.4-2.1' then
+     <> 'E2-4.0-1.4-3.7' then
     raise exception 'crew emblem was not stored on creation';
   end if;
-  -- Null is a valid permanent state: the client draws a stable mark derived
-  -- from the crew id, so an unstated emblem must not be invented here.
+  -- Null is a valid permanent state: a crew that has not designed an emblem
+  -- draws the neutral default, so an unstated emblem must not be invented here.
   if (select emblem from public.crews
       where id = (select trail_crew_id from multi_crew_test_ids)) is not null then
     raise exception 'a crew with no chosen emblem was given a stored one';
@@ -77,11 +77,11 @@ do $$
 begin
   perform public.update_crew(
     (select road_crew_id from multi_crew_test_ids),
-    'Road Crew', 'Winter Half', '2026-12-05', 13.1, '2026-08-10', 'E1-0.4-3.4-0.4-1.0'
+    'Road Crew', 'Winter Half', '2026-12-05', 13.1, '2026-08-10', 'E2-12.2-0.4-6.1'
   );
   if (select emblem from public.crews
       where id = (select road_crew_id from multi_crew_test_ids))
-     <> 'E1-0.4-3.4-0.4-1.0' then
+     <> 'E2-12.2-0.4-6.1' then
     raise exception 'crew emblem was not updated';
   end if;
 
@@ -91,7 +91,7 @@ begin
   );
   if (select emblem from public.crews
       where id = (select road_crew_id from multi_crew_test_ids))
-     <> 'E1-0.4-3.4-0.4-1.0' then
+     <> 'E2-12.2-0.4-6.1' then
     raise exception 'an omitted emblem cleared the crew emblem';
   end if;
 end;
@@ -125,7 +125,7 @@ begin
   if v_preview.crew_name <> 'Road Crew' then
     raise exception 'invite preview did not describe the inviting crew';
   end if;
-  if v_preview.emblem <> 'E1-0.4-3.4-0.4-1.0' then
+  if v_preview.emblem <> 'E2-12.2-0.4-6.1' then
     raise exception 'invite preview did not carry the crew emblem';
   end if;
   if v_preview.already_member then
