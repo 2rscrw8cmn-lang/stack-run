@@ -2,10 +2,10 @@ node_modules/
 dist/
 .vercel/
 coverage/
-exports/
 .DS_Store
 *.local
 .env
 .env.*
 !.env.example
 .vscode/
+exports/
