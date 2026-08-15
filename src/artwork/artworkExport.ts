@@ -242,7 +242,12 @@ export function artworkZip(files: readonly ArtworkFile[]): Blob {
   end.view.setUint32(16, localOffset, true);
   end.view.setUint16(20, 0, true);
 
-  return new Blob([...locals, centralDirectory, end.bytes], { type: "application/zip" });
+  const archive = concat([...locals, centralDirectory, end.bytes]);
+  const buffer = archive.buffer.slice(
+    archive.byteOffset,
+    archive.byteOffset + archive.byteLength,
+  ) as ArrayBuffer;
+  return new Blob([buffer], { type: "application/zip" });
 }
 
 export async function saveArtworkBlob(blob: Blob, filename: string): Promise<"shared" | "downloaded" | "cancelled"> {
