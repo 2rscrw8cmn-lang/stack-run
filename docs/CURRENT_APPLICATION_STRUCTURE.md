@@ -1689,3 +1689,160 @@ migration; `20260815120000_crew_emblem_ink_style.sql` widens it again for the
 optional trailing style group. A future index — or a future style digit — this
 client does not have still fails soft, to that layer's first option and to the
 outlined emblem respectively.
+
+## NEXT-1 — Historical Data Foundation (STACK Next)
+
+The first STACK Next engineering phase, on `feature/historical-data`. It adds a
+history layer beside the existing application and changes nothing that was
+already working: no AppState migration, no schema change, no Supabase
+migration, no new dependency, and no screen.
+
+**Why it exists.** Connected runs arrive through Run Data as *candidates the
+runner is asked about* — a rolling 14-day window, a persisted review queue, one
+decision at a time. That is the right model for "did you just run", and the
+wrong one for "what has this runner been doing all year". Weekly volume, run
+frequency, long-run progression, pace and HR trends, zone distribution and
+training-load history all need a wide, complete, deduped record of actual
+activity that nobody has to review first. `src/history/` is that record.
+
+### The modules
+
+`src/history/historicalActivity.ts` owns the model. A `HistoricalActivity` is a
+**mirror of the source**, deliberately not a `RunLog`: source id, local date,
+local start time, source type, name, distance, moving and elapsed time, average
+and max HR, HR-zone durations, elevation gain, cadence, training load and
+`sourceUpdatedAt`, plus STACK's own `firstSeenAt` / `lastSeenAt` /
+`reconciledAt` bookkeeping. Three rules hold it together:
+
+- **Source units, source values.** Metres, seconds, and cadence exactly as
+  Intervals reports it. Conversion lives in `historicalMeasures.ts` and happens
+  at read time, so no rounding is frozen into storage and nothing here doubles a
+  cadence or invents a unit — the same rule `docs/CONNECTED_DATA_FIELDS.md`
+  established in August.
+- **Missing is `null`, never `0`.** Every optional key is always present and
+  explicitly null when the source had nothing, so "no HR strap that day" cannot
+  be read as a heart rate of zero. An all-zero HR-zone array is no coverage; a
+  zero *inside* a populated one is a real zero and is kept.
+- **Source facts only.** No classification, no derived pace, no plan link, no
+  Build state. Keeping derived things out is what makes a re-sync safe.
+
+The validity floor matches the existing import contract — verified running type,
+readable local date, positive distance, positive duration — so history and an
+importable candidate agree about what counts as a run. Rows that miss it are
+*counted by reason* rather than logged, because the reason is engineering
+information and the row is the runner's private data.
+
+`src/history/historicalWindows.ts` is the pagination. The Intervals activities
+endpoint pages by date range rather than by cursor, and `api/intervals.ts`
+refuses a span over 120 days, so a historical read is a sequence of ≤90-day
+windows that tile the requested range exactly — contiguous, non-overlapping,
+inclusive at both ends, clipped to the oldest date asked for. They are read
+**newest first**, so a sync that is rate-limited or interrupted halfway leaves
+STACK holding the recent history rather than the far end of it. The lookback is
+an argument (`DEFAULT_HISTORICAL_LOOKBACK_DAYS`, 365) with a 10-year ceiling so
+a bad value cannot spin out thousands of requests.
+
+`src/history/historicalReconciliation.ts` is dedupe and update. `provider +
+sourceId` is the only identity; date and distance are never matched on, because
+two real runs on one day at one distance are two runs. A new id is added, a
+known id whose source facts are identical moves only `lastSeenAt`, and a known
+id whose facts differ has them **replaced in place**, keeping `firstSeenAt`,
+moving `lastSeenAt` and stamping `reconciledAt`. A field that has gone missing
+upstream is written back to null rather than left stale — the activities
+endpoint returns whole objects, so absent means the source no longer claims it.
+That overwrite is safe here and would not be on a `RunLog`: this record holds
+nothing a person decided, and the existing rule that normal sync never silently
+rewrites an accepted imported run is untouched. Activities outside the current
+window are **kept, never pruned**: a narrower lookback is a smaller question,
+not a deletion.
+
+`src/history/historicalSync.ts` is the service boundary. Everything above it
+asks for a lookback and gets a normalized, deduped, persisted history; nothing
+above it knows that Intervals pages by date, that the proxy caps a request, or
+that the history is in `localStorage` at all. Windows are read sequentially —
+the source rate-limits, and a burst of parallel requests is the fastest way to
+be refused. A failed window **stops the sync** rather than pressing on, because
+a rate limit, a dead connection and a rejected credential all fail the next
+window too; everything already read is still reconciled and still persisted, and
+the result names the window that stopped it and how many were left.
+
+`src/history/historicalLinks.ts` derives the relationship between a historical
+activity and an accepted `RunLog` **at read time and never stores it**. Storing
+it would mean a re-sync could rewrite something the runner decided.
+`unacceptedHistoricalActivities` is explicitly not a review queue: Run Data's
+queue is still `stack.intervals.pending.v1`, and a year of history is context
+rather than a backlog of decisions.
+
+`src/history/historicalCoverage.ts` answers the question every later phase has
+to ask before it can promise a trend — *is this metric actually populated on
+this runner's runs?* — as counts, ratios, a date range and a rejection tally.
+Aggregates only: no activity name, id, time or credential, so a coverage report
+is safe to paste into an issue. `historicalFixtures.ts` supplies the synthetic
+payloads the tests summarize; every value in it is invented, per the standing
+rule that a real payload never enters this repository.
+
+### Storage
+
+`stack.history.activities.v1`, account-scoped with the same
+`.<user-id>` suffix the other credential and queue slots use, through
+`src/storage/historicalActivityRepository.ts`. Outside AppState, so introducing
+it costs no migration, it cannot corrupt one, and it is in no backup, export or
+Crew projection. Loads never throw — unreadable history is history the next
+sync rebuilds. Writes throw `StorageWriteError` so a caller can say the history
+will not survive the session rather than quietly promise a persistence it did
+not get.
+
+Every write is built key by key from an explicit allowlist rather than spread,
+so a raw Intervals payload, a route, a coordinate pair, a stream array or a
+credential cannot reach the slot even if a caller hands one in. A test asserts
+exactly that against a fixture payload carrying all of them.
+
+`clearHistoricalActivities` exists but nothing in the product calls it: the
+current Forget Connection deliberately leaves personal review data in place, and
+discarding a year of history is a product decision rather than a side effect of
+changing a credential.
+
+### The development diagnostic
+
+NEXT-1 ships no screen, which leaves two questions only real data can answer:
+does a long lookback actually come back from the owner's account, and which
+optional metrics are genuinely populated? `src/history/historyDiagnostics.ts`
+installs `window.__stackHistory` **only** when the device has explicitly set
+`stack.history.diagnostics.v1` to `on` and reloaded. No UI sets it, it adds no
+authority a connected device did not already have — it reuses the stored
+credential through the same repositories the app uses — and it returns counts,
+ratios and date ranges only, never a credential and never an activity's
+identity. `main.tsx` calls it once. The deployed smoke-test procedure it exists
+for is in `docs/STACK_NEXT_IMPLEMENTATION.md`.
+
+### What NEXT-1 deliberately did not do
+
+No Today or Home change, no runner-profile or Training Signals UI, no plan
+change, no wellness, no streams or GPS, no cloud sync, no Crew change, and **no
+Build block for any newly discovered historical activity** — historical Build
+backfill remains an explicit later product decision (NEXT-6). No classification
+of historical runs either: labelling them is NEXT-2's call to make once the
+information architecture exists, and the persisted record is a source mirror
+precisely so that call stays open.
+
+### Tests
+
+59 new tests across eight files, all on fake fixtures and fake credentials:
+`historicalActivity.test.ts` (Tier 1 normalization, cadence verbatim, elevation
+from the source aggregate, absent metrics staying null, rejection reasons,
+private payload fields dropped), `historicalWindows.test.ts` (the range tiled
+exactly with no gap or overlap, every window inside the reader's 120-day limit,
+newest-first, nonsense lookbacks clamped), `historicalReconciliation.test.ts`
+(added/unchanged/updated, `firstSeenAt` preserved, missing-upstream written to
+null, out-of-window history kept), `historicalSync.test.ts` (multi-window paged
+retrieval, a year of history recovered, repeated sync adding nothing, upstream
+correction reconciled, a rate-limited window stopping the sync while keeping
+what it read, account scoping, a refused write reported),
+`historicalCoverage.test.ts` (per-field coverage and the printable fixture
+summary), `historicalCompatibility.test.ts` (AppState byte-identical across a
+historical sync, manual runs and plan links intact, accepted connected runs
+mirrored without duplication or alteration, no Build blocks earned, the Run Data
+review queue untouched, a manual-only device unaffected),
+`historicalActivityRepository.test.ts` and `historyDiagnostics.test.ts`.
+
+`npm run check` passes: 111 files, 1,462 tests.
