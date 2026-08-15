@@ -10,7 +10,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "export:artwork": "node scripts/export-artwork.mjs",
     "check": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
