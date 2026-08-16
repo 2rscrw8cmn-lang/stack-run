@@ -19,12 +19,9 @@ interface TodayDemoLocation {
   search: string;
 }
 
-/** Fixed so the review is repeatable and lands on a scheduled run in the seed plan. */
 export const TODAY_DEMO_DATE = "2026-09-17";
 
-/**
- * Preview-only switch. A production/custom hostname can never enable fake data.
- */
+/** Preview-only switch. A production/custom hostname can never enable fake data. */
 export function isTodayDemoEnabled(location?: TodayDemoLocation | null): boolean {
   const current =
     location ?? (typeof window === "undefined" ? null : window.location);
@@ -59,10 +56,9 @@ function demoDistance(workout: Workout, index: number): number {
 /**
  * In-memory owner-review data for `?demo=today`.
  *
- * Historical runs come from the same fake history NEXT-3 uses, so Today goes
- * through the real NEXT-2 calculations and NEXT-3 signal rules. A handful of
- * earlier seed-plan workouts become STACK RunLogs solely so Build has something
- * visible; five are placed and one remains pending. Nothing here is persisted.
+ * The historical side reuses NEXT-3's fake history so the real NEXT-2 and
+ * NEXT-3 calculations drive the screen. Six earlier seed-plan runs give Build
+ * a visible state: five placed, one pending. Nothing is persisted.
  */
 export function todayDemoData(): TodayDemoData {
   const plan = loadSeedPlan();
@@ -93,17 +89,19 @@ export function todayDemoData(): TodayDemoData {
     };
   });
 
-  const blockPlacements: BlockPlacement[] = runLogs.slice(0, 5).map((run, index) => ({
-    runLogId: run.id,
-    row: index < 4 ? 0 : 1,
-    columnStart: index < 4 ? index + 1 : 1,
-    width: 1,
-    height: 1,
-    placedAt: `${run.completedDate}T12:00:00.000Z`,
-  }));
+  const blockPlacements: BlockPlacement[] = runLogs
+    .slice(0, 5)
+    .map((run, index): BlockPlacement => ({
+      runLogId: run.id,
+      row: index < 4 ? 0 : 1,
+      columnStart: (index < 4 ? index + 1 : 1) as 1 | 2 | 3 | 4,
+      width: 1,
+      height: 1,
+      placedAt: `${run.completedDate}T12:00:00.000Z`,
+    }));
 
-  // Shift the signal fixture one day back so the review does not claim the
-  // runner already ran today while Today's scheduled workout is still due.
+  // End the historical fixture yesterday so the demo does not imply the runner
+  // already ran today while the scheduled workout is still waiting.
   const historical = signalDemoRuns(addDaysToLocalDate(TODAY_DEMO_DATE, -1));
   const stackRuns = unifiedRunnerHistory({ runLogs, blockPlacements });
   const runnerRuns = [...historical, ...stackRuns].sort(compareRunnerRuns);
