@@ -8,38 +8,47 @@ import type {
  * Shared presentation pieces for Training Signals details.
  *
  * The domain decides every value and comparison. These components only make the
- * working easier to scan on a phone: one compact comparison instead of four KPI
- * tiles, exact dates underneath, and short coverage copy for optional metrics.
+ * working easier to scan on a phone: one result-first comparison, one quiet
+ * reference row, and short coverage copy for optional metrics.
  */
 
-export function SignalComparisonSummary({
+export function SignalResultSummary({
   currentLabel = "Last 28 days",
   currentValue,
-  baselineLabel = "Prior 28 days",
-  baselineValue,
   change,
 }: {
   currentLabel?: string;
   currentValue: string;
-  baselineLabel?: string;
-  baselineValue: string;
   change: string;
 }) {
   return (
-    <div className="signal-comparison">
-      <div className="signal-comparison__period">
-        <span className="machine-label">{currentLabel}</span>
+    <div className="signal-result">
+      <div className="signal-result__current">
         <strong className="data-value">{currentValue}</strong>
+        <span className="machine-label">{currentLabel}</span>
       </div>
-      <div className="signal-comparison__period">
-        <span className="machine-label">{baselineLabel}</span>
-        <strong className="data-value">{baselineValue}</strong>
-      </div>
-      <p className="signal-comparison__change">
-        <span className="machine-label">Change</span>
+      <div className="signal-result__change">
         <strong className="data-value">{change}</strong>
-      </p>
+        <span className="machine-label">Change</span>
+      </div>
     </div>
+  );
+}
+
+export function SignalReference({
+  label = "Prior 28 days",
+  value,
+}: {
+  label?: string;
+  value: string;
+}) {
+  return (
+    <dl className="signal-reference">
+      <div>
+        <dt className="machine-label">{label}</dt>
+        <dd className="data-value">{value}</dd>
+      </div>
+    </dl>
   );
 }
 

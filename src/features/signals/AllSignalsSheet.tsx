@@ -24,12 +24,12 @@ export function AllSignalsSheet({
   return (
     <Sheet className="sheet--instrument" title="All Training Signals" isOpen={isOpen} onClose={onClose}>
       <div className="all-signals">
-        <p className="all-signals__context machine-label">CURRENT OBSERVATIONS · DOMAIN ORDER</p>
         <SignalSummaryList
           signals={signals}
           runs={runs}
           today={today}
           onOpenSignal={onOpenSignal}
+          compact
         />
       </div>
     </Sheet>

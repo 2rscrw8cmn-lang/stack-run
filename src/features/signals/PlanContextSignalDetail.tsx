@@ -2,8 +2,7 @@ import type { RunLog, TrainingPlan } from "../../domain/types";
 import type { TrainingSignal } from "../../signals/trainingSignal";
 import { selectTrainingSignals } from "../../domain/trends";
 import { ConsistencyDetail } from "../trends/ConsistencyDetail";
-import { WeeklyMileageDetail } from "../trends/WeeklyMileageDetail";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
 
 /**
  * Plan context, kept whole and moved to the bottom.
@@ -22,7 +21,6 @@ export function PlanContextSignalDetail({
   plan,
   runLogs,
   today,
-  onOpenRunLog,
 }: {
   signal: Extract<TrainingSignal, { family: "plan-context" }>;
   plan: TrainingPlan;
@@ -37,19 +35,16 @@ export function PlanContextSignalDetail({
 
   return (
     <>
-      <SignalFacts
-        facts={[
-          { label: "Recorded", value: `${facts.completed} of ${facts.due}` },
-          { label: "Plan to date", value: `${facts.percentage}%` },
-          { label: "Plan weeks", value: String(facts.weekCount) },
-          { label: "Extra runs", value: String(facts.extraRuns) },
-        ]}
+      <SignalResultSummary
+        currentLabel="Plan to date"
+        currentValue={`${facts.completed}/${facts.due}`}
+        change={`${facts.percentage}% recorded`}
       />
       <ConsistencyDetail signals={planSignals} />
-
-      <DetailSection title="Planned versus actual miles">
-        <WeeklyMileageDetail signals={planSignals} onOpenRun={onOpenRunLog} />
-      </DetailSection>
+      <SignalReference
+        label={`${facts.weekCount} plan ${facts.weekCount === 1 ? "week" : "weeks"}`}
+        value={`${facts.extraRuns} extra ${facts.extraRuns === 1 ? "run" : "runs"}`}
+      />
     </>
   );
 }

@@ -5,7 +5,7 @@ import { longestRunByWeek } from "../../history/runnerLongRuns";
 import type { RunnerRun } from "../../history/runnerRun";
 import type { TrainingSignal } from "../../signals/trainingSignal";
 import { DetailSection } from "../trends/TrendDetailShared";
-import { SignalComparisonSummary, SignalPeriods } from "./SignalDetailParts";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
 import { signedMilesChange, signedPercent } from "./signalFormatting";
 
 /** Long runs, with the two runs the comparison is actually about. */
@@ -36,12 +36,10 @@ export function LongRunSignalDetail({
 
   return (
     <>
-      <SignalComparisonSummary
+      <SignalResultSummary
         currentValue={`${formatMiles(facts.currentMiles)} mi`}
-        baselineValue={`${formatMiles(facts.baselineMiles)} mi`}
         change={`${signedMilesChange(facts.differenceMiles)} · ${signedPercent(facts.changeRatio)}`}
       />
-      <SignalPeriods current={signal.current} baseline={signal.baseline} />
 
       <DetailSection title="Longest run each week">
         {points.length > 0 ? (
@@ -58,8 +56,9 @@ export function LongRunSignalDetail({
           <p className="signal-detail__empty">No runs in the last {weeks.length} weeks.</p>
         )}
       </DetailSection>
+      <SignalReference value={`${formatMiles(facts.baselineMiles)} mi`} />
 
-      <DetailSection title="The two runs behind this">
+      <DetailSection title="Runs behind this">
         <ul className="signal-run-list">
           {named.map((entry) => {
             const run = entry.runId === null ? null : runById.get(entry.runId) ?? null;
@@ -86,11 +85,6 @@ export function LongRunSignalDetail({
             );
           })}
         </ul>
-        <p className="signal-detail__note">
-          The longest run that actually happened in each window, whatever it was.
-          STACK calls a run a Long Run only where it is connected to a planned long
-          workout.
-        </p>
       </DetailSection>
     </>
   );

@@ -7,6 +7,7 @@ import { runnerSignals } from "../../signals/runnerSignals";
 import {
   RUNS_OVERVIEW_SIGNAL_LIMIT,
   selectOverviewSignals,
+  signalSummaryReading,
   signalOverviewVisual,
 } from "./signalOverview";
 
@@ -44,7 +45,7 @@ function completeSignalSet() {
 }
 
 describe("Runs Overview signal presentation", () => {
-  it("keeps domain order, removes unavailable signals, and caps only the overview at four", () => {
+  it("keeps domain order, removes unavailable signals, and caps only the overview at three", () => {
     const { signals } = completeSignalSet();
     const presentable = signals.filter((signal) => signal.isPresentable);
     const overview = selectOverviewSignals(signals);
@@ -73,5 +74,19 @@ describe("Runs Overview signal presentation", () => {
       "zone-distribution": "zones",
       "plan-context": "progress",
     });
+  });
+
+  it("formats one current, change, and reference reading for every presentable family", () => {
+    const { signals } = completeSignalSet();
+    const readings = signals
+      .filter((signal) => signal.isPresentable)
+      .map((signal) => [signal.family, signalSummaryReading(signal)] as const);
+
+    expect(readings).toHaveLength(6);
+    for (const [, reading] of readings) {
+      expect(reading?.currentValue).toBeTruthy();
+      expect(reading?.changeValue).toBeTruthy();
+      expect(reading?.referenceValue).toBeTruthy();
+    }
   });
 });

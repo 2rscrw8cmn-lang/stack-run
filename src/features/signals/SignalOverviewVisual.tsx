@@ -31,10 +31,6 @@ export function SignalOverviewVisual({ signal, runs, today }: SignalOverviewVisu
             <polyline key={points} className="signal-visual__line" points={points} />
           ))}
         </svg>
-        <span className="signal-visual__values">
-          <span>NOW {visual.currentValue}</span>
-          <span>PRIOR {visual.baselineValue}</span>
-        </span>
       </span>
     );
   }
@@ -47,14 +43,12 @@ export function SignalOverviewVisual({ signal, runs, today }: SignalOverviewVisu
           <span className="signal-visual__track signal-visual__track--zones">
             <span className="signal-visual__fill" style={fillStyle(visual.currentPercent)} />
           </span>
-          <span className="signal-visual__value">{visual.currentValue}</span>
         </span>
         <span className="signal-visual__row">
           <span className="signal-visual__label">PRIOR</span>
           <span className="signal-visual__track signal-visual__track--zones">
             <span className="signal-visual__fill" style={fillStyle(visual.baselinePercent)} />
           </span>
-          <span className="signal-visual__value">{visual.baselineValue}</span>
         </span>
       </span>
     );
@@ -68,7 +62,6 @@ export function SignalOverviewVisual({ signal, runs, today }: SignalOverviewVisu
           <span className="signal-visual__track signal-visual__track--blocks">
             <span className="signal-visual__fill" style={fillStyle(visual.percent)} />
           </span>
-          <span className="signal-visual__value">{visual.value}</span>
         </span>
       </span>
     );
@@ -85,14 +78,12 @@ export function SignalOverviewVisual({ signal, runs, today }: SignalOverviewVisu
         <span className="signal-visual__track">
           <span className="signal-visual__fill" style={fillStyle(visual.currentPercent)} />
         </span>
-        <span className="signal-visual__value">{visual.currentValue}</span>
       </span>
       <span className="signal-visual__row">
         <span className="signal-visual__label">PRIOR</span>
         <span className="signal-visual__track">
           <span className="signal-visual__fill" style={fillStyle(visual.baselinePercent)} />
         </span>
-        <span className="signal-visual__value">{visual.baselineValue}</span>
       </span>
     </span>
   );

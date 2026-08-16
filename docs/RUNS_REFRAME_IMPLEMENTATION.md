@@ -72,7 +72,7 @@ Implement in this order:
 1. current running snapshot;
 2. recent training visualization;
 3. visual Training Signal summaries;
-4. five recent runs;
+4. three recent runs;
 5. `View all runs` entry point.
 
 ### Snapshot
@@ -93,9 +93,9 @@ Keep `src/signals/` formulas, thresholds, availability and ordering unchanged.
 
 Overview presentation:
 
-- show up to four presentable signals in existing domain order;
+- show up to three presentable signals in existing domain order;
 - use family-appropriate visual summaries from `RUNS_VISUALIZATION_SYSTEM.md`;
-- if >4 are present, expose a quiet `View all signals` disclosure;
+- if >3 are present, expose a quiet `View all signals` disclosure;
 - do not let plan context displace a higher-ranked actual-history signal;
 - no overall score.
 
@@ -109,7 +109,7 @@ Any new series used strictly for visualization must:
 
 ### Recent runs
 
-Show approximately five unified `RunnerRun`s.
+Show the three newest unified `RunnerRun`s.
 
 Preserve:
 
@@ -144,9 +144,16 @@ Review at 320 / 390 / 430 / desktop and real iPhone Safari before acceptance.
 ### Implemented R1 surface
 
 `RunsScreen` now presents the product hierarchy in the required order: current
-snapshot, compact recent weekly volume, up to four visual Training Signals, five
+snapshot, compact recent weekly volume, up to three visual Training Signals, three
 recent unified runs, then `View All Runs`. The snapshot, volume and signal domain
 outputs are consumed unchanged.
+
+The owner-reviewed refinement removes the default explanatory copy and most
+container chrome from the overview. The snapshot is led by typography rather
+than an outlined panel; weekly volume quiets its frame, grid and prior weeks;
+section and sheet titles use the normal STACK sans; lime is reserved chiefly for
+current/selected state; signal-family color stays local to the visual and thin
+rail. Machine typography remains on values, units, dates and window metadata.
 
 Signal visualization mapping is presentation-only:
 
@@ -158,18 +165,27 @@ Signal visualization mapping is presentation-only:
 - Plan context: completed-versus-due progress.
 
 `selectOverviewSignals` filters only non-presentable outputs, preserves the
-existing domain order, and takes the first four. It does not score, rerank or
+existing domain order, and takes the first three. It does not score, rerank or
 change availability. When more signals exist, `View All Signals` opens the
-existing signal inventory and preserves the existing signal-detail hand-off.
+compact visual inventory and preserves the existing signal-detail hand-off.
+Each overview and inventory item shows one current reading, one comparison,
+one compact visual and one prior/reference row, without a default paragraph.
 
-The overview takes the first five entries from newest-first
+Signal Detail now leads with current result and change, then its primary chart,
+supporting evidence where useful and prior/reference context. The useful
+methodology copy and exact comparison windows remain available once, behind the
+native keyboard/touch-operable `How STACK calculates this` disclosure. The
+detail no longer repeats claim, comparison and methodology prose in multiple
+visible containers.
+
+The overview takes the first three entries from newest-first
 `unifiedRunnerHistory`. `View All Runs` opens a reversible R1 sheet boundary that
 reuses the existing history row and 25-at-a-time reveal. Month grouping, archive
 row polish and browsing behavior remain R2 work. STACK-owned and historical-only
 runs preserve their existing detail routes, and Run Detail 2.0 is unchanged.
 
 Focused tests cover selection/order/capping, every visual family mapping,
-unchanged snapshot and volume facts, five-run preview and newest-first behavior,
+unchanged snapshot and volume facts, three-run preview and newest-first behavior,
 the separate Full History surface, both run-detail routes, signal-detail routing,
 Log Run, factual accessible text, native button semantics, and the 320px/no-
 overflow presentation contract. R1 changes no history reconciliation, signal

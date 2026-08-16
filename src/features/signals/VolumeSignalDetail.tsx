@@ -6,7 +6,7 @@ import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
 import { DetailSection } from "../trends/TrendDetailShared";
-import { SignalComparisonSummary, SignalPeriods } from "./SignalDetailParts";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
 import { signedMilesChange, signedPercent } from "./signalFormatting";
 
 /** Volume, with the twelve weeks the two comparison windows were cut out of. */
@@ -27,12 +27,10 @@ export function VolumeSignalDetail({
 
   return (
     <>
-      <SignalComparisonSummary
+      <SignalResultSummary
         currentValue={`${formatMiles(facts.currentMiles)} mi`}
-        baselineValue={`${formatMiles(facts.baselineMiles)} mi`}
         change={`${signedMilesChange(facts.differenceMiles)} · ${signedPercent(facts.changeRatio)}`}
       />
-      <SignalPeriods current={signal.current} baseline={signal.baseline} />
 
       <DetailSection title="Weekly miles">
         <PlanActualColumns
@@ -55,6 +53,7 @@ export function VolumeSignalDetail({
           {selected.runCount} {selected.runCount === 1 ? "run" : "runs"}
         </p>
       </DetailSection>
+      <SignalReference value={`${formatMiles(facts.baselineMiles)} mi`} />
     </>
   );
 }

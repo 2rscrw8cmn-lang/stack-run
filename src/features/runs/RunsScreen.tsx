@@ -36,7 +36,7 @@ import "./runsOverview.css";
 /** The archive keeps NEXT-2's bridge paging while R2 owns its final behavior. */
 export const HISTORY_PAGE_SIZE = FULL_HISTORY_PAGE_SIZE;
 /** Runs Overview is orientation, not the archive. */
-export const RECENT_RUN_COUNT = 5;
+export const RECENT_RUN_COUNT = 3;
 
 interface RunsScreenProps {
   plan: TrainingPlan;
@@ -77,8 +77,8 @@ interface RunsScreenProps {
  *
  * 1. current running snapshot;
  * 2. recent-training shape;
- * 3. up to four visual Training Signal summaries;
- * 4. five recent runs;
+ * 3. up to three visual Training Signal summaries;
+ * 4. three recent runs;
  * 5. a separate Full History boundary.
  *
  * What NEXT-3 changed is the signals themselves rather than where they sit.
@@ -249,7 +249,7 @@ export function RunsScreen({
           </p>
           {!isSignalDemo && (
             <Button
-              variant="secondary"
+              variant="ghost"
               className="runs-screen__log"
               icon={<Plus size={18} strokeWidth={2} />}
               onClick={() => openEntry(null, false)}

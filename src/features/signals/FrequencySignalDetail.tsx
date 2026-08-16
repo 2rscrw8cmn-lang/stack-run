@@ -5,7 +5,7 @@ import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
 import { DetailSection } from "../trends/TrendDetailShared";
-import { SignalComparisonSummary, SignalPeriods } from "./SignalDetailParts";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
 import { signedNumber } from "./signalFormatting";
 
 /** Frequency, as counts a runner can check by hand. */
@@ -26,16 +26,10 @@ export function FrequencySignalDetail({
 
   return (
     <>
-      <SignalComparisonSummary
+      <SignalResultSummary
         currentValue={`${facts.currentRunsPerWeek.toFixed(1)}/wk`}
-        baselineValue={`${facts.baselineRunsPerWeek.toFixed(1)}/wk`}
         change={`${signedNumber(facts.differenceRunsPerWeek, "/wk")} · ${facts.currentRunCount} vs ${facts.baselineRunCount} runs`}
       />
-      <SignalPeriods current={signal.current} baseline={signal.baseline} />
-      <p className="signal-detail__note">
-        {facts.currentRunCount} runs in 28 days is {facts.currentRunsPerWeek.toFixed(1)} a
-        week, because 28 days is exactly four weeks however the calendar falls.
-      </p>
 
       <DetailSection title="Runs each week">
         <PlanActualColumns
@@ -58,6 +52,7 @@ export function FrequencySignalDetail({
           {selected.runCount === 1 ? "run" : "runs"}
         </p>
       </DetailSection>
+      <SignalReference value={`${facts.baselineRunsPerWeek.toFixed(1)}/wk`} />
     </>
   );
 }

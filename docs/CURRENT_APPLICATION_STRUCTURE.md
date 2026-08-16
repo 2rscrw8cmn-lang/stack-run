@@ -2356,8 +2356,8 @@ renders this primary-screen sequence:
    facts supporting it;
 2. `RunnerVolumeStrip` — the existing compact weekly-volume series under
    `Recent Training`;
-3. visual Training Signal summaries — up to four, in existing domain order;
-4. `Recent Runs` — the five newest `RunnerRun`s;
+3. visual Training Signal summaries — up to three, in existing domain order;
+4. `Recent Runs` — the three newest `RunnerRun`s;
 5. `View All Runs` — the explicit boundary into Full History.
 
 The overview no longer paginates the complete archive inline. Its run rows still
@@ -2370,17 +2370,30 @@ route to the existing `RunResultDetail` or `HistoricalRunSheet` surfaces.
 `src/features/signals/signalOverview.ts` provides a pure presentation selector
 and visual model. It accepts the existing `TrainingSignal` outputs, removes only
 signals without presentable facts, keeps their existing order, and caps the
-overview with `RUNS_OVERVIEW_SIGNAL_LIMIT = 4`. It does not create a ranking or
+overview with `RUNS_OVERVIEW_SIGNAL_LIMIT = 3`. It does not create a ranking or
 change a signal's formula, threshold, window, direction wording or availability.
 
 `SignalOverviewVisual` maps the six existing families to compact factual forms:
 Volume paired bars, Frequency block-textured paired bars, Long runs an eight-week
 gap-preserving progression, Workload paired load bars, Zone mix current/prior
-lower-zone share composition, and Plan context completed/due progress. The
-existing headline and factual support remain readable text and the accessible
-name; color is never the sole carrier of meaning. If more than four signals are
-present, `AllSignalsSheet` exposes the complete existing inventory and hands each
-item to the existing `SignalDetailSheet`.
+lower-zone share composition, and Plan context completed/due progress. Overview
+items expose a current result, change/reference, compact visual and prior/window
+context; their existing interpretation is not shown as a paragraph by default,
+while the accessible name retains the complete factual comparison. If more than
+three signals are present, `AllSignalsSheet` exposes the complete existing
+inventory in the same compact visual grammar and hands each item to the existing
+`SignalDetailSheet`.
+
+The owner-reviewed refinement makes the surface deliberately less container-led:
+the snapshot is typographic rather than boxed, weekly-volume grid/frame weight is
+reduced, previous weeks are quiet and current selection remains accented. Normal
+STACK sans is used for screen, section and sheet titles; machine typography is
+reserved for values, units, dates, axes and window labels. Lime primarily marks
+current/selected state, while signal-family colors stay on small visuals and
+rails. Signal Detail uses result, comparison, chart, supporting evidence and
+prior/reference order. Methodology and exact periods remain available once behind
+the native `How STACK calculates this` disclosure instead of being permanently
+visible or repeated.
 
 ### Full History boundary
 

@@ -1,12 +1,10 @@
-import { Activity, ChevronRight, Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, ChevronRight } from "lucide-react";
 import { Section } from "../../components/ui/Section";
 import type { RunnerRun } from "../../history/runnerRun";
-import type {
-  SignalDirection,
-  TrainingSignal,
-} from "../../signals/trainingSignal";
+import type { TrainingSignal } from "../../signals/trainingSignal";
 import { Button } from "../../components/ui/Button";
 import { SignalOverviewVisual } from "./SignalOverviewVisual";
+import { signalSummaryReading } from "./signalOverview";
 import "./signalPresentationCleanup.css";
 
 interface SignalCardsProps {
@@ -20,14 +18,7 @@ interface SignalCardsProps {
   hiddenSignalCount?: number;
 }
 
-/**
- * Training Signals, as a short list of observations.
- *
- * Each historical card leads with the sentence and its evidence. Those cards all
- * use the same 28-day comparison, so that context is stated once for the section
- * rather than repeated on every row. Plan context is the exception and keeps its
- * own "Plan to date" label visible.
- */
+/** Training Signals as visual-first factual instruments. */
 export function SignalCards({
   signals,
   runs,
@@ -38,9 +29,6 @@ export function SignalCards({
   hiddenSignalCount = 0,
 }: SignalCardsProps) {
   if (signals.length === 0 && !hasHistory) return null;
-  const hasHistoricalComparison = signals.some(
-    (signal) => signal.family !== "plan-context",
-  );
 
   return (
     <Section
@@ -55,11 +43,6 @@ export function SignalCards({
         </p>
       ) : (
         <>
-          {hasHistoricalComparison && (
-            <p className="signal-cards__context machine-label">
-              Last 28 days vs prior 28 days
-            </p>
-          )}
           <SignalSummaryList
             signals={signals}
             runs={runs}
@@ -84,6 +67,7 @@ interface SignalSummaryListProps {
   runs: readonly RunnerRun[];
   today: string;
   onOpenSignal: (signal: TrainingSignal) => void;
+  compact?: boolean;
 }
 
 export function SignalSummaryList({
@@ -91,54 +75,48 @@ export function SignalSummaryList({
   runs,
   today,
   onOpenSignal,
+  compact = false,
 }: SignalSummaryListProps) {
   return (
-    <ul className="signal-cards__list">
-      {signals.map((signal) => (
-        <li key={signal.id}>
-          <button
-            type="button"
-            className="signal-card"
-            data-signal={signal.id}
-            data-direction={signal.direction ?? "none"}
-            aria-label={`${signal.headline}. ${signal.support} ${signal.windowLabel}. Open ${signal.title} detail.`}
-            onClick={() => onOpenSignal(signal)}
-          >
-            <span className="signal-card__topline">
-              <span className="signal-card__mark" aria-hidden="true">
-                <DirectionGlyph direction={signal.direction} />
+    <ul className="signal-cards__list" data-density={compact ? "compact" : "featured"}>
+      {signals.map((signal) => {
+        const reading = signalSummaryReading(signal);
+        if (!reading) return null;
+        return (
+          <li key={signal.id}>
+            <button
+              type="button"
+              className="signal-card"
+              data-signal={signal.id}
+              data-direction={signal.direction ?? "none"}
+              aria-label={`${signal.title}. ${reading.currentLabel}: ${reading.currentValue}. ${reading.changeLabel}: ${reading.changeValue}. ${reading.referenceLabel}: ${reading.referenceValue}. Open detail.`}
+              onClick={() => onOpenSignal(signal)}
+            >
+              <span className="signal-card__header">
+                <span className="signal-card__label">{signal.title}</span>
+                <span className="signal-card__more" aria-hidden="true">
+                  <ChevronRight size={16} strokeWidth={2} />
+                </span>
               </span>
-              <span className="signal-card__body">
-                <span className="signal-card__headline">{signal.headline}</span>
-                <span className="signal-card__evidence">{signal.support}</span>
-                {signal.family === "plan-context" && (
-                  <span className="signal-card__window machine-label">
-                    {signal.windowLabel}
-                  </span>
-                )}
+              <span className="signal-card__reading">
+                <span className="signal-card__current">
+                  <strong>{reading.currentValue}</strong>
+                  <small>{reading.currentLabel}</small>
+                </span>
+                <span className="signal-card__change">
+                  <strong>{reading.changeValue}</strong>
+                  <small>{reading.changeLabel}</small>
+                </span>
               </span>
-              <span className="signal-card__more" aria-hidden="true">
-                <ChevronRight size={16} strokeWidth={2} />
+              <SignalOverviewVisual signal={signal} runs={runs} today={today} />
+              <span className="signal-card__reference">
+                <small>{reading.referenceLabel}</small>
+                <strong>{reading.referenceValue}</strong>
               </span>
-            </span>
-            <SignalOverviewVisual signal={signal} runs={runs} today={today} />
-          </button>
-        </li>
-      ))}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
-}
-
-/** A muted direction glyph; the headline carries the meaning for accessibility. */
-function DirectionGlyph({ direction }: { direction: SignalDirection | null }) {
-  switch (direction) {
-    case "rising":
-      return <TrendingUp size={16} strokeWidth={2} />;
-    case "falling":
-      return <TrendingDown size={16} strokeWidth={2} />;
-    case "steady":
-      return <Minus size={16} strokeWidth={2} />;
-    case null:
-      return <Activity size={16} strokeWidth={2} />;
-  }
 }

@@ -2,9 +2,14 @@ import { formatMiles } from "../../domain/distance";
 import { longestRunByWeek } from "../../history/runnerLongRuns";
 import type { RunnerRun } from "../../history/runnerRun";
 import type { TrainingSignal } from "../../signals/trainingSignal";
+import {
+  signedMilesChange,
+  signedNumber,
+  signedPoints,
+} from "./signalFormatting";
 
 /** The overview is a summary, not the complete signal inventory. */
-export const RUNS_OVERVIEW_SIGNAL_LIMIT = 4;
+export const RUNS_OVERVIEW_SIGNAL_LIMIT = 3;
 
 export function selectOverviewSignals(
   signals: readonly TrainingSignal[],
@@ -56,6 +61,87 @@ export type SignalOverviewVisual =
   | TrendVisual
   | ZoneVisual
   | ProgressVisual;
+
+export interface SignalSummaryReading {
+  currentLabel: string;
+  currentValue: string;
+  changeLabel: string;
+  changeValue: string;
+  referenceLabel: string;
+  referenceValue: string;
+}
+
+/**
+ * Factual labels for the visual-first overview and inventory modules.
+ * Every value is formatting around facts the domain already calculated.
+ */
+export function signalSummaryReading(
+  signal: TrainingSignal,
+): SignalSummaryReading | null {
+  if (!signal.isPresentable || signal.facts === null) return null;
+
+  const currentLabel = `Last ${signal.current.days} days`;
+  const referenceLabel = signal.baseline
+    ? `Prior ${signal.baseline.days} days`
+    : "Reference";
+
+  switch (signal.family) {
+    case "volume":
+      return {
+        currentLabel,
+        currentValue: `${formatMiles(signal.facts.currentMiles)} mi`,
+        changeLabel: "Change",
+        changeValue: signedMilesChange(signal.facts.differenceMiles),
+        referenceLabel,
+        referenceValue: `${formatMiles(signal.facts.baselineMiles)} mi`,
+      };
+    case "frequency":
+      return {
+        currentLabel,
+        currentValue: `${signal.facts.currentRunsPerWeek.toFixed(1)}/wk`,
+        changeLabel: "Change",
+        changeValue: signedNumber(signal.facts.differenceRunsPerWeek, "/wk"),
+        referenceLabel,
+        referenceValue: `${signal.facts.baselineRunsPerWeek.toFixed(1)}/wk`,
+      };
+    case "long-run":
+      return {
+        currentLabel,
+        currentValue: `${formatMiles(signal.facts.currentMiles)} mi`,
+        changeLabel: "Change",
+        changeValue: signedMilesChange(signal.facts.differenceMiles),
+        referenceLabel,
+        referenceValue: `${formatMiles(signal.facts.baselineMiles)} mi`,
+      };
+    case "workload":
+      return {
+        currentLabel,
+        currentValue: String(Math.round(signal.facts.currentLoad)),
+        changeLabel: "Change",
+        changeValue: signedNumber(signal.facts.differenceLoad),
+        referenceLabel,
+        referenceValue: String(Math.round(signal.facts.baselineLoad)),
+      };
+    case "zone-distribution":
+      return {
+        currentLabel,
+        currentValue: `${Math.round(signal.facts.currentLowerShare * 100)}%`,
+        changeLabel: "Change",
+        changeValue: signedPoints(signal.facts.differenceShare),
+        referenceLabel,
+        referenceValue: `${Math.round(signal.facts.baselineLowerShare * 100)}%`,
+      };
+    case "plan-context":
+      return {
+        currentLabel: "Plan to date",
+        currentValue: `${signal.facts.completed}/${signal.facts.due}`,
+        changeLabel: "Recorded",
+        changeValue: `${signal.facts.percentage}%`,
+        referenceLabel: `${signal.facts.weekCount} plan ${signal.facts.weekCount === 1 ? "week" : "weeks"}`,
+        referenceValue: `${signal.facts.extraRuns} extra`,
+      };
+  }
+}
 
 function percentOfMax(value: number, max: number): number {
   if (value <= 0 || max <= 0) return 0;

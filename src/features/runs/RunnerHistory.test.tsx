@@ -74,7 +74,7 @@ describe("Runs history", () => {
     expect(screen.getByText("1 run")).toBeInTheDocument();
   });
 
-  it("interleaves manual, extra and history rows in one chronology", () => {
+  it("interleaves manual, extra and history rows in the recent chronology", () => {
     renderRuns({
       activities: [
         historicalRun("a-1", "2026-08-13", { name: "Evening Run" }),
@@ -90,7 +90,6 @@ describe("Runs history", () => {
       expect.stringContaining("Friday, August 14"),
       expect.stringContaining("Thursday, August 13"),
       expect.stringContaining("Tuesday, August 11"),
-      expect.stringContaining("Monday, March 2"),
     ]);
     expect(within(rows()[0]).getByText("Extra")).toBeInTheDocument();
     expect(within(rows()[2]).queryByText("Extra")).not.toBeInTheDocument();
@@ -300,7 +299,7 @@ describe("Runs Overview and Full History boundary", () => {
     historicalRun(`a-${index}`, `2026-0${index < 9 ? "8" : "7"}-${String((index % 28) + 1).padStart(2, "0")}`),
   );
 
-  it("shows five recent runs, then pages the complete archive only after View All Runs", async () => {
+  it("shows three recent runs, then pages the complete archive only after View All Runs", async () => {
     const user = userEvent.setup();
     renderRuns({ activities: many });
 
@@ -328,8 +327,6 @@ describe("Runs Overview and Full History boundary", () => {
       expect.stringContaining("August 9"),
       expect.stringContaining("August 8"),
       expect.stringContaining("August 7"),
-      expect.stringContaining("August 6"),
-      expect.stringContaining("August 5"),
     ]);
 
     await user.click(screen.getByRole("button", { name: "View All Runs" }));
@@ -344,7 +341,7 @@ describe("Runs Overview and Full History boundary", () => {
 });
 
 describe("Runs hierarchy", () => {
-  it("puts visual signals before the five-run preview, and says so when it cannot say more", () => {
+  it("puts visual signals before the three-run preview, and says so when it cannot say more", () => {
     renderRuns({
       runLogs: [
         stackRun("a", "2026-08-11", { workoutId: "workout-002", distanceMiles: 2 }),
@@ -360,7 +357,7 @@ describe("Runs hierarchy", () => {
     // are absent rather than guessed at; plan context still has something.
     expect(document.querySelectorAll(".signal-cards.section .signal-card")).toHaveLength(1);
     expect(
-      screen.getByRole("button", { name: /planned runs recorded/ }),
+      screen.getByRole("button", { name: /^Plan context\. Plan to date/ }),
     ).toBeInTheDocument();
   });
 
