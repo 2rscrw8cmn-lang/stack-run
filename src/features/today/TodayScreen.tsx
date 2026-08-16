@@ -30,6 +30,7 @@ import { TodayHeading } from "./TodayHeading";
 import { TodayNote } from "./TodayNote";
 import { TodaySignalNote } from "./TodaySignalNote";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
+import { isTodayDemoEnabled, todayDemoData } from "./todayDemo";
 import { selectTodayModel } from "./todayModel";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { TodayCrewActivity } from "./TodayCrewActivity";
@@ -38,21 +39,13 @@ import "./todayDecisionSurface.css";
 interface TodayScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
-  /**
-   * The runner's unified actual history, owned by the application and passed
-   * down through `AppShell`. Today opens no history hook, sync or store of its
-   * own; it defaults to the run logs alone, which is exactly what a manual-only
-   * runner has.
-   */
+  /** Unified actual history owned by the application. */
   runnerRuns?: RunnerRun[];
   blockPlacements?: BlockPlacement[];
   onViewPlan: () => void;
-  /** Opens Runs — the full record, and where Training Signals live. */
   onViewRuns?: () => void;
   onViewBuild?: () => void;
-  /** Hands the earned block to Build, which is where placing happens. */
   onStartPlacing?: (runLogId: string) => void;
-  /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (
     workout: Workout | null,
@@ -61,13 +54,10 @@ interface TodayScreenProps {
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
   availability?: AvailabilityCalendar | null;
-  /** Unimported synced runs, newest first once Run Data is connected. */
   candidates?: IntervalsCandidate[];
-  /** Opens the existing import review, optionally forced to an extra run. */
   onReviewCandidate?: (candidate: IntervalsCandidate, asExtra: boolean) => void;
   onDismissCandidate?: (externalId: string) => void;
   onIgnoreCandidate?: (externalId: string) => void;
-  /** The last quiet sync failure, if there is one worth offering a retry for. */
   syncError?: string | null;
   onRetrySync?: () => void;
   isSyncing?: boolean;
@@ -75,38 +65,9 @@ interface TodayScreenProps {
   onViewCrew?: () => void;
 }
 
-/** Which run the entry sheet is open for, and what it is about to write. */
-type Entry =
-  { kind: "scheduled"; workout: Workout; runLog?: RunLog };
+type Entry = { kind: "scheduled"; workout: Workout; runLog?: RunLog };
 
-/**
- * Today — the decision surface.
- *
- * This screen used to answer *what does my plan say today?*, and on a rest day,
- * before a plan started or after a race it had almost nothing to say. NEXT-4
- * changes the question to **what matters now?** without hiding the plan: a
- * scheduled run today is still very likely the most important immediate action,
- * so it still leads. What changed is that the rest of the screen now understands
- * the runner beyond that one workout.
- *
- * The hierarchy, in order:
- *
- * 1. **the date**, and the race as quiet goal context;
- * 2. **the immediate action** — today's workout, the run already completed, or a
- *    one-line note for a day that asks nothing;
- * 3. **a connected run waiting for review**, which is a real action and so sits
- *    beside the others rather than under analytics;
- * 4. **recent training** — two or three facts from the NEXT-2 history layer;
- * 5. **this week**, actuals first and the plan's intent beside them;
- * 6. **one observation**, at most, from the NEXT-3 signal domain;
- * 7. **up next**, when the plan has something to say;
- * 8. **Build**, because the work accumulating is the point;
- * 9. **Crew**, optional and downstream of the runner's own experience.
- *
- * Every decision above is made in `todayModel.ts` and every calculation behind
- * it already existed. This component composes and handles run entry; it computes
- * no mileage, defines no window and grades no adherence.
- */
+/** Today — the decision surface. */
 export function TodayScreen({
   plan,
   runLogs,
@@ -135,19 +96,48 @@ export function TodayScreen({
   const [entryVisit, setEntryVisit] = useState(0);
   const [saveAnnouncement, setSaveAnnouncement] = useState("");
 
-  const runs = runnerRuns ?? unifiedRunnerHistory({ runLogs, blockPlacements });
-  const model = selectTodayModel({ plan, runLogs, runs, today });
-  const { immediate } = model;
-  const found = selectRunFound(candidates, plan, runLogs, today);
-  const build = selectBuildViewModel(plan, runLogs, blockPlacements, today);
+  /**
+   * Owner-review mode is an in-memory overlay only. It cannot be enabled on a
+   * production/custom hostname and none of its fake state is handed to a write
+   * callback. This keeps Vercel phone review useful without touching real data.
+   */
+  const isDemo = isTodayDemoEnabled();
+  const demo = isDemo ? todayDemoData() : null;
+  const effectivePlan = demo?.plan ?? plan;
+  const effectiveRunLogs = demo?.runLogs ?? runLogs;
+  const effectivePlacements = demo?.blockPlacements ?? blockPlacements;
+  const effectiveToday = demo?.today ?? today;
+  const runs =
+    demo?.runnerRuns ??
+    runnerRuns ??
+    unifiedRunnerHistory({
+      runLogs: effectiveRunLogs,
+      blockPlacements: effectivePlacements,
+    });
 
-  // The completed run on screen, if today's scheduled workout has been logged.
+  const model = selectTodayModel({
+    plan: effectivePlan,
+    runLogs: effectiveRunLogs,
+    runs,
+    today: effectiveToday,
+  });
+  const { immediate } = model;
+  const found = isDemo
+    ? null
+    : selectRunFound(candidates, effectivePlan, effectiveRunLogs, effectiveToday);
+  const build = selectBuildViewModel(
+    effectivePlan,
+    effectiveRunLogs,
+    effectivePlacements,
+    effectiveToday,
+  );
+
   const completed =
     immediate.kind === "completed"
       ? { workout: immediate.workout, runLog: immediate.runLog }
       : null;
   const completedPlacement = completed
-    ? (findPlacementForRunLog(blockPlacements, completed.runLog.id) ?? null)
+    ? (findPlacementForRunLog(effectivePlacements, completed.runLog.id) ?? null)
     : null;
 
   function openEntry(next: Entry) {
@@ -159,10 +149,16 @@ export function TodayScreen({
   return (
     <div className="today-screen">
       <TodayHeading
-        today={today}
-        race={plan.race}
+        today={effectiveToday}
+        race={effectivePlan.race}
         daysRemaining={model.raceDaysRemaining}
       />
+
+      {isDemo && (
+        <p className="today-screen__demo-banner machine-label">
+          TODAY DEMO · FAKE PREVIEW DATA · REMOVE ?DEMO=TODAY TO RETURN
+        </p>
+      )}
 
       {immediate.kind === "before-plan" && (
         <TodayNote
@@ -218,20 +214,17 @@ export function TodayScreen({
               runLog: completed.runLog,
             })
           }
-          onPlaceBlock={() => onStartPlacing(completed.runLog.id)}
+          onPlaceBlock={() => {
+            if (!isDemo) onStartPlacing(completed.runLog.id);
+          }}
           onViewBuild={onViewBuild}
         />
       )}
 
-      {/*
-        A run waiting to be told what it was is an action, so it stays up here
-        with the other actions rather than sinking below the training context.
-        It never displaces today's scheduled workout — both can be true at once.
-      */}
       {found && (
         <RunFoundCard
           found={found}
-          today={today}
+          today={effectiveToday}
           onConfirmMatch={() => onReviewCandidate(found.candidate, false)}
           onAddAsExtra={() => onReviewCandidate(found.candidate, true)}
           onDismiss={() => onDismissCandidate(found.candidate.externalId)}
@@ -244,10 +237,8 @@ export function TodayScreen({
       {model.week && (
         <ThisWeekStrip
           week={model.week}
-          blocked={blockedDates(availability)}
+          blocked={blockedDates(isDemo ? null : availability)}
           onViewPlan={onViewPlan}
-          // Nothing to look at before the first run, and an empty list invites
-          // a tap that answers nothing.
           onViewRuns={onViewRuns && runs.length > 0 ? onViewRuns : undefined}
         />
       )}
@@ -264,15 +255,13 @@ export function TodayScreen({
         onViewBuild={onViewBuild}
       />
 
-      <TodayCrewActivity crew={raceCrew} today={today} onViewCrew={onViewCrew} />
+      <TodayCrewActivity
+        crew={isDemo ? null : raceCrew}
+        today={effectiveToday}
+        onViewCrew={onViewCrew}
+      />
 
-      {/*
-        A failed sync is worth saying and not worth interrupting for: the plan,
-        the log and the Build are all still true without it. So it sits down
-        here, below everything the runner came for, with the retry they would
-        otherwise have to go into Run Data to find.
-      */}
-      {syncError && !found && (
+      {!isDemo && syncError && !found && (
         <p className="today-screen__sync-error">
           <span>{syncError}</span>
           <button type="button" onClick={onRetrySync} disabled={isSyncing}>
@@ -291,7 +280,7 @@ export function TodayScreen({
           isOpen={isEntryOpen}
           workout={entry.workout}
           runLog={entry.runLog}
-          today={today}
+          today={effectiveToday}
           onClose={() => {
             setEntryOpen(false);
             setEntry(null);
@@ -299,13 +288,22 @@ export function TodayScreen({
           onDelete={
             entry.runLog
               ? () => {
-                  onDeleteRun(entry.runLog!.id);
-                  setSaveAnnouncement("Run deleted.");
+                  if (isDemo) {
+                    setSaveAnnouncement("Demo data is read-only.");
+                  } else {
+                    onDeleteRun(entry.runLog!.id);
+                    setSaveAnnouncement("Run deleted.");
+                  }
                   setEntryOpen(false);
                 }
               : undefined
           }
           onSave={(workout, values) => {
+            if (isDemo) {
+              setSaveAnnouncement("Demo data is read-only.");
+              setEntryOpen(false);
+              return;
+            }
             const wasLogged = entry.runLog !== undefined;
             onSaveRun(workout, values, entry.runLog?.id);
             setSaveAnnouncement(
