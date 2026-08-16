@@ -5,17 +5,11 @@ import { formatMiles } from "../../domain/distance";
 import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
-import { SignalPeriods } from "./SignalDetailParts";
+import { DetailSection } from "../trends/TrendDetailShared";
+import { SignalComparisonSummary, SignalPeriods } from "./SignalDetailParts";
 import { signedMilesChange, signedPercent } from "./signalFormatting";
 
-/**
- * Volume, with the twelve weeks the two windows were cut out of.
- *
- * The statement is made over 28-day windows; the picture is drawn in calendar
- * weeks, because weeks are what a runner recognizes as their own training. Both
- * come from `runnerVolume.ts`, so the columns and the headline cannot disagree.
- */
+/** Volume, with the twelve weeks the two comparison windows were cut out of. */
 export function VolumeSignalDetail({
   signal,
   runs,
@@ -33,13 +27,10 @@ export function VolumeSignalDetail({
 
   return (
     <>
-      <SignalFacts
-        facts={[
-          { label: "Last 28 days", value: `${formatMiles(facts.currentMiles)} mi` },
-          { label: "Prior 28 days", value: `${formatMiles(facts.baselineMiles)} mi` },
-          { label: "Change", value: signedMilesChange(facts.differenceMiles) },
-          { label: "Percent", value: signedPercent(facts.changeRatio) },
-        ]}
+      <SignalComparisonSummary
+        currentValue={`${formatMiles(facts.currentMiles)} mi`}
+        baselineValue={`${formatMiles(facts.baselineMiles)} mi`}
+        change={`${signedMilesChange(facts.differenceMiles)} · ${signedPercent(facts.changeRatio)}`}
       />
       <SignalPeriods current={signal.current} baseline={signal.baseline} />
 
