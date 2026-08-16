@@ -2008,10 +2008,11 @@ gains four things in this order:
    opens it factually and read-only, omitting every metric the source did not
    supply rather than printing a zero. A STACK run still opens the existing
    `RunDetailSheet`, unchanged.
-4. **Training Signals** — the existing `TrendCards`, unchanged, and now *below*
-   the history rather than above it. They remain useful plan-relative measures,
-   but STACK Next's ordering rule is actuals before intentions, and the first
-   thing a runner meets on their own history screen should be their history.
+4. **Training Signals** — moved *below* the history rather than above it.
+   STACK Next's ordering rule is actuals before intentions, and the first thing
+   a runner meets on their own history screen should be their history. NEXT-2
+   left the v1 cards in that slot unchanged; NEXT-3 replaced them (see below)
+   without moving them.
 
 `RunnerProfileSheet` ("Your Running") is the drill-down, opened from the
 snapshot: Volume, Frequency, Long runs, and *What STACK has* — the per-metric
@@ -2054,3 +2055,130 @@ manual-only device, and the snapshot agreeing with Training Signals about this
 week's mileage) and `RunnerHistory.test.tsx` (the screen and its sheets).
 
 `npm run check` passes: 121 files, 1,570 tests.
+
+## NEXT-3 — Training Signals v2 (STACK Next)
+
+**Status: implemented on `feature/training-signals-v2`, awaiting owner
+acceptance.** Formulas, thresholds, coverage rules and the full audit of the v1
+signals live in `docs/STACK_NEXT_IMPLEMENTATION.md`; this section describes the
+code.
+
+**Why it exists.** The v1 signals were built around *did the runner follow the
+plan?* Four of the seven read a STACK activity type or a plan link, which exist
+only on runs a person logged by hand — so on a runner with ten months of
+connected history they described the fraction of training that happened to be
+typed in. STACK Next asks a different question: *what is actually changing in
+this runner's training?* NEXT-3 answers it from the unified history NEXT-2 built.
+
+### The domain layer
+
+`src/signals/` is new, pure and React-free, a peer of `src/history/` rather than
+part of it: history answers *what did I do*, signals answer *what is changing*.
+
+`trainingSignal.ts` holds the model. A `TrainingSignal` is a discriminated union
+on `family`, so a detail view narrows to exactly the facts its family produced
+and cannot read another family's numbers. Every signal carries a stable id, its
+family and priority, the headline and supporting sentence, both windows with
+their exact inclusive dates, the underlying facts, coverage where relevant,
+supporting run ids, `isPresentable`, and an `unavailableReason` when it has
+nothing to say. The shared window helpers, the threshold classifier, the
+availability checks, the coverage-parity rule and the ordering function all live
+here, with the reasoning for each threshold beside the constant.
+
+Six family modules produce the signals: `volumeSignal.ts`, `frequencySignal.ts`,
+`longRunSignal.ts`, `workloadSignal.ts`, `zoneSignal.ts` and
+`planContextSignal.ts`. `runnerSignals.ts` assembles and orders them.
+`presentableRunnerSignals` is what a screen calls.
+
+Three rules the file layout enforces:
+
+- **No formula in a component.** Every threshold is a named constant here, every
+  comparison is a pure function over the unified history, and the words a runner
+  reads are produced beside the arithmetic that justifies them. A component that
+  decided `+1%` was "improving" would be inventing a claim nothing documented.
+- **No word without a rule.** *Building*, *easing*, *steady*, *more often*,
+  *holding* each map to a documented calculation. There is no *good*, *bad* or
+  *failing*, no overall score, and nothing derived from Training Load that reads
+  as readiness, recovery or fatigue.
+- **Reuse, not reimplementation.** The three NEXT-2 calculation modules gained a
+  window-anchored form each — `volumeInRange`, `runFrequencyInRange`,
+  `longestRunInRange` — and the trailing-window functions now delegate to them.
+  There is one implementation of "miles between two dates" in the product, so
+  the signal card, the Recent Volume strip and the runner snapshot cannot
+  disagree. Coverage is `metricCoverage` from `runnerCoverage.ts` at NEXT-2's own
+  thresholds, not a second coverage vocabulary.
+
+### The screen
+
+`src/features/signals/` holds the UI, and computes nothing.
+
+`SignalCards` renders the list the domain hands it. v1 was a two-up grid of KPI
+tiles; a number that size reads as a score, and two side by side invite a
+comparison nobody defined. A v2 card is a full-width row led by a sentence, with
+the evidence and the window beneath it in progressively quieter type. Nothing is
+coloured by direction — the only colour is the family's accent rail, and the
+direction glyph is muted and `aria-hidden`. A signal with nothing to say is not
+rendered at all; when none is available, one compact line says so once.
+
+`SignalDetailSheet` opens the working behind a card and dispatches on `family`
+to `VolumeSignalDetail`, `FrequencySignalDetail`, `LongRunSignalDetail`,
+`WorkloadSignalDetail`, `ZoneSignalDetail` or `PlanContextSignalDetail`. Each
+states the claim, the two values and the change, both windows' exact dates, a
+chart, the runs or weeks behind the numbers, coverage where the metric is
+optional, and one sentence explaining what the signal means. `SignalDetailParts`
+carries the two pieces every detail shares. The charts are the existing shared
+components — `PlanActualColumns`, `SelectableTrendLine`, `DonutChart` — and the
+plan-context detail reuses `ConsistencyDetail` and `WeeklyMileageDetail`
+unchanged.
+
+`RunsScreen` keeps the NEXT-2 hierarchy exactly: Runner Snapshot, Recent Volume,
+Run History, Training Signals. It asks the domain which signals are presentable,
+renders them in the order it is given, and opens the detail behind whichever is
+tapped. A run reached from a signal's detail returns to that signal when closed,
+whether it is a STACK run or a connected-history row.
+
+### Removed
+
+`TrendCards`, `TrainingSignalDetailSheet`, `EasyPaceDetail`,
+`HeartRateZonesDetail`, `LongRunDetail`, `RunMixDetail` and `TrainingLoadDetail`
+are deleted, along with their stylesheet rules. `ConsistencyDetail`,
+`WeeklyMileageDetail` and `TrendDetailShared` remain — the first two are the plan
+instruments the retained plan-context signal is built from, and the third is
+shared by the runner profile sheet.
+
+`src/domain/trends.ts` is untouched. It remains the plan-relative domain model,
+`selectTrainingSignals` still backs plan context, and its now-unrendered fields
+stay in place: NEXT-2's compatibility test asserts that function's output is
+unchanged, and NEXT-5 is the phase that decides the plan domain's future.
+
+### What NEXT-3 deliberately did not do
+
+No aggregate pace or HR comparison — the NEXT-2 deferral stands, because no
+defensible comparable-run grouping is available from the data STACK holds and
+inventing an effort classification to produce a metric is ruled out. No Today or
+Plan redesign, no navigation change, no Build or Crew change, no historical
+Build backfill, no automatic plan changes, no AI coaching, no readiness,
+recovery or overall score, no wellness, no GPS or routes. No new persistence of
+any kind: signals are recomputed from the normalized history rather than cached,
+because a derived cache would be a second source of truth for numbers the runner
+can already check against their own run list.
+
+### Tests
+
+126 new tests, all on fake fixtures. `trainingSignal.test.ts` (windows,
+threshold classification at both boundaries, baseline history coverage, coverage
+parity, ordering, stable ids, absent signals, no input mutation), one file per
+signal family covering increase, decrease, stable, both thresholds, empty
+history, a single available window and every coverage failure mode,
+`planContextSignal.test.ts` (plan present, no plan, nothing due, extras counted
+separately, historical-only and manual-only runners), `signalCompatibility.test.ts`
+(AppState byte-identical, Build blocks and placements, plan and links, accepted
+run, Crew projection carrying no health metric, historical mirror and sync
+bookkeeping, no new storage key), `TrainingSignals.test.tsx` (card order,
+suppression, evidence and window on the card, the "more history needed" state,
+detail contents and dates, keyboard activation, drill-through to a run and back)
+and `signalCardStyling.test.ts` (one card per row at phone widths, no
+direction-coloured rule, no animation for reduced motion to suppress, no v1 tile
+rules left behind).
+
+`npm run check` passes: 131 files, 1,660 tests.

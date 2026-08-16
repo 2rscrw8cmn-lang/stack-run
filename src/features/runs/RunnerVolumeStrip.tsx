@@ -8,27 +8,13 @@ interface RunnerVolumeStripProps {
   weeks: WeeklyVolumePoint[];
 }
 
-/**
- * Weekly mileage, as actually run.
- *
- * `PlanActualColumns` already draws exactly this and already solves the parts
- * that are easy to get wrong on a phone — sparse x labels, a 44px hit target per
- * column, an accessible name per week, and the chart itself as the selector
- * rather than a second row of buttons underneath. It is reused here with no
- * `planned` value at all, which is the whole point of the phase: this is what
- * the runner did, and there is no plan column beside it to be measured against.
- *
- * The caption under the chart is the reading. A selected column with no number
- * anywhere is a shape, not a fact.
- */
+/** Weekly mileage, as actually run. */
 export function RunnerVolumeStrip({ weeks }: RunnerVolumeStripProps) {
   const [selectedKey, setSelectedKey] = useState(() => weeks.at(-1)?.key ?? "");
   /**
    * Weeks before the runner's first recorded run are dropped rather than drawn
    * as zeroes. Zero is a true statement about a week STACK has history for and a
-   * false one about a week it does not: a runner who connected STACK a fortnight
-   * ago did not run nothing for the ten weeks before that, and ten empty columns
-   * would say they did.
+   * false one about a week it does not.
    */
   const firstActive = weeks.findIndex((week) => week.runCount > 0);
   const shown = firstActive > 0 ? weeks.slice(firstActive) : weeks;
@@ -40,6 +26,7 @@ export function RunnerVolumeStrip({ weeks }: RunnerVolumeStripProps) {
   return (
     <div className="runner-volume">
       <PlanActualColumns
+        compact
         columns={shown.map((week) => ({
           key: week.key,
           shortLabel: formatDateLabel(week.startDate, { month: "short", day: "numeric" }),

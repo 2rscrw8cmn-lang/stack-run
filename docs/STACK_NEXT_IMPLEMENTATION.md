@@ -360,21 +360,210 @@ manual-only device) and `RunnerHistory.test.tsx` (the screen).
 
 ### NEXT-3 — Training Signals v2
 
-**Recommended branch:** `feature/training-signals-v2`
+**Status: implemented on `feature/training-signals-v2`, awaiting owner
+acceptance.**  
+**Branch:** `feature/training-signals-v2` → PR into `feature/stack-next`.
 
 Goal:
 
 > Rebuild useful signals around the runner's broader history instead of forcing every signal through plan-versus-actual logic.
 
-Potential signal families:
+#### Audit of the seven v1 signals
 
-- volume;
-- consistency;
-- long-run progression;
-- pace trend for comparable efforts/types;
-- HR behavior where coverage supports it;
-- zone distribution;
-- workload trend.
+Every existing signal was classified before anything was written.
+
+| v1 signal | Verdict | Why |
+|---|---|---|
+| Weekly Mileage | **REBUILD** | The right question, asked of the wrong data and over the wrong window. It read `RunLog`s only, so a runner's connected history was invisible to it; it compared the latest week with **>0 miles** against a mean of prior **>0** weeks, so rest weeks were quietly deleted from the baseline; and "latest week" could be weeks ago. Rebuilt as **Volume** over the unified history and two equal 28-day windows. |
+| Long Run | **REBUILD** | Read `activityType === "long"`, a label a person types into STACK. Most of a year of connected history carries no STACK type at all, so on real history it described only hand-logged runs. Rebuilt as **Long runs**: the longest run that actually happened in each window. |
+| Easy Pace | **REMOVE** (comparison deferred) | Two defects, either one disqualifying. It depended on the same `easy` label, so it could not see connected history; and it compared *the last four such runs against the four before them* with **no time window at all** — the "previous 4" could be a year old. Replacing it needs a defensible comparable-run grouping, which this phase deliberately did not invent (see below). Per-run pace remains on every row and in every detail. |
+| HR Zones | **REBUILD** | Useful, and ungated: a single run carrying zone data produced a confident "62% · Zone 2" card, and it stated a dominant zone rather than a change. Rebuilt as **Zone mix**, a coverage-gated comparison of two windows. |
+| Training Load | **REBUILD** | Same shape as Weekly Mileage plus a coverage problem: `hasUsefulTrainingLoad` needed only two weeks carrying any load, so a sum over 3 of 12 covered runs was presented beside one over 12 of 12. Rebuilt as **Workload**, gated on NEXT-2's coverage thresholds in both windows *and* on coverage parity between them. |
+| Consistency | **DEMOTE** | A genuinely useful plan question — which scheduled runs were recorded — presented as a headline percentage of the runner. Retained verbatim as **Plan context**, ranked last, with no direction so it can never lead the list. |
+| Run Mix | **REMOVE** | Computed from STACK activity types, so for a runner whose history is mostly connected it described the small share they happened to log rather than their training. It also answered no question the other signals leave open. |
+
+The v1 *domain* calculations in `src/domain/trends.ts` are untouched and still
+tested. `selectTrainingSignals` remains the plan-relative model, and the plan
+context signal is built on it. Its now-unrendered fields (`easyRuns`, `runMix`,
+`heartRateZones`, `trainingLoad`, `longRuns`) are deliberately left in place:
+NEXT-2's compatibility test asserts that function's output is unchanged, and
+NEXT-5 is the phase that gets to decide the plan domain's future. The v1 *cards
+and detail sheets* for removed signals are deleted.
+
+#### The v2 signal set
+
+Six families, in `src/signals/`, all pure and React-free. A runner typically
+sees three or four cards; nothing renders an empty one.
+
+| # | Signal | Measures | Current | Baseline | Minimum | Coverage | Change threshold |
+|---|---|---|---|---|---|---|---|
+| 1 | **Volume** | Total miles | last 28d | prior 28d | 4 runs in each window | — | ≥10% **and** ≥3 mi |
+| 2 | **Frequency** | Runs per week | last 28d | prior 28d | 4 runs in each window | — | ≥0.5 runs/wk |
+| 3 | **Long runs** | Longest single run | last 28d | prior 28d | 4 runs in each window | — | ≥10% **and** ≥1 mi |
+| 4 | **Workload** | Sum of source Training Load | last 28d | prior 28d | 4 runs in each window | 8 covered runs **and** 60% of each window, **and** the two windows within 25 points of each other | ≥15% **and** ≥20 load |
+| 5 | **Zone mix** | Share of recorded zone time in zones 1–2 | last 28d | prior 28d | 4 runs in each window | as above, plus ≥3 zones reported | ≥8 share points |
+| 6 | **Plan context** | Scheduled runs recorded | plan to date | — (not a comparison) | ≥1 run due | — | — |
+
+Formulas, in full:
+
+- **Volume** — `Σ distanceMiles` over each inclusive window, via
+  `volumeInRange` in `runnerVolume.ts`. `changeRatio = (current − baseline) ÷
+  baseline`.
+- **Frequency** — `runCount ÷ (days ÷ 7)` over each window, via
+  `runFrequencyInRange` in `runnerFrequency.ts`. A 28-day window is exactly four
+  weeks on every weekday, which is why the partial-week correction
+  `runFrequency` needs is not required here.
+- **Long runs** — `max(distanceMiles)` over each window, via `longestRunInRange`
+  in `runnerLongRuns.ts`. Ties go to the earlier run, as in NEXT-2.
+- **Workload** — `Σ trainingLoad` over the runs in each window that carried it.
+  A run without load contributes nothing and is never read as zero.
+- **Zone mix** — zone seconds summed index by index across the window's runs,
+  then `(zone1 + zone2) ÷ total`. A zero inside a run's own array is a real zero
+  and is summed; a run with no array contributes nothing.
+- **Plan context** — `selectTrainingSignals(...).consistency`, unchanged.
+
+Two windows, both inclusive: **current** is `today − 27 … today`, **baseline**
+is the 28 days immediately before it. Fixed-length trailing windows rather than
+calendar weeks, because a calendar-week comparison made on a Wednesday compares
+three days against seven and reports a collapse every time.
+
+#### Thresholds, and why each has two parts
+
+Every threshold is a named constant in `src/signals/`, never a literal in JSX.
+
+A change is called a change only when it clears a **relative band** and an
+**absolute floor** together. Either test alone misreports one end of the range:
+12% of a 6-mile month is 0.7 miles, and 3 miles on a 90-mile month is a rounding
+error. Frequency is the exception and uses an absolute band alone — a relative
+band would treat 1.0 → 1.3 runs a week as a bigger change than 5.0 → 5.6.
+
+The bands are wide, and there is one step rather than a ladder of adjectives.
+9.9% and 10.1% do produce "steady" and "building", and that boundary has to fall
+somewhere; what matters is that the evidence either side of it is identical —
+the same two figures over the same two windows — and that no stronger word waits
+further up.
+
+#### Availability, in the order it is reported
+
+1. `no-history` — no runs at all.
+2. `history-too-short` — the runner's first ever run falls **inside** the
+   baseline window, so the baseline is mostly a period STACK has no records
+   for. Without this rule a runner who connected five weeks ago is told their
+   volume is building every time they open the app.
+3. `insufficient-current-window` / `insufficient-baseline-window` — fewer than
+   four runs in that window.
+4. `insufficient-coverage` — a connected metric on too few of a window's runs,
+   at NEXT-2's own thresholds (`RUNNER_METRIC_MINIMUM_RUNS` = 8,
+   `RUNNER_METRIC_MINIMUM_RATIO` = 0.6), reused via `metricCoverage` rather than
+   re-specified.
+5. `coverage-mismatch` — both windows pass and are still not comparable.
+   `SIGNAL_COVERAGE_PARITY_LIMIT` (0.25) is an **additional** requirement, never
+   a relaxation: a load total that grew because a watch started reporting load
+   is not a workload trend, and no per-window gate can detect that.
+6. `metric-absent` — the source supplied the metric on no run.
+7. `no-plan-runs-due` — plan-relative, with nothing the plan has asked for yet.
+
+#### Suppression and ordering
+
+An unavailable signal is **absent**, not an empty card. When no signal at all is
+available but the runner has runs, one compact line says so once. When there are
+no runs, the section does not render — the screen's own empty state covers it.
+Per-metric coverage stays where NEXT-2 put it, in the Runner Profile sheet.
+
+Ordering is two documented rules and nothing else:
+
+1. a signal that moved sorts above one that did not;
+2. within each group, fixed family priority (volume, frequency, long runs,
+   workload, zone mix, plan context).
+
+Plan context has no direction, so it always sorts with the unchanged group and
+can never lead.
+
+#### Pace and heart rate: deferred again, deliberately
+
+NEXT-2 deferred aggregate pace and HR comparison for a documented reason, and
+NEXT-3 did not reverse it. The deferral would only lift if this phase
+established a defensible comparable-run grouping, and none is available from the
+data STACK actually holds:
+
+- *all runs* compares a 400 m session with a 20-mile Sunday;
+- *a distance band* controls distance and nothing else;
+- *a pace band* is circular — grouping runs by pace to describe pace;
+- *STACK's own `activityType`* exists only on hand-logged runs, so it would
+  describe the fraction of training the runner happened to log — the exact
+  defect that removed Easy Pace and Run Mix.
+
+Reversing the deferral to ship a pace chart would have meant inventing an effort
+classification to produce a metric, which the phase contract rules out. Per-run
+pace and per-run HR remain facts on every row and in every detail.
+
+#### UI
+
+The Runs hierarchy is unchanged: Runner Snapshot, Recent Volume, Run History,
+Training Signals — signals stay below the actual-history surfaces, and no
+navigation destination was added.
+
+The cards changed shape. v1 was a two-up grid of KPI tiles (`8.2 mi` /
+`Weekly Mileage`); a number that size reads as a score, and two side by side
+invite a comparison nobody defined. v2 is a list of full-width observations led
+by a sentence, with the evidence and the window beneath it:
+
+```text
+Volume is building
+24.8 mi in the last 28 days, up from 19.6 mi in the 28 before.
+Last 28d vs prior 28d
+```
+
+Nothing is coloured by direction — rising is not green and falling is not red.
+The only colour is the family's accent rail. The direction glyph is muted and
+`aria-hidden`; the headline already carries the meaning.
+
+Each card opens a detail that makes the statement auditable: the claim, both
+values and the change, **both windows' exact inclusive dates**, a weekly chart,
+the runs or weeks behind the numbers, coverage where the metric is optional, and
+one sentence explaining what the signal means. The volume, frequency and
+workload charts reuse `PlanActualColumns`; long runs reuses
+`SelectableTrendLine`; zone mix reuses `DonutChart`; plan context reuses the
+existing `ConsistencyDetail` and `WeeklyMileageDetail` unchanged.
+
+#### Data safety
+
+No new persistence of any kind. Signals are recomputed from the normalized
+history on every render rather than cached — a derived cache would be a second
+source of truth for numbers the runner can already check against their own run
+list. No Supabase change, no AppState migration, no schema change, no new
+dependency. The Crew projection is untouched, and HR, HR zones, Training Load,
+external ids, start times, routes and notes remain device-local.
+
+#### Tests
+
+126 new tests across eight files. `trainingSignal.test.ts` (windows, threshold
+classification, baseline coverage, parity, ordering, stable ids, no input
+mutation), one file per family covering increase, decrease, stable, both
+threshold boundaries, empty history, one-window-only history and every coverage
+failure mode, `planContextSignal.test.ts` (plan present, no plan, nothing due,
+extras counted separately), `signalCompatibility.test.ts` (AppState
+byte-identical, Build blocks and placements, plan and links, accepted run, Crew
+projection, historical mirror and sync bookkeeping, no new storage key),
+`TrainingSignals.test.tsx` (card order, suppression, evidence and window on the
+card, detail contents, keyboard activation, drill-through to a run and back) and
+`signalCardStyling.test.ts` (one card per row at phone widths, no
+direction-coloured rule, no v1 tile rules left behind).
+
+`npm run check` passes: 131 files, 1,660 tests.
+
+#### NEXT-1 real-data smoke test remains outstanding
+
+The deployed 365-day Intervals verification is still not run, and NEXT-3 is
+built so that it does not depend on it: no source fact was promoted to
+`Verified` on fixture evidence, cadence and source-unit semantics are unchanged,
+and the two signals that read optional metrics are coverage-gated in both
+windows and disappear entirely when the metric is absent. What the smoke test
+would establish for this phase is whether real Intervals coverage is good enough
+for the workload and zone signals to appear at all for the owner — the
+thresholds are defensible either way, but whether they are *met* in practice is
+unverified. `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established
+no new source fact.
 
 Rules:
 

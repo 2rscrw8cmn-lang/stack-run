@@ -1,0 +1,79 @@
+/* NEXT-3 owner-review polish.
+   Presentation only: signal arithmetic, thresholds and ordering stay in src/signals/. */
+
+.signal-cards__context {
+  margin: -2px 0 1px 1px;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.075em;
+}
+
+/* The comparison window now lives once at section level, so each observation can
+   be shorter without losing its evidence. */
+.signal-cards .signal-card {
+  gap: var(--space-2);
+  padding: 9px 9px 9px 12px;
+}
+
+.signal-cards .signal-card::before { width: 2px; }
+.signal-cards .signal-card__body { gap: 2px; }
+.signal-cards .signal-card__mark { width: 20px; height: 20px; }
+.signal-cards .signal-card__evidence { font-size: 11px; line-height: 1.35; }
+
+/* One comparison surface replaces the old four independent KPI tiles. */
+.signal-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--data-surface);
+}
+
+.signal-comparison__period {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 11px 12px 10px;
+}
+
+.signal-comparison__period + .signal-comparison__period {
+  border-left: 1px solid var(--border);
+}
+
+.signal-comparison__period > span,
+.signal-comparison__change > span {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.signal-comparison__period > strong {
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-comparison__change {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.signal-comparison__change > strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 340px) {
+  .signal-cards .signal-card { padding: 8px 8px 8px 11px; }
+  .signal-comparison__period { padding: 10px; }
+  .signal-comparison__period > strong { font-size: 18px; }
+}

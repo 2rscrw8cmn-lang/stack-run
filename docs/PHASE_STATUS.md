@@ -635,8 +635,8 @@ product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
 |---|---|---|---|
 | NEXT-0 | Direction + data contract | `feature/stack-next` | Complete — August 15, 2026 |
 | NEXT-1 | Historical Data Foundation | `feature/historical-data` | Accepted and merged (PR #100), August 15, 2026; deployed smoke test outstanding |
-| NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Implemented; owner acceptance outstanding |
-| NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Not started |
+| NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Accepted and merged (PR #102, with #103), August 15, 2026 |
+| NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Implemented; owner acceptance outstanding |
 | NEXT-4 | Today / Home revision | `feature/today-next` | Not started |
 | NEXT-5 | Plan role revision | `feature/plan-next` | Not started |
 | NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Not started |
@@ -668,7 +668,7 @@ block — historical Build backfill remains a NEXT-6 product decision.
 `docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-1
 into `feature/stack-next` with the smoke test tracked as a pre-release item.
 
-### NEXT-2 — implemented, awaiting owner acceptance
+### NEXT-2 — accepted and merged
 
 The first user-facing STACK Next phase, and it adds **no navigation
 destination**: all of it lands on the existing Runs screen.
@@ -712,6 +712,54 @@ long-run and data-coverage detail.
   which NEXT-2 does not depend on — no source fact was promoted on fixture
   evidence, cadence and source-unit semantics are unchanged, and no NEXT-2
   number requires an optional metric to exist.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact either.
+
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-2
+into `feature/stack-next`, including the account-isolation follow-up in PR #103.
+
+### NEXT-3 — implemented, awaiting owner acceptance
+
+Training Signals stop asking *did the runner follow the plan?* and start asking
+*what is actually changing in this runner's training?* Seven plan-relative
+statistics become six observations over the unified actual history — five of
+them historical, one retained as plan context and ranked last.
+
+The audit that produced that set, every formula, both windows, all thresholds,
+the coverage and suppression rules and the deterministic ordering are recorded
+in `docs/STACK_NEXT_IMPLEMENTATION.md`. In brief: two equal inclusive 28-day
+windows (`today − 27 … today` against the 28 before it), a four-run floor in
+each window, a rule that the history must reach back past the baseline's first
+day, and NEXT-2's own coverage thresholds — 8 runs and 60% — reused unchanged
+for the two connected-metric signals, plus a coverage-parity rule that is an
+additional requirement rather than a relaxation.
+
+- `src/signals/` is the new domain layer: pure, React-free, one module per
+  family, every threshold a named constant with the reasoning beside it. No
+  formula lives in a component; JSX renders `headline`, `support` and the two
+  windows the domain produced.
+- The words are rules. *Building*, *easing*, *steady*, *more often*, *holding*
+  each correspond to a documented calculation. There is no *good*, *bad* or
+  *failing* anywhere, no overall score, and no readiness, recovery or fatigue
+  reading derived from Training Load.
+- Signals with nothing to say are absent, not empty. When none is available, one
+  compact line says so once; per-metric coverage stays in the Runner Profile
+  sheet where NEXT-2 put it. A manual-only runner still gets every signal their
+  own runs support; connected-only signals disappear gracefully.
+- Aggregate pace and HR comparison is **deferred again**, deliberately. No
+  defensible comparable-run grouping is available from the data STACK holds, and
+  inventing an effort classification to produce a metric is ruled out by the
+  phase contract.
+- The Runs hierarchy is unchanged and Training Signals stay below the history.
+  No navigation destination, no Today/Plan/Build/Crew change, no new
+  persistence, no dependency, no migration.
+- `npm run check` passes: 131 files, 1,660 tests, 126 of them new and all on
+  fake fixtures.
+- **Outstanding:** owner acceptance, and NEXT-1's deployed real-data smoke test.
+  NEXT-3 does not depend on it — the two optional-metric signals are
+  coverage-gated in both windows and vanish when the metric is absent — but what
+  it would establish for this phase is whether the owner's real Intervals
+  coverage is good enough for those two cards to appear at all.
 - `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
   source fact either.
 

@@ -1,4 +1,8 @@
-import { addDaysToLocalDate, mondayOfLocalDate } from "../domain/dates";
+import {
+  addDaysToLocalDate,
+  daysBetweenLocalDates,
+  mondayOfLocalDate,
+} from "../domain/dates";
 import { runnerRunsBetween, type RunnerRun } from "./runnerRun";
 
 /**
@@ -99,15 +103,49 @@ export function weeklyVolume(
   });
 }
 
-export interface TrailingVolume {
+export interface VolumeInRange {
+  /** How many calendar days the window spans, both ends inclusive. */
   days: number;
-  /** Inclusive first day counted: `today - (days - 1)`. */
+  /** Inclusive first day counted. */
   startDate: string;
-  /** Inclusive last day counted, which is today. */
+  /** Inclusive last day counted. */
   endDate: string;
   miles: number;
   runCount: number;
   longestMiles: number | null;
+}
+
+/**
+ * A trailing window is one anchored at today; the shape is the same either way.
+ */
+export type TrailingVolume = VolumeInRange;
+
+/**
+ * Miles between two local dates, both ends inclusive.
+ *
+ * The window-anchored form of `trailingVolume`, and the single implementation
+ * behind both. Training Signals v2 (NEXT-3) needs the *previous* 28 days as well
+ * as the last 28, and a baseline window has no relationship to today at all —
+ * so the window became an argument rather than a subtraction from now. Summing
+ * miles a second time somewhere else is exactly what this module exists to
+ * prevent.
+ */
+export function volumeInRange(
+  runs: readonly RunnerRun[],
+  startDate: string,
+  endDate: string,
+): VolumeInRange {
+  const windowRuns = runnerRunsBetween(runs, startDate, endDate);
+  return {
+    days: Math.max(0, daysBetweenLocalDates(startDate, endDate)) + 1,
+    startDate,
+    endDate,
+    miles: totalMiles(windowRuns),
+    runCount: windowRuns.length,
+    longestMiles: windowRuns.length
+      ? roundMiles(Math.max(...windowRuns.map((run) => run.distanceMiles)))
+      : null,
+  };
 }
 
 /**
@@ -123,16 +161,5 @@ export function trailingVolume(
   days: number,
 ): TrailingVolume {
   const span = Math.max(1, Math.floor(days));
-  const startDate = addDaysToLocalDate(today, -(span - 1));
-  const windowRuns = runnerRunsBetween(runs, startDate, today);
-  return {
-    days: span,
-    startDate,
-    endDate: today,
-    miles: totalMiles(windowRuns),
-    runCount: windowRuns.length,
-    longestMiles: windowRuns.length
-      ? roundMiles(Math.max(...windowRuns.map((run) => run.distanceMiles)))
-      : null,
-  };
+  return volumeInRange(runs, addDaysToLocalDate(today, -(span - 1)), today);
 }

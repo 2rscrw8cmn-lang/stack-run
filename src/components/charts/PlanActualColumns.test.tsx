@@ -16,7 +16,6 @@ describe("PlanActualColumns", () => {
     );
     expect(container.querySelector(".plan-actual-chart__selectors")).toBeNull();
     expect(container.querySelectorAll(".plan-actual-chart__selector")).toHaveLength(0);
-    // One accessible, labelled hit target per column, sized to the column region.
     const targets = screen.getAllByRole("button");
     expect(targets).toHaveLength(3);
     expect(screen.getByRole("button", { name: /^Week 2, 6 actual miles/ })).toHaveAttribute("aria-pressed", "true");
@@ -56,5 +55,19 @@ describe("PlanActualColumns", () => {
       <PlanActualColumns columns={columns} selectedKey="w1" onSelect={() => undefined} tone="intervals" />,
     );
     expect(container.querySelector(".plan-actual-chart")).toHaveClass("plan-actual-chart--intervals");
+  });
+
+  it("offers a shorter overview plot without shrinking detail charts by default", () => {
+    const { container, rerender } = render(
+      <PlanActualColumns columns={columns} selectedKey="w1" onSelect={() => undefined} />,
+    );
+    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 320 184");
+    expect(container.querySelector(".plan-actual-chart")).not.toHaveClass("plan-actual-chart--compact");
+
+    rerender(
+      <PlanActualColumns compact columns={columns} selectedKey="w1" onSelect={() => undefined} />,
+    );
+    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 320 152");
+    expect(container.querySelector(".plan-actual-chart")).toHaveClass("plan-actual-chart--compact");
   });
 });
