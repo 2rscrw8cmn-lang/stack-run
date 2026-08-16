@@ -141,8 +141,7 @@ coverage requirement and the behavior when classification is ambiguous.
 
 ### NEXT-4 — Today / Home revision
 
-Implemented on `feature/today-next`, awaiting owner acceptance of the PR into
-`feature/stack-next`.
+Accepted and merged into `feature/stack-next` in PR #105.
 
 Today answers *what matters now?* rather than *what does my plan say today?*,
 without hiding the plan: a scheduled run today still leads. Around it the screen
@@ -159,6 +158,9 @@ Rules a later phase must not quietly undo:
   new metric window and no second definition of a mile, a week or a run;
 - **at most three context readings**, each stating its own window, and never the
   Runner Snapshot copied over from Runs;
+- **fixed-window claims require actual coverage**: a 28-day or 8-week Today
+  reading is omitted unless the earliest known history reaches the beginning of
+  that claimed window;
 - **at most one Training Signal**, by the documented deterministic rule in
   `selectTodaySignal`: presentable only, never plan context, never `steady`,
   highest-ranked survivor of the NEXT-3 ordering, otherwise nothing. Never a
@@ -191,7 +193,7 @@ NEXT-4 deliberately did not add:
 
 ### NEXT-5 — Plan role revision
 
-Next engineering phase, to begin after NEXT-4 is accepted and merged.
+Current engineering phase.
 
 Recommended branch:
 
