@@ -99,14 +99,16 @@ export function useRunnerHistory({
   const [record, setRecord] = useState<HistorySyncRecord>(() => loadRecord(accountId));
   const [isSyncing, setSyncing] = useState(false);
   const loadedAccount = useRef(accountId);
+  const activeAccount = useRef(accountId);
 
   // Read through a ref so the sync closure sees the newest bookkeeping without
   // the focus subscription below tearing down and rebuilding on every change.
   const latest = useRef({ loadRecord, saveRecord, now, connection, accountId });
   useEffect(() => {
+    activeAccount.current = accountId;
     latest.current = { loadRecord, saveRecord, now, connection, accountId };
   });
-  const inFlight = useRef(false);
+  const inFlight = useRef<{ accountId: string | null; attempt: symbol } | null>(null);
   /**
    * The last attempt this session made, held in memory as well as in storage.
    *
@@ -128,6 +130,12 @@ export function useRunnerHistory({
   useEffect(() => {
     if (loadedAccount.current === accountId) return;
     loadedAccount.current = accountId;
+    // These guards describe the account on screen, not the browser session as
+    // a whole. Let the new account make its own decision even when the old
+    // account still has a request finishing in the background.
+    sessionAttemptAt.current = null;
+    inFlight.current = null;
+    setSyncing(false);
     queueMicrotask(() => {
       setActivities(loadStored(accountId));
       setRecord(loadRecord(accountId));
@@ -137,7 +145,7 @@ export function useRunnerHistory({
   const run = useCallback(
     async (isManual: boolean) => {
       const current = latest.current;
-      if (inFlight.current) return;
+      if (inFlight.current?.accountId === current.accountId) return;
       /**
        * The bookkeeping is re-read from storage here rather than taken from
        * render state. It is the single source of truth for "has this device
@@ -160,7 +168,8 @@ export function useRunnerHistory({
       });
       if (!decision.shouldSync || current.connection === null) return;
 
-      inFlight.current = true;
+      const attempt = Symbol("historical-sync");
+      inFlight.current = { accountId: current.accountId, attempt };
       sessionAttemptAt.current = new Date(current.now()).toISOString();
       setSyncing(true);
       try {
@@ -171,7 +180,6 @@ export function useRunnerHistory({
           today,
           ...(read ? { read } : {}),
         });
-        setActivities(result.activities);
         const next = recordAfterSync(stored, {
           windows: result.windows.length,
           windowsRead: result.windowsRead,
@@ -180,8 +188,11 @@ export function useRunnerHistory({
           persisted: result.persisted,
           at: new Date(current.now()).toISOString(),
         });
-        setRecord(next);
         current.saveRecord(next, current.accountId);
+        if (activeAccount.current === current.accountId) {
+          setActivities(result.activities);
+          setRecord(next);
+        }
       } catch (reason) {
         /**
          * `syncHistoricalActivities` already turns a failed window into a
@@ -199,11 +210,11 @@ export function useRunnerHistory({
           persisted: false,
           at: new Date(current.now()).toISOString(),
         });
-        setRecord(next);
         current.saveRecord(next, current.accountId);
+        if (activeAccount.current === current.accountId) setRecord(next);
       } finally {
-        inFlight.current = false;
-        setSyncing(false);
+        if (inFlight.current?.attempt === attempt) inFlight.current = null;
+        if (activeAccount.current === current.accountId) setSyncing(false);
       }
     },
     [read, sync, today],
@@ -228,7 +239,7 @@ export function useRunnerHistory({
       window.removeEventListener("focus", attempt);
       document.removeEventListener("visibilitychange", attempt);
     };
-  }, [connectionCredential, connectionMode, run]);
+  }, [accountId, connectionCredential, connectionMode, run]);
 
   const refresh = useCallback(async () => {
     await run(true);

@@ -308,10 +308,11 @@ browser that refuses writes cannot loop.
 All on the existing Runs destination, top to bottom:
 
 1. **Runner snapshot** — four readings, each labelled with its own window: last
-   7 days, last 28 days, runs/week over 8 weeks, longest run of 28 days. A
-   missing value is `—`, never `0`. Beneath it, how far back the history reaches
-   and a status line that is silent when there is nothing to say. The whole
-   block opens the profile detail.
+   7 days, last 28 days, runs/week over 8 weeks, longest run of 28 days. A fully
+   known mileage window with no running is `0 mi`; `—` is reserved for an
+   unknown/insufficient value or a metric that cannot be computed. Beneath it,
+   how far back the history reaches and a status line that is silent when there
+   is nothing to say. The whole block opens the profile detail.
 2. **Recent Volume** — twelve calendar weeks of actual mileage, reusing
    `PlanActualColumns` with no planned series. Weeks before the runner's first
    recorded run are dropped rather than drawn as zeroes.

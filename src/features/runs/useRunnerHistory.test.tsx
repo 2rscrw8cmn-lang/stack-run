@@ -1,13 +1,17 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { fetchIntervals } from "../../connected/intervals";
+import { emptyRejectionCounts } from "../../history/historicalActivity";
 import { fixtureActivities } from "../../history/historicalFixtures";
-import { historicalActivities } from "../../history/historicalSync";
+import {
+  historicalActivities,
+  type HistoricalSyncResult,
+} from "../../history/historicalSync";
 import {
   HISTORY_REFRESH_LOOKBACK_DAYS,
   HISTORY_STALE_AFTER_MS,
 } from "../../history/historySyncPolicy";
-import { stackRun } from "../../history/runnerFixtures";
+import { historicalRun, stackRun } from "../../history/runnerFixtures";
 import {
   loadHistorySyncRecord,
   saveHistorySyncRecord,
@@ -72,6 +76,21 @@ function renderHistory(options: Partial<RunnerHistoryOptions> = {}) {
       {...options}
     />,
   );
+}
+
+function syncResult(activities: ReturnType<typeof historicalRun>[]): HistoricalSyncResult {
+  return {
+    activities,
+    windows: [{ oldest: "2025-08-16", newest: TODAY }],
+    windowsRead: 1,
+    added: activities.length,
+    updated: 0,
+    unchanged: 0,
+    rejected: emptyRejectionCounts(),
+    failure: null,
+    persisted: true,
+    persistError: null,
+  };
 }
 
 afterEach(() => {
@@ -216,6 +235,119 @@ describe("historical sync lifecycle", () => {
       });
     }
     await waitFor(() => expect(calls.ranges).toHaveLength(attempts));
+  });
+
+  it("does not expose an in-flight account A result after switching to account B", async () => {
+    const accountAActivity = historicalRun("account-a-run", "2026-08-14");
+    const accountBActivity = historicalRun("account-b-run", "2026-08-13");
+    let resolveA!: (result: ReturnType<typeof syncResult>) => void;
+    const sync = vi.fn(({ accountId }: { accountId?: string | null }) => {
+      if (accountId === "account-a") {
+        return new Promise<ReturnType<typeof syncResult>>((resolve) => {
+          resolveA = resolve;
+        });
+      }
+      return new Promise<ReturnType<typeof syncResult>>(() => undefined);
+    }) as unknown as NonNullable<RunnerHistoryOptions["sync"]>;
+    const stored = new Map<string | null, ReturnType<typeof historicalRun>[]>([
+      ["account-a", []],
+      ["account-b", [accountBActivity]],
+    ]);
+    const records = new Map<string | null, ReturnType<typeof loadHistorySyncRecord>>();
+    const saveRecord = vi.fn((record, accountId) => records.set(accountId ?? null, record));
+
+    const view = renderHistory({
+      accountId: "account-a",
+      sync,
+      loadStored: (accountId) => stored.get(accountId ?? null) ?? [],
+      loadRecord: (accountId) => records.get(accountId ?? null) ?? loadHistorySyncRecord("missing"),
+      saveRecord,
+    });
+    await waitFor(() => expect(sync).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-a" })));
+
+    view.rerender(
+      <Probe
+        connection={connection}
+        accountId="account-b"
+        runLogs={[]}
+        today={TODAY}
+        now={() => Date.parse(`${TODAY}T09:00:00.000Z`)}
+        sync={sync}
+        loadStored={(accountId) => stored.get(accountId ?? null) ?? []}
+        loadRecord={(accountId) => records.get(accountId ?? null) ?? loadHistorySyncRecord("missing")}
+        saveRecord={saveRecord}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId("activities")).toHaveTextContent("1"));
+    await waitFor(() => expect(sync).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-b" })));
+
+    await act(async () => resolveA(syncResult([accountAActivity])));
+
+    expect(screen.getByTestId("activities")).toHaveTextContent("1");
+    expect(screen.getByTestId("phase")).toHaveTextContent("syncing");
+    expect(records.get("account-a")?.storedActivities).toBe(1);
+    expect(records.get("account-b")).toBeUndefined();
+  });
+
+  it("does not carry account A's session retry cooldown into account B", async () => {
+    const sync = vi.fn(async () => syncResult([])) as unknown as NonNullable<
+      RunnerHistoryOptions["sync"]
+    >;
+    const view = renderHistory({ accountId: "account-a", sync });
+    await waitFor(() => expect(sync).toHaveBeenCalledTimes(1));
+
+    view.rerender(
+      <Probe
+        connection={connection}
+        accountId="account-b"
+        runLogs={[]}
+        today={TODAY}
+        now={() => Date.parse(`${TODAY}T09:00:00.000Z`)}
+        sync={sync}
+      />,
+    );
+
+    await waitFor(() => expect(sync).toHaveBeenCalledTimes(2));
+    expect(sync).toHaveBeenLastCalledWith(expect.objectContaining({ accountId: "account-b" }));
+  });
+
+  it("reevaluates auto-sync on account change when the connection is unchanged", async () => {
+    const now = Date.parse(`${TODAY}T09:00:00.000Z`);
+    const freshA = {
+      lastSuccessAt: new Date(now).toISOString(),
+      lastCompleteAt: new Date(now).toISOString(),
+      lastAttemptAt: new Date(now).toISOString(),
+      lastFailureMessage: null,
+      storedActivities: 4,
+    };
+    const sync = vi.fn(async () => syncResult([])) as unknown as NonNullable<
+      RunnerHistoryOptions["sync"]
+    >;
+    const view = renderHistory({
+      accountId: "account-a",
+      sync,
+      loadRecord: (accountId) =>
+        accountId === "account-a" ? freshA : loadHistorySyncRecord("missing"),
+    });
+    await waitFor(() => expect(screen.getByTestId("phase")).toHaveTextContent("fresh"));
+    expect(sync).not.toHaveBeenCalled();
+
+    view.rerender(
+      <Probe
+        connection={connection}
+        accountId="account-b"
+        runLogs={[]}
+        today={TODAY}
+        now={() => now}
+        sync={sync}
+        loadRecord={(accountId) =>
+          accountId === "account-a" ? freshA : loadHistorySyncRecord("missing")
+        }
+      />,
+    );
+
+    await waitFor(() => expect(sync).toHaveBeenCalledTimes(1));
+    expect(sync).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-b" }));
   });
 
   it("reads on request even when the policy would have refused", async () => {
