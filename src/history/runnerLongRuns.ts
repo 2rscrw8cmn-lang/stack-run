@@ -1,4 +1,4 @@
-import { addDaysToLocalDate } from "../domain/dates";
+import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates";
 import { runnerRunsBetween, type RunnerRun } from "./runnerRun";
 import { weeklyVolume, type WeeklyVolumePoint } from "./runnerVolume";
 
@@ -90,6 +90,28 @@ export interface LongestRunInWindow {
   miles: number | null;
 }
 
+/**
+ * The longest single run between two local dates, both ends inclusive.
+ *
+ * The window-anchored form, added for NEXT-3's long-run progression signal,
+ * which needs the longest run of a baseline window that ended weeks ago as well
+ * as the longest of the current one. Same tie rule as `longestRun`: earlier wins.
+ */
+export function longestRunInRange(
+  runs: readonly RunnerRun[],
+  startDate: string,
+  endDate: string,
+): LongestRunInWindow {
+  const run = longestRun(runnerRunsBetween(runs, startDate, endDate));
+  return {
+    days: Math.max(0, daysBetweenLocalDates(startDate, endDate)) + 1,
+    startDate,
+    endDate,
+    run,
+    miles: run === null ? null : Number(run.distanceMiles.toFixed(2)),
+  };
+}
+
 /** The longest single run in the last `days` days, ending today inclusive. */
 export function longestRunInWindow(
   runs: readonly RunnerRun[],
@@ -97,13 +119,5 @@ export function longestRunInWindow(
   days: number = LONGEST_RUN_WINDOW_DAYS,
 ): LongestRunInWindow {
   const span = Math.max(1, Math.floor(days));
-  const startDate = addDaysToLocalDate(today, -(span - 1));
-  const run = longestRun(runnerRunsBetween(runs, startDate, today));
-  return {
-    days: span,
-    startDate,
-    endDate: today,
-    run,
-    miles: run === null ? null : Number(run.distanceMiles.toFixed(2)),
-  };
+  return longestRunInRange(runs, addDaysToLocalDate(today, -(span - 1)), today);
 }

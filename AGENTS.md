@@ -106,12 +106,48 @@ Rules a later phase must not quietly undo:
 
 ### NEXT-3 — Training Signals v2
 
-Current engineering phase.
+Implemented on `feature/training-signals-v2`, awaiting owner acceptance of the
+PR into `feature/stack-next`.
+
+Seven plan-relative statistics became six observations over the unified actual
+history: volume, frequency, long-run progression, workload, zone mix, and plan
+completion retained as plan context and ranked last. The domain layer is
+`src/signals/` — pure, React-free, one module per family.
+
+Rules a later phase must not quietly undo:
+
+- every threshold is a **named domain constant** with its reasoning beside it;
+  no formula and no adjective is decided inside a component;
+- *building*, *easing*, *steady*, *more often*, *holding* each correspond to a
+  documented calculation; no moral or grading language, and no overall score;
+- both comparison windows are equal, inclusive and fixed-length — the last 28
+  days against the 28 before them — and every signal states its dates;
+- the two connected-metric signals reuse NEXT-2's coverage thresholds through
+  `metricCoverage`, plus a coverage-parity rule between the windows. Neither may
+  be lowered to make more cards appear;
+- history must reach back past the baseline window's first day before a
+  comparison is allowed;
+- a signal with nothing to say is **absent**, not an empty card;
+- Training Load stays a training-load observation; it is never turned into
+  readiness, recovery, fatigue or form;
+- signals are recomputed from the normalized history, never cached;
+- Training Signals stay below the actual-history surfaces on Runs.
+
+**Aggregate pace and HR comparison remains deferred**, for NEXT-2's documented
+reason: no defensible comparable-run grouping is available from the data STACK
+holds, and an effort classification must not be invented merely to produce a
+metric. A later phase may lift this only by documenting which runs qualify, why
+they are comparable, what is excluded, the window, the minimum sample count, the
+coverage requirement and the behavior when classification is ambiguous.
+
+### NEXT-4 — Today / Home revision
+
+Next engineering phase, to begin after NEXT-3 is accepted and merged.
 
 Recommended branch:
 
 ```text
-feature/training-signals-v2
+feature/today-next
 ```
 
 PR target:
@@ -122,17 +158,14 @@ feature/stack-next
 
 Goal:
 
-> Rebuild useful signals around the runner's broader history instead of forcing every signal through plan-versus-actual logic.
+> Make the first screen answer what matters now using the runner's real context, not merely echo the plan.
 
-Build on `src/history/runnerVolume.ts`, `runnerFrequency.ts`, `runnerLongRuns.ts`
-and `runnerCoverage.ts` rather than reimplementing them beside a chart. If it
-introduces a comparable-run grouping, that grouping must document which runs
-qualify, the time window, the minimum sample count and the coverage requirement.
+Build on the NEXT-2 history layer and the NEXT-3 signal layer rather than
+recomputing either. Do not surface every available metric.
 
-Do not add in NEXT-3:
+Do not add in NEXT-4:
 
-- new Today/Home design;
-- Plan redesign;
+- Plan redesign (NEXT-5);
 - automatic plan changes;
 - AI coaching/readiness;
 - wellness UI;

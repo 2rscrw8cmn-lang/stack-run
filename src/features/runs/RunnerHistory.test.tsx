@@ -312,7 +312,7 @@ describe("Runs history paging", () => {
 });
 
 describe("Runs hierarchy", () => {
-  it("keeps the existing Training Signals, below the history", () => {
+  it("keeps Training Signals below the history, and says so when it cannot say more", () => {
     renderRuns({
       runLogs: [
         stackRun("a", "2026-08-11", { workoutId: "workout-002", distanceMiles: 2 }),
@@ -324,8 +324,11 @@ describe("Runs hierarchy", () => {
       (title) => title.textContent,
     );
     expect(sections).toEqual(["Recent Volume", "Run History", "Training Signals"]);
+    // Two runs in one week is not a 28-day comparison, so the history signals
+    // are absent rather than guessed at; plan context still has something.
+    expect(document.querySelectorAll(".signal-card")).toHaveLength(1);
     expect(
-      screen.getByRole("button", { name: /^Weekly Mileage,/ }),
+      screen.getByRole("button", { name: /planned runs recorded/ }),
     ).toBeInTheDocument();
   });
 

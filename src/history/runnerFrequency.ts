@@ -103,3 +103,52 @@ export function runFrequency(
     countedWeeks: calendarWeeks.length,
   };
 }
+
+export interface FrequencyInRange {
+  /** Inclusive first day counted. */
+  startDate: string;
+  /** Inclusive last day counted. */
+  endDate: string;
+  /** Calendar days the window spans, both ends inclusive. */
+  days: number;
+  /** The window in weeks — `days ÷ 7`, to two decimals. The rate's denominator. */
+  weeks: number;
+  runCount: number;
+  /**
+   * Runs divided by the weeks the window spans, to one decimal. Null when the
+   * window holds no runs at all, for the same reason `runsPerWeek` above is.
+   */
+  runsPerWeek: number | null;
+}
+
+/**
+ * Run frequency between two local dates, both ends inclusive.
+ *
+ * The window-anchored companion to `runFrequency`, added for the frequency
+ * signal in NEXT-3, which compares the last 28 days with the 28 before them.
+ *
+ * The partial-week problem `runFrequency` solves with an elapsed-weeks
+ * denominator simply does not arise here, and that is the reason the signal uses
+ * this form: a **fixed-length trailing window is always complete**. The last 28
+ * days are 28 days on a Tuesday and 28 days on a Sunday, and the 28 before them
+ * are the same length, so the two rates are directly comparable on any day of
+ * the week. Calendar weeks would compare four days against seven every Thursday.
+ */
+export function runFrequencyInRange(
+  runs: readonly RunnerRun[],
+  startDate: string,
+  endDate: string,
+): FrequencyInRange {
+  const days = Math.max(0, daysBetweenLocalDates(startDate, endDate)) + 1;
+  const weeks = Number((days / DAYS_PER_WEEK).toFixed(2));
+  const windowRuns = runnerRunsBetween(runs, startDate, endDate);
+  return {
+    startDate,
+    endDate,
+    days,
+    weeks,
+    runCount: windowRuns.length,
+    runsPerWeek:
+      windowRuns.length === 0 ? null : Number((windowRuns.length / weeks).toFixed(1)),
+  };
+}

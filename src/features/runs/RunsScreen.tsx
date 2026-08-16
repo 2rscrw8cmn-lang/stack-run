@@ -20,9 +20,10 @@ import { RunnerProfileSheet } from "./RunnerProfileSheet";
 import { RunnerRunRow } from "./RunnerRunRow";
 import { RunnerSnapshot } from "./RunnerSnapshot";
 import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
-import { TrendCards } from "./TrendCards";
-import { TrainingSignalDetailSheet } from "../trends/TrainingSignalDetailSheet";
-import type { TrainingSignalId } from "../../domain/trends";
+import { SignalCards } from "../signals/SignalCards";
+import { SignalDetailSheet } from "../signals/SignalDetailSheet";
+import { presentableRunnerSignals } from "../../signals/runnerSignals";
+import type { SignalId } from "../../signals/trainingSignal";
 
 /** How many history rows are rendered before the runner asks for more. */
 export const HISTORY_PAGE_SIZE = 25;
@@ -68,14 +69,19 @@ interface RunsScreenProps {
  * 1. a compact **runner snapshot** — four readings, each with its window;
  * 2. a small **recent-volume strip** — twelve weeks of actual mileage;
  * 3. the **run history** itself, which is what the screen is for;
- * 4. **Training Signals**, retained unchanged, below the history.
+ * 4. **Training Signals**, below the history.
  *
- * Signals moved *under* the history on purpose. They are plan-relative measures
- * and they remain useful, but STACK Next's ordering rule is actuals before
- * intentions, and the first thing a runner should meet on their own history
- * screen is their history. Everything deeper — the weekly series, long-run
- * progression, data coverage — is one tap into the profile sheet rather than
- * another card above the list.
+ * Signals moved *under* the history in NEXT-2 and stay there. STACK Next's
+ * ordering rule is actuals before intentions, and the first thing a runner
+ * should meet on their own history screen is their history.
+ *
+ * What NEXT-3 changed is the signals themselves rather than where they sit.
+ * They are no longer seven plan-relative statistics; they are a short ordered
+ * list of observations about the runner's actual history, each one a sentence
+ * with its evidence and its two windows underneath — see `src/signals/`. This
+ * screen computes none of them. It asks the domain which signals are
+ * presentable, renders them in the order it is given, and opens the detail
+ * behind whichever one is tapped.
  */
 export function RunsScreen({
   plan,
@@ -96,7 +102,7 @@ export function RunsScreen({
   const [isHistoricalOpen, setHistoricalOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isConnectOpen, setConnectOpen] = useState(false);
-  const [selectedSignal, setSelectedSignal] = useState<TrainingSignalId | null>(null);
+  const [selectedSignalId, setSelectedSignalId] = useState<SignalId | null>(null);
   const [isSignalOpen, setSignalOpen] = useState(false);
   const [visibleRuns, setVisibleRuns] = useState(HISTORY_PAGE_SIZE);
   const returnToSignal = useRef(false);
@@ -127,6 +133,9 @@ export function RunsScreen({
   const history = runHistory(plan, runLogs);
   const runs = runnerRuns ?? fallbackRunnerRuns(runLogs);
   const snapshot = runnerSnapshot(runs, today);
+  const signals = presentableRunnerSignals({ runs, today, plan, runLogs });
+  const selectedSignal =
+    signals.find((signal) => signal.id === selectedSignalId) ?? null;
   const selected =
     history.find((entry) => entry.runLog.id === detailRunLogId) ?? null;
   const historicalRun = runs.find((run) => run.id === historicalRunId) ?? null;
@@ -173,7 +182,7 @@ export function RunsScreen({
 
   function closeDetail() {
     setDetailOpen(false);
-    if (returnToSignal.current && selectedSignal) {
+    if (returnToSignal.current && selectedSignalId) {
       returnToSignal.current = false;
       setSignalOpen(true);
     }
@@ -281,12 +290,11 @@ export function RunsScreen({
             )}
           </Section>
 
-          <TrendCards
-            plan={plan}
-            runLogs={runLogs}
-            today={today}
+          <SignalCards
+            signals={signals}
+            hasHistory={runs.length > 0}
             onOpenSignal={(signal) => {
-              setSelectedSignal(signal);
+              setSelectedSignalId(signal.id);
               setSignalOpen(true);
             }}
           />
@@ -312,6 +320,12 @@ export function RunsScreen({
         onClose={() => {
           setHistoricalOpen(false);
           setHistoricalRunId(null);
+          // A run reached from a signal goes back to the signal, the same way a
+          // STACK run does — a historical row is not a dead end.
+          if (returnToSignal.current && selectedSignalId) {
+            returnToSignal.current = false;
+            setSignalOpen(true);
+          }
         }}
       />
 
@@ -350,17 +364,26 @@ export function RunsScreen({
         />
       )}
 
-      <TrainingSignalDetailSheet
+      <SignalDetailSheet
         signal={selectedSignal}
+        runs={runs}
         plan={plan}
         runLogs={runLogs}
         today={today}
         isOpen={isSignalOpen}
         onClose={() => {
           setSignalOpen(false);
-          if (!returnToSignal.current) setSelectedSignal(null);
+          if (!returnToSignal.current) setSelectedSignalId(null);
         }}
-        onOpenRun={(runLogId) => {
+        onOpenRun={(runId) => {
+          const run = runs.find((candidate) => candidate.id === runId);
+          if (!run) return;
+          setSignalOpen(false);
+          openRun(run);
+          // After `openRun`, which clears the flag for the ordinary list path.
+          returnToSignal.current = true;
+        }}
+        onOpenRunLog={(runLogId) => {
           returnToSignal.current = true;
           setSignalOpen(false);
           setDetailRunLogId(runLogId);
