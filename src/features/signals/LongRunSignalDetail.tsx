@@ -4,21 +4,11 @@ import { formatMiles } from "../../domain/distance";
 import { longestRunByWeek } from "../../history/runnerLongRuns";
 import type { RunnerRun } from "../../history/runnerRun";
 import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
-import { SignalPeriods } from "./SignalDetailParts";
+import { DetailSection } from "../trends/TrendDetailShared";
+import { SignalComparisonSummary, SignalPeriods } from "./SignalDetailParts";
 import { signedMilesChange, signedPercent } from "./signalFormatting";
 
-/**
- * Long runs, with the two runs the comparison is actually about.
- *
- * The line is the longest run of each of the last twelve weeks; a week with no
- * running is a gap in it, never a zero, because a zero would draw a descent to
- * the floor for a week in which nothing happened at all.
- *
- * Underneath, the two runs behind the headline are named and openable. That is
- * the point of the whole sheet: "your longest runs are getting longer" is a
- * claim about two specific runs, and the runner can go and look at both.
- */
+/** Long runs, with the two runs the comparison is actually about. */
 export function LongRunSignalDetail({
   signal,
   runs,
@@ -46,13 +36,10 @@ export function LongRunSignalDetail({
 
   return (
     <>
-      <SignalFacts
-        facts={[
-          { label: "Last 28 days", value: `${formatMiles(facts.currentMiles)} mi` },
-          { label: "Prior 28 days", value: `${formatMiles(facts.baselineMiles)} mi` },
-          { label: "Change", value: signedMilesChange(facts.differenceMiles) },
-          { label: "Percent", value: signedPercent(facts.changeRatio) },
-        ]}
+      <SignalComparisonSummary
+        currentValue={`${formatMiles(facts.currentMiles)} mi`}
+        baselineValue={`${formatMiles(facts.baselineMiles)} mi`}
+        change={`${signedMilesChange(facts.differenceMiles)} · ${signedPercent(facts.changeRatio)}`}
       />
       <SignalPeriods current={signal.current} baseline={signal.baseline} />
 
