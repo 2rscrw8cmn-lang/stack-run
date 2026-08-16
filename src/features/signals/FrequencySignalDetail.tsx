@@ -4,17 +4,11 @@ import { formatDateLabel } from "../../domain/dates";
 import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
-import { SignalPeriods } from "./SignalDetailParts";
+import { DetailSection } from "../trends/TrendDetailShared";
+import { SignalComparisonSummary, SignalPeriods } from "./SignalDetailParts";
 import { signedNumber } from "./signalFormatting";
 
-/**
- * Frequency, as counts a runner can check by hand.
- *
- * The columns are runs a week rather than miles, which is the distinction this
- * signal exists to make: a month of six short runs and a month of two long ones
- * can carry the same mileage and are not the same training.
- */
+/** Frequency, as counts a runner can check by hand. */
 export function FrequencySignalDetail({
   signal,
   runs,
@@ -32,25 +26,10 @@ export function FrequencySignalDetail({
 
   return (
     <>
-      <SignalFacts
-        facts={[
-          {
-            label: "Last 28 days",
-            value: `${facts.currentRunsPerWeek.toFixed(1)}/wk`,
-          },
-          {
-            label: "Prior 28 days",
-            value: `${facts.baselineRunsPerWeek.toFixed(1)}/wk`,
-          },
-          {
-            label: "Change",
-            value: signedNumber(facts.differenceRunsPerWeek, "/wk"),
-          },
-          {
-            label: "Runs",
-            value: `${facts.currentRunCount} vs ${facts.baselineRunCount}`,
-          },
-        ]}
+      <SignalComparisonSummary
+        currentValue={`${facts.currentRunsPerWeek.toFixed(1)}/wk`}
+        baselineValue={`${facts.baselineRunsPerWeek.toFixed(1)}/wk`}
+        change={`${signedNumber(facts.differenceRunsPerWeek, "/wk")} · ${facts.currentRunCount} vs ${facts.baselineRunCount} runs`}
       />
       <SignalPeriods current={signal.current} baseline={signal.baseline} />
       <p className="signal-detail__note">
