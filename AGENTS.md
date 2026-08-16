@@ -74,12 +74,44 @@ Complete.
 
 ### NEXT-1 — Historical Data Foundation
 
+Complete. Accepted and merged into `feature/stack-next` as PR #100.
+
+The headless history layer lives in `src/history/`. Do not replace it without a
+concrete correctness issue. Its deployed real-Intervals smoke test is still
+outstanding and is tracked in `docs/STACK_NEXT_ACCEPTANCE_LOG.md`; until it
+runs, do not promote a source field to `Verified` on fixture evidence, and do
+not change cadence or source-unit semantics.
+
+### NEXT-2 — Runner History + Profile Foundation
+
+Implemented on `feature/runner-profile`; owner acceptance outstanding.
+
+The first user-facing STACK Next phase. It adds a unified actual-history read
+model over connected history and `RunLog`s, a pure calculation layer for volume,
+frequency, long runs and coverage, a conservative historical-sync lifecycle, and
+a runner snapshot / history hierarchy on the existing Runs screen. It adds no
+navigation destination.
+
+Rules a later phase must not quietly undo:
+
+- one physical run is one history row, reconciled on the external activity id;
+- STACK-owned facts are overlaid at read time and never written into the source
+  mirror;
+- historical runs need no acceptance to be history, and earn no Build block;
+- coverage thresholds live in the domain layer, not in JSX;
+- no aggregate pace or HR comparison until a comparable-run grouping is defined
+  and documented — see `docs/STACK_NEXT_IMPLEMENTATION.md`;
+- historical sync is event-driven and never polled, reads a full year at most
+  once per device, and can never block the app.
+
+### NEXT-3 — Training Signals v2
+
 Current engineering phase.
 
 Recommended branch:
 
 ```text
-feature/historical-data
+feature/training-signals-v2
 ```
 
 PR target:
@@ -90,35 +122,28 @@ feature/stack-next
 
 Goal:
 
-> Give STACK a trustworthy normalized history of actual running activity that extends beyond the active plan.
+> Rebuild useful signals around the runner's broader history instead of forcing every signal through plan-versus-actual logic.
 
-NEXT-1 is a data-foundation phase, not a redesign phase.
+Build on `src/history/runnerVolume.ts`, `runnerFrequency.ts`, `runnerLongRuns.ts`
+and `runnerCoverage.ts` rather than reimplementing them beside a chart. If it
+introduces a comparable-run grouping, that grouping must document which runs
+qualify, the time window, the minimum sample count and the coverage requirement.
 
-Required outcomes include:
-
-- configurable historical lookback;
-- pagination/range-safe Intervals retrieval;
-- normalized Tier 1 historical activity summaries;
-- source-id dedupe and documented reconciliation;
-- repository/service boundary for historical activities;
-- preservation of current manual/connected runs, plan links, Build and Crew behavior;
-- developer-readable coverage visibility;
-- fake-fixture automated tests;
-- separate real deployed historical-data smoke test.
-
-Do not add in NEXT-1:
+Do not add in NEXT-3:
 
 - new Today/Home design;
-- runner-profile dashboard;
-- Training Signals v2 UI;
+- Plan redesign;
 - automatic plan changes;
 - AI coaching/readiness;
 - wellness UI;
 - route/GPS UI;
 - historical Build backfill;
-- broad Race Crew changes.
+- broad Race Crew changes;
+- an overall score of any kind.
 
-Use `docs/STACK_NEXT_AGENT_PROMPT.md` for the detailed implementation contract.
+`docs/STACK_NEXT_AGENT_PROMPT.md` remains the NEXT-1 implementation contract and
+is historical context now; `docs/STACK_NEXT_IMPLEMENTATION.md` is the live
+roadmap.
 
 ## Connected-data source truth
 

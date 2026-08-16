@@ -431,8 +431,12 @@ describe("App", () => {
     await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Runs" }));
 
-    expect(screen.getByLabelText("Running history summary")).toHaveTextContent("1run");
-    expect(screen.getByText("2.1 miles run")).toBeInTheDocument();
+    expect(screen.getByText("1 run")).toBeInTheDocument();
+    // The snapshot reads the same run through the unified history, so a run
+    // logged on Today reaches the runner-level numbers with no import step.
+    expect(
+      screen.getByRole("button", { name: /Runner snapshot\. 2\.1 miles over the last 7 days/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
         name: "Easy. Tuesday, August 4. 2.1 mi, 20:30, 9:46 /MI",

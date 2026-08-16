@@ -213,6 +213,39 @@ Nothing in the product clears this slot today. Discarding a year of history is
 a product decision, not a side effect of forgetting a credential, so
 `clearHistoricalActivities` exists without a caller.
 
+### Historical sync bookkeeping (STACK Next, NEXT-2)
+
+When this device last read that history, and how it went:
+
+```text
+stack.history.sync.v1
+```
+
+through `src/storage/historySyncStateRepository.ts`, account-scoped the same way
+and also outside AppState.
+
+Five values, and nothing else: `lastSuccessAt`, `lastCompleteAt`,
+`lastAttemptAt`, `lastFailureMessage`, `storedActivities`. Deliberately
+timestamps rather than a status enum — a stored enum would need migrating every
+time the sync policy learns a new state, and every state
+`src/history/historySyncPolicy.ts` reports is derivable from these.
+
+Rules:
+
+- **neither reading nor writing it can fail an app.** A record that cannot be
+  read is a device that has not synced yet, which costs one extra read; a record
+  that cannot be written is a device that re-syncs sooner than it needed to,
+  which costs one wasted request. Nothing a runner decided lives here, so
+  neither is worth interrupting them about;
+- `useRunnerHistory` also holds an in-session attempt floor in memory, so a
+  browser that refuses writes cannot loop on repeated focus events;
+- values that are not the shape they claim to be are dropped on load rather than
+  trusted — an unparseable timestamp becomes null, which reads as "never", which
+  is the safe direction;
+- no credential, no activity identity and no source payload is stored;
+- outside AppState, so no migration, no backup or export exposure, and nothing
+  reaches Supabase or a crew projection.
+
 ### Supabase session
 
 Supabase JS may persist its own authenticated session in browser storage.

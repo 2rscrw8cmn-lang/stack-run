@@ -2,10 +2,9 @@ import {
   addDaysToLocalDate,
   compareLocalDates,
   formatDateLabel,
-  formatLocalDate,
   isAfterLocalDate,
   isBeforeLocalDate,
-  parseLocalDate,
+  mondayOfLocalDate,
 } from "./dates";
 import { formatWeekRange } from "./plan";
 import type {
@@ -159,11 +158,8 @@ function roundMiles(value: number): number {
   return Number(value.toFixed(2));
 }
 
-function mondayOf(date: string): string {
-  const parsed = parseLocalDate(date);
-  parsed.setDate(parsed.getDate() - ((parsed.getDay() + 6) % 7));
-  return formatLocalDate(parsed);
-}
+/** The shared product-wide week boundary; see `mondayOfLocalDate`. */
+const mondayOf = mondayOfLocalDate;
 
 function calendarWeeksEndingAt(today: string): Array<{
   startDate: string;

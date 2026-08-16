@@ -1,27 +1,43 @@
-import { History, Plus } from "lucide-react";
+import { BarChart3, History, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Section } from "../../components/ui/Section";
-import { earnedBlockPhrase, totalActualMiles } from "../../domain/build";
+import { earnedBlockPhrase } from "../../domain/build";
 import { todayLocalDate } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
-import { selectTrainingSignals } from "../../domain/trends";
 import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
+import type { HistorySyncPhase } from "../../history/historySyncPolicy";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
+import { runnerSnapshot } from "../../history/runnerSnapshot";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { ConnectToPlanSheet } from "./ConnectToPlanSheet";
+import { HistoricalRunSheet } from "./HistoricalRunSheet";
 import { RunDetailSheet } from "./RunDetailSheet";
-import { RunRow } from "./RunRow";
+import { RunnerProfileSheet } from "./RunnerProfileSheet";
+import { RunnerRunRow } from "./RunnerRunRow";
+import { RunnerSnapshot } from "./RunnerSnapshot";
+import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
 import { TrendCards } from "./TrendCards";
 import { TrainingSignalDetailSheet } from "../trends/TrainingSignalDetailSheet";
 import type { TrainingSignalId } from "../../domain/trends";
 
+/** How many history rows are rendered before the runner asks for more. */
+export const HISTORY_PAGE_SIZE = 25;
+
 interface RunsScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
+  /**
+   * The unified actual history: STACK runs and connected history reconciled
+   * into one row per physical run. Defaults to the run logs alone, which is
+   * exactly what a manual-only runner has and all this screen needs.
+   */
+  runnerRuns?: RunnerRun[];
+  historyPhase?: HistorySyncPhase;
+  historyCompleteAt?: string | null;
   onSaveRun?: (
     workout: Workout | null,
     values: ValidRunEntry,
@@ -38,25 +54,35 @@ interface RunsScreenProps {
 }
 
 /**
- * What actually happened: every recorded run, newest first.
+ * What this runner has actually done.
  *
- * The factual record, and deliberately not a second Plan — nothing here is
- * scheduled, and nothing here changes what is. It reads from `RunLog[]`, which
- * has always been the whole actual history; the pillar is a way in, not a new
- * store, so there is no migration behind this screen and nothing derived on it
- * is written back.
+ * UI-13 made Runs the chronological record of `RunLog[]`. NEXT-2 keeps that and
+ * widens what "the record" means: the list is now the **unified actual history**
+ * — every run the runner did, whether they logged it, imported it, or simply ran
+ * it while Intervals was watching and never thought about STACK at all. A run
+ * does not have to be accepted into STACK to be a fact about the runner.
  *
- * The screen leads with the count rather than the word "Runs", per the UI-7
- * content-first rule: the tab already said what this is.
+ * The hierarchy is deliberately shallow, and evolves the existing screen rather
+ * than adding a destination (NEXT-2 adds no navigation):
  *
- * Runs is personal again, and only personal. UI-19 borrowed this screen for a
- * local `YOU | CREW` switch while Race Crew had no destination of its own.
- * UI-21 gave the crew its own tower and its own tab, so the social surface
- * moved there rather than existing in two places at once.
+ * 1. a compact **runner snapshot** — four readings, each with its window;
+ * 2. a small **recent-volume strip** — twelve weeks of actual mileage;
+ * 3. the **run history** itself, which is what the screen is for;
+ * 4. **Training Signals**, retained unchanged, below the history.
+ *
+ * Signals moved *under* the history on purpose. They are plan-relative measures
+ * and they remain useful, but STACK Next's ordering rule is actuals before
+ * intentions, and the first thing a runner should meet on their own history
+ * screen is their history. Everything deeper — the weekly series, long-run
+ * progression, data coverage — is one tap into the profile sheet rather than
+ * another card above the list.
  */
 export function RunsScreen({
   plan,
   runLogs,
+  runnerRuns,
+  historyPhase = "no-connection",
+  historyCompleteAt = null,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
   onLinkRun,
@@ -66,9 +92,13 @@ export function RunsScreen({
 }: RunsScreenProps) {
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
+  const [historicalRunId, setHistoricalRunId] = useState<string | null>(null);
+  const [isHistoricalOpen, setHistoricalOpen] = useState(false);
+  const [isProfileOpen, setProfileOpen] = useState(false);
   const [isConnectOpen, setConnectOpen] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<TrainingSignalId | null>(null);
   const [isSignalOpen, setSignalOpen] = useState(false);
+  const [visibleRuns, setVisibleRuns] = useState(HISTORY_PAGE_SIZE);
   const returnToSignal = useRef(false);
   /**
    * The run the entry sheet is open for, held rather than looked up.
@@ -95,11 +125,11 @@ export function RunsScreen({
   const returnToDetail = useRef(false);
 
   const history = runHistory(plan, runLogs);
+  const runs = runnerRuns ?? fallbackRunnerRuns(runLogs);
+  const snapshot = runnerSnapshot(runs, today);
   const selected =
     history.find((entry) => entry.runLog.id === detailRunLogId) ?? null;
-  const miles = totalActualMiles(runLogs);
-  const activeWeeks = selectTrainingSignals(plan, runLogs, today).weeklyMileage
-    .filter((week) => week.actualMiles > 0).length;
+  const historicalRun = runs.find((run) => run.id === historicalRunId) ?? null;
 
   /**
    * A deleted run takes its own row — the thing the browser would have
@@ -120,6 +150,25 @@ export function RunsScreen({
     setDetailOpen(false);
     setEditVisit((visit) => visit + 1);
     setEditOpen(true);
+  }
+
+  /** Opens whichever detail this run has: a STACK run's, or a source record's. */
+  function openRun(run: RunnerRun) {
+    returnToSignal.current = false;
+    if (run.stack) {
+      setDetailRunLogId(run.stack.runLogId);
+      setDetailOpen(true);
+    } else {
+      setHistoricalRunId(run.id);
+      setHistoricalOpen(true);
+    }
+  }
+
+  function openRunById(runId: string) {
+    const run = runs.find((candidate) => candidate.id === runId);
+    if (!run) return;
+    setProfileOpen(false);
+    openRun(run);
   }
 
   function closeDetail() {
@@ -159,29 +208,19 @@ export function RunsScreen({
     returnToDetail.current = false;
   }
 
+  const shown = runs.slice(0, visibleRuns);
+  const remaining = runs.length - shown.length;
+
   return (
     <div className="runs-screen">
       <div className="runs-screen__lead">
         <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>Runs</h1>
         <div className="runs-screen__title-row">
-          {history.length === 0 ? (
-            <p className="runs-screen__count data-value">No runs yet</p>
-          ) : (
-            <dl className="runs-screen__quick-stats" aria-label="Running history summary">
-              <div>
-                <dd className="data-value">{history.length}</dd>
-                <dt className="machine-label">{history.length === 1 ? "run" : "runs"}</dt>
-              </div>
-              <div>
-                <dd className="data-value">{formatMiles(miles)}</dd>
-                <dt className="machine-label">Total mi</dt>
-              </div>
-              <div>
-                <dd className="data-value">{activeWeeks}</dd>
-                <dt className="machine-label">Weeks</dt>
-              </div>
-            </dl>
-          )}
+          <p className="runs-screen__count data-value">
+            {runs.length === 0
+              ? "No runs yet"
+              : `${runs.length} ${runs.length === 1 ? "run" : "runs"}`}
+          </p>
           <Button
             variant="secondary"
             className="runs-screen__log"
@@ -191,20 +230,17 @@ export function RunsScreen({
             Log Run
           </Button>
         </div>
-        {history.length > 0 && <p className="visually-hidden">{formatMiles(miles)} miles run</p>}
+        {runs.length > 0 && (
+          <RunnerSnapshot
+            snapshot={snapshot}
+            phase={historyPhase}
+            lastCompleteAt={historyCompleteAt}
+            onOpenProfile={() => setProfileOpen(true)}
+          />
+        )}
       </div>
 
-      <TrendCards
-        plan={plan}
-        runLogs={runLogs}
-        today={today}
-        onOpenSignal={(signal) => {
-          setSelectedSignal(signal);
-          setSignalOpen(true);
-        }}
-      />
-
-      {history.length === 0 ? (
+      {runs.length === 0 ? (
         <EmptyState
           icon={<History size={24} strokeWidth={1.6} />}
           title="Nothing recorded yet"
@@ -213,30 +249,71 @@ export function RunsScreen({
           run earns a block.
         </EmptyState>
       ) : (
-        <Section
-          className="runs-recent"
-          icon={<History size={15} strokeWidth={2} />}
-          title="Recent Runs"
-        >
-          <ul className="runs-screen__list">
-            {history.map((entry) => (
-              <RunRow
-                key={entry.runLog.id}
-                entry={entry}
-                onOpen={() => {
-                  returnToSignal.current = false;
-                  setDetailRunLogId(entry.runLog.id);
-                  setDetailOpen(true);
-                }}
-              />
-            ))}
-          </ul>
-        </Section>
+        <>
+          <Section
+            className="runner-volume-section"
+            icon={<BarChart3 size={15} strokeWidth={2} />}
+            title="Recent Volume"
+          >
+            <RunnerVolumeStrip weeks={snapshot.weeks} />
+          </Section>
+
+          <Section
+            className="runs-recent"
+            icon={<History size={15} strokeWidth={2} />}
+            title="Run History"
+            meta={<span className="machine-label">{runs.length}</span>}
+          >
+            <ul className="runs-screen__list">
+              {shown.map((run) => (
+                <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
+              ))}
+            </ul>
+            {remaining > 0 && (
+              <div className="runs-screen__more">
+                <Button
+                  variant="ghost"
+                  onClick={() => setVisibleRuns((count) => count + HISTORY_PAGE_SIZE)}
+                >
+                  {`Show ${Math.min(remaining, HISTORY_PAGE_SIZE)} more`}
+                </Button>
+              </div>
+            )}
+          </Section>
+
+          <TrendCards
+            plan={plan}
+            runLogs={runLogs}
+            today={today}
+            onOpenSignal={(signal) => {
+              setSelectedSignal(signal);
+              setSignalOpen(true);
+            }}
+          />
+        </>
       )}
 
       <p className="visually-hidden" aria-live="polite">
         {announcement}
       </p>
+
+      <RunnerProfileSheet
+        runs={runs}
+        snapshot={snapshot}
+        today={today}
+        isOpen={isProfileOpen}
+        onClose={() => setProfileOpen(false)}
+        onOpenRun={openRunById}
+      />
+
+      <HistoricalRunSheet
+        run={historicalRun}
+        isOpen={isHistoricalOpen}
+        onClose={() => {
+          setHistoricalOpen(false);
+          setHistoricalRunId(null);
+        }}
+      />
 
       {selected && (
         <RunDetailSheet
@@ -320,4 +397,16 @@ export function RunsScreen({
       )}
     </div>
   );
+}
+
+/**
+ * The unified history a screen with no connected history still has: its own runs.
+ *
+ * A manual-only runner reaches exactly this path, and everything above it —
+ * snapshot, volume, frequency, long runs — works on it unchanged, which is the
+ * compatibility requirement the phase is held to. It is also what every existing
+ * test that renders this screen with run logs alone gets.
+ */
+function fallbackRunnerRuns(runLogs: readonly RunLog[]): RunnerRun[] {
+  return unifiedRunnerHistory({ runLogs });
 }

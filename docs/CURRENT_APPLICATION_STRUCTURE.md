@@ -1846,3 +1846,211 @@ review queue untouched, a manual-only device unaffected),
 `historicalActivityRepository.test.ts` and `historyDiagnostics.test.ts`.
 
 `npm run check` passes: 111 files, 1,462 tests.
+
+## NEXT-2 — Runner History + Profile Foundation (STACK Next)
+
+The second STACK Next engineering phase, on `feature/runner-profile`, and the
+first one a runner can see. It adds **no navigation destination**: all of it
+lands on the existing Runs screen.
+
+**Why it exists.** NEXT-1 gave STACK a year of normalized source activity and no
+way to look at it, deliberately. Two records now describe running and they mean
+different things — a `HistoricalActivity` is a mirror of what Intervals knows,
+a `RunLog` is a STACK activity carrying an effort, notes, a plan link and a
+block — and neither one alone answers *what has this runner actually done*. The
+mirror does not know about a treadmill run typed in by hand; the run log does not
+know about the ten months before this plan existed.
+
+### The unified read model
+
+`src/history/runnerRun.ts`. `unifiedRunnerHistory({ activities, runLogs,
+blockPlacements })` returns one `RunnerRun` per physical run, newest first. Pure:
+it reads three lists and returns a fourth, and writes nothing anywhere.
+
+- **One physical run is one row.** An accepted Intervals run has both records and
+  is one run that happened once. They reconcile on `externalSource.activityId`
+  against `sourceId` — the external identity the existing import already dedupes
+  on. Date and distance are never matched on: two real runs on one day at one
+  distance are two runs, and a source that renumbered its ids is a different
+  problem than a merge can solve.
+- **The run log wins on a shared fact.** Distance and duration come from the
+  `RunLog` when there is one, because that is the number Build, Crew, the plan
+  and Training Signals already count, and the runner may have corrected it after
+  importing. A history row that disagreed with the rest of the app about how far
+  a run was would be worse than no history row.
+- **The mirror fills the gaps.** Local start time, the source's own name and
+  type, and any metric the run log was imported without — a run accepted before
+  STACK read HR zones gets them from the mirror.
+- **STACK-owned facts are overlaid at read time.** Effort, notes, the plan link,
+  whether the run was extra, and whether its earned block has been placed hang
+  off `run.stack`, which is `null` for a run nobody logged. None of it is ever
+  written into the historical mirror — that record stays a source mirror
+  precisely so a re-sync can replace every field in it without destroying a
+  decision.
+- **Missing stays missing**, and a historical run **earns no Build block**.
+  Historical Build backfill remains NEXT-6's explicit decision.
+
+### The calculation layer
+
+Four pure modules beside it, none of which import React, read storage or know
+the plan exists. NEXT-3 is expected to build on these rather than reimplement
+them beside a chart, which is why every window is an argument and every answer
+carries the dates it was computed over.
+
+`runnerVolume.ts` — calendar-week mileage (Monday–Sunday, the product-wide
+boundary from `mondayOfLocalDate`, shared with Training Signals so the two cannot
+disagree about the same seven days) and trailing windows (`today - (n-1) …
+today`, inclusive, so a run finished an hour ago is in "the last 7 days"). The
+current calendar week counts only through today: a week that has not happened
+cannot have zero miles in it.
+
+`runnerFrequency.ts` — run count, runs per week and active weeks over one shared
+window of N calendar weeks. The rate divides by **elapsed** weeks (complete weeks
+plus `daysIntoCurrentWeek ÷ 7`), because dividing eight weeks of runs by eight
+when only 7.86 have happened reports a rate the runner has never run at. No
+score and no label: STACK does not call anybody consistent, because it has no
+documented rule that would make the word true.
+
+`runnerLongRuns.ts` — the longest run of each week and of a trailing window. The
+longest run of a week is *the longest run of that week*, not "the long run"
+unless a plan link says a planned long workout is what it was; the run behind
+each point is exposed so source fact and STACK interpretation stay separate. A
+week with no running is `null`, never `0`. Ties go to the earlier run, decided
+consistently so a selection cannot flip between renders.
+
+`runnerCoverage.ts` — per-metric coverage, and the thresholds that decide whether
+a view may exist at all: `RUNNER_METRIC_MINIMUM_RUNS` (8) **and**
+`RUNNER_METRIC_MINIMUM_RATIO` (0.6). Both, not either: eight of eighty passes the
+count and describes a tenth of the training. The thresholds live here rather than
+inside a component, so a screen asks whether a metric is presentable and is told.
+
+`runnerSnapshot.ts` assembles the four readings the top of Runs leads with.
+
+### Pace and heart rate are shown per run and not compared
+
+NEXT-2 states no aggregate pace or HR comparison, and that is a documented
+omission. A historical activity carries no STACK activity type — NEXT-1 stored
+none so classification would stay open — so there is no comparable-run grouping,
+and none is available from source facts alone: *all runs* compares a 400m session
+with a 20-mile Sunday, *a distance band* controls distance and nothing else, and
+*a pace band* is circular. Per-run pace and HR are facts about one run and are
+shown everywhere; the comparison is NEXT-3's, and must arrive with its qualifying
+runs, window, sample minimum and coverage requirement documented.
+
+### The sync lifecycle
+
+`src/history/historySyncPolicy.ts` is pure policy;
+`src/features/runs/useRunnerHistory.ts` is the thin React layer that performs it,
+and it is the only thing in the product that triggers a historical sync.
+
+A historical sync is expensive in a way the rolling Run Data sync is not — five
+sequential requests against a source that rate-limits, versus one. So:
+
+- **no connection, no request** (a manual-only runner never causes one);
+- **event-driven, never polled** — app open and return-to-front, the same two
+  moments the connected sync uses, with no timer anywhere;
+- **a full year at most once** — 365 days when this device has never *completed*
+  a read, then `HISTORY_REFRESH_LOOKBACK_DAYS` (45, one window) forever after,
+  which is safe because reconciliation keeps history outside the window;
+- **fresh history is left alone** — `HISTORY_STALE_AFTER_MS` is 24 hours;
+- **a failure buys quiet** — every attempt starts a `HISTORY_RETRY_AFTER_MS`
+  (1 hour) cooling-off period, because a rate limit, a dead connection and a
+  rejected credential all fail the next attempt too;
+- **a runner-initiated refresh** skips freshness and cooling off, but not the
+  connection or in-flight checks.
+
+Six states are exposed rather than a boolean, because "no history" has causes
+that deserve different words on screen: `no-connection`, `never-synced`,
+`syncing`, `fresh`, `stale`, `partial`. A manual-only device is not in an error
+state and is never told its history failed.
+
+Nothing here can break the app. Every path is inside a `try`, a failure sets a
+message and nothing else, and the unified history is computed from whatever is
+stored — which for a manual-only runner is nothing at all, and their run logs
+alone are still a complete history.
+
+### Storage
+
+`stack.history.sync.v1`, account-scoped with the same `.<user-id>` suffix as
+every other personal slot, through
+`src/storage/historySyncStateRepository.ts`. Five values: last success, last
+complete, last attempt, last failure message, stored count. Outside AppState, so
+no migration and no backup/export/Crew exposure. Neither reading nor writing it
+can fail an app — an unreadable record is a device that has not synced, and a
+refused write is one wasted request later. The hook holds an in-session attempt
+floor so a browser that refuses writes cannot loop on focus events.
+
+No AppState change, no schema change, no Supabase migration, no new dependency.
+
+### The screens
+
+`RunsScreen` keeps its hidden page heading, its `N runs` lead and `Log Run`, and
+gains four things in this order:
+
+1. **`RunnerSnapshot`** — four readings, each carrying its own window: last 7
+   days, last 28 days, runs/week over 8 weeks, longest run of the last 28 days. A
+   window with nothing in it shows `—`, never `0`. Under it, how far back the
+   history reaches, and a status line that is silent for a manual-only runner and
+   for fresh history — the existing rule that freshness is hidden while normal.
+   Two-by-two on a phone, four across at ≥480px: four across a 320px screen
+   truncates `Longest 28d` and crushes `runs/wk` against its value.
+2. **`RunnerVolumeStrip`** — twelve calendar weeks of actual mileage, reusing
+   `PlanActualColumns` with no `planned` series at all, which is the phase in
+   one component: this is what happened, with nothing beside it to be measured
+   against. Weeks before the runner's first recorded run are dropped rather than
+   drawn as zeroes — zero is a true statement about a week STACK has history for
+   and a false one about a week it does not.
+3. **Run History** — `RunnerRunRow` over the unified history, 25 at a time with
+   `Show N more`. A row for a run STACK does not own leads with the source's own
+   name or a neutral `Run`, is quieter than a logged run, and offers no accept,
+   import or review affordance: Run Data's queue is where a run is a decision,
+   and a year of facts must not read as a year of chores. `HistoricalRunSheet`
+   opens it factually and read-only, omitting every metric the source did not
+   supply rather than printing a zero. A STACK run still opens the existing
+   `RunDetailSheet`, unchanged.
+4. **Training Signals** — the existing `TrendCards`, unchanged, and now *below*
+   the history rather than above it. They remain useful plan-relative measures,
+   but STACK Next's ordering rule is actuals before intentions, and the first
+   thing a runner meets on their own history screen should be their history.
+
+`RunnerProfileSheet` ("Your Running") is the drill-down, opened from the
+snapshot: Volume, Frequency, Long runs, and *What STACK has* — the per-metric
+coverage report and the note explaining what is deferred and why. Everything
+deeper lives here rather than as another card above the list.
+
+One shared-component fix went with it: `PlanActualColumns` now drops a stepped
+x-axis label immediately beside the last or selected one. At 320px with twelve
+columns those two dates printed on top of each other, in the new strip and in the
+existing Weekly Mileage detail alike.
+
+### What NEXT-2 deliberately did not do
+
+No Today or Plan change, no Training Signals v2, no historical Build backfill, no
+automatic plan changes, no AI coaching, no readiness or recovery score, no
+wellness, no GPS or routes, no Crew change, no cloud storage of historical data,
+and no new persistent navigation destination. The larger navigation hierarchy is
+revisited in NEXT-4/NEXT-5.
+
+### Tests
+
+108 new tests, all on fake fixtures and fake credentials. `runnerRun.test.ts`
+(historical-only run present, accepted run once, manual and extra runs once,
+overlay without mutating the mirror, run-log precedence, gap filling, nulls not
+zeroes, mixed chronology), `runnerVolume.test.ts` (calendar weeks, partial
+current week, trailing boundary dates at both ends, mixed historical/manual),
+`runnerFrequency.test.ts` (count, elapsed-week denominator, partial weeks, empty
+history), `runnerLongRuns.test.ts` (longest per week and per window, ties,
+sparse data, gaps rather than zeroes), `runnerCoverage.test.ts` (missing,
+partial and sufficient HR coverage, and runs with no optional metrics at all),
+`historySyncPolicy.test.ts` (every trigger and phase rule, including a failed
+first sync waiting out its cooling-off period), `historySyncStateRepository.test.ts`
+(round trip, account scope, corrupt values, refused reads and writes),
+`useRunnerHistory.test.tsx` (no connection, first year in bounded windows, fresh
+avoids a refetch, stale refreshes with one window, a rate-limited window keeps
+what it read, the app usable after a total failure, no retry storm on focus),
+`runnerCompatibility.test.ts` (AppState byte-identical, no Build block earned,
+plan and links intact, Crew projection and Training Signals unchanged,
+manual-only device, and the snapshot agreeing with Training Signals about this
+week's mileage) and `RunnerHistory.test.tsx` (the screen and its sheets).
+
+`npm run check` passes: 121 files, 1,570 tests.
