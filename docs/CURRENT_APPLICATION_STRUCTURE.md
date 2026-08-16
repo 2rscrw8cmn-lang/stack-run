@@ -2339,3 +2339,61 @@ and dedup effect, that it advises nothing, and that it routes to Runs.
 product decisions rather than taste.
 
 `npm run check` passes: 134 files, 1,709 tests.
+
+## Runs Reframe R1 — visual overview (STACK Next)
+
+**Status: implemented on `feature/runs-overview`, awaiting owner acceptance.**
+R1 is not owner-accepted by this document. R2 Full History polish, R3 Run Detail
+enrichment and NEXT-5 remain paused.
+
+### Runs Overview hierarchy
+
+`src/features/runs/RunsScreen.tsx` remains the Runs destination owner and now
+renders this primary-screen sequence:
+
+1. `RunnerSnapshot` — the existing 28-day mileage leads, with the unchanged
+   7-day mileage, eight-week runs/week, 28-day longest run and history freshness
+   facts supporting it;
+2. `RunnerVolumeStrip` — the existing compact weekly-volume series under
+   `Recent Training`;
+3. visual Training Signal summaries — up to four, in existing domain order;
+4. `Recent Runs` — the five newest `RunnerRun`s;
+5. `View All Runs` — the explicit boundary into Full History.
+
+The overview no longer paginates the complete archive inline. Its run rows still
+use `RunnerRunRow`, preserve STACK-owned versus historical-only identity, and
+route to the existing `RunResultDetail` or `HistoricalRunSheet` surfaces.
+`Log Run` remains in the Runs entry actions.
+
+### Signal overview presentation
+
+`src/features/signals/signalOverview.ts` provides a pure presentation selector
+and visual model. It accepts the existing `TrainingSignal` outputs, removes only
+signals without presentable facts, keeps their existing order, and caps the
+overview with `RUNS_OVERVIEW_SIGNAL_LIMIT = 4`. It does not create a ranking or
+change a signal's formula, threshold, window, direction wording or availability.
+
+`SignalOverviewVisual` maps the six existing families to compact factual forms:
+Volume paired bars, Frequency block-textured paired bars, Long runs an eight-week
+gap-preserving progression, Workload paired load bars, Zone mix current/prior
+lower-zone share composition, and Plan context completed/due progress. The
+existing headline and factual support remain readable text and the accessible
+name; color is never the sole carrier of meaning. If more than four signals are
+present, `AllSignalsSheet` exposes the complete existing inventory and hands each
+item to the existing `SignalDetailSheet`.
+
+### Full History boundary
+
+`src/features/runs/FullHistorySheet.tsx` is deliberately a small R1 bridge. It
+uses the existing history rows, starts at 25 newest-first runs, and progressively
+reveals more. Selecting a row opens the existing source-appropriate Run Detail
+and closing detail returns to Full History. R2 owns month grouping, dense archive
+row polish and any archive browsing decisions; none are implemented here.
+
+### Data and regression boundary
+
+R1 adds presentation helpers and CSS only. It does not change
+`unifiedRunnerHistory`, reconciliation or sync, snapshot/volume/frequency/long-
+run calculations, Training Signal formulas or ordering, RunLog, Build placement,
+Crew projection, Plan state, schemas, migrations or persistence. Run Detail 2.0
+and its on-demand Intervals profiles are preserved; QA stream fixtures remain R3.

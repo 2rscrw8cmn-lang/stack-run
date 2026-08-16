@@ -21,13 +21,22 @@ import { RunnerRunRow } from "./RunnerRunRow";
 import { RunnerSnapshot } from "./RunnerSnapshot";
 import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
 import { SignalCards } from "../signals/SignalCards";
+import { AllSignalsSheet } from "../signals/AllSignalsSheet";
 import { SignalDetailSheet } from "../signals/SignalDetailSheet";
 import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo";
+import {
+  RUNS_OVERVIEW_SIGNAL_LIMIT,
+  selectOverviewSignals,
+} from "../signals/signalOverview";
 import { presentableRunnerSignals } from "../../signals/runnerSignals";
 import type { SignalId } from "../../signals/trainingSignal";
+import { FULL_HISTORY_PAGE_SIZE, FullHistorySheet } from "./FullHistorySheet";
+import "./runsOverview.css";
 
-/** How many history rows are rendered before the runner asks for more. */
-export const HISTORY_PAGE_SIZE = 25;
+/** The archive keeps NEXT-2's bridge paging while R2 owns its final behavior. */
+export const HISTORY_PAGE_SIZE = FULL_HISTORY_PAGE_SIZE;
+/** Runs Overview is orientation, not the archive. */
+export const RECENT_RUN_COUNT = 5;
 
 interface RunsScreenProps {
   plan: TrainingPlan;
@@ -64,25 +73,21 @@ interface RunsScreenProps {
  * it while Intervals was watching and never thought about STACK at all. A run
  * does not have to be accepted into STACK to be a fact about the runner.
  *
- * The hierarchy is deliberately shallow, and evolves the existing screen rather
- * than adding a destination (NEXT-2 adds no navigation):
+ * R1 turns the destination into a progressive-disclosure overview:
  *
- * 1. a compact **runner snapshot** — four readings, each with its window;
- * 2. a small **recent-volume strip** — twelve weeks of actual mileage;
- * 3. the **run history** itself, which is what the screen is for;
- * 4. **Training Signals**, below the history.
- *
- * Signals moved *under* the history in NEXT-2 and stay there. STACK Next's
- * ordering rule is actuals before intentions, and the first thing a runner
- * should meet on their own history screen is their history.
+ * 1. current running snapshot;
+ * 2. recent-training shape;
+ * 3. up to four visual Training Signal summaries;
+ * 4. five recent runs;
+ * 5. a separate Full History boundary.
  *
  * What NEXT-3 changed is the signals themselves rather than where they sit.
  * They are no longer seven plan-relative statistics; they are a short ordered
  * list of observations about the runner's actual history, each one a sentence
  * with its evidence and its two windows underneath — see `src/signals/`. This
  * screen computes none of them. It asks the domain which signals are
- * presentable, renders them in the order it is given, and opens the detail
- * behind whichever one is tapped.
+ * presentable, caps only the overview presentation in that same order, and
+ * opens the existing detail behind whichever one is tapped.
  */
 export function RunsScreen({
   plan,
@@ -105,8 +110,11 @@ export function RunsScreen({
   const [isConnectOpen, setConnectOpen] = useState(false);
   const [selectedSignalId, setSelectedSignalId] = useState<SignalId | null>(null);
   const [isSignalOpen, setSignalOpen] = useState(false);
-  const [visibleRuns, setVisibleRuns] = useState(HISTORY_PAGE_SIZE);
+  const [isAllSignalsOpen, setAllSignalsOpen] = useState(false);
+  const [isFullHistoryOpen, setFullHistoryOpen] = useState(false);
   const returnToSignal = useRef(false);
+  const returnToAllSignals = useRef(false);
+  const returnToFullHistory = useRef(false);
   /**
    * The run the entry sheet is open for, held rather than looked up.
    *
@@ -137,6 +145,7 @@ export function RunsScreen({
   const runs = isSignalDemo ? signalDemoRuns(today) : actualRuns;
   const snapshot = runnerSnapshot(runs, today);
   const signals = presentableRunnerSignals({ runs, today, plan, runLogs });
+  const overviewSignals = selectOverviewSignals(signals);
   const selectedSignal =
     signals.find((signal) => signal.id === selectedSignalId) ?? null;
   const selected =
@@ -188,6 +197,9 @@ export function RunsScreen({
     if (returnToSignal.current && selectedSignalId) {
       returnToSignal.current = false;
       setSignalOpen(true);
+    } else if (returnToFullHistory.current) {
+      returnToFullHistory.current = false;
+      setFullHistoryOpen(true);
     }
   }
 
@@ -206,6 +218,9 @@ export function RunsScreen({
   /** The change was made: leave the sheets behind and show the result. */
   function commit(announce: string) {
     returnToDetail.current = false;
+    returnToSignal.current = false;
+    returnToAllSignals.current = false;
+    returnToFullHistory.current = false;
     setAnnouncement(announce);
     setEditOpen(false);
   }
@@ -220,15 +235,14 @@ export function RunsScreen({
     returnToDetail.current = false;
   }
 
-  const shown = runs.slice(0, visibleRuns);
-  const remaining = runs.length - shown.length;
+  const recentRuns = runs.slice(0, RECENT_RUN_COUNT);
 
   return (
     <div className="runs-screen">
       <div className="runs-screen__lead">
         <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>Runs</h1>
         <div className="runs-screen__title-row">
-          <p className="runs-screen__count data-value">
+          <p className="runs-screen__count machine-label">
             {runs.length === 0
               ? "No runs yet"
               : `${runs.length} ${runs.length === 1 ? "run" : "runs"}`}
@@ -272,42 +286,45 @@ export function RunsScreen({
           <Section
             className="runner-volume-section"
             icon={<BarChart3 size={15} strokeWidth={2} />}
-            title="Recent Volume"
+            title="Recent Training"
           >
             <RunnerVolumeStrip weeks={snapshot.weeks} />
           </Section>
 
-          <Section
-            className="runs-recent"
-            icon={<History size={15} strokeWidth={2} />}
-            title="Run History"
-            meta={<span className="machine-label">{runs.length}</span>}
-          >
-            <ul className="runs-screen__list">
-              {shown.map((run) => (
-                <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
-              ))}
-            </ul>
-            {remaining > 0 && (
-              <div className="runs-screen__more">
-                <Button
-                  variant="ghost"
-                  onClick={() => setVisibleRuns((count) => count + HISTORY_PAGE_SIZE)}
-                >
-                  {`Show ${Math.min(remaining, HISTORY_PAGE_SIZE)} more`}
-                </Button>
-              </div>
-            )}
-          </Section>
-
           <SignalCards
-            signals={signals}
+            signals={overviewSignals}
+            runs={runs}
+            today={today}
             hasHistory={runs.length > 0}
+            hiddenSignalCount={Math.max(0, signals.length - RUNS_OVERVIEW_SIGNAL_LIMIT)}
+            onViewAll={() => setAllSignalsOpen(true)}
             onOpenSignal={(signal) => {
               setSelectedSignalId(signal.id);
               setSignalOpen(true);
             }}
           />
+
+          <Section
+            className="runs-recent"
+            icon={<History size={15} strokeWidth={2} />}
+            title="Recent Runs"
+            meta={
+              <span className="machine-label">
+                {recentRuns.length} OF {runs.length}
+              </span>
+            }
+          >
+            <ul className="runs-screen__list">
+              {recentRuns.map((run) => (
+                <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
+              ))}
+            </ul>
+            <div className="runs-screen__more">
+              <Button variant="ghost" onClick={() => setFullHistoryOpen(true)}>
+                View All Runs
+              </Button>
+            </div>
+          </Section>
         </>
       )}
 
@@ -335,9 +352,39 @@ export function RunsScreen({
           if (returnToSignal.current && selectedSignalId) {
             returnToSignal.current = false;
             setSignalOpen(true);
+          } else if (returnToFullHistory.current) {
+            returnToFullHistory.current = false;
+            setFullHistoryOpen(true);
           }
         }}
       />
+
+      <FullHistorySheet
+        runs={runs}
+        isOpen={isFullHistoryOpen}
+        onClose={() => setFullHistoryOpen(false)}
+        onOpenRun={(run) => {
+          setFullHistoryOpen(false);
+          openRun(run);
+          returnToFullHistory.current = true;
+        }}
+      />
+
+      {signals.length > RUNS_OVERVIEW_SIGNAL_LIMIT && (
+        <AllSignalsSheet
+          signals={signals}
+          runs={runs}
+          today={today}
+          isOpen={isAllSignalsOpen}
+          onClose={() => setAllSignalsOpen(false)}
+          onOpenSignal={(signal) => {
+            setAllSignalsOpen(false);
+            setSelectedSignalId(signal.id);
+            setSignalOpen(true);
+            returnToAllSignals.current = true;
+          }}
+        />
+      )}
 
       {selected && (
         <RunDetailSheet
@@ -383,7 +430,13 @@ export function RunsScreen({
         isOpen={isSignalOpen}
         onClose={() => {
           setSignalOpen(false);
-          if (!returnToSignal.current) setSelectedSignalId(null);
+          if (returnToAllSignals.current) {
+            returnToAllSignals.current = false;
+            setSelectedSignalId(null);
+            setAllSignalsOpen(true);
+          } else if (!returnToSignal.current) {
+            setSelectedSignalId(null);
+          }
         }}
         onOpenRun={(runId) => {
           const run = runs.find((candidate) => candidate.id === runId);

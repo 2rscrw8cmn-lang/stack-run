@@ -11,7 +11,9 @@
 /* The comparison window now lives once at section level, so each observation can
    be shorter without losing its evidence. */
 .signal-cards .signal-card {
-  gap: var(--space-2);
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
   padding: 9px 9px 9px 12px;
 }
 
@@ -19,6 +21,111 @@
 .signal-cards .signal-card__body { gap: 2px; }
 .signal-cards .signal-card__mark { width: 20px; height: 20px; }
 .signal-cards .signal-card__evidence { font-size: 11px; line-height: 1.35; }
+
+.signal-card__topline {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.signal-card__visual {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin-left: 28px;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+}
+
+.signal-visual__row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.signal-visual__label,
+.signal-visual__value,
+.signal-visual__values {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.signal-visual__value {
+  min-width: 42px;
+  color: var(--text);
+  text-align: right;
+}
+
+.signal-visual__track {
+  position: relative;
+  overflow: hidden;
+  height: 7px;
+  background: color-mix(in srgb, var(--signal-accent) 14%, var(--surface-soft));
+}
+
+.signal-visual__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--signal-fill);
+  background: var(--signal-accent);
+}
+
+.signal-visual[data-texture="blocks"] .signal-visual__track,
+.signal-visual__track--blocks {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 7px, var(--bg) 7px 9px),
+    color-mix(in srgb, var(--signal-accent) 14%, var(--surface-soft));
+}
+
+.signal-visual[data-texture="blocks"] .signal-visual__fill,
+.signal-visual__track--blocks .signal-visual__fill {
+  background:
+    repeating-linear-gradient(90deg, var(--signal-accent) 0 7px, var(--bg) 7px 9px);
+}
+
+.signal-visual--trend svg {
+  display: block;
+  width: 100%;
+  height: 34px;
+  overflow: visible;
+}
+
+.signal-visual__guide {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.signal-visual__line {
+  fill: none;
+  stroke: var(--signal-accent);
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+}
+
+.signal-visual__values {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.signal-cards__all {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.signal-cards__all .button {
+  min-height: 44px;
+}
 
 /* One comparison surface replaces the old four independent KPI tiles. */
 .signal-comparison {

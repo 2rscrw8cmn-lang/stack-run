@@ -74,9 +74,9 @@ describe("Runs", () => {
     expect(
       screen.getByRole("button", { name: /^Runner snapshot\./ }),
     ).toHaveAccessibleName(
-      "Runner snapshot. 5.5 miles over the last 7 days. 5.5 miles over the last 28 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
+      "Runner snapshot. 5.5 miles over the last 28 days. 5.5 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
     );
-    expect(screen.getByRole("heading", { name: "Run History" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
   });
 
   it("lists scheduled, extra, typed in and synced runs together, newest first", () => {

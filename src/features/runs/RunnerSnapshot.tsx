@@ -12,7 +12,7 @@ interface RunnerSnapshotProps {
 }
 
 /**
- * The runner, in four facts.
+ * The runner, in four facts with the 28-day volume as the lead.
  *
  * This is the first thing NEXT-2 puts in front of a person, and the restraint is
  * the feature. The calculation layer behind it can produce a dozen more numbers;
@@ -20,7 +20,7 @@ interface RunnerSnapshotProps {
  * `docs/STACK_NEXT.md` explicitly rules out. Four readings fit one phone row
  * without scrolling and can be taken in at a glance.
  *
- * **Every number states its window.** `28.4` means nothing; `28.4 mi / Last 7
+ * **Every number states its window.** `28.4` means nothing; `28.4 mi / Last 28
  * days` is a fact. The windows are in the labels rather than in a legend
  * somewhere, because a reading and its window are one thing.
  *
@@ -37,18 +37,18 @@ export function RunnerSnapshot({
 
   const readings = [
     {
-      key: "last-7",
-      value: formatMiles(lastWeek.miles),
-      unit: "mi",
-      label: "Last 7 days",
-      spoken: `${formatMiles(lastWeek.miles)} miles over the last 7 days`,
-    },
-    {
       key: "last-28",
       value: formatMiles(lastFourWeeks.miles),
       unit: "mi",
       label: "Last 28 days",
       spoken: `${formatMiles(lastFourWeeks.miles)} miles over the last 28 days`,
+    },
+    {
+      key: "last-7",
+      value: formatMiles(lastWeek.miles),
+      unit: "mi",
+      label: "Last 7 days",
+      spoken: `${formatMiles(lastWeek.miles)} miles over the last 7 days`,
     },
     {
       key: "frequency",
@@ -82,7 +82,12 @@ export function RunnerSnapshot({
       >
         <dl className="runner-snapshot__grid">
           {readings.map((reading) => (
-            <div key={reading.key} className="runner-snapshot__reading" data-reading={reading.key}>
+            <div
+              key={reading.key}
+              className="runner-snapshot__reading"
+              data-reading={reading.key}
+              data-lead={reading.key === "last-28" ? "true" : undefined}
+            >
               <dd className="runner-snapshot__value data-value">
                 {reading.value}
                 <span className="runner-snapshot__unit">{reading.unit}</span>

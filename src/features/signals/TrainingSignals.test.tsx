@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { addDaysToLocalDate } from "../../domain/dates";
@@ -65,7 +65,9 @@ function renderRuns(
 }
 
 function signalCards() {
-  return [...document.querySelectorAll<HTMLElement>(".signal-card")];
+  return [
+    ...document.querySelectorAll<HTMLElement>(".signal-cards.section .signal-card"),
+  ];
 }
 
 function cardOrder() {
@@ -91,13 +93,13 @@ describe("Training Signals cards", () => {
     expect(screen.getByText("Last 28 days vs prior 28 days")).toBeInTheDocument();
   });
 
-  it("stays under the Run History rather than moving to the top of Runs", () => {
+  it("sits between Recent Training and the five-run preview", () => {
     renderRuns(history(RISING_VOLUME));
 
     const sections = [...document.querySelectorAll(".section__title")].map(
       (title) => title.textContent,
     );
-    expect(sections).toEqual(["Recent Volume", "Run History", "Training Signals"]);
+    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Runs"]);
   });
 
   it("orders what changed above what did not, then by family", () => {
@@ -111,6 +113,42 @@ describe("Training Signals cards", () => {
     expect(cardOrder()).toEqual([
       "volume-trend",
       "long-run-progression",
+      "run-frequency",
+      "plan-completion",
+    ]);
+  });
+
+  it("caps the visual overview at four and keeps the remaining domain-ordered signals reachable", async () => {
+    const user = userEvent.setup();
+    renderRuns(
+      history({
+        current: [10, 4],
+        baseline: [10, 3],
+        currentOptions: {
+          trainingLoad: 60,
+          hrZoneSeconds: [600, 600, 600],
+        },
+        baselineOptions: {
+          trainingLoad: 40,
+          hrZoneSeconds: [200, 200, 1_600],
+        },
+      }),
+    );
+
+    expect(signalCards()).toHaveLength(4);
+    expect(signalCards().every((card) => card.querySelector(".signal-card__visual"))).toBe(true);
+    await user.click(screen.getByRole("button", { name: "View All Signals" }));
+
+    const inventory = within(screen.getByRole("dialog", { name: "All Training Signals" }));
+    const allCards = inventory
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("signal-card"));
+    expect(allCards).toHaveLength(6);
+    expect(allCards.map((card) => card.dataset.signal)).toEqual([
+      "volume-trend",
+      "long-run-progression",
+      "workload-trend",
+      "zone-distribution",
       "run-frequency",
       "plan-completion",
     ]);

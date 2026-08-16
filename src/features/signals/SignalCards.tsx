@@ -1,16 +1,23 @@
 import { Activity, ChevronRight, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { Section } from "../../components/ui/Section";
+import type { RunnerRun } from "../../history/runnerRun";
 import type {
   SignalDirection,
   TrainingSignal,
 } from "../../signals/trainingSignal";
+import { Button } from "../../components/ui/Button";
+import { SignalOverviewVisual } from "./SignalOverviewVisual";
 import "./signalPresentationCleanup.css";
 
 interface SignalCardsProps {
   signals: TrainingSignal[];
+  runs: readonly RunnerRun[];
+  today: string;
   /** True when the runner has runs but no signal can be computed from them yet. */
   hasHistory: boolean;
   onOpenSignal: (signal: TrainingSignal) => void;
+  onViewAll?: () => void;
+  hiddenSignalCount?: number;
 }
 
 /**
@@ -21,7 +28,15 @@ interface SignalCardsProps {
  * rather than repeated on every row. Plan context is the exception and keeps its
  * own "Plan to date" label visible.
  */
-export function SignalCards({ signals, hasHistory, onOpenSignal }: SignalCardsProps) {
+export function SignalCards({
+  signals,
+  runs,
+  today,
+  hasHistory,
+  onOpenSignal,
+  onViewAll,
+  hiddenSignalCount = 0,
+}: SignalCardsProps) {
   if (signals.length === 0 && !hasHistory) return null;
   const hasHistoricalComparison = signals.some(
     (signal) => signal.family !== "plan-context",
@@ -45,39 +60,72 @@ export function SignalCards({ signals, hasHistory, onOpenSignal }: SignalCardsPr
               Last 28 days vs prior 28 days
             </p>
           )}
-          <ul className="signal-cards__list">
-            {signals.map((signal) => (
-              <li key={signal.id}>
-                <button
-                  type="button"
-                  className="signal-card"
-                  data-signal={signal.id}
-                  data-direction={signal.direction ?? "none"}
-                  aria-label={`${signal.headline}. ${signal.support} ${signal.windowLabel}. Open ${signal.title} detail.`}
-                  onClick={() => onOpenSignal(signal)}
-                >
-                  <span className="signal-card__mark" aria-hidden="true">
-                    <DirectionGlyph direction={signal.direction} />
-                  </span>
-                  <span className="signal-card__body">
-                    <span className="signal-card__headline">{signal.headline}</span>
-                    <span className="signal-card__evidence">{signal.support}</span>
-                    {signal.family === "plan-context" && (
-                      <span className="signal-card__window machine-label">
-                        {signal.windowLabel}
-                      </span>
-                    )}
-                  </span>
-                  <span className="signal-card__more" aria-hidden="true">
-                    <ChevronRight size={16} strokeWidth={2} />
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <SignalSummaryList
+            signals={signals}
+            runs={runs}
+            today={today}
+            onOpenSignal={onOpenSignal}
+          />
+          {hiddenSignalCount > 0 && onViewAll && (
+            <div className="signal-cards__all">
+              <Button variant="ghost" onClick={onViewAll}>
+                View All Signals
+              </Button>
+            </div>
+          )}
         </>
       )}
     </Section>
+  );
+}
+
+interface SignalSummaryListProps {
+  signals: TrainingSignal[];
+  runs: readonly RunnerRun[];
+  today: string;
+  onOpenSignal: (signal: TrainingSignal) => void;
+}
+
+export function SignalSummaryList({
+  signals,
+  runs,
+  today,
+  onOpenSignal,
+}: SignalSummaryListProps) {
+  return (
+    <ul className="signal-cards__list">
+      {signals.map((signal) => (
+        <li key={signal.id}>
+          <button
+            type="button"
+            className="signal-card"
+            data-signal={signal.id}
+            data-direction={signal.direction ?? "none"}
+            aria-label={`${signal.headline}. ${signal.support} ${signal.windowLabel}. Open ${signal.title} detail.`}
+            onClick={() => onOpenSignal(signal)}
+          >
+            <span className="signal-card__topline">
+              <span className="signal-card__mark" aria-hidden="true">
+                <DirectionGlyph direction={signal.direction} />
+              </span>
+              <span className="signal-card__body">
+                <span className="signal-card__headline">{signal.headline}</span>
+                <span className="signal-card__evidence">{signal.support}</span>
+                {signal.family === "plan-context" && (
+                  <span className="signal-card__window machine-label">
+                    {signal.windowLabel}
+                  </span>
+                )}
+              </span>
+              <span className="signal-card__more" aria-hidden="true">
+                <ChevronRight size={16} strokeWidth={2} />
+              </span>
+            </span>
+            <SignalOverviewVisual signal={signal} runs={runs} today={today} />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -1,0 +1,143 @@
+/* R1 — Runs Overview. Presentation only; every value comes from NEXT-2/NEXT-3. */
+
+.runs-screen .runs-screen__count {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.runs-screen .runner-snapshot {
+  margin-top: 8px;
+}
+
+.runs-screen .runner-snapshot__readings {
+  padding: 14px;
+  border-color: var(--data-border);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent 54%),
+    var(--data-surface);
+}
+
+.runs-screen .runner-snapshot__grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 8px;
+}
+
+.runs-screen .runner-snapshot__reading[data-lead="true"] {
+  grid-column: 1 / -1;
+  padding: 0 0 12px;
+  border-left: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.runs-screen .runner-snapshot__reading:not([data-lead="true"]) {
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+.runs-screen .runner-snapshot__reading[data-reading="last-7"] {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.runs-screen .runner-snapshot__reading[data-lead="true"] .runner-snapshot__value {
+  color: var(--accent);
+  font-size: clamp(32px, 10vw, 42px);
+  letter-spacing: -0.045em;
+}
+
+.runs-screen .runner-snapshot__reading[data-lead="true"] .runner-snapshot__unit {
+  font-size: 12px;
+}
+
+.runs-screen .runner-snapshot__reading:not([data-lead="true"]) .runner-snapshot__value {
+  font-size: clamp(15px, 4.7vw, 19px);
+}
+
+.runs-screen .runner-snapshot__reading dt {
+  overflow-wrap: anywhere;
+}
+
+.runner-volume-section.section {
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.runner-volume-section .plan-actual-chart__figure {
+  min-height: 0;
+  max-height: 148px;
+}
+
+.runner-volume-section .plan-actual-chart__key {
+  display: none;
+}
+
+.runs-recent.section {
+  gap: 8px;
+}
+
+.runs-recent .run-row {
+  min-height: 58px;
+}
+
+.runs-screen__more > .button {
+  min-height: 44px;
+  min-width: 154px;
+}
+
+.full-history,
+.all-signals,
+.runs-screen {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.full-history,
+.all-signals {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.full-history__context,
+.all-signals__context {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.075em;
+}
+
+@media (min-width: 480px) {
+  .runs-screen .runner-snapshot__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .runs-screen .runner-snapshot__reading:nth-child(odd) {
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+  }
+
+  .runs-screen .runner-snapshot__reading[data-lead="true"],
+  .runs-screen .runner-snapshot__reading[data-reading="last-7"] {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 340px) {
+  .runs-screen .runner-snapshot__readings {
+    padding: 12px 10px;
+  }
+
+  .runs-screen .runner-snapshot__grid {
+    gap-inline: 5px;
+  }
+
+  .runs-screen .runner-snapshot__reading:not([data-lead="true"]) {
+    padding-left: 5px;
+  }
+
+  .runs-screen .runner-snapshot__reading:not([data-lead="true"]) .runner-snapshot__unit {
+    font-size: 8px;
+  }
+}

@@ -1,6 +1,6 @@
 # Runs Reframe — Implementation Plan
 
-**Status:** proposed engineering sequence, pending owner acceptance of the product docs.  
+**Status:** R0 is accepted; R1 is implemented and awaiting owner acceptance. R2, R3 and NEXT-5 remain paused.
 **Integration branch:** `feature/stack-next`.
 
 ## Why this exists
@@ -58,6 +58,8 @@ Acceptance:
 ## R1 — Runs Overview
 
 **Recommended branch:** `feature/runs-overview`
+
+**Implementation status:** implemented on `feature/runs-overview`, awaiting owner acceptance. This is not an acceptance record.
 
 Goal:
 
@@ -138,6 +140,40 @@ R1 does not:
 Use the reusable QA Runner. Do not add `?demo=runs`.
 
 Review at 320 / 390 / 430 / desktop and real iPhone Safari before acceptance.
+
+### Implemented R1 surface
+
+`RunsScreen` now presents the product hierarchy in the required order: current
+snapshot, compact recent weekly volume, up to four visual Training Signals, five
+recent unified runs, then `View All Runs`. The snapshot, volume and signal domain
+outputs are consumed unchanged.
+
+Signal visualization mapping is presentation-only:
+
+- Volume: current-versus-prior paired bars;
+- Frequency: current-versus-prior block-textured bars;
+- Long runs: eight-week longest-run progression with missing weeks left as gaps;
+- Workload: current-versus-prior load bars;
+- Zone mix: current-versus-prior lower-zone share composition;
+- Plan context: completed-versus-due progress.
+
+`selectOverviewSignals` filters only non-presentable outputs, preserves the
+existing domain order, and takes the first four. It does not score, rerank or
+change availability. When more signals exist, `View All Signals` opens the
+existing signal inventory and preserves the existing signal-detail hand-off.
+
+The overview takes the first five entries from newest-first
+`unifiedRunnerHistory`. `View All Runs` opens a reversible R1 sheet boundary that
+reuses the existing history row and 25-at-a-time reveal. Month grouping, archive
+row polish and browsing behavior remain R2 work. STACK-owned and historical-only
+runs preserve their existing detail routes, and Run Detail 2.0 is unchanged.
+
+Focused tests cover selection/order/capping, every visual family mapping,
+unchanged snapshot and volume facts, five-run preview and newest-first behavior,
+the separate Full History surface, both run-detail routes, signal-detail routing,
+Log Run, factual accessible text, native button semantics, and the 320px/no-
+overflow presentation contract. R1 changes no history reconciliation, signal
+formula, Build, Plan, Crew, persistence, schema or migration behavior.
 
 ## R2 — Full History archive
 
