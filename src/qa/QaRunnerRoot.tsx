@@ -15,21 +15,18 @@ import { isQaPreviewHost, isQaRunnerEmail } from "./qaRunner";
  */
 export function QaRunnerRoot() {
   const preview = isQaPreviewHost();
-  const [email, setEmail] = useState<string | null | undefined>(
-    preview ? undefined : null,
+  /**
+   * Availability is process-stable, and reading it once lets the initial state
+   * describe every synchronous case. The effect below then owns only the
+   * asynchronous auth subscription, so it never needs a synchronous setState.
+   */
+  const [availability] = useState(getSupabaseAvailability);
+  const [email, setEmail] = useState<string | null | undefined>(() =>
+    preview && availability.configured ? undefined : null,
   );
 
   useEffect(() => {
-    if (!preview) {
-      setEmail(null);
-      return;
-    }
-
-    const availability = getSupabaseAvailability();
-    if (!availability.configured) {
-      setEmail(null);
-      return;
-    }
+    if (!preview || !availability.configured) return;
 
     let alive = true;
     void availability.client.auth.getSession().then(({ data }) => {
@@ -46,7 +43,7 @@ export function QaRunnerRoot() {
       alive = false;
       subscription.unsubscribe();
     };
-  }, [preview]);
+  }, [availability, preview]);
 
   if (preview && email === undefined) {
     return (
