@@ -22,6 +22,7 @@ import { RunnerSnapshot } from "./RunnerSnapshot";
 import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
 import { SignalCards } from "../signals/SignalCards";
 import { SignalDetailSheet } from "../signals/SignalDetailSheet";
+import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo";
 import { presentableRunnerSignals } from "../../signals/runnerSignals";
 import type { SignalId } from "../../signals/trainingSignal";
 
@@ -131,7 +132,9 @@ export function RunsScreen({
   const returnToDetail = useRef(false);
 
   const history = runHistory(plan, runLogs);
-  const runs = runnerRuns ?? fallbackRunnerRuns(runLogs);
+  const isSignalDemo = isSignalDemoEnabled();
+  const actualRuns = runnerRuns ?? fallbackRunnerRuns(runLogs);
+  const runs = isSignalDemo ? signalDemoRuns(today) : actualRuns;
   const snapshot = runnerSnapshot(runs, today);
   const signals = presentableRunnerSignals({ runs, today, plan, runLogs });
   const selectedSignal =
@@ -230,15 +233,22 @@ export function RunsScreen({
               ? "No runs yet"
               : `${runs.length} ${runs.length === 1 ? "run" : "runs"}`}
           </p>
-          <Button
-            variant="secondary"
-            className="runs-screen__log"
-            icon={<Plus size={18} strokeWidth={2} />}
-            onClick={() => openEntry(null, false)}
-          >
-            Log Run
-          </Button>
+          {!isSignalDemo && (
+            <Button
+              variant="secondary"
+              className="runs-screen__log"
+              icon={<Plus size={18} strokeWidth={2} />}
+              onClick={() => openEntry(null, false)}
+            >
+              Log Run
+            </Button>
+          )}
         </div>
+        {isSignalDemo && (
+          <p className="machine-label" role="status">
+            SIGNAL DEMO · FAKE PREVIEW DATA · REMOVE ?demo=signals TO RETURN
+          </p>
+        )}
         {runs.length > 0 && (
           <RunnerSnapshot
             snapshot={snapshot}
