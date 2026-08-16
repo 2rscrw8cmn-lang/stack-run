@@ -636,8 +636,8 @@ product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
 | NEXT-0 | Direction + data contract | `feature/stack-next` | Complete — August 15, 2026 |
 | NEXT-1 | Historical Data Foundation | `feature/historical-data` | Accepted and merged (PR #100), August 15, 2026; deployed smoke test outstanding |
 | NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Accepted and merged (PR #102, with #103), August 15, 2026 |
-| NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Implemented; owner acceptance outstanding |
-| NEXT-4 | Today / Home revision | `feature/today-next` | Not started |
+| NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Accepted and merged (PR #104), August 15, 2026 |
+| NEXT-4 | Today / Home revision | `feature/today-next` | Implemented; owner acceptance outstanding |
 | NEXT-5 | Plan role revision | `feature/plan-next` | Not started |
 | NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Not started |
 | NEXT-7 | Product integration + release candidate | — | Not started |
@@ -718,7 +718,7 @@ long-run and data-coverage detail.
 `docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-2
 into `feature/stack-next`, including the account-isolation follow-up in PR #103.
 
-### NEXT-3 — implemented, awaiting owner acceptance
+### NEXT-3 — accepted and merged
 
 Training Signals stop asking *did the runner follow the plan?* and start asking
 *what is actually changing in this runner's training?* Seven plan-relative
@@ -755,11 +755,68 @@ additional requirement rather than a relaxation.
   persistence, no dependency, no migration.
 - `npm run check` passes: 131 files, 1,660 tests, 126 of them new and all on
   fake fixtures.
-- **Outstanding:** owner acceptance, and NEXT-1's deployed real-data smoke test.
-  NEXT-3 does not depend on it — the two optional-metric signals are
-  coverage-gated in both windows and vanish when the metric is absent — but what
-  it would establish for this phase is whether the owner's real Intervals
-  coverage is good enough for those two cards to appear at all.
+- **Outstanding:** NEXT-1's deployed real-data smoke test. NEXT-3 does not
+  depend on it — the two optional-metric signals are coverage-gated in both
+  windows and vanish when the metric is absent — but what it would establish for
+  this phase is whether the owner's real Intervals coverage is good enough for
+  those two cards to appear at all.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact either.
+
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-3
+into `feature/stack-next` in PR #104, including the deployed presentation
+cleanup accepted with it.
+
+### NEXT-4 — implemented, awaiting owner acceptance
+
+Today stops being a small copy of Plan. It asked *what does my plan say today?*;
+it now asks **what matters now?** — and the plan is not hidden to achieve it. A
+scheduled run today still leads, because it is very likely the runner's most
+important immediate action. What changed is that the rest of the screen
+understands the runner beyond that one workout, so the page is useful on a rest
+day, before a plan starts, after a race, and for a runner whose history STACK
+holds but whose plan has nothing to say.
+
+The element-by-element audit — KEEP / REFRAME / COMPRESS, and what happened to
+each — is recorded in `docs/STACK_NEXT_IMPLEMENTATION.md`. In brief:
+
+- `src/features/today/todayModel.ts` is a pure, React-free, separately tested
+  model. Every decision the screen makes is resolved there; the component
+  renders what it is handed and computes no mileage, defines no window and
+  grades no adherence.
+- **Nothing was recalculated.** Trailing mileage is `runnerVolume`, frequency is
+  `runnerFrequency`, the recent longest run is `runnerLongRuns`, the week's
+  intent is the existing `selectPlanWeekViewModel`, and the observation is the
+  NEXT-3 signal domain unchanged. No new metric window and no second definition
+  of a mile, a week or a run entered the product.
+- **Recent training is at most three facts**, each stating its own window, and
+  never the four-reading Runner Snapshot copied over from Runs. A reading STACK
+  cannot state is omitted; a fully known empty window is still `0 mi`. There is
+  no "not enough history" card anywhere on Today.
+- **At most one Training Signal**, chosen by a documented deterministic rule:
+  presentable only, never plan context, never `steady`, highest-ranked survivor
+  of the NEXT-3 ordering, otherwise nothing. It is an observation and never
+  advice, and it routes into Runs rather than duplicating NEXT-3's detail.
+- **One fact has one job.** A reading the chosen observation already states is
+  dropped by rule rather than by review.
+- **This Week is actual-first.** Miles and runs actually run lead; scheduled
+  completion, the bar, the day markers and the extra chip sit underneath as
+  context. The two measures stay separate exactly as before — an unplanned run
+  is real mileage and still cannot tick off a workout nobody scheduled.
+- **Everything worth preserving was preserved**: scheduled completion, editing
+  and deleting a completed run, Run Found review with dismiss and ignore, manual
+  fallback, sync retry, the earned-block handoff into Build, Crew access and the
+  existing accessible focus and live-region behaviour.
+- Today consumes the history the application already owns, through `AppShell`.
+  No second history hook, sync, persistence or stale/fresh lifecycle.
+- No Plan redesign (NEXT-5), no Build domain change or historical backfill
+  (NEXT-6), no Crew change, no new projection field, no navigation change, no
+  persistence, schema, migration or dependency change, no readiness state and no
+  score.
+- `npm run check` passes: 134 files, 1,709 tests, 53 of them new and all on fake
+  fixtures.
+- **Outstanding:** owner acceptance, real-device iPhone Safari review of the
+  revised screen, and NEXT-1's deployed real-data smoke test.
 - `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
   source fact either.
 

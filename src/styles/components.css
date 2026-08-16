@@ -557,32 +557,6 @@
   color: var(--text-muted);
 }
 
-/*
- * What was actually run, under the bar rather than in it. Three even columns
- * so the row still reads at 320px, and quieter type than the scheduled count
- * above it: this is context for the plan's progress, not a second score.
- */
-.this-week__actuals {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.this-week__actuals dt {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
-
-.this-week__actuals dd {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .this-week__days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -832,15 +806,6 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--accent);
-}
-
-/* A rest day asks nothing of you, so it does not wear the action colour. */
-.today-workout-card--rest {
-  background: var(--surface-soft);
-}
-
-.today-workout-card--rest .today-workout-card__eyebrow {
-  color: var(--text-muted);
 }
 
 .today-workout-card__header {
@@ -4191,7 +4156,7 @@ textarea.run-input {
   border-radius: 12px;
 }
 
-.today-workout-card:not(.today-workout-card--rest)::before,
+.today-workout-card::before,
 .run-found::before {
   content: "";
   position: absolute;
@@ -4212,8 +4177,6 @@ textarea.run-input {
   letter-spacing: -0.045em;
 }
 
-.this-week__actuals dt,
-.this-week__actuals dd,
 .this-week__weekday,
 .run-found__facts dt,
 .run-found__facts dd,

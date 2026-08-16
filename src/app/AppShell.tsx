@@ -206,9 +206,10 @@ export function AppShell({
           <TodayScreen
             plan={plan}
             runLogs={runLogs}
+            runnerRuns={runnerHistory?.runs}
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
-            onViewTrends={() => onTabChange("runs")}
+            onViewRuns={() => onTabChange("runs")}
             onViewBuild={() => onTabChange("build")}
             onStartPlacing={(runLogId) => {
               onPlacingChange(runLogId);

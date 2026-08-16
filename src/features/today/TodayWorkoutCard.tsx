@@ -11,25 +11,22 @@ interface TodayWorkoutCardProps {
 }
 
 /**
- * The one card on Today, because it is the one thing on the screen you can
- * act on. Everything else is a section.
+ * The run the plan is asking for today.
+ *
+ * The one card on Today, because it is the one thing on the screen you can act
+ * on. Everything else is a section, a note or a line.
+ *
+ * NEXT-4 reorganized the screen around what matters now rather than around what
+ * the plan says, and this card is the case where those are the same thing: a
+ * runner with a scheduled run today is almost certainly looking at their most
+ * important immediate action, so it still leads and still carries Mark Complete.
+ * A rest day is no longer rendered here — a day that asks for nothing is a
+ * `TodayNote`, not a card with the shape of a task.
  */
 export function TodayWorkoutCard({
   workout,
   onMarkComplete,
 }: TodayWorkoutCardProps) {
-  if (workout.type === "rest") {
-    return (
-      <Card className="today-workout-card today-workout-card--rest">
-        <p className="today-workout-card__eyebrow machine-label">
-          <ActivityIcon type="rest" size={16} />
-          Rest Day
-        </p>
-        <p className="today-workout-card__details">{workout.details}</p>
-      </Card>
-    );
-  }
-
   const distanceHeadline = workout.targetDistanceMiles
     ? `${workout.targetDistanceMiles} Miles`
     : null;

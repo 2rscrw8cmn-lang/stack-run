@@ -182,13 +182,13 @@ Use `docs/STACK_NEXT_AGENT_PROMPT.md` for the full implementation prompt.
 
 ### Later phases
 
-Planned order:
+Planned order, with current state:
 
 ```text
-NEXT-2  Runner History + Profile Foundation
-NEXT-3  Training Signals v2
-NEXT-4  Today / Home revision
-NEXT-5  Plan role revision
+NEXT-2  Runner History + Profile Foundation   accepted, merged (PR #102/#103)
+NEXT-3  Training Signals v2                   accepted, merged (PR #104)
+NEXT-4  Today / Home revision                 implemented on feature/today-next
+NEXT-5  Plan role revision                    next
 NEXT-6  Build + Crew compatibility
 NEXT-7  Integration + release candidate
 ```
