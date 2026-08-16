@@ -34,14 +34,6 @@ const SIGNAL_ID: Record<TrainingSignalFamily, SignalId> = {
   "plan-context": "plan-completion",
 };
 
-/**
- * A signal with the shape the domain produces and none of the arithmetic.
- *
- * The Today selection rule is about family, availability and direction only, so
- * these tests state exactly those three things per signal rather than
- * constructing a history that happens to produce them. The rule's behaviour on
- * real histories is covered separately, at the bottom of this file.
- */
 function fakeSignal(
   family: TrainingSignalFamily,
   direction: SignalDirection | null,
@@ -115,9 +107,7 @@ describe("selectTodaySignal", () => {
   });
 
   it("never shows a signal the domain says is unavailable", () => {
-    expect(
-      selectTodaySignal([fakeSignal("volume", "rising", false)]),
-    ).toBeNull();
+    expect(selectTodaySignal([fakeSignal("volume", "rising", false)])).toBeNull();
   });
 
   it("is deterministic: the same input always chooses the same signal", () => {
@@ -202,10 +192,7 @@ describe("todayContextReadings", () => {
     ).toEqual(["last-28", "frequency", "longest"]);
   });
 
-  it("omits a reading it cannot state rather than showing it as zero", () => {
-    // One run, fourteen months ago: the trailing windows are empty, but they
-    // are empty because nothing was run, which is a different thing from
-    // unknown. Volume is a measured zero; there is no recent longest run.
+  it("shows a measured zero only when the full 28-day window is actually known", () => {
     const stale = unifiedRunnerHistory({
       activities: [historicalRun("old", "2025-06-01", { miles: 6 })],
     });
@@ -214,13 +201,34 @@ describe("todayContextReadings", () => {
     expect(readings[0].value).toBe(0);
   });
 
-  it("counts a run STACK never accepted, exactly like Runs does", () => {
+  it("does not turn a few days of connected history into 28-day or 8-week facts", () => {
     const runs = unifiedRunnerHistory({
       activities: [historicalRun("h1", "2026-08-14", { miles: 7.5 })],
     });
+    expect(todayContextReadings(runs, today)).toEqual([]);
+  });
+
+  it("allows 28-day facts exactly when history reaches the 28-day window start", () => {
+    const runs = unifiedRunnerHistory({
+      activities: [
+        historicalRun("anchor", "2026-07-20", { miles: 3 }),
+        historicalRun("recent", "2026-08-14", { miles: 7.5 }),
+      ],
+    });
     const readings = todayContextReadings(runs, today);
-    expect(readings.find((r) => r.key === "last-28")?.value).toBe(7.5);
+    expect(readings.map((r) => r.key)).toEqual(["last-28", "longest"]);
+    expect(readings.find((r) => r.key === "last-28")?.value).toBe(10.5);
     expect(readings.find((r) => r.key === "longest")?.value).toBe(7.5);
+  });
+
+  it("allows the 8-week frequency only when history reaches its own start date", () => {
+    const runs = unifiedRunnerHistory({
+      activities: [
+        historicalRun("anchor", "2026-06-01", { miles: 3 }),
+        historicalRun("recent", "2026-08-14", { miles: 7.5 }),
+      ],
+    });
+    expect(todayContextReadings(runs, today).map((r) => r.key)).toContain("frequency");
   });
 });
 
@@ -229,7 +237,6 @@ describe("todayWeek", () => {
     activities: [
       historicalRun("mon", "2026-08-03", { miles: 4 }),
       historicalRun("wed", "2026-08-05", { miles: 6 }),
-      // Last week: outside the window, and must not be counted.
       historicalRun("prev", "2026-07-30", { miles: 9 }),
     ],
   });
@@ -276,10 +283,10 @@ describe("selectTodayModel", () => {
   });
 
   it("keeps a week worth reporting even with no plan week in force", () => {
-    const runs = unifiedRunnerHistory({
+    const history = unifiedRunnerHistory({
       activities: [historicalRun("pre", "2026-07-14", { miles: 5 })],
     });
-    const model = selectTodayModel({ plan, runLogs: [], runs, today: "2026-07-15" });
+    const model = selectTodayModel({ plan, runLogs: [], runs: history, today: "2026-07-15" });
     expect(model.week?.miles).toBe(5);
     expect(model.week?.plan ?? null).toBeNull();
   });
