@@ -48,9 +48,8 @@ export function SignalCards({ signals, hasHistory, onOpenSignal }: SignalCardsPr
     >
       {signals.length === 0 ? (
         <p className="signal-cards__waiting">
-          Signals compare your last 28 days with the 28 before them. STACK needs a
-          little more history before it can say anything it could show you the
-          working for.
+          <strong>More history needed.</strong> Signals compare your last 28 days
+          with the 28 before them.
         </p>
       ) : (
         <ul className="signal-cards__list">
