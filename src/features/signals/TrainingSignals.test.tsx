@@ -9,23 +9,13 @@ import type { RunLog } from "../../domain/types";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { RunsScreen } from "../runs/RunsScreen";
 
-/**
- * Training Signals v2 on the Runs screen.
- *
- * What these cover is the screen's half of the contract: the order the cards
- * appear in, that an unavailable signal is absent rather than empty, that the
- * evidence and the window are visible on the card itself, and that the detail
- * behind a card opens and shows its working. The arithmetic is tested in
- * `src/signals/`.
- */
+/** Training Signals v2 on the Runs screen. Domain arithmetic is tested in src/signals/. */
 
 const plan = loadSeedPlan();
 const TODAY = "2026-08-15";
 
 interface HistorySpec {
-  /** Runs in the last 28 days, and the miles each covers. */
   current: [count: number, miles: number];
-  /** Runs in the 28 days before those. */
   baseline: [count: number, miles: number];
   currentOptions?: Parameters<typeof historicalRun>[2];
   baselineOptions?: Parameters<typeof historicalRun>[2];
@@ -55,7 +45,6 @@ function history({
   return [
     ...spread("cur", "2026-07-19", currentCount, currentMiles, currentOptions),
     ...spread("base", "2026-06-21", baselineCount, baselineMiles, baselineOptions),
-    // Reaches back past the baseline window so the comparison is allowed.
     historicalRun("anchor", "2026-06-20", { miles: 3 }),
   ];
 }
@@ -89,7 +78,7 @@ const RISING_VOLUME: HistorySpec = {
 };
 
 describe("Training Signals cards", () => {
-  it("leads with a sentence, and puts the evidence and the window under it", () => {
+  it("leads with the sentence and evidence, and states the shared window once", () => {
     renderRuns(history(RISING_VOLUME));
 
     const volume = screen.getByRole("button", { name: /^Volume is building/ });
@@ -98,7 +87,8 @@ describe("Training Signals cards", () => {
     );
     expect(volume).toHaveTextContent("Volume is building");
     expect(volume).toHaveTextContent("24.8 mi in the last 28 days");
-    expect(volume).toHaveTextContent("Last 28d vs prior 28d");
+    expect(volume).not.toHaveTextContent("Last 28d vs prior 28d");
+    expect(screen.getByText("Last 28 days vs prior 28 days")).toBeInTheDocument();
   });
 
   it("stays under the Run History rather than moving to the top of Runs", () => {
@@ -111,7 +101,6 @@ describe("Training Signals cards", () => {
   });
 
   it("orders what changed above what did not, then by family", () => {
-    // Volume and long runs up; frequency identical across both windows.
     renderRuns(
       history({
         current: [8, 3.1],
@@ -130,15 +119,12 @@ describe("Training Signals cards", () => {
   it("suppresses a signal with nothing to say rather than showing an empty card", () => {
     renderRuns(history(RISING_VOLUME));
 
-    // No connected metrics anywhere in this history, so no card for either.
     expect(cardOrder()).not.toContain("workload-trend");
     expect(cardOrder()).not.toContain("zone-distribution");
     expect(screen.queryByText(/not enough data/i)).not.toBeInTheDocument();
   });
 
   it("says once that it needs more history rather than six times", () => {
-    // Ten days of running, read the day before the plan asks for anything:
-    // real runs, no comparable baseline, and no plan context either.
     renderRuns(
       [
         historicalRun("r-1", "2026-07-24"),
@@ -150,9 +136,7 @@ describe("Training Signals cards", () => {
     );
 
     expect(signalCards()).toHaveLength(0);
-    expect(
-      screen.getByText(/STACK needs a little more history/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/More history needed/)).toBeInTheDocument();
   });
 
   it("shows nothing at all when there is no running to describe", () => {
@@ -215,9 +199,7 @@ describe("Training Signal detail", () => {
 
     await user.click(screen.getByRole("button", { name: /^Volume is building/ }));
 
-    expect(
-      screen.getByText(/Both windows are the same length/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Both windows are the same length/)).toBeInTheDocument();
   });
 
   it("opens from the keyboard and closes back to the list", async () => {
@@ -270,11 +252,8 @@ describe("Training Signal detail", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAccessibleName("Workload");
     expect(dialog).toHaveTextContent(
-      /10 of 10 runs in the last 28 days carried Training Load/,
+      /Training Load available for 10\/10 recent runs and 10\/10 prior runs/,
     );
-    expect(dialog).toHaveTextContent(/counted as zero/);
-    // Load stays load: the sheet states plainly that it is not turned into a
-    // readiness or recovery reading, and no such reading appears anywhere.
     expect(dialog).toHaveTextContent(
       /does not turn it into a readiness, recovery or fatigue reading/,
     );
