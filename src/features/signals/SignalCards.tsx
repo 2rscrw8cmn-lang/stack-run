@@ -16,10 +16,10 @@ interface SignalCardsProps {
 /**
  * Training Signals, as a short list of observations.
  *
- * Each card leads with the sentence and its evidence. Historical cards all use
- * the same 28-day comparison, so that context is stated once for the section
- * rather than repeated on every row. The precise window remains in each card's
- * accessible name and in its detail sheet.
+ * Each historical card leads with the sentence and its evidence. Those cards all
+ * use the same 28-day comparison, so that context is stated once for the section
+ * rather than repeated on every row. Plan context is the exception and keeps its
+ * own "Plan to date" label visible.
  */
 export function SignalCards({ signals, hasHistory, onOpenSignal }: SignalCardsProps) {
   if (signals.length === 0 && !hasHistory) return null;
@@ -62,6 +62,11 @@ export function SignalCards({ signals, hasHistory, onOpenSignal }: SignalCardsPr
                   <span className="signal-card__body">
                     <span className="signal-card__headline">{signal.headline}</span>
                     <span className="signal-card__evidence">{signal.support}</span>
+                    {signal.family === "plan-context" && (
+                      <span className="signal-card__window machine-label">
+                        {signal.windowLabel}
+                      </span>
+                    )}
                   </span>
                   <span className="signal-card__more" aria-hidden="true">
                     <ChevronRight size={16} strokeWidth={2} />
