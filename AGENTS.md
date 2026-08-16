@@ -20,7 +20,7 @@ Read in this order:
 2. `docs/STACK_NEXT.md`
 3. `docs/INTERVALS_DATA_STRATEGY.md`
 4. `docs/STACK_NEXT_IMPLEMENTATION.md`
-5. the active phase prompt, currently `docs/STACK_NEXT_AGENT_PROMPT.md`
+5. the active STACK Next phase prompt supplied for the current phase
 6. `docs/CONNECTED_DATA_FIELDS.md` for verified Intervals fields and source semantics
 7. `docs/INTERVALS_INTEGRATION.md` for current connected-data mechanics
 8. `docs/DATA_AND_STORAGE.md` for persistence behavior not superseded by STACK Next
@@ -84,7 +84,7 @@ not change cadence or source-unit semantics.
 
 ### NEXT-2 — Runner History + Profile Foundation
 
-Implemented on `feature/runner-profile`; owner acceptance outstanding.
+Complete. Accepted and merged into `feature/stack-next` as PR #102, including the account-isolation follow-up from PR #103.
 
 The first user-facing STACK Next phase. It adds a unified actual-history read
 model over connected history and `RunLog`s, a pure calculation layer for volume,
