@@ -127,3 +127,38 @@ This does **not** block integration into `feature/stack-next` because optional c
 ### Integration decision
 
 NEXT-3 is approved to merge into `feature/stack-next`. NEXT-4 — Today / Home revision — is the next engineering phase.
+
+## NEXT-4 — Today / Home revision
+
+**Owner decision:** accepted for integration into `feature/stack-next` on August 16, 2026.
+
+**PR:** #105 — `feature/today-next` → `feature/stack-next`
+
+**Merge commit:** `8000ce9947bd625236669ddcbc4740c79823907e`
+
+### Acceptance basis
+
+Accepted based on:
+
+- Today now answers *what matters now?* without hiding a scheduled workout that still deserves to lead when one exists;
+- the screen adds compact recent-training context from the NEXT-2 history layer, actual-first This Week, at most one NEXT-3 observation, compact upcoming plan intent, Build and Crew without creating a second analytics destination;
+- `todayModel.ts` remains the pure React-free decision layer and reuses the existing history, plan and signal calculations rather than defining new metric logic in JSX;
+- fixed-window Today context is conservative: a 28-day or 8-week claim renders only when the earliest known history reaches the beginning of that claimed window, so a newly connected runner's partial history is not presented as complete coverage;
+- a fully covered empty 28-day mileage window may still correctly show `0 mi`;
+- the owner reviewed the deployed `?demo=today` preview and accepted the phone presentation;
+- the preview-only demo is restricted to localhost / Vercel branch previews, uses fake in-memory data, suppresses connected/Crew state and does not persist demo activity;
+- scheduled completion, editing/deleting a completed run, Run Found review, manual fallback, sync retry, Build handoff, Crew access and existing accessibility behavior remain preserved;
+- no Plan architecture redesign, Build-domain change, historical Build backfill, Crew projection expansion, navigation change, schema change or migration was included;
+- the latest Vercel deployment for head `d9d0f75818b3b86f0e93029adc7a87def3964282` completed successfully.
+
+### Verification caveat
+
+The original NEXT-4 implementation reported `npm run check` passing with 1,709 tests before the owner-review follow-up commits.
+
+The follow-up added the Today demo, history-coverage fix and regression tests. A fresh full `npm run check` was not completed in the available assistant environment because that environment could not resolve GitHub/npm network access. No assertion failure was observed; the latest Vercel production build was green. This is recorded explicitly rather than treating the pre-follow-up suite as proof of the final head.
+
+The NEXT-1 real-Intervals smoke test also remains outstanding as a program-level pre-release verification item.
+
+### Integration decision
+
+NEXT-4 is approved and merged into `feature/stack-next`. NEXT-5 — Plan role revision — is the active engineering phase.
