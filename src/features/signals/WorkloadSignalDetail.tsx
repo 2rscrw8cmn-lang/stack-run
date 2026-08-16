@@ -4,19 +4,15 @@ import { formatDateLabel } from "../../domain/dates";
 import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
-import { SignalCoverageNote, SignalPeriods } from "./SignalDetailParts";
+import { DetailSection } from "../trends/TrendDetailShared";
+import {
+  SignalComparisonSummary,
+  SignalCoverageNote,
+  SignalPeriods,
+} from "./SignalDetailParts";
 import { signedNumber, signedPercent } from "./signalFormatting";
 
-/**
- * Workload, with the coverage that qualifies it.
- *
- * A weekly load column is the sum of the load its runs carried, and a week where
- * no run carried any has no column rather than a column at zero. The coverage
- * line under the chart is not a footnote: it is the difference between "you did
- * less work" and "less of your work was recorded", and only the runner can tell
- * which of those happened.
- */
+/** Workload, with the coverage that qualifies the comparison. */
 export function WorkloadSignalDetail({
   signal,
   runs,
@@ -32,7 +28,6 @@ export function WorkloadSignalDetail({
       key: week.key,
       startDate: week.startDate,
       isPartial: week.isPartial,
-      // Null, never zero: a week nothing was recorded for is not a week of rest.
       load: covered.length
         ? Math.round(covered.reduce((total, run) => total + (run.trainingLoad ?? 0), 0))
         : null,
@@ -47,13 +42,10 @@ export function WorkloadSignalDetail({
 
   return (
     <>
-      <SignalFacts
-        facts={[
-          { label: "Last 28 days", value: String(facts.currentLoad) },
-          { label: "Prior 28 days", value: String(facts.baselineLoad) },
-          { label: "Change", value: signedNumber(facts.differenceLoad) },
-          { label: "Percent", value: signedPercent(facts.changeRatio) },
-        ]}
+      <SignalComparisonSummary
+        currentValue={String(facts.currentLoad)}
+        baselineValue={String(facts.baselineLoad)}
+        change={`${signedNumber(facts.differenceLoad)} · ${signedPercent(facts.changeRatio)}`}
       />
       <SignalPeriods current={signal.current} baseline={signal.baseline} />
       {signal.coverage && (
