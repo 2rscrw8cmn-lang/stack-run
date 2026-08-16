@@ -1,0 +1,34 @@
+.qa-runner-notice {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 var(--page-gutter);
+  padding: 7px 0 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.qa-runner-notice strong {
+  color: var(--text);
+  font-size: 10px;
+}
+
+.qa-runner-notice span {
+  text-align: right;
+}
+
+@media (max-width: 340px) {
+  .qa-runner-notice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .qa-runner-notice span {
+    text-align: left;
+  }
+}
