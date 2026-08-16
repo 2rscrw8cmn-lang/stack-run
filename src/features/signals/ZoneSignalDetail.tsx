@@ -3,19 +3,15 @@ import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments";
 import { formatDurationSeconds } from "../../domain/duration";
 import type { TrainingSignal } from "../../signals/trainingSignal";
 import { ZONE_LOWER_ZONE_COUNT } from "../../signals/zoneSignal";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
-import { SignalCoverageNote, SignalPeriods } from "./SignalDetailParts";
+import { DetailSection } from "../trends/TrendDetailShared";
+import {
+  SignalComparisonSummary,
+  SignalCoverageNote,
+  SignalPeriods,
+} from "./SignalDetailParts";
 import { signedPoints } from "./signalFormatting";
 
-/**
- * Zone mix, as two distributions side by side.
- *
- * The donut is the current window's recorded zone time; the figures compare its
- * lower-zone share with the window before. What the sheet is careful not to do
- * is explain what a zone *means* — STACK has verified the field, its order and
- * its units, and has verified nothing about where the runner's zone boundaries
- * sit or what training intent any of them represents.
- */
+/** Zone mix, showing the current distribution and the prior-period comparison. */
 export function ZoneSignalDetail({
   signal,
 }: {
@@ -23,30 +19,18 @@ export function ZoneSignalDetail({
 }) {
   const facts = signal.facts;
   if (!facts) return null;
-  const currentTotal = facts.currentZoneSeconds.reduce(
-    (sum, seconds) => sum + seconds,
-    0,
-  );
 
   return (
     <>
-      <SignalFacts
-        facts={[
-          {
-            label: `Zones 1–${ZONE_LOWER_ZONE_COUNT} now`,
-            value: `${Math.round(facts.currentLowerShare * 100)}%`,
-          },
-          {
-            label: "Prior 28 days",
-            value: `${Math.round(facts.baselineLowerShare * 100)}%`,
-          },
-          { label: "Change", value: signedPoints(facts.differenceShare) },
-          { label: "Recorded", value: formatDurationSeconds(currentTotal) },
-        ]}
+      <SignalComparisonSummary
+        currentLabel={`Zones 1–${ZONE_LOWER_ZONE_COUNT} now`}
+        currentValue={`${Math.round(facts.currentLowerShare * 100)}%`}
+        baselineValue={`${Math.round(facts.baselineLowerShare * 100)}%`}
+        change={signedPoints(facts.differenceShare)}
       />
       <SignalPeriods current={signal.current} baseline={signal.baseline} />
       {signal.coverage && (
-        <SignalCoverageNote coverage={signal.coverage} metric="zone time" />
+        <SignalCoverageNote coverage={signal.coverage} metric="Zone data" />
       )}
 
       <DetailSection title="Last 28 days by zone">
