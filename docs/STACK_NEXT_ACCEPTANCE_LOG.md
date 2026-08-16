@@ -96,3 +96,34 @@ Before STACK Next is considered ready for `main`, complete the real-Intervals sm
 ### Integration decision
 
 NEXT-2 is approved and merged into `feature/stack-next`. NEXT-3 — Training Signals v2 — is the next engineering phase.
+
+## NEXT-3 — Training Signals v2
+
+**Owner decision:** accepted for integration into `feature/stack-next` on August 15, 2026.
+
+**PR:** #104 — `feature/training-signals-v2` → `feature/stack-next`
+
+### Acceptance basis
+
+Accepted based on:
+
+- the signal set was rebuilt around actual runner history rather than forcing every observation through plan-versus-actual logic;
+- Volume, Frequency, Long runs, Workload and Zone mix use the unified history foundation, while Plan context remains available and ranked last;
+- all historical comparisons use equal 28-day windows with named thresholds and explicit minimum-data rules;
+- connected-metric signals reuse NEXT-2 coverage requirements and suppress themselves when coverage is insufficient or materially mismatched between windows;
+- aggregate pace and heart-rate comparison remain deliberately deferred until a defensible comparable-run grouping exists;
+- signal language is descriptive rather than evaluative: no overall score, no good/bad grading, and no readiness, recovery or fatigue claim derived from Training Load;
+- Training Signals remain below Runner Snapshot, Recent Volume and Run History, preserving the actuals-before-intentions hierarchy;
+- the owner reviewed the deployed phone presentation and accepted the cleanup that removed repeated 28-day labels from each historical card, tightened the cards, simplified detail comparisons, shortened coverage copy and reduced the Recent Volume chart height;
+- no Today, Plan, Build, Crew, navigation, persistence, schema or migration work was included;
+- Vercel preview deployment completed successfully after the presentation cleanup.
+
+### Deferred verification
+
+The NEXT-1 real-Intervals smoke test remains outstanding. For NEXT-3 specifically, it will establish whether the owner's real Intervals history provides enough Training Load and zone coverage for those optional signal families to appear under the existing coverage gates.
+
+This does **not** block integration into `feature/stack-next` because optional connected-metric signals disappear rather than presenting weak comparisons, and the STACK Next integration branch remains isolated from `main`.
+
+### Integration decision
+
+NEXT-3 is approved to merge into `feature/stack-next`. NEXT-4 — Today / Home revision — is the next engineering phase.
