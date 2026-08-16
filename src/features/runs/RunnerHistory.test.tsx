@@ -187,10 +187,12 @@ describe("Runner snapshot", () => {
     expect(screen.getByText(/Since Feb 2026/)).toBeInTheDocument();
   });
 
-  it("shows a dash rather than zero when a window has nothing in it", () => {
+  it("shows zero mileage but no invented longest run for an empty known window", () => {
     renderRuns({ runLogs: [stackRun("old", "2026-01-05", { distanceMiles: 8 })] });
 
-    expect(screen.getByRole("button", { name: /^Runner snapshot\./ })).toHaveAccessibleName(
+    const snapshot = screen.getByRole("button", { name: /^Runner snapshot\./ });
+    expect(snapshot).toHaveAccessibleName(expect.stringContaining("0 miles over the last 7 days"));
+    expect(snapshot).toHaveAccessibleName(
       expect.stringContaining("No longest run in the last 28 days"),
     );
   });
