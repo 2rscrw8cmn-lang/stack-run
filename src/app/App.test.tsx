@@ -435,7 +435,7 @@ describe("App", () => {
     // The snapshot reads the same run through the unified history, so a run
     // logged on Today reaches the runner-level numbers with no import step.
     expect(
-      screen.getByRole("button", { name: /Runner snapshot\. 2\.1 miles over the last 7 days/ }),
+      screen.getByRole("button", { name: /Runner snapshot\..*2\.1 miles over the last 7 days/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {

@@ -2339,3 +2339,95 @@ and dedup effect, that it advises nothing, and that it routes to Runs.
 product decisions rather than taste.
 
 `npm run check` passes: 134 files, 1,709 tests.
+
+## Runs — STACK visual polish (post-NEXT-4)
+
+**Branch:** `feature/runs-polish` → PR into `feature/stack-next`. Not a numbered
+STACK Next phase: no data, formula, threshold, window, ordering, persistence or
+navigation change, and `docs/STACK_NEXT_ACCEPTANCE_LOG.md` is untouched.
+
+Runs had the right information architecture and the wrong weight distribution.
+Four readings at one size read as a KPI shelf, the volume strip read as a
+generic analytics component, twenty-five history rows read as twenty-five
+identical tiles, and the Training Signal cards read as a separate component
+bolted underneath. This pass changed hierarchy, rhythm, geometry and container
+count. It added nothing.
+
+The zone order is unchanged and remains the product hierarchy: **Runner
+Snapshot → Recent Volume → Run History → Training Signals**.
+
+### What changed on each zone
+
+| Zone | Before | After |
+|---|---|---|
+| Lead | `N runs` at 18px, then four equal readings in a bordered, filled panel | The count is a machine label with an accent tick; the 28-day reading leads at instrument scale against a lime edge; the other three sit on one hairline-divided row; range and sync state close the block as metadata. No panel. |
+| Recent Volume | A bordered, grid-textured card holding a 192px-tall chart and a muted caption | The selected week's miles lead at data scale with its dates and run count beside them; the plot is shorter and blockier, framed by its own baseline rather than by a card; the single-series key is gone |
+| Run History | A bordered tile per run, with `distance · duration · pace` on one line | A rule-separated row grouped by month, with an activity rail, distance at data scale on the right and duration/pace quieter beneath it |
+| Training Signals | Filled, bordered, rounded cards | The history's rhythm exactly: family rail, hairline, square family-tinted mark. Direction is still never coloured |
+
+### The lead reading
+
+`RunnerSnapshot` marks one reading `data-lead="true"` and the stylesheet styles
+whatever is flagged. The choice — trailing 28-day miles — lives in the component
+beside the readings, documented as the reading that answers *where does my
+running currently stand*. The button's accessible name is built from the same
+ordered list, so a screen reader hears the lead first, as the screen shows it.
+All four readings, values, units and window labels are unchanged, and an unknown
+value is still `—` rather than `0`.
+
+### Month grouping
+
+`runHistoryGroups.ts` is pure, presentational and lossless: every run appears
+once, in the order `unifiedRunnerHistory` gave it, and nothing is counted,
+summed or classified. A group boundary is the point where the month changes.
+The year is stated only outside the runner's own. Because the month is now
+overhead, a row's own date is the weekday and the day.
+
+### Shared chart
+
+`PlanActualColumns` changed in three narrow ways, all in the `compact` variant
+or shared by every caller: the compact plot is shorter (viewBox `320×132`), its
+columns are wider and square-edged, and the key is rendered only when a planned
+series is actually on the plot beside the actual columns — a lone `Actual`
+swatch labels the only thing on the chart. Detail charts keep their height and
+column width. Nothing else about the component changed.
+
+### Styling
+
+`src/features/runs/runsInstrument.css`, imported by `RunsScreen`, following the
+`signalPresentationCleanup.css` and `todayDecisionSurface.css` precedent. Every
+rule is scoped under `.runs-screen` so the shared row, chart, section and card
+rules keep working on Crew, Plan, Today and inside the detail sheets. The
+technical grid moved onto the plot itself and appears nowhere else on the
+screen. No animation was added.
+
+This supersedes NEXT-2's description of the snapshot as "two-by-two on a phone,
+four across at ≥480px" and of Run History as an ungrouped list.
+
+### Not redesigned
+
+`RunDetailSheet`, `HistoricalRunSheet`, `RunnerProfileSheet`, `SignalDetailSheet`
+and every signal detail body are untouched, as are `CompleteRunSheet` and
+`ConnectToPlanSheet`. The signal detail charts inherit only the key change
+above. No Today, Plan, Build or Crew surface changed.
+
+### Tests
+
+45 new tests. `RunsVisualPolish.test.tsx` (all four readings and windows
+present, exactly one lead, one target into the profile, unknown stays unknown,
+range and freshness, Log Run, the volume readout and week selection, month
+grouping preserving membership and order, row facts with distance leading,
+omitted measures, extra marking, a connected-history run staying a fact and
+opening its read-only detail, no detail-sheet metric on a row, signal order
+matching the domain, the shared window context, signal detail routing, the
+empty and one-run runners, and a regression group asserting the unified
+history, snapshot, weekly volume and signal set are identical before and after
+render and that none of the inputs is mutated), `runHistoryGroups.test.ts`, and
+`runsInstrumentStyling.test.ts` (the stylesheet decisions that are product
+decisions: fewer containers, lead scale, comfortable targets, grid confined to
+the plot, no direction colour, no motion, nothing fixed-width).
+
+`npm run test` passes: 139 files, 1,767 tests. `npm run build` passes.
+`npm run lint` fails only on a pre-existing `react-hooks/set-state-in-effect`
+error in `src/qa/QaRunnerRoot.tsx`, which is present unchanged on
+`feature/stack-next` and is not touched by this branch.

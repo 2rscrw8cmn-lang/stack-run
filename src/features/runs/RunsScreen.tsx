@@ -20,6 +20,8 @@ import { RunnerProfileSheet } from "./RunnerProfileSheet";
 import { RunnerRunRow } from "./RunnerRunRow";
 import { RunnerSnapshot } from "./RunnerSnapshot";
 import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
+import { groupRunsByMonth } from "./runHistoryGroups";
+import "./runsInstrument.css";
 import { SignalCards } from "../signals/SignalCards";
 import { SignalDetailSheet } from "../signals/SignalDetailSheet";
 import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo";
@@ -83,6 +85,15 @@ interface RunsScreenProps {
  * screen computes none of them. It asks the domain which signals are
  * presentable, renders them in the order it is given, and opens the detail
  * behind whichever one is tapped.
+ *
+ * The visual pass that followed NEXT-4 changed none of that. The four zones,
+ * their order, the readings, the weeks and the signals are exactly what they
+ * were; what changed is weight. One snapshot reading now leads at instrument
+ * scale, the volume strip states its selected week before it draws it, the
+ * history is rule-separated and grouped by month rather than tiled, and the
+ * signals share the history's rhythm instead of arriving as a stack of cards.
+ * All of it is in `runsInstrument.css` and in the presentation helpers beside
+ * this file — nothing here computes a number.
  */
 export function RunsScreen({
   plan,
@@ -222,6 +233,9 @@ export function RunsScreen({
 
   const shown = runs.slice(0, visibleRuns);
   const remaining = runs.length - shown.length;
+  // Presentation only: the same runs, in the same order, with a rule where the
+  // month changes. See `runHistoryGroups.ts`.
+  const months = groupRunsByMonth(shown, today);
 
   return (
     <div className="runs-screen">
@@ -284,8 +298,15 @@ export function RunsScreen({
             meta={<span className="machine-label">{runs.length}</span>}
           >
             <ul className="runs-screen__list">
-              {shown.map((run) => (
-                <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
+              {months.map((month) => (
+                <li key={month.key} className="run-month">
+                  <p className="run-month__label machine-label">{month.label}</p>
+                  <ul className="run-month__runs">
+                    {month.runs.map((run) => (
+                      <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
+                    ))}
+                  </ul>
+                </li>
               ))}
             </ul>
             {remaining > 0 && (

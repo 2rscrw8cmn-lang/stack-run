@@ -1,0 +1,645 @@
+/* Runs — STACK visual polish.
+   ==================================================================
+   Presentation only. Every number on this screen is computed in
+   `src/history/`, `src/signals/` or `src/domain/`; nothing here adds, removes,
+   reorders or reinterprets a fact.
+
+   The problem this file solves is that Runs had the right information and the
+   wrong weight distribution: four equal readings, a conventional chart in a
+   box, twenty-five identical row-tiles, and a stack of signal cards underneath
+   that read as a separate component. Everything below is one of four moves —
+
+   1. **hierarchy** — one dominant reading, three supporting, metadata last;
+   2. **rhythm** — hairlines and a month rule instead of a box per item;
+   3. **geometry** — Build's block language: square edges, accent rails,
+      technical grid inside the data region and nowhere else;
+   4. **fewer containers** — a Section is a rule and a title, not a card.
+
+   Scoped under `.runs-screen` so the shared row, chart and card rules keep
+   working everywhere else they are used. */
+
+/* ------------------------------------------------------------------
+   The screen: one instrument with zones, not a column of widgets
+   ------------------------------------------------------------------ */
+
+.runs-screen {
+  gap: 20px;
+  padding-top: 4px;
+}
+
+/* Every zone opens the same way — an accent-tinted rule and a mono machine
+   title — so Recent Volume, Run History and Training Signals read as three
+   parts of one panel. Two of the three already did; the volume strip was the
+   odd one out. */
+.runs-screen .section {
+  gap: 10px;
+  padding-top: 12px;
+  border-top-color: var(--data-border);
+}
+
+.runs-screen .section__title,
+.runs-screen .section__icon {
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.runs-screen .section__meta {
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------
+   The lead: what this instrument is reading, and the one action
+   ------------------------------------------------------------------ */
+
+.runs-screen .runs-screen__lead {
+  gap: 10px;
+}
+
+.runs-screen .runs-screen__title-row {
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/* The run count is metadata about the history behind the numbers underneath,
+   not a headline figure. It used to be set at 18px, which made "12 runs" the
+   loudest thing above the fold and left the snapshot competing with it. */
+.runs-screen .runs-screen__count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* The one piece of chrome the header gets: the same lime edge Build stamps on
+   its stage, at the size of a tick rather than a banner. */
+.runs-screen .runs-screen__count::before {
+  content: "";
+  flex: none;
+  width: 3px;
+  height: 13px;
+  background: var(--accent);
+}
+
+/* Obvious, reachable, and not the loudest thing on the screen. */
+.runs-screen .runs-screen__log {
+  flex: none;
+  align-self: center;
+  min-height: 44px;
+  padding-inline: 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------------
+   Runner snapshot: one dominant reading, three supporting
+   ------------------------------------------------------------------ */
+
+.runs-screen .runner-snapshot {
+  gap: 0;
+  margin-top: 0;
+}
+
+/* No panel. The snapshot was a bordered, filled box holding four equal tiles;
+   the hierarchy now comes from type size and two hairlines, which is one fewer
+   container on a screen that had too many. The whole block is still one target
+   into the profile detail — four readings with four hit areas would be four
+   ways to the same place. */
+.runs-screen .runner-snapshot__readings {
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.runs-screen .runner-snapshot__readings:hover {
+  border-color: transparent;
+}
+
+.runs-screen .runner-snapshot__readings:hover .runner-snapshot__reading[data-lead="true"] {
+  border-left-color: var(--selected-border);
+}
+
+.runs-screen .runner-snapshot__readings:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Two rows: the lead across the top, the three supporting readings beneath it.
+   Explicit placement rather than wrapping, because a zero-basis flex item does
+   not force a line break and the supporting three collapsed off the edge. */
+.runs-screen .runner-snapshot__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+
+/* The three supporting readings share one hairline-divided row. Written as a
+   child selector so it outranks the two-up `:nth-child(odd)` rules the old
+   four-tile grid left behind in components.css. */
+.runs-screen .runner-snapshot__grid > .runner-snapshot__reading {
+  min-width: 0;
+  padding: 8px 0 0 9px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+/* First of the supporting three: the row's own left edge, not a divider. */
+.runs-screen .runner-snapshot__grid > .runner-snapshot__reading:nth-child(2) {
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* The three supporting readings: small, quiet, tabular. Written before the
+   lead's own rules so that where the two have equal specificity, the lead
+   wins on order rather than by accident. */
+.runs-screen .runner-snapshot__grid > .runner-snapshot__reading .runner-snapshot__value {
+  /* Wraps only if a long value and its unit cannot share the column, which is
+     the one thing on this row that could push the page sideways. */
+  flex-wrap: wrap;
+  align-content: start;
+  min-width: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.runs-screen .runner-snapshot__grid > .runner-snapshot__reading .runner-snapshot__unit {
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+
+.runs-screen .runner-snapshot__grid > .runner-snapshot__reading dt {
+  margin-top: 4px;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+}
+
+/* The dominant reading takes the first line to itself. Which reading that is
+   lives in `RunnerSnapshot.tsx` beside the readings themselves; this only
+   knows that one of them is flagged. */
+.runs-screen .runner-snapshot__grid > .runner-snapshot__reading[data-lead="true"] {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 12px 12px;
+  border-top: 0;
+  border-left: 2px solid var(--accent);
+  transition: border-color 160ms ease;
+}
+
+.runs-screen .runner-snapshot__grid > [data-lead="true"] .runner-snapshot__value {
+  color: var(--accent);
+  font-size: clamp(34px, 11.5vw, 46px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+
+.runs-screen .runner-snapshot__grid > [data-lead="true"] .runner-snapshot__unit {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.runs-screen .runner-snapshot__grid > [data-lead="true"] dt {
+  flex: none;
+  margin-top: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-align: right;
+}
+
+.runs-screen .runner-snapshot__more {
+  align-self: center;
+  color: var(--text-subtle);
+}
+
+/* History range and sync state: machine metadata that closes the block, in the
+   smallest type on the screen. The sync wording and when it appears are
+   unchanged — this is only how it is set. */
+.runs-screen .runner-snapshot__range {
+  padding: 7px 0 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------
+   Recent Volume: the shape of the recent weeks
+   ------------------------------------------------------------------ */
+
+.runner-volume {
+  gap: 7px;
+}
+
+/* The selected week's answer leads the chart rather than trailing it as a
+   caption, so the fact is read before the picture and the columns are the
+   shape that fact sits inside. */
+.runner-volume__readout {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.runner-volume__miles {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.runner-volume__unit {
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.runner-volume__caption {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+}
+
+/*
+ * The plot is a data region, so it keeps its technical grid — but it stops
+ * being a rounded card floating inside a section. What frames it now is an
+ * instrument's own frame: a hairline down the axis gutter and a lit baseline
+ * under the columns.
+ */
+.runs-screen .plan-actual-chart--compact {
+  padding: 6px 0 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: none;
+}
+
+/* The grid moves onto the plot itself so it stops exactly where the data does,
+   and the week targets keep lining up with the columns they select — the
+   overlay is inset to this element, so it must not gain padding. */
+.runs-screen .plan-actual-chart--compact .plan-actual-chart__plot {
+  border-bottom: 1px solid var(--border);
+  background-color: var(--data-surface);
+  background-image:
+    linear-gradient(var(--technical-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--technical-grid-line) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* Shorter than the detail charts, and no longer stretched by the min-height
+   the tall signal plots need. */
+.runs-screen .plan-actual-chart--compact .plan-actual-chart__figure {
+  min-height: 0;
+}
+
+/* A selected week should be unmistakable at arm's length on a phone: a lit
+   band behind the whole column, and the column itself at full accent. The
+   band is unoutlined on purpose — a bordered rect standing above a shorter
+   column reads as a second, taller measurement. */
+.runs-screen .plan-actual-chart--compact .plan-actual-chart__selection {
+  fill: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.runs-screen .plan-actual-chart--compact .plan-actual-chart__actual {
+  fill: color-mix(in srgb, var(--accent) 62%, #0d1a26);
+  filter: none;
+}
+
+.runs-screen .plan-actual-chart--compact .plan-actual-chart__actual--selected {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 5px var(--selected-glow));
+}
+
+/* The week in progress: drawn as an outline rather than a filled block, so it
+   reads as not finished yet rather than as a bad week. */
+.runs-screen .plan-actual-chart--compact .plan-actual-chart__actual--partial {
+  fill: color-mix(in srgb, var(--accent) 20%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  opacity: 1;
+}
+
+.runs-screen .plan-actual-chart--compact .chart__grid-line {
+  stroke: color-mix(in srgb, var(--chart-reference) 13%, transparent);
+}
+
+.runs-screen .plan-actual-chart--compact .chart__axis {
+  stroke: color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.runs-screen .plan-actual-chart--compact .chart__tick {
+  fill: var(--text-subtle);
+  font-size: 8px;
+}
+
+.runs-screen .plan-actual-chart--compact .chart__tick--x-selected {
+  fill: var(--accent);
+}
+
+/* ------------------------------------------------------------------
+   Run History: dense, scannable, and no longer a card feed
+   ------------------------------------------------------------------ */
+
+.runs-screen .runs-screen__list {
+  gap: 0;
+}
+
+.runs-screen .run-month + .run-month {
+  margin-top: 12px;
+}
+
+/* The month rule. It is the only rhythm the list needed: every row already
+   carries its month, so grouping on it states nothing new and gives a year of
+   history somewhere for the eye to rest. */
+.run-month__label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 2px;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.run-month__label::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
+}
+
+.run-month__runs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * One run, one rule. The row was a bordered tile on a filled surface, which
+ * turned twenty-five runs into twenty-five boxes; it is now a three-column
+ * grid separated by hairlines, with an activity rail down its left edge.
+ */
+.runs-screen .run-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 2px 8px 9px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+/* The activity rail. Specific enough to win over the per-type
+   `border-left-color` rules the shared row already carries. */
+.runs-screen .run-row[data-type] {
+  border-left: 3px solid var(--activity-accent, var(--border-strong));
+}
+
+.runs-screen .run-row[data-type="easy"] { --activity-accent: var(--easy); }
+.runs-screen .run-row[data-type="intervals"] { --activity-accent: var(--intervals); }
+.runs-screen .run-row[data-type="simulation"] { --activity-accent: var(--simulation); }
+.runs-screen .run-row[data-type="long"] { --activity-accent: var(--long); }
+.runs-screen .run-row[data-type="race"] { --activity-accent: var(--race); }
+
+.runs-screen .run-row:hover {
+  border-bottom-color: var(--border);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.runs-screen .run-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The icon is ink, not a tile: the activity colour and the icon together say
+   what the run was without a filled swatch behind them. */
+.runs-screen .run-row__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.runs-screen .run-row__body {
+  gap: 3px;
+}
+
+.runs-screen .run-row__type {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runs-screen .run-row__head {
+  min-width: 0;
+  gap: 6px;
+}
+
+/* Smaller and squarer than the old pill: a mark, not a badge. */
+.runs-screen .run-row__extra {
+  flex: none;
+  padding: 1px 4px;
+  border-color: var(--border-strong);
+  border-radius: 0;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.runs-screen .run-row__date {
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+/* Distance is the column the eye runs down; duration and pace sit under it as
+   the supporting facts they are. */
+.runs-screen .run-row__measures {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  text-align: right;
+}
+
+.runs-screen .run-row__distance {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.runs-screen .run-row__unit {
+  color: var(--text-subtle);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.runs-screen .run-row__facts {
+  color: var(--text-subtle);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/*
+ * A run STACK has never been told anything about. Quieter than a logged run
+ * rather than flagged — it is a fact, not a chore waiting to be dealt with —
+ * and it keeps the same distance typography as every other row, because it is
+ * the same kind of fact.
+ */
+.runs-screen .run-row[data-origin="historical-activity"] {
+  --activity-accent: var(--border-strong);
+}
+
+.runs-screen .run-row[data-origin="historical-activity"] .run-row__type {
+  color: var(--text-muted);
+}
+
+.runs-screen .runs-screen__more {
+  margin-top: 10px;
+}
+
+/* ------------------------------------------------------------------
+   Training Signals: the same instrument, one zone further down
+   ------------------------------------------------------------------ */
+
+/* One observation per line at every width. A sentence-led row does not become
+   two sentence-led rows side by side on a wide screen — that only makes the
+   reader compare two signals nobody said were comparable. */
+.runs-screen .signal-cards__list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+/* The observations used to be filled, bordered, rounded cards stacked under a
+   list of un-bordered rows, which is what made them read as a separate
+   component bolted on. They now share Run History's rhythm exactly: a family
+   rail, a hairline, no box. The rules of NEXT-3 are untouched — nothing is
+   coloured by direction, and the family accent is the only colour. */
+.runs-screen .signal-cards .signal-card {
+  align-items: center;
+  min-height: 52px;
+  padding: 11px 2px 11px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.runs-screen .signal-cards .signal-card::before {
+  width: 3px;
+}
+
+.runs-screen .signal-cards .signal-card:hover {
+  border-bottom-color: var(--border);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+/* A small square block carrying the glyph — Build's geometry at row scale.
+   The frame takes the family's accent; the glyph stays muted, because which
+   way a measure moved is not a verdict on it. */
+.runs-screen .signal-cards .signal-card__mark {
+  width: 24px;
+  height: 24px;
+  margin-top: 0;
+  border: 1px solid color-mix(in srgb, var(--signal-accent) 38%, transparent);
+  background: color-mix(in srgb, var(--signal-accent) 9%, transparent);
+  color: var(--text-muted);
+}
+
+.runs-screen .signal-cards .signal-card__headline {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.runs-screen .signal-cards .signal-card__evidence {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.runs-screen .signal-cards__context {
+  margin: 0 0 2px;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+}
+
+/* ------------------------------------------------------------------
+   Narrow phones
+   ------------------------------------------------------------------ */
+
+@media (max-width: 340px) {
+  .runs-screen .runner-snapshot__grid > .runner-snapshot__reading .runner-snapshot__value {
+    font-size: 16px;
+  }
+  .runs-screen .runner-snapshot__grid > .runner-snapshot__reading .runner-snapshot__unit {
+    font-size: 8px;
+  }
+  .runs-screen .runner-snapshot__grid > .runner-snapshot__reading { padding-left: 7px; }
+  .runs-screen .runner-snapshot__grid > .runner-snapshot__reading dt {
+    font-size: 8px;
+    letter-spacing: 0.06em;
+  }
+  .runs-screen .runner-snapshot__grid > [data-lead="true"] dt { font-size: 9px; }
+
+  .runs-screen .run-row { gap: 8px; padding-left: 7px; }
+  .runs-screen .run-row__distance { font-size: 16px; }
+  .runs-screen .run-row__facts { font-size: 10px; }
+  .runs-screen .run-row__type { font-size: 13px; }
+
+  .runs-screen .signal-cards .signal-card { padding: 10px 0 10px 10px; }
+  .runs-screen .signal-cards .signal-card__headline { font-size: 13px; }
+}
+
+@media (min-width: 700px) {
+  /* Desktop gets a wider instrument, not a different one. */
+  .runs-screen .runner-snapshot__grid > [data-lead="true"] .runner-snapshot__value {
+    font-size: 50px;
+  }
+}

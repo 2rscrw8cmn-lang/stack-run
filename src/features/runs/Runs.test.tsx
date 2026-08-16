@@ -70,11 +70,12 @@ describe("Runs", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Runs" })).toHaveClass("visually-hidden");
     expect(screen.getByText("2 runs")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log Run" })).toBeInTheDocument();
-    // Four readings, each carrying the window it was measured over.
+    // Four readings, each carrying the window it was measured over, spoken in
+    // the order the composition presents them: the lead reading first.
     expect(
       screen.getByRole("button", { name: /^Runner snapshot\./ }),
     ).toHaveAccessibleName(
-      "Runner snapshot. 5.5 miles over the last 7 days. 5.5 miles over the last 28 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
+      "Runner snapshot. 5.5 miles over the last 28 days. 5.5 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
     );
     expect(screen.getByRole("heading", { name: "Run History" })).toBeInTheDocument();
   });

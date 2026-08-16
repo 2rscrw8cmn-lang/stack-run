@@ -67,7 +67,7 @@ describe("PlanActualColumns", () => {
     rerender(
       <PlanActualColumns compact columns={columns} selectedKey="w1" onSelect={() => undefined} />,
     );
-    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 320 152");
+    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 320 132");
     expect(container.querySelector(".plan-actual-chart")).toHaveClass("plan-actual-chart--compact");
   });
 });

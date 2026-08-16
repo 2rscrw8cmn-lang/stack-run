@@ -12,12 +12,24 @@ interface RunnerSnapshotProps {
 }
 
 /**
- * The runner, in four facts.
+ * Which reading leads the composition.
  *
- * This is the first thing NEXT-2 puts in front of a person, and the restraint is
+ * A presentation decision, not a new metric: all four readings below are the
+ * same `runnerSnapshot` figures they have always been, over the same windows.
+ * What changed is that they stopped being four equal tiles. Twenty-eight days
+ * is the reading that answers *where does my running currently stand* — long
+ * enough that one missed Tuesday does not move it, short enough to be about now
+ * — so it takes the instrument scale and the other three support it.
+ */
+const LEAD_READING = "last-28";
+
+/**
+ * The runner, in four facts — one of them dominant.
+ *
+ * This is the first thing Runs puts in front of a person, and the restraint is
  * the feature. The calculation layer behind it can produce a dozen more numbers;
  * showing them would make the top of Runs an analytics dashboard, which
- * `docs/STACK_NEXT.md` explicitly rules out. Four readings fit one phone row
+ * `docs/STACK_NEXT.md` explicitly rules out. Four readings fit one phone screen
  * without scrolling and can be taken in at a glance.
  *
  * **Every number states its window.** `28.4` means nothing; `28.4 mi / Last 7
@@ -26,6 +38,13 @@ interface RunnerSnapshotProps {
  *
  * **A missing value is not zero.** A runner with no long run in the last 28 days
  * gets `—`, not `0 mi`, because zero would assert a 0-mile run happened.
+ *
+ * **One of the four is louder.** Four readings at one size is a KPI shelf: the
+ * eye has nowhere to land and the screen opens on statistics rather than on the
+ * runner. The lead reading is set at instrument scale against a lime edge; the
+ * other three sit under it on one hairline-divided row, and the history range
+ * and sync state close the block as small machine metadata. Nothing was added
+ * or removed to achieve that — the composition changed, the facts did not.
  */
 export function RunnerSnapshot({
   snapshot,
@@ -35,20 +54,23 @@ export function RunnerSnapshot({
 }: RunnerSnapshotProps) {
   const { lastWeek, lastFourWeeks, frequency, longestRecent, range } = snapshot;
 
+  // Ordered as the screen reads it: the dominant reading first, then the three
+  // that support it. The button's accessible name is built from this same list,
+  // so what a screen reader hears is the order a sighted runner sees.
   const readings = [
-    {
-      key: "last-7",
-      value: formatMiles(lastWeek.miles),
-      unit: "mi",
-      label: "Last 7 days",
-      spoken: `${formatMiles(lastWeek.miles)} miles over the last 7 days`,
-    },
     {
       key: "last-28",
       value: formatMiles(lastFourWeeks.miles),
       unit: "mi",
       label: "Last 28 days",
       spoken: `${formatMiles(lastFourWeeks.miles)} miles over the last 28 days`,
+    },
+    {
+      key: "last-7",
+      value: formatMiles(lastWeek.miles),
+      unit: "mi",
+      label: "Last 7 days",
+      spoken: `${formatMiles(lastWeek.miles)} miles over the last 7 days`,
     },
     {
       key: "frequency",
@@ -82,7 +104,12 @@ export function RunnerSnapshot({
       >
         <dl className="runner-snapshot__grid">
           {readings.map((reading) => (
-            <div key={reading.key} className="runner-snapshot__reading" data-reading={reading.key}>
+            <div
+              key={reading.key}
+              className="runner-snapshot__reading"
+              data-reading={reading.key}
+              data-lead={reading.key === LEAD_READING ? "true" : undefined}
+            >
               <dd className="runner-snapshot__value data-value">
                 {reading.value}
                 <span className="runner-snapshot__unit">{reading.unit}</span>

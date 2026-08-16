@@ -8,7 +8,17 @@ interface RunnerVolumeStripProps {
   weeks: WeeklyVolumePoint[];
 }
 
-/** Weekly mileage, as actually run. */
+/**
+ * Weekly mileage, as actually run.
+ *
+ * The data is untouched: the same calendar weeks from `runnerVolume`, the same
+ * selectable week, the same unknown-versus-zero rule. What the visual pass
+ * changed is where the answer is. The selected week used to be a small muted
+ * caption under the chart, which made the chart a picture and the fact a
+ * footnote. The reading now leads — the week's mileage at data scale, its dates
+ * and run count beside it as machine metadata — and the columns underneath are
+ * the shape that reading sits inside.
+ */
 export function RunnerVolumeStrip({ weeks }: RunnerVolumeStripProps) {
   const [selectedKey, setSelectedKey] = useState(() => weeks.at(-1)?.key ?? "");
   /**
@@ -25,6 +35,17 @@ export function RunnerVolumeStrip({ weeks }: RunnerVolumeStripProps) {
 
   return (
     <div className="runner-volume">
+      <div className="runner-volume__readout">
+        <p className="runner-volume__miles data-value">
+          {formatMiles(selected.miles)}
+          <span className="runner-volume__unit">mi</span>
+        </p>
+        <p className="runner-volume__caption machine-label">
+          {range} · {selected.runCount}{" "}
+          {selected.runCount === 1 ? "run" : "runs"}
+          {selected.isPartial ? " · so far" : ""}
+        </p>
+      </div>
       <PlanActualColumns
         compact
         columns={shown.map((week) => ({
@@ -37,11 +58,6 @@ export function RunnerVolumeStrip({ weeks }: RunnerVolumeStripProps) {
         selectedKey={selected.key}
         onSelect={setSelectedKey}
       />
-      <p className="runner-volume__caption machine-label">
-        {range} · {formatMiles(selected.miles)} mi · {selected.runCount}{" "}
-        {selected.runCount === 1 ? "run" : "runs"}
-        {selected.isPartial ? " · so far" : ""}
-      </p>
     </div>
   );
 }

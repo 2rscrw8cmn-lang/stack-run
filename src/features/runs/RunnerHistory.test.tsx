@@ -169,8 +169,9 @@ describe("Runner snapshot", () => {
       ],
     });
 
+    // The lead reading is spoken first, in the order the screen presents it.
     expect(screen.getByRole("button", { name: /^Runner snapshot\./ })).toHaveAccessibleName(
-      "Runner snapshot. 4 miles over the last 7 days. 14 miles over the last 28 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 10 miles. Open history detail.",
+      "Runner snapshot. 14 miles over the last 28 days. 4 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 10 miles. Open history detail.",
     );
     expect(screen.getByText("Last 7 days")).toBeInTheDocument();
     expect(screen.getByText("Last 28 days")).toBeInTheDocument();

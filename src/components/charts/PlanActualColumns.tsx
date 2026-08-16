@@ -2,7 +2,12 @@ import type { CSSProperties } from "react";
 
 const WIDTH = 320;
 const DEFAULT_PLOT_HEIGHT = 168;
-const COMPACT_PLOT_HEIGHT = 136;
+/**
+ * The overview plot. Shorter than it was: on Runs this strip sits between the
+ * snapshot and the history, and every pixel it takes is a run the runner has to
+ * scroll for. The columns get blockier rather than taller.
+ */
+const COMPACT_PLOT_HEIGHT = 116;
 const X_AXIS_LABEL_SPACE = 16;
 const AXIS_GUTTER = 24;
 /** Never show more than about this many x-axis labels, however many weeks are plotted. */
@@ -49,10 +54,21 @@ export function PlanActualColumns({
   const plotWidth = WIDTH - AXIS_GUTTER;
   const count = Math.max(columns.length, 1);
   const slot = plotWidth / count;
-  const barWidth = Math.max(Math.min(slot - 4, 20), 4);
+  /**
+   * The overview chart is blockier: wider columns with a hairline between them,
+   * so the strip reads as the same block geometry Build is made of rather than
+   * as a row of thin analytics bars. Detail charts keep the narrower column.
+   */
+  const barWidth = compact
+    ? Math.max(Math.min(slot - 2, 28), 5)
+    : Math.max(Math.min(slot - 4, 20), 4);
+  const barRadius = compact ? 0 : 1;
   const y = (value: number) => plotHeight - (value / peak) * (plotHeight - 16);
   const selectedIndex = columns.findIndex((column) => column.key === selectedKey);
   const labelStep = Math.max(1, Math.ceil(count / MAX_X_LABELS));
+  const hasPlanned = columns.some(
+    (column) => column.planned !== null && column.planned !== undefined,
+  );
 
   return (
     <div className={`plan-actual-chart technical-grid plan-actual-chart--${tone}${compact ? " plan-actual-chart--compact" : ""}`}>
@@ -110,7 +126,7 @@ export function PlanActualColumns({
                     y={actualY}
                     width={barWidth}
                     height={plotHeight - actualY}
-                    rx="1"
+                    rx={barRadius}
                   />
                 )}
                 {plannedY !== null && (
@@ -155,12 +171,18 @@ export function PlanActualColumns({
           ))}
         </div>
       </div>
-      <div className="plan-actual-chart__key" aria-hidden="true">
-        <span><i data-kind="actual" />Actual</span>
-        {columns.some((column) => column.planned !== null && column.planned !== undefined) && (
+      {/*
+        A key exists to tell two series apart. With only actual columns drawn
+        there is nothing to tell apart, and a lone `Actual` swatch under a chart
+        of actual miles is furniture — so the key appears only once a planned
+        reference is on the plot beside it.
+      */}
+      {hasPlanned && (
+        <div className="plan-actual-chart__key" aria-hidden="true">
+          <span><i data-kind="actual" />Actual</span>
           <span><i data-kind="planned" />Planned</span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
