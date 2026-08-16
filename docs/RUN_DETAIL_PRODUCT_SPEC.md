@@ -11,6 +11,24 @@ Run Detail is the place where STACK may become visually rich about one activity.
 
 The primary screen should not carry every metric or chart merely because the source provides it. Run Detail may reveal richer telemetry progressively when the selected run and the source support it.
 
+A finished detail surface should not feel like documentation. It should lead with the result and the run's shape, then let the runner ask for explanation when needed.
+
+## Editorial rule
+
+Use this order of communication:
+
+> **Result first. Shape second. Supporting evidence third. Methodology on demand.**
+
+Do not repeat the same fact as a headline, paragraph, KPI box and chart.
+
+Methodology, source caveats and definitions remain important, but they should generally live behind a clear disclosure such as:
+
+`How STACK calculates this`
+
+or an accessible information action.
+
+Transparency means the explanation is easy to reach and specific when requested. It does not require permanently expanded explanatory paragraphs.
+
 ## Important current-state fact
 
 STACK already has a Run Detail 2.0 implementation for accepted/logged Intervals runs.
@@ -88,13 +106,16 @@ When data exists, Run Detail should read in this order:
 
 1. **Identity / context**
 2. **Primary result**
-3. **Secondary source facts**
-4. **Run Profile**
+3. **Run Profile**
+4. **Secondary source facts** where they add context rather than repeat the chart
 5. **Heart-rate zones**
 6. **Structured interval detail**
 7. **STACK actions** when the run is STACK-owned
+8. **Method/source explanation** behind disclosure when needed
 
 The precise visual arrangement may evolve, but this hierarchy should prevent the page from becoming a wall of equal cards.
+
+The Run Profile moves ahead of secondary metric grids in visual priority when useful stream data exists. The run's shape is often more informative than another row of equally weighted numbers.
 
 ## 1. Identity / context
 
@@ -107,6 +128,8 @@ State compactly:
 
 Do not make metadata into large content cards.
 
+Use the normal STACK interface type for sheet/title/context hierarchy. Reserve mono/machine treatment for compact status labels, values and technical metadata rather than making every heading look like a display panel.
+
 ## 2. Primary result
 
 Lead with:
@@ -117,22 +140,11 @@ Lead with:
 
 Use stored trusted run facts, not stream-derived averages.
 
-## 3. Secondary source facts
+The primary result should be visually unmistakable and should not need a paragraph explaining what it is.
 
-Show only when present:
+## 3. Run Profile
 
-- average HR;
-- max HR;
-- source elevation gain;
-- Training Load;
-- cadence under the source convention;
-- meaningful elapsed time when different from moving time.
-
-Missing fields disappear. They never become zero placeholders.
-
-## 4. Run Profile
-
-Run Profile is the main visual investigation surface.
+Run Profile is the main visual investigation surface when recognized stream data exists.
 
 Candidate selectors remain:
 
@@ -159,6 +171,35 @@ Preserve existing Run Detail 2.0 rules:
 - near-stop/spike samples may be retained but must not flatten the useful pace domain;
 - visual clamping may improve scale but may not rewrite stored samples or stated summary values.
 
+### Chart chrome
+
+The plotted data should be visually stronger than its frame.
+
+Prefer:
+
+- restrained local grid;
+- sparse axis labels;
+- clear selected state;
+- minimal border/container chrome;
+- no explanatory paragraph directly beneath a chart unless it adds information the chart cannot provide.
+
+## 4. Secondary source facts
+
+Show only when present and useful:
+
+- average HR;
+- max HR;
+- source elevation gain;
+- Training Load;
+- cadence under the source convention;
+- meaningful elapsed time when different from moving time.
+
+Missing fields disappear. They never become zero placeholders.
+
+Avoid treating every secondary metric as an equal large tile. A compact grouped presentation is preferable when the profile already gives the metric a strong visual treatment.
+
+For example, if Heart Rate is the selected profile, average/max HR can act as compact supporting facts rather than a second major HR module.
+
 ## 5. Heart-rate zones
 
 Use source/imported zone durations.
@@ -172,11 +213,37 @@ The visual must state or make accessible:
 
 Do not infer training quality from zone distribution.
 
+Do not add a permanent paragraph explaining zone methodology unless a specific ambiguity requires it. Put general calculation/source explanation behind the detail disclosure.
+
 ## 6. Structured interval detail
 
 Keep on-demand structured detail secondary to the run profile.
 
 Do not fetch structured/lap payloads during ordinary history sync just to populate Runs Overview.
+
+## 7. Actions
+
+STACK-owned actions such as edit, connect/unlink from Plan and other real run ownership behavior remain available, but actions belong after the run itself.
+
+Do not let administrative actions dominate the visual hierarchy above the result/profile.
+
+Historical-only runs remain read-only unless a separate product decision changes that.
+
+## 8. Explanation / methodology disclosure
+
+Run Detail should retain access to source/method explanations without displaying them by default.
+
+Good disclosure content includes:
+
+- source aggregates provide stated summary values;
+- streams provide shape only;
+- Gain is the source-reported climbing aggregate, not recomputed altitude deltas;
+- cadence preserves the verified/source convention and is not silently doubled;
+- missing fields mean unavailable data, not zero.
+
+This content should normally be reachable through one concise disclosure rather than several visible explanatory paragraphs distributed throughout the sheet.
+
+Do not duplicate the same methodology in two paragraphs.
 
 ## Historical-only visual enrichment
 
@@ -221,6 +288,14 @@ The synthetic profile must:
 
 Prefer an injectable detail/profile source or QA-only adapter at the existing fetch boundary over conditionals scattered through `RunResultDetail`.
 
+The QA rich-profile state should be visually reviewed specifically for:
+
+- whether the profile chart appears early enough in the detail hierarchy;
+- whether the primary result remains dominant;
+- whether secondary metrics feel compact rather than dashboard-like;
+- whether explanatory copy is hidden until requested;
+- whether the page still feels useful when only aggregate data exists.
+
 ## Loading/error behavior
 
 Opening a sourced run should not block the summary while richer detail loads.
@@ -255,7 +330,8 @@ Charts must remain understandable without color and without hover.
 - chart values have accessible labels/descriptions;
 - zone arcs remain keyboard/touch usable;
 - touch targets are at least 44px even if the drawn mark is smaller;
-- reduced motion is respected.
+- reduced motion is respected;
+- collapsed methodology remains reachable and correctly named for assistive technology.
 
 ## Non-goals
 
