@@ -223,19 +223,17 @@ Every screen has exactly one `h1`, and it is content rather than a label.
 
 `src/components/ui/EmptyState.tsx` is the shared treatment for a screen with nothing on it yet: an icon, a reason, and what would put something there.
 
-## Today — the daily dashboard
+## Today — the decision surface
 
-`src/features/today/TodayScreen.tsx` composes, in the order D-020 asks for:
+**Superseded by NEXT-4.** Through UI-22 this screen was a daily dashboard that composed, in the order D-020 asked for, `TodayHeading`, the day's workout, `ThisWeekStrip`, `NextWorkoutCard` and `BuildPreview`. NEXT-4 keeps every one of those parts and changes what the screen is organized around — see **NEXT-4 — Today / Home revision** below for the current composition, the element-by-element audit and the rules behind it.
 
-1. `TodayHeading` — the date as the screen's heading, and under it the race reduced to one line (`OUC Half Marathon · 114 days`, or `Race day`). The large countdown card was deleted in UI-5.5 along with `RaceSummaryCard`; UI-7 folded the surviving `RaceContext` line into this heading.
-2. The day's workout: `TodayWorkoutCard` for a run or rest day, `CompletedRunSummary` once it is logged, plus the before-plan and after-race states, both of which now use `EmptyState` inside the day's card.
-3. `ThisWeekStrip` — scheduled completion for the current week, the thin progress bar, seven day markers with per-status treatments, and a `View Plan` link. Extra runs appear as a separate `+N extra` chip and never move the scheduled count.
-4. `NextWorkoutCard` — the next scheduled non-rest workout, omitted when the race is the last thing left.
-5. `BuildPreview` — blocks built, blocks waiting, a crop of the newest bricks, and `View Build`.
+What is unchanged from the earlier description and remains true:
 
-Items 3, 4 and 5 are sections rather than cards; only the day's workout is a card.
-
-The week strip reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagree about the week. UI-16 removed the generic extra-run action from Today; manual `Log Run` remains on Runs, while scheduled completion and Run Found stay on Today.
+- the date is the screen's `h1`, and the race is one quiet line under it. The large countdown card was deleted in UI-5.5 along with `RaceSummaryCard`; UI-7 folded the surviving `RaceContext` line into this heading;
+- the day's workout is the only **card** on the screen, because it is the only thing on it that can be acted on. Everything else is a section, a note or a line;
+- `CompletedRunSummary` is the completed state, with `Place Block`, `View Build`, `Edit Run` and delete-with-confirmation;
+- the week reuses `selectPlanWeekViewModel`, so Today and Plan cannot disagree about what was scheduled;
+- UI-16 removed the generic extra-run action from Today. Manual `Log Run` remains on Runs, while scheduled completion and Run Found stay on Today.
 
 ## Run entry — one form for both kinds of run
 
@@ -2182,3 +2180,162 @@ direction-coloured rule, no animation for reduced motion to suppress, no v1 tile
 rules left behind).
 
 `npm run check` passes: 131 files, 1,660 tests.
+
+## NEXT-4 — Today / Home revision (STACK Next)
+
+**Branch:** `feature/today-next` → PR into `feature/stack-next`.
+
+Today used to answer one question — *what does my plan say today?* — and on a
+rest day, before a plan started or after a race it had almost nothing to say. It
+now answers **what matters now?**
+
+The plan is not hidden to achieve that. A runner with a scheduled run today is
+almost certainly looking at their most important immediate action, so that
+workout still leads and still carries `Mark Complete`. What changed is that the
+rest of the screen understands the runner beyond that one workout.
+
+### The screen
+
+`src/features/today/TodayScreen.tsx` composes, in order:
+
+1. `TodayHeading` — the date as the screen's `h1`, and under it the race as
+   quiet goal context in the smallest type on the page. The countdown is dropped
+   once race day has passed rather than reading `Race day` forever.
+2. **The immediate action.** `TodayWorkoutCard` for a scheduled run,
+   `CompletedRunSummary` once it is logged, or a one-line `TodayNote` for a day
+   that asks nothing — rest, before the plan starts, after the race.
+3. `RunFoundCard`, unchanged, sitting with the other actions. A run waiting to
+   be told what it was is something the runner can do, so it is not buried under
+   analytics; it never displaces today's scheduled workout.
+4. `TodayContext` — two or three orienting facts from the NEXT-2 history layer.
+5. `ThisWeekStrip` — actuals first, the plan's intent beside them.
+6. `TodaySignalNote` — at most one NEXT-3 observation.
+7. `NextWorkoutCard`, retitled `Up next` — compact upcoming intent.
+8. `BuildPreview`, tightened.
+9. `TodayCrewActivity`, unchanged, below the runner's own hierarchy.
+10. The quiet sync-failure line and retry, still silent while a run is waiting
+    for review.
+
+Only item 2's workout state is a card. Everything else is a section, a note or a
+line: the screen has fewer boxes than it did, which is what makes room for what
+the runner is actually doing.
+
+### The model
+
+`src/features/today/todayModel.ts` is pure, React-free and separately tested. It
+resolves the whole screen from four inputs — the plan, the STACK run logs, the
+unified actual history and a local date — and the component renders what it is
+handed. Four rules govern it:
+
+1. **Nothing is recalculated.** Trailing mileage is `runnerVolume`, frequency is
+   `runnerFrequency`, the recent longest run is `runnerLongRuns`, the week's
+   intent is the existing `selectPlanWeekViewModel`, and the observation is
+   NEXT-3's signal domain. There is no Today-specific definition of a mile, a
+   week or a run, and no new metric window.
+2. **Actuals before intentions.** The week model leads with what was actually
+   run and carries the plan's intent alongside it.
+3. **Useful omission.** A reading STACK cannot state is left out. There is no
+   "not enough history" card on Today.
+4. **One fact, one job.** `READING_STATED_BY` maps each context reading to the
+   signal family that would state the same number, and a reading the chosen
+   observation already states is dropped.
+
+`todayContextReadings` offers at most `TODAY_CONTEXT_READING_LIMIT` (3) readings
+in a fixed order: 28-day miles, runs per week over 8 weeks, longest run of the
+last 28 days. Trailing-7-day miles is deliberately absent — This Week directly
+below already answers "how much lately". A fully known empty 28-day window is
+still `0 mi`, which is NEXT-2's own distinction between a measured zero and an
+unknown value; frequency and longest run are omitted when null.
+
+`selectTodaySignal` applies five documented rules to NEXT-3's ordering unchanged:
+keep only presentable signals; drop plan context, which Today states directly
+twice over; drop anything measured as `steady`; take the highest-ranked survivor
+of `orderTrainingSignals`; show nothing if nothing survives. The result is an
+observation and never a recommendation — no signal is translated into advice.
+`TodaySignalNote` routes to Runs rather than building a second detail
+implementation beside NEXT-3's.
+
+`todayWeek` takes its boundaries from the plan whenever the plan has a week
+covering today, so Today and Plan agree by construction; outside the plan it is
+the calendar week from `mondayOfLocalDate`, because a runner between plans still
+ran this week. Its actual figures come from `volumeInRange` over the unified
+history, so a run recorded by a watch and never accepted into STACK still counts
+as running this week — while scheduled completion still counts only what the
+plan asked for, exactly as before. The section is omitted when nothing ran and
+nothing was scheduled.
+
+### Data flow
+
+`AppShell` already held `runnerHistory`. Today now receives `runnerRuns` through
+that existing boundary, exactly as Runs does, and falls back to
+`unifiedRunnerHistory({ runLogs, blockPlacements })` — which is precisely what a
+manual-only runner has, and what every existing test that renders the screen
+with run logs alone gets.
+
+```text
+App / useRunnerHistory → AppShell → TodayScreen → todayModel.ts
+```
+
+Today opens no second history hook, no second sync, no Today-specific
+persistence and no second stale/fresh lifecycle, and it refetches nothing.
+
+### What changed on each existing element
+
+| Element | Verdict |
+|---|---|
+| Date heading | KEEP |
+| Race countdown | REFRAME — quiet goal context, stated once, dropped after race day |
+| `TodayWorkoutCard` (run) | KEEP — still the one card, still leading |
+| `TodayWorkoutCard` (rest) | COMPRESS — a rest day is a `TodayNote`; the rest branch and its `--rest` styling are gone |
+| Before-plan / after-race | COMPRESS — same words, `TodayNote` instead of a full-card `EmptyState` |
+| `CompletedRunSummary` | KEEP |
+| `RunFoundCard` | KEEP, moved up beside the other actions |
+| `ThisWeekStrip` | REFRAME — evolved in place; actual miles and runs lead, plan progress follows. Run time and the week's longest run removed as unactionable or duplicated |
+| `NextWorkoutCard` | KEEP, retitled `Up next` |
+| `BuildPreview` | COMPRESS — three rows became two; no Build domain logic touched |
+| `TodayCrewActivity` | KEEP |
+| Sync error + retry | KEEP |
+| Run entry | KEEP |
+| `TodayContext` | NEW |
+| `TodaySignalNote` | NEW |
+
+Preserved in full: scheduled completion, editing and deleting a completed run,
+Run Found review with `Not now` and `Ignore this run`, manual fallback, sync
+retry, the earned-block handoff into Build, Crew access, and the existing
+accessible focus and `aria-live` behaviour.
+
+### Styling
+
+`src/features/today/todayDecisionSurface.css`, imported by the screen, following
+the `signalPresentationCleanup.css` precedent. Presentation only. The observation
+is never coloured by direction — that would be scorekeeping — the readings carry
+no tile chrome, and both stay legible at 320px. The rules for the deleted
+week-actuals list and the rest-day card were removed from `components.css`
+rather than left to fight with the new ones.
+
+### What NEXT-4 deliberately did not do
+
+No Plan architecture redesign: `TrainingPlan` in AppState, plan editing, plan
+generation, week navigation and the plan domain are untouched, and NEXT-5 remains
+the phase that decides the plan's future. No Build domain change — no historical
+backfill, no change to block ownership, earning or deterministic placement, which
+stay NEXT-6's. No Crew change and no new projection field. No navigation change,
+no new persistence, no schema change, no migration, no dependency. No readiness
+state, no score, no adherence grade, no red/green success-failure semantics, no
+coaching or medical language.
+
+### Tests
+
+53 new tests, all on fake fixtures. `todayModel.test.ts` covers the signal
+selection rule at every exclusion and its determinism under reordering, the
+reading order and limit, unknown-versus-zero, the dedup rule, week boundaries
+inside and outside the plan, the signed race countdown, and that the model
+mutates neither input. `TodayScreen.test.tsx` is extended for actual-first This
+Week, a connected-only run counted as this week's running, the week surviving
+outside the plan, the compact rest/before-plan/after-race states, the
+recent-training strip and its absence, exactly one observation with its evidence
+and dedup effect, that it advises nothing, and that it routes to Runs.
+`todayDecisionSurfaceStyling.test.ts` asserts the presentation decisions that are
+product decisions rather than taste.
+
+`npm run check` passes: 134 files, 1,709 tests.

@@ -202,7 +202,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Mark Complete" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/0 of 4 runs/)).toBeInTheDocument();
+    expect(screen.getByText(/0 of 4 scheduled/)).toBeInTheDocument();
     expect(screen.getByText("+1 extra")).toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");

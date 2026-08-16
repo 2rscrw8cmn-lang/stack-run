@@ -1,7 +1,5 @@
-import { CalendarPlus, PartyPopper } from "lucide-react";
+import { CalendarPlus, Moon, PartyPopper } from "lucide-react";
 import { useState } from "react";
-import { Card } from "../../components/ui/Card";
-import { EmptyState } from "../../components/ui/EmptyState";
 import {
   blockedDates,
   type AvailabilityCalendar,
@@ -11,44 +9,46 @@ import {
   findPlacementForRunLog,
   selectBuildViewModel,
 } from "../../domain/build";
-import {
-  daysBetweenLocalDates,
-  formatDateLabel,
-  todayLocalDate,
-} from "../../domain/dates";
-import {
-  currentWeekNumber,
-  nextScheduledWorkout,
-  selectPlanWeekViewModel,
-} from "../../domain/plan";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type {
   BlockPlacement,
   RunLog,
   TrainingPlan,
   Workout,
 } from "../../domain/types";
-import { selectWeekActuals } from "../../domain/weekActuals";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
 import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals";
 import { RunFoundCard } from "../connected/RunFoundCard";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
-import { selectTodayViewModel } from "../../domain/workout";
 import { BuildPreview } from "./BuildPreview";
 import { CompletedRunSummary } from "./CompletedRunSummary";
 import { NextWorkoutCard } from "./NextWorkoutCard";
 import { ThisWeekStrip } from "./ThisWeekStrip";
+import { TodayContext } from "./TodayContext";
 import { TodayHeading } from "./TodayHeading";
+import { TodayNote } from "./TodayNote";
+import { TodaySignalNote } from "./TodaySignalNote";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
+import { selectTodayModel } from "./todayModel";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { TodayCrewActivity } from "./TodayCrewActivity";
+import "./todayDecisionSurface.css";
 
 interface TodayScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
+  /**
+   * The runner's unified actual history, owned by the application and passed
+   * down through `AppShell`. Today opens no history hook, sync or store of its
+   * own; it defaults to the run logs alone, which is exactly what a manual-only
+   * runner has.
+   */
+  runnerRuns?: RunnerRun[];
   blockPlacements?: BlockPlacement[];
   onViewPlan: () => void;
-  /** Opens the secondary Training Trends view. */
-  onViewTrends?: () => void;
+  /** Opens Runs — the full record, and where Training Signals live. */
+  onViewRuns?: () => void;
   onViewBuild?: () => void;
   /** Hands the earned block to Build, which is where placing happens. */
   onStartPlacing?: (runLogId: string) => void;
@@ -80,16 +80,40 @@ type Entry =
   { kind: "scheduled"; workout: Workout; runLog?: RunLog };
 
 /**
- * The daily dashboard. It answers, in order: what do I do today, how is the
- * week going, what is next, did I run something the plan never asked for, and
- * what have I built.
+ * Today — the decision surface.
+ *
+ * This screen used to answer *what does my plan say today?*, and on a rest day,
+ * before a plan started or after a race it had almost nothing to say. NEXT-4
+ * changes the question to **what matters now?** without hiding the plan: a
+ * scheduled run today is still very likely the most important immediate action,
+ * so it still leads. What changed is that the rest of the screen now understands
+ * the runner beyond that one workout.
+ *
+ * The hierarchy, in order:
+ *
+ * 1. **the date**, and the race as quiet goal context;
+ * 2. **the immediate action** — today's workout, the run already completed, or a
+ *    one-line note for a day that asks nothing;
+ * 3. **a connected run waiting for review**, which is a real action and so sits
+ *    beside the others rather than under analytics;
+ * 4. **recent training** — two or three facts from the NEXT-2 history layer;
+ * 5. **this week**, actuals first and the plan's intent beside them;
+ * 6. **one observation**, at most, from the NEXT-3 signal domain;
+ * 7. **up next**, when the plan has something to say;
+ * 8. **Build**, because the work accumulating is the point;
+ * 9. **Crew**, optional and downstream of the runner's own experience.
+ *
+ * Every decision above is made in `todayModel.ts` and every calculation behind
+ * it already existed. This component composes and handles run entry; it computes
+ * no mileage, defines no window and grades no adherence.
  */
 export function TodayScreen({
   plan,
   runLogs,
+  runnerRuns,
   blockPlacements = [],
   onViewPlan,
-  onViewTrends,
+  onViewRuns,
   onViewBuild = () => undefined,
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
@@ -111,27 +135,16 @@ export function TodayScreen({
   const [entryVisit, setEntryVisit] = useState(0);
   const [saveAnnouncement, setSaveAnnouncement] = useState("");
 
-  const viewModel = selectTodayViewModel(plan, runLogs, today);
-  const planIsActive =
-    viewModel.kind === "rest" ||
-    viewModel.kind === "run" ||
-    viewModel.kind === "completed";
-  const daysRemaining = daysBetweenLocalDates(today, plan.race.date);
-  const week = selectPlanWeekViewModel(
-    plan,
-    runLogs,
-    currentWeekNumber(plan, today),
-    today,
-  );
-  const next = nextScheduledWorkout(plan, today);
-  const actuals = selectWeekActuals(runLogs, week.startDate, week.endDate);
+  const runs = runnerRuns ?? unifiedRunnerHistory({ runLogs, blockPlacements });
+  const model = selectTodayModel({ plan, runLogs, runs, today });
+  const { immediate } = model;
   const found = selectRunFound(candidates, plan, runLogs, today);
   const build = selectBuildViewModel(plan, runLogs, blockPlacements, today);
 
   // The completed run on screen, if today's scheduled workout has been logged.
   const completed =
-    viewModel.kind === "completed"
-      ? { workout: viewModel.workout, runLog: viewModel.runLog }
+    immediate.kind === "completed"
+      ? { workout: immediate.workout, runLog: immediate.runLog }
       : null;
   const completedPlacement = completed
     ? (findPlacementForRunLog(blockPlacements, completed.runLog.id) ?? null)
@@ -148,45 +161,47 @@ export function TodayScreen({
       <TodayHeading
         today={today}
         race={plan.race}
-        daysRemaining={daysRemaining}
+        daysRemaining={model.raceDaysRemaining}
       />
 
-      {viewModel.kind === "before-plan" && (
-        <Card className="today-workout-card">
-          <EmptyState
-            icon={<CalendarPlus size={24} strokeWidth={1.6} />}
-            title="Plan starts soon"
-          >
-            Training begins{" "}
-            {formatDateLabel(viewModel.planStartDate, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-            . Anything you run before then is an extra run, and it still earns
-            a block.
-          </EmptyState>
-        </Card>
+      {immediate.kind === "before-plan" && (
+        <TodayNote
+          icon={<CalendarPlus size={15} strokeWidth={1.8} />}
+          eyebrow="Plan starts soon"
+        >
+          Training begins{" "}
+          {formatDateLabel(immediate.planStartDate, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+          . Anything you run before then is an extra run, and it still earns a
+          block.
+        </TodayNote>
       )}
 
-      {viewModel.kind === "after-race" && (
-        <Card className="today-workout-card">
-          <EmptyState
-            icon={<PartyPopper size={24} strokeWidth={1.6} />}
-            title="Race complete"
-          >
-            You crossed the finish line. Every block below is a run you
-            actually did.
-          </EmptyState>
-        </Card>
+      {immediate.kind === "after-race" && (
+        <TodayNote
+          icon={<PartyPopper size={15} strokeWidth={1.8} />}
+          eyebrow="Race complete"
+        >
+          You crossed the finish line. Every block below is a run you actually
+          did.
+        </TodayNote>
       )}
 
-      {(viewModel.kind === "rest" || viewModel.kind === "run") && (
+      {immediate.kind === "rest" && (
+        <TodayNote icon={<Moon size={15} strokeWidth={1.8} />} eyebrow="Rest Day">
+          {immediate.workout.details}
+        </TodayNote>
+      )}
+
+      {immediate.kind === "run" && (
         <TodayWorkoutCard
-          workout={viewModel.workout}
+          workout={immediate.workout}
           onMarkComplete={() =>
-            openEntry({ kind: "scheduled", workout: viewModel.workout })
+            openEntry({ kind: "scheduled", workout: immediate.workout })
           }
         />
       )}
@@ -208,6 +223,11 @@ export function TodayScreen({
         />
       )}
 
+      {/*
+        A run waiting to be told what it was is an action, so it stays up here
+        with the other actions rather than sinking below the training context.
+        It never displaces today's scheduled workout — both can be true at once.
+      */}
       {found && (
         <RunFoundCard
           found={found}
@@ -219,26 +239,37 @@ export function TodayScreen({
         />
       )}
 
-      {planIsActive && (
+      <TodayContext readings={model.context} />
+
+      {model.week && (
         <ThisWeekStrip
-          week={week}
+          week={model.week}
           blocked={blockedDates(availability)}
-          actuals={actuals}
           onViewPlan={onViewPlan}
-          // Nothing to trend before the first run, and an empty view invites a
-          // tap that answers nothing.
-          onViewTrends={onViewTrends && runLogs.length > 0 ? onViewTrends : undefined}
+          // Nothing to look at before the first run, and an empty list invites
+          // a tap that answers nothing.
+          onViewRuns={onViewRuns && runs.length > 0 ? onViewRuns : undefined}
         />
       )}
 
-      {next && <NextWorkoutCard workout={next} />}
+      {model.signal && onViewRuns && (
+        <TodaySignalNote signal={model.signal} onViewSignals={onViewRuns} />
+      )}
+
+      {model.next && <NextWorkoutCard workout={model.next} />}
+
+      <BuildPreview
+        blocks={build.blocks}
+        pendingBlocks={build.pendingBlocks}
+        onViewBuild={onViewBuild}
+      />
 
       <TodayCrewActivity crew={raceCrew} today={today} onViewCrew={onViewCrew} />
 
       {/*
         A failed sync is worth saying and not worth interrupting for: the plan,
         the log and the Build are all still true without it. So it sits down
-        here, below the workout and the week, with the retry the user would
+        here, below everything the runner came for, with the retry they would
         otherwise have to go into Run Data to find.
       */}
       {syncError && !found && (
@@ -249,12 +280,6 @@ export function TodayScreen({
           </button>
         </p>
       )}
-
-      <BuildPreview
-        blocks={build.blocks}
-        pendingBlocks={build.pendingBlocks}
-        onViewBuild={onViewBuild}
-      />
 
       <p className="visually-hidden" aria-live="polite">
         {saveAnnouncement}

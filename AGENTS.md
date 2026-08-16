@@ -106,8 +106,7 @@ Rules a later phase must not quietly undo:
 
 ### NEXT-3 — Training Signals v2
 
-Implemented on `feature/training-signals-v2`, awaiting owner acceptance of the
-PR into `feature/stack-next`.
+Accepted and merged into `feature/stack-next` in PR #104.
 
 Seven plan-relative statistics became six observations over the unified actual
 history: volume, frequency, long-run progression, workload, zone mix, and plan
@@ -142,12 +141,62 @@ coverage requirement and the behavior when classification is ambiguous.
 
 ### NEXT-4 — Today / Home revision
 
-Next engineering phase, to begin after NEXT-3 is accepted and merged.
+Implemented on `feature/today-next`, awaiting owner acceptance of the PR into
+`feature/stack-next`.
+
+Today answers *what matters now?* rather than *what does my plan say today?*,
+without hiding the plan: a scheduled run today still leads. Around it the screen
+carries a compact recent-training context from NEXT-2, an actual-first This Week,
+at most one NEXT-3 observation, compact upcoming intent, Build and Crew.
+
+Rules a later phase must not quietly undo:
+
+- **the decisions live in `src/features/today/todayModel.ts`**, which is pure and
+  React-free. No mileage, window, threshold or state decision belongs in Today's
+  JSX;
+- **nothing on Today is recalculated.** Volume, frequency, long runs, the plan
+  week and the signals all come from the existing modules. Today introduces no
+  new metric window and no second definition of a mile, a week or a run;
+- **at most three context readings**, each stating its own window, and never the
+  Runner Snapshot copied over from Runs;
+- **at most one Training Signal**, by the documented deterministic rule in
+  `selectTodaySignal`: presentable only, never plan context, never `steady`,
+  highest-ranked survivor of the NEXT-3 ordering, otherwise nothing. Never a
+  list, a carousel or a score;
+- **a signal is an observation, never a recommendation.** Today does not
+  translate any signal into coaching;
+- **one fact has one job.** A reading the chosen observation already states is
+  dropped by rule, not by review;
+- **actuals before intentions** in This Week: what was run leads, the plan's
+  scheduled progress follows, and the two are never merged into one number;
+- **useful omission** over placeholders: an unknown reading is absent, and there
+  is no "not enough history" card on Today;
+- Today consumes the history the application already owns through `AppShell`. It
+  must not open a second history hook, sync, persistence or freshness lifecycle;
+- the preserved behaviours stay preserved: scheduled completion, editing and
+  deleting a completed run, Run Found review with dismiss and ignore, manual
+  fallback, sync retry, the earned-block handoff into Build, Crew access and the
+  existing accessible focus and live-region behaviour.
+
+NEXT-4 deliberately did not add:
+
+- Plan redesign (NEXT-5), or any change to `TrainingPlan` in AppState;
+- automatic plan changes;
+- AI coaching/readiness;
+- wellness UI;
+- route/GPS UI;
+- historical Build backfill or any Build domain change (NEXT-6);
+- broad Race Crew changes;
+- an overall score of any kind.
+
+### NEXT-5 — Plan role revision
+
+Next engineering phase, to begin after NEXT-4 is accepted and merged.
 
 Recommended branch:
 
 ```text
-feature/today-next
+feature/plan-next
 ```
 
 PR target:
@@ -158,21 +207,7 @@ feature/stack-next
 
 Goal:
 
-> Make the first screen answer what matters now using the runner's real context, not merely echo the plan.
-
-Build on the NEXT-2 history layer and the NEXT-3 signal layer rather than
-recomputing either. Do not surface every available metric.
-
-Do not add in NEXT-4:
-
-- Plan redesign (NEXT-5);
-- automatic plan changes;
-- AI coaching/readiness;
-- wellness UI;
-- route/GPS UI;
-- historical Build backfill;
-- broad Race Crew changes;
-- an overall score of any kind.
+> Keep the plan useful while removing the assumption that it defines the runner.
 
 `docs/STACK_NEXT_AGENT_PROMPT.md` remains the NEXT-1 implementation contract and
 is historical context now; `docs/STACK_NEXT_IMPLEMENTATION.md` is the live
