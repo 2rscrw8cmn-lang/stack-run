@@ -509,8 +509,9 @@ export function CrewScreen({
       </header>
 
       <PropNotifications
-        notifications={dashboardData.propNotifications}
+        notifications={crew.visiblePropNotifications}
         propsSeenAt={crew.account?.profile.propsSeenAt ?? new Date(0).toISOString()}
+        onDismiss={crew.dismissPropNotification}
       />
 
       {canSwitchCrews && isCrewPickerOpen && (

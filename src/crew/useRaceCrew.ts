@@ -46,6 +46,10 @@ import {
   loadActiveCrewId,
   saveActiveCrewId,
 } from "../storage/activeCrewRepository";
+import {
+  dismissPropNotification as rememberDismissedPropNotification,
+  loadDismissedPropNotificationIds,
+} from "../storage/dismissedPropNotificationRepository";
 import { loadCrewDashboard } from "./dashboard";
 import {
   loadActivePersonalOwner,
@@ -105,6 +109,8 @@ export interface RaceCrewController {
   propsErrors: Readonly<Record<string, string>>;
   /** Props on the viewer's own runs since they last opened a surface that shows them. */
   unreadPropNotifications: readonly CrewPropNotification[];
+  /** Props on the viewer's own runs, minus whichever ones they've swiped away. */
+  visiblePropNotifications: readonly CrewPropNotification[];
   crewBuildPlacementPending: boolean;
   crewBuildPlacementError: string | null;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
@@ -127,6 +133,7 @@ export interface RaceCrewController {
   refreshCrewData: (force?: boolean) => Promise<void>;
   toggleProps: (runId: string) => Promise<void>;
   markPropsSeen: () => Promise<void>;
+  dismissPropNotification: (notificationId: string) => void;
   placeCrewBuildBlock: (runId: string, row: number, columnStart: number) => Promise<boolean>;
   clearCrewBuildPlacementError: () => void;
   clearMessage: () => void;
@@ -146,6 +153,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   );
   const [user, setUser] = useState<User | null>(null);
   const [account, setAccount] = useState<LoadedCrewAccount | null>(null);
+  const [dismissedPropIds, setDismissedPropIds] = useState<ReadonlySet<string>>(new Set());
+  const dismissedPropIdsUserId = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -194,6 +203,15 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   useEffect(() => {
     latest.current = { appState, user, account };
   });
+
+  // Dismissed Props are read fresh whenever the signed-in account changes,
+  // rather than via an effect: it's cheap, synchronous localStorage state
+  // being adjusted to match a prop, exactly the case React's own effect
+  // guidance says to handle during render instead of after it.
+  if ((user?.id ?? null) !== dismissedPropIdsUserId.current) {
+    dismissedPropIdsUserId.current = user?.id ?? null;
+    setDismissedPropIds(user ? loadDismissedPropNotificationIds(user.id) : new Set());
+  }
 
   const reloadAccount = useCallback(async (
     nextUser: User,
@@ -622,9 +640,18 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }
   }
 
+  const visiblePropNotifications = (crewData?.propNotifications ?? []).filter(
+    (notification) => !dismissedPropIds.has(notification.id),
+  );
   const unread = account
-    ? unreadPropNotifications(crewData?.propNotifications ?? [], account.profile.propsSeenAt)
+    ? unreadPropNotifications(visiblePropNotifications, account.profile.propsSeenAt)
     : [];
+
+  function dismissPropNotification(notificationId: string): void {
+    if (!user) return;
+    rememberDismissedPropNotification(user.id, notificationId);
+    setDismissedPropIds((current) => new Set(current).add(notificationId));
+  }
 
   async function markPropsSeen(): Promise<void> {
     if (!availability.configured || !user || unread.length === 0) return;
@@ -704,6 +731,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     propsPendingRunIds,
     propsErrors,
     unreadPropNotifications: unread,
+    visiblePropNotifications,
     crewBuildPlacementPending,
     crewBuildPlacementError,
     createAccount: (input) => operate(async () => {
@@ -866,6 +894,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     refreshCrewData,
     toggleProps,
     markPropsSeen,
+    dismissPropNotification,
     placeCrewBuildBlock: placeBlockInCrewBuild,
     clearCrewBuildPlacementError: () => setCrewBuildPlacementError(null),
     clearMessage: () => {

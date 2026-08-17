@@ -1141,8 +1141,9 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
 
                 {crew.account?.crew && (
                   <PropNotifications
-                    notifications={crew.crewData?.propNotifications ?? []}
+                    notifications={crew.visiblePropNotifications}
                     propsSeenAt={crew.account.profile.propsSeenAt}
+                    onDismiss={crew.dismissPropNotification}
                   />
                 )}
 

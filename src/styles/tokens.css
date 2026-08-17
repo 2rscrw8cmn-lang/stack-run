@@ -97,6 +97,12 @@
   --radius-md: 10px;
   --radius-lg: 22px;
 
+  /* The bottom nav's own content height, excluding its safe-area padding.
+     Shared with `.app-shell__main`'s bottom clearance so scrolled-to-the-end
+     content can never end up sitting only under the sticky bar's blur with
+     no room to clear it — the two must move together, not by coincidence. */
+  --bottom-nav-height: 52px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
