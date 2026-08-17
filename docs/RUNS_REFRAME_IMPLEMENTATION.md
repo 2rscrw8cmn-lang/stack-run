@@ -1,6 +1,6 @@
 # Runs Reframe — Implementation Plan
 
-**Status:** R0 is accepted; R1 is implemented and awaiting owner acceptance. R2 product architecture is now defined but implementation has not started. R3 and NEXT-5 remain paused.  
+**Status:** R0 is accepted. R1 is implemented in PR #109 and remains under owner review, not accepted or merged. R2 is implemented on top of R1 and awaiting owner review in a separate stacked draft PR; it is not accepted or merged. R3 and NEXT-5 remain paused.
 **Integration branch:** `feature/stack-next`.
 
 ## Why this exists
@@ -22,12 +22,14 @@ Implementation should follow those documents rather than reinterpret them from s
 
 ```text
 feature/stack-next
-├── feature/runs-overview
-├── feature/runs-history-explorer
-└── feature/run-detail-enrichment
+└── feature/runs-overview                 (R1, PR #109)
+    └── feature/runs-history-explorer     (R2 stacked draft)
 ```
 
-Each PR targets `feature/stack-next`, never `main`.
+While R1 remains under review, the R2 PR targets `feature/runs-overview` so its
+diff contains only the R2 delta. It may be retargeted to `feature/stack-next`
+after R1 is owner-accepted and merged there. Neither branch is merged by this
+implementation record, and neither targets `main`.
 
 Do not begin NEXT-5 Plan role revision until the Runs reframe is coherent enough to review as one product system.
 
@@ -92,8 +94,30 @@ R2 addresses those directly.
 ## R2 — Runs exploration system
 
 **Recommended branch:** `feature/runs-history-explorer`
+**Implementation status:** implemented on the current R1 tip, awaiting owner visual acceptance in a stacked draft PR. This is not an acceptance record.
 
 R2 is no longer defined as “polish the Full History archive.” It has three coordinated subphases.
+
+The implementation now:
+
+- expands the complete presentable Signal inventory inline from three and collapses it with `Show fewer`;
+- expands Recent Runs inline from three to a bounded ten and keeps `Explore History` distinct;
+- deletes the retired All Signals and Full History collection sheets;
+- opens `HistoryExplorer` as local child-screen state inside Runs, preserving the active Runs destination and existing detail sheets;
+- provides Miles, Runs, recorded Time, source Load, source Gain and recorded Zones over 4W / 3M / 6M / YTD / 1Y / ALL;
+- uses pure local-date range, bucket, filter and aggregate helpers over normalized `RunnerRun` data;
+- exposes only the stable All / Planned / Extra / History only filter contract;
+- defaults to the largest fully known quick range up to 3M and selects the latest bucket containing a run;
+- constrains contributing rows to the selected bucket for additive charts, keeps them newest-first, and reveals large sets 25 at a time;
+- preserves missing optional metrics as missing and states recorded/source contribution coverage;
+- uses weekly buckets for 4W / 3M / 6M and short YTD, monthly buckets for long YTD / 1Y / ALL;
+- uses one full-chart touch/keyboard scrubber to reach every bucket while showing only sparse readable axis labels;
+- applies the same sparse-label and non-overlapping scrubber architecture to `PlanActualColumns` in Recent Training and Signal detail;
+- extends the reusable QA Runner with deterministic partial Load, Gain and Zone coverage without credentials, network calls or page-specific demo state.
+
+No Training Signal formula/order/availability, unified-history identity or sync,
+source semantics, RunLog, Plan, Build, Crew, persistence, schema, R3 stream work,
+or NEXT-5 behavior changed.
 
 ### R2A — Remove “more” modals
 

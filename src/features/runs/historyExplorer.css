@@ -1,0 +1,427 @@
+.history-explorer {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.history-explorer__header {
+  display: grid;
+  gap: 12px;
+}
+
+.history-explorer__back {
+  width: max-content;
+  min-height: 44px;
+  padding-inline: 0 12px;
+  color: var(--text-muted);
+}
+
+.history-explorer__header h1,
+.history-explorer__header p,
+.history-explorer__runs-heading h2,
+.history-explorer__runs-heading p {
+  margin: 0;
+}
+
+.history-explorer__header h1 {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: clamp(29px, 9vw, 39px);
+  letter-spacing: -0.045em;
+}
+
+.history-explorer__header > div > p:last-child {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.history-explorer__controls {
+  display: grid;
+  gap: 10px;
+}
+
+.history-selector {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 1px 1px 4px;
+  scrollbar-width: none;
+}
+
+.history-selector::-webkit-scrollbar {
+  display: none;
+}
+
+.history-selector button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 48px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface-soft);
+  font: 600 11px/1 var(--font-data);
+  letter-spacing: 0.035em;
+  cursor: pointer;
+}
+
+.history-selector button[aria-selected="true"],
+.history-selector button[aria-pressed="true"] {
+  border-color: var(--selected-border);
+  color: var(--accent);
+  background: var(--chart-selection);
+}
+
+.history-selector button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.history-selector button:focus-visible,
+.history-chart__scrubber:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.history-selector--range button {
+  min-width: 44px;
+  padding-inline: 9px;
+}
+
+.history-selector--filter {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.history-selector--filter button {
+  min-width: max-content;
+}
+
+.history-explorer__instrument {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 0 12px;
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.history-explorer__result {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.history-explorer__result > div {
+  display: grid;
+  gap: 4px;
+}
+
+.history-explorer__result span,
+.history-explorer__result p,
+.history-explorer__coverage {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.history-explorer__result strong {
+  color: var(--accent);
+  font: 700 clamp(27px, 8.5vw, 38px)/1 var(--font-data);
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-explorer__result p,
+.history-explorer__coverage {
+  margin: 0;
+  text-align: right;
+}
+
+.history-explorer__coverage {
+  line-height: 1.45;
+}
+
+.history-explorer__empty {
+  margin: 0;
+  min-height: 90px;
+  display: grid;
+  place-items: center start;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.history-explorer__empty--runs {
+  min-height: 72px;
+}
+
+.history-chart {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.history-chart__selection {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-chart__selection span {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.history-chart__selection strong {
+  color: var(--text);
+  font-size: 12px;
+  text-align: right;
+}
+
+.history-chart__body {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.history-chart__y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 198px;
+  padding-block: 0 1px;
+  color: var(--text-subtle);
+  font: 10px/1 var(--font-data);
+  text-align: right;
+}
+
+.history-chart__plot {
+  position: relative;
+  height: 198px;
+  border-bottom: 1px solid var(--border-strong);
+  background-image: linear-gradient(
+    to bottom,
+    var(--technical-grid-line) 0 1px,
+    transparent 1px 50%,
+    var(--technical-grid-line) 50% calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+
+.history-chart__bars,
+.history-chart__x {
+  display: grid;
+  grid-template-columns: repeat(var(--history-buckets), minmax(0, 1fr));
+}
+
+.history-chart__bars {
+  align-items: end;
+  gap: clamp(2px, 0.8vw, 5px);
+  height: 100%;
+}
+
+.history-chart__bar-slot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  min-width: 0;
+  background: color-mix(in srgb, var(--surface-strong) 45%, transparent);
+}
+
+.history-chart__bar-slot[data-selected="true"] {
+  background: var(--chart-selection);
+}
+
+.history-chart__bar-slot[data-missing="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 20% 1px;
+  border-top: 1px dashed var(--text-subtle);
+  opacity: 0.5;
+}
+
+.history-chart__bar {
+  width: 100%;
+  height: var(--history-bar-height);
+  min-height: 0;
+  background: var(--chart-reference);
+  opacity: 0.45;
+}
+
+.history-chart__bar-slot[data-selected="true"] .history-chart__bar {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.history-chart__scrubber {
+  appearance: none;
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0.01;
+  cursor: ew-resize;
+}
+
+.history-chart__scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+}
+
+.history-chart__scrubber::-moz-range-thumb {
+  width: 44px;
+  height: 44px;
+  border: 0;
+}
+
+.history-chart__x {
+  gap: clamp(2px, 0.8vw, 5px);
+  margin-left: 41px;
+  min-height: 18px;
+}
+
+.history-chart__x span {
+  min-width: 0;
+  color: var(--text-subtle);
+  font: 12px/1.2 var(--font-data);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.history-chart__x span:first-child {
+  text-align: left;
+}
+
+.history-chart__x span:last-child {
+  text-align: right;
+}
+
+.history-chart__x span[data-selected="true"] {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.history-zones {
+  display: grid;
+  gap: 10px;
+  padding-block: 8px;
+}
+
+.history-zones__row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-muted);
+  font: 12px/1 var(--font-data);
+}
+
+.history-zones__row strong {
+  color: var(--text);
+  text-align: right;
+}
+
+.history-zones__track {
+  display: block;
+  height: 9px;
+  background: var(--surface-strong);
+}
+
+.history-zones__track > span {
+  display: block;
+  width: var(--zone-share);
+  height: 100%;
+  background: var(--zone-1);
+}
+
+.history-zones__track > span[data-zone="2"] { background: var(--zone-2); }
+.history-zones__track > span[data-zone="3"] { background: var(--zone-3); }
+.history-zones__track > span[data-zone="4"] { background: var(--zone-4); }
+.history-zones__track > span[data-zone="5"] { background: var(--zone-5); }
+.history-zones__track > span[data-zone="6"] { background: var(--zone-6); }
+.history-zones__track > span[data-zone="7"] { background: var(--zone-7); }
+
+.history-explorer__runs {
+  min-width: 0;
+}
+
+.history-explorer__runs-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-explorer__runs-heading h2 {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.history-explorer__run-list .run-row {
+  min-height: 56px;
+}
+
+.history-explorer__reveal {
+  min-height: 44px;
+  margin-top: 10px;
+}
+
+@media (min-width: 760px) {
+  .history-explorer {
+    max-width: 820px;
+    margin-inline: auto;
+  }
+
+  .history-chart__plot,
+  .history-chart__y {
+    height: 238px;
+  }
+}
+
+@media (max-width: 340px) {
+  .history-explorer__result {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .history-explorer__result p,
+  .history-explorer__coverage {
+    text-align: left;
+  }
+
+  .history-chart__selection {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .history-chart__selection strong {
+    text-align: left;
+  }
+}

@@ -1,9 +1,9 @@
-import type { CSSProperties } from "react";
+import { sparseTickIndices } from "./chartTickDensity";
 
 const WIDTH = 320;
 const DEFAULT_PLOT_HEIGHT = 168;
 const COMPACT_PLOT_HEIGHT = 136;
-const X_AXIS_LABEL_SPACE = 16;
+const X_AXIS_LABEL_SPACE = 24;
 const AXIS_GUTTER = 24;
 /** Never show more than about this many x-axis labels, however many weeks are plotted. */
 const MAX_X_LABELS = 6;
@@ -29,9 +29,9 @@ interface PlanActualColumnsProps {
 
 /**
  * Actual columns plus a quiet dashed planned target. The chart itself is the
- * week selector: a transparent button sits over each column at full plot
- * height, so a tap anywhere in that week's column selects it — no separate
- * visible selector row to scroll.
+ * week selector: one full-plot range control traverses every column by touch
+ * or keyboard. That avoids overlapping narrow per-column targets when a phone
+ * is showing many weeks and keeps the exact selected reading outside the plot.
  */
 export function PlanActualColumns({
   columns,
@@ -51,8 +51,8 @@ export function PlanActualColumns({
   const slot = plotWidth / count;
   const barWidth = Math.max(Math.min(slot - 4, 20), 4);
   const y = (value: number) => plotHeight - (value / peak) * (plotHeight - 16);
-  const selectedIndex = columns.findIndex((column) => column.key === selectedKey);
-  const labelStep = Math.max(1, Math.ceil(count / MAX_X_LABELS));
+  const selectedIndex = Math.max(0, columns.findIndex((column) => column.key === selectedKey));
+  const labelIndices = sparseTickIndices(columns.length, selectedIndex, MAX_X_LABELS);
 
   return (
     <div className={`plan-actual-chart technical-grid plan-actual-chart--${tone}${compact ? " plan-actual-chart--compact" : ""}`}>
@@ -82,11 +82,7 @@ export function PlanActualColumns({
               ? null
               : y(column.planned);
             const isSelected = column.key === selectedKey;
-            const isAlwaysShown = index === 0 || index === count - 1 || index === selectedIndex;
-            const crowdsAnAlwaysShownLabel =
-              Math.abs(index - (count - 1)) === 1 || Math.abs(index - selectedIndex) === 1;
-            const showLabel =
-              isAlwaysShown || (index % labelStep === 0 && !crowdsAnAlwaysShownLabel);
+            const showLabel = labelIndices.includes(index);
             return (
               <g key={column.key}>
                 {isSelected && (
@@ -138,22 +134,20 @@ export function PlanActualColumns({
             );
           })}
         </svg>
-        <div className="plan-actual-chart__targets" role="group" aria-label="Select a week">
-          {columns.map((column, index) => (
-            <button
-              key={column.key}
-              type="button"
-              className="plan-actual-chart__target"
-              aria-pressed={column.key === selectedKey}
-              aria-label={column.selectionLabel}
-              onClick={() => onSelect(column.key)}
-              style={{
-                "--target-left": `${((AXIS_GUTTER + index * slot) / WIDTH) * 100}%`,
-                "--target-width": `${(slot / WIDTH) * 100}%`,
-              } as CSSProperties}
-            />
-          ))}
-        </div>
+        {columns.length > 0 && (
+          <input
+            className="plan-actual-chart__scrubber"
+            type="range"
+            min={0}
+            max={columns.length - 1}
+            step={1}
+            value={selectedIndex}
+            disabled={columns.length === 1}
+            aria-label="Select a week"
+            aria-valuetext={columns[selectedIndex]?.selectionLabel}
+            onChange={(event) => onSelect(columns[Number(event.currentTarget.value)].key)}
+          />
+        )}
       </div>
       <div className="plan-actual-chart__key" aria-hidden="true">
         <span><i data-kind="actual" />Actual</span>

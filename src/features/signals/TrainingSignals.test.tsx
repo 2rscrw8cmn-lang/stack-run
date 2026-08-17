@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { addDaysToLocalDate } from "../../domain/dates";
@@ -119,7 +119,7 @@ describe("Training Signals cards", () => {
     ]);
   });
 
-  it("caps the visual overview at three and keeps the remaining domain-ordered signals reachable", async () => {
+  it("caps the visual overview at three and reveals the remaining domain-ordered signals inline", async () => {
     const user = userEvent.setup();
     renderRuns(
       history({
@@ -138,12 +138,9 @@ describe("Training Signals cards", () => {
 
     expect(signalCards()).toHaveLength(3);
     expect(signalCards().every((card) => card.querySelector(".signal-card__visual"))).toBe(true);
-    await user.click(screen.getByRole("button", { name: "View All Signals" }));
+    await user.click(screen.getByRole("button", { name: "Show all signals" }));
 
-    const inventory = within(screen.getByRole("dialog", { name: "All Training Signals" }));
-    const allCards = inventory
-      .getAllByRole("button")
-      .filter((button) => button.className.includes("signal-card"));
+    const allCards = signalCards();
     expect(allCards).toHaveLength(6);
     expect(allCards.map((card) => card.dataset.signal)).toEqual([
       "volume-trend",
@@ -153,6 +150,9 @@ describe("Training Signals cards", () => {
       "run-frequency",
       "plan-completion",
     ]);
+    expect(screen.queryByRole("dialog", { name: "All Training Signals" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show fewer signals" }));
+    expect(signalCards()).toHaveLength(3);
   });
 
   it("suppresses a signal with nothing to say rather than showing an empty card", () => {
@@ -321,13 +321,10 @@ describe("Training Signal detail", () => {
       stackRun("planned", "2026-08-04", { workoutId: "workout-002" }),
     ]);
 
-    await user.click(screen.getByRole("button", { name: "View All Signals" }));
-    const inventory = within(screen.getByRole("dialog", { name: "All Training Signals" }));
-    const allCards = inventory
-      .getAllByRole("button")
-      .filter((button) => button.className.includes("signal-card"));
+    await user.click(screen.getByRole("button", { name: "Show all signals" }));
+    const allCards = signalCards();
     expect(allCards.at(-1)?.dataset.signal).toBe("plan-completion");
-    await user.click(inventory.getByRole("button", { name: /^Plan context\./ }));
+    await user.click(screen.getByRole("button", { name: /^Plan context\./ }));
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Plan context");
   });
 });

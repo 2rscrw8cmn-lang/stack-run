@@ -15,13 +15,13 @@ import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { ConnectToPlanSheet } from "./ConnectToPlanSheet";
 import { HistoricalRunSheet } from "./HistoricalRunSheet";
+import { HistoryExplorer } from "./HistoryExplorer";
 import { RunDetailSheet } from "./RunDetailSheet";
 import { RunnerProfileSheet } from "./RunnerProfileSheet";
 import { RunnerRunRow } from "./RunnerRunRow";
 import { RunnerSnapshot } from "./RunnerSnapshot";
 import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
 import { SignalCards } from "../signals/SignalCards";
-import { AllSignalsSheet } from "../signals/AllSignalsSheet";
 import { SignalDetailSheet } from "../signals/SignalDetailSheet";
 import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo";
 import {
@@ -30,13 +30,12 @@ import {
 } from "../signals/signalOverview";
 import { presentableRunnerSignals } from "../../signals/runnerSignals";
 import type { SignalId } from "../../signals/trainingSignal";
-import { FULL_HISTORY_PAGE_SIZE, FullHistorySheet } from "./FullHistorySheet";
 import "./runsOverview.css";
 
-/** The archive keeps NEXT-2's bridge paging while R2 owns its final behavior. */
-export const HISTORY_PAGE_SIZE = FULL_HISTORY_PAGE_SIZE;
 /** Runs Overview is orientation, not the archive. */
 export const RECENT_RUN_COUNT = 3;
+/** Inline continuation stays useful without turning Overview into the archive. */
+export const RECENT_EXPANDED_RUN_COUNT = 10;
 
 interface RunsScreenProps {
   plan: TrainingPlan;
@@ -79,7 +78,7 @@ interface RunsScreenProps {
  * 2. recent-training shape;
  * 3. up to three visual Training Signal summaries;
  * 4. three recent runs;
- * 5. a separate Full History boundary.
+ * 5. a dedicated History Explorer boundary.
  *
  * What NEXT-3 changed is the signals themselves rather than where they sit.
  * They are no longer seven plan-relative statistics; they are a short ordered
@@ -102,6 +101,7 @@ export function RunsScreen({
   today = todayLocalDate(),
   syncToken,
 }: RunsScreenProps) {
+  const [runsView, setRunsView] = useState<"overview" | "history">("overview");
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
   const [historicalRunId, setHistoricalRunId] = useState<string | null>(null);
@@ -110,11 +110,9 @@ export function RunsScreen({
   const [isConnectOpen, setConnectOpen] = useState(false);
   const [selectedSignalId, setSelectedSignalId] = useState<SignalId | null>(null);
   const [isSignalOpen, setSignalOpen] = useState(false);
-  const [isAllSignalsOpen, setAllSignalsOpen] = useState(false);
-  const [isFullHistoryOpen, setFullHistoryOpen] = useState(false);
+  const [areSignalsExpanded, setSignalsExpanded] = useState(false);
+  const [areRecentRunsExpanded, setRecentRunsExpanded] = useState(false);
   const returnToSignal = useRef(false);
-  const returnToAllSignals = useRef(false);
-  const returnToFullHistory = useRef(false);
   /**
    * The run the entry sheet is open for, held rather than looked up.
    *
@@ -161,7 +159,8 @@ export function RunsScreen({
   useEffect(() => {
     if (pendingFocus.current && !isEditOpen && !isDetailOpen) {
       pendingFocus.current = false;
-      headingRef.current?.focus();
+      (headingRef.current ?? document.querySelector<HTMLHeadingElement>(".history-explorer h1"))
+        ?.focus();
     }
   }, [isEditOpen, isDetailOpen, history.length]);
 
@@ -197,9 +196,6 @@ export function RunsScreen({
     if (returnToSignal.current && selectedSignalId) {
       returnToSignal.current = false;
       setSignalOpen(true);
-    } else if (returnToFullHistory.current) {
-      returnToFullHistory.current = false;
-      setFullHistoryOpen(true);
     }
   }
 
@@ -219,8 +215,6 @@ export function RunsScreen({
   function commit(announce: string) {
     returnToDetail.current = false;
     returnToSignal.current = false;
-    returnToAllSignals.current = false;
-    returnToFullHistory.current = false;
     setAnnouncement(announce);
     setEditOpen(false);
   }
@@ -235,10 +229,26 @@ export function RunsScreen({
     returnToDetail.current = false;
   }
 
-  const recentRuns = runs.slice(0, RECENT_RUN_COUNT);
+  const visibleSignals = areSignalsExpanded ? signals : overviewSignals;
+  const recentRuns = runs.slice(
+    0,
+    areRecentRunsExpanded ? RECENT_EXPANDED_RUN_COUNT : RECENT_RUN_COUNT,
+  );
 
   return (
     <div className="runs-screen">
+      {runsView === "history" ? (
+        <HistoryExplorer
+          runs={runs}
+          today={today}
+          onBack={() => {
+            setRunsView("overview");
+            window.requestAnimationFrame(() => headingRef.current?.focus());
+          }}
+          onOpenRun={openRun}
+        />
+      ) : (
+        <>
       <div className="runs-screen__lead">
         <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>Runs</h1>
         <div className="runs-screen__title-row">
@@ -292,12 +302,13 @@ export function RunsScreen({
           </Section>
 
           <SignalCards
-            signals={overviewSignals}
+            signals={visibleSignals}
             runs={runs}
             today={today}
             hasHistory={runs.length > 0}
             hiddenSignalCount={Math.max(0, signals.length - RUNS_OVERVIEW_SIGNAL_LIMIT)}
-            onViewAll={() => setAllSignalsOpen(true)}
+            isExpanded={areSignalsExpanded}
+            onToggleExpanded={() => setSignalsExpanded((expanded) => !expanded)}
             onOpenSignal={(signal) => {
               setSelectedSignalId(signal.id);
               setSignalOpen(true);
@@ -320,11 +331,25 @@ export function RunsScreen({
               ))}
             </ul>
             <div className="runs-screen__more">
-              <Button variant="ghost" onClick={() => setFullHistoryOpen(true)}>
-                View All Runs
+              {runs.length > RECENT_RUN_COUNT && (
+                <Button
+                  variant="ghost"
+                  aria-expanded={areRecentRunsExpanded}
+                  aria-label={
+                    areRecentRunsExpanded ? "Show fewer recent runs" : "Show more recent runs"
+                  }
+                  onClick={() => setRecentRunsExpanded((expanded) => !expanded)}
+                >
+                  {areRecentRunsExpanded ? "Show fewer" : "Show more"}
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setRunsView("history")}>
+                Explore History
               </Button>
             </div>
           </Section>
+        </>
+      )}
         </>
       )}
 
@@ -352,39 +377,9 @@ export function RunsScreen({
           if (returnToSignal.current && selectedSignalId) {
             returnToSignal.current = false;
             setSignalOpen(true);
-          } else if (returnToFullHistory.current) {
-            returnToFullHistory.current = false;
-            setFullHistoryOpen(true);
           }
         }}
       />
-
-      <FullHistorySheet
-        runs={runs}
-        isOpen={isFullHistoryOpen}
-        onClose={() => setFullHistoryOpen(false)}
-        onOpenRun={(run) => {
-          setFullHistoryOpen(false);
-          openRun(run);
-          returnToFullHistory.current = true;
-        }}
-      />
-
-      {signals.length > RUNS_OVERVIEW_SIGNAL_LIMIT && (
-        <AllSignalsSheet
-          signals={signals}
-          runs={runs}
-          today={today}
-          isOpen={isAllSignalsOpen}
-          onClose={() => setAllSignalsOpen(false)}
-          onOpenSignal={(signal) => {
-            setAllSignalsOpen(false);
-            setSelectedSignalId(signal.id);
-            setSignalOpen(true);
-            returnToAllSignals.current = true;
-          }}
-        />
-      )}
 
       {selected && (
         <RunDetailSheet
@@ -430,11 +425,7 @@ export function RunsScreen({
         isOpen={isSignalOpen}
         onClose={() => {
           setSignalOpen(false);
-          if (returnToAllSignals.current) {
-            returnToAllSignals.current = false;
-            setSelectedSignalId(null);
-            setAllSignalsOpen(true);
-          } else if (!returnToSignal.current) {
+          if (!returnToSignal.current) {
             setSelectedSignalId(null);
           }
         }}

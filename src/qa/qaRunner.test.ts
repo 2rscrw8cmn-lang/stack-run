@@ -84,6 +84,10 @@ describe("QA Runner fixture", () => {
     expect(activities.every((run) => run.sourceType === "Run")).toBe(true);
     expect(activities.filter((run) => run.trainingLoad !== null).length).toBeGreaterThan(100);
     expect(activities.filter((run) => run.hrZoneSeconds !== null).length).toBeGreaterThan(100);
+    expect(activities.filter((run) => run.elevationGainMeters !== null).length).toBeGreaterThan(100);
+    expect(activities.some((run) => run.trainingLoad === null)).toBe(true);
+    expect(activities.some((run) => run.hrZoneSeconds === null)).toBe(true);
+    expect(activities.some((run) => run.elevationGainMeters === null)).toBe(true);
     expect(activities.filter((run) => run.averageHeartRate !== null).length).toBeGreaterThan(100);
   });
 

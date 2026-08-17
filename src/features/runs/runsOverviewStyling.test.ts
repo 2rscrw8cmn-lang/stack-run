@@ -26,9 +26,6 @@ describe("Runs Overview responsive structure", () => {
 
   it("uses one full-width signal summary per phone row without an essential carousel", () => {
     expect(signalCss).toMatch(/\.signal-cards \.signal-card\s*\{[^}]*display: grid/s);
-    expect(signalCss).toMatch(
-      /\.all-signals \.signal-cards__list\[data-density="compact"\] \.signal-card\s*\{[^}]*display: grid/s,
-    );
     expect(signalCss).toMatch(/\.signal-visual__row\s*\{[^}]*minmax\(0, 1fr\)/s);
     expect(signalCss).not.toMatch(/\.signal-cards__list[^}]*overflow-x:\s*(auto|scroll)/s);
   });

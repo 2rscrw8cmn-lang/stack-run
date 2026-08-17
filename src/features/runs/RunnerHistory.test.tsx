@@ -5,7 +5,11 @@ import { acceptedRun, historicalRun, stackRun } from "../../history/runnerFixtur
 import { unifiedRunnerHistory } from "../../history/runnerRun";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import type { RunLog } from "../../domain/types";
-import { HISTORY_PAGE_SIZE, RECENT_RUN_COUNT, RunsScreen } from "./RunsScreen";
+import {
+  RECENT_EXPANDED_RUN_COUNT,
+  RECENT_RUN_COUNT,
+  RunsScreen,
+} from "./RunsScreen";
 
 /**
  * Runs, once it is a history of the runner rather than a log of the plan.
@@ -294,31 +298,24 @@ describe("Runner profile detail", () => {
   });
 });
 
-describe("Runs Overview and Full History boundary", () => {
-  const many = Array.from({ length: HISTORY_PAGE_SIZE + 8 }, (_, index) =>
+describe("Runs Overview and History Explorer boundary", () => {
+  const many = Array.from({ length: RECENT_EXPANDED_RUN_COUNT + 8 }, (_, index) =>
     historicalRun(`a-${index}`, `2026-0${index < 9 ? "8" : "7"}-${String((index % 28) + 1).padStart(2, "0")}`),
   );
 
-  it("shows three recent runs, then pages the complete archive only after View All Runs", async () => {
+  it("shows three recent runs, then continues to ten inline without opening a modal", async () => {
     const user = userEvent.setup();
     renderRuns({ activities: many });
 
     expect(rows()).toHaveLength(RECENT_RUN_COUNT);
-    expect(screen.getByRole("button", { name: "View All Runs" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "View All Runs" }));
-    const archive = within(screen.getByRole("dialog", { name: "Full History" }));
-    const archiveRows = () =>
-      archive
-        .getAllByRole("button")
-        .filter((button) => button.className.includes("run-row"));
-    expect(archiveRows()).toHaveLength(HISTORY_PAGE_SIZE);
-    await user.click(archive.getByRole("button", { name: "Show 8 more" }));
-    expect(archiveRows()).toHaveLength(HISTORY_PAGE_SIZE + 8);
-    expect(archive.queryByRole("button", { name: /Show .* more/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show more recent runs" }));
+    expect(rows()).toHaveLength(RECENT_EXPANDED_RUN_COUNT);
+    expect(screen.queryByRole("dialog", { name: "Full History" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show fewer recent runs" }));
+    expect(rows()).toHaveLength(RECENT_RUN_COUNT);
   });
 
-  it("keeps the preview newest-first and opens historical detail from Full History", async () => {
+  it("keeps the preview newest-first and preserves run detail from the inline continuation", async () => {
     const user = userEvent.setup();
     renderRuns({ activities: many });
 
@@ -329,14 +326,31 @@ describe("Runs Overview and Full History boundary", () => {
       expect.stringContaining("August 7"),
     ]);
 
-    await user.click(screen.getByRole("button", { name: "View All Runs" }));
-    const archive = within(screen.getByRole("dialog", { name: "Full History" }));
+    await user.click(screen.getByRole("button", { name: "Show more recent runs" }));
     await user.click(
-      archive
+      screen
         .getAllByRole("button")
         .find((button) => button.className.includes("run-row"))!,
     );
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+  });
+
+  it("opens History as a Runs child screen, preserves detail routing, and returns to Overview", async () => {
+    const user = userEvent.setup();
+    renderRuns({ activities: many });
+
+    await user.click(screen.getByRole("button", { name: "Explore History" }));
+    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Full History" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Recent Runs" })).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: /Not logged in STACK/ })[0]);
+    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Runs" }));
+    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
   });
 });
 
@@ -365,8 +379,11 @@ describe("Runs hierarchy", () => {
     renderRuns({ runLogs: [stackRun("a", "2026-08-11", { distanceMiles: 7 })] });
 
     expect(
-      screen.getByRole("button", { name: "Week of August 10, 7 miles, 1 run, still in progress" }),
-    ).toBeInTheDocument();
+      screen.getByRole("slider", { name: "Select a week" }),
+    ).toHaveAttribute(
+      "aria-valuetext",
+      "Week of August 10, 7 miles, 1 run, still in progress",
+    );
     // Nothing planned is drawn beside it: this is what happened, full stop.
     expect(document.querySelector(".plan-actual-chart__planned")).toBeNull();
   });

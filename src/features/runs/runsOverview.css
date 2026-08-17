@@ -160,23 +160,13 @@
 }
 
 .runs-screen__more > .button {
+  flex: 1 1 0;
   min-height: 44px;
-  min-width: 154px;
-}
-
-.full-history,
-.all-signals {
   min-width: 0;
-  overflow-x: hidden;
-  display: grid;
-  gap: var(--space-3);
 }
 
-.full-history__context {
-  margin: 0;
-  color: var(--text-subtle);
-  font-size: 9px;
-  letter-spacing: 0.075em;
+.runs-screen__more {
+  gap: 4px;
 }
 
 @media (max-width: 340px) {

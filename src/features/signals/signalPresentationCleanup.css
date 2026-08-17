@@ -195,25 +195,6 @@
   font-size: 11px;
 }
 
-.all-signals .signal-cards__list[data-density="compact"] .signal-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: stretch;
-  gap: 7px;
-  padding: 10px 2px 10px 11px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.all-signals .signal-cards__list[data-density="compact"] .signal-card__current strong {
-  font-size: 20px;
-}
-
-.all-signals .signal-cards__list[data-density="compact"] .signal-visual--trend svg {
-  height: 25px;
-}
-
 .signal-cards__all {
   display: flex;
   justify-content: flex-start;
