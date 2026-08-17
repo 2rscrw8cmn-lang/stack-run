@@ -1,233 +1,267 @@
 # Runs Reframe — Implementation Plan
 
-**Status:** R0 is accepted; R1 is implemented and awaiting owner acceptance. R2, R3 and NEXT-5 remain paused.
+**Status:** R0 is accepted; R1 is implemented and awaiting owner acceptance. R2 product architecture is now defined but implementation has not started. R3 and NEXT-5 remain paused.  
 **Integration branch:** `feature/stack-next`.
 
 ## Why this exists
 
 Do not attempt to solve the Runs reframe in one giant prompt or PR.
 
-The product decision is now split into durable contracts:
+The product decision is split into durable contracts:
 
 - `docs/RUNS_PRODUCT_MODEL.md` — what the destination is for;
 - `docs/RUNS_VISUALIZATION_SYSTEM.md` — how running facts become visuals;
-- `docs/RUN_DETAIL_PRODUCT_SPEC.md` — where single-run telemetry belongs.
+- `docs/RUN_DETAIL_PRODUCT_SPEC.md` — where single-run telemetry belongs;
+- `docs/RUNS_R2_INFORMATION_ARCHITECTURE.md` — Overview expansion vs screens vs sheets;
+- `docs/RUNS_R2_HISTORY_EXPLORER.md` — historical metric/date/filter behavior;
+- `docs/RUNS_R2_CHART_SYSTEM.md` — phone-readable chart/label/touch rules.
 
 Implementation should follow those documents rather than reinterpret them from screenshots.
 
 ## Branch sequence
 
-After this documentation package is accepted and merged into `feature/stack-next`:
-
 ```text
 feature/stack-next
 ├── feature/runs-overview
-├── feature/runs-history
+├── feature/runs-history-explorer
 └── feature/run-detail-enrichment
 ```
 
 Each PR targets `feature/stack-next`, never `main`.
 
-Do not begin NEXT-5 Plan role revision until the Runs reframe is coherent enough to review as a product hierarchy.
+Do not begin NEXT-5 Plan role revision until the Runs reframe is coherent enough to review as one product system.
 
 ## R0 — Product architecture + QA correction
 
-**Branch:** `feature/runs-reframe-docs`  
-**Scope:** this documentation package.
+**Branch:** `feature/runs-reframe-docs`
 
-Includes:
+R0 established:
 
-- Runs Overview / Full History / Run Detail separation;
+- Runs Overview / History / Run Detail separation;
 - visualization grammar;
 - Run Detail current-state clarification;
 - implementation sequence;
 - authority-doc updates;
 - the QA Runner `react-hooks/set-state-in-effect` lint fix salvaged from PR #107.
 
-No Runs product UI should be merged in R0.
-
-PR #107 is intentionally not the implementation base. It remains useful reference/prototype work, especially for dense month-grouped history, but its primary-screen information architecture is superseded by `RUNS_PRODUCT_MODEL.md`.
-
-Acceptance:
-
-- owner agrees the three-layer model is correct;
-- docs do not conflict on Runs hierarchy;
-- `npm run check` is back to a valid full-check path after the QA lint fix;
-- PR #107 can be closed unmerged with a reference to this reframe.
+PR #107 remains reference/prototype work only.
 
 ## R1 — Runs Overview
 
-**Recommended branch:** `feature/runs-overview`
-
-**Implementation status:** implemented on `feature/runs-overview`, awaiting owner acceptance. This is not an acceptance record.
+**Branch:** `feature/runs-overview`  
+**Implementation status:** implemented, awaiting owner visual acceptance. This is not an acceptance record.
 
 Goal:
 
 > Make the main Runs destination answer “How has my running been going?” without exposing the full archive at primary-screen depth.
 
-### Required structure
-
-Implement in this order:
+### Current implemented hierarchy
 
 1. current running snapshot;
 2. recent training visualization;
-3. visual Training Signal summaries;
+3. up to three visual Training Signal summaries;
 4. three recent runs;
-5. `View all runs` entry point.
+5. temporary `View all` boundaries.
 
-### Snapshot
+R1 preserves existing NEXT-2 / NEXT-3 calculations and domain semantics.
 
-Reuse existing NEXT-2 calculations and coverage behavior.
+### Current R1 presentation
 
-Do not create a second snapshot model or new windows.
+The owner-reviewed refinement:
 
-### Recent training
+- makes the snapshot typographic rather than card-led;
+- reduces Recent Training chart chrome;
+- uses normal STACK sans for screen/section/sheet titles;
+- reserves machine typography for values, units, dates, axes and window metadata;
+- limits the overview to three visual-first Signals;
+- limits Recent Runs to three rows;
+- removes explanatory Signal paragraphs from the default overview;
+- moves methodology/date detail behind `How STACK calculates this`;
+- preserves Run Detail 2.0 and all existing history/signal domain logic.
 
-Reuse weekly-volume data and the existing chart/data grammar where it remains useful.
+### Why R1 is still not accepted
 
-The chart should be visually strong but compact.
+Owner review found that the product is headed in the right direction but still has three structural issues that belong in R2 rather than another isolated styling pass:
 
-### Training Signals
+1. `View all signals` and `View all runs` currently use modal sheets;
+2. STACK lacks a real historical exploration experience by metric/date/filter;
+3. chart labels and axis metadata can become too small on real iPhone screenshots.
 
-Keep `src/signals/` formulas, thresholds, availability and ordering unchanged.
+R2 addresses those directly.
 
-Overview presentation:
+## R2 — Runs exploration system
 
-- show up to three presentable signals in existing domain order;
-- use family-appropriate visual summaries from `RUNS_VISUALIZATION_SYSTEM.md`;
-- if >3 are present, expose a quiet `View all signals` disclosure;
-- do not let plan context displace a higher-ranked actual-history signal;
-- no overall score.
+**Recommended branch:** `feature/runs-history-explorer`
 
-Any new series used strictly for visualization must:
+R2 is no longer defined as “polish the Full History archive.” It has three coordinated subphases.
 
-- be pure/React-free;
-- reuse existing history helpers where possible;
-- state its window;
-- not change the Signal's headline/availability decision;
-- have focused tests proving it is presentation support, not a second metric definition.
+### R2A — Remove “more” modals
 
-### Recent runs
-
-Show the three newest unified `RunnerRun`s.
-
-Preserve:
-
-- STACK-vs-historical detail routing;
-- historical-only runs as facts, not chores;
-- Log Run;
-- edit/delete/link behavior for STACK runs;
-- pagination only inside Full History, not on the overview.
-
-### Full-history entry point
-
-R1 must provide a working `View all runs` route/sheet/surface, but it may initially reuse existing history-row presentation. R2 owns the archive's dedicated visual polish.
-
-### Non-goals
-
-R1 does not:
-
-- change Run Detail source fetching;
-- change historical sync;
-- add maps;
-- change Plan;
-- change Build/Crew;
-- add search/filter unless required for a basic Full History surface;
-- rename the bottom-nav destination.
-
-### QA
-
-Use the reusable QA Runner. Do not add `?demo=runs`.
-
-Review at 320 / 390 / 430 / desktop and real iPhone Safari before acceptance.
-
-### Implemented R1 surface
-
-`RunsScreen` now presents the product hierarchy in the required order: current
-snapshot, compact recent weekly volume, up to three visual Training Signals, three
-recent unified runs, then `View All Runs`. The snapshot, volume and signal domain
-outputs are consumed unchanged.
-
-The owner-reviewed refinement removes the default explanatory copy and most
-container chrome from the overview. The snapshot is led by typography rather
-than an outlined panel; weekly volume quiets its frame, grid and prior weeks;
-section and sheet titles use the normal STACK sans; lime is reserved chiefly for
-current/selected state; signal-family color stays local to the visual and thin
-rail. Machine typography remains on values, units, dates and window metadata.
-
-Signal visualization mapping is presentation-only:
-
-- Volume: current-versus-prior paired bars;
-- Frequency: current-versus-prior block-textured bars;
-- Long runs: eight-week longest-run progression with missing weeks left as gaps;
-- Workload: current-versus-prior load bars;
-- Zone mix: current-versus-prior lower-zone share composition;
-- Plan context: completed-versus-due progress.
-
-`selectOverviewSignals` filters only non-presentable outputs, preserves the
-existing domain order, and takes the first three. It does not score, rerank or
-change availability. When more signals exist, `View All Signals` opens the
-compact visual inventory and preserves the existing signal-detail hand-off.
-Each overview and inventory item shows one current reading, one comparison,
-one compact visual and one prior/reference row, without a default paragraph.
-
-Signal Detail now leads with current result and change, then its primary chart,
-supporting evidence where useful and prior/reference context. The useful
-methodology copy and exact comparison windows remain available once, behind the
-native keyboard/touch-operable `How STACK calculates this` disclosure. The
-detail no longer repeats claim, comparison and methodology prose in multiple
-visible containers.
-
-The overview takes the first three entries from newest-first
-`unifiedRunnerHistory`. `View All Runs` opens a reversible R1 sheet boundary that
-reuses the existing history row and 25-at-a-time reveal. Month grouping, archive
-row polish and browsing behavior remain R2 work. STACK-owned and historical-only
-runs preserve their existing detail routes, and Run Detail 2.0 is unchanged.
-
-Focused tests cover selection/order/capping, every visual family mapping,
-unchanged snapshot and volume facts, three-run preview and newest-first behavior,
-the separate Full History surface, both run-detail routes, signal-detail routing,
-Log Run, factual accessible text, native button semantics, and the 320px/no-
-overflow presentation contract. R1 changes no history reconciliation, signal
-formula, Build, Plan, Crew, persistence, schema or migration behavior.
-
-## R2 — Full History archive
-
-**Recommended branch:** `feature/runs-history`
+Read `RUNS_R2_INFORMATION_ARCHITECTURE.md` first.
 
 Goal:
 
-> Make the complete unified history excellent at chronology and lookup without turning it into a dashboard.
+> Make continuation interactions feel native to the page instead of opening collection-browsing modals.
 
-### Starting point
+Required behavior:
 
-Salvage, rather than blindly cherry-pick, the strongest relevant ideas from PR #107:
+#### Signals
 
-- month grouping;
-- dense rule-separated rows;
-- strong distance scan column;
-- activity identity accent;
-- 25-at-a-time progressive reveal;
-- preserved detail routing.
+- keep three featured Signals by default;
+- `Show all signals` expands all presentable Signals inline;
+- control becomes `Show fewer` while expanded;
+- remove/deprecate the All Signals collection sheet;
+- tapping one Signal still opens Signal Detail.
 
-Do not bring back PR #107's assumption that Full History sits inline between overview visuals and Signals.
+#### Recent Runs
 
-### Required behavior
+- keep three recent runs by default;
+- `Show more` expands inline to a bounded orientation set, target 10 runs;
+- do not allow inline expansion to become the 100+ run archive;
+- add a distinct `Explore history` action for the complete experience;
+- remove/deprecate the Full History collection sheet.
+
+Do not merge R2A by itself if it leaves the runner with no complete-history path. It should land with or immediately alongside R2B.
+
+### R2B — History Explorer
+
+Read `RUNS_R2_HISTORY_EXPLORER.md`.
+
+Goal:
+
+> Give the runner a real place to explore actual history by measure and date without turning Runs Overview into a dashboard or archive.
+
+History Explorer is a child screen inside Runs, not a modal and not a new bottom-nav destination.
+
+Initial metrics:
+
+- Miles;
+- Runs;
+- recorded Time;
+- source-provided Training Load;
+- source-reported Gain;
+- recorded Zone Mix.
+
+Initial date ranges:
+
+- 4W;
+- 3M;
+- 6M;
+- YTD;
+- 1Y;
+- All;
+- Custom only if it can be added without derailing the phase.
+
+Explicitly deferred:
+
+- aggregate pace trend;
+- aggregate HR trend;
+- Best Efforts / PR detection;
+- readiness/fitness/fatigue scores;
+- route/maps analysis.
+
+### R2 history filters
+
+Prefer stable existing classifications first:
+
+- All;
+- Planned;
+- Extra;
+- History only.
+
+STACK-owned activity-type filtering may use existing:
+
+- easy;
+- intervals;
+- simulation;
+- long;
+- race.
+
+Historical-only runs carry raw source type only. They remain `Unclassified` unless a later normalization contract is approved.
+
+Never infer historical run type from name, distance, pace or plan proximity.
+
+### R2 history list
+
+The Explorer's contributing-run list keeps the strongest archive principles:
 
 - newest first;
-- every physical run exactly once;
-- month/year grouping is presentation-only and lossless;
-- `Show more` or equivalent progressive pagination;
-- historical-only runs remain neutral facts;
-- no import/review badges;
-- no HR/load/zones/cadence clutter in archive rows;
-- detail sheets remain reachable.
+- every physical run once;
+- compact rows;
+- historical-only runs are neutral facts;
+- existing detail routing;
+- progressive reveal for large sets.
 
-### Search/filter
+Month grouping from PR #107 may still be salvaged where it helps chronology, but it is secondary to the Explorer's metric/date interaction.
 
-Deferred by default.
+### R2C — Chart/readability system
 
-Only add if owner review shows the archive is genuinely hard to navigate without it. Do not expand R2 into a generic activity-browser product.
+Read `RUNS_R2_CHART_SYSTEM.md`.
+
+Goal:
+
+> Make every Runs chart readable on a real phone without shrinking essential labels into technical microtype.
+
+Required rules include:
+
+- axis/date labels minimum target 12px on phone;
+- selected/current ticks preferred 13–14px;
+- reduce tick count before reducing type size;
+- target roughly 4–6 x-axis labels at ~390px;
+- show selected period/value outside the densest plot region;
+- aggregate long ranges by week/month rather than drawing hundreds of tiny marks;
+- data is visually stronger than grid/frame;
+- interactive target size is not limited to the drawn bar width;
+- review at 320 / 390 / 430 / desktop and real iPhone Safari.
+
+R2C should be applied to the new History Explorer and to existing R1 charts where the same readability issue is present.
+
+### R2 data boundary
+
+R2 may add pure presentation/aggregation helpers over `RunnerRun`, but it must not change:
+
+- unified history identity/dedupe;
+- historical sync lifecycle;
+- Training Signal formulas/thresholds/windows/availability;
+- source aggregate semantics;
+- cadence convention;
+- elevation truth;
+- RunLog behavior;
+- Plan;
+- Build;
+- Crew;
+- persistence/schema/migrations.
+
+Missing metric values remain missing.
+
+Changing metric/range/filter controls must operate over already-normalized history and must not trigger another history sync or fetch Run Detail streams.
+
+### R2 QA
+
+Use the reusable QA Runner.
+
+The fixture should exercise:
+
+- enough history for 4W/3M/6M/1Y shapes;
+- STACK-owned and historical-only runs;
+- planned and extra runs;
+- Load/Gain/Zone coverage;
+- at least one partial-coverage metric state;
+- enough rows to prove bounded inline expansion and Explorer pagination/reveal.
+
+Do not add a page-specific demo mode.
+
+### R2 acceptance
+
+R2 is ready for owner review when:
+
+1. Signals can expand inline without a collection modal;
+2. Recent Runs can expand inline without becoming the archive;
+3. `Explore history` opens a real Runs child screen;
+4. metric/date changes update one strong chart and its contributing runs;
+5. historical-only runs are never silently classified;
+6. chart dates/values are comfortably readable at phone size;
+7. no domain/history/source semantics changed.
 
 ## R3 — Run Detail enrichment + QA stream review
 
@@ -244,7 +278,7 @@ The QA Runner must provide at least:
 - one aggregate-only run;
 - one synthetic rich-profile run.
 
-Use the production `RunProfileChart`, selectors, zone visualization and detail renderer.
+Use the production Run Profile renderer/selectors/zone visualization.
 
 Do not add a page-specific demo mode.
 
@@ -270,26 +304,26 @@ Do not make `HistoricalRunSheet` a copy-paste fork of `RunResultDetail`.
 
 `docs/CONNECTED_DATA_FIELDS.md` remains authoritative.
 
-Do not promote unverified stream shapes/units based on QA fixtures. The real-data verification checklist remains required before changing source-semantic status.
+Do not promote unverified stream shapes/units based on QA fixtures.
 
 ### Non-goals
 
 - route maps/GPS;
 - persistent raw-stream archive;
 - performance predictions;
-- new readiness/fitness scores;
+- readiness/fitness scores;
 - wellness;
 - automatic plan changes.
 
 ## R4 — Integration review
 
-This does not require a separate branch unless corrections are material.
-
 Review Runs end to end:
 
 - Overview is short enough;
-- Signals are visible and visual;
-- Full History is reachable but not dominant;
+- Signals are visible, visual and expandable inline;
+- Recent Runs can expand a little without becoming the archive;
+- History Explorer is a real screen rather than a sheet;
+- history can be explored by metric/date without tiny labels;
 - logged and historical-only runs open coherent detail;
 - rich QA run shows profile charts;
 - aggregate-only QA run omits them honestly;
@@ -318,8 +352,12 @@ Prove no unintended change to:
 
 ## Agent-prompt rule
 
-After R0 is accepted, prompts should be short implementation contracts that begin:
+For R1/R3, begin by reading the core Runs docs.
 
-> Read `RUNS_PRODUCT_MODEL.md`, `RUNS_VISUALIZATION_SYSTEM.md`, `RUN_DETAIL_PRODUCT_SPEC.md`, and `RUNS_REFRAME_IMPLEMENTATION.md`. Implement only the named subphase. Do not reinterpret the product architecture.
+For R2, the agent must additionally read:
 
-Do not duplicate the entire product specification inside each prompt.
+- `RUNS_R2_INFORMATION_ARCHITECTURE.md`;
+- `RUNS_R2_HISTORY_EXPLORER.md`;
+- `RUNS_R2_CHART_SYSTEM.md`.
+
+Prompts should implement only the named subphase and must not reinterpret the product architecture from screenshots or another product's UI.
