@@ -1,10 +1,10 @@
-import { BarChart3, History, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { BarChart3, ChevronRight, History, Plus } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Section } from "../../components/ui/Section";
 import { earnedBlockPhrase } from "../../domain/build";
-import { todayLocalDate } from "../../domain/dates";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
 import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
@@ -121,6 +121,16 @@ export function RunsScreen({
    * no focus restoration, and a sheet that believes it is still open. A
    * snapshot lets the sheet close the ordinary way and then unmount.
    */
+  /**
+   * Where Runs Overview was left when History was opened.
+   *
+   * History is a child screen rather than a route, so nothing but this screen
+   * restores the scroll position — and without it, opening History inherited
+   * the Overview's offset and put the History title off the top of the phone.
+   * Navigation behaviour: the child opens at its own top, and coming back
+   * returns the runner to the row they left.
+   */
+  const overviewScroll = useRef(0);
   const [editing, setEditing] = useState<RunHistoryEntry | null>(null);
   const [isEditOpen, setEditOpen] = useState(false);
   // Bumped whenever the entry sheet opens, so it starts from what is saved
@@ -156,6 +166,19 @@ export function RunsScreen({
    * body and loses a keyboard user's place entirely. Once every sheet has
    * closed, put them back at the top of the list they are looking at.
    */
+  /**
+   * Runs the same frame the view swaps, so neither screen is ever painted at
+   * the other one's scroll position. Only a navigation moves the page: arriving
+   * on the Runs tab is left exactly as the app shell already had it.
+   */
+  const paintedView = useRef(runsView);
+  useLayoutEffect(() => {
+    if (paintedView.current === runsView) return;
+    paintedView.current = runsView;
+    if (typeof window.scrollTo !== "function") return;
+    window.scrollTo(0, runsView === "history" ? 0 : overviewScroll.current);
+  }, [runsView]);
+
   useEffect(() => {
     if (pendingFocus.current && !isEditOpen && !isDetailOpen) {
       pendingFocus.current = false;
@@ -163,6 +186,12 @@ export function RunsScreen({
         ?.focus();
     }
   }, [isEditOpen, isDetailOpen, history.length]);
+
+  /** Remember where Overview was, then hand off to the History child screen. */
+  function openHistory() {
+    overviewScroll.current = typeof window.scrollY === "number" ? window.scrollY : 0;
+    setRunsView("history");
+  }
 
   function openEntry(entry: RunHistoryEntry | null, fromDetail: boolean) {
     returnToDetail.current = fromDetail;
@@ -243,7 +272,9 @@ export function RunsScreen({
           today={today}
           onBack={() => {
             setRunsView("overview");
-            window.requestAnimationFrame(() => headingRef.current?.focus());
+            window.requestAnimationFrame(() =>
+              headingRef.current?.focus({ preventScroll: true }),
+            );
           }}
           onOpenRun={openRun}
         />
@@ -330,8 +361,8 @@ export function RunsScreen({
                 <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
               ))}
             </ul>
-            <div className="runs-screen__more">
-              {runs.length > RECENT_RUN_COUNT && (
+            {runs.length > RECENT_RUN_COUNT && (
+              <div className="runs-screen__more">
                 <Button
                   variant="ghost"
                   aria-expanded={areRecentRunsExpanded}
@@ -342,11 +373,28 @@ export function RunsScreen({
                 >
                   {areRecentRunsExpanded ? "Show fewer" : "Show more"}
                 </Button>
-              )}
-              <Button variant="ghost" onClick={() => setRunsView("history")}>
-                Explore History
-              </Button>
-            </div>
+              </div>
+            )}
+            {/*
+              Two different intents, so two different affordances: `Show more`
+              extends what is already here, and this is a destination. It says
+              where it goes and how much is there rather than being a second
+              utility label beside the first.
+            */}
+            <button
+              type="button"
+              className="runs-screen__history"
+              aria-label={`History. ${historySummary(runs)}.`}
+              onClick={openHistory}
+            >
+              <span className="runs-screen__history-text">
+                <span className="runs-screen__history-title">History</span>
+                <span className="runs-screen__history-meta machine-label">
+                  {historySummary(runs)}
+                </span>
+              </span>
+              <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+            </button>
           </Section>
         </>
       )}
@@ -486,4 +534,12 @@ export function RunsScreen({
  */
 function fallbackRunnerRuns(runLogs: readonly RunLog[]): RunnerRun[] {
   return unifiedRunnerHistory({ runLogs });
+}
+
+/** How much history the destination leads to, stated from the history itself. */
+function historySummary(runs: readonly RunnerRun[]): string {
+  const count = `${runs.length} ${runs.length === 1 ? "run" : "runs"}`;
+  const earliest = runs.map((run) => run.date).sort()[0];
+  if (!earliest) return count;
+  return `${count} since ${formatDateLabel(earliest, { month: "short", year: "numeric" })}`;
 }

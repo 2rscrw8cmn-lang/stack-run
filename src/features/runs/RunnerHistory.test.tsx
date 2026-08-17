@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { acceptedRun, historicalRun, stackRun } from "../../history/runnerFixtures";
 import { unifiedRunnerHistory } from "../../history/runnerRun";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
@@ -173,7 +173,8 @@ describe("Runner snapshot", () => {
     });
 
     expect(screen.getByRole("button", { name: /^Runner snapshot\./ })).toHaveAccessibleName(
-      "Runner snapshot. 14 miles over the last 28 days. 4 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 10 miles. Open history detail.",
+      // Runs presents mileage at one decimal everywhere, summary and row alike.
+      "Runner snapshot. 14.0 miles over the last 28 days. 4.0 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 10.0 miles. Open history detail.",
     );
     expect(screen.getByText("Last 7 days")).toBeInTheDocument();
     expect(screen.getByText("Last 28 days")).toBeInTheDocument();
@@ -335,22 +336,63 @@ describe("Runs Overview and History Explorer boundary", () => {
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
   });
 
+  it("names the History destination by where it goes and how much is behind it", () => {
+    renderRuns({ activities: many });
+
+    const destination = screen.getByRole("button", { name: /^History\./ });
+    expect(destination).toHaveAccessibleName(`History. ${many.length} runs since Jul 2026.`);
+    expect(screen.queryByRole("button", { name: "Explore History" })).not.toBeInTheDocument();
+  });
+
   it("opens History as a Runs child screen, preserves detail routing, and returns to Overview", async () => {
     const user = userEvent.setup();
     renderRuns({ activities: many });
 
-    await user.click(screen.getByRole("button", { name: "Explore History" }));
-    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^History\./ }));
+    expect(screen.getByRole("heading", { name: "History", level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Full History" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Recent Runs" })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: /Not logged in STACK/ })[0]);
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "History", level: 1 })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Runs" }));
+    await user.click(screen.getByRole("button", { name: "Back to Runs" }));
     expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
+  });
+
+  /**
+   * The iPhone bug this replaces: History inherited the Overview's scroll
+   * offset, so a runner who scrolled down to reach the destination arrived on a
+   * screen whose title was already off the top of the phone.
+   */
+  it("opens History at its own top and restores the Overview position on the way back", async () => {
+    const user = userEvent.setup();
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    Object.defineProperty(window, "scrollY", { value: 0, writable: true, configurable: true });
+    renderRuns({ activities: many });
+
+    (window as unknown as { scrollY: number }).scrollY = 640;
+    await user.click(screen.getByRole("button", { name: /^History\./ }));
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
+
+    await user.click(screen.getByRole("button", { name: "Back to Runs" }));
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 640);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps browsing state out of the Overview it came back to", async () => {
+    const user = userEvent.setup();
+    renderRuns({ activities: many });
+
+    await user.click(screen.getByRole("button", { name: "Show more recent runs" }));
+    await user.click(screen.getByRole("button", { name: /^History\./ }));
+    await user.click(screen.getByRole("button", { name: "Back to Runs" }));
+
+    expect(rows()).toHaveLength(RECENT_EXPANDED_RUN_COUNT);
   });
 });
 
@@ -382,7 +424,7 @@ describe("Runs hierarchy", () => {
       screen.getByRole("slider", { name: "Select a week" }),
     ).toHaveAttribute(
       "aria-valuetext",
-      "Week of August 10, 7 miles, 1 run, still in progress",
+      "Week of August 10, 7.0 miles, 1 run, still in progress",
     );
     // Nothing planned is drawn beside it: this is what happened, full stop.
     expect(document.querySelector(".plan-actual-chart__planned")).toBeNull();

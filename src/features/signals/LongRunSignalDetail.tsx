@@ -1,6 +1,6 @@
 import { SelectableTrendLine } from "../../components/charts/SelectableTrendLine";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import { longestRunByWeek } from "../../history/runnerLongRuns";
 import type { RunnerRun } from "../../history/runnerRun";
 import type { TrainingSignal } from "../../signals/trainingSignal";
@@ -37,7 +37,7 @@ export function LongRunSignalDetail({
   return (
     <>
       <SignalResultSummary
-        currentValue={`${formatMiles(facts.currentMiles)} mi`}
+        currentValue={`${formatRunsMiles(facts.currentMiles)} mi`}
         change={`${signedMilesChange(facts.differenceMiles)} · ${signedPercent(facts.changeRatio)}`}
       />
 
@@ -49,14 +49,14 @@ export function LongRunSignalDetail({
               key: point.key,
               date: point.date,
               value: point.value,
-              label: `Week of ${formatDateLabel(point.date, { month: "long", day: "numeric" })}, longest run ${formatMiles(point.value)} miles`,
+              label: `Week of ${formatDateLabel(point.date, { month: "long", day: "numeric" })}, longest run ${formatRunsMiles(point.value)} miles`,
             }))}
           />
         ) : (
           <p className="signal-detail__empty">No runs in the last {weeks.length} weeks.</p>
         )}
       </DetailSection>
-      <SignalReference value={`${formatMiles(facts.baselineMiles)} mi`} />
+      <SignalReference value={`${formatRunsMiles(facts.baselineMiles)} mi`} />
 
       <DetailSection title="Runs behind this">
         <ul className="signal-run-list">
@@ -68,7 +68,7 @@ export function LongRunSignalDetail({
                 <button
                   type="button"
                   onClick={() => onOpenRun(run.id)}
-                  aria-label={`Open the longest run of the ${entry.label.toLowerCase()}, ${formatDateLabel(run.date)}, ${formatMiles(entry.miles)} miles`}
+                  aria-label={`Open the longest run of the ${entry.label.toLowerCase()}, ${formatDateLabel(run.date)}, ${formatRunsMiles(entry.miles)} miles`}
                 >
                   <span>
                     <strong>
@@ -77,7 +77,7 @@ export function LongRunSignalDetail({
                     <small>{entry.label}</small>
                   </span>
                   <span>
-                    <strong>{formatMiles(entry.miles)} mi</strong>
+                    <strong>{formatRunsMiles(entry.miles)} mi</strong>
                     <small>{run.stack ? "Logged in STACK" : "Connected history"}</small>
                   </span>
                 </button>

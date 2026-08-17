@@ -5,8 +5,12 @@ const DEFAULT_PLOT_HEIGHT = 168;
 const COMPACT_PLOT_HEIGHT = 136;
 const X_AXIS_LABEL_SPACE = 24;
 const AXIS_GUTTER = 24;
-/** Never show more than about this many x-axis labels, however many weeks are plotted. */
-const MAX_X_LABELS = 6;
+/**
+ * Never show more than about this many x-axis labels, however many weeks are
+ * plotted. Six fitted on paper and collided on a phone — a short date is about
+ * 48 viewBox units wide and six of them leave 49 between centres.
+ */
+const MAX_X_LABELS = 4;
 
 export interface PlanActualColumn {
   key: string;
@@ -52,7 +56,10 @@ export function PlanActualColumns({
   const barWidth = Math.max(Math.min(slot - 4, 20), 4);
   const y = (value: number) => plotHeight - (value / peak) * (plotHeight - 16);
   const selectedIndex = Math.max(0, columns.findIndex((column) => column.key === selectedKey));
-  const labelIndices = sparseTickIndices(columns.length, selectedIndex, MAX_X_LABELS);
+  // Evenly spaced chronology only. The selected week is named in the caption
+  // beneath the chart, so forcing it into the axis would only create the
+  // collisions this density rule exists to prevent.
+  const labelIndices = sparseTickIndices(columns.length, MAX_X_LABELS);
 
   return (
     <div className={`plan-actual-chart technical-grid plan-actual-chart--${tone}${compact ? " plan-actual-chart--compact" : ""}`}>

@@ -2412,7 +2412,9 @@ and its on-demand Intervals profiles are preserved; QA stream fixtures remain R3
 ## Runs Reframe R2 — history explorer (STACK Next)
 
 R2 is implemented on `feature/runs-history-explorer` as a stacked child of the
-current R1 branch. It is awaiting owner acceptance and is not merged.
+current R1 branch, and has since had one product-polish pass over that
+implementation. It is awaiting owner visual review, is not accepted and is not
+merged.
 
 ### Overview continuation
 
@@ -2420,8 +2422,10 @@ current R1 branch. It is awaiting owner acceptance and is not merged.
 jobs. Training Signals still show the first three presentable domain-ordered
 signals, but `Show all` reveals the remaining presentable families inline and
 `Show fewer` restores the featured state. Recent Runs likewise grows from three
-to a bounded ten inline. `Explore History` enters a child screen inside Runs;
-neither continuation opens a collection modal. The retired
+to a bounded ten inline. Both continuations are quiet sans utility actions.
+Underneath them a named destination row — `History`, with how many runs it holds
+and how far back they go — enters a child screen inside Runs; neither
+continuation opens a collection modal. The retired
 `AllSignalsSheet.tsx` and `FullHistorySheet.tsx` files are deleted. Selecting one
 Signal or one run still uses the existing focused detail sheet and returns to
 the same Runs depth.
@@ -2429,9 +2433,16 @@ the same Runs depth.
 ### History Explorer
 
 `src/features/runs/HistoryExplorer.tsx` owns presentation-only browsing state:
-metric, range, stable run filter, selected bucket and progressive row count. It
-is rendered inside `RunsScreen`, so it adds no router or bottom-navigation item
-and Runs remains the active destination. Its Back action returns to Overview.
+metric, range, selected bucket and progressive row count. It is rendered inside
+`RunsScreen`, so it adds no router or bottom-navigation item and Runs remains
+the active destination.
+
+Entering and leaving it behaves like navigation rather than a re-render.
+`RunsScreen` remembers the Overview scroll offset, a layout effect puts History
+at its own top on the frame the view swaps, and returning restores the remembered
+offset; History focuses its own `History` title on mount. Arriving on the Runs
+tab moves nothing. The app shell above already carries `env(safe-area-inset-top)`,
+so the title and back affordance never begin under the status bar.
 
 The screen exposes Miles, Runs, recorded Time, source-provided Training Load,
 source-reported Gain and recorded HR-zone composition over 4W, 3M, 6M, YTD, 1Y
@@ -2443,25 +2454,60 @@ recomputing them from streams. Optional missing values remain `null`; known
 values render with compact contribution coverage instead of zero-filling the
 unknown runs.
 
-Filters are intentionally limited to stable existing facts: All, STACK-owned
-Planned (`workoutId !== null`), STACK-owned Extra (`workoutId === null`) and
-History only (`stack === null`). Historical workout type is never inferred.
-Additive chart selection constrains the compact, newest-first `RunnerRunRow`
-list to the selected bucket. Zone composition uses the selected range. Large
-lists reveal 25 at a time, and each row keeps the existing STACK-owned or
+History is filtered by metric and date range only. The R2 Planned / Extra /
+History-only row is removed: it exposed STACK's own ownership model rather than
+the runner's, and its helper is gone rather than left unused. Historical workout
+type is still never inferred.
+
+One readout above the chart owns the result — metric label, value, covered
+dates, one context line, and a compact selected-period line — and nothing repeats
+it beneath the chart. The context line states the equally long prior window when
+that window is inside known coverage, then either a weekly rate or, for an
+optional metric that some runs lack, its contribution coverage. `Runs in period`
+lists the whole selected range newest-first; selecting one period from the chart
+narrows the list to that period, names it, and offers `Show the whole range`.
+Large lists reveal 25 at a time, and each row keeps the existing STACK-owned or
 historical-only detail route.
+
+`4W` aggregates as exactly four trailing seven-day buckets rather than the five
+Monday weeks a trailing 28 days usually touches; 3M, 6M and short YTD stay
+weekly; long YTD, 1Y and ALL stay monthly. A calendar bucket clipped by today is
+marked in progress, drawn as unfinished, and excluded from the default chart
+selection.
+
+Rows are flatter: `RunnerRunRow` keeps its identity and detail routing, but run
+name and date sit on the left, the run's own facts in machine type on the right,
+and rows are separated by spacing and a hairline instead of one outlined card
+each. A historical-only run's origin stays subtle metadata and no longer dims its
+name. Runs presents mileage at one decimal everywhere through
+`formatRunsMiles`, so a range total, a chart readout and a row agree and no
+aggregation precision leaks into the UI.
 
 ### Chart readability and QA
 
-History charts put the exact selected period/value outside the plot, show three
-y-axis ticks and roughly four-to-six sparse x-axis dates, and use a full-plot
-native range control whose transparent thumb is 44px. Every aggregate bucket is
-therefore reachable by touch or keyboard without overlapping narrow bar-sized
-buttons. `src/components/charts/chartTickDensity.ts` shares the deterministic
-sparse-label choice with `PlanActualColumns`; Recent Training and the
-column-based Signal details now use the same full-chart scrubber and larger
-date-label treatment. `SelectableTrendLine` and `DonutChart` retain their
-existing 44px interaction targets.
+Chart form follows what the metric means. Miles and recorded Time are discrete
+per-period totals and stay columns; Runs, source Training Load and source
+Elevation Gain are read as movement and are drawn as lines that break rather
+than join across a period with no recorded value; Zone Mix stays a horizontal
+composition and is never a single line.
+
+History charts put the exact selected period/value in the readout above the plot,
+show three y-axis ticks, and use a full-plot native range control whose
+transparent thumb is 44px and whose `touch-action: pan-y` leaves vertical page
+scrolling alone. `src/components/charts/chartTickDensity.ts` shares the
+deterministic sparse-label choice with `PlanActualColumns`: about four evenly
+spaced dates, both ends anchored, and a guaranteed fifth-of-the-plot gap between
+visible labels. The selected bucket is no longer forced into the axis — it is
+named in the readout — which is what removed the overlapping `Jun 15Jun 29`
+labels found in owner review. History ticks are positioned over their own bucket
+rather than laid out in a column grid, so a label cannot be pushed into its
+neighbour.
+
+`src/components/charts/chartDefaultSelection.ts` holds one product rule for what
+a chart opens on: the latest completed, non-empty period. Recent Training,
+History and the column-based Signal details share it, so no surface opens on a
+current week with nothing in it yet. `SelectableTrendLine` and `DonutChart`
+retain their existing 44px interaction targets.
 
 The reusable QA Runner still carries roughly a year of synthetic unified
 history and now omits Load, Gain and Zones on deterministic subsets, which

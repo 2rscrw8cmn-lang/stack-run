@@ -1,6 +1,8 @@
 # Runs R2 — Information Architecture
 
-**Status:** approved direction for R2 product design; implementation not started.  
+**Status:** approved direction for R2 product design. Implemented and then
+refined by one product-polish pass; awaiting owner visual review, not accepted.
+
 **Companions:** `RUNS_PRODUCT_MODEL.md`, `RUNS_VISUALIZATION_SYSTEM.md`, `RUNS_R2_HISTORY_EXPLORER.md`, `RUNS_R2_CHART_SYSTEM.md`.
 
 ## Why R2 exists
@@ -82,8 +84,20 @@ R2 behavior:
 - `Show more` expands the recent list inline to a small orientation set, target **10 runs**;
 - the control may become `Show fewer` once expanded;
 - the overview must never expand into the complete 100+ run archive;
-- a separate `Explore history` action opens the History Explorer screen;
+- a separate, clearly different affordance opens the History Explorer screen;
 - no Full History modal/sheet.
+
+`Show more` and the History entry are two different intents and should not look
+like two utility labels in a row. `Show more` is a quiet sans action that extends
+the list already on screen. History is a **destination row**: its name, how much
+history is behind it, and a chevron.
+
+```text
+Show more
+
+History                                        ›
+166 runs since Aug 2025
+```
 
 This preserves the useful “just show me a few more” interaction without recreating the original endless Runs page.
 
@@ -109,10 +123,31 @@ Recommended mobile behavior:
 - `Runs` remains the active bottom-nav item;
 - child screen has a clear back action to Runs Overview;
 - title is `History` or `Training History`;
-- returning to Runs should preserve the prior Overview scroll position when practical;
+- opening History **must** put History at its own top;
+- returning to Runs **must** restore the Overview scroll position it was opened from;
 - returning to History during the same session should preserve the selected metric/range when practical without introducing new persistent storage.
 
 Do not add a fifth bottom-nav destination for History.
+
+### Child-screen entry and return
+
+A child screen that inherits its parent's scroll offset is not navigation. Owner
+review on a real iPhone found History opening part-scrolled, with its own title
+already above the top of the viewport.
+
+Required behaviour:
+
+1. remember the Runs Overview scroll position when History is chosen;
+2. show History at its own top position, on the same frame the view swaps;
+3. move focus to the History title;
+4. on Back, return to Overview **and** restore the remembered position.
+
+A blanket `scrollTo(0, 0)` on every render is not the fix; the return path has to
+restore. Arriving on the Runs tab is not a navigation between these two screens
+and should move nothing.
+
+The child screen must respect iOS safe areas. The History title and back
+affordance must never begin under the status bar.
 
 ## Sheet vs screen contract
 
@@ -163,6 +198,20 @@ Deferred:
 
 The existing STACK Next rule still applies: do not invent a “comparable run” classification merely to produce a pace or HR trend.
 
+## Filtering
+
+History is filtered by **metric + date range**. Nothing else is a permanent
+control on the screen.
+
+The initial implementation also carried an `All / Planned / Extra / History only`
+row. Owner review removed it: those values describe STACK's own ownership model
+rather than anything the runner thinks about their training, and the row cost
+permanent vertical weight on the screen's densest surface. Helpers that existed
+only to serve it were removed with it rather than left unused.
+
+If a later phase revisits run filtering, it must still satisfy the truthfulness
+rules below.
+
 ## Run-type filtering truthfulness
 
 `RunnerRun` has a stable STACK activity type only when `run.stack !== null`.
@@ -186,14 +235,10 @@ If workout-type filtering is implemented:
 - `All` always includes historical-only runs;
 - the UI should make the classification boundary understandable without a paragraph on the main screen.
 
-A safer initial filter set is:
-
-- All;
-- Planned;
-- Extra;
-- History only;
-
-with workout-type filtering added only when the UX can represent `Unclassified` cleanly.
+`All / Planned / Extra / History only` remains the only classification STACK can
+state from stable facts, but it is not a good permanent control and is not
+present. Workout-type filtering stays deferred until the UX can represent
+`Unclassified` cleanly.
 
 ## Source filtering
 
@@ -229,8 +274,10 @@ RECENT RUNS
 [run]
 [run]
 [run]
-SHOW MORE
-EXPLORE HISTORY  →
+Show more
+
+History                                        ›
+166 runs since Aug 2025
 ```
 
 Expanded Signals remain part of the page. Expanded Recent Runs remain intentionally bounded. History Explorer owns the complete historical experience.
@@ -257,4 +304,6 @@ The R2 structure is successful when:
 3. the overview still cannot become an endless archive;
 4. full historical browsing has a dedicated screen with metric/date context;
 5. one-run and one-Signal investigation still feel appropriately lightweight;
-6. the runner always understands whether they are looking at Overview, History, or Detail.
+6. the runner always understands whether they are looking at Overview, History, or Detail;
+7. History opens at its own top and Back returns the runner to where they were;
+8. no permanent filter row exposes STACK's internal ownership model.

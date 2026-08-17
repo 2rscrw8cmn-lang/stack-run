@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
+import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection";
 import { formatDateLabel } from "../../domain/dates";
 import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
@@ -35,8 +36,14 @@ export function WorkloadSignalDetail({
       runCount: week.runs.length,
     };
   });
-  const [selectedKey, setSelectedKey] = useState(() => weeks[weeks.length - 1].key);
-  const selected = weeks.find((week) => week.key === selectedKey) ?? weeks[weeks.length - 1];
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const fallbackKey = defaultSelectedKey(
+    weeks.map((week) => ({ key: week.key, value: week.load, isPartial: week.isPartial })),
+  );
+  const selected =
+    weeks.find((week) => week.key === selectedKey) ??
+    weeks.find((week) => week.key === fallbackKey) ??
+    weeks[weeks.length - 1];
   const facts = signal.facts;
   if (!facts) return null;
 

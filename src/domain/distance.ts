@@ -33,3 +33,18 @@ export function formatCompactMiles(distanceMiles: number): string {
 export function formatMilesBuilt(distanceMiles: number): string {
   return distanceMiles.toFixed(1);
 }
+
+/**
+ * The one-decimal mileage Runs presents, for a single run and a range total alike.
+ *
+ * Summing a year of two-decimal imports produces readings like `63.25 mi` and,
+ * with floating point in the way, worse. That is aggregation precision leaking
+ * into the product: nobody reads a hundredth of a mile across four weeks of
+ * running. Runs presents one decimal everywhere — `3.5`, `63.3`, `761.5` — so
+ * the summary, the chart readout and the rows underneath it agree.
+ *
+ * Stored distance is untouched. This is presentation only.
+ */
+export function formatRunsMiles(distanceMiles: number): string {
+  return distanceMiles.toFixed(1);
+}

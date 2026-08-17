@@ -155,18 +155,159 @@
   display: none;
 }
 
-.runs-recent .run-row {
-  min-height: 56px;
+/*
+ * R2 polish: flatter list rows.
+ *
+ * Every run used to be an outlined, rounded container, which made a list of
+ * runs read as a stack of cards and made the newest run look like the most
+ * important object on the screen. Rows are now separated by spacing and a
+ * hairline: name and date on the left, the run's own facts in machine type on
+ * the right. Scoped to Runs so Plan, Build and Crew rows are untouched.
+ */
+.runs-screen .runs-screen__list {
+  gap: 0;
+}
+
+.runs-screen .run-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  min-height: 62px;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.runs-screen .runs-screen__list > li:last-child .run-row {
+  border-bottom: 0;
+}
+
+.runs-screen .run-row:hover {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+/* A small accent mark, not a filled tile. */
+.runs-screen .run-row__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.runs-screen .run-row__body {
+  gap: 3px;
+}
+
+.runs-screen .run-row__head {
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+}
+
+/* The run's name holds one line; a badge beside it wraps instead. */
+.runs-screen .run-row__type {
+  font-size: 15px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.runs-screen .run-row__date {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.runs-screen .run-row__metrics {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.runs-screen .run-row__distance {
+  color: var(--text);
+  font-family: var(--font-data);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.runs-screen .run-row__secondary {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/*
+ * Where a run came from is metadata, not rank. The icon stays quiet for a run
+ * STACK never logged; its name does not.
+ */
+.runs-screen .run-row[data-origin="historical-activity"] .run-row__type {
+  color: var(--text);
+}
+
+/* Utility actions, in the normal voice: quiet, sans, and clearly secondary. */
+.runs-screen .runs-screen__more {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 2px;
 }
 
 .runs-screen__more > .button {
-  flex: 1 1 0;
   min-height: 44px;
+  min-width: 0;
+  padding-inline: 0 var(--space-4);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* `Show more` extends this list. This goes somewhere. */
+.runs-screen__history {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 2px;
+  padding: 10px 2px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.runs-screen__history:hover {
+  color: var(--text);
+}
+
+.runs-screen__history-text {
+  display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
-.runs-screen__more {
-  gap: 4px;
+.runs-screen__history-title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.runs-screen__history-meta {
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 @media (max-width: 340px) {

@@ -1,4 +1,4 @@
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import { longestRunByWeek } from "../../history/runnerLongRuns";
 import type { RunnerRun } from "../../history/runnerRun";
 import type { TrainingSignal } from "../../signals/trainingSignal";
@@ -89,11 +89,11 @@ export function signalSummaryReading(
     case "volume":
       return {
         currentLabel,
-        currentValue: `${formatMiles(signal.facts.currentMiles)} mi`,
+        currentValue: `${formatRunsMiles(signal.facts.currentMiles)} mi`,
         changeLabel: "Change",
         changeValue: signedMilesChange(signal.facts.differenceMiles),
         referenceLabel,
-        referenceValue: `${formatMiles(signal.facts.baselineMiles)} mi`,
+        referenceValue: `${formatRunsMiles(signal.facts.baselineMiles)} mi`,
       };
     case "frequency":
       return {
@@ -107,11 +107,11 @@ export function signalSummaryReading(
     case "long-run":
       return {
         currentLabel,
-        currentValue: `${formatMiles(signal.facts.currentMiles)} mi`,
+        currentValue: `${formatRunsMiles(signal.facts.currentMiles)} mi`,
         changeLabel: "Change",
         changeValue: signedMilesChange(signal.facts.differenceMiles),
         referenceLabel,
-        referenceValue: `${formatMiles(signal.facts.baselineMiles)} mi`,
+        referenceValue: `${formatRunsMiles(signal.facts.baselineMiles)} mi`,
       };
     case "workload":
       return {
@@ -211,8 +211,8 @@ export function signalOverviewVisual(
       return comparisonVisual(
         signal.facts.currentMiles,
         signal.facts.baselineMiles,
-        `${formatMiles(signal.facts.currentMiles)} mi`,
-        `${formatMiles(signal.facts.baselineMiles)} mi`,
+        `${formatRunsMiles(signal.facts.currentMiles)} mi`,
+        `${formatRunsMiles(signal.facts.baselineMiles)} mi`,
       );
     case "frequency":
       return comparisonVisual(
@@ -226,8 +226,8 @@ export function signalOverviewVisual(
       return {
         kind: "trend",
         segments: longRunSegments(runs, today),
-        currentValue: `${formatMiles(signal.facts.currentMiles)} mi`,
-        baselineValue: `${formatMiles(signal.facts.baselineMiles)} mi`,
+        currentValue: `${formatRunsMiles(signal.facts.currentMiles)} mi`,
+        baselineValue: `${formatRunsMiles(signal.facts.baselineMiles)} mi`,
       };
     case "workload":
       return comparisonVisual(

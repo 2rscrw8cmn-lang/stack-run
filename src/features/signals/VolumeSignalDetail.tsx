@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
+import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import type { RunnerRun } from "../../history/runnerRun";
 import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
@@ -20,15 +21,21 @@ export function VolumeSignalDetail({
   today: string;
 }) {
   const weeks = weeklyVolume(runs, today);
-  const [selectedKey, setSelectedKey] = useState(() => weeks[weeks.length - 1].key);
-  const selected = weeks.find((week) => week.key === selectedKey) ?? weeks[weeks.length - 1];
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const fallbackKey = defaultSelectedKey(
+    weeks.map((week) => ({ key: week.key, value: week.miles, isPartial: week.isPartial })),
+  );
+  const selected =
+    weeks.find((week) => week.key === selectedKey) ??
+    weeks.find((week) => week.key === fallbackKey) ??
+    weeks[weeks.length - 1];
   const facts = signal.facts;
   if (!facts) return null;
 
   return (
     <>
       <SignalResultSummary
-        currentValue={`${formatMiles(facts.currentMiles)} mi`}
+        currentValue={`${formatRunsMiles(facts.currentMiles)} mi`}
         change={`${signedMilesChange(facts.differenceMiles)} · ${signedPercent(facts.changeRatio)}`}
       />
 
@@ -42,18 +49,18 @@ export function VolumeSignalDetail({
             }),
             actual: week.miles,
             isPartial: week.isPartial,
-            selectionLabel: `Week of ${formatDateLabel(week.startDate, { month: "long", day: "numeric" })}, ${formatMiles(week.miles)} miles, ${week.runCount} ${week.runCount === 1 ? "run" : "runs"}${week.isPartial ? ", still in progress" : ""}`,
+            selectionLabel: `Week of ${formatDateLabel(week.startDate, { month: "long", day: "numeric" })}, ${formatRunsMiles(week.miles)} miles, ${week.runCount} ${week.runCount === 1 ? "run" : "runs"}${week.isPartial ? ", still in progress" : ""}`,
           }))}
           selectedKey={selected.key}
           onSelect={setSelectedKey}
         />
         <p className="signal-detail__period machine-label">
           Week of {formatDateLabel(selected.startDate, { month: "short", day: "numeric" })}
-          {selected.isPartial ? " · in progress" : ""} · {formatMiles(selected.miles)} mi ·{" "}
+          {selected.isPartial ? " · in progress" : ""} · {formatRunsMiles(selected.miles)} mi ·{" "}
           {selected.runCount} {selected.runCount === 1 ? "run" : "runs"}
         </p>
       </DetailSection>
-      <SignalReference value={`${formatMiles(facts.baselineMiles)} mi`} />
+      <SignalReference value={`${formatRunsMiles(facts.baselineMiles)} mi`} />
     </>
   );
 }

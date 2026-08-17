@@ -75,13 +75,28 @@ describe("PlanActualColumns", () => {
     expect(container.querySelector(".plan-actual-chart")).toHaveClass("plan-actual-chart--compact");
   });
 
-  it("keeps four to six labels for dense charts and always includes selection", () => {
+  it("thins dense charts to evenly spaced labels that cannot collide", () => {
     for (const count of [8, 12, 26]) {
-      const selected = Math.floor(count / 3);
-      const ticks = sparseTickIndices(count, selected, 6);
-      expect(ticks).toContain(selected);
-      expect(ticks.length).toBeGreaterThanOrEqual(4);
-      expect(ticks.length).toBeLessThanOrEqual(6);
+      const ticks = sparseTickIndices(count, 4);
+      expect(ticks[0]).toBe(0);
+      expect(ticks.at(-1)).toBe(count - 1);
+      expect(ticks.length).toBeLessThanOrEqual(4);
+      for (let index = 1; index < ticks.length; index += 1) {
+        expect((ticks[index] - ticks[index - 1]) / count).toBeGreaterThan(0.19);
+      }
     }
+  });
+
+  it("draws only the thinned labels, so a twelve-week chart is not twelve dates", () => {
+    const weeks = Array.from({ length: 12 }, (_, index) => ({
+      key: `w${index}`,
+      shortLabel: `Aug ${index + 1}`,
+      selectionLabel: `Week ${index + 1}`,
+      actual: index + 1,
+    }));
+    const { container } = render(
+      <PlanActualColumns columns={weeks} selectedKey="w4" onSelect={() => undefined} />,
+    );
+    expect(container.querySelectorAll(".chart__tick--x").length).toBeLessThanOrEqual(4);
   });
 });

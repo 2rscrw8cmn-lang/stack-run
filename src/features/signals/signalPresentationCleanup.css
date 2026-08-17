@@ -200,8 +200,20 @@
   justify-content: flex-start;
 }
 
+/* A utility action, not a branded control: quiet sans, muted, left-aligned. */
 .signal-cards__all .button {
   min-height: 44px;
+  padding-inline: 0 var(--space-4);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.signal-cards__all .button:hover {
+  color: var(--text);
 }
 
 /* Signal Detail: result, shape, evidence, then methodology on demand. */
