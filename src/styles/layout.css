@@ -72,7 +72,12 @@
 
 .app-shell__main {
   flex: 1;
-  padding: 0 var(--space-4) var(--space-8);
+  /* Enough clearance for the sticky nav's own height plus its safe-area
+     inset, so scrolling to the end of any tab's content clears the bar
+     instead of leaving real content (e.g. the last row of Crew Build)
+     sitting only under its blur. */
+  padding: 0 var(--space-4)
+    calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
 }
 
 .app-shell__nav {
