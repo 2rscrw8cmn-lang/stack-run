@@ -6,6 +6,7 @@ import type {
   CrewDashboardData,
   CrewMember,
   CrewMemberSummary,
+  CrewPropNotification,
   CrewRole,
   CrewSharedRun,
 } from "./types";
@@ -101,6 +102,7 @@ export async function loadCrewDashboard(
       sharedRunsAvailable: true,
       sharedRunsTruncated: false,
       propsAvailable: true,
+      propNotifications: [],
       loadedAt: new Date().toISOString(),
     };
   }
@@ -227,18 +229,40 @@ export async function loadCrewDashboard(
     ? { data: [], error: null }
     : await client
       .from("crew_reactions")
-      .select("shared_run_id,user_id")
+      .select("shared_run_id,user_id,created_at")
       .eq("crew_id", crewId);
   const propsAvailable = sharedRunsAvailable && !reactionResult.error;
 
+  const eligibleRunsById = new Map(crewEligibleRuns.map((run) => [run.id, run] as const));
   const propsCounts = new Map<string, number>();
   const viewerProps = new Set<string>();
+  const propNotifications: CrewPropNotification[] = [];
   for (const item of rows(propsAvailable ? reactionResult.data : [])) {
     const runId = requiredString(item, "shared_run_id");
     const userId = requiredString(item, "user_id");
     propsCounts.set(runId, (propsCounts.get(runId) ?? 0) + 1);
     if (userId === viewerUserId) viewerProps.add(runId);
+
+    // A notification only exists for Props a teammate gave on the viewer's
+    // own run — never the crew-wide feed, and never the viewer propping
+    // someone else.
+    const run = eligibleRunsById.get(runId);
+    if (run && run.userId === viewerUserId && userId !== viewerUserId) {
+      propNotifications.push({
+        id: `${runId}:${userId}`,
+        runId,
+        runLocalDate: run.localDate,
+        runActivityType: run.activityType,
+        runDistanceMiles: run.distanceMiles,
+        actorUserId: userId,
+        actorDisplayName: displayName(userId),
+        actorAccentColor: accentColorOf(userId),
+        actorRunnerIcon: runnerIconOf(userId),
+        createdAt: requiredString(item, "created_at"),
+      });
+    }
   }
+  propNotifications.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const runs = crewEligibleRuns.map((run) => ({
     ...run,
@@ -288,6 +312,7 @@ export async function loadCrewDashboard(
     // the Crew screen says so instead of implying completeness.
     sharedRunsTruncated: sharedRunsAvailable && allRuns.length >= sharedRunReadLimit,
     propsAvailable,
+    propNotifications,
     loadedAt: new Date().toISOString(),
   };
 }

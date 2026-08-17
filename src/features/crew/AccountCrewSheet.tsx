@@ -13,7 +13,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
@@ -40,6 +40,7 @@ import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
 import type { PersonalSyncController } from "../../personal-sync/types";
+import { PropNotifications } from "./PropNotifications";
 import { RunnerIcon } from "./RunnerIcon";
 import { RunnerIconBuilder } from "./RunnerIconBuilder";
 
@@ -972,6 +973,13 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
   const raceCrew = crew.account?.crew ?? null;
   const isOwner = crew.account?.role === "owner";
   const crewCount = crew.account?.memberships.length ?? 0;
+  const markPropsSeen = crew.markPropsSeen;
+
+  // Opening the sheet is a read: whatever Props were unread when it opened
+  // clear from here and the runner's header icon alike.
+  useEffect(() => {
+    if (isOpen && signedIn) void markPropsSeen();
+  }, [isOpen, signedIn, markPropsSeen]);
 
   // A create that actually produced a crew is recognized as a changed
   // membership count, so the sheet returns to the hub as soon as that count
@@ -1130,6 +1138,13 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
                     </button>
                   </li>
                 </ul>
+
+                {crew.account?.crew && (
+                  <PropNotifications
+                    notifications={crew.crewData?.propNotifications ?? []}
+                    propsSeenAt={crew.account.profile.propsSeenAt}
+                  />
+                )}
 
                 <PendingInvitePanel crew={crew} localRace={localRace} />
 

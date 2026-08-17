@@ -56,6 +56,7 @@ import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
 import { CrewMiniBuild } from "./CrewMiniBuild";
 import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
+import { PropNotifications } from "./PropNotifications";
 import {
   deriveCrewMiniBuild,
   orderedMiniBuildMembers,
@@ -180,6 +181,7 @@ export function CrewScreen({
   const currentUserId = crew?.account?.profile.id;
   const crewStatus = crew?.status;
   const refreshCrewData = crew?.refreshCrewData;
+  const markPropsSeen = crew?.markPropsSeen;
   const crewBuildRuns = crew?.crewData?.crewBuildRuns;
 
   // One read-model derivation per loaded payload. The server owns the Crew
@@ -196,6 +198,14 @@ export function CrewScreen({
       void refreshCrewData(false);
     }
   }, [crewStatus, currentCrewId, refreshCrewData]);
+
+  // Arriving on the Crew tab is a read: whatever Props were unread when it
+  // loaded clear from here and the header identity marker alike.
+  useEffect(() => {
+    if (crewStatus === "signed-in" && currentCrewId && markPropsSeen) {
+      void markPropsSeen();
+    }
+  }, [crewStatus, currentCrewId, markPropsSeen]);
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -497,6 +507,11 @@ export function CrewScreen({
           </div>
         </div>
       </header>
+
+      <PropNotifications
+        notifications={dashboardData.propNotifications}
+        propsSeenAt={crew.account?.profile.propsSeenAt ?? new Date(0).toISOString()}
+      />
 
       {canSwitchCrews && isCrewPickerOpen && (
         <Sheet

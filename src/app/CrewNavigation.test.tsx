@@ -25,7 +25,13 @@ const raceCrew: RaceCrew = {
 };
 
 const account: LoadedCrewAccount = {
-  profile: { id: "zack", displayName: "Zack", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  profile: {
+    id: "zack",
+    displayName: "Zack",
+    accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+    propsSeenAt: "2026-08-04T12:00:00Z",
+  },
   memberships: [{ crew: raceCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: raceCrew,
   role: "owner",
@@ -43,6 +49,7 @@ const crewData: CrewDashboardData = {
   sharedRunsAvailable: true,
   sharedRunsTruncated: false,
   propsAvailable: true,
+  propNotifications: [],
   loadedAt: "2026-08-04T12:00:00Z",
 };
 
@@ -64,6 +71,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     crewDataError: null,
     propsPendingRunIds: [],
     propsErrors: {},
+    unreadPropNotifications: [],
     crewBuildPlacementPending: false,
     crewBuildPlacementError: null,
     createAccount: action,
@@ -84,6 +92,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     deleteRunContribution: action,
     refreshCrewData: action,
     toggleProps: action,
+    markPropsSeen: action,
     placeCrewBuildBlock: vi.fn(async () => true),
     clearCrewBuildPlacementError: vi.fn(),
     clearMessage: vi.fn(),
@@ -137,6 +146,30 @@ describe("The runner's icon in the app header", () => {
     // It joins the existing header row rather than adding one.
     expect(runner.closest(".app-shell__header-row")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("rings the runner's icon when a teammate's Props are unread", () => {
+    const unread = [
+      {
+        id: "run-1:drew",
+        runId: "run-1",
+        runLocalDate: "2026-08-04",
+        runActivityType: "long" as const,
+        runDistanceMiles: 6.1,
+        actorUserId: "drew",
+        actorDisplayName: "Drew",
+        actorAccentColor: null,
+        actorRunnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+        createdAt: "2026-08-05T00:00:00Z",
+      },
+    ];
+    current = controller({
+      crewData: { ...crewData, propNotifications: unread },
+      unreadPropNotifications: unread,
+    });
+    render(<App />);
+    const runner = screen.getByRole("button", { name: /New Props received\.$/ });
+    expect(runner).toHaveAttribute("data-unread", "true");
   });
 
   it("shows no runner mark when nobody is signed in", () => {

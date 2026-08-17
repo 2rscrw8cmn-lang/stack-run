@@ -30,7 +30,13 @@ const ownerCrew: RaceCrew = {
 };
 
 const ownerAccount: LoadedCrewAccount = {
-  profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  profile: {
+    id: "owner-1",
+    displayName: "Owner",
+    accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+    propsSeenAt: "2026-08-01T00:00:00Z",
+  },
   memberships: [{ crew: ownerCrew, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
   crew: ownerCrew,
   role: "owner",
@@ -43,7 +49,13 @@ const ownerAccount: LoadedCrewAccount = {
 
 const memberAccount: LoadedCrewAccount = {
   ...ownerAccount,
-  profile: { id: "member-1", displayName: "Member", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+  profile: {
+    id: "member-1",
+    displayName: "Member",
+    accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+    propsSeenAt: "2026-08-01T00:00:00Z",
+  },
   role: "member",
   members: [
     ...ownerAccount.members,
@@ -90,6 +102,7 @@ function controller(
     crewDataError: null,
     propsPendingRunIds: [],
     propsErrors: {},
+    unreadPropNotifications: [],
     crewBuildPlacementPending: false,
     crewBuildPlacementError: null,
     createAccount: action,
@@ -110,6 +123,7 @@ function controller(
     deleteRunContribution: action,
     refreshCrewData: action,
     toggleProps: action,
+    markPropsSeen: action,
     placeCrewBuildBlock: vi.fn(async () => true),
     clearCrewBuildPlacementError: vi.fn(),
     clearMessage: vi.fn(),
@@ -217,7 +231,13 @@ describe("Account & Crew settings", () => {
       status: "signed-in",
       email: "runner@example.test",
       account: {
-        profile: { id: "user-1", displayName: "Runner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+        profile: {
+          id: "user-1",
+          displayName: "Runner",
+          accentColor: null,
+          runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+          propsSeenAt: "2026-08-01T00:00:00Z",
+        },
         memberships: [],
         crew: null,
         role: null,
@@ -386,7 +406,13 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+            profile: {
+              id: "owner-1",
+              displayName: "Owner",
+              accentColor: null,
+              runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+              propsSeenAt: "2026-08-01T00:00:00Z",
+            },
             memberships: [],
             crew: null,
             role: null,
@@ -413,7 +439,13 @@ describe("Account & Crew settings", () => {
         crew={controller({
           status: "signed-in",
           account: {
-            profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+            profile: {
+              id: "owner-1",
+              displayName: "Owner",
+              accentColor: null,
+              runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+              propsSeenAt: "2026-08-01T00:00:00Z",
+            },
             memberships: [],
             crew: null,
             role: null,
@@ -527,6 +559,7 @@ describe("Account & Crew settings", () => {
             sharedRunsAvailable: true,
             sharedRunsTruncated: false,
             propsAvailable: true,
+            propNotifications: [],
             loadedAt: "2026-08-12T00:00:00Z",
           },
         })}
@@ -604,7 +637,13 @@ describe("Account & Crew settings", () => {
     const saveAccentColor = vi.fn(async () => undefined);
     const account: LoadedCrewAccount = {
       ...memberAccount,
-      profile: { id: "member-1", displayName: "Member", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+      profile: {
+        id: "member-1",
+        displayName: "Member",
+        accentColor: "aqua",
+        runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+        propsSeenAt: "2026-08-01T00:00:00Z",
+      },
       members: [
         { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: "magenta", runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
         { userId: "member-1", displayName: "Member", role: "member", joinedAt: "2026-08-02T00:00:00Z", accentColor: "aqua", runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
@@ -648,7 +687,13 @@ describe("Account & Crew settings", () => {
     // forever: "taken" is read live off the current roster, not a history.
     const account: LoadedCrewAccount = {
       ...ownerAccount,
-      profile: { id: "owner-1", displayName: "Owner", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
+      profile: {
+        id: "owner-1",
+        displayName: "Owner",
+        accentColor: null,
+        runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+        propsSeenAt: "2026-08-01T00:00:00Z",
+      },
       members: [
         { userId: "owner-1", displayName: "Owner", role: "owner", joinedAt: "2026-08-01T00:00:00Z", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
       ],
@@ -890,6 +935,7 @@ describe("Runner Icon editor", () => {
       displayName: "Member",
       accentColor: "aqua",
       runnerIcon: { head: 1, face: 2, body: 3, flair: 0, background: 0 },
+      propsSeenAt: "2026-08-01T00:00:00Z",
     },
   };
 
