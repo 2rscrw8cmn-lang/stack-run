@@ -1,3 +1,4 @@
+import { Dumbbell } from "lucide-react";
 import type { CSSProperties } from "react";
 import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
@@ -51,11 +52,18 @@ function blockLabel(block: PlacedBlockData): string {
  * The race says `RACE` instead of its distance: it is the one block whose
  * mileage the runner already knows, and the word is what makes it read as the
  * capstone rather than another wide brick.
+ *
+ * Cross Training wears a dumbbell instead of a number for the same reason in
+ * reverse: its distance is often zero (D-077), and a bare `0` reads as a
+ * broken block rather than a session that never measured mileage at all.
  */
 function faceLabel(block: PlacedBlockData): BrickFaceLabel | null {
   const { runLog, placement } = block;
   if (runLog.activityType === "race") {
     return { text: "RACE", unit: false };
+  }
+  if (runLog.activityType === "cross") {
+    return { icon: Dumbbell };
   }
   return {
     text: formatCompactMiles(runLog.distanceMiles),

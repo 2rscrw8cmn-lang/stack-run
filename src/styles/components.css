@@ -1467,6 +1467,15 @@ textarea.run-input {
   opacity: 0.72;
 }
 
+/* Cross Training has no mileage worth stamping on the face, so it wears its
+   icon instead — the same role RACE's text fills for the one other type that
+   skips the number. Inherits `color: var(--bg)` from the label via
+   currentColor, so it needs no colour of its own. */
+.placed-block__icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
 /*
  * Crew Build bricks carry no ownership mark on the face. The runner's colour
  * is the whole block, and their icon lives in the legend and the identity UI
