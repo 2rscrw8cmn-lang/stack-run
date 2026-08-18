@@ -1,6 +1,7 @@
 import { isBeforeLocalDate } from "./dates";
 import { addPlannedRun } from "./planEdit";
 import { WEEKDAY_ORDER, weekdayOf, type Weekday } from "./runDays";
+import { crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts";
 import type { TrainingPlan, Workout } from "./types";
 
 /**
@@ -12,6 +13,7 @@ import type { TrainingPlan, Workout } from "./types";
  * has already happened.
  */
 
+/** @deprecated Superseded by the rotation in `crossTrainingWorkouts.ts`. Kept for anything still importing it. */
 export const CROSS_TRAINING_DETAILS =
   "Cross training. Whatever the day calls for — strength, mobility, an easy spin.";
 
@@ -47,7 +49,9 @@ export function planCrossTrainingDayChange(
 /**
  * Applies the change, one `addPlannedRun` at a time — the same path a
  * hand-added Cross Training day takes, so the plan's invariants hold for a
- * bulk fill exactly as they do for a single edit.
+ * bulk fill exactly as they do for a single edit. Each fill's position in
+ * the sorted list picks its workout from the rotation, so consecutive
+ * Cross Training days across the plan cycle strength, mobility, aerobic.
  */
 export function applyCrossTrainingDays(
   plan: TrainingPlan,
@@ -55,16 +59,15 @@ export function applyCrossTrainingDays(
   context: ReshapeContext,
 ): TrainingPlan {
   const { fills } = planCrossTrainingDayChange(plan, days, context);
-  return fills.reduce(
-    (current, workout) =>
-      addPlannedRun(current, workout.id, {
-        type: "cross",
-        title: "Cross Training",
-        targetDistanceMiles: null,
-        details: CROSS_TRAINING_DETAILS,
-      }),
-    plan,
-  );
+  return fills.reduce((current, workout, index) => {
+    const { title, details } = crossTrainingWorkoutForIndex(index);
+    return addPlannedRun(current, workout.id, {
+      type: "cross",
+      title,
+      targetDistanceMiles: null,
+      details,
+    });
+  }, plan);
 }
 
 /** The weekdays the plan currently schedules Cross Training on. */
