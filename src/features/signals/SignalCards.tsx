@@ -14,7 +14,8 @@ interface SignalCardsProps {
   /** True when the runner has runs but no signal can be computed from them yet. */
   hasHistory: boolean;
   onOpenSignal: (signal: TrainingSignal) => void;
-  onViewAll?: () => void;
+  onToggleExpanded?: () => void;
+  isExpanded?: boolean;
   hiddenSignalCount?: number;
 }
 
@@ -25,7 +26,8 @@ export function SignalCards({
   today,
   hasHistory,
   onOpenSignal,
-  onViewAll,
+  onToggleExpanded,
+  isExpanded = false,
   hiddenSignalCount = 0,
 }: SignalCardsProps) {
   if (signals.length === 0 && !hasHistory) return null;
@@ -49,10 +51,15 @@ export function SignalCards({
             today={today}
             onOpenSignal={onOpenSignal}
           />
-          {hiddenSignalCount > 0 && onViewAll && (
+          {(hiddenSignalCount > 0 || isExpanded) && onToggleExpanded && (
             <div className="signal-cards__all">
-              <Button variant="ghost" onClick={onViewAll}>
-                View All Signals
+              <Button
+                variant="ghost"
+                aria-expanded={isExpanded}
+                aria-label={isExpanded ? "Show fewer signals" : "Show all signals"}
+                onClick={onToggleExpanded}
+              >
+                {isExpanded ? "Show fewer" : "Show all"}
               </Button>
             </div>
           )}

@@ -1,6 +1,6 @@
 # Runs Reframe — Implementation Plan
 
-**Status:** R0 is accepted; R1 is implemented and awaiting owner acceptance. R2 product architecture is now defined but implementation has not started. R3 and NEXT-5 remain paused.  
+**Status:** R0 is accepted. R1 is implemented in PR #109 and remains under owner review, not accepted or merged. R2 is implemented on top of R1 and has had one owner-directed product-polish pass over that implementation; it is awaiting owner visual review in the same stacked draft PR and is not accepted or merged. R3 and NEXT-5 remain paused.
 **Integration branch:** `feature/stack-next`.
 
 ## Why this exists
@@ -22,12 +22,14 @@ Implementation should follow those documents rather than reinterpret them from s
 
 ```text
 feature/stack-next
-├── feature/runs-overview
-├── feature/runs-history-explorer
-└── feature/run-detail-enrichment
+└── feature/runs-overview                 (R1, PR #109)
+    └── feature/runs-history-explorer     (R2 stacked draft)
 ```
 
-Each PR targets `feature/stack-next`, never `main`.
+While R1 remains under review, the R2 PR targets `feature/runs-overview` so its
+diff contains only the R2 delta. It may be retargeted to `feature/stack-next`
+after R1 is owner-accepted and merged there. Neither branch is merged by this
+implementation record, and neither targets `main`.
 
 Do not begin NEXT-5 Plan role revision until the Runs reframe is coherent enough to review as one product system.
 
@@ -92,8 +94,58 @@ R2 addresses those directly.
 ## R2 — Runs exploration system
 
 **Recommended branch:** `feature/runs-history-explorer`
+**Implementation status:** implemented on the current R1 tip and refined by one product-polish pass, awaiting owner visual acceptance in a stacked draft PR. This is not an acceptance record.
 
 R2 is no longer defined as “polish the Full History archive.” It has three coordinated subphases.
+
+The implementation now:
+
+- expands the complete presentable Signal inventory inline from three and collapses it with `Show fewer`;
+- expands Recent Runs inline from three to a bounded ten and keeps `Explore History` distinct;
+- deletes the retired All Signals and Full History collection sheets;
+- opens `HistoryExplorer` as local child-screen state inside Runs, preserving the active Runs destination and existing detail sheets;
+- provides Miles, Runs, recorded Time, source Load, source Gain and recorded Zones over 4W / 3M / 6M / YTD / 1Y / ALL;
+- uses pure local-date range, bucket, filter and aggregate helpers over normalized `RunnerRun` data;
+- filters by metric and date range only;
+- defaults to the largest fully known quick range up to 3M;
+- lists the whole selected range newest-first, narrows to a period the runner selects, and reveals large sets 25 at a time;
+- preserves missing optional metrics as missing and states recorded/source contribution coverage;
+- uses weekly buckets for 4W / 3M / 6M and short YTD, monthly buckets for long YTD / 1Y / ALL;
+- uses one full-chart touch/keyboard scrubber to reach every bucket while showing only sparse readable axis labels;
+- applies the same sparse-label and non-overlapping scrubber architecture to `PlanActualColumns` in Recent Training and Signal detail;
+- extends the reusable QA Runner with deterministic partial Load, Gain and Zone coverage without credentials, network calls or page-specific demo state.
+
+### R2 polish pass
+
+Owner review accepted the R2 architecture — inline Signal and Recent Runs
+expansion, History as a real Runs child screen, metric + date-range exploration,
+focused sheets for one run or one Signal — and rejected how much visible STACK
+styling the implementation was spending at once. The governing rule for the pass
+was:
+
+> **Interface is quiet. Data is STACK.**
+
+The pass:
+
+- removes the permanent Planned / Extra / History-only filter row and the helper behind it;
+- compacts the History header to one `‹ History` row with no eyebrow and no subtitle;
+- makes History open at its own top and Back restore the Overview scroll position;
+- reduces the metric selector to compact sans tabs and the range selector to small pills, each with a 44px target around a smaller visible control;
+- consolidates the result into one readout with a compact selected-period line, and deletes the duplicate post-chart readout;
+- draws Miles and Time as bars, Runs, Load and Gain as lines, and Zones as composition;
+- leads Zones with recorded lower-zone share instead of total recorded time;
+- fixes axis collisions in the chart system rather than in one chart: about four evenly spaced ticks, a guaranteed gap, ticks positioned over their own bucket, and no selected tick forced into the axis;
+- adds one shared default-selection rule — latest completed, non-empty period — used by Recent Training, History and the column-based Signal details;
+- aggregates `4W` as exactly four trailing seven-day buckets and marks clipped calendar periods in progress;
+- renames `Contributing runs` to `Runs in period` and states the period and count;
+- flattens run rows to spacing, hairlines and typography, with facts in machine type on the right;
+- returns `Show more`, `Show all`, `Show fewer` and the History entry to the normal STACK sans voice, with History as a named destination row;
+- standardizes Runs mileage presentation at one decimal.
+
+No Training Signal formula/order/availability, unified-history identity or sync,
+source semantics, RunLog, Plan, Build, Crew, persistence, schema, R3 stream work,
+or NEXT-5 behavior changed. Chart aggregation and default selection are
+presentation rules over already-normalized history.
 
 ### R2A — Remove “more” modals
 
@@ -162,7 +214,12 @@ Explicitly deferred:
 
 ### R2 history filters
 
-Prefer stable existing classifications first:
+History is filtered by metric and date range only. The polish pass removed the
+`All / Planned / Extra / History only` row: it exposed STACK's ownership model
+rather than the runner's, and cost permanent weight on the densest screen.
+
+If a later phase revisits filtering, stable existing classifications remain the
+only defensible starting point:
 
 - All;
 - Planned;
@@ -260,8 +317,10 @@ R2 is ready for owner review when:
 3. `Explore history` opens a real Runs child screen;
 4. metric/date changes update one strong chart and its contributing runs;
 5. historical-only runs are never silently classified;
-6. chart dates/values are comfortably readable at phone size;
-7. no domain/history/source semantics changed.
+6. chart dates/values are comfortably readable at phone size, with no axis label ever touching another;
+7. History opens at its own top and Back restores the Overview position;
+8. one readout owns the result and no fact is stated twice on the screen;
+9. no domain/history/source semantics changed.
 
 ## R3 — Run Detail enrichment + QA stream review
 

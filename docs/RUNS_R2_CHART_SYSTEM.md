@@ -1,6 +1,8 @@
 # Runs R2 — Chart System
 
-**Status:** approved visual/readability contract for R2; implementation not started.  
+**Status:** approved visual/readability contract for R2. Implemented and then
+refined by one product-polish pass; awaiting owner visual review, not accepted.
+
 **Companions:** `RUNS_VISUALIZATION_SYSTEM.md`, `RUNS_R2_HISTORY_EXPLORER.md`.
 
 ## Purpose
@@ -54,12 +56,39 @@ Machine type may still be used, but not at a size that makes dates/values hard t
 
 At ~390px wide:
 
-- target approximately **4–6 visible x-axis labels**;
+- target approximately **4 visible x-axis labels**;
 - target **2–4 meaningful y-axis labels**;
-- labels should not overlap or require sub-12px text;
+- visible labels must never overlap, and must never require sub-12px text;
 - suppress intermediate ticks rather than squeezing them in.
 
 A 12-week chart does not need 12 date labels.
+
+### The rule, in priority order
+
+When a chart gets crowded:
+
+1. fewer labels;
+2. shorter date labels;
+3. aggregate the data;
+4. more spacing;
+5. only then adjust typography — never below the documented floor.
+
+### No label may collide, by construction
+
+Ticks are chosen as evenly spaced positions with both ends anchored and a
+guaranteed minimum gap of about **a fifth of the plot**, which is wider than a
+short date at the sizes above. Six labels fit on paper and collided on a real
+phone: a `Jun 15` is roughly 48px and six of them leave 49px between centres.
+
+Do **not** force the selected bucket into the axis. The R2 implementation did,
+and a selection landing two buckets from a fixed edge label produced exactly the
+`Jun 15Jun 29` overlap owner review found. The selected period is stated in the
+readout instead, so axis density is independent of selection and cannot collide
+with the final label. A selected bucket may be emphasised only when it already
+happens to be one of the chosen ticks.
+
+Position each visible label over its own bucket rather than in a column grid; a
+grid cell narrower than the label pushes text into its neighbour.
 
 Examples:
 
@@ -83,6 +112,28 @@ AUG 10 – AUG 16
 The chart should not force the user to decode a tiny value directly from an axis.
 
 Selection text remains visible after tap until another selection is made.
+
+On History the selected-period line is part of the one summary readout above the
+chart. It is a compact line, not a second large result: a screen must not state
+the same value twice.
+
+## Default selection
+
+One rule across every STACK chart:
+
+> **Default to the latest completed, non-empty period.**
+
+Recent Training defaulted to the latest week with running in it while Signal
+detail defaulted to the current calendar week, which on a Monday morning is a
+truthful and useless `0 mi`. Both now use the same helper.
+
+The current in-progress period stays drawn and stays selectable — style it
+distinctly (subdued, outlined, partially filled) — and when it is selected the
+readout must say `in progress`. It is simply not what the chart opens on when
+finished history exists.
+
+Fall back to the latest period with a value when every period is still in
+progress, and to the last period when the whole series is empty.
 
 ## Bar charts
 
@@ -172,7 +223,7 @@ Do not attempt to draw hundreds of daily bars for long ranges.
 
 Use the bucket rules from `RUNS_R2_HISTORY_EXPLORER.md`:
 
-- 4W: weekly;
+- 4W: four trailing seven-day buckets, so `4W` reads as four weeks;
 - 3M: weekly;
 - 6M: weekly;
 - long YTD: monthly where useful;
@@ -184,9 +235,21 @@ The chart should preserve the underlying exact runs in the contributing list eve
 
 ## Metric-specific visual rules
 
+Chart form follows what the metric means. Do not draw every metric as the same
+bar chart.
+
+| Metric | Chart | Why |
+|---|---|---|
+| Miles | bar | a discrete weekly/monthly total |
+| Time | bar | a discrete weekly/monthly total |
+| Runs | line | running-frequency trend over time |
+| Training Load | line | rise and fall of recorded source load |
+| Elevation Gain | line | elevation-volume trend |
+| Zone Mix | composition | a share, never one line through six of them |
+
 ### Miles
 
-Preferred: vertical columns.
+Vertical columns.
 
 Show:
 
@@ -196,19 +259,19 @@ Show:
 
 ### Runs
 
-Preferred: block/column count.
+Line, with integer values.
 
 Do not encode run count only as subtle height differences when values are small. Explicit selected count is required.
 
 ### Time
 
-Preferred: columns.
+Columns.
 
 Format selected result into human-readable hours/minutes rather than raw minutes when totals become large.
 
 ### Training Load
 
-Preferred: columns or restrained line depending on bucket count.
+Line, communicating the rise and fall of recorded source Training Load.
 
 Label explicitly as `Training Load` / `Load`.
 
@@ -216,15 +279,21 @@ Never relabel or interpret as readiness, fitness, fatigue, recovery or form.
 
 ### Elevation Gain
 
-Preferred: columns.
+Line, communicating elevation-volume trend.
 
 Use source aggregate feet from the normalized history.
 
 Do not derive from altitude streams.
 
+### Lines and missing periods
+
+A period with no recorded value breaks the line. Never join across it: a drawn
+segment between two known points claims values STACK does not have.
+
 ### Zone Mix
 
-Preferred: horizontal composition bars or stacked composition.
+Horizontal composition bars. A time-series zone view, if one is ever needed, uses
+stacked composition bars rather than one misleading line.
 
 For a dedicated zone view:
 
@@ -260,7 +329,7 @@ For zone views, multiple hues may distinguish zones, but every zone must also be
 
 Use compact but clear formatting:
 
-- miles: `26.9 mi`;
+- miles: one decimal — `26.9 mi`, `103.9 mi`, `761.5 mi`;
 - frequency: `5.5/wk`;
 - time: `1h 42m` or `42m` depending on scale;
 - gain: `1,240 ft`;
@@ -314,6 +383,8 @@ Do not:
 
 - set axis labels to 8–9px to fit more ticks;
 - rotate every date label as a substitute for reducing density;
+- force the selected bucket into the axis where it can collide with a fixed label;
+- default a chart to a current period with nothing recorded in it yet;
 - horizontally scroll a primary chart unless the product explicitly calls for time navigation;
 - use hover-only values;
 - connect missing line data;
@@ -329,4 +400,6 @@ The chart system is successful when:
 3. long date ranges aggregate rather than shrink;
 4. every chart feels like part of the same STACK instrument system;
 5. the plot communicates more than its grid, frame or labels;
-6. the same readability rules hold across Runs Overview, Signals, History Explorer and Run Detail.
+6. the same readability rules hold across Runs Overview, Signals, History Explorer and Run Detail;
+7. no two visible x-axis labels ever touch, at any range, on any metric, at any reviewed width;
+8. every chart opens on the same kind of period as every other chart.

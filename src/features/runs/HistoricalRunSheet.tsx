@@ -1,6 +1,6 @@
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPaceSeconds } from "../../domain/runs";
 import type { RunnerRun } from "../../history/runnerRun";
@@ -39,7 +39,7 @@ export function HistoricalRunSheet({ run, isOpen, onClose }: HistoricalRunSheetP
 
 function HistoricalRunBody({ run }: { run: RunnerRun }) {
   const metrics: { label: string; value: string }[] = [
-    { label: "Distance", value: `${formatMiles(run.distanceMiles)} mi` },
+    { label: "Distance", value: `${formatRunsMiles(run.distanceMiles)} mi` },
     ...(run.durationSeconds === null
       ? []
       : [{ label: "Duration", value: formatDurationSeconds(run.durationSeconds) }]),

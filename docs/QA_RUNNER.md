@@ -10,8 +10,9 @@ The QA Runner is for owner review on localhost and Vercel **branch previews**. I
 - completed, missed, current and upcoming scheduled workouts;
 - accepted synced `RunLog`s reconciled to matching historical activities;
 - roughly one year of synthetic historical running;
-- distance, duration, pace inputs, average/max HR, HR zones, cadence, elevation and Training Load;
+- distance, duration, pace inputs, average/max HR, cadence, and partial synthetic coverage for HR zones, elevation and Training Load;
 - enough recent/baseline variation to exercise the real NEXT-3 signal calculations;
+- enough history and rows to review R2's 4W/3M/6M/1Y charts, bounded Overview expansion, contributing-run reveal and honest optional-metric coverage;
 - Personal Build progress with one earned block intentionally left pending;
 - the normal Today, Runs, Plan, Build, Settings and Account/Crew surfaces.
 

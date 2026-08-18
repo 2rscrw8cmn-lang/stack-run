@@ -1,5 +1,5 @@
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 
 /**
  * Signed display of a change a signal has already decided the meaning of.
@@ -10,7 +10,7 @@ import { formatMiles } from "../../domain/distance";
  */
 export function signedMilesChange(differenceMiles: number): string {
   if (differenceMiles === 0) return "0 mi";
-  return `${differenceMiles > 0 ? "+" : "−"}${formatMiles(Math.abs(differenceMiles))} mi`;
+  return `${differenceMiles > 0 ? "+" : "−"}${formatRunsMiles(Math.abs(differenceMiles))} mi`;
 }
 
 export function signedPercent(changeRatio: number): string {

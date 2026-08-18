@@ -1,10 +1,10 @@
-import { BarChart3, History, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { BarChart3, ChevronRight, History, Plus } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Section } from "../../components/ui/Section";
 import { earnedBlockPhrase } from "../../domain/build";
-import { todayLocalDate } from "../../domain/dates";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
 import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
@@ -15,13 +15,13 @@ import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { ConnectToPlanSheet } from "./ConnectToPlanSheet";
 import { HistoricalRunSheet } from "./HistoricalRunSheet";
+import { HistoryExplorer } from "./HistoryExplorer";
 import { RunDetailSheet } from "./RunDetailSheet";
 import { RunnerProfileSheet } from "./RunnerProfileSheet";
 import { RunnerRunRow } from "./RunnerRunRow";
 import { RunnerSnapshot } from "./RunnerSnapshot";
 import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
 import { SignalCards } from "../signals/SignalCards";
-import { AllSignalsSheet } from "../signals/AllSignalsSheet";
 import { SignalDetailSheet } from "../signals/SignalDetailSheet";
 import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo";
 import {
@@ -30,13 +30,12 @@ import {
 } from "../signals/signalOverview";
 import { presentableRunnerSignals } from "../../signals/runnerSignals";
 import type { SignalId } from "../../signals/trainingSignal";
-import { FULL_HISTORY_PAGE_SIZE, FullHistorySheet } from "./FullHistorySheet";
 import "./runsOverview.css";
 
-/** The archive keeps NEXT-2's bridge paging while R2 owns its final behavior. */
-export const HISTORY_PAGE_SIZE = FULL_HISTORY_PAGE_SIZE;
 /** Runs Overview is orientation, not the archive. */
 export const RECENT_RUN_COUNT = 3;
+/** Inline continuation stays useful without turning Overview into the archive. */
+export const RECENT_EXPANDED_RUN_COUNT = 10;
 
 interface RunsScreenProps {
   plan: TrainingPlan;
@@ -79,7 +78,7 @@ interface RunsScreenProps {
  * 2. recent-training shape;
  * 3. up to three visual Training Signal summaries;
  * 4. three recent runs;
- * 5. a separate Full History boundary.
+ * 5. a dedicated History Explorer boundary.
  *
  * What NEXT-3 changed is the signals themselves rather than where they sit.
  * They are no longer seven plan-relative statistics; they are a short ordered
@@ -102,6 +101,7 @@ export function RunsScreen({
   today = todayLocalDate(),
   syncToken,
 }: RunsScreenProps) {
+  const [runsView, setRunsView] = useState<"overview" | "history">("overview");
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
   const [historicalRunId, setHistoricalRunId] = useState<string | null>(null);
@@ -110,11 +110,9 @@ export function RunsScreen({
   const [isConnectOpen, setConnectOpen] = useState(false);
   const [selectedSignalId, setSelectedSignalId] = useState<SignalId | null>(null);
   const [isSignalOpen, setSignalOpen] = useState(false);
-  const [isAllSignalsOpen, setAllSignalsOpen] = useState(false);
-  const [isFullHistoryOpen, setFullHistoryOpen] = useState(false);
+  const [areSignalsExpanded, setSignalsExpanded] = useState(false);
+  const [areRecentRunsExpanded, setRecentRunsExpanded] = useState(false);
   const returnToSignal = useRef(false);
-  const returnToAllSignals = useRef(false);
-  const returnToFullHistory = useRef(false);
   /**
    * The run the entry sheet is open for, held rather than looked up.
    *
@@ -123,6 +121,16 @@ export function RunsScreen({
    * no focus restoration, and a sheet that believes it is still open. A
    * snapshot lets the sheet close the ordinary way and then unmount.
    */
+  /**
+   * Where Runs Overview was left when History was opened.
+   *
+   * History is a child screen rather than a route, so nothing but this screen
+   * restores the scroll position — and without it, opening History inherited
+   * the Overview's offset and put the History title off the top of the phone.
+   * Navigation behaviour: the child opens at its own top, and coming back
+   * returns the runner to the row they left.
+   */
+  const overviewScroll = useRef(0);
   const [editing, setEditing] = useState<RunHistoryEntry | null>(null);
   const [isEditOpen, setEditOpen] = useState(false);
   // Bumped whenever the entry sheet opens, so it starts from what is saved
@@ -158,12 +166,32 @@ export function RunsScreen({
    * body and loses a keyboard user's place entirely. Once every sheet has
    * closed, put them back at the top of the list they are looking at.
    */
+  /**
+   * Runs the same frame the view swaps, so neither screen is ever painted at
+   * the other one's scroll position. Only a navigation moves the page: arriving
+   * on the Runs tab is left exactly as the app shell already had it.
+   */
+  const paintedView = useRef(runsView);
+  useLayoutEffect(() => {
+    if (paintedView.current === runsView) return;
+    paintedView.current = runsView;
+    if (typeof window.scrollTo !== "function") return;
+    window.scrollTo(0, runsView === "history" ? 0 : overviewScroll.current);
+  }, [runsView]);
+
   useEffect(() => {
     if (pendingFocus.current && !isEditOpen && !isDetailOpen) {
       pendingFocus.current = false;
-      headingRef.current?.focus();
+      (headingRef.current ?? document.querySelector<HTMLHeadingElement>(".history-explorer h1"))
+        ?.focus();
     }
   }, [isEditOpen, isDetailOpen, history.length]);
+
+  /** Remember where Overview was, then hand off to the History child screen. */
+  function openHistory() {
+    overviewScroll.current = typeof window.scrollY === "number" ? window.scrollY : 0;
+    setRunsView("history");
+  }
 
   function openEntry(entry: RunHistoryEntry | null, fromDetail: boolean) {
     returnToDetail.current = fromDetail;
@@ -197,9 +225,6 @@ export function RunsScreen({
     if (returnToSignal.current && selectedSignalId) {
       returnToSignal.current = false;
       setSignalOpen(true);
-    } else if (returnToFullHistory.current) {
-      returnToFullHistory.current = false;
-      setFullHistoryOpen(true);
     }
   }
 
@@ -219,8 +244,6 @@ export function RunsScreen({
   function commit(announce: string) {
     returnToDetail.current = false;
     returnToSignal.current = false;
-    returnToAllSignals.current = false;
-    returnToFullHistory.current = false;
     setAnnouncement(announce);
     setEditOpen(false);
   }
@@ -235,10 +258,28 @@ export function RunsScreen({
     returnToDetail.current = false;
   }
 
-  const recentRuns = runs.slice(0, RECENT_RUN_COUNT);
+  const visibleSignals = areSignalsExpanded ? signals : overviewSignals;
+  const recentRuns = runs.slice(
+    0,
+    areRecentRunsExpanded ? RECENT_EXPANDED_RUN_COUNT : RECENT_RUN_COUNT,
+  );
 
   return (
     <div className="runs-screen">
+      {runsView === "history" ? (
+        <HistoryExplorer
+          runs={runs}
+          today={today}
+          onBack={() => {
+            setRunsView("overview");
+            window.requestAnimationFrame(() =>
+              headingRef.current?.focus({ preventScroll: true }),
+            );
+          }}
+          onOpenRun={openRun}
+        />
+      ) : (
+        <>
       <div className="runs-screen__lead">
         <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>Runs</h1>
         <div className="runs-screen__title-row">
@@ -292,12 +333,13 @@ export function RunsScreen({
           </Section>
 
           <SignalCards
-            signals={overviewSignals}
+            signals={visibleSignals}
             runs={runs}
             today={today}
             hasHistory={runs.length > 0}
             hiddenSignalCount={Math.max(0, signals.length - RUNS_OVERVIEW_SIGNAL_LIMIT)}
-            onViewAll={() => setAllSignalsOpen(true)}
+            isExpanded={areSignalsExpanded}
+            onToggleExpanded={() => setSignalsExpanded((expanded) => !expanded)}
             onOpenSignal={(signal) => {
               setSelectedSignalId(signal.id);
               setSignalOpen(true);
@@ -319,12 +361,43 @@ export function RunsScreen({
                 <RunnerRunRow key={run.id} run={run} onOpen={() => openRun(run)} />
               ))}
             </ul>
-            <div className="runs-screen__more">
-              <Button variant="ghost" onClick={() => setFullHistoryOpen(true)}>
-                View All Runs
-              </Button>
-            </div>
+            {runs.length > RECENT_RUN_COUNT && (
+              <div className="runs-screen__more">
+                <Button
+                  variant="ghost"
+                  aria-expanded={areRecentRunsExpanded}
+                  aria-label={
+                    areRecentRunsExpanded ? "Show fewer recent runs" : "Show more recent runs"
+                  }
+                  onClick={() => setRecentRunsExpanded((expanded) => !expanded)}
+                >
+                  {areRecentRunsExpanded ? "Show fewer" : "Show more"}
+                </Button>
+              </div>
+            )}
+            {/*
+              Two different intents, so two different affordances: `Show more`
+              extends what is already here, and this is a destination. It says
+              where it goes and how much is there rather than being a second
+              utility label beside the first.
+            */}
+            <button
+              type="button"
+              className="runs-screen__history"
+              aria-label={`History. ${historySummary(runs)}.`}
+              onClick={openHistory}
+            >
+              <span className="runs-screen__history-text">
+                <span className="runs-screen__history-title">History</span>
+                <span className="runs-screen__history-meta machine-label">
+                  {historySummary(runs)}
+                </span>
+              </span>
+              <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+            </button>
           </Section>
+        </>
+      )}
         </>
       )}
 
@@ -352,39 +425,9 @@ export function RunsScreen({
           if (returnToSignal.current && selectedSignalId) {
             returnToSignal.current = false;
             setSignalOpen(true);
-          } else if (returnToFullHistory.current) {
-            returnToFullHistory.current = false;
-            setFullHistoryOpen(true);
           }
         }}
       />
-
-      <FullHistorySheet
-        runs={runs}
-        isOpen={isFullHistoryOpen}
-        onClose={() => setFullHistoryOpen(false)}
-        onOpenRun={(run) => {
-          setFullHistoryOpen(false);
-          openRun(run);
-          returnToFullHistory.current = true;
-        }}
-      />
-
-      {signals.length > RUNS_OVERVIEW_SIGNAL_LIMIT && (
-        <AllSignalsSheet
-          signals={signals}
-          runs={runs}
-          today={today}
-          isOpen={isAllSignalsOpen}
-          onClose={() => setAllSignalsOpen(false)}
-          onOpenSignal={(signal) => {
-            setAllSignalsOpen(false);
-            setSelectedSignalId(signal.id);
-            setSignalOpen(true);
-            returnToAllSignals.current = true;
-          }}
-        />
-      )}
 
       {selected && (
         <RunDetailSheet
@@ -430,11 +473,7 @@ export function RunsScreen({
         isOpen={isSignalOpen}
         onClose={() => {
           setSignalOpen(false);
-          if (returnToAllSignals.current) {
-            returnToAllSignals.current = false;
-            setSelectedSignalId(null);
-            setAllSignalsOpen(true);
-          } else if (!returnToSignal.current) {
+          if (!returnToSignal.current) {
             setSelectedSignalId(null);
           }
         }}
@@ -495,4 +534,12 @@ export function RunsScreen({
  */
 function fallbackRunnerRuns(runLogs: readonly RunLog[]): RunnerRun[] {
   return unifiedRunnerHistory({ runLogs });
+}
+
+/** How much history the destination leads to, stated from the history itself. */
+function historySummary(runs: readonly RunnerRun[]): string {
+  const count = `${runs.length} ${runs.length === 1 ? "run" : "runs"}`;
+  const earliest = runs.map((run) => run.date).sort()[0];
+  if (!earliest) return count;
+  return `${count} since ${formatDateLabel(earliest, { month: "short", year: "numeric" })}`;
 }

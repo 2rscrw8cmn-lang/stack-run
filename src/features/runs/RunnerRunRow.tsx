@@ -2,7 +2,7 @@ import { Activity } from "lucide-react";
 import { ActivityIcon } from "../../components/shared/ActivityIcon";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPaceSeconds } from "../../domain/runs";
 import type { RunnerRun } from "../../history/runnerRun";
@@ -15,6 +15,12 @@ interface RunnerRunRowProps {
 const LONG_DATE: Intl.DateTimeFormatOptions = {
   weekday: "long",
   month: "long",
+  day: "numeric",
+};
+
+const ROW_DATE: Intl.DateTimeFormatOptions = {
+  weekday: "short",
+  month: "short",
   day: "numeric",
 };
 
@@ -37,15 +43,21 @@ const LONG_DATE: Intl.DateTimeFormatOptions = {
  * nobody assigned one, so the row leads with the source's own name or a neutral
  * `Run`. Missing metrics leave gaps rather than becoming zeroes — a run with
  * only distance and duration shows distance and duration.
+ *
+ * R2's polish pass moved the row's own facts to the right edge, where the
+ * distance leads and duration/pace sit under it. The chrome around the row went
+ * with it: rows are separated by spacing and a hairline rather than each run
+ * getting an outlined container, so a hundred historical runs read as a record
+ * instead of a hundred cards.
  */
 export function RunnerRunRow({ run, onOpen }: RunnerRunRowProps) {
   const stack = run.stack;
   const type = stack ? WORKOUT_TYPE_LABEL[stack.activityType] : run.sourceName ?? "Run";
-  const distance = `${formatMiles(run.distanceMiles)} mi`;
+  const distance = `${formatRunsMiles(run.distanceMiles)} mi`;
   const duration = run.durationSeconds === null ? null : formatDurationSeconds(run.durationSeconds);
   const pace = run.paceSecondsPerMile === null ? null : formatPaceSeconds(run.paceSecondsPerMile);
 
-  const facts = [distance, duration, pace].filter(Boolean).join(" · ");
+  const secondary = [duration, pace].filter(Boolean).join(" · ");
   const name = [
     type,
     formatDateLabel(run.date, LONG_DATE),
@@ -78,8 +90,11 @@ export function RunnerRunRow({ run, onOpen }: RunnerRunRowProps) {
             <span className="run-row__type">{type}</span>
             {stack?.isExtra && <span className="run-row__extra">Extra</span>}
           </span>
-          <span className="run-row__date">{formatDateLabel(run.date)}</span>
-          <span className="run-row__facts">{facts}</span>
+          <span className="run-row__date">{formatDateLabel(run.date, ROW_DATE)}</span>
+        </span>
+        <span className="run-row__metrics">
+          <span className="run-row__distance">{distance}</span>
+          {secondary && <span className="run-row__secondary">{secondary}</span>}
         </span>
       </button>
     </li>

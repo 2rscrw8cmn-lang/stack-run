@@ -94,9 +94,8 @@ describe("Runs", () => {
       expect.stringContaining("Wednesday, August 5"),
     ]);
 
-    await user.click(screen.getByRole("button", { name: "View All Runs" }));
-    const archive = within(screen.getByRole("dialog", { name: "Full History" }));
-    const archiveRows = archive
+    await user.click(screen.getByRole("button", { name: "Show more recent runs" }));
+    const archiveRows = screen
       .getAllByRole("button")
       .filter((button) => button.className.includes("run-row"));
     expect(archiveRows.map((row) => row.getAttribute("aria-label"))).toEqual([

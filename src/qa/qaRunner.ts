@@ -117,6 +117,7 @@ function activity({
   cadence,
   trainingLoad,
   lowerZoneShare,
+  hasElevationGain = true,
   seenAt,
   name,
 }: {
@@ -127,8 +128,9 @@ function activity({
   averageHeartRate: number;
   maxHeartRate: number;
   cadence: number;
-  trainingLoad: number;
-  lowerZoneShare: number;
+  trainingLoad: number | null;
+  lowerZoneShare: number | null;
+  hasElevationGain?: boolean;
   seenAt: string;
   name: string;
 }): HistoricalActivity {
@@ -145,8 +147,9 @@ function activity({
     elapsedTimeSeconds: movingTimeSeconds + 75,
     averageHeartRate,
     maxHeartRate,
-    hrZoneSeconds: zoneSeconds(movingTimeSeconds, lowerZoneShare),
-    elevationGainMeters: Math.round(miles * 18),
+    hrZoneSeconds:
+      lowerZoneShare === null ? null : zoneSeconds(movingTimeSeconds, lowerZoneShare),
+    elevationGainMeters: hasElevationGain ? Math.round(miles * 18) : null,
     averageCadence: cadence,
     trainingLoad,
     sourceUpdatedAt: seenAt,
@@ -272,12 +275,21 @@ function backgroundActivities(today: string): HistoricalActivity[] {
           : longSlot
             ? 5.5 + (weeksAgo % 6) * 0.35
             : 3 + ((weeksAgo + runIndex) % 4) * 0.45;
-      const lowerZoneShare = current ? 0.76 : baseline ? 0.54 : 0.66;
-      const trainingLoad = current
+      const lowerZoneShare =
+        (weeksAgo + runIndex) % 5 === 0
+          ? null
+          : current
+            ? 0.76
+            : baseline
+              ? 0.54
+              : 0.66;
+      const calculatedTrainingLoad = current
         ? 46 + runIndex * 9
         : baseline
           ? 34 + runIndex * 7
           : 36 + (weeksAgo % 8) * 2 + runIndex * 4;
+      const trainingLoad =
+        (weeksAgo + runIndex) % 4 === 0 ? null : calculatedTrainingLoad;
 
       result.push(
         activity({
@@ -290,6 +302,7 @@ function backgroundActivities(today: string): HistoricalActivity[] {
           cadence: 79 + (runIndex % 3),
           trainingLoad,
           lowerZoneShare,
+          hasElevationGain: (weeksAgo + runIndex) % 3 !== 0,
           seenAt,
           name: longSlot ? "Long Run" : runIndex === 1 ? "Steady Run" : "Easy Run",
         }),

@@ -3958,22 +3958,33 @@ textarea.run-input {
 
 .plan-actual-chart__plot { position: relative; }
 
-/* Transparent, full-height hit targets over each chart column — the chart
-   itself is the week selector, so there is no separate visible pill row. */
-.plan-actual-chart__targets { position: absolute; inset: 0; }
-
-.plan-actual-chart__target {
+/* One full-chart selector keeps every week reachable without overlapping the
+   narrow visual slots. Its thumb is at least 44px for touch; the selected
+   reading remains visible outside the plot in each chart consumer. */
+.plan-actual-chart__scrubber {
+  appearance: none;
   position: absolute;
-  top: 0;
-  left: var(--target-left);
-  width: var(--target-width);
+  z-index: 2;
+  inset: 0;
+  width: 100%;
   height: 100%;
+  margin: 0;
   padding: 0;
   border: 0;
-  background: transparent;
-  cursor: pointer;
+  opacity: 0.01;
+  cursor: ew-resize;
 }
-.plan-actual-chart__target:focus-visible {
+.plan-actual-chart__scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+}
+.plan-actual-chart__scrubber::-moz-range-thumb {
+  width: 44px;
+  height: 44px;
+  border: 0;
+}
+.plan-actual-chart__scrubber:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -4664,8 +4675,10 @@ textarea.run-input {
 }
 
 .chart__tick--x {
-  font-size: 8px;
+  font-size: 13.5px;
 }
+
+.chart__tick--x-selected { font-size: 14.5px; }
 
 .plan-actual-chart__actual {
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 20%, transparent));

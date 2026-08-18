@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import type { HistorySyncPhase } from "../../history/historySyncPolicy";
 import type { RunnerSnapshot as Snapshot } from "../../history/runnerSnapshot";
 
@@ -38,17 +38,17 @@ export function RunnerSnapshot({
   const readings = [
     {
       key: "last-28",
-      value: formatMiles(lastFourWeeks.miles),
+      value: formatRunsMiles(lastFourWeeks.miles),
       unit: "mi",
       label: "Last 28 days",
-      spoken: `${formatMiles(lastFourWeeks.miles)} miles over the last 28 days`,
+      spoken: `${formatRunsMiles(lastFourWeeks.miles)} miles over the last 28 days`,
     },
     {
       key: "last-7",
-      value: formatMiles(lastWeek.miles),
+      value: formatRunsMiles(lastWeek.miles),
       unit: "mi",
       label: "Last 7 days",
-      spoken: `${formatMiles(lastWeek.miles)} miles over the last 7 days`,
+      spoken: `${formatRunsMiles(lastWeek.miles)} miles over the last 7 days`,
     },
     {
       key: "frequency",
@@ -62,13 +62,13 @@ export function RunnerSnapshot({
     },
     {
       key: "longest",
-      value: longestRecent.miles === null ? "—" : formatMiles(longestRecent.miles),
+      value: longestRecent.miles === null ? "—" : formatRunsMiles(longestRecent.miles),
       unit: "mi",
       label: `Longest ${longestRecent.days}d`,
       spoken:
         longestRecent.miles === null
           ? `No longest run in the last ${longestRecent.days} days`
-          : `Longest run of the last ${longestRecent.days} days, ${formatMiles(longestRecent.miles)} miles`,
+          : `Longest run of the last ${longestRecent.days} days, ${formatRunsMiles(longestRecent.miles)} miles`,
     },
   ];
 

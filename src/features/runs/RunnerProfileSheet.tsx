@@ -1,7 +1,7 @@
 import { Sheet } from "../../components/ui/Sheet";
 import { SelectableTrendLine } from "../../components/charts/SelectableTrendLine";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { formatRunsMiles } from "../../domain/distance";
 import {
   DEFERRED_COMPARISON_NOTE,
   runnerCoverage,
@@ -87,15 +87,15 @@ function RunnerProfileBody({
       <DetailSection title="Volume">
         <SignalFacts
           facts={[
-            { label: "Last 7 days", value: `${formatMiles(lastWeek.miles)} mi` },
-            { label: "Last 28 days", value: `${formatMiles(lastFourWeeks.miles)} mi` },
+            { label: "Last 7 days", value: `${formatRunsMiles(lastWeek.miles)} mi` },
+            { label: "Last 28 days", value: `${formatRunsMiles(lastFourWeeks.miles)} mi` },
             {
               label: "This week",
-              value: `${formatMiles(currentWeek?.miles ?? 0)} mi`,
+              value: `${formatRunsMiles(currentWeek?.miles ?? 0)} mi`,
             },
             {
               label: `Best of ${weeks.length} wks`,
-              value: `${formatMiles(Math.max(0, ...weeks.map((week) => week.miles)))} mi`,
+              value: `${formatRunsMiles(Math.max(0, ...weeks.map((week) => week.miles)))} mi`,
             },
           ]}
         />
@@ -204,7 +204,7 @@ function LongRunTrend({
           key: point.key,
           date: point.date,
           value: point.value,
-          label: `Week of ${formatDateLabel(point.date, { month: "long", day: "numeric" })}, longest run ${formatMiles(point.value)} miles`,
+          label: `Week of ${formatDateLabel(point.date, { month: "long", day: "numeric" })}, longest run ${formatRunsMiles(point.value)} miles`,
         }))}
       />
       <ul className="signal-run-list">
@@ -213,14 +213,14 @@ function LongRunTrend({
             <button
               type="button"
               onClick={() => onOpenRun(point.run.id)}
-              aria-label={`Open the longest run of the week of ${formatDateLabel(point.date, { month: "long", day: "numeric" })}, ${formatMiles(point.value)} miles`}
+              aria-label={`Open the longest run of the week of ${formatDateLabel(point.date, { month: "long", day: "numeric" })}, ${formatRunsMiles(point.value)} miles`}
             >
               <span>
                 <strong>{formatDateLabel(point.run.date, { month: "short", day: "numeric" })}</strong>
                 <small>Week of {formatDateLabel(point.date, { month: "short", day: "numeric" })}</small>
               </span>
               <span>
-                <strong>{formatMiles(point.value)} mi</strong>
+                <strong>{formatRunsMiles(point.value)} mi</strong>
                 <small>{point.run.stack ? "Logged in STACK" : "Connected history"}</small>
               </span>
             </button>
