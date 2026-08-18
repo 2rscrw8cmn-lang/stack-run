@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  crossTrainingHeightForDuration,
   footprintFor,
   heightForActivityType,
   widthForMiles,
@@ -55,7 +56,25 @@ describe("heightForActivityType", () => {
     expect(heightForActivityType("intervals")).toBe(2);
     expect(heightForActivityType("simulation")).toBe(2);
     expect(heightForActivityType("race")).toBe(3);
+    // The fixed fallback Crew Build and Member Build use, since neither
+    // carries a run's duration. footprintFor does not use this for cross.
     expect(heightForActivityType("cross")).toBe(2);
+  });
+});
+
+describe("crossTrainingHeightForDuration", () => {
+  it("is 1 under 30 minutes", () => {
+    expect(crossTrainingHeightForDuration(0)).toBe(1);
+    expect(crossTrainingHeightForDuration(29 * 60)).toBe(1);
+  });
+
+  it("is 2 at 30 minutes and beyond", () => {
+    expect(crossTrainingHeightForDuration(30 * 60)).toBe(2);
+    expect(crossTrainingHeightForDuration(45 * 60)).toBe(2);
+  });
+
+  it("never reaches 3, no matter how long the session ran", () => {
+    expect(crossTrainingHeightForDuration(4 * 60 * 60)).toBe(2);
   });
 });
 
@@ -90,5 +109,13 @@ describe("footprintFor", () => {
   it("sizes a run that has no usable pace at all", () => {
     const noDuration = { ...log(4, "easy"), durationSeconds: 0 };
     expect(footprintFor(noDuration)).toEqual({ width: 2, height: 1 });
+  });
+
+  it("grows a Cross Training block's height with duration, width unaffected", () => {
+    const short = { ...log(0, "cross"), durationSeconds: 20 * 60 };
+    const long = { ...log(0, "cross"), durationSeconds: 45 * 60 };
+
+    expect(footprintFor(short)).toEqual({ width: 1, height: 1 });
+    expect(footprintFor(long)).toEqual({ width: 1, height: 2 });
   });
 });
