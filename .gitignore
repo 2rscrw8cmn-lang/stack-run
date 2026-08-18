@@ -9,3 +9,4 @@ coverage/
 !.env.example
 .vscode/
 supabase/.temp/
+supabase/.branches/

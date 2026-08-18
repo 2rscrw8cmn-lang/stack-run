@@ -163,14 +163,17 @@ begin
 end;
 $$;
 
--- Latest body per 20260812190000_member_build_unwindowed_history.sql.
+-- Latest body per 20260812220000_crew_type_run_club.sql (7-arg, with
+-- p_emblem and crew-type awareness — NOT the earlier 6-arg version).
+drop function if exists public.update_crew(uuid, text, text, date, numeric, date);
 create or replace function public.update_crew(
   p_crew_id uuid,
   p_name text,
   p_race_name text,
   p_race_date date,
   p_race_distance_miles numeric,
-  p_build_start_date date
+  p_build_start_date date,
+  p_emblem text default null
 )
 returns integer
 language plpgsql
@@ -179,38 +182,49 @@ set search_path = public, pg_temp
 as $$
 declare
   v_user_id uuid := auth.uid();
+  v_crew_type text;
   v_old_start date;
   v_demoted_ids uuid[];
   v_demoted integer := 0;
   v_recursive_demoted integer;
 begin
   if v_user_id is null then raise exception 'authentication_required'; end if;
-  if nullif(trim(p_name), '') is null or nullif(trim(p_race_name), '') is null then
+  if nullif(trim(p_name), '') is null then
     raise exception 'crew_details_required';
   end if;
-  if p_race_date is null or p_build_start_date is null then
+  if p_build_start_date is null then
     raise exception 'crew_dates_required';
-  end if;
-  if p_build_start_date > p_race_date then
-    raise exception 'build_start_after_race';
-  end if;
-  if p_race_distance_miles is null or p_race_distance_miles <= 0 then
-    raise exception 'invalid_race_distance';
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_crew_id::text, 0));
-  select build_start_date into v_old_start
+  select build_start_date, crew_type into v_old_start, v_crew_type
   from public.crews
   where id = p_crew_id and owner_user_id = v_user_id
   for update;
   if not found then raise exception 'owner_required'; end if;
 
+  if v_crew_type = 'race' then
+    if nullif(trim(p_race_name), '') is null then
+      raise exception 'crew_details_required';
+    end if;
+    if p_race_date is null then
+      raise exception 'crew_dates_required';
+    end if;
+    if p_build_start_date > p_race_date then
+      raise exception 'build_start_after_race';
+    end if;
+    if p_race_distance_miles is null or p_race_distance_miles <= 0 then
+      raise exception 'invalid_race_distance';
+    end if;
+  end if;
+
   update public.crews
   set name = trim(p_name),
-      race_name = trim(p_race_name),
-      race_date = p_race_date,
-      race_distance_miles = p_race_distance_miles,
-      build_start_date = p_build_start_date
+      race_name = case when v_crew_type = 'race' then trim(p_race_name) else null end,
+      race_date = case when v_crew_type = 'race' then p_race_date else null end,
+      race_distance_miles = case when v_crew_type = 'race' then p_race_distance_miles else null end,
+      build_start_date = p_build_start_date,
+      emblem = coalesce(nullif(trim(p_emblem), ''), emblem)
   where id = p_crew_id;
 
   if p_build_start_date > v_old_start then
