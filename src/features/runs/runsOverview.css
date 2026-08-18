@@ -1,0 +1,194 @@
+/* R1 Runs Overview refinement. Presentation only; facts stay in NEXT-2/NEXT-3. */
+
+.runs-screen {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.runs-screen .runs-screen__count {
+  color: var(--text-subtle);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.075em;
+}
+
+.runs-screen .runs-screen__log {
+  color: var(--text-muted);
+}
+
+.runs-screen .runner-snapshot {
+  gap: 7px;
+  margin-top: 3px;
+}
+
+.runs-screen .runner-snapshot__readings {
+  align-items: flex-start;
+  padding: 6px 2px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.runs-screen .runner-snapshot__readings:hover {
+  border-color: transparent;
+}
+
+.runs-screen .runner-snapshot__grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 8px;
+}
+
+.runs-screen .runner-snapshot__reading[data-lead="true"] {
+  grid-column: 1 / -1;
+  padding: 0 0 5px;
+  border: 0;
+}
+
+.runs-screen .runner-snapshot__reading:not([data-lead="true"]) {
+  padding: 9px 0 0 8px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.runs-screen .runner-snapshot__reading[data-reading="last-7"] {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.runs-screen .runner-snapshot__reading[data-lead="true"] .runner-snapshot__value {
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-size: clamp(35px, 11vw, 46px);
+  letter-spacing: -0.055em;
+}
+
+.runs-screen .runner-snapshot__reading[data-lead="true"] .runner-snapshot__unit {
+  font-size: 11px;
+}
+
+.runs-screen .runner-snapshot__reading:not([data-lead="true"]) .runner-snapshot__value {
+  font-family: var(--font-data);
+  font-size: clamp(15px, 4.6vw, 18px);
+}
+
+.runs-screen .runner-snapshot__reading dt {
+  overflow-wrap: anywhere;
+}
+
+.runs-screen .runner-snapshot__more {
+  margin-top: 14px;
+}
+
+.runs-screen .runner-snapshot__range {
+  padding-left: 2px;
+  font-size: 9px;
+}
+
+.runs-screen .runner-volume-section .section__title,
+.runs-screen .runner-volume-section .section__icon,
+.runs-screen .signal-cards .section__title,
+.runs-screen .signal-cards .section__icon,
+.runs-screen .runs-recent .section__title,
+.runs-screen .runs-recent .section__icon {
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.sheet.sheet--run-detail .sheet__title {
+  color: var(--text);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  text-transform: none;
+}
+
+.runner-volume-section.section,
+.runs-recent.section {
+  gap: 8px;
+  padding-top: 12px;
+  border-top-color: var(--border);
+}
+
+.runner-volume-section .plan-actual-chart {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  background-image: none;
+}
+
+.runner-volume-section .plan-actual-chart__figure {
+  min-height: 0;
+  max-height: 142px;
+}
+
+.runner-volume-section .chart__grid-line {
+  opacity: 0.2;
+}
+
+.runner-volume-section .chart__axis {
+  opacity: 0.45;
+}
+
+.runner-volume-section .plan-actual-chart__selection {
+  fill: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.runner-volume-section .plan-actual-chart__actual {
+  fill: var(--text-subtle);
+  filter: none;
+  opacity: 0.42;
+}
+
+.runner-volume-section .plan-actual-chart__actual--partial {
+  opacity: 0.3;
+}
+
+.runner-volume-section .plan-actual-chart__actual--selected {
+  fill: var(--accent);
+  filter: none;
+  opacity: 1;
+}
+
+.runner-volume-section .plan-actual-chart__key {
+  display: none;
+}
+
+.runs-recent .run-row {
+  min-height: 56px;
+}
+
+.runs-screen__more > .button {
+  min-height: 44px;
+  min-width: 154px;
+}
+
+.full-history,
+.all-signals {
+  min-width: 0;
+  overflow-x: hidden;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.full-history__context {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.075em;
+}
+
+@media (max-width: 340px) {
+  .runs-screen .runner-snapshot__grid {
+    gap-inline: 5px;
+  }
+
+  .runs-screen .runner-snapshot__reading:not([data-lead="true"]) {
+    padding-left: 5px;
+  }
+
+  .runs-screen .runner-snapshot__reading:not([data-lead="true"]) .runner-snapshot__unit {
+    font-size: 8px;
+  }
+}

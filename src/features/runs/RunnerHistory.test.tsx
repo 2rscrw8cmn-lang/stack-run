@@ -5,7 +5,7 @@ import { acceptedRun, historicalRun, stackRun } from "../../history/runnerFixtur
 import { unifiedRunnerHistory } from "../../history/runnerRun";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import type { RunLog } from "../../domain/types";
-import { HISTORY_PAGE_SIZE, RunsScreen } from "./RunsScreen";
+import { HISTORY_PAGE_SIZE, RECENT_RUN_COUNT, RunsScreen } from "./RunsScreen";
 
 /**
  * Runs, once it is a history of the runner rather than a log of the plan.
@@ -74,7 +74,7 @@ describe("Runs history", () => {
     expect(screen.getByText("1 run")).toBeInTheDocument();
   });
 
-  it("interleaves manual, extra and history rows in one chronology", () => {
+  it("interleaves manual, extra and history rows in the recent chronology", () => {
     renderRuns({
       activities: [
         historicalRun("a-1", "2026-08-13", { name: "Evening Run" }),
@@ -90,7 +90,6 @@ describe("Runs history", () => {
       expect.stringContaining("Friday, August 14"),
       expect.stringContaining("Thursday, August 13"),
       expect.stringContaining("Tuesday, August 11"),
-      expect.stringContaining("Monday, March 2"),
     ]);
     expect(within(rows()[0]).getByText("Extra")).toBeInTheDocument();
     expect(within(rows()[2]).queryByText("Extra")).not.toBeInTheDocument();
@@ -170,7 +169,7 @@ describe("Runner snapshot", () => {
     });
 
     expect(screen.getByRole("button", { name: /^Runner snapshot\./ })).toHaveAccessibleName(
-      "Runner snapshot. 4 miles over the last 7 days. 14 miles over the last 28 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 10 miles. Open history detail.",
+      "Runner snapshot. 14 miles over the last 28 days. 4 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 10 miles. Open history detail.",
     );
     expect(screen.getByText("Last 7 days")).toBeInTheDocument();
     expect(screen.getByText("Last 28 days")).toBeInTheDocument();
@@ -295,24 +294,54 @@ describe("Runner profile detail", () => {
   });
 });
 
-describe("Runs history paging", () => {
+describe("Runs Overview and Full History boundary", () => {
   const many = Array.from({ length: HISTORY_PAGE_SIZE + 8 }, (_, index) =>
     historicalRun(`a-${index}`, `2026-0${index < 9 ? "8" : "7"}-${String((index % 28) + 1).padStart(2, "0")}`),
   );
 
-  it("shows a first page and extends on request rather than rendering a year at once", async () => {
+  it("shows three recent runs, then pages the complete archive only after View All Runs", async () => {
     const user = userEvent.setup();
     renderRuns({ activities: many });
 
-    expect(rows()).toHaveLength(HISTORY_PAGE_SIZE);
-    await user.click(screen.getByRole("button", { name: "Show 8 more" }));
-    expect(rows()).toHaveLength(HISTORY_PAGE_SIZE + 8);
-    expect(screen.queryByRole("button", { name: /Show .* more/ })).not.toBeInTheDocument();
+    expect(rows()).toHaveLength(RECENT_RUN_COUNT);
+    expect(screen.getByRole("button", { name: "View All Runs" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View All Runs" }));
+    const archive = within(screen.getByRole("dialog", { name: "Full History" }));
+    const archiveRows = () =>
+      archive
+        .getAllByRole("button")
+        .filter((button) => button.className.includes("run-row"));
+    expect(archiveRows()).toHaveLength(HISTORY_PAGE_SIZE);
+    await user.click(archive.getByRole("button", { name: "Show 8 more" }));
+    expect(archiveRows()).toHaveLength(HISTORY_PAGE_SIZE + 8);
+    expect(archive.queryByRole("button", { name: /Show .* more/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the preview newest-first and opens historical detail from Full History", async () => {
+    const user = userEvent.setup();
+    renderRuns({ activities: many });
+
+    const overviewDates = rows().map((row) => row.getAttribute("aria-label"));
+    expect(overviewDates).toEqual([
+      expect.stringContaining("August 9"),
+      expect.stringContaining("August 8"),
+      expect.stringContaining("August 7"),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "View All Runs" }));
+    const archive = within(screen.getByRole("dialog", { name: "Full History" }));
+    await user.click(
+      archive
+        .getAllByRole("button")
+        .find((button) => button.className.includes("run-row"))!,
+    );
+    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
   });
 });
 
 describe("Runs hierarchy", () => {
-  it("keeps Training Signals below the history, and says so when it cannot say more", () => {
+  it("puts visual signals before the three-run preview, and says so when it cannot say more", () => {
     renderRuns({
       runLogs: [
         stackRun("a", "2026-08-11", { workoutId: "workout-002", distanceMiles: 2 }),
@@ -323,12 +352,12 @@ describe("Runs hierarchy", () => {
     const sections = [...document.querySelectorAll(".section__title")].map(
       (title) => title.textContent,
     );
-    expect(sections).toEqual(["Recent Volume", "Run History", "Training Signals"]);
+    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Runs"]);
     // Two runs in one week is not a 28-day comparison, so the history signals
     // are absent rather than guessed at; plan context still has something.
-    expect(document.querySelectorAll(".signal-card")).toHaveLength(1);
+    expect(document.querySelectorAll(".signal-cards.section .signal-card")).toHaveLength(1);
     expect(
-      screen.getByRole("button", { name: /planned runs recorded/ }),
+      screen.getByRole("button", { name: /^Plan context\. Plan to date/ }),
     ).toBeInTheDocument();
   });
 
@@ -348,6 +377,6 @@ describe("Runs hierarchy", () => {
     expect(screen.getByText("No runs yet")).toBeInTheDocument();
     expect(screen.getByText("Nothing recorded yet")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Runner snapshot/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Recent Volume" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Recent Training" })).not.toBeInTheDocument();
   });
 });

@@ -74,12 +74,13 @@ describe("Runs", () => {
     expect(
       screen.getByRole("button", { name: /^Runner snapshot\./ }),
     ).toHaveAccessibleName(
-      "Runner snapshot. 5.5 miles over the last 7 days. 5.5 miles over the last 28 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
+      "Runner snapshot. 5.5 miles over the last 28 days. 5.5 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
     );
-    expect(screen.getByRole("heading", { name: "Run History" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
   });
 
-  it("lists scheduled, extra, typed in and synced runs together, newest first", () => {
+  it("lists scheduled, extra, typed in and synced runs together, newest first", async () => {
+    const user = userEvent.setup();
     renderRuns([
       run("scheduled", "2026-08-04", { workoutId: "workout-002", distanceMiles: 2 }),
       run("extra", "2026-08-05", { activityType: "intervals" }),
@@ -88,6 +89,17 @@ describe("Runs", () => {
     ]);
 
     expect(rows().map((row) => row.getAttribute("aria-label"))).toEqual([
+      expect.stringContaining("Sunday, August 9"),
+      expect.stringContaining("Saturday, August 8"),
+      expect.stringContaining("Wednesday, August 5"),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "View All Runs" }));
+    const archive = within(screen.getByRole("dialog", { name: "Full History" }));
+    const archiveRows = archive
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("run-row"));
+    expect(archiveRows.map((row) => row.getAttribute("aria-label"))).toEqual([
       expect.stringContaining("Sunday, August 9"),
       expect.stringContaining("Saturday, August 8"),
       expect.stringContaining("Wednesday, August 5"),

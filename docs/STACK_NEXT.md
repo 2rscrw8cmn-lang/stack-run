@@ -36,7 +36,7 @@ STACK should be able to import enough history to establish useful context such a
 - running frequency;
 - weekly and monthly volume;
 - long-run progression;
-- pace by activity type;
+- pace by activity type when a defensible grouping exists;
 - heart-rate behavior where coverage exists;
 - zone distribution;
 - training-load history where the source provides it;
@@ -45,7 +45,25 @@ STACK should be able to import enough history to establish useful context such a
 
 The product must continue to work when some metrics are missing.
 
-### 2. The runner profile is derived from facts, not a questionnaire
+### 2. Foundational data does not need primary-screen depth
+
+The historical dataset powers the product, but the UI should not expose the whole dataset merely to prove it exists.
+
+Prefer progressive disclosure:
+
+- **Overview** for understanding;
+- **History** for chronology/lookup;
+- **Detail** for investigation.
+
+For Runs specifically:
+
+> **Historical data powers Runs, but complete history is not the Runs homepage.**
+
+The main Runs destination should summarize current running, visualize recent training, surface meaningful Signals and show only a small recent-run sample. The complete unified archive belongs one level deeper.
+
+See `docs/RUNS_PRODUCT_MODEL.md`.
+
+### 3. The runner profile is derived from facts, not a questionnaire
 
 STACK Next should gradually build a useful factual model of the runner from their activity history.
 
@@ -53,7 +71,7 @@ That profile may include stable observations and baselines, but it is not an AI 
 
 Prefer statements that can be traced to source data and simple documented calculations.
 
-### 3. The plan stays, but it moves to a supporting role
+### 4. The plan stays, but it moves to a supporting role
 
 Keep the existing plan system available.
 
@@ -68,19 +86,19 @@ The plan should eventually act as:
 
 Do not make every historical run fit a plan workout.
 
-### 4. Today becomes a decision surface, not merely today's plan card
+### 5. Today becomes a decision surface, not merely today's plan card
 
-The eventual Today experience should use the runner's current context and upcoming intent to surface what matters now.
+Today should use the runner's current context and upcoming intent to surface what matters now.
 
-Do not redesign Today before the historical-data foundation is real. UI should follow the data model, not force the data model.
+NEXT-4 established this direction without changing the plan architecture.
 
-### 5. Build remains a core emotional reward
+### 6. Build remains a core emotional reward
 
-Every actual run can still earn a block.
+Every actual run can still earn a block under the existing ownership rules.
 
 STACK Next should preserve the Build concept because it makes accumulated work tangible. Historical import must not silently flood or rewrite an existing user's Build without an explicit migration/product decision.
 
-### 6. Crew remains optional and downstream of personal truth
+### 7. Crew remains optional and downstream of personal truth
 
 Race Crew should continue to receive only the approved safe projection of personal data.
 
@@ -97,7 +115,22 @@ STACK Next should prefer:
 - useful omission when coverage is weak;
 - runner-specific baselines before generic judgment;
 - progressive disclosure instead of a giant analytics dashboard;
+- visual compression of data when it improves understanding;
+- a small number of meaningful charts over a wall of metrics;
 - the smallest understandable data model that can grow.
+
+## Runs-specific refinement
+
+The Runs destination is currently being reframed before NEXT-5.
+
+The active product packet is:
+
+- `docs/RUNS_PRODUCT_MODEL.md`
+- `docs/RUNS_VISUALIZATION_SYSTEM.md`
+- `docs/RUN_DETAIL_PRODUCT_SPEC.md`
+- `docs/RUNS_REFRAME_IMPLEMENTATION.md`
+
+Those documents govern Runs/Run Detail product architecture and supersede older Runs information-hierarchy statements in `docs/ARCADE_DESIGN_PASS.md` where they conflict. The Performance Arcade visual language itself remains active.
 
 ## Still out of scope unless separately approved
 
@@ -143,6 +176,10 @@ main
     ├── feature/runner-profile
     ├── feature/training-signals-v2
     ├── feature/today-next
+    ├── feature/runs-reframe-docs
+    ├── feature/runs-overview
+    ├── feature/runs-history
+    ├── feature/run-detail-enrichment
     └── experiment/...
 ```
 
@@ -153,12 +190,14 @@ Do not merge `feature/stack-next` to `main` until the owner accepts the new prod
 For STACK Next work, use this order when documents conflict:
 
 1. `docs/STACK_NEXT.md`
-2. `docs/INTERVALS_DATA_STRATEGY.md`
-3. `docs/STACK_NEXT_IMPLEMENTATION.md`
-4. `docs/CONNECTED_DATA_FIELDS.md` for verified source fields and source semantics
-5. `docs/INTERVALS_INTEGRATION.md` for existing integration behavior
-6. `docs/DATA_AND_STORAGE.md` for existing persistence behavior that has not been superseded
-7. `docs/PRODUCT_AND_SCOPE.md` as the current-product baseline
-8. older program/phase documents as historical context
+2. the Runs-specific packet above when touching Runs/Run Detail
+3. `docs/RUNS_REFRAME_IMPLEMENTATION.md` for active Runs sequencing until that reframe is accepted
+4. `docs/INTERVALS_DATA_STRATEGY.md`
+5. `docs/STACK_NEXT_IMPLEMENTATION.md`
+6. `docs/CONNECTED_DATA_FIELDS.md` for verified source fields and source semantics
+7. `docs/INTERVALS_INTEGRATION.md` for existing integration behavior
+8. `docs/DATA_AND_STORAGE.md` for existing persistence behavior that has not been superseded
+9. `docs/PRODUCT_AND_SCOPE.md` as the current-product baseline
+10. older program/phase documents as historical context
 
-The first implementation prompt is `docs/STACK_NEXT_AGENT_PROMPT.md`.
+`docs/STACK_NEXT_AGENT_PROMPT.md` is the historical NEXT-1 implementation contract, not the active contract for later phases.

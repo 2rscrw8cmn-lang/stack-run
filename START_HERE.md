@@ -28,21 +28,32 @@ STACK Next changes the hierarchy:
 
 Historical Intervals.icu activity data should become a durable personal context layer that can support runner history, longitudinal signals, a better Today experience and plan comparison without forcing every run into the plan model.
 
+A second refinement now governs the Runs destination:
+
+> **Historical data powers Runs, but complete history is not the Runs homepage.**
+
+Runs Overview is for understanding; Full History is for lookup; Run Detail is for investigation.
+
 ## Required reading for STACK Next work
 
 Read in this order:
 
 1. `docs/STACK_NEXT.md`
-2. `docs/INTERVALS_DATA_STRATEGY.md`
-3. `docs/STACK_NEXT_IMPLEMENTATION.md`
-4. `docs/STACK_NEXT_AGENT_PROMPT.md` when implementing NEXT-1
-5. `docs/CONNECTED_DATA_FIELDS.md` for verified Intervals fields/semantics
-6. `docs/INTERVALS_INTEGRATION.md` for existing import behavior
-7. `docs/DATA_AND_STORAGE.md` for existing persistence behavior not superseded by STACK Next
-8. `docs/PRODUCT_AND_SCOPE.md` for the current-product baseline
-9. `docs/ENGINEERING_STANDARDS.md`
-10. `docs/CURRENT_APPLICATION_STRUCTURE.md`
-11. `AGENTS.md`
+2. `docs/RUNS_PRODUCT_MODEL.md` when touching Runs, history presentation or Run Detail
+3. `docs/RUNS_VISUALIZATION_SYSTEM.md` when touching running charts/data presentation
+4. `docs/RUN_DETAIL_PRODUCT_SPEC.md` when touching single-run detail/source enrichment
+5. `docs/RUNS_REFRAME_IMPLEMENTATION.md` while the Runs reframe is active
+6. `docs/INTERVALS_DATA_STRATEGY.md`
+7. `docs/STACK_NEXT_IMPLEMENTATION.md`
+8. `docs/CONNECTED_DATA_FIELDS.md` for verified Intervals fields/semantics
+9. `docs/INTERVALS_INTEGRATION.md` for existing import behavior
+10. `docs/DATA_AND_STORAGE.md` for existing persistence behavior not superseded by STACK Next
+11. `docs/PRODUCT_AND_SCOPE.md` for the current-product baseline
+12. `docs/ENGINEERING_STANDARDS.md`
+13. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+14. `AGENTS.md`
+
+`docs/STACK_NEXT_AGENT_PROMPT.md` is the historical NEXT-1 implementation contract. Do not treat it as the active prompt for later work.
 
 Older phase/program documents remain useful historical/current-behavior references, but they do not override the STACK Next packet on this branch.
 
@@ -51,17 +62,19 @@ Older phase/program documents remain useful historical/current-behavior referenc
 When documents conflict:
 
 1. `docs/STACK_NEXT.md`
-2. `docs/INTERVALS_DATA_STRATEGY.md`
-3. `docs/STACK_NEXT_IMPLEMENTATION.md`
-4. `docs/CONNECTED_DATA_FIELDS.md` for exact verified source fields and source semantics
-5. `docs/INTERVALS_INTEGRATION.md` for existing connected-data mechanics
-6. `docs/DATA_AND_STORAGE.md` where not superseded
-7. `docs/PRODUCT_AND_SCOPE.md` as the current app baseline
-8. `docs/NEXT_PRODUCT_PROGRAM.md`, Race Crew docs and other existing program docs for systems that STACK Next has not replaced
-9. older historical phase docs
-10. existing code
+2. the Runs-specific product docs above for Runs/Run Detail work
+3. `docs/RUNS_REFRAME_IMPLEMENTATION.md` for active Runs sequencing until the reframe is accepted
+4. `docs/INTERVALS_DATA_STRATEGY.md`
+5. `docs/STACK_NEXT_IMPLEMENTATION.md`
+6. `docs/CONNECTED_DATA_FIELDS.md` for exact verified source fields and source semantics
+7. `docs/INTERVALS_INTEGRATION.md` for existing connected-data mechanics
+8. `docs/DATA_AND_STORAGE.md` where not superseded
+9. `docs/PRODUCT_AND_SCOPE.md` as the current app baseline
+10. `docs/NEXT_PRODUCT_PROGRAM.md`, Race Crew docs and other existing program docs for systems that STACK Next has not replaced
+11. older historical phase docs
+12. existing code
 
-The STACK Next docs supersede older statements such as "No UI-23 is planned" or plan-first hierarchy language when those statements conflict with the new program.
+The Runs-specific docs supersede the older Runs subsection of `docs/ARCADE_DESIGN_PASS.md` where they conflict. The Performance Arcade visual language still applies; the old information hierarchy does not.
 
 ## Current application baseline
 
@@ -74,12 +87,13 @@ Current capabilities include:
 - manual run logging;
 - HealthFit → Intervals.icu connected data;
 - user-confirmed scheduled/extra/attach behavior;
-- run history and rich Run Detail;
+- unified run history and rich Run Detail;
 - Training Signals;
 - deterministic personal Build;
 - editable race plan;
 - Race Crew with Supabase/RLS and a shared Crew Build;
-- local-first personal data.
+- local-first personal data;
+- reusable preview-only QA Runner.
 
 STACK Next should evolve these systems deliberately rather than replacing them wholesale.
 
@@ -150,50 +164,52 @@ Do not make the normal STACK Next model a dump of:
 
 ## Active implementation sequence
 
-### NEXT-0 — Direction + data contract
-
-Documentation package on `feature/stack-next`.
-
-### NEXT-1 — Historical Data Foundation
-
-Recommended child branch:
+Completed/accepted:
 
 ```text
-feature/historical-data
+NEXT-0  Direction + data contract
+NEXT-1  Historical Data Foundation            merged PR #100
+NEXT-2  Runner History + Profile Foundation   merged PR #102/#103
+NEXT-3  Training Signals v2                   merged PR #104
+NEXT-4  Today / Home revision                 merged PR #105
 ```
 
-Target PR:
+### Active prerequisite — Runs reframe
+
+Before NEXT-5, STACK is reframing the Runs destination around progressive disclosure.
 
 ```text
-feature/stack-next
+R0  Product architecture + QA correction
+R1  Runs Overview
+R2  Full History archive
+R3  Run Detail enrichment / QA profile review
+R4  Integration review
 ```
 
-Purpose:
+See:
 
-- configurable historical lookback;
-- pagination/range-safe Intervals retrieval;
-- normalized Tier 1 activity summaries;
-- dedupe and reconciliation;
-- a clean historical activity repository boundary;
-- fixtures/tests and data-coverage visibility;
-- no new dashboard yet.
+- `docs/RUNS_PRODUCT_MODEL.md`
+- `docs/RUNS_VISUALIZATION_SYSTEM.md`
+- `docs/RUN_DETAIL_PRODUCT_SPEC.md`
+- `docs/RUNS_REFRAME_IMPLEMENTATION.md`
 
-Use `docs/STACK_NEXT_AGENT_PROMPT.md` for the full implementation prompt.
+NEXT-5 Plan role revision is **paused until the Runs reframe is accepted**. It is not cancelled.
 
-### Later phases
-
-Planned order, with current state:
+Later order remains:
 
 ```text
-NEXT-2  Runner History + Profile Foundation   accepted, merged (PR #102/#103)
-NEXT-3  Training Signals v2                   accepted, merged (PR #104)
-NEXT-4  Today / Home revision                 accepted, merged (PR #105)
-NEXT-5  Plan role revision                    active
+NEXT-5  Plan role revision
 NEXT-6  Build + Crew compatibility
 NEXT-7  Integration + release candidate
 ```
 
-See `docs/STACK_NEXT_IMPLEMENTATION.md`.
+## QA Runner
+
+Use the reusable QA Runner for normal branch review rather than creating page-specific `?demo=` modes.
+
+The QA account is preview-only and synthetic. It must never call Intervals or load owner personal state.
+
+A known current review gap is that QA normalized runs do not yet provide synthetic Run Profile stream samples, so Pace/HR/Elevation/Cadence profile charts that already exist in `RunResultDetail` may be absent in QA. R3 owns that correction.
 
 ## Branch workflow
 
@@ -202,10 +218,10 @@ Use:
 ```text
 main
 └── feature/stack-next
-    ├── feature/historical-data
-    ├── feature/runner-profile
-    ├── feature/training-signals-v2
-    ├── feature/today-next
+    ├── feature/runs-reframe-docs
+    ├── feature/runs-overview
+    ├── feature/runs-history
+    ├── feature/run-detail-enrichment
     ├── feature/plan-next
     └── experiment/...
 ```
@@ -249,7 +265,7 @@ Missing metrics remain missing; never convert absence to zero.
 
 ## Delivery rule
 
-Each NEXT implementation phase should be independently reviewable and should update the docs it changes.
+Each implementation subphase should be independently reviewable and should update the docs it changes.
 
 Before review:
 

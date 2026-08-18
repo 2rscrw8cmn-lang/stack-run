@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { Sheet } from "../../components/ui/Sheet";
 import type { RunLog, TrainingPlan } from "../../domain/types";
 import type { RunnerRun } from "../../history/runnerRun";
@@ -11,6 +12,7 @@ import { PlanContextSignalDetail } from "./PlanContextSignalDetail";
 import { VolumeSignalDetail } from "./VolumeSignalDetail";
 import { WorkloadSignalDetail } from "./WorkloadSignalDetail";
 import { ZoneSignalDetail } from "./ZoneSignalDetail";
+import { SignalPeriods } from "./SignalDetailParts";
 
 interface SignalDetailSheetProps {
   signal: TrainingSignal | null;
@@ -27,24 +29,8 @@ interface SignalDetailSheetProps {
 }
 
 /**
- * The working behind a signal.
- *
- * A card makes a claim in one sentence. This is where a runner finds out whether
- * to believe it, and the standard it is held to is that they should be able to
- * check the statement against their own run list without trusting STACK at any
- * point. So every detail states, in the same order:
- *
- * 1. the claim itself, in the words the card used;
- * 2. the two values, and the change between them;
- * 3. the **exact inclusive dates** of both windows;
- * 4. a plain picture of the history behind it;
- * 5. the runs or weeks the numbers came from;
- * 6. coverage, where the metric is one only some runs carry;
- * 7. what the signal means, in a sentence.
- *
- * Point 7 is not decoration. *Why is STACK telling me this?* is the question a
- * derived metric has to answer to be worth showing at all, and a product that
- * cannot answer it has built a black box with a nice font.
+ * The evidence behind a signal: result first, then shape and supporting facts.
+ * Exact periods and calculation methodology remain available once, on demand.
  */
 export function SignalDetailSheet({
   signal,
@@ -68,11 +54,6 @@ export function SignalDetailSheet({
     >
       {isOpen && (
         <div className="signal-detail">
-          <header className="signal-detail__claim">
-            <p className="signal-detail__headline">{signal.headline}</p>
-            <p className="signal-detail__note">{signal.support}</p>
-          </header>
-
           {signal.family === "volume" && (
             <VolumeSignalDetail signal={signal} runs={runs} today={today} />
           )}
@@ -103,9 +84,26 @@ export function SignalDetailSheet({
             />
           )}
 
-          <p className="signal-detail__note signal-detail__meaning">
-            {TRAINING_SIGNAL_EXPLANATION[signal.family]}
-          </p>
+          {signal.headline && (
+            <p className="signal-detail__interpretation">{signal.headline}.</p>
+          )}
+
+          <details className="signal-methodology">
+            <summary
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                event.currentTarget.parentElement?.toggleAttribute("open");
+              }}
+            >
+              <span>How STACK calculates this</span>
+              <Info size={16} strokeWidth={1.8} aria-hidden="true" />
+            </summary>
+            <div className="signal-methodology__body">
+              <p>{TRAINING_SIGNAL_EXPLANATION[signal.family]}</p>
+              <SignalPeriods current={signal.current} baseline={signal.baseline} />
+            </div>
+          </details>
         </div>
       )}
     </Sheet>

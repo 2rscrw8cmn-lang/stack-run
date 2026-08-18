@@ -6,9 +6,9 @@ import { weeklyVolume } from "../../history/runnerVolume";
 import type { TrainingSignal } from "../../signals/trainingSignal";
 import { DetailSection } from "../trends/TrendDetailShared";
 import {
-  SignalComparisonSummary,
   SignalCoverageNote,
-  SignalPeriods,
+  SignalReference,
+  SignalResultSummary,
 } from "./SignalDetailParts";
 import { signedNumber, signedPercent } from "./signalFormatting";
 
@@ -42,15 +42,10 @@ export function WorkloadSignalDetail({
 
   return (
     <>
-      <SignalComparisonSummary
+      <SignalResultSummary
         currentValue={String(facts.currentLoad)}
-        baselineValue={String(facts.baselineLoad)}
         change={`${signedNumber(facts.differenceLoad)} · ${signedPercent(facts.changeRatio)}`}
       />
-      <SignalPeriods current={signal.current} baseline={signal.baseline} />
-      {signal.coverage && (
-        <SignalCoverageNote coverage={signal.coverage} metric="Training Load" />
-      )}
 
       <DetailSection title="Training Load each week">
         <PlanActualColumns
@@ -75,11 +70,10 @@ export function WorkloadSignalDetail({
           {selected.coveredRuns} of {selected.runCount} runs
         </p>
       </DetailSection>
-      <p className="signal-detail__note">
-        Training Load is your source's own figure. STACK adds up what was supplied
-        and compares two periods; it does not calculate load, and does not turn it
-        into a readiness, recovery or fatigue reading.
-      </p>
+      <SignalReference value={String(facts.baselineLoad)} />
+      {signal.coverage && (
+        <SignalCoverageNote coverage={signal.coverage} metric="Training Load" />
+      )}
     </>
   );
 }

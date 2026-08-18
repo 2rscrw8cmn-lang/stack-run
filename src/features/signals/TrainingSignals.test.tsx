@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { addDaysToLocalDate } from "../../domain/dates";
@@ -65,7 +65,9 @@ function renderRuns(
 }
 
 function signalCards() {
-  return [...document.querySelectorAll<HTMLElement>(".signal-card")];
+  return [
+    ...document.querySelectorAll<HTMLElement>(".signal-cards.section .signal-card"),
+  ];
 }
 
 function cardOrder() {
@@ -78,26 +80,28 @@ const RISING_VOLUME: HistorySpec = {
 };
 
 describe("Training Signals cards", () => {
-  it("leads with the sentence and evidence, and states the shared window once", () => {
+  it("leads with one factual reading and visual without visible explanatory copy", () => {
     renderRuns(history(RISING_VOLUME));
 
-    const volume = screen.getByRole("button", { name: /^Volume is building/ });
+    const volume = screen.getByRole("button", { name: /^Volume\. Last 28 days/ });
     expect(volume).toHaveAccessibleName(
-      "Volume is building. 24.8 mi in the last 28 days, up from 19.6 mi in the 28 before. Last 28d vs prior 28d. Open Volume detail.",
+      "Volume. Last 28 days: 24.8 mi. Change: +5.2 mi. Prior 28 days: 19.6 mi. Open detail.",
     );
-    expect(volume).toHaveTextContent("Volume is building");
-    expect(volume).toHaveTextContent("24.8 mi in the last 28 days");
-    expect(volume).not.toHaveTextContent("Last 28d vs prior 28d");
-    expect(screen.getByText("Last 28 days vs prior 28 days")).toBeInTheDocument();
+    expect(volume).toHaveTextContent("Volume");
+    expect(volume).toHaveTextContent("24.8 mi");
+    expect(volume).toHaveTextContent("+5.2 mi");
+    expect(volume).toHaveTextContent("19.6 mi");
+    expect(volume).not.toHaveTextContent("Volume is building");
+    expect(volume.querySelector("p")).toBeNull();
   });
 
-  it("stays under the Run History rather than moving to the top of Runs", () => {
+  it("sits between Recent Training and the three-run preview", () => {
     renderRuns(history(RISING_VOLUME));
 
     const sections = [...document.querySelectorAll(".section__title")].map(
       (title) => title.textContent,
     );
-    expect(sections).toEqual(["Recent Volume", "Run History", "Training Signals"]);
+    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Runs"]);
   });
 
   it("orders what changed above what did not, then by family", () => {
@@ -111,6 +115,41 @@ describe("Training Signals cards", () => {
     expect(cardOrder()).toEqual([
       "volume-trend",
       "long-run-progression",
+      "run-frequency",
+    ]);
+  });
+
+  it("caps the visual overview at three and keeps the remaining domain-ordered signals reachable", async () => {
+    const user = userEvent.setup();
+    renderRuns(
+      history({
+        current: [10, 4],
+        baseline: [10, 3],
+        currentOptions: {
+          trainingLoad: 60,
+          hrZoneSeconds: [600, 600, 600],
+        },
+        baselineOptions: {
+          trainingLoad: 40,
+          hrZoneSeconds: [200, 200, 1_600],
+        },
+      }),
+    );
+
+    expect(signalCards()).toHaveLength(3);
+    expect(signalCards().every((card) => card.querySelector(".signal-card__visual"))).toBe(true);
+    await user.click(screen.getByRole("button", { name: "View All Signals" }));
+
+    const inventory = within(screen.getByRole("dialog", { name: "All Training Signals" }));
+    const allCards = inventory
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("signal-card"));
+    expect(allCards).toHaveLength(6);
+    expect(allCards.map((card) => card.dataset.signal)).toEqual([
+      "volume-trend",
+      "long-run-progression",
+      "workload-trend",
+      "zone-distribution",
       "run-frequency",
       "plan-completion",
     ]);
@@ -178,35 +217,47 @@ describe("Training Signals cards", () => {
 });
 
 describe("Training Signal detail", () => {
-  it("opens the working behind a card, with both windows' exact dates", async () => {
+  it("opens result-first and keeps exact window dates behind methodology", async () => {
     const user = userEvent.setup();
     renderRuns(history(RISING_VOLUME));
 
-    await user.click(screen.getByRole("button", { name: /^Volume is building/ }));
+    await user.click(screen.getByRole("button", { name: /^Volume\. Last 28 days/ }));
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAccessibleName("Volume");
-    expect(dialog).toHaveTextContent("Jul 19 — Aug 15");
-    expect(dialog).toHaveTextContent("Jun 21 — Jul 18");
     expect(dialog).toHaveTextContent("24.8 mi");
     expect(dialog).toHaveTextContent("19.6 mi");
     expect(dialog).toHaveTextContent("+5.2 mi");
+    expect(dialog.querySelector(".signal-methodology")).not.toHaveAttribute("open");
+
+    await user.click(screen.getByText("How STACK calculates this"));
+    expect(dialog.querySelector(".signal-methodology")).toHaveAttribute("open");
+    expect(dialog).toHaveTextContent("Jul 19 — Aug 15");
+    expect(dialog).toHaveTextContent("Jun 21 — Jul 18");
   });
 
-  it("explains what the signal means rather than asking to be trusted", async () => {
+  it("keeps methodology behind a keyboard-accessible disclosure", async () => {
     const user = userEvent.setup();
     renderRuns(history(RISING_VOLUME));
 
-    await user.click(screen.getByRole("button", { name: /^Volume is building/ }));
+    await user.click(screen.getByRole("button", { name: /^Volume\. Last 28 days/ }));
 
+    const summary = screen.getByText("How STACK calculates this").closest("summary");
+    expect(summary).not.toBeNull();
+    expect(summary?.closest("details")).not.toHaveAttribute("open");
+    summary?.focus();
+    expect(summary).toHaveFocus();
+    expect(summary?.tabIndex).toBe(0);
+    await user.keyboard("{Enter}");
     expect(screen.getByText(/Both windows are the same length/)).toBeInTheDocument();
+    expect(summary?.closest("details")).toHaveAttribute("open");
   });
 
   it("opens from the keyboard and closes back to the list", async () => {
     const user = userEvent.setup();
     renderRuns(history(RISING_VOLUME));
 
-    const card = screen.getByRole("button", { name: /^Volume is building/ });
+    const card = screen.getByRole("button", { name: /^Volume\. Last 28 days/ });
     card.focus();
     await user.keyboard("{Enter}");
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Volume");
@@ -225,7 +276,7 @@ describe("Training Signal detail", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: /^Longest runs are getting longer/ }),
+      screen.getByRole("button", { name: /^Long runs\. Last 28 days/ }),
     );
     await user.click(
       screen.getByRole("button", { name: /Open the longest run of the last 28 days/ }),
@@ -247,16 +298,18 @@ describe("Training Signal detail", () => {
       }),
     );
 
-    await user.click(screen.getByRole("button", { name: /workload is higher/ }));
+    await user.click(screen.getByRole("button", { name: /^Workload\. Last 28 days/ }));
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAccessibleName("Workload");
     expect(dialog).toHaveTextContent(
       /Training Load available for 10\/10 recent runs and 10\/10 prior runs/,
     );
-    expect(dialog).toHaveTextContent(
-      /does not turn it into a readiness, recovery or fatigue reading/,
-    );
+    expect(dialog.querySelector(".signal-methodology")).not.toHaveAttribute("open");
+    await user.click(screen.getByText("How STACK calculates this"));
+    expect(dialog.querySelector(".signal-methodology")).toHaveAttribute("open");
+    expect(dialog).toHaveTextContent(/does not turn it into a readiness or recovery figure/);
+    expect(dialog.querySelectorAll(".signal-methodology__body > p")).toHaveLength(1);
     expect(dialog.textContent).not.toMatch(
       /readiness[:\s]+\d|recovery score|you are (over|under)trained/i,
     );
@@ -268,8 +321,13 @@ describe("Training Signal detail", () => {
       stackRun("planned", "2026-08-04", { workoutId: "workout-002" }),
     ]);
 
-    expect(cardOrder().at(-1)).toBe("plan-completion");
-    await user.click(screen.getByRole("button", { name: /planned runs recorded/ }));
+    await user.click(screen.getByRole("button", { name: "View All Signals" }));
+    const inventory = within(screen.getByRole("dialog", { name: "All Training Signals" }));
+    const allCards = inventory
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("signal-card"));
+    expect(allCards.at(-1)?.dataset.signal).toBe("plan-completion");
+    await user.click(inventory.getByRole("button", { name: /^Plan context\./ }));
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Plan context");
   });
 });
