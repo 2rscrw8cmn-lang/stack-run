@@ -65,7 +65,8 @@ function activityTypeFrom(value: unknown): RunActivityType {
     value === "intervals" ||
     value === "simulation" ||
     value === "long" ||
-    value === "race"
+    value === "race" ||
+    value === "cross"
   ) {
     return value;
   }

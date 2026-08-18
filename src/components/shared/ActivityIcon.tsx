@@ -1,4 +1,5 @@
 import {
+  Dumbbell,
   Flag,
   Footprints,
   Moon,
@@ -22,6 +23,7 @@ const ACTIVITY_ICON: Record<WorkoutType, LucideIcon> = {
   simulation: Timer,
   long: Mountain,
   race: Flag,
+  cross: Dumbbell,
 };
 
 interface ActivityIconProps {

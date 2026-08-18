@@ -98,7 +98,7 @@ function validBuildAssignment(value: unknown): boolean {
     (build.orderInWeek === null ||
       (Number.isInteger(build.orderInWeek) && Number(build.orderInWeek) >= 0)) &&
     Number.isInteger(build.span) && Number(build.span) >= 0 && Number(build.span) <= 4 &&
-    ["neutral", "easy", "intervals", "simulation", "long", "race"]
+    ["neutral", "easy", "intervals", "simulation", "long", "race", "cross"]
       .includes(String(build.colorKey));
 }
 
@@ -126,7 +126,7 @@ function validTrainingPlan(value: unknown): boolean {
         localDate(workout.date) && Number.isInteger(workout.weekNumber) &&
         Number(workout.weekNumber) === Number(week.weekNumber) &&
         typeof workout.phase === "string" &&
-        ["rest", "easy", "intervals", "simulation", "long", "race"]
+        ["rest", "easy", "intervals", "simulation", "long", "race", "cross"]
           .includes(String(workout.type)) &&
         typeof workout.title === "string" &&
         (workout.targetDistanceMiles === null || typeof workout.targetDistanceMiles === "string") &&
@@ -167,6 +167,8 @@ export function validateCurrentAppState(state: AppState): AppState {
       !validAvailability(state.availability) ||
       (state.runDays !== null && (!Array.isArray(state.runDays) ||
         state.runDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6))) ||
+      (state.crossTrainingDays !== null && (!Array.isArray(state.crossTrainingDays) ||
+        state.crossTrainingDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6))) ||
       !state.intervalsSync ||
       (state.intervalsSync.lastSuccessfulActivitySyncAt !== null &&
         (typeof state.intervalsSync.lastSuccessfulActivitySyncAt !== "string" ||
@@ -187,6 +189,7 @@ export function createInitialAppState(): AppState {
     blockPlacements: [],
     availability: null,
     runDays: null,
+    crossTrainingDays: null,
     raceSetup: null,
     intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
   };
@@ -293,6 +296,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
       availability: null,
       runDays: null,
+      crossTrainingDays: null,
       raceSetup: null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
@@ -310,6 +314,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: null,
       runDays: null,
+      crossTrainingDays: null,
       raceSetup: null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
@@ -327,6 +332,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: null,
+      crossTrainingDays: null,
       raceSetup: null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
@@ -344,6 +350,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
+      crossTrainingDays: null,
       raceSetup: null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
@@ -355,6 +362,8 @@ export function migrateAppState(input: unknown): AppState {
       ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       runLogs: legacy.runLogs.map((runLog) => ({ ...runLog, source: "manual", externalSource: null, importedMetrics: null })),
+      // Schema 8 predates the Cross Training day preference.
+      crossTrainingDays: (legacy as unknown as AppState).crossTrainingDays ?? null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
   }
@@ -367,6 +376,7 @@ export function migrateAppState(input: unknown): AppState {
       blockPlacements: candidate.blockPlacements ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
+      crossTrainingDays: (candidate as unknown as AppState).crossTrainingDays ?? null,
       raceSetup: (candidate as unknown as AppState).raceSetup ?? null,
       intervalsSync: (candidate as unknown as AppState).intervalsSync ?? { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     });

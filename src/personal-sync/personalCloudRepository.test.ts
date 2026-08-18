@@ -154,6 +154,7 @@ describe("optimistic concurrency client", () => {
       raceSetup: seed.raceSetup,
       availability: seed.availability,
       runDays: seed.runDays,
+      crossTrainingDays: seed.crossTrainingDays,
     })).rejects.toMatchObject({ kind: "training" } satisfies Partial<PersonalCloudConflictError>);
     await expect(savePersonalBuildDocument(rpcClient("personal_build_revision_conflict"), 3, 1, []))
       .rejects.toMatchObject({ kind: "build" } satisfies Partial<PersonalCloudConflictError>);

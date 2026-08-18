@@ -540,6 +540,21 @@ export function saveRunDays(
 }
 
 /**
+ * Records the weekdays the runner wants Cross Training on, and the plan
+ * filled to match. Same reasoning as `saveRunDays`: the preference and the
+ * plan it produced are one decision, not two.
+ */
+export function saveCrossTrainingDays(
+  state: AppState,
+  crossTrainingDays: Weekday[],
+  plan: TrainingPlan,
+): AppState {
+  const next: AppState = { ...state, crossTrainingDays, plan };
+  saveAppState(next);
+  return next;
+}
+
+/**
  * Replaces the plan with one generated from a race, keeping every run.
  *
  * The runs and the blocks they earned belong to the runner, not to the plan

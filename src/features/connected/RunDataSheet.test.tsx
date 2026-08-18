@@ -27,6 +27,7 @@ const candidate: IntervalsCandidate = {
   durationSeconds: 1500,
   sourceUpdatedAt: null,
   metrics: { averageHeartRate: 152 },
+  inferredActivityType: "easy",
 };
 
 function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
@@ -79,6 +80,22 @@ describe("RunDataSheet", () => {
       "true",
     );
     expect(screen.getByRole("button", { name: "Add as Extra Run" })).toBeInTheDocument();
+  });
+
+  it("defaults an unmatched Cross Training import to Cross Training, not Easy", () => {
+    const hiitCandidate: IntervalsCandidate = {
+      ...candidate,
+      externalId: "i-hiit",
+      sourceType: "HighIntensityIntervalTraining",
+      distanceMiles: 0,
+      inferredActivityType: "cross",
+    };
+    renderSheet({ initialReview: { candidate: hiitCandidate, asExtra: true } });
+
+    expect(screen.getByRole("radio", { name: "Cross Training" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 
   it("lets an extra imported run use the shared STACK activity picker", async () => {

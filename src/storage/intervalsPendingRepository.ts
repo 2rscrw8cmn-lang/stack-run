@@ -1,7 +1,10 @@
+import { ACTIVITY_TYPES } from "../domain/build";
 import type { IntervalsCandidate } from "../connected/intervals";
 import type { ImportedRunMetrics } from "../domain/types";
 import { StorageWriteError } from "./appStateRepository";
 import { INTERVALS_PENDING_STORAGE_KEY } from "./storageKeys";
+
+const VALID_ACTIVITY_TYPES = new Set<string>(ACTIVITY_TYPES);
 
 function storageKey(accountId: string | null): string {
   return accountId
@@ -47,11 +50,13 @@ function isPendingCandidate(value: unknown): value is IntervalsCandidate {
     typeof candidate.completedDate === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(candidate.completedDate) &&
     numeric(candidate.distanceMiles) &&
-    candidate.distanceMiles > 0 &&
+    candidate.distanceMiles >= 0 &&
     numeric(candidate.durationSeconds) &&
     candidate.durationSeconds > 0 &&
     (candidate.sourceUpdatedAt === null || typeof candidate.sourceUpdatedAt === "string") &&
-    metrics(candidate.metrics) !== null
+    metrics(candidate.metrics) !== null &&
+    typeof candidate.inferredActivityType === "string" &&
+    VALID_ACTIVITY_TYPES.has(candidate.inferredActivityType)
   );
 }
 

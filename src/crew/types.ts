@@ -112,7 +112,7 @@ export interface CrewSharedRun {
   accentColor: CrewMemberAccent | null;
   runnerIcon: RunnerIcon;
   localDate: string;
-  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   durationSeconds: number;
   createdAt: string;
@@ -138,7 +138,7 @@ export interface CrewMiniBuildRun {
   id: string;
   userId: string;
   localDate: string;
-  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   buildRow: number | null;
   buildColumnStart: number | null;
@@ -165,7 +165,7 @@ export interface CrewBuildRun {
   displayName: string;
   accentColor: CrewMemberAccent | null;
   localDate: string;
-  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   createdAt: string;
   crewBuildRow: number | null;
@@ -178,7 +178,7 @@ export interface CrewPropNotification {
   id: string;
   runId: string;
   runLocalDate: string;
-  runActivityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  runActivityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   runDistanceMiles: number;
   actorUserId: string;
   actorDisplayName: string;

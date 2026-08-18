@@ -35,8 +35,9 @@ export const MAX_BLOCK_WIDTH: BlockWidth = 4;
 
 /**
  * Height by activity type. Easy and Long are one course: a long run is *wide*,
- * not tall. Intervals and Simulation are two because they are hard. The race
- * is three, which with a width of 4 makes it the largest object in the tower.
+ * not tall. Intervals, Simulation and Cross Training are two because they are
+ * hard. The race is three, which with a width of 4 makes it the largest
+ * object in the tower.
  */
 const HEIGHT_BY_TYPE: Record<RunActivityType, BlockHeight> = {
   easy: 1,
@@ -44,6 +45,7 @@ const HEIGHT_BY_TYPE: Record<RunActivityType, BlockHeight> = {
   intervals: 2,
   simulation: 2,
   race: 3,
+  cross: 2,
 };
 
 export function widthForMiles(miles: number): BlockWidth {

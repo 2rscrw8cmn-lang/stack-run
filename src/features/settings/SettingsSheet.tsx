@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Compass,
   Database,
+  Dumbbell,
   Flag,
   RotateCcw,
   Users,
@@ -16,6 +17,11 @@ import {
   blockedDates,
   type AvailabilityCalendar,
 } from "../../domain/availability";
+import {
+  applyCrossTrainingDays,
+  currentCrossTrainingDays,
+  planCrossTrainingDayChange,
+} from "../../domain/crossTrainingDays";
 import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
 import type { RacePlanSetup } from "../../domain/racePlan";
 import {
@@ -27,6 +33,7 @@ import {
 } from "../../domain/runDays";
 import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
 import { AvailabilitySheet } from "../availability/AvailabilitySheet";
+import { CrossTrainingDaysSheet } from "../plan/CrossTrainingDaysSheet";
 import { RaceSetupSheet } from "../plan/RaceSetupSheet";
 import { ResetPlanDialog } from "../plan/ResetPlanDialog";
 import { RunDaysSheet } from "../plan/RunDaysSheet";
@@ -46,6 +53,8 @@ interface SettingsSheetProps {
   onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   runDays?: Weekday[] | null;
   onSaveRunDays?: (runDays: Weekday[], plan: TrainingPlan) => void;
+  crossTrainingDays?: Weekday[] | null;
+  onSaveCrossTrainingDays?: (crossTrainingDays: Weekday[], plan: TrainingPlan) => void;
   availability?: AvailabilityCalendar | null;
   onSaveAvailability?: (calendar: AvailabilityCalendar | null) => void;
   /** Overridable so tests do not depend on the network. */
@@ -64,7 +73,7 @@ interface SettingsSheetProps {
 }
 
 /** Which sheet this one handed off to, if any. */
-type Child = "race" | "run-days" | "availability" | "reset";
+type Child = "race" | "run-days" | "cross-training-days" | "availability" | "reset";
 
 interface SettingsRowProps {
   Icon: LucideIcon;
@@ -165,6 +174,8 @@ export function SettingsSheet({
   onGeneratePlan = () => undefined,
   runDays = null,
   onSaveRunDays = () => undefined,
+  crossTrainingDays = null,
+  onSaveCrossTrainingDays = () => undefined,
   availability = null,
   onSaveAvailability = () => undefined,
   fetchIcs,
@@ -216,6 +227,7 @@ export function SettingsSheet({
 
   const blocked = blockedDates(availability);
   const shape = runDays ?? currentRunDays(plan);
+  const crossShape = crossTrainingDays ?? currentCrossTrainingDays(plan);
 
   return (
     <>
@@ -243,6 +255,12 @@ export function SettingsSheet({
                     : `${weekdayList(shape)} · from the plan`
                 }
                 onClick={() => openChild("run-days")}
+              />
+              <SettingsRow
+                Icon={Dumbbell}
+                label="Cross Training Days"
+                value={crossShape.length ? weekdayList(crossShape) : "None"}
+                onClick={() => openChild("cross-training-days")}
               />
               <SettingsRow
                 Icon={CalendarClock}
@@ -325,6 +343,7 @@ export function SettingsSheet({
           plan={plan}
           setup={raceSetup}
           runDays={runDays}
+          crossTrainingDays={crossTrainingDays}
           runLogs={runLogs}
           today={today}
           isOpen={isChildOpen}
@@ -353,6 +372,26 @@ export function SettingsSheet({
             onSaveRunDays(days, reshaped);
             commit(
               `Run days saved. ${moved} ${moved === 1 ? "run" : "runs"} moved.`,
+            );
+          }}
+        />
+      )}
+
+      {child === "cross-training-days" && (
+        <CrossTrainingDaysSheet
+          key={visit}
+          plan={plan}
+          crossTrainingDays={crossTrainingDays}
+          today={today}
+          isOpen={isChildOpen}
+          onClose={childClosed}
+          onApply={(days) => {
+            const context = { today };
+            const filled = applyCrossTrainingDays(plan, days, context);
+            const added = planCrossTrainingDayChange(plan, days, context).fills.length;
+            onSaveCrossTrainingDays(days, filled);
+            commit(
+              `Cross Training days saved. ${added} ${added === 1 ? "day" : "days"} added.`,
             );
           }}
         />

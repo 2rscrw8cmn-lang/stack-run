@@ -99,6 +99,7 @@ const ACTIVITY_TYPES = new Set<RunActivityType>([
   "simulation",
   "long",
   "race",
+  "cross",
 ]);
 const EFFORTS = new Set<Effort>(["rough", "solid", "great"]);
 const SOURCES = new Set<RunSource>(["manual", "intervals"]);
@@ -154,7 +155,8 @@ function parseRunRow(value: unknown): PersonalCloudRun {
     !activityType ||
     !ACTIVITY_TYPES.has(activityType) ||
     distanceMiles === null ||
-    distanceMiles <= 0 ||
+    distanceMiles < 0 ||
+    (activityType !== "cross" && distanceMiles <= 0) ||
     durationSeconds === null ||
     !Number.isInteger(durationSeconds) ||
     durationSeconds <= 0 ||
@@ -259,6 +261,13 @@ function parseTrainingRow(value: unknown): {
   ) {
     throw new Error("Cloud run-day data is malformed.");
   }
+  if (
+    row.cross_training_days !== null &&
+    row.cross_training_days !== undefined &&
+    !Array.isArray(row.cross_training_days)
+  ) {
+    throw new Error("Cloud Cross Training day data is malformed.");
+  }
   return {
     revision: rowRevision,
     document: {
@@ -267,6 +276,7 @@ function parseTrainingRow(value: unknown): {
       raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
       availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
       runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],
+      crossTrainingDays: (row.cross_training_days ?? null) as PersonalTrainingDocument["crossTrainingDays"],
     },
   };
 }
@@ -319,12 +329,14 @@ function parseCandidate(value: unknown): IntervalsCandidate | null {
   const durationSeconds = finite(item?.durationSeconds);
   const metrics = record(item?.metrics);
   const sourceUpdatedAt = nullableString(item?.sourceUpdatedAt);
+  const inferredActivityType = string(item?.inferredActivityType) as RunActivityType | null;
   if (
     !externalId || !sourceType || !completedDate ||
     !/^\d{4}-\d{2}-\d{2}$/.test(completedDate) ||
-    distanceMiles === null || distanceMiles <= 0 ||
+    distanceMiles === null || distanceMiles < 0 ||
     durationSeconds === null || durationSeconds <= 0 || !metrics ||
-    (sourceUpdatedAt !== null && !Number.isFinite(Date.parse(sourceUpdatedAt)))
+    (sourceUpdatedAt !== null && !Number.isFinite(Date.parse(sourceUpdatedAt))) ||
+    !inferredActivityType || !ACTIVITY_TYPES.has(inferredActivityType)
   ) return null;
   return {
     externalId,
@@ -334,6 +346,7 @@ function parseCandidate(value: unknown): IntervalsCandidate | null {
     durationSeconds,
     sourceUpdatedAt,
     metrics: parseMetrics(metrics) ?? {},
+    inferredActivityType,
   };
 }
 

@@ -66,6 +66,36 @@ describe("CompleteRunSheet", () => {
     });
   });
 
+  it("saves a Cross Training entry with no distance entered", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={null}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: "Cross Training" }));
+    expect(screen.getByLabelText(/Distance/)).not.toBeRequired();
+
+    await user.type(screen.getByLabelText(/Duration/), "4500");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+    expect(onSave).toHaveBeenCalledWith(null, {
+      completedDate: TODAY,
+      activityType: "cross",
+      distanceMiles: 0,
+      durationSeconds: 2700,
+      effort: "solid",
+      notes: "",
+    });
+  });
+
   it("clears a field error as soon as that field is edited", async () => {
     const user = userEvent.setup();
     render(
@@ -197,7 +227,7 @@ describe("CompleteRunSheet", () => {
       "aria-checked",
       "true",
     );
-    expect(screen.getAllByRole("radio")).toHaveLength(5);
+    expect(screen.getAllByRole("radio")).toHaveLength(6);
     expect(screen.queryByRole("combobox", { name: "Activity" })).not.toBeInTheDocument();
   });
 

@@ -153,12 +153,16 @@ export function CompleteRunSheet({
           onChange={(activityType) => updateValue("activityType", activityType)}
         />
 
-        <FormField label="Distance (miles)" required error={errors.distance}>
+        <FormField
+          label="Distance (miles)"
+          required={values.activityType !== "cross"}
+          error={errors.distance}
+        >
           <input
             className="run-input"
             inputMode="decimal"
             autoComplete="off"
-            placeholder="3.2"
+            placeholder={values.activityType === "cross" ? "Optional" : "3.2"}
             value={values.distance}
             onChange={(event) => updateValue("distance", event.target.value)}
           />

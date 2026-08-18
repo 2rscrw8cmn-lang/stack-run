@@ -103,6 +103,56 @@ describe("validateRunEntry", () => {
     expect(errorsFor({ distance: "2.123" }).distance).toMatch(/two decimal/);
   });
 
+  it("lets Cross Training leave distance blank or zero", () => {
+    const blank = validateRunEntry(
+      {
+        date: TODAY,
+        activityType: "cross",
+        distance: "",
+        duration: "45:00",
+        effort: "solid",
+        notes: "",
+      },
+      TODAY,
+    );
+    expect(blank).toEqual({
+      valid: true,
+      value: {
+        completedDate: TODAY,
+        activityType: "cross",
+        distanceMiles: 0,
+        durationSeconds: 2700,
+        effort: "solid",
+        notes: "",
+      },
+    });
+
+    const zero = validateRunEntry(
+      {
+        date: TODAY,
+        activityType: "cross",
+        distance: "0",
+        duration: "45:00",
+        effort: "solid",
+        notes: "",
+      },
+      TODAY,
+    );
+    expect(zero.valid).toBe(true);
+  });
+
+  it("still bounds Cross Training distance when one is entered", () => {
+    expect(
+      errorsFor({ activityType: "cross", distance: "101" }).distance,
+    ).toMatch(/no more than 100/);
+    expect(
+      errorsFor({ activityType: "cross", distance: "-1" }).distance,
+    ).toMatch(/0 or more/);
+    expect(
+      errorsFor({ activityType: "cross", distance: "2.123" }).distance,
+    ).toMatch(/two decimal/);
+  });
+
   it("explains why a duration was rejected", () => {
     expect(errorsFor({ duration: "1:60" }).duration).toBe(
       "Minutes and seconds must be under 60.",

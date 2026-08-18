@@ -68,14 +68,25 @@ export function validateRunEntry(
   const errors: RunEntryErrors = {};
   const dateError = validateDate(values.date, today);
   if (dateError) errors.date = dateError;
-  const distance = Number(values.distance);
+  /**
+   * Cross Training is the one activity type that may cover negligible or no
+   * mileage — a lifting or mobility session has nothing to log distance-wise.
+   * Every other type still requires a real distance greater than zero.
+   */
+  const distanceOptional = values.activityType === "cross";
+  const distanceInput = values.distance.trim();
+  const distance = distanceOptional && !distanceInput ? 0 : Number(distanceInput);
   const duration = parseDurationInput(values.duration);
   const notes = values.notes.trim();
 
-  if (!values.distance.trim()) errors.distance = "Enter your distance.";
-  else if (!Number.isFinite(distance) || distance <= 0 || distance > 100)
+  if (!distanceOptional && !distanceInput) errors.distance = "Enter your distance.";
+  else if (!Number.isFinite(distance) || distance < 0 || distance > 100)
+    errors.distance = distanceOptional
+      ? "Distance must be 0 or more, and no more than 100 miles."
+      : "Distance must be greater than 0 and no more than 100 miles.";
+  else if (!distanceOptional && distance <= 0)
     errors.distance = "Distance must be greater than 0 and no more than 100 miles.";
-  else if (!/^\d+(?:\.\d{1,2})?$/.test(values.distance.trim()))
+  else if (distanceInput && !/^\d+(?:\.\d{1,2})?$/.test(distanceInput))
     errors.distance = "Use no more than two decimal places.";
 
   if (!values.duration.trim()) errors.duration = "Enter your duration.";
