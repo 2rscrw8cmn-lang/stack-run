@@ -12,6 +12,7 @@ function errorsFor(values: Partial<RunEntryValues>) {
       duration: "31:42",
       effort: "solid",
       notes: "",
+      heartRate: "",
       ...values,
     },
     TODAY,
@@ -30,6 +31,7 @@ describe("validateRunEntry", () => {
         duration: "31:42",
         effort: "great",
         notes: "  strong finish  ",
+        heartRate: "148",
       },
       TODAY,
     );
@@ -43,6 +45,7 @@ describe("validateRunEntry", () => {
         durationSeconds: 1902,
         effort: "great",
         notes: "strong finish",
+        manualHeartRate: 148,
       },
     });
   });
@@ -56,6 +59,7 @@ describe("validateRunEntry", () => {
         duration: "",
         effort: null,
         notes: "",
+        heartRate: "",
       },
       TODAY,
     );
@@ -80,6 +84,7 @@ describe("validateRunEntry", () => {
         duration: "30:00",
         effort: "solid",
         notes: "",
+        heartRate: "",
       },
       TODAY,
     ).valid).toBe(true);
@@ -112,6 +117,7 @@ describe("validateRunEntry", () => {
         duration: "45:00",
         effort: "solid",
         notes: "",
+        heartRate: "",
       },
       TODAY,
     );
@@ -124,6 +130,7 @@ describe("validateRunEntry", () => {
         durationSeconds: 2700,
         effort: "solid",
         notes: "",
+        manualHeartRate: null,
       },
     });
 
@@ -135,6 +142,7 @@ describe("validateRunEntry", () => {
         duration: "45:00",
         effort: "solid",
         notes: "",
+        heartRate: "",
       },
       TODAY,
     );
@@ -167,5 +175,44 @@ describe("validateRunEntry", () => {
 
   it("limits notes to 120 characters", () => {
     expect(errorsFor({ notes: "x".repeat(121) }).notes).toMatch(/120/);
+  });
+
+  it("leaves heart rate out when left blank", () => {
+    const result = validateRunEntry(
+      {
+        date: TODAY,
+        activityType: "easy",
+        distance: "3.2",
+        duration: "31:42",
+        effort: "solid",
+        notes: "",
+        heartRate: "",
+      },
+      TODAY,
+    );
+    expect(result.valid && result.value.manualHeartRate).toBeNull();
+  });
+
+  it("accepts a hand-typed heart rate within a plausible range", () => {
+    const result = validateRunEntry(
+      {
+        date: TODAY,
+        activityType: "easy",
+        distance: "3.2",
+        duration: "31:42",
+        effort: "solid",
+        notes: "",
+        heartRate: "142",
+      },
+      TODAY,
+    );
+    expect(result.valid && result.value.manualHeartRate).toBe(142);
+  });
+
+  it("rejects a heart rate outside a plausible bpm range or not a whole number", () => {
+    expect(errorsFor({ heartRate: "29" }).heartRate).toMatch(/30 and 250/);
+    expect(errorsFor({ heartRate: "251" }).heartRate).toMatch(/30 and 250/);
+    expect(errorsFor({ heartRate: "abc" }).heartRate).toMatch(/30 and 250/);
+    expect(errorsFor({ heartRate: "142.5" }).heartRate).toMatch(/30 and 250/);
   });
 });

@@ -10,6 +10,8 @@ export interface RunEntryValues {
   duration: string;
   effort: Effort | null;
   notes: string;
+  /** Optional, hand-typed — never a source-verified fact. */
+  heartRate: string;
 }
 
 export interface ValidRunEntry {
@@ -19,6 +21,8 @@ export interface ValidRunEntry {
   durationSeconds: number;
   effort: Effort;
   notes: string;
+  /** Null when left blank, so saving always says clear rather than leaving a stale value in place. */
+  manualHeartRate: number | null;
 }
 
 export type RunEntryErrors = Partial<Record<keyof RunEntryValues, string>>;
@@ -95,6 +99,17 @@ export function validateRunEntry(
   if (!values.effort) errors.effort = "Choose how the run felt.";
   if (notes.length > 120) errors.notes = "Notes must be 120 characters or fewer.";
 
+  const heartRateInput = values.heartRate.trim();
+  let manualHeartRate: number | null = null;
+  if (heartRateInput) {
+    const parsed = Number(heartRateInput);
+    if (!/^\d+$/.test(heartRateInput) || !Number.isFinite(parsed) || parsed < 30 || parsed > 250) {
+      errors.heartRate = "Enter a heart rate between 30 and 250 bpm.";
+    } else {
+      manualHeartRate = parsed;
+    }
+  }
+
   if (Object.keys(errors).length || duration === null || !values.effort) {
     return { valid: false, errors };
   }
@@ -107,6 +122,7 @@ export function validateRunEntry(
       durationSeconds: duration,
       effort: values.effort,
       notes,
+      manualHeartRate,
     },
   };
 }

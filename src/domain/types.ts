@@ -104,6 +104,14 @@ export interface RunLog {
   source?: RunSource;
   externalSource?: ExternalRunSource | null;
   importedMetrics?: ImportedRunMetrics | null;
+  /**
+   * A heart rate the runner typed in by hand, in bpm — never a source-verified
+   * fact the way `importedMetrics.averageHeartRate` is. Kept as its own field
+   * rather than folded into `importedMetrics` so the two can never be
+   * confused: this is the one number in Run Detail that is not something a
+   * watch measured.
+   */
+  manualHeartRate?: number | null;
 }
 
 export interface IntervalsSyncState {

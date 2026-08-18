@@ -101,6 +101,23 @@ describe("connected run result", () => {
     expect(zones).not.toHaveTextContent("Zone 4");
   });
 
+  it("shows a hand-typed heart rate on a manual run that has no imported one", () => {
+    render(<RunResultDetail run={{ ...base, manualHeartRate: 142 }} />);
+    expect(screen.getByText("142 bpm")).toBeInTheDocument();
+    expect(screen.getByText("Avg HR")).toBeInTheDocument();
+  });
+
+  it("never shows a manual heart rate beside an imported one", () => {
+    render(
+      <RunResultDetail
+        run={{ ...syncedRun, importedMetrics: { averageHeartRate: 151 }, manualHeartRate: 999 }}
+      />,
+    );
+    expect(screen.getByText("151 bpm")).toBeInTheDocument();
+    expect(screen.queryByText("999 bpm")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Avg HR")).toHaveLength(1);
+  });
+
   it("keeps the phone summary metrics to one 2×2 grid, with cadence living in the profile", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
@@ -108,7 +125,7 @@ describe("connected run result", () => {
 
     // Exactly four cells, in source order, so the CSS 2×2 lands as designed
     // rather than three across with a fifth stranded underneath.
-    const grid = screen.getByLabelText("Imported run metrics");
+    const grid = screen.getByLabelText("Run metrics");
     expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
       .toEqual(["Avg HR", "Max HR", "Gain", "Load"]);
     expect(screen.getByRole("button", { name: "Cadence" })).toBeInTheDocument();
@@ -320,7 +337,7 @@ describe("Run Profile cadence", () => {
     await screen.findByText("Run Profile");
 
     expect(screen.queryByRole("button", { name: "Cadence" })).not.toBeInTheDocument();
-    const grid = screen.getByLabelText("Imported run metrics");
+    const grid = screen.getByLabelText("Run metrics");
     expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
       .toEqual(["Avg HR", "Max HR", "Gain", "Load", "Cadence"]);
     expect(within(grid).getByText("79")).toBeInTheDocument();

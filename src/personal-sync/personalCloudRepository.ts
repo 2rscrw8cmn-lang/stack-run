@@ -148,6 +148,7 @@ function parseRunRow(value: unknown): PersonalCloudRun {
   const runRevision = revision(row.revision);
   const createdAt = string(row.created_at);
   const updatedAt = string(row.updated_at);
+  const manualHeartRate = finite(row.manual_heart_rate);
   if (
     !id ||
     !completedDate ||
@@ -168,7 +169,10 @@ function parseRunRow(value: unknown): PersonalCloudRun {
     !createdAt ||
     !updatedAt ||
     !Number.isFinite(Date.parse(createdAt)) ||
-    !Number.isFinite(Date.parse(updatedAt))
+    !Number.isFinite(Date.parse(updatedAt)) ||
+    (row.manual_heart_rate !== null && row.manual_heart_rate !== undefined &&
+      (manualHeartRate === null || !Number.isInteger(manualHeartRate) ||
+        manualHeartRate < 30 || manualHeartRate > 250))
   ) {
     throw new Error("Cloud run data is malformed.");
   }
@@ -209,6 +213,7 @@ function parseRunRow(value: unknown): PersonalCloudRun {
             }
           : null,
       importedMetrics: parseMetrics(row.imported_metrics),
+      manualHeartRate,
       createdAt,
       updatedAt,
     },

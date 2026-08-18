@@ -92,6 +92,25 @@ describe("personal cloud hydration", () => {
     });
   });
 
+  it("round-trips a hand-typed heart rate, and leaves it out when the column is absent", async () => {
+    const withManual = await loadPersonalCloudSnapshot(
+      readClient(rows({
+        personal_runs: [{ ...rows().personal_runs[0], manual_heart_rate: 142 }],
+      })),
+    );
+    expect(withManual!.runs[0].run.manualHeartRate).toBe(142);
+
+    const withoutColumn = await loadPersonalCloudSnapshot(readClient(rows()));
+    expect(withoutColumn!.runs[0].run.manualHeartRate).toBeNull();
+  });
+
+  it("rejects a manual heart rate outside a plausible bpm range", async () => {
+    const malformed = rows({
+      personal_runs: [{ ...rows().personal_runs[0], manual_heart_rate: 999 }],
+    });
+    await expect(loadPersonalCloudSnapshot(readClient(malformed))).rejects.toThrow("malformed");
+  });
+
   it("rejects malformed cloud hydration and leaves a valid local cache intact", async () => {
     localStorage.clear();
     const cached = structuredClone(createInitialAppState());

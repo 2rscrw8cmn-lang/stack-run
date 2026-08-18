@@ -219,11 +219,18 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: I
     ? metrics?.averageCadence
     : undefined;
 
+  // A hand-typed heart rate is never a source-verified fact the way an
+  // imported average is, so it only ever fills in for a run with no
+  // imported reading rather than standing beside one.
+  const showManualHeartRate =
+    metrics?.averageHeartRate === undefined && run.manualHeartRate != null;
+
   const hasSecondaryMetrics = metrics?.averageHeartRate !== undefined ||
     metrics?.maxHeartRate !== undefined ||
     metrics?.elevationGainFeet !== undefined ||
     metrics?.trainingLoad !== undefined ||
-    summaryCadence !== undefined;
+    summaryCadence !== undefined ||
+    showManualHeartRate;
 
   return (
     <div className="run-result-detail">
@@ -253,9 +260,12 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: I
       </dl>
 
       {hasSecondaryMetrics && (
-        <dl className="run-result-detail__secondary" aria-label="Imported run metrics">
+        <dl className="run-result-detail__secondary" aria-label="Run metrics">
           {metrics?.averageHeartRate !== undefined && (
             <div><dd className="data-value">{rounded(metrics.averageHeartRate)} bpm</dd><dt className="machine-label">Avg HR</dt></div>
+          )}
+          {showManualHeartRate && (
+            <div><dd className="data-value">{rounded(run.manualHeartRate!)} bpm</dd><dt className="machine-label">Avg HR</dt></div>
           )}
           {metrics?.maxHeartRate !== undefined && (
             <div><dd className="data-value">{rounded(metrics.maxHeartRate)} bpm</dd><dt className="machine-label">Max HR</dt></div>

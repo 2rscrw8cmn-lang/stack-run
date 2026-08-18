@@ -293,6 +293,14 @@ export function saveRunLog(state: AppState, input: RunLogInput): AppState {
     source: input.source ?? existing?.source ?? "manual",
     externalSource: input.externalSource ?? existing?.externalSource ?? null,
     importedMetrics: input.importedMetrics ?? existing?.importedMetrics ?? null,
+    // Unlike the fields above, an explicit `null` here means the runner
+    // cleared the field and must win over the existing value — `??` cannot
+    // tell "cleared" apart from "not mentioned," so this checks `undefined`
+    // specifically rather than falling through on every falsy value.
+    manualHeartRate:
+      input.manualHeartRate !== undefined
+        ? input.manualHeartRate
+        : (existing?.manualHeartRate ?? null),
   };
 
   const runLog: RunLog = existing

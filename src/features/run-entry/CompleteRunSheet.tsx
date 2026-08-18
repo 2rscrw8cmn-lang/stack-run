@@ -57,6 +57,7 @@ function initialValues(
       duration: "",
       effort: null,
       notes: "",
+      heartRate: "",
     };
   }
   return {
@@ -66,6 +67,8 @@ function initialValues(
     duration: formatDurationSeconds(runLog.durationSeconds),
     effort: runLog.effort,
     notes: runLog.notes,
+    heartRate:
+      runLog.manualHeartRate != null ? String(runLog.manualHeartRate) : "",
   };
 }
 
@@ -183,6 +186,20 @@ export function CompleteRunSheet({
             onChange={(event) =>
               updateValue("duration", maskDurationInput(event.target.value))
             }
+          />
+        </FormField>
+
+        <FormField
+          label="Heart Rate (bpm, optional)"
+          error={errors.heartRate}
+        >
+          <input
+            className="run-input"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="Optional"
+            value={values.heartRate}
+            onChange={(event) => updateValue("heartRate", event.target.value)}
           />
         </FormField>
 
