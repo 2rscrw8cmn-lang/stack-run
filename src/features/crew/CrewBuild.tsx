@@ -54,6 +54,8 @@ interface CrewBuildProps {
   justPlacedRunId?: string | null;
   onStartReady: () => void;
   onSelectRun: (runId: string) => void;
+  /** The member rail is one of Crew Profile's two front doors (issue #120). */
+  onSelectMember: (userId: string) => void;
 }
 
 function blockLabel(block: CrewBuildBlock): string {
@@ -107,6 +109,7 @@ export function CrewBuild({
   justPlacedRunId = null,
   onStartReady,
   onSelectRun,
+  onSelectMember,
 }: CrewBuildProps) {
   const towerRef = useRef<HTMLUListElement>(null);
   const skylineRef = useRef<HTMLDivElement>(null);
@@ -357,15 +360,31 @@ export function CrewBuild({
         </p>
       )}
 
+      {/*
+        The runners, as a single icon-only row (issue #120). A named legend
+        wrapped onto a second and third line as the crew grew, and every line
+        it took came out of the tower above it. Names live one tap away in
+        Crew Profile — and, permanently, in each icon's accessible name.
+      */}
       {members.length > 0 && (
-        <ul className="crew-build__legend" aria-label="Crew Build runners">
+        <ul className="crew-build__rail" aria-label="Crew Build runners">
           {members.map((member) => (
             <li key={member.userId} data-member-color={crewMemberAccent(member.userId, member.accentColor)}>
-              <RunnerIcon icon={member.runnerIcon} size={26} />
-              <span>{member.displayName}</span>
+              <button
+                type="button"
+                className="crew-build__rail-runner"
+                aria-label={`Open ${member.displayName}'s Crew Profile`}
+                onClick={() => onSelectMember(member.userId)}
+              >
+                <RunnerIcon icon={member.runnerIcon} size={30} />
+              </button>
             </li>
           ))}
         </ul>
+      )}
+
+      {members.length === 1 && (
+        <p className="crew-build__invite-note">Invite your crew to build together.</p>
       )}
     </section>
   );

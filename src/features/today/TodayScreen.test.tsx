@@ -2,6 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { BlockPlacement, RunLog } from "../../domain/types";
+import type { CrewDashboardData, CrewSharedRun } from "../../crew/types";
+import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { TodayScreen } from "./TodayScreen";
 
@@ -39,6 +41,57 @@ function placementFor(runLogId: string): BlockPlacement {
     height: 1,
     placedAt: "2026-08-04T13:00:00.000Z",
   };
+}
+
+/**
+ * A signed-in crew whose only shared run is the projection of one local run.
+ * `crewBuildRow` is what makes it READY rather than already standing in the
+ * shared tower.
+ */
+function crewWith(run: Partial<CrewSharedRun>): RaceCrewController {
+  const shared: CrewSharedRun = {
+    id: "shared-1",
+    localRunId: "run-workout-002",
+    userId: "zack",
+    displayName: "Zack",
+    accentColor: null,
+    runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 },
+    localDate: "2026-08-04",
+    activityType: "easy",
+    distanceMiles: 2.1,
+    durationSeconds: 1230,
+    createdAt: "2026-08-04T13:00:00Z",
+    updatedAt: "2026-08-04T13:00:00Z",
+    buildRow: null,
+    buildColumnStart: null,
+    crewBuildRow: null,
+    crewBuildColumnStart: null,
+    crewBuildPlacedAt: null,
+    propsCount: 0,
+    viewerHasPropped: false,
+    ...run,
+  };
+  const crewData: CrewDashboardData = {
+    members: [],
+    summaries: [],
+    runs: [shared],
+    miniBuildRuns: [],
+    crewBuildRuns: [],
+    sharedRunsAvailable: true,
+    sharedRunsTruncated: false,
+    propsAvailable: true,
+    propNotifications: [],
+    loadedAt: "2026-08-04T13:00:00Z",
+  };
+  return {
+    status: "signed-in",
+    account: { profile: { id: "zack", displayName: "Zack" }, crew: { id: "crew-1" } },
+    crewData,
+    propsPendingRunIds: [],
+    propsErrors: {},
+    refreshCrewData: vi.fn(async () => undefined),
+    toggleProps: vi.fn(async () => undefined),
+  } as unknown as RaceCrewController;
 }
 
 function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
@@ -107,15 +160,19 @@ describe("TodayScreen workout states", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the completed state using the existing run log", () => {
+  /*
+   * Issue #120: the completed state is one line of facts and whatever the run
+   * still owes. Effort, the earned-block chip and the "built into the tower"
+   * sentence are all gone — once the run exists, none of them is an action.
+   */
+  it("states the completed run as one compact line", () => {
     renderToday({ runLogs: [completedEasyRun] });
 
-    // Scoped: the week's actual totals repeat these numbers by design.
-    const summary = within(screen.getByRole("group", { name: "Completed run" }));
-    expect(summary.getByText("2.1 mi")).toBeInTheDocument();
-    expect(summary.getByText("20:30")).toBeInTheDocument();
-    expect(summary.getByText("Solid")).toBeInTheDocument();
-    expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
+    expect(screen.getByText("2.1 mi · 20:30 · 9:46 /MI")).toBeInTheDocument();
+    expect(screen.queryByText("Solid")).not.toBeInTheDocument();
+    expect(screen.queryByText(/You earned an Easy block/)).not.toBeInTheDocument();
+    // `View Build` survives only as the Build preview's own section link.
+    expect(screen.getAllByRole("button", { name: /View Build/ })).toHaveLength(1);
   });
 
   it("shows the before-plan state without pretending a workout is due", () => {
@@ -271,29 +328,87 @@ describe("TodayScreen earned block", () => {
       runLogs: [completedEasyRun],
     });
 
-    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    await user.click(screen.getByRole("button", { name: "Place Personal Block" }));
     expect(onStartPlacing).toHaveBeenCalledWith("run-workout-002");
   });
 
-  it("reports a placed block instead of offering to place it again", () => {
+  it("says nothing at all once the block is placed and nothing else is owed", () => {
     renderToday({
       runLogs: [completedEasyRun],
       blockPlacements: [placementFor("run-workout-002")],
     });
 
     expect(
-      screen.queryByRole("button", { name: "Place Block" }),
+      screen.queryByRole("button", { name: "Place Personal Block" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Your Easy block is built into the tower/),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Place Crew Block" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/built into the tower/),
+    ).not.toBeInTheDocument();
+    // The compact summary and its quiet Edit are all that remain.
+    expect(screen.getByText("2.1 mi · 20:30 · 9:46 /MI")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
+
+  /*
+   * Issue #120: a run can owe two independent blocks, and Today offers each
+   * only while it is actually owed (D-066).
+   */
+  it("offers both placements while both blocks are still owed", () => {
+    renderToday({ runLogs: [completedEasyRun], raceCrew: crewWith({}) });
+
+    expect(screen.getByRole("button", { name: "Place Personal Block" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Place Crew Block" })).toBeInTheDocument();
+  });
+
+  it("keeps offering the Crew block after the Personal block is placed", async () => {
+    const onStartCrewPlacing = vi.fn();
+    const { user } = renderToday({
+      runLogs: [completedEasyRun],
+      blockPlacements: [placementFor("run-workout-002")],
+      raceCrew: crewWith({}),
+      onStartCrewPlacing,
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Place Personal Block" }),
+    ).not.toBeInTheDocument();
+
+    // And it enters placement for that exact shared run, not the Crew page.
+    await user.click(screen.getByRole("button", { name: "Place Crew Block" }));
+    expect(onStartCrewPlacing).toHaveBeenCalledWith("shared-1");
+  });
+
+  it("offers only the Personal block once the Crew block is standing", () => {
+    renderToday({
+      runLogs: [completedEasyRun],
+      raceCrew: crewWith({ crewBuildRow: 0, crewBuildColumnStart: 1 }),
+    });
+
+    expect(screen.getByRole("button", { name: "Place Personal Block" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Place Crew Block" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers no Crew block for a run that never became a shared contribution", () => {
+    renderToday({
+      runLogs: [completedEasyRun],
+      raceCrew: crewWith({ localRunId: "some-other-run" }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Place Crew Block" }),
+    ).not.toBeInTheDocument();
   });
 
   it("deletes a logged run after confirming", async () => {
     const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
 
-    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Delete Run" }));
 
     expect(confirm).toHaveBeenCalledTimes(1);
@@ -305,7 +420,7 @@ describe("TodayScreen earned block", () => {
     const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
 
-    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     await user.click(screen.getByRole("button", { name: "Delete Run" }));
 
     expect(onDeleteRun).not.toHaveBeenCalled();
@@ -324,7 +439,7 @@ describe("TodayScreen earned block", () => {
   it("edits a completed run through the same form", async () => {
     const { user, onSaveRun } = renderToday({ runLogs: [completedEasyRun] });
 
-    await user.click(screen.getByRole("button", { name: "Edit Run" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
 
     await user.clear(screen.getByLabelText(/Distance/));
@@ -349,15 +464,21 @@ const candidate = {
 };
 
 describe("TodayScreen run found", () => {
-  it("offers a synced run against the workout it looks like", () => {
+  /*
+   * Issue #120: a prompt, not the import workflow. Pace, heart rate, the
+   * extra-run decision and the ignore control all belong to Run Data now.
+   */
+  it("names the synced run and what it looks like, and nothing more", () => {
     renderToday({ candidates: [candidate] });
 
     expect(screen.getByText("Run found")).toBeInTheDocument();
-    expect(screen.getByText("2.15 mi")).toBeInTheDocument();
-    expect(screen.getByText("20:30")).toBeInTheDocument();
-    expect(screen.getByText("9:32 /MI")).toBeInTheDocument();
-    expect(screen.getByText("152 bpm")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Review Run" })).toBeInTheDocument();
+    expect(screen.getByText("2.15 mi · 20:30")).toBeInTheDocument();
+    expect(screen.getByText(/^Looks like /)).toBeInTheDocument();
+    expect(screen.queryByText("9:32 /MI")).not.toBeInTheDocument();
+    expect(screen.queryByText(/bpm/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Extra Run" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Not now" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ignore this run" })).not.toBeInTheDocument();
     // Whatever sync found, the day's workout is still the thing on screen.
     expect(screen.getByText("Today’s workout")).toBeInTheDocument();
   });
@@ -366,23 +487,8 @@ describe("TodayScreen run found", () => {
     const onReviewCandidate = vi.fn();
     const { user } = renderToday({ candidates: [candidate], onReviewCandidate });
 
-    await user.click(screen.getByRole("button", { name: "Review Run" }));
-    expect(onReviewCandidate).toHaveBeenCalledWith(candidate, false);
-
-    await user.click(screen.getByRole("button", { name: "Extra Run" }));
-    expect(onReviewCandidate).toHaveBeenLastCalledWith(candidate, true);
-  });
-
-  it("separates putting a run away from refusing it for good", async () => {
-    const onDismissCandidate = vi.fn();
-    const onIgnoreCandidate = vi.fn();
-    const { user } = renderToday({ candidates: [candidate], onDismissCandidate, onIgnoreCandidate });
-
-    await user.click(screen.getByRole("button", { name: "Not now" }));
-    expect(onDismissCandidate).toHaveBeenCalledWith("i1");
-
-    await user.click(screen.getByRole("button", { name: "Ignore this run" }));
-    expect(onIgnoreCandidate).toHaveBeenCalledWith("i1");
+    await user.click(screen.getByRole("button", { name: "Review Run →" }));
+    expect(onReviewCandidate).toHaveBeenCalledWith(candidate);
   });
 
   it("leaves an older synced run to Run Data rather than putting it on Today", () => {

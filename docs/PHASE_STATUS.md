@@ -672,6 +672,44 @@ Race Setup regeneration).
 
 - `npm run check` passes (lint, 1449 tests, build).
 
+## Crew + Today space pass (issue #120)
+
+Status: **Implemented / owner review and real-device QA pending.**
+
+- Crew Build's wrapping named legend becomes a single icon-only member rail
+  that scrolls sideways instead of taking a second row from the tower; each
+  icon opens that runner's Crew Profile.
+- Crew comparisons drop Consistency (and Run Club's `Run Days` substitute)
+  for **Avg Pace**, trailing 28 days, total duration ÷ total distance,
+  excluding Cross Training and zero-distance/duration activity. Lower is
+  better, and the bar scale follows. Crew Profile shows `Avg Pace · 28D` in
+  the same slot.
+- The main Crew screen's `The Crew` / Member Builds rail is removed; the full
+  individual Build stays inside Crew Profile, which is now reached from the
+  Crew Build rail and from runner identity in each comparison row.
+- Visible Crew freshness copy is replaced by refresh-icon state — healthy,
+  syncing, attention — with the status preserved in the accessible name.
+- Today's completed run collapses to a title, one facts line and a quiet
+  `Edit`, plus `Place Personal Block` / `Place Crew Block` shown only while
+  each block is genuinely unplaced. `Place Crew Block` enters Crew placement
+  for that specific shared run.
+- Today's `Run Found` reduces to run identity, likely match and `Review Run`;
+  match/extra/type/effort/notes/ignore all live in Run Data.
+- Run Data splits into candidate and review states: selecting a run replaces
+  the list, so matching controls need no scrolling, with `← Back to runs`
+  and a return to the remaining candidates after each run is settled.
+
+No Supabase migration, no AppState migration, no new dependency. `CrewSharedRun`
+gains `localRunId`, read back from the `local_run_id` the projection already
+writes. `src/crew/runDays.ts`, `CrewMiniBuild.tsx` and `useConnectedSync`'s
+session-only `dismiss` are deleted with the surfaces that used them. See D-078.
+
+Owner verification still outstanding: no real-device/browser QA; covered
+instead by automated tests across Crew, Today, Run Data, comparisons, Avg
+Pace, sync status and the stylesheet's member-rail rules.
+
+- `npm run check` passes (lint, 1493 tests, build).
+
 ## Active source documents
 
 - `START_HERE.md`

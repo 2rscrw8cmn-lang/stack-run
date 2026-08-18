@@ -30,6 +30,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
     shared_runs: [
       {
         id: "run-1",
+        local_run_id: "local-run-1",
         user_id: "user-1",
         local_date: "2026-08-09",
         activity_type: "long",
@@ -105,7 +106,7 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
     );
     expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
     const reactionSelect = calls.find(
@@ -125,6 +126,7 @@ describe("Crew dashboard query", () => {
     expect(calls).toContainEqual({ table: "shared_runs", operation: "limit", value: 128 });
     expect(loaded.runs[0]).toEqual({
       id: "run-1",
+      localRunId: "local-run-1",
       userId: "user-1",
       displayName: "Runner",
       accentColor: null,
