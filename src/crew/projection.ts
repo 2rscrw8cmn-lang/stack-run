@@ -22,6 +22,10 @@ export interface CrewSharedRunProjection {
   buildColumnStart: number | null;
   buildWidth: BlockPlacement["width"] | null;
   buildHeight: BlockPlacement["height"] | null;
+  /** Per D-078, the one piece of health data Crew sees. Null covers both "no reading" and "not synced". */
+  averageHeartRate: number | null;
+  maxHeartRate: number | null;
+  manualHeartRate: number | null;
 }
 
 export interface CrewMemberSummaryProjection {
@@ -91,6 +95,11 @@ function safeSharedPlacement(
   };
 }
 
+/**
+ * Heart rate fields are the one deliberate exception to "never spread a
+ * RunLog" above them, per D-078 — still named explicitly, still never a
+ * spread, just no longer withheld.
+ */
 export function projectSharedRun(
   run: RunLog,
   placement?: BlockPlacement,
@@ -106,6 +115,9 @@ export function projectSharedRun(
     buildColumnStart: sharedPlacement?.buildColumnStart ?? null,
     buildWidth: sharedPlacement?.buildWidth ?? null,
     buildHeight: sharedPlacement?.buildHeight ?? null,
+    averageHeartRate: run.importedMetrics?.averageHeartRate ?? null,
+    maxHeartRate: run.importedMetrics?.maxHeartRate ?? null,
+    manualHeartRate: run.manualHeartRate ?? null,
   };
 }
 
@@ -328,6 +340,9 @@ export async function syncCrewProjection(
         activity_type: run.activityType,
         distance_miles: run.distanceMiles,
         duration_seconds: run.durationSeconds,
+        average_heart_rate: run.averageHeartRate,
+        max_heart_rate: run.maxHeartRate,
+        manual_heart_rate: run.manualHeartRate,
         ...(run.buildRow === null || run.buildColumnStart === null
           ? {}
           : {
