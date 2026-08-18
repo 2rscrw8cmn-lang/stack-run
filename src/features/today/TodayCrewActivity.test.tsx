@@ -13,6 +13,7 @@ function run(
 ): CrewSharedRun {
   return {
     id,
+    localRunId: `local-${id}`,
     userId,
     displayName: userId === "zack" ? "Zack" : "Drew",
     accentColor: null,

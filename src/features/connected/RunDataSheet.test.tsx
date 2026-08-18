@@ -63,7 +63,7 @@ function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
 
 describe("RunDataSheet", () => {
   it("opens on the run Today handed it, already matched to its workout", () => {
-    renderSheet({ initialReview: { candidate, asExtra: false } });
+    renderSheet({ initialReview: { candidate } });
 
     expect(screen.getByText("Review synced run")).toBeInTheDocument();
     expect(screen.getByLabelText("Match")).toHaveValue(firstRun.id);
@@ -71,10 +71,12 @@ describe("RunDataSheet", () => {
     expect(screen.getByRole("button", { name: "Confirm Match" })).toBeInTheDocument();
   });
 
-  it("respects a run Today sent through as an extra", () => {
-    renderSheet({ initialReview: { candidate, asExtra: true } });
+  /* Issue #120: "extra run" is a Run Data decision now, not one Today makes. */
+  it("turns the run into an extra when the Match selector is cleared", async () => {
+    const { user } = renderSheet({ initialReview: { candidate } });
 
-    expect(screen.getByLabelText("Match")).toHaveValue("");
+    await user.selectOptions(screen.getByLabelText("Match"), "");
+
     expect(screen.getByRole("radio", { name: "Easy" })).toHaveAttribute(
       "aria-checked",
       "true",
@@ -87,11 +89,14 @@ describe("RunDataSheet", () => {
       ...candidate,
       externalId: "i-hiit",
       sourceType: "HighIntensityIntervalTraining",
+      // Far outside the plan, so nothing suggests itself as a match.
+      completedDate: "2000-01-01",
       distanceMiles: 0,
       inferredActivityType: "cross",
     };
-    renderSheet({ initialReview: { candidate: hiitCandidate, asExtra: true } });
+    renderSheet({ initialReview: { candidate: hiitCandidate } });
 
+    expect(screen.getByLabelText("Match")).toHaveValue("");
     expect(screen.getByRole("radio", { name: "Cross Training" })).toHaveAttribute(
       "aria-checked",
       "true",
@@ -99,10 +104,9 @@ describe("RunDataSheet", () => {
   });
 
   it("lets an extra imported run use the shared STACK activity picker", async () => {
-    const { user, onImport } = renderSheet({
-      initialReview: { candidate, asExtra: true },
-    });
+    const { user, onImport } = renderSheet({ initialReview: { candidate } });
 
+    await user.selectOptions(screen.getByLabelText("Match"), "");
     await user.click(screen.getByRole("radio", { name: "Long Run" }));
     await user.click(screen.getByRole("button", { name: "Add as Extra Run" }));
 
@@ -112,8 +116,67 @@ describe("RunDataSheet", () => {
     ).not.toBeInTheDocument();
   });
 
+  /*
+   * Issue #120: the review used to render below the whole candidate list, so
+   * tapping the first of six runs opened a form the runner had to scroll past
+   * that list to reach — on the first sync, when the list is longest.
+   */
+  it("replaces the candidate list with the review of the run just chosen", async () => {
+    const second: IntervalsCandidate = { ...candidate, externalId: "i2", distanceMiles: 5.2 };
+    const { user } = renderSheet({ candidates: [candidate, second] });
+
+    expect(screen.getByText("Runs to Review")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /3.11 mi/ }));
+
+    expect(screen.getByText("Review synced run")).toBeInTheDocument();
+    expect(screen.queryByText("Runs to Review")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /5.2 mi/ })).not.toBeInTheDocument();
+    // Sync and connection controls belong to the list state, not the review.
+    expect(screen.queryByRole("button", { name: "Sync Now" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Forget Connection" })).not.toBeInTheDocument();
+  });
+
+  it("gives the review a way back to the runs still waiting", async () => {
+    const second: IntervalsCandidate = { ...candidate, externalId: "i2", distanceMiles: 5.2 };
+    const { user } = renderSheet({ candidates: [candidate, second] });
+
+    await user.click(screen.getByRole("button", { name: /3.11 mi/ }));
+    await user.click(screen.getByRole("button", { name: "← Back to runs" }));
+
+    expect(screen.getByText("Runs to Review")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /5.2 mi/ })).toBeInTheDocument();
+  });
+
+  it("opens straight into review for a run Today handed over, with no list above it", () => {
+    const second: IntervalsCandidate = { ...candidate, externalId: "i2", distanceMiles: 5.2 };
+    renderSheet({ candidates: [candidate, second], initialReview: { candidate } });
+
+    expect(screen.getByText("Review synced run")).toBeInTheDocument();
+    expect(screen.queryByText("Runs to Review")).not.toBeInTheDocument();
+  });
+
+  it("settles the reviewed run and returns to the remaining candidates", async () => {
+    const second: IntervalsCandidate = { ...candidate, externalId: "i2", distanceMiles: 5.2 };
+    const { user, onSettle } = renderSheet({
+      candidates: [candidate, second],
+      initialReview: { candidate },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm Match" }));
+
+    expect(onSettle).toHaveBeenCalledWith("i1");
+    expect(screen.getByText("Runs to Review")).toBeInTheDocument();
+  });
+
+  it("offers no back link when the reviewed run is the only one left", async () => {
+    const { user } = renderSheet({ candidates: [candidate] });
+
+    await user.click(screen.getByRole("button", { name: /3.11 mi/ }));
+    expect(screen.queryByRole("button", { name: "← Back to runs" })).not.toBeInTheDocument();
+  });
+
   it("imports the run and says what it earned", async () => {
-    const { user, onImport, onSettle } = renderSheet({ initialReview: { candidate, asExtra: false } });
+    const { user, onImport, onSettle } = renderSheet({ initialReview: { candidate } });
 
     await user.click(screen.getByRole("button", { name: "Confirm Match" }));
 
@@ -163,12 +226,12 @@ describe("RunDataSheet", () => {
  */
 describe("RunDataSheet manual match list", () => {
   it("still defaults to the suggested workout", () => {
-    renderSheet({ initialReview: { candidate, asExtra: false } });
+    renderSheet({ initialReview: { candidate } });
     expect(screen.getByLabelText("Match")).toHaveValue(firstRun.id);
   });
 
   it("offers every unmatched non-rest workout, grouped and never twice", () => {
-    renderSheet({ initialReview: { candidate, asExtra: false } });
+    renderSheet({ initialReview: { candidate } });
     const options = matchOptions();
 
     expect(options[0]).toBe("Add as Extra Run");
@@ -184,7 +247,7 @@ describe("RunDataSheet manual match list", () => {
 
   it("never offers a rest day or a workout another run already satisfies", () => {
     renderSheet({
-      initialReview: { candidate, asExtra: false },
+      initialReview: { candidate },
       state: { ...state, runLogs: [runLog({ workoutId: farLongRun.id })] },
     });
     const values = within(screen.getByLabelText("Match")).getAllByRole("option").map((option) => option.getAttribute("value"));
@@ -195,7 +258,7 @@ describe("RunDataSheet manual match list", () => {
   });
 
   it("matches a run to a workout well outside the suggestion window", async () => {
-    const { user, onImport } = renderSheet({ initialReview: { candidate, asExtra: false } });
+    const { user, onImport } = renderSheet({ initialReview: { candidate } });
 
     await user.selectOptions(screen.getByLabelText("Match"), farLongRun.id);
 
@@ -208,7 +271,7 @@ describe("RunDataSheet manual match list", () => {
   });
 
   it("keeps Add as Extra Run available whatever the plan offers", async () => {
-    const { user, onImport } = renderSheet({ initialReview: { candidate, asExtra: false } });
+    const { user, onImport } = renderSheet({ initialReview: { candidate } });
 
     await user.selectOptions(screen.getByLabelText("Match"), "");
     expect(screen.getByRole("radio", { name: "Easy" })).toHaveAttribute("aria-checked", "true");

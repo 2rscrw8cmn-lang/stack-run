@@ -525,6 +525,7 @@ describe("Account & Crew settings", () => {
     const user = userEvent.setup();
     const oldRun = {
       id: "run-1",
+      localRunId: "local-run-1",
       userId: "owner-1",
       displayName: "Owner",
       accentColor: null,

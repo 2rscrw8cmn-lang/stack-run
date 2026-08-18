@@ -107,6 +107,13 @@ export interface CrewMemberSummary {
  */
 export interface CrewSharedRun {
   id: string;
+  /**
+   * The contributing runner's own local STACK run id — already part of the
+   * approved shared-run contract, since it is how a projection finds the row
+   * it owns. Today reads it to tell whether the run it just logged still owes
+   * the Crew Build a block (issue #120).
+   */
+  localRunId: string;
   userId: string;
   displayName: string;
   accentColor: CrewMemberAccent | null;

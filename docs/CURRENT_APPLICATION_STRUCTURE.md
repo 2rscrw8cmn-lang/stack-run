@@ -1768,3 +1768,115 @@ Deferred: `generateTrainingPlan()` itself has no concept of Cross Training —
 it is purely a post-generation fill, applied the same way Run Days is. No
 UI copy suggests a methodology (how many days, which ones); the runner
 decides entirely.
+
+## Crew and Today space pass — Avg Pace, Crew Profile doors, compact Today, Run Data states (issue #120)
+
+The rule this pass applies throughout: **once STACK knows something happened,
+it stops spending space confirming it happened, and uses that space to show
+what the runner should do next.** No new product capability, no Supabase
+migration, no AppState migration, no dependency.
+
+### Crew Build carries a member rail, not a named legend
+
+`CrewBuild.tsx` replaces the wrapping `Crew Build runners` legend with a
+single icon-only row (`.crew-build__rail`). It never wraps: it scrolls
+sideways once the crew is wider than the screen, so the tower keeps the
+vertical space every extra legend row used to take. Each runner's existing
+Runner Icon keeps its existing Crew accent, is a full 44px target, and opens
+that runner's Crew Profile. Names live one tap away in the profile and,
+permanently, in each control's accessible name. The viewer comes first
+(`src/crew/memberOrder.ts`, which is `orderedMiniBuildMembers` renamed and
+moved out of `miniBuild.ts`).
+
+### Avg Pace replaces Consistency, for both crew types
+
+`src/crew/avgPace.ts` computes trailing-28-day average pace per member as
+**total duration ÷ total distance** over eligible shared runs — deliberately
+not the mean of per-run paces, which would let a one-mile shakeout outvote a
+twelve-mile long run. Cross Training, zero-distance and zero-duration
+activities are excluded; a member with no eligible running is absent from
+the map and reads as `—` rather than a fabricated `0:00`.
+
+`comparisons.ts` therefore drops both `consistency` and `run-days` as
+comparison metrics, and `src/crew/runDays.ts` is deleted: one set of four
+metrics (Weekly Miles, Longest Run, Avg Pace, Miles Built) now serves a Race
+Crew and a Run Club alike, because none of them needs a training plan.
+`lowerIsBetter()` makes the direction explicit, `orderedComparisonRows()`
+sorts by it, and `comparisonBest()` / `comparisonBarPercent()` draw a full
+bar for the *best* reading on screen — so the fastest pace has the longest
+bar even though its number is the smallest. `CrewMemberSummary` keeps
+`consistencyCompleted` / `consistencyDue`: the projection still writes them
+and no migration touches them; nothing displays them.
+
+Crew Profile's third stat cell shows `Avg Pace · 28D` in place of the old
+Race Crew / Run Club split, so the profile and the comparison tab finally
+read the same measurement.
+
+### Member mini Builds leave the main Crew page
+
+The `The Crew` / `Member Builds` rail and `CrewMiniBuild.tsx` are deleted.
+A per-member card for every runner grew without bound as the crew did and
+duplicated what the tower, the comparisons and Crew Profile already say.
+Nothing large replaces it: Crew Profile now has two consistent front doors —
+the Crew Build member rail, and the runner identity in each comparison row
+(a control, styled to stay a name rather than look like a button, so tapping
+it can never be confused with switching the metric). The full individual
+Build stays inside Crew Profile, unchanged, still read-only, still drawn with
+`faceCulledMiniBuildTower` over the same frozen Personal placement.
+
+### Crew sync state is the refresh icon
+
+`crewSyncStatus()` in `src/crew/freshness.ts` returns `healthy` (green),
+`syncing` (neutral, animated) or `attention` (amber — a failed refresh, or
+numbers old enough to change what a comparison means), plus the whole status
+in words for the control's `aria-label`. The visible `Updated 4m ago` copy
+beside Refresh is gone; mild staleness stays quiet, because a comparison a
+few minutes old is still the same comparison. Manual refresh is unchanged.
+
+### Today's completed run is a line, not a card
+
+`CompletedRunSummary.tsx` is now a title row, one facts line
+(`3.08 mi · 33:56 · 11:01 /MI`), whichever placements the run still owes, and
+a quiet `Edit`. The `RUN COMPLETE` treatment, the effort readout, the earned-
+block chip, the "your Easy block is built into the tower" sentence and the
+completed-state `View Build` action are all removed.
+
+A logged run can owe two independent blocks (D-066), so Today offers each
+only while it is owed: `Place Personal Block` while the Personal placement is
+missing, `Place Crew Block` while that runner's own shared contribution is
+still READY, both when both are, and neither once both are settled.
+
+`src/crew/todayCrewBlock.ts` answers the Crew half from the loaded dashboard,
+which is why `CrewSharedRun` now carries `localRunId` and `dashboard.ts`
+reads `local_run_id` — the local STACK run id was already inside the approved
+shared-run contract (it is how a projection finds the row it owns), so this
+reads back a field the projection already writes rather than widening the
+privacy boundary. `Place Crew Block` hands that shared run id to
+`AppShell`, which switches to Crew and passes it as `placeCrewRunId`;
+`CrewScreen` treats it as the placing run directly in render (no effect, no
+state write) until the runner confirms, cancels or picks a different block,
+at which point `onCrewPlacementHandled` retires it. A request that arrives
+before the crew payload does simply waits for it, so the runner is never
+dropped on the Crew page to hunt for their own READY block.
+
+### Today's Run Found is a prompt
+
+`RunFoundCard.tsx` states the run (`3.08 mi · 33:56`), what it looks like
+(`Looks like 4×3 Min Tempo`) and a single `Review Run →`. Pace, heart rate,
+`Extra Run`, `Not now` and `Ignore this run` are gone from the dashboard; the
+match, activity type, effort, notes and ignore decisions all belong to Run
+Data, which is one tap away. `RunDataReview` consequently loses `asExtra` —
+Today no longer decides that — and `useConnectedSync`'s session-only
+`dismiss` is deleted with the control that was its only caller.
+
+### Run Data is two states, not one long page
+
+`RunDataSheet.tsx` splits into a candidate state (connection, sync controls,
+`Runs to Review` and the list) and a review state that **replaces** it. The
+review used to render below the full candidate list, so tapping the first of
+six runs opened a form the runner had to scroll past that list to reach —
+on the first sync, when the list is longest. A quiet `← Back to runs` returns
+to the remaining candidates when there are any; confirming a match or adding
+an extra settles the run and returns to the list, or to the existing empty
+state when nothing is left. Opening Run Data from Today's `Review Run` lands
+directly in the review state with no list above it.

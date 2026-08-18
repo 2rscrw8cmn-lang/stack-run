@@ -44,7 +44,7 @@ export type ConnectedSyncStatus = "idle" | "syncing";
 export type OlderRunsResult = number | null;
 
 export interface ConnectedSync {
-  /** Unimported, un-ignored, un-dismissed running activities. */
+  /** Unimported, un-ignored running activities. */
   candidates: IntervalsCandidate[];
   status: ConnectedSyncStatus;
   /** The last failure, kept so a screen can offer a retry. Never blocking. */
@@ -53,8 +53,6 @@ export interface ConnectedSync {
   sync: () => Promise<void>;
   /** The first-connection window again, for runs an old release lost. */
   findOlderRuns: () => Promise<OlderRunsResult>;
-  /** Puts a candidate away for this session; a later session offers it again. */
-  dismiss: (externalId: string) => void;
   /** Drops a candidate that has just been imported, attached or ignored. */
   settle: (externalId: string) => void;
 }
@@ -112,7 +110,6 @@ export function useConnectedSync({
   const [candidates, setCandidates] = useState<IntervalsCandidate[]>([]);
   const [status, setStatus] = useState<ConnectedSyncStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [dismissed, setDismissed] = useState<readonly string[]>([]);
 
   // Read through refs: the sync closure must see the newest run logs and
   // ignored ids without the effect below re-subscribing on every state change.
@@ -222,7 +219,6 @@ export function useConnectedSync({
 
   const sync = useCallback(async () => { await run("manual"); }, [run]);
   const findOlderRuns = useCallback(() => run("backfill"), [run]);
-  const dismiss = useCallback((externalId: string) => setDismissed((all) => all.includes(externalId) ? all : [...all, externalId]), []);
   const settle = useCallback((externalId: string) => {
     const next = queue.current.filter((candidate) => candidate.externalId !== externalId);
     applyQueue(next);
@@ -238,15 +234,11 @@ export function useConnectedSync({
   return {
     // A signed-in account can review the canonical queue without a credential;
     // only a fresh network fetch requires this device to be connected.
-    candidates:
-      activeConnection || accountId
-        ? candidates.filter((candidate) => !dismissed.includes(candidate.externalId))
-        : [],
+    candidates: activeConnection || accountId ? candidates : [],
     status,
     error: activeConnection ? error : null,
     sync,
     findOlderRuns,
-    dismiss,
     settle,
   };
 }

@@ -8,8 +8,8 @@ import { formatDateLabel } from "../../domain/dates";
 import { formatCompactMiles, formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { GRID_COLUMNS } from "../../domain/placement";
 import {
+  AVG_PACE_WINDOW_LABEL,
   formatComparisonReading,
-  type ComparisonMetric,
   type ComparisonSummary,
 } from "../../crew/comparisons";
 import { crewMemberAccent } from "../../crew/memberAccent";
@@ -28,19 +28,12 @@ import { RunnerIcon } from "./RunnerIcon";
 const PROFILE_VISIBLE_COURSES = 10;
 const DEFAULT_VISIBLE_RUNS = 5;
 
-/** The Race Crew / Run Club stat the profile's third strip cell shows (issue #87). */
-export interface CrewMemberProfileMetric {
-  id: ComparisonMetric;
-  label: string;
-}
-
 interface CrewMemberProfileSheetProps {
   member: CrewMember | null;
   /** The current viewer's own profile gets a subtle `YOU` marker, never a louder one. */
   isYou: boolean;
   model: CrewMiniBuildModel | null;
   summary: ComparisonSummary | null;
-  consistencyMetric: CrewMemberProfileMetric;
   /** This member's shared runs, newest first — the same `CrewSharedRun` contract as Recent Crew Runs. */
   runs: CrewSharedRun[];
   isOpen: boolean;
@@ -88,7 +81,6 @@ export function CrewMemberProfileSheet({
   isYou,
   model,
   summary,
-  consistencyMetric,
   runs,
   isOpen,
   onClose,
@@ -111,7 +103,7 @@ export function CrewMemberProfileSheet({
 
   const weeklyMiles = formatComparisonReading("weekly-miles", summary);
   const longestRun = formatComparisonReading("longest-run", summary);
-  const consistency = formatComparisonReading(consistencyMetric.id, summary);
+  const avgPace = formatComparisonReading("avg-pace", summary);
 
   const visibleRuns = showAllRuns ? runs : runs.slice(0, DEFAULT_VISIBLE_RUNS);
   const hiddenRunCount = runs.length - visibleRuns.length;
@@ -149,12 +141,14 @@ export function CrewMemberProfileSheet({
             <dd className="data-value">{longestRun.value}</dd>
             <dt className="machine-label">Longest</dt>
           </div>
+          {/*
+            Consistency needed a training plan, so it read differently for a
+            Race Crew and a Run Club and matched neither's comparison tab.
+            Avg Pace is the same measurement for everybody (issue #120).
+          */}
           <div>
-            <dd className="data-value">
-              {consistency.value}
-              {consistency.detail && <span className="machine-label"> · {consistency.detail}</span>}
-            </dd>
-            <dt className="machine-label">{consistencyMetric.label}</dt>
+            <dd className="data-value">{avgPace.value}</dd>
+            <dt className="machine-label">Avg Pace · {AVG_PACE_WINDOW_LABEL}</dt>
           </div>
           <div>
             <dd className="data-value">{formatMilesBuilt(model.totalMiles)} MI</dd>

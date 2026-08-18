@@ -20,7 +20,7 @@ import type { IntervalsCandidate, IntervalsConnection } from "../connected/inter
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
 import { SettingsSheet } from "../features/settings/SettingsSheet";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { RaceCrewController } from "../crew/useRaceCrew";
 import { AccountCrewSheet } from "../features/crew/AccountCrewSheet";
 import { RunnerIcon } from "../features/crew/RunnerIcon";
@@ -117,6 +117,11 @@ export function AppShell({
   // Run Data is reached from Today and from Settings. Dismissing it should go
   // back wherever it was opened from, so which one that was is remembered.
   const [runDataFromSettings, setRunDataFromSettings] = useState(false);
+  // The one shared run Today handed to Crew for placement, until Crew has it.
+  // Crew Build placement is independent of Personal Build placement (D-066),
+  // so `Place Crew Block` cannot just send the runner to the Crew page and
+  // leave them to find their own READY block in the tower (issue #120).
+  const [crewPlacementRunId, setCrewPlacementRunId] = useState<string | null>(null);
   // Account & Crew has the same problem now that the header opens it directly:
   // only a visit that came from Settings should land back in Settings.
   const [accountCrewFromSettings, setAccountCrewFromSettings] = useState(false);
@@ -126,6 +131,8 @@ export function AppShell({
     if (!fromSettings) setSettingsOpen(false);
     setAccountCrewOpen(true);
   }
+
+  const clearCrewPlacementRequest = useCallback(() => setCrewPlacementRunId(null), []);
 
   const personalInitialization = personalSync?.initialization ?? null;
 
@@ -220,16 +227,15 @@ export function AppShell({
               onPlacingChange(runLogId);
               onTabChange("build");
             }}
+            onStartCrewPlacing={(sharedRunId) => {
+              setCrewPlacementRunId(sharedRunId);
+              onTabChange("crew");
+            }}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             availability={availability}
             candidates={connectedSync.candidates}
-            onReviewCandidate={(candidate, asExtra) => openRunData({ candidate, asExtra })}
-            onDismissCandidate={connectedSync.dismiss}
-            onIgnoreCandidate={(externalId) => {
-              onIgnoreIntervals(externalId);
-              connectedSync.settle(externalId);
-            }}
+            onReviewCandidate={(candidate) => openRunData({ candidate })}
             syncError={connectedSync.error}
             onRetrySync={connectedSync.sync}
             isSyncing={connectedSync.status === "syncing"}
@@ -265,6 +271,8 @@ export function AppShell({
           <CrewScreen
             crew={raceCrew}
             onOpenAccountCrew={() => openAccountCrew(false)}
+            placeCrewRunId={crewPlacementRunId}
+            onCrewPlacementHandled={clearCrewPlacementRequest}
           />
         )}
         {activeTab === "plan" && (
