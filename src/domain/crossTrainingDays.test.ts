@@ -6,6 +6,7 @@ import {
   currentCrossTrainingDays,
   planCrossTrainingDayChange,
 } from "./crossTrainingDays";
+import { crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts";
 import { weekdayOf, type Weekday } from "./runDays";
 
 const plan = loadSeedPlan();
@@ -68,18 +69,21 @@ describe("planCrossTrainingDayChange", () => {
 });
 
 describe("applyCrossTrainingDays", () => {
-  it("fills every rest day on the chosen weekdays with Cross Training", () => {
+  it("fills every rest day on the chosen weekdays with a rotation workout", () => {
     const { fills } = planCrossTrainingDayChange(plan, MON_WED, { today: START });
     const filled = applyCrossTrainingDays(plan, MON_WED, { today: START });
 
-    for (const workout of fills) {
+    fills.forEach((workout, index) => {
       const updated = findWorkout(filled, workout.id)!;
+      const expectedWorkout = crossTrainingWorkoutForIndex(index);
       expect(updated.type).toBe("cross");
-      expect(updated.title).toBe("Cross Training");
+      expect(updated.title).toBe(expectedWorkout.title);
+      expect(updated.details).toBe(expectedWorkout.details);
+      expect(updated.details.length).toBeGreaterThan(0);
       expect(updated.targetDistanceMiles).toBeNull();
       expect(updated.build.renders).toBe(true);
       expect(updated.build.colorKey).toBe("cross");
-    }
+    });
   });
 
   it("keeps the plan's shape: same dates, one workout per date", () => {
