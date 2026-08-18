@@ -14,7 +14,7 @@
 -- already revoked and untouched here.
 
 alter table public.personal_training_state
-  add column cross_training_days jsonb;
+  add column if not exists cross_training_days jsonb;
 
 create or replace function public.initialize_personal_stack(
   p_training jsonb,
