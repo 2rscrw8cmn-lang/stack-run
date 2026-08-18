@@ -1,8 +1,12 @@
 -- Repeatable verification that 'cross' is a storable activity_type on both
 -- shared_runs and personal_runs, that a zero-distance Cross Training run is
--- accepted while every other type still needs real distance, and that
--- crew_build_height treats Cross Training as a hard (height 2) session, same
--- as Intervals/Simulation.
+-- accepted while every other type still needs real distance, and that a
+-- placed Cross Training block occupies its earned height-2 courses.
+-- crew_build_height() is revoked from `authenticated`/`anon`/`public` (an
+-- internal helper only ever called from within a SECURITY DEFINER
+-- function's own context) so height is proven behaviorally, through
+-- place_crew_build_block, rather than by calling it directly as this test's
+-- `authenticated` role — a direct call would fail with permission denied.
 -- Run after 20260817120000_cross_training_activity_type.sql.
 
 begin;
@@ -38,14 +42,20 @@ begin
     'owner-cross-run', '2026-08-17', 'cross', 4, 2400
   ) returning id into v_run_id;
 
-  if public.crew_build_height('cross') <> 2 then
-    raise exception 'crew_build_height(cross) was % , expected 2', public.crew_build_height('cross');
-  end if;
-
   perform public.place_crew_build_block(v_run_id, 0, 1);
 
-  if (select crew_build_row + public.crew_build_height(activity_type) from public.shared_runs where id = v_run_id) <> 2 then
-    raise exception 'a placed Cross Training block did not occupy 2 courses';
+  insert into public.shared_runs (
+    crew_id, user_id, local_run_id, local_date, activity_type,
+    distance_miles, duration_seconds
+  ) values (
+    v_crew_id, '99000000-0000-0000-0000-000000000001',
+    'owner-resting-on-cross', '2026-08-17', 'easy', 3, 1800
+  ) returning id into v_run_id;
+  perform public.place_crew_build_block(v_run_id, 2, 1);
+  if not exists (
+    select 1 from public.shared_runs where id = v_run_id and crew_build_row = 2
+  ) then
+    raise exception 'a block resting on a Cross Training block''s height-2 top was not placed';
   end if;
 end;
 $$;
