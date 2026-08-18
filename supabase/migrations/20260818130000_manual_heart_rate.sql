@@ -14,7 +14,10 @@
 -- its original migration, so it widens in place directly.
 
 alter table public.personal_runs
-  add column manual_heart_rate integer,
+  add column if not exists manual_heart_rate integer;
+
+alter table public.personal_runs drop constraint if exists personal_runs_manual_heart_rate_check;
+alter table public.personal_runs
   add constraint personal_runs_manual_heart_rate_check
     check (manual_heart_rate is null or manual_heart_rate between 30 and 250);
 
