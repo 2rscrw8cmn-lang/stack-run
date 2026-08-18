@@ -1007,9 +1007,10 @@ restore.
 
 - Each row states **what that setting is currently set to** — the race and its
   date, the run days (falling back to the shape the plan already has, marked as
-  such, while the runner has not said), the calendar's name and how many days
-  it blocks or that it is switched off, and whether Run Data is connected and
-  when it last synced. The list answers most of its own questions without being
+  such, while the runner has not said), the Cross Training days (or `None`,
+  since most plans want none), the calendar's name and how many days it blocks
+  or that it is switched off, and whether Run Data is connected and when it
+  last synced. The list answers most of its own questions without being
   opened, and the label and the value are one accessible name.
 - Dismissing a sheet opened from here **comes back here**; committing a change
   closes both, because the point of the change is to go and see it. Both paths
@@ -1689,3 +1690,81 @@ migration; `20260815120000_crew_emblem_ink_style.sql` widens it again for the
 optional trailing style group. A future index — or a future style digit — this
 client does not have still fails soft, to that layer's first option and to the
 outlined emblem respectively.
+
+## Cross Training — a sixth activity type (D-077)
+
+`"cross"` joins `easy`/`intervals`/`simulation`/`long`/`race` as a full
+`WorkoutType`/`RunActivityType`: `WORKOUT_TYPE_LABEL`, `ACTIVITY_TYPES`,
+`ActivityIcon` (a `Dumbbell`), `ActivityTypePicker`, block height (2, in
+`footprint.ts`'s `HEIGHT_BY_TYPE`, and mirrored in the Supabase
+`crew_build_height()` function), and a new `--cross` CSS token threaded
+through every `[data-type]` color site — chosen for hue clearance from both
+the five existing activity colors and the sixteen-color runner-identity
+palette (see the comment on `--cross` in `tokens.css`).
+
+Because this union has no exhaustiveness check at every call site — several
+consumers hold their own hand-rolled copy of the five running types as a
+runtime `Set`/array/`switch` rather than importing `ACTIVITY_TYPES` — adding
+the sixth type meant auditing and fixing each one directly rather than
+trusting `tsc` to catch it: `src/crew/dashboard.ts`'s `activityTypeFrom` (would
+have thrown "Race Crew returned an invalid activity type" for any teammate's
+Cross Training run), `src/domain/trends.ts`'s Run Mix `activityOrder` (would
+have silently dropped Cross Training miles from the chart legend while still
+counting them in the total), and `src/storage/migrations.ts`'s
+`validateCurrentAppState` allowlists (would have thrown
+`InvalidAppStateError` and broken app load for any plan containing a Cross
+Training workout).
+
+**Distance is optional, and only for Cross Training.** Verified against a
+real HIIT activity recorded on watch and synced through HealthFit on
+2026-08-13: Intervals.icu reports `distance` and `icu_distance` as both
+`null` for that source type. `runValidation.ts` lets Cross Training's
+distance field go blank (stored as 0 miles); every other type still requires
+a real distance greater than zero. The same relaxation runs through
+`personalCloudRepository.ts`'s cloud round-trip and two Supabase `CHECK`
+constraints (`shared_runs`, `personal_runs`), each widened from a flat
+`distance_miles > 0` to a per-type rule alongside the `activity_type` check.
+
+**The Intervals sync mapping never guesses.** Following the same policy that
+kept the running allowlist (`VERIFIED_RUNNING_TYPES`) at exactly `Run` for
+months, `VERIFIED_CROSS_TRAINING_TYPES` holds exactly one entry —
+`HighIntensityIntervalTraining` — the literal string from that same August 13
+capture. `normalizeIntervalsActivity` accepts either allowlist, and only
+requires distance for the running one. `IntervalsCandidate.inferredActivityType`
+(`easy` for a running source, `cross` for a cross-training one) replaces what
+used to be a hardcoded `"easy"` fallback in `RunDataSheet.tsx`, so an
+unmatched Cross Training import defaults its picker correctly instead of
+silently landing on Easy.
+
+**Cross Training Days** (`src/domain/crossTrainingDays.ts`,
+`CrossTrainingDaysSheet.tsx`) is a new opt-in Settings preference, the
+additive sibling of Run Days: choose weekdays, and STACK fills every rest
+day landing on one of them with a Cross Training workout, across the whole
+plan. Unlike Run Days, this never *moves* anything — it only fills days that
+are currently rest, so there is no move/stuck reasoning to show, and an
+empty selection is the normal state rather than an error one (most plans
+want no Cross Training at all). Built on the existing `addPlannedRun` plan-
+edit primitive rather than new geometry code, one rest day at a time, the
+same way `applyRunDays` builds on `moveWorkout`. Applies automatically when a
+plan is (re)generated from Race Setup, mirroring how the saved Run Days
+preference already does.
+
+Persisted as `AppState.crossTrainingDays: Weekday[] | null`, added to schema
+9 without a version bump (mirroring how `runDays` itself was introduced) —
+every legacy-schema upgrade path and the current-schema hydration path
+default it to `null` when absent. Synced to Supabase alongside `runDays` in
+`personal_training_state.cross_training_days`
+(`20260818120000_cross_training_days.sql`), threaded through
+`initialize_personal_stack`, `save_personal_training_state`, and
+`reset_personal_stack`.
+
+No RLS change: both new Supabase migrations extend existing tables/columns
+under the same self-only policies and revision/generation-enforcing RPCs
+Cross Training's data already lived under. Neither migration had been
+applied to a live project, and Cross Training does not yet have a Docker/
+Postgres-verified `supabase db reset` pass — see PR #115.
+
+Deferred: `generateTrainingPlan()` itself has no concept of Cross Training —
+it is purely a post-generation fill, applied the same way Run Days is. No
+UI copy suggests a methodology (how many days, which ones); the runner
+decides entirely.

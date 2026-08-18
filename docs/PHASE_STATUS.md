@@ -623,6 +623,55 @@ freshly generated invite after deploy (Link Presentation caches per URL).
 
 - `npm run check` passes.
 
+## Cross Training — a sixth activity type (PR #115) — in review
+
+Additional scope beyond the planned UI-18–UI-22 sequence, authorized by
+D-077 and scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md`. Adds `"cross"`
+as a full sixth activity type, wires the Intervals.icu sync mapping for it
+against a real captured HIIT payload, and adds an opt-in Cross Training Days
+plan preference alongside the existing Run Days.
+
+What it adds:
+
+- `"cross"` threaded through `WorkoutType`/`RunActivityType`: label, icon,
+  activity picker, block color/height, and every hand-rolled allowlist that
+  assumed only five running types existed (`crew/dashboard.ts`,
+  `domain/trends.ts`'s Run Mix chart, `storage/migrations.ts`'s AppState
+  validation, `personalCloudRepository.ts`'s cloud round-trip);
+- distance made optional for Cross Training only, in `runValidation.ts` and
+  in the two Supabase `distance_miles` checks, verified against a real HIIT
+  activity captured 2026-08-13 (Intervals reports no distance for that type
+  at all);
+- `VERIFIED_CROSS_TRAINING_TYPES` (`HighIntensityIntervalTraining`, from that
+  same capture) in `src/connected/intervals.ts`, following the existing
+  never-guess-a-source-type policy the running allowlist already used;
+  `IntervalsCandidate.inferredActivityType` so an unmatched Cross Training
+  import defaults its picker to Cross Training instead of a hardcoded Easy;
+- `src/domain/crossTrainingDays.ts` and `CrossTrainingDaysSheet.tsx`: choose
+  weekdays, and STACK fills every rest day landing on one of them across the
+  whole plan, additive and opt-in rather than reshaping like Run Days. New
+  Settings row between Run Days and Availability. Applies automatically on
+  plan (re)generation from Race Setup;
+- `AppState.crossTrainingDays: Weekday[] | null`, added to schema 9 without a
+  version bump; `supabase/migrations/20260817120000_cross_training_activity_type.sql`
+  and `20260818120000_cross_training_days.sql`, with
+  `supabase/tests/0017_cross_training_activity_type.sql`.
+
+What it deliberately does not do: teach `generateTrainingPlan()` any
+Cross Training methodology — Cross Training Days is a post-generation fill,
+not a generation input, so no UI copy suggests how many days or which ones;
+the runner decides entirely.
+
+Owner verification still outstanding: neither Supabase migration has been
+applied to any project or run through `supabase db reset` against a real
+Postgres (no Docker available in the environment this was built in) — see
+PR #115 for the handoff steps and one naming assumption worth a second pair
+of eyes. No real-device/browser QA; covered instead by 17 new automated
+tests (domain logic, Settings sheet interaction, Intervals sync mapping,
+Race Setup regeneration).
+
+- `npm run check` passes (lint, 1449 tests, build).
+
 ## Active source documents
 
 - `START_HERE.md`
