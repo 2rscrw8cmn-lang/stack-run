@@ -11,6 +11,7 @@ const ACTIVITY_COLOR: Record<RunActivityType, string> = {
   simulation: "var(--simulation)",
   long: "var(--long)",
   race: "var(--race)",
+  cross: "var(--cross)",
 };
 
 export function RunMixDetail({ signals }: { signals: TrainingSignals }) {

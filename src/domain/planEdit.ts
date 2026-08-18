@@ -31,6 +31,7 @@ const SPAN_BY_TYPE: Record<WorkoutType, BuildAssignment["span"]> = {
   simulation: 2,
   long: 3,
   race: 4,
+  cross: 2,
 };
 
 export function findWorkout(

@@ -11,6 +11,7 @@ export interface PersonalTrainingDocument {
   raceSetup: AppState["raceSetup"];
   availability: AppState["availability"];
   runDays: AppState["runDays"];
+  crossTrainingDays: AppState["crossTrainingDays"];
 }
 
 export interface PersonalIntervalsDocument {
@@ -116,6 +117,7 @@ export function trainingDocumentFrom(state: AppState): PersonalTrainingDocument 
     raceSetup: state.raceSetup,
     availability: state.availability,
     runDays: state.runDays,
+    crossTrainingDays: state.crossTrainingDays,
   };
 }
 

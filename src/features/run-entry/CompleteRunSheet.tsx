@@ -57,6 +57,7 @@ function initialValues(
       duration: "",
       effort: null,
       notes: "",
+      heartRate: "",
     };
   }
   return {
@@ -66,6 +67,8 @@ function initialValues(
     duration: formatDurationSeconds(runLog.durationSeconds),
     effort: runLog.effort,
     notes: runLog.notes,
+    heartRate:
+      runLog.manualHeartRate != null ? String(runLog.manualHeartRate) : "",
   };
 }
 
@@ -153,12 +156,16 @@ export function CompleteRunSheet({
           onChange={(activityType) => updateValue("activityType", activityType)}
         />
 
-        <FormField label="Distance (miles)" required error={errors.distance}>
+        <FormField
+          label="Distance (miles)"
+          required={values.activityType !== "cross"}
+          error={errors.distance}
+        >
           <input
             className="run-input"
             inputMode="decimal"
             autoComplete="off"
-            placeholder="3.2"
+            placeholder={values.activityType === "cross" ? "Optional" : "3.2"}
             value={values.distance}
             onChange={(event) => updateValue("distance", event.target.value)}
           />
@@ -179,6 +186,20 @@ export function CompleteRunSheet({
             onChange={(event) =>
               updateValue("duration", maskDurationInput(event.target.value))
             }
+          />
+        </FormField>
+
+        <FormField
+          label="Heart Rate (bpm, optional)"
+          error={errors.heartRate}
+        >
+          <input
+            className="run-input"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="Optional"
+            value={values.heartRate}
+            onChange={(event) => updateValue("heartRate", event.target.value)}
           />
         </FormField>
 

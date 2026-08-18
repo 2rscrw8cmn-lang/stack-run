@@ -1,4 +1,4 @@
-import { History } from "lucide-react";
+import { Dumbbell, History } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
 import { Section } from "../../components/ui/Section";
@@ -60,11 +60,14 @@ function blockLabel(memberName: string, block: Pick<CrewMiniBuildFacedBlock, "ac
   )}, ${formatMiles(block.distanceMiles)} miles`;
 }
 
-/** Same convention as Personal/Crew Build's brick face: compact mileage, `RACE` on a race. */
+/**
+ * Same convention as Personal/Crew Build's brick face: compact mileage,
+ * `RACE` on a race, a dumbbell on Cross Training (often distanceless).
+ */
 function faceLabel(block: Pick<CrewMiniBuildFacedBlock, "activityType" | "distanceMiles" | "width">): BrickFaceLabel {
-  return block.activityType === "race"
-    ? { text: "RACE", unit: false }
-    : { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
+  if (block.activityType === "race") return { text: "RACE", unit: false };
+  if (block.activityType === "cross") return { icon: Dumbbell };
+  return { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
 }
 
 /**

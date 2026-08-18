@@ -762,6 +762,24 @@ describe("the race capstone", () => {
     expect(screen.queryByText("RACE")).not.toBeInTheDocument();
   });
 
+  it("wears a dumbbell on Cross Training instead of a bare 0", () => {
+    renderBuild({
+      runLogs: [
+        runLogFor("workout-002", {
+          id: "run-cross",
+          activityType: "cross",
+          distanceMiles: 0,
+        }),
+      ],
+      blockPlacements: [placementFor("run-cross", 3, 1)],
+      today: "2026-08-06",
+    });
+
+    // The face carries an icon, not text: no "0" or "0MI" anywhere on it.
+    expect(labels()).toEqual([""]);
+    expect(document.querySelector(".placed-block__icon")).not.toBeNull();
+  });
+
   it("leaves the race block on the existing geometry", () => {
     const { onPlaceBlock } = renderBuild({
       runLogs: [raceRun],

@@ -55,6 +55,7 @@ describe("heightForActivityType", () => {
     expect(heightForActivityType("intervals")).toBe(2);
     expect(heightForActivityType("simulation")).toBe(2);
     expect(heightForActivityType("race")).toBe(3);
+    expect(heightForActivityType("cross")).toBe(2);
   });
 });
 

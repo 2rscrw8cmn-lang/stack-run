@@ -8,6 +8,7 @@ const PICKER_TYPES: readonly RunActivityType[] = [
   "intervals",
   "long",
   "simulation",
+  "cross",
   "race",
 ];
 

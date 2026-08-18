@@ -258,6 +258,7 @@ export function appStateFromCloud(snapshot: PersonalCloudSnapshot): AppState {
     raceSetup: snapshot.training.raceSetup,
     availability: snapshot.training.availability,
     runDays: snapshot.training.runDays,
+    crossTrainingDays: snapshot.training.crossTrainingDays,
     runLogs: activeRuns,
     blockPlacements: repairCanonicalPlacements(snapshot.placements, activeIds),
     intervalsSync: {

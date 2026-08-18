@@ -1000,12 +1000,8 @@
 .activity-type-picker__option[data-type="intervals"] { --activity-picker-color: var(--intervals); }
 .activity-type-picker__option[data-type="long"] { --activity-picker-color: var(--long); }
 .activity-type-picker__option[data-type="simulation"] { --activity-picker-color: var(--simulation); }
-.activity-type-picker__option[data-type="race"] {
-  --activity-picker-color: var(--race);
-  width: calc(50% - 4px);
-  grid-column: 1 / -1;
-  justify-self: center;
-}
+.activity-type-picker__option[data-type="cross"] { --activity-picker-color: var(--cross); }
+.activity-type-picker__option[data-type="race"] { --activity-picker-color: var(--race); }
 .activity-type-picker__option svg { flex: 0 0 auto; color: var(--activity-picker-color); }
 .activity-type-picker__option[aria-checked="true"] {
   border-color: var(--activity-picker-color);
@@ -1469,6 +1465,15 @@ textarea.run-input {
   font-weight: 700;
   letter-spacing: 0.06em;
   opacity: 0.72;
+}
+
+/* Cross Training has no mileage worth stamping on the face, so it wears its
+   icon instead — the same role RACE's text fills for the one other type that
+   skips the number. Inherits `color: var(--bg)` from the label via
+   currentColor, so it needs no colour of its own. */
+.placed-block__icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
 /*
@@ -3718,6 +3723,7 @@ textarea.run-input {
 .run-row__icon[data-type="intervals"] { color: var(--intervals); }
 .run-row__icon[data-type="simulation"] { color: var(--simulation); }
 .run-row__icon[data-type="long"] { color: var(--long); }
+.run-row__icon[data-type="cross"] { color: var(--cross); }
 .run-row__icon[data-type="race"] { color: var(--race); }
 
 .run-row__body {
@@ -4580,6 +4586,7 @@ textarea.run-input {
 .workout-row[data-type="intervals"] { border-left-color: color-mix(in srgb, var(--intervals) 72%, transparent); }
 .workout-row[data-type="simulation"] { border-left-color: color-mix(in srgb, var(--simulation) 72%, transparent); }
 .workout-row[data-type="long"] { border-left-color: color-mix(in srgb, var(--long) 72%, transparent); }
+.workout-row[data-type="cross"] { border-left-color: color-mix(in srgb, var(--cross) 72%, transparent); }
 .workout-row[data-type="race"] { border-left-color: color-mix(in srgb, var(--race) 72%, transparent); }
 
 .workout-row[data-today] {
@@ -5041,6 +5048,7 @@ textarea.run-input {
 .run-detail__type[data-type="intervals"] { color: var(--intervals); }
 .run-detail__type[data-type="simulation"] { color: var(--simulation); }
 .run-detail__type[data-type="long"] { color: var(--long); }
+.run-detail__type[data-type="cross"] { color: var(--cross); }
 .run-detail__type[data-type="race"] { color: var(--race); }
 
 /* The extra-or-planned status is metadata, not a section: one small tag next
@@ -5409,6 +5417,7 @@ textarea.run-input {
 .run-row[data-type="intervals"] { border-left-color: var(--intervals); }
 .run-row[data-type="simulation"] { border-left-color: var(--simulation); }
 .run-row[data-type="long"] { border-left-color: var(--long); }
+.run-row[data-type="cross"] { border-left-color: var(--cross); }
 .run-row[data-type="race"] { border-left-color: var(--race); }
 .run-row__icon { border-radius: 5px; }
 .run-row__extra { border-radius: 3px; font-family: var(--font-data); }
@@ -6840,6 +6849,7 @@ textarea.run-input {
 .crew-run-item[data-type="intervals"] { --activity-accent: var(--intervals); }
 .crew-run-item[data-type="simulation"] { --activity-accent: var(--simulation); }
 .crew-run-item[data-type="long"] { --activity-accent: var(--long); }
+.crew-run-item[data-type="cross"] { --activity-accent: var(--cross); }
 .crew-run-item[data-type="race"] { --activity-accent: var(--race); }
 
 .crew-run-row {
@@ -6872,6 +6882,7 @@ textarea.run-input {
 .crew-run-detail__icon[data-type="intervals"] { color: var(--intervals); }
 .crew-run-detail__icon[data-type="simulation"] { color: var(--simulation); }
 .crew-run-detail__icon[data-type="long"] { color: var(--long); }
+.crew-run-detail__icon[data-type="cross"] { color: var(--cross); }
 .crew-run-detail__icon[data-type="race"] { color: var(--race); }
 /* `min-width: 0` on the grid items too: without it a nowrap meta line sets
    the track's minimum and pushes the whole card past the viewport at 320px. */
@@ -7177,6 +7188,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .crew-mini-build__blocks rect[data-type="intervals"] { fill: var(--intervals); }
 .crew-mini-build__blocks rect[data-type="simulation"] { fill: var(--simulation); }
 .crew-mini-build__blocks rect[data-type="long"] { fill: var(--long); }
+.crew-mini-build__blocks rect[data-type="cross"] { fill: var(--cross); }
 .crew-mini-build__blocks rect[data-type="race"] { fill: var(--race); }
 .crew-mini-build__ground { stroke: var(--border-strong); stroke-width: 1; }
 .crew-mini-build__empty {
@@ -7578,6 +7590,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .today-crew-activity__list > li[data-type="intervals"] { --activity-accent: var(--intervals); }
 .today-crew-activity__list > li[data-type="simulation"] { --activity-accent: var(--simulation); }
 .today-crew-activity__list > li[data-type="long"] { --activity-accent: var(--long); }
+.today-crew-activity__list > li[data-type="cross"] { --activity-accent: var(--cross); }
 .today-crew-activity__list > li[data-type="race"] { --activity-accent: var(--race); }
 .today-crew-activity__list .runner-icon { justify-self: center; }
 .today-crew-activity__type { color: var(--activity-accent, var(--text-muted)); font-weight: 700; }

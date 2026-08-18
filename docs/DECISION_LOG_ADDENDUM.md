@@ -538,7 +538,8 @@ Current acceptance:
 - **UI-22 — Final Product Polish + Onboarding** is complete and accepted (merged PR #39).
 - **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
 - **Runner Icons** are authorized by D-074 and are in review.
-- No later phase is planned or authorized beyond UI-23.
+- **Cross Training** is authorized by D-077 and is in review.
+- No later UI-numbered phase is planned; Cross Training and Runner Icons are additional scope opened as new decisions, the way this note requires.
 
 ## D-076 — The Crew Emblem is three layers, and the four-part library is retired outright
 
@@ -573,3 +574,18 @@ See:
 - `docs/RACE_CREW_SETUP.md`
 - `docs/RUN_DATA_SETUP.md`
 - `docs/RACE_CREW_IMPLEMENTATION.md`
+
+## D-077 — Cross Training is a sixth activity type, with its own Intervals verification and its own opt-in plan preference
+
+**Decision:** UI-22 said no later phase was planned; a runner asking to log and plan for Cross Training (HIIT, lifting, mobility) alongside running is exactly the kind of additional scope that note said requires a new decision. This adds `"cross"` as a sixth `WorkoutType`/`RunActivityType` — not a separate category bolted alongside running — so every existing mechanism (blocks, Build, Crew sharing, Trends, plan editing) already knows what to do with it once the type union carries it.
+
+Four choices worth recording:
+
+1. **Distance is optional, and only for this one type, because a real payload said so.** A HIIT activity recorded on watch and synced through HealthFit on 2026-08-13 reports `distance` and `icu_distance` as both `null` from Intervals.icu — not a UX guess that Cross Training "probably" has no meaningful mileage. `runValidation.ts`, the cloud sync round-trip, and both Supabase `distance_miles` checks all relax from a flat `> 0` to a per-type rule, and every other activity type keeps the original requirement unchanged.
+2. **The Intervals sync mapping follows the running allowlist's existing never-guess policy exactly.** `VERIFIED_RUNNING_TYPES` had stayed at exactly `Run` for months on the strength of that policy; `VERIFIED_CROSS_TRAINING_TYPES` opens with exactly one entry, `HighIntensityIntervalTraining`, the literal string from the same August 13 capture. Plausible aliases (`WeightTraining`, `Workout`, `Elliptical`, `Crossfit`) stay out until a real payload shows one, the same as `VirtualRun`/`TrailRun`/`Treadmill` still do for running.
+3. **A hand-rolled allowlist without a `Record<RunActivityType, …>`/`Set` sourced from `ACTIVITY_TYPES` is a real bug waiting on this type, not a hypothetical one.** `tsc` catches every exhaustive `Record`/array literal automatically, but several consumers held their own copy of the five running types as a runtime check instead: `crew/dashboard.ts`'s `activityTypeFrom` would have thrown and broken the Crew dashboard for any teammate's Cross Training run; `domain/trends.ts`'s Run Mix chart would have silently dropped Cross Training miles from its legend while still counting them in the total; `storage/migrations.ts`'s `validateCurrentAppState` would have thrown `InvalidAppStateError` and broken app load outright the moment any workout used the type. All three were found by deliberately auditing every such site rather than trusting the compiler, and are fixed in the same change.
+4. **Cross Training Days is additive, not a reshaping preference like Run Days.** Run Days *moves* existing runs to preferred weekdays and treats zero chosen days as an error state (a plan with no run days is not a plan). Cross Training Days only ever *fills* a rest day that lands on a chosen weekday — it never displaces a scheduled run, never touches the past or race day, and an empty selection is the ordinary state most plans start in and may stay in. It is built on the existing `addPlannedRun` plan-edit primitive, one rest day at a time, the same way `applyRunDays` is built on `moveWorkout`.
+
+Two Supabase migrations carry this: `20260817120000_cross_training_activity_type.sql` (the `activity_type`/`distance_miles` widening and `crew_build_height()`) and `20260818120000_cross_training_days.sql` (`personal_training_state.cross_training_days`, threaded through the three generation-aware training-state RPCs). Neither had been applied to any project or verified against a live Postgres as of this decision — no Docker was available in the environment this was built in — so `supabase db reset` and the two new `supabase/tests/*.sql` files are the outstanding verification, tracked in PR #115.
+
+This decision authorizes Cross Training as scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not authorize any change to what `generateTrainingPlan()` itself schedules — Cross Training Days stays a post-generation fill, never a generation input — and it does not reopen Crew's safe-projection boundary beyond the one field (`activity_type`/`activityType` already carried `"cross"` as a value everywhere it was already plumbed).

@@ -1,3 +1,4 @@
+import { Dumbbell } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
@@ -65,12 +66,14 @@ function blockLabel(block: CrewBuildBlock): string {
   ].join(", ");
 }
 
+/** Same convention as Personal Build's brick face: mileage, RACE, or — for
+ * Cross Training, which is often distanceless — a dumbbell instead of a `0`. */
 function faceLabel(
   block: Pick<CrewBuildBlock, "activityType" | "distanceMiles" | "width">,
 ): BrickFaceLabel {
-  return block.activityType === "race"
-    ? { text: "RACE", unit: false }
-    : { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
+  if (block.activityType === "race") return { text: "RACE", unit: false };
+  if (block.activityType === "cross") return { icon: Dumbbell };
+  return { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
 }
 
 /** The CSS custom property reference for a member's stable block colour. */

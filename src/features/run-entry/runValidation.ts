@@ -10,6 +10,8 @@ export interface RunEntryValues {
   duration: string;
   effort: Effort | null;
   notes: string;
+  /** Optional, hand-typed — never a source-verified fact. */
+  heartRate: string;
 }
 
 export interface ValidRunEntry {
@@ -19,6 +21,8 @@ export interface ValidRunEntry {
   durationSeconds: number;
   effort: Effort;
   notes: string;
+  /** Null when left blank, so saving always says clear rather than leaving a stale value in place. */
+  manualHeartRate: number | null;
 }
 
 export type RunEntryErrors = Partial<Record<keyof RunEntryValues, string>>;
@@ -68,14 +72,25 @@ export function validateRunEntry(
   const errors: RunEntryErrors = {};
   const dateError = validateDate(values.date, today);
   if (dateError) errors.date = dateError;
-  const distance = Number(values.distance);
+  /**
+   * Cross Training is the one activity type that may cover negligible or no
+   * mileage — a lifting or mobility session has nothing to log distance-wise.
+   * Every other type still requires a real distance greater than zero.
+   */
+  const distanceOptional = values.activityType === "cross";
+  const distanceInput = values.distance.trim();
+  const distance = distanceOptional && !distanceInput ? 0 : Number(distanceInput);
   const duration = parseDurationInput(values.duration);
   const notes = values.notes.trim();
 
-  if (!values.distance.trim()) errors.distance = "Enter your distance.";
-  else if (!Number.isFinite(distance) || distance <= 0 || distance > 100)
+  if (!distanceOptional && !distanceInput) errors.distance = "Enter your distance.";
+  else if (!Number.isFinite(distance) || distance < 0 || distance > 100)
+    errors.distance = distanceOptional
+      ? "Distance must be 0 or more, and no more than 100 miles."
+      : "Distance must be greater than 0 and no more than 100 miles.";
+  else if (!distanceOptional && distance <= 0)
     errors.distance = "Distance must be greater than 0 and no more than 100 miles.";
-  else if (!/^\d+(?:\.\d{1,2})?$/.test(values.distance.trim()))
+  else if (distanceInput && !/^\d+(?:\.\d{1,2})?$/.test(distanceInput))
     errors.distance = "Use no more than two decimal places.";
 
   if (!values.duration.trim()) errors.duration = "Enter your duration.";
@@ -83,6 +98,17 @@ export function validateRunEntry(
     errors.duration = describeDurationError(values.duration);
   if (!values.effort) errors.effort = "Choose how the run felt.";
   if (notes.length > 120) errors.notes = "Notes must be 120 characters or fewer.";
+
+  const heartRateInput = values.heartRate.trim();
+  let manualHeartRate: number | null = null;
+  if (heartRateInput) {
+    const parsed = Number(heartRateInput);
+    if (!/^\d+$/.test(heartRateInput) || !Number.isFinite(parsed) || parsed < 30 || parsed > 250) {
+      errors.heartRate = "Enter a heart rate between 30 and 250 bpm.";
+    } else {
+      manualHeartRate = parsed;
+    }
+  }
 
   if (Object.keys(errors).length || duration === null || !values.effort) {
     return { valid: false, errors };
@@ -96,6 +122,7 @@ export function validateRunEntry(
       durationSeconds: duration,
       effort: values.effort,
       notes,
+      manualHeartRate,
     },
   };
 }

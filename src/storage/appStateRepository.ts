@@ -293,6 +293,14 @@ export function saveRunLog(state: AppState, input: RunLogInput): AppState {
     source: input.source ?? existing?.source ?? "manual",
     externalSource: input.externalSource ?? existing?.externalSource ?? null,
     importedMetrics: input.importedMetrics ?? existing?.importedMetrics ?? null,
+    // Unlike the fields above, an explicit `null` here means the runner
+    // cleared the field and must win over the existing value — `??` cannot
+    // tell "cleared" apart from "not mentioned," so this checks `undefined`
+    // specifically rather than falling through on every falsy value.
+    manualHeartRate:
+      input.manualHeartRate !== undefined
+        ? input.manualHeartRate
+        : (existing?.manualHeartRate ?? null),
   };
 
   const runLog: RunLog = existing
@@ -535,6 +543,21 @@ export function saveRunDays(
   plan: TrainingPlan,
 ): AppState {
   const next: AppState = { ...state, runDays, plan };
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Records the weekdays the runner wants Cross Training on, and the plan
+ * filled to match. Same reasoning as `saveRunDays`: the preference and the
+ * plan it produced are one decision, not two.
+ */
+export function saveCrossTrainingDays(
+  state: AppState,
+  crossTrainingDays: Weekday[],
+  plan: TrainingPlan,
+): AppState {
+  const next: AppState = { ...state, crossTrainingDays, plan };
   saveAppState(next);
   return next;
 }

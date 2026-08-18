@@ -126,6 +126,26 @@ describe("setting up the race", () => {
     expect([...days].sort()).toEqual([1, 3, 5]);
   });
 
+  it("fills in the saved Cross Training days when it builds the plan", async () => {
+    const { user, onGeneratePlan } = renderPlan({
+      runDays: [2, 4, 6, 0],
+      crossTrainingDays: [1, 3],
+    });
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const generated = onGeneratePlan.mock.calls[0][1] as TrainingPlan;
+    const crossDays = new Set(
+      generated.weeks
+        .flatMap((week) => week.workouts)
+        .filter((workout) => workout.type === "cross")
+        .map((workout) => new Date(`${workout.date}T00:00:00`).getDay()),
+    );
+    expect(crossDays.size).toBeGreaterThan(0);
+    expect([...crossDays].every((day) => [1, 3].includes(day))).toBe(true);
+  });
+
   it("warns when the race is too close for the distance, without refusing", async () => {
     const { user } = renderPlan({ today: "2026-11-16" });
 

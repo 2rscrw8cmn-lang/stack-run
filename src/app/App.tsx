@@ -13,6 +13,7 @@ import {
   savePlan,
   saveGeneratedPlan,
   saveRunDays,
+  saveCrossTrainingDays,
   saveRunLog,
   StorageLoadError,
   acceptIntervalsRun,
@@ -390,6 +391,10 @@ export function App() {
       runDays={boot.state.runDays}
       onSaveRunDays={(runDays, plan) =>
         setAppState((current) => saveRunDays(current, runDays, plan))
+      }
+      crossTrainingDays={boot.state.crossTrainingDays}
+      onSaveCrossTrainingDays={(crossTrainingDays, plan) =>
+        setAppState((current) => saveCrossTrainingDays(current, crossTrainingDays, plan))
       }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
       onResetPlan={() => {

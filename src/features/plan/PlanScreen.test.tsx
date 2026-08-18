@@ -266,6 +266,7 @@ describe("PlanScreen workout detail", () => {
       durationSeconds: 1230,
       effort: "solid",
       notes: "",
+      manualHeartRate: null,
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

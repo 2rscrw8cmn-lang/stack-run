@@ -345,6 +345,7 @@ const candidate = {
   durationSeconds: 1230,
   sourceUpdatedAt: null,
   metrics: { averageHeartRate: 152 },
+  inferredActivityType: "easy" as const,
 };
 
 describe("TodayScreen run found", () => {

@@ -91,7 +91,7 @@ export function RunDataSheet(props: Props) {
   const [type, setType] = useState<RunActivityType>(
     initialMatch?.type && initialMatch.type !== "rest"
       ? initialMatch.type
-      : "easy",
+      : (props.initialReview?.candidate.inferredActivityType ?? "easy"),
   );
   const [effort, setEffort] = useState<Effort>("solid");
   const [notes, setNotes] = useState("");
@@ -110,7 +110,7 @@ export function RunDataSheet(props: Props) {
       props.state.runLogs,
     )[0];
     setWorkoutId(match?.id ?? null);
-    setType(match?.type && match.type !== "rest" ? match.type : "easy");
+    setType(match?.type && match.type !== "rest" ? match.type : candidate.inferredActivityType);
   }
 
   function settle(candidate: IntervalsCandidate) {

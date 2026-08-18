@@ -58,6 +58,8 @@ interface AppShellProps {
   onSaveAvailability: (calendar: AvailabilityCalendar | null) => void;
   runDays: Weekday[] | null;
   onSaveRunDays: (runDays: Weekday[], plan: TrainingPlan) => void;
+  crossTrainingDays: Weekday[] | null;
+  onSaveCrossTrainingDays: (crossTrainingDays: Weekday[], plan: TrainingPlan) => void;
   raceSetup: RacePlanSetup | null;
   onGeneratePlan: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   onPlaceBlock: (request: PlacementRequest) => void;
@@ -96,6 +98,8 @@ export function AppShell({
   onSaveAvailability,
   runDays,
   onSaveRunDays,
+  crossTrainingDays,
+  onSaveCrossTrainingDays,
   raceSetup,
   onGeneratePlan,
   onPlaceBlock,
@@ -293,6 +297,8 @@ export function AppShell({
         onGeneratePlan={onGeneratePlan}
         runDays={runDays}
         onSaveRunDays={onSaveRunDays}
+        crossTrainingDays={crossTrainingDays}
+        onSaveCrossTrainingDays={onSaveCrossTrainingDays}
         availability={availability}
         onSaveAvailability={onSaveAvailability}
         onResetPlan={onResetPlan}
