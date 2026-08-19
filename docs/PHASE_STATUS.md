@@ -637,9 +637,10 @@ product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
 | NEXT-1 | Historical Data Foundation | `feature/historical-data` | Accepted and merged (PR #100), August 15, 2026; deployed smoke test outstanding |
 | NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Accepted and merged (PR #102, with #103), August 15, 2026 |
 | NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Accepted and merged (PR #104), August 15, 2026 |
-| NEXT-4 | Today / Home revision | `feature/today-next` | Implemented; owner acceptance outstanding |
-| NEXT-5 | Plan role revision | `feature/plan-next` | Not started |
-| NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Not started |
+| NEXT-4 | Today / Home revision | `feature/today-next` | Accepted and merged (PR #105), August 16, 2026 |
+| Runs R1–R4 | Runs reframe: overview, history, Run Detail, integration | `feature/runs-*` | Accepted and merged (PRs #109, #110, #122, #124), August 18–19, 2026 |
+| NEXT-5 | Plan role revision | `feature/plan-next` | Accepted and merged (PR #125), August 19, 2026 |
+| NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Implemented; owner acceptance outstanding |
 | NEXT-7 | Product integration + release candidate | — | Not started |
 
 ### NEXT-1 — accepted, awaiting real-data verification
@@ -654,7 +655,8 @@ AppState. `docs/CURRENT_APPLICATION_STRUCTURE.md` describes the modules.
 No AppState migration, no schema change, no Supabase migration, no dependency,
 no UI. Manual runs, accepted connected runs, plan links, Build, Crew and the
 safe projection are unchanged, and newly discovered history earns no Build
-block — historical Build backfill remains a NEXT-6 product decision.
+block. NEXT-6 settled that permanently: historical activity never earns a block
+and STACK ships no backfill.
 
 - `npm run check` passes: 111 files, 1,462 tests, 59 of them new and all on
   fake fixtures and fake credentials.
@@ -767,7 +769,7 @@ additional requirement rather than a relaxation.
 into `feature/stack-next` in PR #104, including the deployed presentation
 cleanup accepted with it.
 
-### NEXT-4 — implemented, awaiting owner acceptance
+### NEXT-4 — accepted and merged
 
 Today stops being a small copy of Plan. It asked *what does my plan say today?*;
 it now asks **what matters now?** — and the plan is not hidden to achieve it. A
@@ -819,6 +821,62 @@ each — is recorded in `docs/STACK_NEXT_IMPLEMENTATION.md`. In brief:
   revised screen, and NEXT-1's deployed real-data smoke test.
 - `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
   source fact either.
+
+### NEXT-5 — accepted and merged
+
+Plan keeps being useful, editable, race-specific structure and stops being the
+authority on whether the runner ran. The rule it is built on:
+
+> Actual history says what happened. Plan says what was intended. A link says
+> how an actual run relates to that intent.
+
+The viewed week states planned intent, actual running inside that week's exact
+dates, and `X of Y plan runs linked` as three separate readings — no completion
+hero, no progress bar, no adherence grade. Actual totals include historical-only
+running because it happened, and satisfy no scheduled workout: an explicit
+`RunLog` link remains the only relationship, with no date/distance/title/pace
+matching anywhere. A past workout nothing is linked to says `No linked run`.
+
+`src/features/plan/planLifecycle.ts` gives the plan window edges: before the
+start date Plan previews week 1 and says training has not started; during
+training it says nothing about lifecycle; after race day it says the plan is
+complete, keeps every week browsable, and offers `Set up next race` into the
+**existing** `RaceSetupSheet` rather than a second plan generator.
+
+The QA Runner carries all three lifecycles, so the before-plan and after-race
+states are reviewable on a device instead of only in tests.
+
+Deferred by decision: representing *no active plan* needs a nullable
+`TrainingPlan` in AppState, which cascades through Today, Build, Crew and
+onboarding. It stays an open owner decision.
+
+- `npm run check` passes: 152 files, 1,880 tests.
+- `docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's acceptance.
+
+### NEXT-6 — implemented, awaiting owner acceptance
+
+The compatibility pass found Build and Crew already behaving correctly, for
+reasons nobody had written down.
+
+- **Build** earns blocks from `RunLog`s only, so a historical-only run earns
+  none. **Owner decision: it stays that way and no backfill ships** — not on
+  install, sync, upgrade or request. A `RunLog`-based backfill would also have
+  made that running Crew-visible, so the decision was never only about the tower.
+- **Crew** projects `AppState`, and historical activity is stored outside it
+  under its own account-scoped key, so Crew structurally cannot see the source
+  mirror. That was a property of storage layout; it is now a rule with tests,
+  including that syncing a year of history leaves the Crew payload byte-identical.
+- An accepted run that also exists in connected history reconciles on external
+  identity into one row and earns exactly one block.
+
+Language followed the model: `Every completed run earns a block` became `Every
+run you record earns a block`, and Crew's `Consistency` comparison became
+`Plan Runs Linked` — same window, same stored columns, same bars and ranking.
+
+No backfill, no Supabase migration, no RLS or projected-field change, no
+placement change, no AppState migration.
+
+- `npm run check` passes: 153 files, 1,886 tests.
 
 ## Active source documents
 
