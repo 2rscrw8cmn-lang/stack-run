@@ -11,12 +11,18 @@
 .award-brick[data-award="onTarget"] { --award-mark: #ff58d4; --award-glow: rgba(255, 88, 212, .24); }
 .award-brick[data-award="levelUp"] { --award-mark: #b77aff; --award-glow: rgba(183, 122, 255, .24); }
 
+/*
+ * Runner identity leads (who won it); the award glyph is a smaller, secondary
+ * chip pinned to the side (what they won) — see docs/CREW_SPECIAL_BLOCKS.md's
+ * "Runner Icon = who, glyph = what" visual language.
+ */
 .award-brick__front {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 6px;
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
-  gap: 3px;
-  padding: 3px 4px;
+  justify-items: start;
+  gap: 5px;
+  padding: 3px 5px;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255,255,255,.035), transparent 45%),
@@ -43,7 +49,7 @@
 .award-brick__runner {
   position: relative;
   z-index: 2;
-  width: 22px;
+  width: 28px;
   height: 28px;
   display: grid;
   place-items: center;
@@ -54,13 +60,14 @@
 .award-brick__badge {
   position: relative;
   z-index: 1;
-  width: 40px;
+  width: 28px;
   height: 28px;
   display: grid;
   place-items: center;
-  justify-self: center;
+  justify-self: end;
   overflow: hidden;
   border: 1px solid rgba(181, 194, 201, .46);
+  border-radius: 6px;
   background:
     radial-gradient(circle at 50% 50%, var(--award-glow), transparent 58%),
     #080d10;
@@ -69,30 +76,10 @@
     0 1px 0 rgba(255,255,255,.08);
 }
 
-.award-brick__hardware {
-  position: relative;
-  z-index: 2;
-  width: 6px;
-  height: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 3px 0;
-}
-
-.award-brick__hardware i {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #b8c3c8;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.65);
-}
-
 .award-brick__glyph {
   position: relative;
   display: block;
-  width: 38px;
+  width: 26px;
   height: 26px;
   color: var(--award-mark);
   filter: drop-shadow(0 0 4px var(--award-glow));
@@ -104,97 +91,95 @@
   background: currentColor;
 }
 
-.award-brick__glyph--miles i { top: 4px; bottom: 4px; width: 7px; }
-.award-brick__glyph--miles i:nth-child(1) { left: 5px; }
-.award-brick__glyph--miles i:nth-child(2) { left: 15px; }
-.award-brick__glyph--miles i:nth-child(3) { left: 25px; }
+.award-brick__glyph--miles i { top: 6px; bottom: 6px; width: 4px; }
+.award-brick__glyph--miles i:nth-child(1) { left: 4px; }
+.award-brick__glyph--miles i:nth-child(2) { left: 12px; }
+.award-brick__glyph--miles i:nth-child(3) { left: 20px; }
 
 /* Zone 2 is a calm gauge; Target keeps the circular bullseye. */
 .award-brick[data-award="zone2"] .award-brick__badge {
-  width: 40px;
-  height: 28px;
   border-radius: 999px;
 }
 .award-brick__glyph--zone2 i:first-child {
-  width: 24px;
-  height: 12px;
-  left: 7px;
-  top: 4px;
-  border: 3px solid currentColor;
+  width: 16px;
+  height: 8px;
+  left: 6px;
+  top: 6px;
+  border: 2px solid currentColor;
   border-bottom: 0;
-  border-radius: 24px 24px 0 0;
+  border-radius: 16px 16px 0 0;
   background: transparent;
 }
 .award-brick__glyph--zone2 i:last-child {
-  width: 14px;
-  height: 4px;
-  left: 12px;
+  width: 10px;
+  height: 3px;
+  left: 9px;
   top: 15px;
   border-radius: 999px;
-  box-shadow: -8px 0 0 rgba(53,230,255,.28), 8px 0 0 rgba(53,230,255,.28);
+  box-shadow: -6px 0 0 rgba(53,230,255,.28), 6px 0 0 rgba(53,230,255,.28);
 }
 
-.award-brick[data-award="pace"] .award-brick__badge { width: 44px; }
+.award-brick[data-award="pace"] .award-brick__badge { width: 30px; }
 .award-brick__glyph--pace i {
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   box-shadow: 0 0 6px var(--award-glow);
 }
-.award-brick__glyph--pace i:nth-child(1) { top: 5px; left: 8px; width: 14px; }
-.award-brick__glyph--pace i:nth-child(2) { top: 11px; left: 11px; width: 18px; }
-.award-brick__glyph--pace i:nth-child(3) { top: 17px; left: 14px; width: 22px; }
+.award-brick__glyph--pace i:nth-child(1) { top: 6px; left: 6px; width: 10px; }
+.award-brick__glyph--pace i:nth-child(2) { top: 12px; left: 8px; width: 13px; }
+.award-brick__glyph--pace i:nth-child(3) { top: 18px; left: 10px; width: 16px; }
 
-.award-brick[data-award="runs"] .award-brick__badge { width: 44px; }
+.award-brick[data-award="runs"] .award-brick__badge { width: 30px; }
 .award-brick__glyph--runs i {
-  height: 7px;
+  height: 5px;
   border: 1px solid currentColor;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.24);
 }
-.award-brick__glyph--runs i:nth-child(1) { left: 3px; top: 3px; width: 19px; }
-.award-brick__glyph--runs i:nth-child(2) { right: 3px; top: 10px; width: 23px; }
-.award-brick__glyph--runs i:nth-child(3) { left: 6px; top: 17px; width: 27px; }
+.award-brick__glyph--runs i:nth-child(1) { left: 3px; top: 3px; width: 16px; }
+.award-brick__glyph--runs i:nth-child(2) { left: 7px; top: 11px; width: 16px; }
+.award-brick__glyph--runs i:nth-child(3) { left: 3px; top: 19px; width: 20px; }
 
 .award-brick[data-award="longHaul"] .award-brick__badge {
-  width: 94px;
+  width: 70px;
   border-left-color: var(--award-mark);
   border-right-color: var(--award-mark);
 }
-.award-brick__glyph--long { width: 74px; }
-.award-brick__glyph--long i { left: 7px; right: 7px; top: 11px; height: 4px; }
+.award-brick__glyph--long { width: 56px; }
+.award-brick__glyph--long i { left: 5px; right: 5px; top: 11px; height: 4px; }
 .award-brick__glyph--long::before,
 .award-brick__glyph--long::after {
   content: "";
   position: absolute;
   top: 4px;
-  width: 5px;
+  width: 4px;
   height: 18px;
   background: currentColor;
 }
-.award-brick__glyph--long::before { left: 5px; }
-.award-brick__glyph--long::after { right: 5px; }
+.award-brick__glyph--long::before { left: 4px; }
+.award-brick__glyph--long::after { right: 4px; }
 
 .award-brick[data-award="steady"] .award-brick__badge {
-  width: 42px;
+  width: 30px;
   border-top-color: var(--award-mark);
   border-bottom-color: var(--award-mark);
 }
-.award-brick__glyph--steady i { left: 4px; width: 30px; height: 5px; }
-.award-brick__glyph--steady i:nth-child(1) { top: 6px; }
-.award-brick__glyph--steady i:nth-child(2) { top: 15px; }
+.award-brick__glyph--steady i { left: 4px; width: 22px; height: 4px; }
+.award-brick__glyph--steady i:nth-child(1) { top: 7px; }
+.award-brick__glyph--steady i:nth-child(2) { top: 17px; }
 
 .award-brick[data-award="onTarget"] .award-brick__badge {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   box-shadow:
     0 0 0 2px #080d10,
     0 0 0 3px rgba(255, 88, 212, .34),
     inset 0 0 0 2px rgba(255,255,255,.025);
 }
-.award-brick[data-award="onTarget"] .award-brick__glyph { width: 30px; height: 30px; }
+.award-brick[data-award="onTarget"] .award-brick__glyph { width: 26px; height: 26px; }
 .award-brick__glyph--target i:first-child {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -203,29 +188,29 @@
   background: transparent;
 }
 .award-brick__glyph--target i:last-child {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
 }
 
-.award-brick[data-award="levelUp"] .award-brick__badge { width: 44px; }
-.award-brick__glyph--level i { bottom: 3px; width: 8px; }
-.award-brick__glyph--level i:nth-child(1) { left: 4px; height: 7px; }
-.award-brick__glyph--level i:nth-child(2) { left: 15px; height: 13px; }
-.award-brick__glyph--level i:nth-child(3) { left: 26px; height: 20px; }
+.award-brick[data-award="levelUp"] .award-brick__badge { width: 30px; }
+.award-brick__glyph--level i { bottom: 3px; width: 6px; }
+.award-brick__glyph--level i:nth-child(1) { left: 4px; height: 5px; }
+.award-brick__glyph--level i:nth-child(2) { left: 13px; height: 10px; }
+.award-brick__glyph--level i:nth-child(3) { left: 22px; height: 15px; }
 
 @media (max-width: 420px) {
   .award-brick__front {
-    grid-template-columns: 21px minmax(0, 1fr) 5px;
-    gap: 2px;
-    padding-inline: 3px;
+    grid-template-columns: 25px minmax(0, 1fr);
+    gap: 4px;
+    padding-inline: 4px;
   }
-  .award-brick__runner { width: 21px; }
+  .award-brick__runner { width: 25px; }
   .award-brick__badge { transform: scale(.9); }
   .award-brick[data-award="zone2"] .award-brick__badge,
   .award-brick[data-award="onTarget"] .award-brick__badge { transform: none; }
-  .award-brick[data-award="longHaul"] .award-brick__badge { width: 84px; }
+  .award-brick[data-award="longHaul"] .award-brick__badge { width: 62px; }
 }

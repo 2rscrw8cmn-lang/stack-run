@@ -1,5 +1,6 @@
 import { addDaysToLocalDate, formatDateLabel } from "../../domain/dates";
 import {
+  CREW_AWARD_DESCRIPTION,
   CREW_AWARD_LABEL,
   formatCrewAwardResult,
   isFeatureCrewAward,
@@ -60,9 +61,7 @@ export function CrewAwardDetailSheet({
         <p className="crew-award-detail__week machine-label">
           Week of {formatDateLabel(award.weekStart, { month: "short", day: "numeric" })} — {formatDateLabel(end, { month: "short", day: "numeric" })}
         </p>
-        <p className="crew-award-detail__note">
-          Award blocks add no mileage. This piece records the weekly win and lives in the Crew Build.
-        </p>
+        <p className="crew-award-detail__note">{CREW_AWARD_DESCRIPTION[award.awardType]}</p>
         {onMoveBlock && (
           <Button variant="secondary" onClick={onMoveBlock}>Move Award Block</Button>
         )}

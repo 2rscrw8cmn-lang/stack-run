@@ -30,6 +30,17 @@ export const CREW_AWARD_LABEL: Record<CrewAwardType, string> = {
   levelUp: "Level Up",
 };
 
+export const CREW_AWARD_DESCRIPTION: Record<CrewAwardType, string> = {
+  miles: "Awarded to whoever logged the most qualifying mileage this week.",
+  zone2: "Awarded for the highest share of a qualifying run spent in Zone 2.",
+  pace: "Awarded for the fastest average pace on a run of at least 2 miles.",
+  runs: "Awarded for the most qualifying runs this week.",
+  longHaul: "Awarded for the longest single qualifying run.",
+  steady: "Awarded for the most even pace held across a qualifying run.",
+  onTarget: "Awarded for the closest match to the week's scheduled target distance.",
+  levelUp: "Awarded for the biggest pace improvement over that runner's recent baseline.",
+};
+
 export const CREW_AWARD_SHORT_LABEL: Record<CrewAwardType, string> = {
   miles: "MILES",
   zone2: "ZONE 2",

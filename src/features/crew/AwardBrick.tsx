@@ -48,12 +48,11 @@ export function AwardBrick({
     >
       <span className="placed-block__face placed-block__face--front award-brick__front">
         <span className="award-brick__runner">
-          <RunnerIcon icon={runnerIcon} accent={runnerAccent} size={18} />
+          <RunnerIcon icon={runnerIcon} accent={runnerAccent} size={24} />
         </span>
         <span className="award-brick__badge">
           <AwardGlyph type={awardType} />
         </span>
-        <span className="award-brick__hardware"><i /><i /></span>
       </span>
       {topFace.map((visible, column) =>
         visible ? (
