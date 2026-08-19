@@ -13,6 +13,12 @@ insert into auth.users (
   ('00000000-0000-0000-0000-000000000000', '91000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'award-member@example.test', '', now(), '{}', '{"display_name":"Member"}', now(), now(), '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', '91000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'award-outsider@example.test', '', now(), '{}', '{"display_name":"Outsider"}', now(), now(), '', '', '', '');
 
+insert into public.profiles (id, display_name) values
+  ('91000000-0000-0000-0000-000000000001', 'Owner'),
+  ('91000000-0000-0000-0000-000000000002', 'Member'),
+  ('91000000-0000-0000-0000-000000000003', 'Outsider')
+on conflict (id) do update set display_name = excluded.display_name;
+
 create temporary table award_test_ids (
   crew_id uuid not null,
   owner_run_id uuid,
@@ -30,9 +36,9 @@ values (public.create_crew(
   'Special Block Crew',
   'race',
   'Test Race',
-  (current_date + 90)::text,
+  current_date + 90,
   13.1,
-  (current_date - 14)::text
+  current_date - 14
 ));
 
 select public.create_crew_invite(
