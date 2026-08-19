@@ -202,6 +202,45 @@
 .award-brick__glyph--level i:nth-child(2) { left: 13px; height: 10px; }
 .award-brick__glyph--level i:nth-child(3) { left: 22px; height: 15px; }
 
+/*
+ * The award detail sheet reuses the same glyph at hero size instead of a
+ * second icon set — swap this block, not AwardBrick, once real award
+ * artwork lands.
+ */
+.crew-award-detail__glyph {
+  position: relative;
+  display: inline-flex;
+  margin-bottom: 2px;
+}
+
+.award-brick__badge--large {
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+}
+
+.award-brick__badge--large .award-brick__glyph {
+  transform: scale(3.2);
+}
+
+.award-brick[data-award="onTarget"] .award-brick__badge--large {
+  width: 96px;
+  height: 96px;
+}
+
+.award-brick[data-award="longHaul"] .award-brick__badge--large {
+  width: 168px;
+}
+
+.award-brick[data-feature] .award-brick__badge--large::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(210, 170, 98, .82);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 @media (max-width: 420px) {
   .award-brick__front {
     grid-template-columns: 25px minmax(0, 1fr);

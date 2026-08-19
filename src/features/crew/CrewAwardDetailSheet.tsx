@@ -10,7 +10,9 @@ import { crewMemberAccent } from "../../crew/memberAccent";
 import type { CrewMember } from "../../crew/types";
 import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
+import { AwardGlyph } from "./AwardBrick";
 import { RunnerIcon } from "./RunnerIcon";
+import "./awardBlock.css";
 
 export function CrewAwardDetailSheet({
   award,
@@ -35,6 +37,16 @@ export function CrewAwardDetailSheet({
       className="crew-award-detail"
     >
       <div className="crew-award-detail__body">
+        <span
+          className="award-brick crew-award-detail__glyph"
+          data-award={award.awardType}
+          data-feature={isFeatureCrewAward(award.awardType) || undefined}
+          aria-hidden="true"
+        >
+          <span className="award-brick__badge award-brick__badge--large">
+            <AwardGlyph type={award.awardType} />
+          </span>
+        </span>
         <p className="machine-label">
           {isFeatureCrewAward(award.awardType) ? "Feature Special Block" : "Weekly Special Block"}
         </p>

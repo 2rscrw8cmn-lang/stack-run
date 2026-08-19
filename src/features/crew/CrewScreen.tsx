@@ -6,6 +6,7 @@ import {
   Layers3,
   Mountain,
   RefreshCw,
+  Trophy,
   UserRoundPlus,
   UsersRound,
   WifiOff,
@@ -26,6 +27,7 @@ import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import { Sheet } from "../../components/ui/Sheet";
 import {
+  awardsWonByUserId,
   comparisonBarPercent,
   comparisonBest,
   comparisonValue,
@@ -70,6 +72,7 @@ const METRIC_LABEL: Record<ComparisonMetric, string> = {
   "longest-run": "Longest Run",
   "avg-pace": "Avg Pace",
   "miles-built": "Miles Built",
+  "awards-28d": "Awards",
 };
 
 type MetricDescriptor = {
@@ -84,6 +87,7 @@ const METRICS: MetricDescriptor[] = [
   { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
   { id: "avg-pace", shortLabel: "Pace", window: `Trailing ${AVG_PACE_WINDOW} days`, Icon: Gauge },
   { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 },
+  { id: "awards-28d", shortLabel: "Awards", window: "Trailing 28 days", Icon: Trophy },
 ];
 
 interface CrewScreenProps {
@@ -267,10 +271,12 @@ export function CrewScreen({
     );
   }
   const avgPace = avgPaceSecondsByUserId(dashboardData.runs, today);
+  const awardsWon = awardsWonByUserId(crewAwards.blocks, today);
   const comparisonSummaries: ComparisonSummary[] = dashboardData.summaries.map((summary) => ({
     ...summary,
     milesBuilt: placedMilesByUserId.get(summary.userId) ?? 0,
     avgPaceSeconds: avgPace.get(summary.userId) ?? null,
+    awardsWon28d: awardsWon.get(summary.userId) ?? 0,
   }));
   const comparisonRows = orderedComparisonRows(activeMetric, members, comparisonSummaries);
   const syncStatus = crewSyncStatus({

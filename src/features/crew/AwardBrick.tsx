@@ -8,7 +8,8 @@ import type { RunnerIcon as RunnerIconModel } from "../../crew/runnerIcon";
 import { RunnerIcon } from "./RunnerIcon";
 import "./awardBlock.css";
 
-function AwardGlyph({ type }: { type: CrewAwardType }) {
+/** Exported so the award detail sheet can show the same glyph at hero size. */
+export function AwardGlyph({ type }: { type: CrewAwardType }) {
   if (type === "miles") return <span className="award-brick__glyph award-brick__glyph--miles"><i /><i /><i /></span>;
   if (type === "zone2") return <span className="award-brick__glyph award-brick__glyph--zone2"><i /><i /></span>;
   if (type === "pace") return <span className="award-brick__glyph award-brick__glyph--pace"><i /><i /><i /></span>;
