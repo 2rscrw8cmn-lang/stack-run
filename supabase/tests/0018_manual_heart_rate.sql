@@ -74,7 +74,10 @@ begin
     'importedMetrics', null, 'manualHeartRate', null,
     'createdAt', '2026-08-18T10:00:00Z', 'updatedAt', '2026-08-18T12:00:00Z'
   ));
-  if v_saved -> 'manual_heart_rate' is not null then
+  -- ->> (text extraction), not -> (jsonb extraction): a JSON null value's
+  -- `->` result is the jsonb literal null, which is itself SQL NOT NULL, so
+  -- that comparison would always report "not cleared" even when it was.
+  if v_saved ->> 'manual_heart_rate' is not null then
     raise exception 'save_personal_run did not clear the heart rate';
   end if;
 end;

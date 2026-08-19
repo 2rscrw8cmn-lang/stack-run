@@ -441,7 +441,7 @@ What it adds:
   editor), plus a Runner Icon view under Edit Profile;
 - one column, `profiles.runner_icon`
   (`supabase/migrations/20260813170000_runner_icon.sql`, widened for the
-  five-part code in `20260814120000_runner_icon_backdrop.sql`), self-only,
+  five-part code in `20260814120001_runner_icon_backdrop.sql`), self-only,
   nullable, never backfilled;
 - runner icons in Crew member rows and roster, Recent Crew Runs, Today's Crew
   Activity, comparisons, Member Build cards and sheet, crew-safe Run Detail and
