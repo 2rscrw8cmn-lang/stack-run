@@ -105,11 +105,18 @@ export interface CrewMemberSummary {
  * This intentionally does not resemble a personal RunLog: there is no
  * source, external id, exact start time, cadence, elevation, training load,
  * HR zones, effort, note, route or plan. Heart rate is the one piece of
- * health data shared, deliberately, per D-078 — average, max, and the
+ * health data shared, deliberately, per D-079 — average, max, and the
  * manual-entry fallback for a run with no imported average.
  */
 export interface CrewSharedRun {
   id: string;
+  /**
+   * The contributing runner's own local STACK run id — already part of the
+   * approved shared-run contract, since it is how a projection finds the row
+   * it owns. Today reads it to tell whether the run it just logged still owes
+   * the Crew Build a block (issue #120).
+   */
+  localRunId: string;
   userId: string;
   displayName: string;
   accentColor: CrewMemberAccent | null;

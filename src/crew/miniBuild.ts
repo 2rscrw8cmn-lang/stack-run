@@ -12,7 +12,7 @@ import {
   type GridVoid,
 } from "../domain/placement";
 import type { RunActivityType } from "../domain/types";
-import type { CrewMember, CrewMiniBuildRun } from "./types";
+import type { CrewMiniBuildRun } from "./types";
 
 export const MEMBER_BUILD_BLOCK_LIMIT = 128;
 
@@ -37,18 +37,6 @@ export interface CrewMiniBuildModel {
    * tower, unlike the Crew-windowed comparison `milesBuilt` summary.
    */
   totalMiles: number;
-}
-
-/** Current runner first, then the stable membership order from joined_at. */
-export function orderedMiniBuildMembers(
-  members: CrewMember[],
-  currentUserId: string | undefined,
-): CrewMember[] {
-  if (!currentUserId) return [...members];
-  return [
-    ...members.filter((member) => member.userId === currentUserId),
-    ...members.filter((member) => member.userId !== currentUserId),
-  ];
 }
 
 /**

@@ -1,4 +1,4 @@
--- D-078: Crew now sees a runner's heart rate, deliberately narrowing D-056's
+-- D-079: Crew now sees a runner's heart rate, deliberately narrowing D-056's
 -- "do not share by default: HR/max HR" boundary to just those two facts plus
 -- the manual-entry fallback. Training Load, cadence, HR zones, GPS/routes,
 -- exact start time, effort and notes are unchanged and stay personal-only.

@@ -22,7 +22,7 @@ export interface CrewSharedRunProjection {
   buildColumnStart: number | null;
   buildWidth: BlockPlacement["width"] | null;
   buildHeight: BlockPlacement["height"] | null;
-  /** Per D-078, the one piece of health data Crew sees. Null covers both "no reading" and "not synced". */
+  /** Per D-079, the one piece of health data Crew sees. Null covers both "no reading" and "not synced". */
   averageHeartRate: number | null;
   maxHeartRate: number | null;
   manualHeartRate: number | null;
@@ -97,7 +97,7 @@ function safeSharedPlacement(
 
 /**
  * Heart rate fields are the one deliberate exception to "never spread a
- * RunLog" above them, per D-078 — still named explicitly, still never a
+ * RunLog" above them, per D-079 — still named explicitly, still never a
  * spread, just no longer withheld.
  */
 export function projectSharedRun(

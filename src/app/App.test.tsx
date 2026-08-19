@@ -160,7 +160,9 @@ describe("App", () => {
     const { unmount } = render(<App />);
 
     await logTodaysRun(user);
-    expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
+    // Today no longer restates the run it just recorded; what it offers is
+    // the block that is still unplaced (issue #120).
+    expect(screen.getByRole("button", { name: "Place Personal Block" })).toBeInTheDocument();
 
     // The block is waiting in Build's staging tray, not in the structure.
     await user.click(screen.getByRole("button", { name: "Build" }));
@@ -269,11 +271,9 @@ describe("App", () => {
 
     // The run survived: Today shows it completed, with its own values, and
     // its block is already built rather than waiting to be placed again.
-    const summary = within(screen.getByRole("group", { name: "Completed run" }));
-    expect(summary.getByText("2.1 mi")).toBeInTheDocument();
-    expect(summary.getByText("20:30")).toBeInTheDocument();
+    expect(screen.getByText("2.1 mi · 20:30 · 9:46 /MI")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Place Block" }),
+      screen.queryByRole("button", { name: "Place Personal Block" }),
     ).not.toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
@@ -351,8 +351,8 @@ describe("App", () => {
     const { unmount } = render(<App />);
 
     await logTodaysRun(user);
-    // Place Block hands off to Build, where the block hovers over the tower.
-    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    // Place Personal Block hands off to Build, where it hovers over the tower.
+    await user.click(screen.getByRole("button", { name: "Place Personal Block" }));
     expect(screen.getByRole("button", { name: "Build" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -468,7 +468,7 @@ describe("App", () => {
     render(<App />);
 
     await logTodaysRun(user);
-    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    await user.click(screen.getByRole("button", { name: "Place Personal Block" }));
     await user.click(screen.getByRole("button", { name: "Drop" }));
 
     await user.click(screen.getByRole("button", { name: "Runs" }));

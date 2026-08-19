@@ -11,6 +11,7 @@ import {
   findPlacementForRunLog,
   selectBuildViewModel,
 } from "../../domain/build";
+import { readyCrewBlockForLocalRun } from "../../crew/todayCrewBlock";
 import {
   daysBetweenLocalDates,
   formatDateLabel,
@@ -52,6 +53,12 @@ interface TodayScreenProps {
   onViewBuild?: () => void;
   /** Hands the earned block to Build, which is where placing happens. */
   onStartPlacing?: (runLogId: string) => void;
+  /**
+   * Hands one shared run to Crew, which opens straight into placement for it.
+   * Crew placement is independent of Personal placement (D-066), so a run can
+   * still owe a Crew block after its Personal block is standing.
+   */
+  onStartCrewPlacing?: (sharedRunId: string) => void;
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (
@@ -63,10 +70,8 @@ interface TodayScreenProps {
   availability?: AvailabilityCalendar | null;
   /** Unimported synced runs, newest first once Run Data is connected. */
   candidates?: IntervalsCandidate[];
-  /** Opens the existing import review, optionally forced to an extra run. */
-  onReviewCandidate?: (candidate: IntervalsCandidate, asExtra: boolean) => void;
-  onDismissCandidate?: (externalId: string) => void;
-  onIgnoreCandidate?: (externalId: string) => void;
+  /** Opens Run Data on this candidate's own review state. */
+  onReviewCandidate?: (candidate: IntervalsCandidate) => void;
   /** The last quiet sync failure, if there is one worth offering a retry for. */
   syncError?: string | null;
   onRetrySync?: () => void;
@@ -93,13 +98,12 @@ export function TodayScreen({
   onViewBuild = () => undefined,
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
+  onStartCrewPlacing = () => undefined,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
   availability = null,
   candidates = [],
   onReviewCandidate = () => undefined,
-  onDismissCandidate = () => undefined,
-  onIgnoreCandidate = () => undefined,
   syncError = null,
   onRetrySync = () => undefined,
   isSyncing = false,
@@ -135,6 +139,14 @@ export function TodayScreen({
       : null;
   const completedPlacement = completed
     ? (findPlacementForRunLog(blockPlacements, completed.runLog.id) ?? null)
+    : null;
+  // The same run's Crew Build contribution, only while it is still unplaced.
+  const completedCrewBlockRunId = completed
+    ? readyCrewBlockForLocalRun(
+      raceCrew?.crewData?.runs,
+      raceCrew?.account?.profile.id,
+      completed.runLog.id,
+    )
     : null;
 
   function openEntry(next: Entry) {
@@ -203,8 +215,9 @@ export function TodayScreen({
               runLog: completed.runLog,
             })
           }
+          crewBlockRunId={completedCrewBlockRunId}
           onPlaceBlock={() => onStartPlacing(completed.runLog.id)}
-          onViewBuild={onViewBuild}
+          onPlaceCrewBlock={onStartCrewPlacing}
         />
       )}
 
@@ -212,10 +225,7 @@ export function TodayScreen({
         <RunFoundCard
           found={found}
           today={today}
-          onConfirmMatch={() => onReviewCandidate(found.candidate, false)}
-          onAddAsExtra={() => onReviewCandidate(found.candidate, true)}
-          onDismiss={() => onDismissCandidate(found.candidate.externalId)}
-          onIgnore={() => onIgnoreCandidate(found.candidate.externalId)}
+          onReview={() => onReviewCandidate(found.candidate)}
         />
       )}
 

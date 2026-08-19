@@ -46,6 +46,7 @@ function sharedRun(
 ): CrewSharedRun {
   return {
     id,
+    localRunId: `local-${id}`,
     userId,
     displayName: members.find((member) => member.userId === userId)?.displayName ?? "Runner",
     accentColor: members.find((member) => member.userId === userId)?.accentColor ?? null,
@@ -238,9 +239,14 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
   };
 }
 
-function openCrew(crew = controller()) {
+function openCrew(
+  crew = controller(),
+  extra: Partial<Parameters<typeof CrewScreen>[0]> = {},
+) {
   const user = userEvent.setup();
-  render(<CrewScreen crew={crew} onOpenAccountCrew={vi.fn()} today={TODAY} />);
+  render(
+    <CrewScreen crew={crew} onOpenAccountCrew={vi.fn()} today={TODAY} {...extra} />,
+  );
   return user;
 }
 
@@ -313,7 +319,6 @@ describe("Crew destination states", () => {
     expect(screen.getByRole("list", { name: "Weekly Miles comparison" })).toBeInTheDocument();
     expect(screen.getByText("Crew Build unavailable.")).toBeInTheDocument();
     expect(screen.getByText("Recent crew runs unavailable.")).toBeInTheDocument();
-    expect(screen.getByText("Member Builds unavailable.")).toBeInTheDocument();
   });
 });
 
@@ -454,15 +459,7 @@ describe("Crew comparisons and runs", () => {
       expect.stringContaining("Travis"),
     ]);
     const metricTabs = screen.getByRole("tablist", { name: "Comparison metric" });
-    expect(within(metricTabs).queryByText(/Miles|Long|Consist|Built/)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Consistency" }));
-    expect(screen.getByText("88%")).toBeInTheDocument();
-    expect(screen.getByText("· 14/16")).toBeInTheDocument();
-    expect(screen.getByText("75%")).toBeInTheDocument();
-    expect(screen.getByText("· 12/16")).toBeInTheDocument();
-    expect(screen.getByText("—")).toBeInTheDocument();
-    expect(screen.queryByText("0%")).not.toBeInTheDocument();
+    expect(within(metricTabs).queryByText(/Miles|Long|Pace|Built/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Miles Built" }));
     rows = within(
@@ -474,44 +471,65 @@ describe("Crew comparisons and runs", () => {
       expect.stringContaining("Zack"),
     ]);
     expect(screen.queryByRole("combobox", { name: "Comparison metric" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Refresh crew data" })).toHaveTextContent("");
   });
 
-  it("swaps Run Days in for Consistency on a Run Club, counting distinct days", async () => {
+  /*
+   * Issue #120: Consistency needed a training plan, so a Race Crew and a Run
+   * Club could never compare the same four things. Avg Pace comes from shared
+   * runs, so it is the same slot for both — and it is the one metric where a
+   * smaller number wins.
+   */
+  it.each([
+    ["a Race Crew", undefined],
+    ["a Run Club", "club" as const],
+  ])("compares Avg Pace over the trailing 28 days in %s, fastest first", async (_label, kind) => {
     const runs = [
-      sharedRun("z1", "zack", "2026-08-01"),
-      sharedRun("z2", "zack", "2026-08-05"),
-      sharedRun("z3", "zack", "2026-08-09"),
-      sharedRun("d1", "drew", "2026-08-09"),
+      // Zack: 10 miles in 90:00 — 9:00 /MI.
+      sharedRun("z1", "zack", "2026-08-09", { distanceMiles: 10, durationSeconds: 5400 }),
+      // Drew: 4 miles in 32:00 — 8:00 /MI.
+      sharedRun("d1", "drew", "2026-08-09", { distanceMiles: 4, durationSeconds: 1920 }),
+      // Travis has only distanceless Cross Training, so he has no pace at all.
+      sharedRun("t1", "travis", "2026-08-09", {
+        activityType: "cross",
+        distanceMiles: 0,
+        durationSeconds: 2400,
+      }),
     ];
+    const base = controller();
     const user = await openCrew(
       controller({
-        account: {
-          ...controller().account!,
-          memberships: [{ crew: runClub, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
-          crew: runClub,
-        },
+        account: kind === "club"
+          ? {
+            ...base.account!,
+            memberships: [{ crew: runClub, role: "owner", joinedAt: "2026-08-01T00:00:00Z" }],
+            crew: runClub,
+          }
+          : base.account,
         crewData: dashboard({ runs }),
       }),
     );
 
     const metricTabs = screen.getByRole("tablist", { name: "Comparison metric" });
     expect(within(metricTabs).queryByRole("tab", { name: "Consistency" })).not.toBeInTheDocument();
-    expect(within(metricTabs).getByRole("tab", { name: "Run Days" })).toBeInTheDocument();
+    expect(within(metricTabs).queryByRole("tab", { name: "Run Days" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Run Days" }));
+    await user.click(screen.getByRole("tab", { name: "Avg Pace" }));
     const rows = within(
-      screen.getByRole("list", { name: "Run Days comparison" }),
+      screen.getByRole("list", { name: "Avg Pace comparison" }),
     ).getAllByRole("listitem");
     expect(rows.map((item) => item.textContent)).toEqual([
-      expect.stringContaining("Zack"),
       expect.stringContaining("Drew"),
+      expect.stringContaining("Zack"),
       expect.stringContaining("Travis"),
     ]);
-    expect(within(rows[0]).getByText("3")).toBeInTheDocument();
-    expect(within(rows[0]).getByText("· 28D")).toBeInTheDocument();
-    expect(within(rows[1]).getByText("1")).toBeInTheDocument();
-    expect(within(rows[2]).getByText("0")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("8:00 /MI")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("9:00 /MI")).toBeInTheDocument();
+    // Cross Training never counts, so Travis reads as unavailable, not 0:00.
+    expect(within(rows[2]).getByText("—")).toBeInTheDocument();
+    // The fastest pace draws the full bar even though its number is smallest.
+    expect(rows[0].querySelector(".crew-comparison__bar")).toHaveStyle(
+      "--crew-bar-value: 100%",
+    );
   });
 
   it("shows recent crew runs newest first and derives pace", async () => {
@@ -604,35 +622,6 @@ describe("Crew comparisons and runs", () => {
     expect(toggleProps).toHaveBeenCalledWith("teammate");
   });
 
-  it("renders stable member-ordered Member Builds from activity-colored shared blocks", async () => {
-    await openCrew();
-    const rail = screen.getByRole("list", { name: "Member Builds" });
-    const cards = within(rail).getAllByRole("listitem");
-
-    expect(cards).toHaveLength(3);
-    expect(cards[0]).toHaveTextContent("Zack");
-    expect(cards[0]).toHaveTextContent("You");
-    // Zack has no miniBuildRuns in this fixture, so the tower is empty and
-    // the mileage next to it must say the same thing rather than the
-    // Crew-windowed comparison summary (122.0) attached to his card.
-    expect(cards[0]).toHaveTextContent("0.0 MI BUILT");
-    expect(cards[0]).toHaveTextContent("No blocks yet.");
-    expect(cards[1]).toHaveTextContent("Drew");
-    // Drew's only miniBuildRun ("new") is a 6.1mi long run, so the card
-    // mileage must match that block, not his 140.0 comparison summary.
-    expect(cards[1]).toHaveTextContent("6.1 MI BUILT");
-    // Mileage and block count read together on one compact footer line,
-    // rather than mileage sitting up in the identity row (issue #86).
-    expect(cards[1]).toHaveTextContent("6.1 MI BUILT1 block");
-    expect(cards[1].querySelector('rect[data-type="long"]')).toBeInTheDocument();
-    expect(cards[1]).toHaveAttribute("data-member-color");
-    expect(screen.queryByText("Each runner's own Build.")).not.toBeInTheDocument();
-    // One construction grid per card: the outer card no longer draws its own
-    // `technical-grid` background behind CrewMiniBuild's field grid.
-    const card = screen.getByRole("button", { name: "Open Drew's Build" });
-    expect(card.className).not.toMatch(/technical-grid/);
-  });
-
   it("opens an exact read-only Member Build and resolves its block to crew-safe Run Detail", async () => {
     const exact = sharedRun("placed-run", "drew", "2026-08-07", {
       activityType: "intervals",
@@ -657,10 +646,7 @@ describe("Crew comparisons and runs", () => {
       }),
     );
 
-    const card = screen.getByRole("button", { name: "Open Drew's Build" });
-    expect(card).toBeInTheDocument();
-    expect(card.querySelector('rect[data-row="6"][data-column-start="4"]')).toBeInTheDocument();
-    await user.click(card);
+    await user.click(screen.getAllByRole("button", { name: "Open Drew's Crew Profile" })[0]);
 
     // The sheet is a member-focused profile, not a sheet titled only
     // "Member Build" (issue #87).
@@ -712,13 +698,10 @@ describe("Crew comparisons and runs", () => {
       }),
     );
 
-    const card = screen.getByRole("button", { name: "Open Drew's Build" });
-    // The card's tower shows both blocks, so its mileage must total both —
-    // not Drew's Crew-windowed comparison summary.
-    expect(card).toHaveTextContent("9.3 MI BUILT");
-
-    await user.click(card);
+    await user.click(screen.getAllByRole("button", { name: "Open Drew's Crew Profile" })[0]);
     const dialog = screen.getByRole("dialog", { name: "Crew Profile" });
+    // The profile's tower shows both blocks, so its mileage must total both —
+    // not Drew's Crew-windowed comparison summary.
     const sheet = within(dialog);
     expect(dialog.querySelector(".crew-build__miles")).toHaveTextContent("9.3");
     expect(sheet.getAllByRole("button", { name: /Open Drew's/ })).toHaveLength(2);
@@ -736,9 +719,9 @@ describe("Crew comparisons and runs", () => {
     );
   });
 
-  it("keeps Member Build cards keyboard reachable and opens with Enter", async () => {
+  it("keeps the Crew Build member rail keyboard reachable and opens with Enter", async () => {
     const user = await openCrew();
-    const card = screen.getByRole("button", { name: "Open Zack's Build" });
+    const card = screen.getAllByRole("button", { name: "Open Zack's Crew Profile" })[0];
     card.focus();
     expect(card).toHaveFocus();
     await user.keyboard("{Enter}");
@@ -763,7 +746,7 @@ describe("Crew comparisons and runs", () => {
       }),
     );
 
-    await user.click(screen.getByRole("button", { name: "Open Zack's Build" }));
+    await user.click(screen.getAllByRole("button", { name: "Open Zack's Crew Profile" })[0]);
     const dialog = screen.getByRole("dialog", { name: "Crew Profile" });
     const profile = within(dialog);
 
@@ -771,19 +754,20 @@ describe("Crew comparisons and runs", () => {
     expect(dialog.querySelector(".crew-member-profile__name")).toHaveTextContent("Zack");
     expect(dialog.querySelector(".crew-member-profile__you")).toHaveTextContent("You");
 
-    // The compact shared stat strip, Race Crew's Consistency slot included.
+    // The compact shared stat strip, with Avg Pace where Consistency used to
+    // be (issue #120). Zack's one 9.1mi run took 2352s, so 4:18 /MI.
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("This Week");
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Longest");
-    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Consistency");
-    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("75%");
-    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("3/4");
+    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Avg Pace · 28D");
+    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("4:18 /MI");
+    expect(dialog.querySelector(".crew-member-profile__stats")).not.toHaveTextContent("Consistency");
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Member Build");
 
     // Recent runs use the same compact Crew run-row language as the main feed.
     expect(profile.getByText("Long Run")).toBeInTheDocument();
   });
 
-  it("shows Run Days instead of Consistency in a Run Club's Crew Profile", async () => {
+  it("shows the same Avg Pace stat in a Run Club's Crew Profile", async () => {
     const user = await openCrew(
       controller({
         account: {
@@ -794,9 +778,10 @@ describe("Crew comparisons and runs", () => {
       }),
     );
 
-    await user.click(screen.getByRole("button", { name: "Open Zack's Build" }));
+    await user.click(screen.getAllByRole("button", { name: "Open Zack's Crew Profile" })[0]);
     const dialog = screen.getByRole("dialog", { name: "Crew Profile" });
-    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Run Days");
+    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Avg Pace · 28D");
+    expect(dialog.querySelector(".crew-member-profile__stats")).not.toHaveTextContent("Run Days");
     expect(dialog.querySelector(".crew-member-profile__stats")).not.toHaveTextContent("Consistency");
   });
 
@@ -849,7 +834,7 @@ describe("Crew comparisons and runs", () => {
     expect(detail.getByText("9:37 /MI")).toBeInTheDocument();
     expect(detail.getByText("0 crew members")).toBeInTheDocument();
     expect(detail.getByRole("button", { name: "Give Props to Drew" })).toBeInTheDocument();
-    // Average heart rate is now the one deliberate exception, per D-078.
+    // Average heart rate is now the one deliberate exception, per D-079.
     expect(detail.getByText("155 BPM")).toBeInTheDocument();
     expect(detail.queryByText(/load|72|effort|great/i)).not.toBeInTheDocument();
     expect(detail.queryByText("Private crew note")).not.toBeInTheDocument();
@@ -946,25 +931,24 @@ describe("Shared Crew Build", () => {
   });
 
   /**
-   * Issue #71's explicit boundary: the runner's icon belongs in the legend and
+   * Issue #71's explicit boundary: the runner's icon belongs in the rail and
    * the identity UI around the tower, never stamped onto every brick. Blocks
    * stay member-colored with at most an initial.
    */
-  it("keeps the Crew Build blocks clean and puts the runner icons in the legend", () => {
+  it("keeps the Crew Build blocks clean and puts the runner icons in the rail", () => {
     openCrew(crewWithBuild());
     const tower = screen.getByRole("list", { name: "Crew Build blocks" });
     expect(tower.querySelectorAll(".runner-icon")).toHaveLength(0);
 
-    const legend = screen.getByRole("list", { name: "Crew Build runners" });
-    const entries = within(legend).getAllByRole("listitem");
+    const rail = screen.getByRole("list", { name: "Crew Build runners" });
+    const entries = within(rail).getAllByRole("listitem");
     expect(entries.length).toBeGreaterThan(0);
     for (const entry of entries) {
-      // One icon per runner, decorative, beside a name that does the naming.
+      // One icon per runner, decorative, inside the control that names it.
       const mark = entry.querySelector(".runner-icon");
       expect(mark).not.toBeNull();
       expect(mark).toHaveAttribute("aria-hidden", "true");
       expect(entry).toHaveAttribute("data-member-color");
-      expect(entry.textContent).toMatch(/\S/);
     }
   });
 
@@ -1000,13 +984,34 @@ describe("Shared Crew Build", () => {
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
   });
 
-  it("lists the crew's runners as a compact legend rather than a leaderboard", () => {
-    openCrew(crewWithBuild());
-    const legend = within(screen.getByRole("list", { name: "Crew Build runners" }));
+  /*
+   * Issue #120: names wrapped the legend onto extra rows as the crew grew,
+   * and each row came out of the tower. Icons only, one row, always.
+   */
+  it("lists the crew's runners as a single icon-only rail into Crew Profile", async () => {
+    const user = openCrew(crewWithBuild());
+    const rail = within(screen.getByRole("list", { name: "Crew Build runners" }));
 
-    expect(legend.getAllByRole("listitem")).toHaveLength(3);
-    expect(legend.getByText("Zack")).toBeInTheDocument();
-    expect(legend.getByText("Drew")).toBeInTheDocument();
+    expect(rail.getAllByRole("listitem")).toHaveLength(3);
+    expect(rail.queryByText("Zack")).not.toBeInTheDocument();
+    expect(rail.queryByText("Drew")).not.toBeInTheDocument();
+    // The name survives where it costs no space: the accessible name.
+    expect(rail.getByRole("button", { name: "Open Drew's Crew Profile" })).toBeInTheDocument();
+
+    await user.click(rail.getByRole("button", { name: "Open Drew's Crew Profile" }));
+    const profile = screen.getByRole("dialog", { name: "Crew Profile" });
+    expect(profile.querySelector(".crew-member-profile__name")).toHaveTextContent("Drew");
+  });
+
+  it("puts the viewer first in the rail and never wraps it to a second row", () => {
+    openCrew(crewWithBuild());
+    const rail = screen.getByRole("list", { name: "Crew Build runners" });
+    const labels = within(rail)
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label"));
+
+    expect(labels[0]).toBe("Open Zack's Crew Profile");
+    expect(rail.className).toContain("crew-build__rail");
   });
 
   it("ignores personal Member Build placement when building the shared tower", () => {
@@ -1113,6 +1118,57 @@ describe("Shared Crew Build", () => {
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
     expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
+  });
+
+  /*
+   * Issue #120: Today's `Place Crew Block` names the run, so Crew opens
+   * holding that block rather than dropping the runner on the Crew page to
+   * find their own READY contribution in the tower.
+   */
+  it("opens placement on the run Today handed over", async () => {
+    const place = vi.fn(async () => true);
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const onCrewPlacementHandled = vi.fn();
+    const user = openCrew(
+      controller({ crewData: dashboard({ runs: [ready] }), placeCrewBuildBlock: place }),
+      { placeCrewRunId: "ready-own", onCrewPlacementHandled },
+    );
+
+    // No Place Block tap: placement is already open on that exact run.
+    expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
+    // The request is retired, so returning to Crew later does not reopen it.
+    expect(onCrewPlacementHandled).toHaveBeenCalled();
+  });
+
+  it("retires an unwanted handoff when the runner cancels rather than reopening it", async () => {
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const onCrewPlacementHandled = vi.fn();
+    const user = openCrew(
+      controller({ crewData: dashboard({ runs: [ready] }) }),
+      { placeCrewRunId: "ready-own", onCrewPlacementHandled },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel placing" }));
+    expect(onCrewPlacementHandled).toHaveBeenCalled();
+  });
+
+  it("ignores a handoff naming a run this crew payload does not have", () => {
+    openCrew(
+      controller({ crewData: dashboard({ runs: [] }) }),
+      { placeCrewRunId: "not-here" },
+    );
+
+    expect(
+      screen.queryByRole("list", { name: "Choose a Crew Build position" }),
+    ).not.toBeInTheDocument();
   });
 
   it("slides the hovering block sideways with the step controls, never offering a row to pick", async () => {
@@ -1311,27 +1367,9 @@ describe("Switching between crews", () => {
 });
 
 describe("Crew page polish (issue #93)", () => {
-  it("draws a Member Build card's mini tower without a technical construction grid", () => {
-    openCrew();
-    const card = screen.getByRole("button", { name: "Open Drew's Build" });
-
-    expect(card.querySelector(".crew-mini-build__grid")).toBeNull();
-    expect(card.querySelector(".crew-mini-build__blocks rect")).toBeInTheDocument();
-    expect(card.querySelector(".crew-mini-build__ground")).toBeInTheDocument();
-  });
-
-  it("sizes the mini Build field to the tower's own course count, not a fabricated floor", () => {
-    // Drew's default run is a single ground-row block (row 0, height 1), so
-    // an honest field is one course tall plus modest headroom — not the old
-    // 5-course minimum that dwarfed a short tower.
-    openCrew();
-    const card = screen.getByRole("button", { name: "Open Drew's Build" });
-    expect(card.querySelector(".crew-mini-build svg")).toHaveAttribute("viewBox", "0 0 80 16");
-  });
-
   it("keeps a short Crew Profile Build in the same fixed-height frame", async () => {
     const user = await openCrew();
-    await user.click(screen.getByRole("button", { name: "Open Drew's Build" }));
+    await user.click(screen.getAllByRole("button", { name: "Open Drew's Crew Profile" })[0]);
 
     const profile = screen.getByRole("dialog", { name: "Crew Profile" });
     expect(profile.querySelector(".crew-build__stage")).toHaveStyle(
@@ -1339,38 +1377,64 @@ describe("Crew page polish (issue #93)", () => {
     );
   });
 
-  it("orders The Crew above Recent Crew Runs", () => {
+  /*
+   * Issue #120: a per-member card for every runner grew without bound as the
+   * crew did, duplicating what the tower, the comparisons and Crew Profile
+   * already say. Nothing replaces it — the members are the rail and the rows.
+   */
+  it("no longer carries a member-card section on the main Crew page", () => {
     openCrew();
     const titles = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    const crewIndex = titles.indexOf("The Crew");
-    const recentIndex = titles.indexOf("Recent Crew Runs");
 
-    expect(crewIndex).toBeGreaterThanOrEqual(0);
-    expect(recentIndex).toBeGreaterThan(crewIndex);
+    expect(titles).not.toContain("The Crew");
+    expect(titles).toContain("Recent Crew Runs");
+    expect(screen.queryByRole("list", { name: "Member Builds" })).not.toBeInTheDocument();
+    expect(document.querySelector(".crew-build-card")).toBeNull();
   });
 
-  it("shows crew data freshness once, beside Refresh, not repeated below the comparisons", () => {
+  /*
+   * Issue #120: "Updated 4 minutes ago" was copy nobody needed during normal
+   * use. The refresh control carries the state instead, and the words survive
+   * only in its accessible name.
+   */
+  it("says the crew sync state through the refresh icon rather than a line of copy", () => {
     vi.useFakeTimers();
     try {
-      // An hour after the dashboard's default summaries were loaded: stale
-      // enough to surface the label, without the warning threshold.
+      // An hour after the dashboard's default summaries were loaded: stale,
+      // but not stale enough to change what a comparison means.
       vi.setSystemTime(new Date("2026-08-10T15:00:00Z"));
       openCrew();
 
-      const refreshGroup = document.querySelector(".crew-view__refresh-group");
-      expect(refreshGroup).not.toBeNull();
-      expect(within(refreshGroup as HTMLElement).getByText(/Updated/)).toBeInTheDocument();
-      expect(
-        within(refreshGroup as HTMLElement).getByRole("button", { name: "Refresh crew data" }),
-      ).toBeInTheDocument();
-
-      // Exactly one freshness label on the page, and it is not the old
-      // location under the comparison rows.
-      expect(screen.getAllByText(/Updated/)).toHaveLength(1);
-      expect(document.querySelector(".crew-comparison")?.textContent ?? "").not.toMatch(/Updated/);
+      expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
+      const refresh = screen.getByRole("button", {
+        name: "Refresh crew data. Crew data is up to date.",
+      });
+      expect(refresh).toHaveAttribute("data-sync-state", "healthy");
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("turns the refresh icon amber when the crew numbers are meaningfully stale", () => {
+    vi.useFakeTimers();
+    try {
+      // Three hours past the summaries' own timestamps, over the two-hour
+      // threshold where a member comparison stops meaning what it says.
+      vi.setSystemTime(new Date("2026-08-10T17:00:00Z"));
+      openCrew();
+
+      const refresh = screen.getByRole("button", { name: /Refresh crew data\. Updated 3h ago/ });
+      expect(refresh).toHaveAttribute("data-sync-state", "attention");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("marks the refresh icon as syncing while a refresh is running", () => {
+    openCrew(controller({ crewDataStatus: "loading" }));
+    const refresh = screen.getByRole("button", { name: "Refreshing crew data" });
+    expect(refresh).toHaveAttribute("data-sync-state", "syncing");
+    expect(refresh).toBeDisabled();
   });
 
   it("treats Member Profile → Run Detail as a reversible drill-down", async () => {
@@ -1397,7 +1461,7 @@ describe("Crew page polish (issue #93)", () => {
       }),
     );
 
-    await user.click(screen.getByRole("button", { name: "Open Drew's Build" }));
+    await user.click(screen.getAllByRole("button", { name: "Open Drew's Crew Profile" })[0]);
     expect(screen.getByRole("dialog", { name: "Crew Profile" })).toBeInTheDocument();
 
     const profile = within(screen.getByRole("dialog", { name: "Crew Profile" }));

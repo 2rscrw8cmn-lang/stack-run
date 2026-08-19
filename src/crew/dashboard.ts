@@ -125,7 +125,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
+        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -195,6 +195,7 @@ export async function loadCrewDashboard(
     const localDate = requiredString(item, "local_date");
     return {
       id: requiredString(item, "id"),
+      localRunId: requiredString(item, "local_run_id"),
       userId,
       displayName: displayName(userId),
       accentColor: accentColorOf(userId),

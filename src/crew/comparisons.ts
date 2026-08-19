@@ -1,26 +1,32 @@
 import { formatMiles, formatMilesBuilt } from "../domain/distance";
+import { formatPaceSeconds } from "../domain/runs";
 import type { CrewMember, CrewMemberSummary } from "./types";
-import { RUN_DAYS_WINDOW } from "./runDays";
+import { AVG_PACE_WINDOW } from "./avgPace";
 
 export type ComparisonMetric =
   | "weekly-miles"
   | "longest-run"
-  | "consistency"
-  | "run-days"
+  | "avg-pace"
   | "miles-built";
 
 /**
- * The raw synced summary plus Run Days, computed by the screen from actual
- * shared runs rather than a training plan. Race Crew comparisons never read
- * `runDays`; Run Club comparisons never read `consistencyCompleted/Due`.
+ * The raw synced summary plus Avg Pace, computed by the screen from actual
+ * shared runs rather than a training plan — which is why the same four
+ * metrics now serve a Race Crew and a Run Club alike (issue #120).
  */
 export interface ComparisonSummary extends CrewMemberSummary {
-  runDays: number;
+  /** Trailing-window seconds per mile, or null with no eligible running. */
+  avgPaceSeconds: number | null;
 }
 
 export interface ComparisonRow {
   member: CrewMember;
   summary: ComparisonSummary | null;
+}
+
+/** Every mileage metric rewards a bigger number; pace rewards a smaller one. */
+export function lowerIsBetter(metric: ComparisonMetric): boolean {
+  return metric === "avg-pace";
 }
 
 export function comparisonValue(
@@ -31,23 +37,38 @@ export function comparisonValue(
   if (metric === "weekly-miles") return summary.weeklyMiles;
   if (metric === "longest-run") return summary.longestRun28dMiles;
   if (metric === "miles-built") return summary.milesBuilt;
-  if (metric === "run-days") return summary.runDays;
-  return summary.consistencyDue > 0
-    ? summary.consistencyCompleted / summary.consistencyDue
-    : null;
+  return summary.avgPaceSeconds;
 }
 
-/** Graphic support for the visible value; consistency keeps its natural 0–100 scale. */
+/**
+ * The best reading on screen, which every bar is drawn against — the largest
+ * value for a mileage metric, the smallest for pace.
+ */
+export function comparisonBest(
+  metric: ComparisonMetric,
+  rows: readonly ComparisonRow[],
+): number {
+  const values = rows
+    .map((row) => comparisonValue(metric, row.summary))
+    .filter((value): value is number => value !== null && value > 0);
+  if (values.length === 0) return 0;
+  return lowerIsBetter(metric) ? Math.min(...values) : Math.max(...values);
+}
+
+/**
+ * Graphic support for the visible value. A full bar always means "best on
+ * this screen", so a faster pace draws a longer bar even though its number
+ * is smaller — the alternative reads as a leaderboard upside down.
+ */
 export function comparisonBarPercent(
   metric: ComparisonMetric,
   summary: ComparisonSummary | null,
-  maxDisplayedValue: number,
+  bestValue: number,
 ): number {
   const value = comparisonValue(metric, summary);
-  if (value === null || value <= 0) return 0;
-  const scale = metric === "consistency" ? 1 : maxDisplayedValue;
-  if (scale <= 0) return 0;
-  return Math.min(100, Math.max(0, (value / scale) * 100));
+  if (value === null || value <= 0 || bestValue <= 0) return 0;
+  const ratio = lowerIsBetter(metric) ? bestValue / value : value / bestValue;
+  return Math.min(100, Math.max(0, ratio * 100));
 }
 
 export interface FormattedComparison {
@@ -59,7 +80,7 @@ export interface FormattedComparison {
 /**
  * The one reading every comparison metric prints: the compact comparison
  * rows and the Member Profile stat strip (issue #87) both format their
- * numbers this way, so a runner's Consistency or Miles Built never reads
+ * numbers this way, so a runner's Avg Pace or Miles Built never reads
  * differently in two places.
  */
 export function formatComparisonReading(
@@ -68,17 +89,8 @@ export function formatComparisonReading(
 ): FormattedComparison {
   const value = comparisonValue(metric, summary);
   if (value === null || !summary) return { value: "—", detail: null };
-  if (metric === "consistency") {
-    return {
-      value: `${Math.round(value * 100)}%`,
-      detail: `${summary.consistencyCompleted}/${summary.consistencyDue}`,
-    };
-  }
-  if (metric === "run-days") {
-    return {
-      value: `${value}`,
-      detail: `${RUN_DAYS_WINDOW}D`,
-    };
+  if (metric === "avg-pace") {
+    return { value: formatPaceSeconds(value), detail: null };
   }
   return {
     value: `${metric === "miles-built" ? formatMilesBuilt(value) : formatMiles(value)} MI`,
@@ -86,13 +98,20 @@ export function formatComparisonReading(
   };
 }
 
-/** Descending factual order; equal values remain in membership order. */
+/** The window Avg Pace is measured over, stated once for every caller. */
+export const AVG_PACE_WINDOW_LABEL = `${AVG_PACE_WINDOW}D`;
+
+/**
+ * Best factual order first; equal values remain in membership order, and a
+ * member with no reading sorts last regardless of which way the metric runs.
+ */
 export function orderedComparisonRows(
   metric: ComparisonMetric,
   members: readonly CrewMember[],
   summaries: readonly ComparisonSummary[],
 ): ComparisonRow[] {
   const byUser = new Map(summaries.map((summary) => [summary.userId, summary]));
+  const direction = lowerIsBetter(metric) ? -1 : 1;
   return members
     .map((member) => ({ member, summary: byUser.get(member.userId) ?? null }))
     .sort((a, b) => {
@@ -101,6 +120,6 @@ export function orderedComparisonRows(
       if (aValue === null && bValue === null) return 0;
       if (aValue === null) return 1;
       if (bValue === null) return -1;
-      return bValue - aValue;
+      return (bValue - aValue) * direction;
     });
 }

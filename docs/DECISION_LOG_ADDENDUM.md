@@ -539,8 +539,8 @@ Current acceptance:
 - **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
 - **Runner Icons** are authorized by D-074 and are in review.
 - **Cross Training** is authorized by D-077 and is in review.
-- **Crew Cross Training duration height + Crew heart rate** is authorized by D-078 and is in review.
-- No later UI-numbered phase is planned; Cross Training, Runner Icons and D-078 are additional scope opened as new decisions, the way this note requires.
+- **Crew Cross Training duration height + Crew heart rate** is authorized by D-079 and is in review.
+- No later UI-numbered phase is planned; Cross Training, Runner Icons and D-079 are additional scope opened as new decisions, the way this note requires.
 
 ## D-076 — The Crew Emblem is three layers, and the four-part library is retired outright
 
@@ -591,7 +591,29 @@ Two Supabase migrations carry this: `20260817120000_cross_training_activity_type
 
 This decision authorizes Cross Training as scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not authorize any change to what `generateTrainingPlan()` itself schedules — Cross Training Days stays a post-generation fill, never a generation input — and it does not reopen Crew's safe-projection boundary beyond the one field (`activity_type`/`activityType` already carried `"cross"` as a value everywhere it was already plumbed).
 
-## D-078 — Cross Training block height scales with duration everywhere it is built, and Crew narrows D-056's heart-rate exclusion
+## D-078 — Avg Pace replaces Consistency for every crew, and Today stops confirming what it already knows
+
+**Decision:** This is a space and hierarchy correction across Crew, Today and Run Data (issue #120), not a new product phase. It adds no capability, no Supabase migration, no AppState migration and no dependency. The rule it applies everywhere: once STACK knows something happened, stop spending space confirming it happened, and use that space to show what the runner should do next.
+
+Six choices worth recording:
+
+1. **Avg Pace is total duration ÷ total distance, never the mean of per-run paces.** Averaging each run's own pace lets a one-mile shakeout outvote a twelve-mile long run, which is not what "how fast has this runner been running" means. Cross Training is excluded because it is not a running pace and is often distanceless (D-077), and a member with no eligible running in the window is absent rather than present at a fabricated `0:00`.
+
+2. **Avg Pace serves a Race Crew and a Run Club identically, so the D-070 metric split ends.** Consistency needed a training plan, which is why a Run Club got `Run Days` in that slot instead — two crews could never compare the same four things. Avg Pace comes from shared runs, so both crew types now show Weekly Miles, Longest Run, Avg Pace and Miles Built, and Crew Profile's third stat cell finally matches the comparison tab it sits beside. `src/crew/runDays.ts` is deleted. `CrewMemberSummary.consistencyCompleted` / `consistencyDue` stay in the projection and in Supabase, unread — removing them would be a migration this correction does not need.
+
+3. **Lower-is-better is explicit in the comparison model rather than special-cased at the call site.** `lowerIsBetter()` drives both the sort direction and the bar scale, and the bar is drawn against the *best* reading on screen rather than the largest — so the fastest pace has the full bar even though its number is the smallest. A pace comparison scaled the old descending way would have read as a leaderboard upside down.
+
+4. **The Crew Build's member legend becomes an icon-only rail, and the main-screen mini Builds are deleted outright.** Both were per-member surfaces that grew with the crew and took the space from the tower they were annotating — the legend wrapped to new rows, the `The Crew` rail added a card per runner. Nothing large replaces the mini Builds: Crew Profile keeps the full individual Build and now has two consistent front doors, the rail icon and the runner identity in each comparison row. That identity is a control but is deliberately styled as plain text, so tapping a name can never be mistaken for switching the metric.
+
+5. **Today reads `CrewSharedRun.localRunId` to know whether a run still owes a Crew block — a field the projection already writes.** Personal and Crew placement are independent (D-066), so a completed run can owe two blocks, one, or none, and Today can only offer the right ones if it can match its own local run to the viewer's shared contribution. The local STACK run id is already inside the approved shared-run contract (it is how a projection finds the row it owns), so `dashboard.ts` reading `local_run_id` back is not a widening of the privacy boundary. `Place Crew Block` then carries that specific shared run into Crew's placement flow rather than dropping the runner on the Crew page to find their own READY block. `CrewScreen` consumes the handoff during render and retires it through a callback on confirm/cancel/reselect — never through a `setState` in an effect, which the repo's lint rules correctly reject.
+
+6. **Today's Run Found becomes a prompt, and Run Data becomes two states.** The dashboard was running most of the import workflow (match, extra, activity type, effort, notes, ignore) inside a card, while Run Data — which owns all of it — rendered the selected run's review *below* the entire candidate list, so choosing the first of six runs on a first sync opened a form the runner had to scroll past that list to reach. Today now states the run, what it looks like, and `Review Run →`; Run Data's review state replaces its candidate list, with a quiet `← Back to runs`. `RunDataReview.asExtra` is removed because Today no longer decides that, and `useConnectedSync`'s session-only `dismiss` is deleted with the `Not now` control that was its only caller — an unreachable capability is worse than a smaller hook.
+
+7. **Avg Pace narrows the "no pace leaderboard" boundary rather than ignoring it, and the owner asked for it explicitly.** `docs/RACE_CREW.md` and `AGENTS.md` both said *no raw pace leaderboard*, and this pass adds a pace comparison with a best-first order — so the boundary is restated rather than quietly dropped. What stays forbidden is what that rule was protecting against: no individual run's pace is ranked, posted or compared, and the crew-safe run contract still carries no pace field of its own. What is now allowed is one trailing-28-day aggregate per member, in the same encouragement-first comparison module as Weekly Miles and Longest Run. Issue #120 requests this in the owner's own words ("Replace Consistency with a more useful Avg Pace comparison", "lower Avg Pace is better", "use Avg Pace for both Race Crews and Run Clubs"), which is what authorizes the change; `docs/RACE_CREW.md` is updated to match.
+
+This decision authorizes the scope recorded in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not reopen the Crew safe-projection boundary beyond reading back `local_run_id`, does not change Personal or Crew Build placement rules, and does not change Props, Crew Profile run-detail drill-down or invite/membership behavior.
+
+## D-079 — Cross Training block height scales with duration everywhere it is built, and Crew narrows D-056's heart-rate exclusion
 
 **Decision:** Two focused owner requests, neither a new UI phase.
 

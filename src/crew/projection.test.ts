@@ -138,7 +138,7 @@ describe("Race Crew projection", () => {
         "maxHeartRate",
       ].sort(),
     );
-    // Average/max HR are the one deliberate exception, per D-078; everything
+    // Average/max HR are the one deliberate exception, per D-079; everything
     // else private (training load, HR zones, effort, notes, source, exact
     // placement time) stays out.
     expect(JSON.stringify(projected)).not.toMatch(

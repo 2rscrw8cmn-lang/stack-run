@@ -20,10 +20,9 @@ import {
 } from "../../connected/intervals";
 import { RunDataSetup } from "./RunDataSetup";
 
-/** A candidate handed in from Today, already decided as match or extra. */
+/** A candidate handed in from Today, to open straight in its review state. */
 export interface RunDataReview {
   candidate: IntervalsCandidate;
-  asExtra: boolean;
 }
 
 interface Props {
@@ -77,14 +76,13 @@ export function RunDataSheet(props: Props) {
   const [selected, setSelected] = useState<IntervalsCandidate | null>(
     props.initialReview?.candidate ?? null,
   );
-  const initialMatch =
-    props.initialReview && !props.initialReview.asExtra
-      ? suggestScheduledMatches(
-          props.initialReview.candidate,
-          props.state.plan,
-          props.state.runLogs,
-        )[0]
-      : undefined;
+  const initialMatch = props.initialReview
+    ? suggestScheduledMatches(
+        props.initialReview.candidate,
+        props.state.plan,
+        props.state.runLogs,
+      )[0]
+    : undefined;
   const [workoutId, setWorkoutId] = useState<string | null>(
     initialMatch?.id ?? null,
   );
@@ -166,7 +164,15 @@ export function RunDataSheet(props: Props) {
           />
         )}
 
-        {connected && (
+        {/*
+          Run Data is two states, not one long page (issue #120). The list
+          state is connection, sync and the runs waiting; choosing one enters
+          the review state, which replaces all of it. The review used to
+          render *below* the full candidate list, so tapping the first run of
+          six opened a form the runner then had to scroll past the list to
+          reach — on the first sync, when the list is longest.
+        */}
+        {connected && !selected && (
           <>
             <div className="run-data__status">
               <CircleCheck size={20} strokeWidth={2} aria-hidden="true" />
@@ -220,9 +226,8 @@ export function RunDataSheet(props: Props) {
             {props.candidates.length > 0 && (
               <section className="run-data__found">
                 <h3 className="run-data__heading">
-                  {props.candidates.length === 1
-                    ? "1 run to review"
-                    : `${props.candidates.length} runs to review`}
+                  Runs to Review
+                  <span className="machine-label">{props.candidates.length}</span>
                 </h3>
                 <ul className="run-data__candidates">
                   {props.candidates.map((candidate) => (
@@ -231,11 +236,6 @@ export function RunDataSheet(props: Props) {
                         type="button"
                         className="run-data__candidate"
                         onClick={() => review(candidate)}
-                        aria-current={
-                          selected?.externalId === candidate.externalId
-                            ? "true"
-                            : undefined
-                        }
                       >
                         <strong>{formatMiles(candidate.distanceMiles)} mi</strong>
                         <span>
@@ -274,6 +274,16 @@ export function RunDataSheet(props: Props) {
 
         {selected && (
           <section className="run-data__review">
+            {/* The way back to the remaining runs, above the review it leaves. */}
+            {props.candidates.length > 1 && (
+              <button
+                type="button"
+                className="run-data__back"
+                onClick={() => setSelected(null)}
+              >
+                ← Back to runs
+              </button>
+            )}
             <h3 className="run-data__heading">Review synced run</h3>
             <p className="run-data__facts">
               {formatDateLabel(selected.completedDate)} · {formatMiles(selected.distanceMiles)} mi
@@ -362,12 +372,9 @@ export function RunDataSheet(props: Props) {
               {workoutId ? "Confirm Match" : "Add as Extra Run"}
             </Button>
 
-            {/* Neither of these is the thing to do next, so neither is shaped
-                like the button that is. */}
+            {/* Ignoring an activity is not the thing to do next, so it is
+                not shaped like the button that is. */}
             <div className="run-data__quiet-actions">
-              <button type="button" onClick={() => setSelected(null)}>
-                Close suggestion
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -381,7 +388,7 @@ export function RunDataSheet(props: Props) {
           </section>
         )}
 
-        {connected && (
+        {connected && !selected && (
           <div className="run-data__connection-actions">
             <button
               type="button"
