@@ -2,6 +2,9 @@ import { createContext, useContext, useMemo } from "react";
 import {
   fetchIntervalsActivityDetail,
   fetchIntervalsRunProfile,
+  intervalsBasicAuthorization,
+  normalizeIntervalsRunProfile,
+  RUN_PROFILE_STREAM_TYPES,
   type IntervalsActivityDetail,
   type IntervalsConnection,
   type IntervalsRunProfile,
@@ -46,12 +49,63 @@ export type SourceConnection = IntervalsConnection | string | null | undefined;
  */
 export type SourceDetailReaderFactory = (connection: SourceConnection) => SourceDetailReader | null;
 
-/** The production reader: the existing Intervals reads, unchanged. */
+/**
+ * Intervals' streams route is format-sensitive in current deployments. The
+ * server-proxy path is fixed in `api/intervals.ts`; local API-key mode reaches
+ * Intervals directly, so it must request JSON explicitly here as well.
+ */
+async function readDirectProfileJson(
+  activityId: string,
+  connection: IntervalsConnection & { mode: "local-api-key" },
+): Promise<IntervalsRunProfile | null> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://intervals.icu/api/v1/activity/${encodeURIComponent(activityId)}/streams.json?types=${RUN_PROFILE_STREAM_TYPES.join(",")}`,
+      {
+        headers: { Authorization: intervalsBasicAuthorization(connection.credential) },
+        cache: "no-store",
+      },
+    );
+  } catch {
+    throw new Error(
+      "Run detail could not be loaded. Check this device's connection and browser access to Intervals.icu.",
+    );
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(
+      "Intervals.icu did not accept that personal API key. Copy a new key from Developer Settings and try again.",
+    );
+  }
+  if (response.status === 429) {
+    throw new Error("Intervals.icu is rate limiting requests. Try again later.");
+  }
+  if (!response.ok) throw new Error(`Run detail could not be loaded (HTTP ${response.status}).`);
+
+  try {
+    return normalizeIntervalsRunProfile(await response.json());
+  } catch {
+    throw new Error("Run detail could not be loaded: Intervals.icu returned an unreadable response.");
+  }
+}
+
+function readProfile(
+  activityId: string,
+  connection: Exclude<SourceConnection, null | undefined | "">,
+): Promise<IntervalsRunProfile | null> {
+  if (typeof connection !== "string" && connection.mode === "local-api-key") {
+    return readDirectProfileJson(activityId, connection);
+  }
+  return fetchIntervalsRunProfile(activityId, connection);
+}
+
+/** The production reader: the existing Intervals reads, with explicit JSON for profile streams. */
 export const intervalsSourceDetailReader: SourceDetailReaderFactory = (connection) =>
   connection
     ? {
         readDetail: (activityId) => fetchIntervalsActivityDetail(activityId, connection),
-        readProfile: (activityId) => fetchIntervalsRunProfile(activityId, connection),
+        readProfile: (activityId) => readProfile(activityId, connection),
       }
     : null;
 
