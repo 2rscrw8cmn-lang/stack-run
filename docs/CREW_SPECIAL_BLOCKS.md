@@ -22,7 +22,7 @@ Feature rotation, one per week:
 
 Then the four-week Feature cycle repeats from the Crew Build-start week.
 
-`Steady` deliberately has no fabricated fallback. STACK currently does not persist a source-verified within-run pace-variability value, so a Steady week can show `No qualifier yet` until that scalar can be derived honestly from a verified source.
+`Steady` deliberately has no fabricated fallback. STACK currently does not persist a source-verified within-run pace-variability value (`crewAwardMetricsByRunId` publishes `steadySeconds: null`), so a Steady week produces no Feature award at all — one week in four — until that scalar can be derived honestly from a verified source. That is a known gap, not a bug: inventing steadiness from an average pace would be worse than awarding nothing.
 
 ## Award lifecycle
 
@@ -38,25 +38,10 @@ Then the four-week Feature cycle repeats from the Crew Build-start week.
 - Run blocks and award blocks collide with and support one another server-side.
 - Moving a supporting block is rejected if the move would leave another block unsupported.
 
-The full five-row current-week standings panel is a QA surface, not normal product UI. Add `?awardTest=1` to a preview URL to expose that diagnostic view while testing award calculations and empty states.
-
-## Temporary end-to-end QA harness
-
-PR #123 also carries a temporary deterministic harness that must be removed before the PR is merged.
-
-1. Apply `20260819031500_crew_award_qa_harness.sql` to the QA Supabase project.
-2. Sign in as the owner of the Crew named exactly `TEST CLUB`.
-3. Open the preview with `?awardTest=1` and press **Seed 8 QA Blocks**.
-4. The fixture creates eight fixed-ID, zero-mile award rows and leaves all of them READY.
-5. The TEST CLUB owner receives **Miles, Pace, Long Haul, and On Target**.
-6. The earliest joined second TEST CLUB member receives **Zone 2, Runs, Steady, and Level Up**.
-7. Switch between the two QA accounts and verify that each account only receives placement prompts for its own four blocks.
-8. Place and move the blocks through the normal Crew Build UI. These fixture rows use the same real `place_crew_award_block` RPC, collision rules, support rules, RLS, and Miles Built accounting as production awards.
-9. Use **Clear QA Blocks** from the owner account when finished. Clearing runs mixed-tower support repair so any block that depended on a removed QA award returns safely to READY.
-
-The harness is server-guarded: seed/clear only work for `auth.uid()` when that user owns a Crew named exactly `TEST CLUB`. It cannot seed another Crew even if someone exposes the RPC outside the hidden test UI.
-
-`supabase/tests/0020_crew_award_qa_harness.sql` verifies the owner restriction, deterministic 4/4 winner split, READY start state, idempotent reseeding, and cleanup.
+Weekly standings are deliberately not a v1 surface. The finalizer is the single
+authority on who won a week, and a Special Block enters the Crew Build by being
+placed, not by being announced — so Crew shows the winner's placement prompt and
+nothing else. The client does not mirror the ranking logic (D-080).
 
 ## Zero-mile rule
 

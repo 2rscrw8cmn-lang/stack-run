@@ -1,6 +1,9 @@
 -- Crew Special Blocks: five zero-mile weekly awards that physically join the
 -- shared Crew Build without pretending to be runs.
 --
+-- Run geometry comes from D-079's two-argument crew_build_height(activity_type,
+-- duration_seconds); this migration must stay behind that one in timestamp order.
+--
 -- Four awards are standard every completed week: Miles, Zone 2, Pace and Runs.
 -- A fifth Feature award rotates weekly through Long Haul, Steady, On Target
 -- and Level Up. Award rows are immutable results; only the winner may place or
@@ -157,7 +160,7 @@ as $$
     r.crew_build_row,
     r.crew_build_column_start,
     public.crew_build_width(r.distance_miles),
-    public.crew_build_height(r.activity_type)
+    public.crew_build_height(r.activity_type, r.duration_seconds)
   from public.shared_runs r
   where r.crew_id = p_crew_id
     and r.crew_build_row is not null
@@ -481,15 +484,20 @@ begin
 
   perform pg_advisory_xact_lock(hashtextextended(v_run.crew_id::text, 0));
   select * into v_run from public.shared_runs where id = p_shared_run_id for update;
+  if not found then raise exception 'crew_build_run_not_found'; end if;
   if v_run.user_id <> v_user_id or not public.is_crew_member(v_run.crew_id) then
     raise exception 'crew_build_placement_forbidden';
+  end if;
+
+  if not public.is_crew_run_in_build_window(v_run.crew_id, v_run.local_date) then
+    raise exception 'crew_build_placement_before_window';
   end if;
 
   if p_row is null or p_row < 0 or p_column_start is null or p_column_start < 1 then
     raise exception 'crew_build_placement_invalid';
   end if;
   v_width := public.crew_build_width(v_run.distance_miles);
-  v_height := public.crew_build_height(v_run.activity_type);
+  v_height := public.crew_build_height(v_run.activity_type, v_run.duration_seconds);
   if v_width is null or v_height is null or p_column_start + v_width - 1 > 8 then
     raise exception 'crew_build_placement_invalid';
   end if;
@@ -564,6 +572,7 @@ begin
 
   perform pg_advisory_xact_lock(hashtextextended(v_award.crew_id::text, 0));
   select * into v_award from public.crew_award_blocks where id = p_award_block_id for update;
+  if not found then raise exception 'crew_award_block_not_found'; end if;
   if v_award.winner_user_id <> v_user_id or not public.is_crew_member(v_award.crew_id) then
     raise exception 'crew_build_placement_forbidden';
   end if;

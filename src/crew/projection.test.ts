@@ -118,10 +118,14 @@ describe("Race Crew projection", () => {
       buildColumnStart: 2,
       buildWidth: 4,
       buildHeight: 1,
+      averageHeartRate: 155,
+      maxHeartRate: 176,
+      manualHeartRate: null,
     });
     expect(Object.keys(projected).sort()).toEqual(
       [
         "activityType",
+        "averageHeartRate",
         "buildColumnStart",
         "buildHeight",
         "buildRow",
@@ -130,10 +134,15 @@ describe("Race Crew projection", () => {
         "durationSeconds",
         "localDate",
         "localRunId",
+        "manualHeartRate",
+        "maxHeartRate",
       ].sort(),
     );
+    // Average/max HR are the one deliberate exception, per D-079; everything
+    // else private (training load, HR zones, effort, notes, source, exact
+    // placement time) stays out.
     expect(JSON.stringify(projected)).not.toMatch(
-      /external-private-id|private note|heart|trainingLoad|effort|source|placedAt|blockPlacements|private-placement-time/i,
+      /external-private-id|private note|trainingLoad|hrZoneSeconds|effort|source|placedAt|blockPlacements|private-placement-time/i,
     );
   });
 
@@ -237,13 +246,16 @@ describe("Race Crew projection", () => {
       activity_type: "long",
       distance_miles: 8,
       duration_seconds: 4200,
+      average_heart_rate: 155,
+      max_heart_rate: 176,
+      manual_heart_rate: null,
       build_row: 2,
       build_column_start: 3,
       build_width: 4,
       build_height: 1,
     }]);
     expect(JSON.stringify(shared)).not.toMatch(
-      /placedAt|blockPlacements|heart|load|effort|notes|source|private-placement-time/i,
+      /placedAt|blockPlacements|load|effort|notes|source|private-placement-time/i,
     );
     expect(sharedCall?.options).toEqual({
       onConflict: "crew_id,user_id,local_run_id",

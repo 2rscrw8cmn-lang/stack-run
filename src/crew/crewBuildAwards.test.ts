@@ -15,6 +15,7 @@ function run(id: string, values: Partial<CrewBuildRun> = {}): CrewBuildRun {
     localDate: "2026-08-10",
     activityType: "easy",
     distanceMiles: 3,
+    durationSeconds: 2400,
     createdAt: "2026-08-10T12:00:00Z",
     crewBuildRow: null,
     crewBuildColumnStart: null,

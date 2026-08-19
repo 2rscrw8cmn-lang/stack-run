@@ -58,6 +58,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     configured: true,
     unavailableReason: null,
     status: "signed-in",
+    userId: "zack",
     busy: false,
     error: null,
     message: null,
@@ -111,7 +112,7 @@ vi.mock("../crew/useRaceCrew", () => ({
 
 const { App } = await import("./App");
 
-const signedOut = controller({ status: "signed-out", account: null, crewData: null });
+const signedOut = controller({ status: "signed-out", userId: null, account: null, crewData: null });
 const noCrew = controller({
   account: { ...account, crew: null, role: null, members: [], invites: [] },
   crewData: null,

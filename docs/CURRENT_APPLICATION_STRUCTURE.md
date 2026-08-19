@@ -1886,6 +1886,6 @@ directly in the review state with no list above it.
 
 Crew now has a separate weekly award domain in addition to shared runs. `crew_award_blocks` stores immutable weekly winners and zero-mile Crew Build placement. The client derives privacy-safe scalar award scores locally, syncs only those scalars onto the runner's own `shared_runs` rows, and the server finalizes completed-week awards idempotently.
 
-The shared Crew Build geometry is now a discriminated union of run rectangles and award rectangles. Both kinds collide with and support each other through the same eight-column placement rules, but `placedMiles` and Miles Built remain run-only. Production award rendering lives in `src/features/crew/AwardBrick.tsx` and `src/features/crew/awardBlock.css`; live standings and award placement/detail flows are wired through `CrewAwardsPanel`, `CrewAwardDetailSheet`, `useCrewAwards`, and `crewAwardsService`.
+The shared Crew Build geometry is now a discriminated union of run rectangles and award rectangles. Both kinds collide with and support each other through the same eight-column placement rules, but `placedMiles` and Miles Built remain run-only. Production award rendering lives in `src/features/crew/AwardBrick.tsx` and `src/features/crew/awardBlock.css`; the winner's placement prompt and the award detail/move flow are wired through `CrewAwardsPanel`, `CrewAwardDetailSheet`, `useCrewAwards`, and `crewAwardsService`. There is no standings surface — ranking lives entirely in `finalize_crew_awards`.
 
-See `docs/CREW_SPECIAL_BLOCKS.md` and D-079 for scoring, lifecycle, and the derived-scalar privacy exception.
+See `docs/CREW_SPECIAL_BLOCKS.md` and D-080 for scoring, lifecycle, and the derived-scalar privacy exception.

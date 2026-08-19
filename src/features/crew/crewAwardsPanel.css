@@ -1,22 +1,14 @@
-.crew-award-ready,
-.crew-awards {
+.crew-award-ready {
   --award-mark: #d7ff3f;
 }
 
-.crew-award-ready[data-award="zone2"],
-.crew-awards__row[data-award="zone2"] { --award-mark: #35e6ff; }
-.crew-award-ready[data-award="pace"],
-.crew-awards__row[data-award="pace"] { --award-mark: #ff7048; }
-.crew-award-ready[data-award="runs"],
-.crew-awards__row[data-award="runs"] { --award-mark: #ffd94f; }
-.crew-award-ready[data-award="longHaul"],
-.crew-awards__row[data-award="longHaul"] { --award-mark: #f1c66f; }
-.crew-award-ready[data-award="steady"],
-.crew-awards__row[data-award="steady"] { --award-mark: #5aa7ff; }
-.crew-award-ready[data-award="onTarget"],
-.crew-awards__row[data-award="onTarget"] { --award-mark: #ff58d4; }
-.crew-award-ready[data-award="levelUp"],
-.crew-awards__row[data-award="levelUp"] { --award-mark: #b77aff; }
+.crew-award-ready[data-award="zone2"] { --award-mark: #35e6ff; }
+.crew-award-ready[data-award="pace"] { --award-mark: #ff7048; }
+.crew-award-ready[data-award="runs"] { --award-mark: #ffd94f; }
+.crew-award-ready[data-award="longHaul"] { --award-mark: #f1c66f; }
+.crew-award-ready[data-award="steady"] { --award-mark: #5aa7ff; }
+.crew-award-ready[data-award="onTarget"] { --award-mark: #ff58d4; }
+.crew-award-ready[data-award="levelUp"] { --award-mark: #b77aff; }
 
 .crew-award-ready {
   display: grid;
@@ -62,145 +54,6 @@
   opacity: .82;
 }
 
-.crew-awards-test-stack {
-  display: grid;
-  gap: 12px;
-}
-
-.crew-awards-qa {
-  display: grid;
-  gap: 10px;
-  padding: 13px 14px;
-  border: 1px dashed rgba(215, 255, 63, .42);
-  background:
-    linear-gradient(135deg, rgba(215, 255, 63, .045), transparent 48%),
-    #080d10;
-}
-
-.crew-awards-qa h3,
-.crew-awards-qa p {
-  margin: 0;
-}
-
-.crew-awards-qa h3 {
-  margin-top: 2px;
-  font-size: .9rem;
-}
-
-.crew-awards-qa > div > p:last-child {
-  margin-top: 7px;
-  max-width: 68ch;
-  font-size: .75rem;
-  line-height: 1.45;
-  opacity: .72;
-}
-
-.crew-awards-qa__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.crew-awards-qa__status {
-  color: #d7ff3f;
-}
-
-.crew-awards-qa__error {
-  font-size: .75rem;
-  color: #ff8d73;
-}
-
-.crew-awards {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.crew-awards__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.crew-awards__heading h2,
-.crew-awards__heading p {
-  margin: 0;
-}
-
-.crew-awards__heading h2 {
-  margin-top: 2px;
-  font-size: 1rem;
-}
-
-.crew-awards__standings {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  border-top: 1px solid var(--line);
-}
-
-.crew-awards__row {
-  --award-mark: #d7ff3f;
-  display: grid;
-  grid-template-columns: 4px minmax(88px, .7fr) minmax(0, 1.3fr);
-  gap: 10px;
-  align-items: center;
-  min-height: 47px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.crew-awards__row[data-feature] {
-  box-shadow: inset 0 0 0 1px rgba(210, 170, 98, .22);
-  padding-inline: 6px;
-}
-
-.crew-awards__mark {
-  align-self: stretch;
-  background: var(--award-mark);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--award-mark) 32%, transparent);
-}
-
-.crew-awards__name {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.crew-awards__name strong {
-  font-size: .82rem;
-  line-height: 1.1;
-}
-
-.crew-awards__leader {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
-}
-
-.crew-awards__leader > span:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: .8rem;
-}
-
-.crew-awards__leader .data-value {
-  white-space: nowrap;
-  font-size: .78rem;
-}
-
-.crew-awards__empty,
-.crew-awards__loading {
-  opacity: .62;
-}
-
 @media (max-width: 420px) {
   .crew-award-ready {
     grid-template-columns: 4px minmax(0, 1fr);
@@ -211,21 +64,4 @@
     grid-column: 2;
     justify-self: start;
   }
-
-  .crew-awards-qa__actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .crew-awards-qa__actions .button {
-    width: 100%;
-  }
-
-  .crew-awards { padding-inline: 12px; }
-  .crew-awards__row {
-    grid-template-columns: 4px 82px minmax(0, 1fr);
-    gap: 8px;
-  }
-  .crew-awards__leader { grid-template-columns: auto 1fr; }
-  .crew-awards__leader .data-value { grid-column: 2; }
 }

@@ -5,13 +5,12 @@ import {
   placeCrewAwardBlock,
 } from "./crewAwardsService";
 import { CrewBuildPlacementError } from "./crewBuildPlacement";
-import type { CrewAwardBlockRecord, CrewAwardWeek } from "./awards";
+import type { CrewAwardBlockRecord } from "./awards";
 
 export interface CrewAwardsController {
   available: boolean;
   loading: boolean;
   blocks: CrewAwardBlockRecord[];
-  currentWeek: CrewAwardWeek | null;
   placementPending: boolean;
   placementError: string | null;
   refresh: (syncLocalMetrics?: boolean) => Promise<void>;
@@ -19,16 +18,13 @@ export interface CrewAwardsController {
   clearPlacementError: () => void;
 }
 
-const EMPTY: Pick<CrewAwardsController, "blocks" | "currentWeek"> = {
+const EMPTY: Pick<CrewAwardsController, "blocks"> = {
   blocks: [],
-  currentWeek: null,
 };
 
 export function useCrewAwards(input: {
   crewId: string | null;
   viewerUserId: string | null | undefined;
-  buildStartDate: string | null;
-  today: string;
 }): CrewAwardsController {
   const [available, setAvailable] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -39,12 +35,7 @@ export function useCrewAwards(input: {
 
   const refresh = useCallback(async (syncLocalMetrics = true): Promise<void> => {
     const availability = getSupabaseAvailability();
-    if (
-      !availability.configured ||
-      !input.crewId ||
-      !input.viewerUserId ||
-      !input.buildStartDate
-    ) {
+    if (!availability.configured || !input.crewId || !input.viewerUserId) {
       setAvailable(false);
       setState(EMPTY);
       return;
@@ -55,13 +46,11 @@ export function useCrewAwards(input: {
       const loaded = await loadCrewAwards(availability.client, {
         crewId: input.crewId,
         viewerUserId: input.viewerUserId,
-        buildStartDate: input.buildStartDate,
-        today: input.today,
         syncLocalMetrics,
       });
       if (sequence !== request.current) return;
       setAvailable(loaded.available);
-      setState({ blocks: loaded.blocks, currentWeek: loaded.currentWeek });
+      setState({ blocks: loaded.blocks });
     } catch {
       if (sequence !== request.current) return;
       // Awards are additive to Crew. A failed award read can never take down
@@ -71,7 +60,7 @@ export function useCrewAwards(input: {
     } finally {
       if (sequence === request.current) setLoading(false);
     }
-  }, [input.buildStartDate, input.crewId, input.today, input.viewerUserId]);
+  }, [input.crewId, input.viewerUserId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -114,7 +103,6 @@ export function useCrewAwards(input: {
     available,
     loading,
     blocks: state.blocks,
-    currentWeek: state.currentWeek,
     placementPending,
     placementError,
     refresh,

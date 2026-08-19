@@ -1,94 +1,62 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CrewAwardWeek } from "../../crew/awards";
+import { describe, expect, it, vi } from "vitest";
 import type { CrewBuildReadyAward } from "../../crew/crewBuild";
 import { CrewAwardsPanel } from "./CrewAwardsPanel";
 
-const readyAward: CrewBuildReadyAward = {
-  kind: "award",
-  id: "award-1",
-  userId: "runner-a",
-  awardType: "miles",
-  weekStart: "2026-08-10",
-  resultValue: 12.4,
-  sourceSharedRunId: null,
-  width: 2,
-  height: 1,
-  createdAt: "2026-08-17T00:00:00Z",
-};
-
-const week: CrewAwardWeek = {
-  weekStart: "2026-08-17",
-  weekEnd: "2026-08-23",
-  featureType: "onTarget",
-  leaders: [],
-};
-
-afterEach(() => {
-  window.history.replaceState({}, "", "/");
-});
+function readyAward(overrides: Partial<CrewBuildReadyAward> = {}): CrewBuildReadyAward {
+  return {
+    kind: "award",
+    id: "award-1",
+    userId: "runner-a",
+    awardType: "miles",
+    weekStart: "2026-08-10",
+    resultValue: 12.4,
+    sourceSharedRunId: null,
+    width: 2,
+    height: 1,
+    createdAt: "2026-08-17T00:00:00Z",
+    ...overrides,
+  };
+}
 
 describe("Crew Awards panel", () => {
-  it("shows only the winner-owned placement prompt in normal product UI", async () => {
+  it("prompts the winner to place their earned block", async () => {
     const user = userEvent.setup();
     const onPlaceAward = vi.fn();
-    render(
-      <CrewAwardsPanel
-        week={week}
-        members={[]}
-        readyAwards={[readyAward]}
-        available
-        loading={false}
-        onPlaceAward={onPlaceAward}
-      />,
-    );
+    render(<CrewAwardsPanel readyAwards={[readyAward()]} onPlaceAward={onPlaceAward} />);
 
     expect(screen.getByText("Special Block Ready")).toBeInTheDocument();
     expect(screen.getByText("Most Miles")).toBeInTheDocument();
-    expect(screen.queryByText("Crew Awards · Test View")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Seed 8 QA Blocks" })).not.toBeInTheDocument();
+    expect(screen.getByText("12.4 MI")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(onPlaceAward).toHaveBeenCalledWith("award-1");
   });
 
-  it("renders nothing in normal product UI when the viewer has no READY award", () => {
+  it("counts the rest of the queue behind the first block", () => {
     render(
       <CrewAwardsPanel
-        week={week}
-        members={[]}
-        readyAwards={[]}
-        available
-        loading={false}
+        readyAwards={[
+          readyAward(),
+          readyAward({ id: "award-2", awardType: "runs", resultValue: 5 }),
+          readyAward({ id: "award-3", awardType: "zone2", resultValue: 91 }),
+        ]}
         onPlaceAward={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText("Special Blocks")).not.toBeInTheDocument();
-    expect(screen.queryByText("Special Block Ready")).not.toBeInTheDocument();
-    expect(screen.queryByText("Temporary QA Harness")).not.toBeInTheDocument();
+    expect(screen.getByText("3 Special Blocks Ready")).toBeInTheDocument();
+    expect(screen.getByText(/\+2 more waiting/)).toBeInTheDocument();
+    // Only the first block is offered; the rest wait their turn.
+    expect(screen.getAllByRole("button")).toHaveLength(1);
   });
 
-  it("reveals the full standings and deterministic harness only with awardTest", () => {
-    window.history.replaceState({}, "", "/?awardTest=1");
-    render(
-      <CrewAwardsPanel
-        week={week}
-        members={[]}
-        readyAwards={[]}
-        available
-        loading={false}
-        onPlaceAward={vi.fn()}
-      />,
+  it("renders nothing when the viewer has no READY award", () => {
+    const { container } = render(
+      <CrewAwardsPanel readyAwards={[]} onPlaceAward={vi.fn()} />,
     );
 
-    expect(screen.getByText("Temporary QA Harness")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Seed 8 QA Blocks" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear QA Blocks" })).toBeInTheDocument();
-    expect(screen.getByText("Crew Awards · Test View")).toBeInTheDocument();
-    expect(screen.getByText("Special Blocks")).toBeInTheDocument();
-    expect(screen.getByText("Most Miles")).toBeInTheDocument();
-    expect(screen.getByText("On Target")).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });

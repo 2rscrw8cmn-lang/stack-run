@@ -1,4 +1,5 @@
 import {
+  crossTrainingHeightForDuration,
   heightForActivityType,
   widthForMiles,
   type BlockHeight,
@@ -166,11 +167,14 @@ function compareReadyAwards(
 }
 
 export function crewBuildFootprint(
-  run: Pick<CrewBuildRun, "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "durationSeconds">,
 ): { width: BlockWidth; height: BlockHeight } {
   return {
     width: widthForMiles(run.distanceMiles),
-    height: heightForActivityType(run.activityType),
+    height:
+      run.activityType === "cross"
+        ? crossTrainingHeightForDuration(run.durationSeconds)
+        : heightForActivityType(run.activityType),
   };
 }
 
@@ -238,7 +242,7 @@ export function isCrewBuildStructurallyValid(
 }
 
 function runCandidate(
-  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   placement: CrewBuildPlacement,
 ): CrewBuildRunBlock {
   const footprint = crewBuildFootprint(run);
@@ -300,7 +304,7 @@ function canPlaceCandidate(
 
 /** Client mirror of the mixed RPC's grid, collision, support and move checks. */
 export function canPlaceCrewBuildBlock(
-  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   placement: CrewBuildPlacement,
   blocks: readonly CrewBuildBlock[],
 ): boolean {
@@ -316,7 +320,7 @@ export function canPlaceCrewAwardBlock(
 }
 
 export function crewBuildLandingOptions(
-  run: Pick<CrewBuildRun, "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "durationSeconds">,
   blocks: readonly CrewBuildBlock[],
 ): PlacementOption[] {
   const { width, height } = crewBuildFootprint(run);
@@ -333,7 +337,7 @@ export function crewAwardLandingOptions(
 
 /** Kept for tests/callers that need every snapped run anchor. */
 export function crewBuildPlacementOptions(
-  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   blocks: readonly CrewBuildBlock[],
   rows = Math.max(
     CREW_BUILD_MIN_VISIBLE_COURSES,

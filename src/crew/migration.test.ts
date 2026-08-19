@@ -16,6 +16,8 @@ import crewTypeMigration from "../../supabase/migrations/20260812220000_crew_typ
 import crewTypeVerification from "../../supabase/tests/0011_crew_type_run_club.sql?raw";
 import identityMigration from "../../supabase/migrations/20260814120000_crew_contribution_identity.sql?raw";
 import identityVerification from "../../supabase/tests/0013_crew_contribution_identity.sql?raw";
+import specialBlocksMigration from "../../supabase/migrations/20260819025500_crew_special_blocks.sql?raw";
+import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -385,5 +387,66 @@ describe("Crew contribution identity SQL", () => {
       /another runner reconciliation touched these contributions/i,
     );
     expect(identityVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew Special Blocks SQL (D-080)", () => {
+  // This migration redefines place_crew_build_block, so it silently owns the
+  // run-geometry contract for every deployment after it. A one-argument
+  // crew_build_height() call here would compile, run, and quietly undo D-079's
+  // duration-aware Cross Training height in collision and support checks.
+  it("reads run height through D-079's duration-aware signature everywhere", () => {
+    const calls = specialBlocksMigration.match(/crew_build_height\([^)]*\)/gi) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toMatch(/crew_build_height\([^,)]+,[^)]+\)/i);
+    }
+  });
+
+  it("keeps D-071's Build-window guard when it redefines run placement", () => {
+    expect(specialBlocksMigration).toMatch(
+      /create or replace function public\.place_crew_build_block/i,
+    );
+    expect(specialBlocksMigration).toMatch(
+      /is_crew_run_in_build_window\(v_run\.crew_id, v_run\.local_date\)[\s\S]*?crew_build_placement_before_window/i,
+    );
+  });
+
+  it("re-checks the locked row before trusting its ownership guards", () => {
+    // SELECT ... INTO leaves the record all-NULL when the row is gone, which
+    // makes every <> comparison NULL rather than true, so the guards below it
+    // pass and the RPC silently no-ops.
+    const locks = specialBlocksMigration.match(/for update;/gi) ?? [];
+    const guarded = specialBlocksMigration.match(
+      /for update;\s*if not found then raise exception/gi,
+    ) ?? [];
+    expect(locks).toHaveLength(2);
+    expect(guarded).toHaveLength(locks.length);
+  });
+
+  it("gives award rows RLS with no direct client write path", () => {
+    expect(specialBlocksMigration).toMatch(
+      /alter table public\.crew_award_blocks enable row level security/i,
+    );
+    expect(specialBlocksMigration).toMatch(
+      /create policy crew_award_blocks_member_select[\s\S]*?using \(public\.is_crew_member\(crew_id\)\)/i,
+    );
+    for (const write of ["insert", "update", "delete"]) {
+      expect(specialBlocksMigration).not.toMatch(
+        new RegExp(`create policy [a-z_]+\\s+on public\\.crew_award_blocks\\s+for ${write}`, "i"),
+      );
+    }
+  });
+
+  it("ships no temporary QA fixture routine", () => {
+    expect(specialBlocksMigration).not.toMatch(/qa_seed|qa_clear|test club/i);
+    expect(specialBlocksVerification).not.toMatch(/qa_seed|qa_clear|test club/i);
+  });
+
+  it("ships transactional verification of finalization, privacy and mixed support", () => {
+    expect(specialBlocksVerification).toMatch(/sync_crew_award_metrics/i);
+    expect(specialBlocksVerification).toMatch(/mixed support failure/i);
+    expect(specialBlocksVerification).toMatch(/mixed collision failure/i);
+    expect(specialBlocksVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });

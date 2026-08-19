@@ -539,7 +539,9 @@ Current acceptance:
 - **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
 - **Runner Icons** are authorized by D-074 and are in review.
 - **Cross Training** is authorized by D-077 and is in review.
-- No later UI-numbered phase is planned; Cross Training and Runner Icons are additional scope opened as new decisions, the way this note requires.
+- **Crew Cross Training duration height + Crew heart rate** is authorized by D-079 and is in review.
+- **Crew Special Blocks** are authorized by D-080 and are in review.
+- No later UI-numbered phase is planned; Cross Training, Runner Icons, D-079 and D-080 are additional scope opened as new decisions, the way this note requires.
 
 ## D-076 — The Crew Emblem is three layers, and the four-part library is retired outright
 
@@ -612,8 +614,16 @@ Six choices worth recording:
 
 This decision authorizes the scope recorded in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not reopen the Crew safe-projection boundary beyond reading back `local_run_id`, does not change Personal or Crew Build placement rules, and does not change Props, Crew Profile run-detail drill-down or invite/membership behavior.
 
+## D-079 — Cross Training block height scales with duration everywhere it is built, and Crew narrows D-056's heart-rate exclusion
 
-## D-079 — Crew Special Blocks are zero-mile weekly Crew awards
+**Decision:** Two focused owner requests, neither a new UI phase.
+
+1. **Height by duration is not a personal-only rule.** Cross Training's block height was made duration-aware (under 30 minutes is height 1, 30 minutes or more is height 2, never height 3) in personal Build only, because `crew_build_height()` had no duration to work from — `CrewBuildRun`/`CrewMiniBuildRun` didn't carry it. The rule now applies everywhere a Cross Training block renders: `CrewBuildRun` gains `durationSeconds` (Member Build's `CrewMiniBuildRun` still needs no change, since its `buildHeight` is a frozen snapshot copied from the personal placement that already computed it correctly). `crew_build_height()` becomes a two-argument function; every SQL function that called it — `place_crew_build_block`, `update_crew`, `heal_crew_build_support`, `demote_changed_crew_footprint` — is redefined at its current body to pass `duration_seconds` through, since PL/pgSQL resolves a function call's signature at creation time, not per-call. Two one-time healing passes ship with the migration: `shared_runs.build_height` is backfilled for every already-placed Cross Training row, and `heal_crew_build_support()` runs once for every crew, since a Crew Build block resting on a Cross Training support that just shrank from height 2 to height 1 would otherwise be left floating rather than demoted to READY.
+2. **Crew sees heart rate now, narrowing D-056.** D-056 said "do not share by default: ... HR/max HR" as part of Crew's original safe-projection boundary, and D-077 explicitly declined to reopen it. This decision reopens exactly that one line, on request, and only that far: `shared_runs` gains `average_heart_rate`, `max_heart_rate` and `manual_heart_rate`, each nullable and range-checked 30–250 bpm like `personal_runs.manual_heart_rate` already is. Training Load, cadence, HR zones, GPS/routes, exact start time, effort and notes are unchanged and stay personal-only — this is a narrowing of one exclusion, not a reopening of the whole boundary. `projectSharedRun` populates the three fields by explicit name, keeping the file's existing "never spread a RunLog" discipline; `CrewRunDetailSheet` renders Avg HR / Max HR with the same manual-entry fallback rule (`RunResultDetail`'s `showManualHeartRate`: a hand-typed reading only fills in when no imported average exists) rather than a new one.
+
+Both migrations (`20260818140000_cross_training_crew_duration_height.sql`, `20260818150000_crew_heart_rate.sql`) were initially written and reasoned about statically, for the same reason D-077 records — no Docker in the environment this was built in. That gap is now closed: Docker Desktop and the Supabase CLI were set up locally and `supabase db reset` was run for real against every migration in this repo's history plus every `supabase/tests/*.sql` file, the first time any of it had actually executed. That run surfaced three real bugs — one in this decision's own `update_crew()` redefinition (a stale, mismatched-signature copy that created an ambiguous overload instead of replacing the live 7-argument version), and two pre-existing ones unrelated to this decision, split out as their own fix (a duplicate migration timestamp from D-074's era, and a `->`/`->>` test-assertion bug in the manual-heart-rate test). All three are fixed and the full chain now applies and verifies cleanly.
+
+## D-080 — Crew Special Blocks are zero-mile weekly Crew awards
 
 **Decision**
 
@@ -621,11 +631,15 @@ Crew Special Blocks are approved as winner-owned, zero-mile pieces that physical
 
 The Crew-safe projection is extended only for derived award scalars: `award_zone2_percent`, `award_target_percent`, `award_level_up_percent`, and `award_steady_seconds` when a verified source exists. Raw heart rate, HR-zone arrays, workout targets/details, routes, exact start times, notes, credentials, and personal history remain private. Award-score sync is scoped to `auth.uid()` so a runner cannot submit or alter another runner's award metrics.
 
-`Steady` must not fabricate a score from average pace. Until STACK has a verified within-run pace-variability source, a Steady week may have no qualifier.
+`Steady` must not fabricate a score from average pace. Until STACK has a verified within-run pace-variability source, a Steady week produces no Feature award — one week in four. That gap is recorded rather than papered over.
+
+**Weekly standings are not a v1 surface.** `finalize_crew_awards` is the single authority on who won a week, so the client carries no mirror of the ranking logic: no leaderboard, no live leader row, no client-side week derivation. Crew shows the winner their own placement prompt and nothing else. A Special Block enters the tower by being placed, not by being announced. This also removes a whole class of drift — a client mirror of the rotation and the ranking rules would have to be kept in step with the SQL finalizer forever, and the first version of it was already wrong across a DST boundary.
+
+Award geometry binds to D-079's two-argument `crew_build_height(activity_type, duration_seconds)`. Run and award rectangles are compared through one normalized `crew_build_items()` read, so a Cross Training block's duration-derived height is authoritative in mixed collision and support checks too.
 
 **Reason**
 
-This preserves the Crew Build as the product's shared artifact, gives weekly competition a permanent visual history, and keeps health/training source data on the runner's side of the privacy boundary.
+This preserves the Crew Build as the product's shared artifact, gives weekly competition a permanent visual history, and keeps health/training source data on the runner's side of the privacy boundary. Keeping ranking server-only means the artifact and the competition can never disagree about who won.
 
 **Status**
 

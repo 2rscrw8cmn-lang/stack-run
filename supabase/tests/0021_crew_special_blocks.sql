@@ -149,8 +149,9 @@ set owner_award_id = (
   limit 1
 );
 
--- The award is a physical rectangle but not a run. Put the three-wide MILES
--- award on the ground and then place a run on top of it; mixed support must be
+-- The award is a physical rectangle but not a run. Put the two-wide MILES
+-- award on the ground and then place a run on top of it; the run only partly
+-- overlaps it, which is all the support rule requires. Mixed support must be
 -- authoritative server-side.
 select public.place_crew_award_block(
   (select owner_award_id from award_test_ids), 0, 1

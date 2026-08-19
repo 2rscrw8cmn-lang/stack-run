@@ -441,7 +441,7 @@ What it adds:
   editor), plus a Runner Icon view under Edit Profile;
 - one column, `profiles.runner_icon`
   (`supabase/migrations/20260813170000_runner_icon.sql`, widened for the
-  five-part code in `20260814120000_runner_icon_backdrop.sql`), self-only,
+  five-part code in `20260814120001_runner_icon_backdrop.sql`), self-only,
   nullable, never backfilled;
 - runner icons in Crew member rows and roster, Recent Crew Runs, Today's Crew
   Activity, comparisons, Member Build cards and sheet, crew-safe Run Detail and
@@ -735,17 +735,28 @@ The friend-facing explanation is controlled by `docs/RUN_DATA_SETUP.md`.
 
 ## Crew Special Blocks — implementation review
 
-**Status:** Implemented on draft PR #123; not merged to `main`.
+**Status:** Implemented and rebased onto `main` after D-079; authorized by D-080.
 
 Implemented scope:
 - four standard weekly awards: Most Miles, Best Zone 2, Fastest Avg. Pace, Most Runs;
 - one weekly rotating Feature award: Long Haul / Steady / On Target / Level Up;
 - winner-owned zero-mile award persistence and READY placement;
 - approved graphite award artwork with runner identity and award-specific glyph/color;
-- live weekly standings and award detail/move flow;
+- winner-only placement prompt and award detail/move flow;
 - mixed run/award collision and support in the authoritative Crew Build RPCs;
 - run-only Miles Built accounting;
 - RLS and winner-only placement;
 - derived-scalar award projection without raw HR-zone, workout-target, route, credential, or personal-history disclosure.
 
-Verification on the feature branch includes lint, TypeScript/Vite build, Vitest, Vercel preview, and dedicated Supabase/RLS coverage. `Steady` intentionally remains without a fabricated fallback until a verified within-run pace-variability source is available.
+Deliberately out of scope: weekly standings. The finalizer is the only authority on
+who won a week, so the client carries no mirror of the ranking logic and Crew shows
+the winner's placement prompt rather than a leaderboard. The temporary preview-only
+QA harness that accompanied the first draft is removed; `supabase/tests/0021_crew_special_blocks.sql`
+is the standing coverage.
+
+Award geometry binds to D-079's two-argument `crew_build_height(activity_type,
+duration_seconds)`, so `20260819025500_crew_special_blocks.sql` must stay behind
+`20260818140000_cross_training_crew_duration_height.sql` in timestamp order.
+
+Known gap: `Steady` has no verified within-run pace-variability source, so one week in
+four currently produces no Feature award. Recorded rather than faked — see D-080.

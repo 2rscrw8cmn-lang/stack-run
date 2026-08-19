@@ -154,8 +154,6 @@ export function CrewScreen({
   const crewAwards = useCrewAwards({
     crewId: currentCrewId,
     viewerUserId: currentUserId,
-    buildStartDate: currentCrew?.buildStartDate ?? null,
-    today,
   });
   const refreshAwards = crewAwards.refresh;
 
@@ -181,12 +179,6 @@ export function CrewScreen({
       void markPropsSeen();
     }
   }, [crewStatus, currentCrewId, markPropsSeen]);
-
-  useEffect(() => {
-    if (crewBuildRuns && currentCrewId && currentUserId) {
-      void refreshAwards(true);
-    }
-  }, [crewBuildRuns, currentCrewId, currentUserId, refreshAwards]);
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -605,11 +597,7 @@ export function CrewScreen({
       />
 
       <CrewAwardsPanel
-        week={crewAwards.currentWeek}
-        members={members}
         readyAwards={viewerReadyAwards}
-        available={crewAwards.available}
-        loading={crewAwards.loading}
         onPlaceAward={startAwardPlacement}
       />
 
