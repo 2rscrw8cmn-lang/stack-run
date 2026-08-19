@@ -2,7 +2,6 @@ import {
   CREW_AWARD_LABEL,
   STANDARD_CREW_AWARD_TYPES,
   formatCrewAwardResult,
-  type CrewAwardBlockRecord,
   type CrewAwardWeek,
   type CrewAwardType,
 } from "../../crew/awards";
