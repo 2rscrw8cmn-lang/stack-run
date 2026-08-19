@@ -25,8 +25,6 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import { Sheet } from "../../components/ui/Sheet";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { CrewBuildRun } from "../../crew/types";
 import {
   comparisonBarPercent,
   comparisonBest,
@@ -37,26 +35,32 @@ import {
   type ComparisonSummary,
 } from "../../crew/comparisons";
 import { avgPaceSecondsByUserId, AVG_PACE_WINDOW } from "../../crew/avgPace";
-import { crewSyncStatus } from "../../crew/freshness";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { RunnerIcon } from "./RunnerIcon";
-import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
 import {
+  crewAwardLandingOptions,
   crewBuildLandingOptions,
-  deriveCrewBuild,
+  deriveCrewBuildWithAwards,
   EMPTY_CREW_BUILD,
 } from "../../crew/crewBuild";
+import { crewSyncStatus } from "../../crew/freshness";
+import { crewMemberAccent } from "../../crew/memberAccent";
+import { deriveCrewMiniBuild } from "../../crew/miniBuild";
+import { viewerFirstMembers } from "../../crew/memberOrder";
+import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import type { CrewBuildRun } from "../../crew/types";
+import type { RaceCrewController } from "../../crew/useRaceCrew";
+import { useCrewAwards } from "../../crew/useCrewAwards";
 import { todayLocalDate } from "../../domain/dates";
 import { autoPlaceOption } from "../../domain/placement";
 import { useJustPlaced } from "../build/useJustPlaced";
-import { CrewBuild } from "./CrewBuild";
+import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet";
+import { CrewAwardsPanel } from "./CrewAwardsPanel";
+import { CrewBuild, type CrewBuildPlacementMode } from "./CrewBuild";
 import { CrewEmblem } from "./CrewEmblem";
+import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
-import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
 import { PropNotifications } from "./PropNotifications";
-import { deriveCrewMiniBuild } from "../../crew/miniBuild";
-import { viewerFirstMembers } from "../../crew/memberOrder";
+import { RunnerIcon } from "./RunnerIcon";
 
 const DEFAULT_RECENT_RUNS = 6;
 const MAX_RECENT_RUNS = 20;
@@ -75,11 +79,6 @@ type MetricDescriptor = {
   Icon: LucideIcon;
 };
 
-/*
- * One set of four for every crew (issue #120). Consistency needed a training
- * plan, which meant a Race Crew and a Run Club could never compare the same
- * four things; Avg Pace is computed from shared runs, so both now do.
- */
 const METRICS: MetricDescriptor[] = [
   { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 },
   { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
@@ -90,16 +89,8 @@ const METRICS: MetricDescriptor[] = [
 interface CrewScreenProps {
   crew: RaceCrewController | null;
   onOpenAccountCrew: () => void;
-  /**
-   * One shared run to open Crew Build placement on, handed over by Today's
-   * `Place Crew Block` (issue #120). Crew clears it through
-   * `onCrewPlacementHandled` once the runner confirms, cancels, or picks a
-   * different block, so an unresolved request cannot reopen placement on the
-   * next visit.
-   */
   placeCrewRunId?: string | null;
   onCrewPlacementHandled?: () => void;
-  /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
 }
 
@@ -129,17 +120,6 @@ function CrewAccessState({
   );
 }
 
-/**
- * Crew — the shared destination.
- *
- * The hierarchy is deliberate and reads top to bottom: the tower we are
- * building together, then how our training compares, then what just happened.
- * Everything below the Crew Build is support for it, which is why the crew
- * name, the runner count and Miles Built are each stated once rather than
- * repeated by every module. Each runner's own Build is one tap away in Crew
- * Profile rather than duplicated here as a rail of cards (issue #120): a
- * per-member card for every runner grew without bound as the crew did.
- */
 export function CrewScreen({
   crew,
   onOpenAccountCrew,
@@ -149,25 +129,18 @@ export function CrewScreen({
 }: CrewScreenProps) {
   const [metric, setMetric] = useState<ComparisonMetric>("weekly-miles");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedAwardId, setSelectedAwardId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  // Run Detail opened from inside Crew Profile is a drill-down, not a
-  // replacement: the member stays selected underneath it, and closing Run
-  // Detail restores the same profile rather than dropping to the Crew page
-  // (issue #93). Run Detail opened from the main Recent Crew Runs feed
-  // never sets this, so it still closes back to the Crew page as before.
   const [runDetailFromProfile, setRunDetailFromProfile] = useState(false);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const [isCrewPickerOpen, setCrewPickerOpen] = useState(false);
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
-  // The chosen column, held as a key rather than the full landing option, so
-  // it survives the options list being recomputed on every render — the same
-  // pattern Personal Build's `BuildScreen` uses.
+  const [placingAwardId, setPlacingAwardId] = useState<string | null>(null);
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
   const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
-  // Only a placement this viewer just confirmed lands; refreshes and reloads
-  // of the same shared tower never do (issue #76).
   const { justPlacedId, markJustPlaced } = useJustPlaced();
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
   const memberships = crew?.account?.memberships ?? [];
@@ -178,13 +151,22 @@ export function CrewScreen({
   const markPropsSeen = crew?.markPropsSeen;
   const crewBuildRuns = crew?.crewData?.crewBuildRuns;
 
-  // One read-model derivation per loaded payload. The server owns the Crew
-  // coordinates; refresh only separates their placed and READY views.
+  const crewAwards = useCrewAwards({
+    crewId: currentCrewId,
+    viewerUserId: currentUserId,
+    buildStartDate: currentCrew?.buildStartDate ?? null,
+    today,
+  });
+
   const crewBuild = useMemo(
     () => (crewBuildRuns
-      ? deriveCrewBuild(crewBuildRuns, undefined, currentUserId)
+      ? deriveCrewBuildWithAwards(
+        crewBuildRuns,
+        crewAwards.blocks,
+        currentUserId ?? undefined,
+      )
       : EMPTY_CREW_BUILD),
-    [crewBuildRuns, currentUserId],
+    [crewAwards.blocks, crewBuildRuns, currentUserId],
   );
 
   useEffect(() => {
@@ -193,13 +175,19 @@ export function CrewScreen({
     }
   }, [crewStatus, currentCrewId, refreshCrewData]);
 
-  // Arriving on the Crew tab is a read: whatever Props were unread when it
-  // loaded clear from here and the header identity marker alike.
   useEffect(() => {
     if (crewStatus === "signed-in" && currentCrewId && markPropsSeen) {
       void markPropsSeen();
     }
   }, [crewStatus, currentCrewId, markPropsSeen]);
+
+  // A new or edited local run can change the live leaderboard without
+  // changing Crew identity. Recompute only when the shared-run payload moves.
+  useEffect(() => {
+    if (crewBuildRuns && currentCrewId && currentUserId) {
+      void crewAwards.refresh(true);
+    }
+  }, [crewBuildRuns, currentCrewId, currentUserId, crewAwards.refresh]);
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -277,10 +265,10 @@ export function CrewScreen({
 
   const dashboardData = crew.crewData;
   const members = dashboardData.members;
-  const metrics = METRICS;
   const activeMetric = metric;
   const placedMilesByUserId = new Map<string, number>();
   for (const block of crewBuild.blocks) {
+    if (block.kind !== "run") continue;
     placedMilesByUserId.set(
       block.userId,
       (placedMilesByUserId.get(block.userId) ?? 0) + block.distanceMiles,
@@ -299,6 +287,10 @@ export function CrewScreen({
     error: Boolean(crew.crewDataError),
   });
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
+  const selectedAward = crewAwards.blocks.find((award) => award.id === selectedAwardId) ?? null;
+  const selectedAwardMember = selectedAward
+    ? members.find((member) => member.userId === selectedAward.winnerUserId) ?? null
+    : null;
   const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
   const selectedMemberSummary = selectedMember
     ? comparisonSummaries.find((row) => row.userId === selectedMember.userId) ?? null
@@ -313,9 +305,6 @@ export function CrewScreen({
   const hiddenRecentRunCount = recentRunPool.length - recentRuns.length;
   const railMembers = viewerFirstMembers(members, currentUserId);
   const bestDisplayedValue = comparisonBest(activeMetric, comparisonRows);
-  // Race Crew leads with the race and its countdown; a Run Club has neither,
-  // so it states a compact non-race context instead — never both, never
-  // a fabricated countdown for a Crew with no race.
   const isRaceCrew = currentCrew.crewType === "race";
   const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
   const countdown = isRaceCrew && currentCrew.raceDate
@@ -329,61 +318,79 @@ export function CrewScreen({
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
   const viewerReadyRuns = build.viewerReadyRuns;
-  /*
-   * A run Today asked to place opens placement on its own, without a state
-   * write of its own: it is simply the placing run until the runner confirms
-   * or cancels, at which point `onCrewPlacementHandled` retires the request.
-   * Reading it here rather than in an effect also means a request that lands
-   * before the crew payload does still opens — Crew normally mounts before
-   * its first read returns, and dropping the request then would strand the
-   * runner on the Crew page hunting for their own READY block, which is the
-   * exact behaviour `Place Crew Block` exists to replace.
-   */
+  const viewerReadyAwards = build.viewerReadyAwards;
+
   const requestedPlacementRun = placeCrewRunId
     ? dashboardData.crewBuildRuns.find((run) => run.id === placeCrewRunId) ?? null
     : null;
-  const placingRun =
-    dashboardData.crewBuildRuns.find((run) => run.id === placingRunId)
-    ?? requestedPlacementRun;
+  const placingAward = placingAwardId
+    ? crewAwards.blocks.find((award) => award.id === placingAwardId) ?? null
+    : null;
+  const placingAwardMember = placingAward
+    ? members.find((member) => member.userId === placingAward.winnerUserId) ?? null
+    : null;
+  const placingRun = placingAward
+    ? null
+    : dashboardData.crewBuildRuns.find((run) => run.id === placingRunId)
+      ?? requestedPlacementRun;
 
-  // A block being moved does not block its own current position — the same
-  // rule Personal Build's `BuildScreen` applies before computing options.
-  const placementBlocks = placingRun
-    ? build.blocks.filter((block) => block.id !== placingRun.id)
-    : build.blocks;
+  const placementBlocks = build.blocks.filter((block) => {
+    if (placingRun) return !(block.kind === "run" && block.id === placingRun.id);
+    if (placingAward) return !(block.kind === "award" && block.id === placingAward.id);
+    return true;
+  });
   const placementOptions = placingRun
     ? crewBuildLandingOptions(placingRun, placementBlocks)
-    : [];
+    : placingAward
+      ? crewAwardLandingOptions(placingAward, placementBlocks)
+      : [];
   const placementCandidate =
     placementOptions.find((option) => String(option.columnStart) === candidateColumn) ??
     autoPlaceOption(placementOptions) ??
     null;
   const placementCandidateIndex = placementCandidate
-    ? placementOptions.findIndex(
-      (option) => option.columnStart === placementCandidate.columnStart,
-    )
+    ? placementOptions.findIndex((option) => option.columnStart === placementCandidate.columnStart)
     : -1;
 
   function startPlacement(run: CrewBuildRun) {
     onCrewPlacementHandled?.();
-    crew!.clearCrewBuildPlacementError();
+    crew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
     setPlacementLocalError(null);
+    setPlacingAwardId(null);
     setPlacingRunId(run.id);
     setCandidateColumn(
       run.crewBuildColumnStart === null ? null : String(run.crewBuildColumnStart),
     );
   }
 
+  function startAwardPlacement(awardId: string) {
+    const award = crewAwards.blocks.find((item) => item.id === awardId);
+    if (!award || award.winnerUserId !== currentUserId) return;
+    onCrewPlacementHandled?.();
+    crew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
+    setPlacementLocalError(null);
+    setPlacingRunId(null);
+    setPlacingAwardId(award.id);
+    setCandidateColumn(
+      award.crewBuildColumnStart === null ? null : String(award.crewBuildColumnStart),
+    );
+  }
+
   function cancelPlacement() {
     onCrewPlacementHandled?.();
-    crew!.clearCrewBuildPlacementError();
+    crew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(null);
     setPlacingRunId(null);
+    setPlacingAwardId(null);
   }
 
   function choosePlacement(option: { columnStart: number }) {
-    crew!.clearCrewBuildPlacementError();
+    crew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(String(option.columnStart));
   }
@@ -399,17 +406,62 @@ export function CrewScreen({
   }
 
   async function confirmPlacement() {
-    if (!placingRun || !placementCandidate) return;
-    const placed = await crew!.placeCrewBuildBlock(
-      placingRun.id,
-      placementCandidate.row,
-      placementCandidate.columnStart,
-    );
-    if (placed) {
-      markJustPlaced(placingRun.id);
-      cancelPlacement();
-    } else setCandidateColumn(null);
+    if (!placementCandidate) return;
+    if (placingRun) {
+      const placed = await crew.placeCrewBuildBlock(
+        placingRun.id,
+        placementCandidate.row,
+        placementCandidate.columnStart,
+      );
+      if (placed) {
+        markJustPlaced(placingRun.id);
+        cancelPlacement();
+      } else setCandidateColumn(null);
+      return;
+    }
+    if (placingAward) {
+      const placed = await crewAwards.placeAward(
+        placingAward.id,
+        placementCandidate.row,
+        placementCandidate.columnStart,
+      );
+      if (placed) {
+        markJustPlaced(placingAward.id);
+        cancelPlacement();
+      } else setCandidateColumn(null);
+    }
   }
+
+  const placementMode: CrewBuildPlacementMode | null = placingRun
+    ? {
+      kind: "run",
+      run: placingRun,
+      options: placementOptions,
+      candidate: placementCandidate,
+      pending: crew.crewBuildPlacementPending,
+      error: crew.crewBuildPlacementError ?? placementLocalError,
+      onChoose: choosePlacement,
+      onStep: stepPlacement,
+      onAutoPlace: autoPlacePlacement,
+      onConfirm: () => void confirmPlacement(),
+      onCancel: cancelPlacement,
+    }
+    : placingAward && placingAwardMember
+      ? {
+        kind: "award",
+        award: placingAward,
+        member: placingAwardMember,
+        options: placementOptions,
+        candidate: placementCandidate,
+        pending: crewAwards.placementPending,
+        error: crewAwards.placementError ?? placementLocalError,
+        onChoose: choosePlacement,
+        onStep: stepPlacement,
+        onAutoPlace: autoPlacePlacement,
+        onConfirm: () => void confirmPlacement(),
+        onCancel: cancelPlacement,
+      }
+      : null;
 
   function changeMetricFromKeyboard(
     event: KeyboardEvent<HTMLButtonElement>,
@@ -417,26 +469,22 @@ export function CrewScreen({
   ) {
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      nextIndex = (currentIndex + 1) % metrics.length;
+      nextIndex = (currentIndex + 1) % METRICS.length;
     } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      nextIndex = (currentIndex - 1 + metrics.length) % metrics.length;
+      nextIndex = (currentIndex - 1 + METRICS.length) % METRICS.length;
     } else if (event.key === "Home") {
       nextIndex = 0;
     } else if (event.key === "End") {
-      nextIndex = metrics.length - 1;
+      nextIndex = METRICS.length - 1;
     }
     if (nextIndex === null) return;
     event.preventDefault();
-    setMetric(metrics[nextIndex].id);
+    setMetric(METRICS[nextIndex].id);
     metricRefs.current[nextIndex]?.focus();
   }
 
   return (
     <div className="crew-view">
-      {/*
-        The crew identity is a compact standing line, not another bordered
-        card: the visual weight below it belongs to the Crew Build.
-      */}
       <header className="crew-view__lead">
         <div className={`crew-view__lead-row${canSwitchCrews ? " crew-view__lead-row--picker" : ""}`}>
           {canSwitchCrews ? (
@@ -464,11 +512,7 @@ export function CrewScreen({
             </div>
           ) : (
             <>
-              <CrewEmblem
-                className="crew-view__emblem"
-                emblem={currentCrew.emblem}
-                size={46}
-              />
+              <CrewEmblem className="crew-view__emblem" emblem={currentCrew.emblem} size={46} />
               <div className="crew-view__identity">
                 <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
                 {contextLine && (
@@ -479,13 +523,6 @@ export function CrewScreen({
               </div>
             </>
           )}
-          {/*
-            The sync state is the control itself (issue #120). "Updated 4
-            minutes ago" was copy nobody needed during normal use, so the
-            icon carries it: green when the numbers are current, animated
-            while refreshing, amber when they are old enough to change what
-            a comparison means. The words survive in the accessible name.
-          */}
           <div className="crew-view__refresh-group">
             <IconButton
               className="crew-view__refresh"
@@ -500,7 +537,10 @@ export function CrewScreen({
               }
               disabled={crew.crewDataStatus === "loading"}
               aria-busy={crew.crewDataStatus === "loading"}
-              onClick={() => void crew.refreshCrewData(true)}
+              onClick={() => {
+                void crew.refreshCrewData(true);
+                void crewAwards.refresh(true);
+              }}
             />
           </div>
         </div>
@@ -550,18 +590,8 @@ export function CrewScreen({
         members={railMembers}
         available={dashboardData.sharedRunsAvailable}
         justPlacedRunId={justPlacedId}
-        placement={placingRun ? {
-          run: placingRun,
-          options: placementOptions,
-          candidate: placementCandidate,
-          pending: crew.crewBuildPlacementPending,
-          error: crew.crewBuildPlacementError ?? placementLocalError,
-          onChoose: choosePlacement,
-          onStep: stepPlacement,
-          onAutoPlace: autoPlacePlacement,
-          onConfirm: () => void confirmPlacement(),
-          onCancel: cancelPlacement,
-        } : null}
+        justPlacedAwardId={justPlacedId}
+        placement={placementMode}
         onStartReady={() => {
           const next = viewerReadyRuns[0];
           if (next) {
@@ -570,7 +600,17 @@ export function CrewScreen({
           }
         }}
         onSelectRun={(runId) => setSelectedRunId(runId)}
+        onSelectAward={(awardId) => setSelectedAwardId(awardId)}
         onSelectMember={(userId) => setSelectedMemberId(userId)}
+      />
+
+      <CrewAwardsPanel
+        week={crewAwards.currentWeek}
+        members={members}
+        readyAwards={viewerReadyAwards}
+        available={crewAwards.available}
+        loading={crewAwards.loading}
+        onPlaceAward={startAwardPlacement}
       />
 
       <section
@@ -581,12 +621,12 @@ export function CrewScreen({
         <div className="crew-comparison__heading">
           <h2 id="crew-comparison-title">{METRIC_LABEL[activeMetric]}</h2>
           <p className="crew-comparison__window machine-label">
-            {metrics.find((item) => item.id === activeMetric)?.window}
+            {METRICS.find((item) => item.id === activeMetric)?.window}
           </p>
         </div>
 
         <div className="crew-comparison__selector" role="tablist" aria-label="Comparison metric">
-          {metrics.map(({ id, Icon }, index) => (
+          {METRICS.map(({ id, Icon }, index) => (
             <button
               key={id}
               ref={(element) => { metricRefs.current[index] = element; }}
@@ -611,10 +651,7 @@ export function CrewScreen({
           role="tabpanel"
           aria-labelledby={`crew-metric-${activeMetric}`}
         >
-          <ol
-            className="crew-comparison__rows"
-            aria-label={`${METRIC_LABEL[activeMetric]} comparison`}
-          >
+          <ol className="crew-comparison__rows" aria-label={`${METRIC_LABEL[activeMetric]} comparison`}>
             {comparisonRows.map(({ member, summary }) => {
               const formatted = formatComparisonReading(activeMetric, summary);
               const isYou = member.userId === currentUserId;
@@ -627,12 +664,6 @@ export function CrewScreen({
                   data-member-color={crewMemberAccent(member.userId, member.accentColor)}
                 >
                   <div className="crew-comparison__row-topline">
-                    {/*
-                      Runner identity is the row's other front door into Crew
-                      Profile (issue #120). Only the identity is a control —
-                      the reading and the bar stay plain, so tapping a name
-                      can never be mistaken for switching the metric.
-                    */}
                     <button
                       type="button"
                       className="crew-comparison__member"
@@ -645,9 +676,7 @@ export function CrewScreen({
                     </button>
                     <span className="crew-comparison__reading">
                       <span className="data-value">{formatted.value}</span>
-                      {formatted.detail && (
-                        <span className="machine-label">· {formatted.detail}</span>
-                      )}
+                      {formatted.detail && <span className="machine-label">· {formatted.detail}</span>}
                     </span>
                   </div>
                   <span
@@ -672,11 +701,7 @@ export function CrewScreen({
         )}
       </section>
 
-      <Section
-        className="crew-recent"
-        icon={<History size={15} strokeWidth={2} />}
-        title="Recent Crew Runs"
-      >
+      <Section className="crew-recent" icon={<History size={15} strokeWidth={2} />} title="Recent Crew Runs">
         {!dashboardData.sharedRunsAvailable ? (
           <p className="crew-recent__empty">Recent crew runs unavailable.</p>
         ) : dashboardData.runs.length === 0 ? (
@@ -711,17 +736,8 @@ export function CrewScreen({
         model={selectedMember ? deriveCrewMiniBuild(dashboardData.miniBuildRuns, selectedMember.userId) : null}
         summary={selectedMemberSummary}
         runs={selectedMemberRuns}
-        // Visually closed while its own Run Detail drill-down is open, so
-        // only one dialog is ever interactive at a time (issue #93). The
-        // member stays selected underneath, so this sheet reopens on the
-        // same profile — same scroll position — once Run Detail closes.
         isOpen={selectedMember !== null && !runDetailFromProfile}
         onClose={() => {
-          // The native <dialog> fires this same "close" event whether a
-          // person dismissed it or the drill-down above just hid it
-          // programmatically. Only the former should drop the member
-          // selection — otherwise opening Run Detail from inside the
-          // profile would itself clear the profile it is drilling into.
           if (runDetailFromProfile) return;
           setSelectedMemberId(null);
         }}
@@ -748,11 +764,8 @@ export function CrewScreen({
         }}
         onMoveBlock={selectedRun && selectedRun.userId === currentUserId && selectedRun.crewBuildRow !== null
           ? () => {
-            const source = dashboardData.crewBuildRuns.find((run) => run.id === selectedRun!.id);
+            const source = dashboardData.crewBuildRuns.find((run) => run.id === selectedRun.id);
             if (!source) return;
-            // Moving a block leaves the read-only profile for the main
-            // Crew Build's placement flow, so the drill-down ends here
-            // rather than reopening the profile underneath it.
             setSelectedMemberId(null);
             setRunDetailFromProfile(false);
             setSelectedRunId(null);
@@ -763,6 +776,20 @@ export function CrewScreen({
           setSelectedRunId(null);
           setRunDetailFromProfile(false);
         }}
+      />
+
+      <CrewAwardDetailSheet
+        award={selectedAward}
+        member={selectedAwardMember}
+        isOpen={selectedAward !== null}
+        onMoveBlock={selectedAward && selectedAward.winnerUserId === currentUserId && selectedAward.crewBuildRow !== null
+          ? () => {
+            const awardId = selectedAward.id;
+            setSelectedAwardId(null);
+            startAwardPlacement(awardId);
+          }
+          : undefined}
+        onClose={() => setSelectedAwardId(null)}
       />
     </div>
   );
