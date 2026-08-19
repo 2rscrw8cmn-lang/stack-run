@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { earnedBlocks } from "../../domain/build";
 import { findWorkout } from "../../domain/planEdit";
@@ -168,6 +169,45 @@ describe("Plan after the race", () => {
     // Generating a plan is the caller's decision to persist. Nothing about the
     // plan on screen was mutated on the way there.
     expect(seed).toEqual(before);
+  });
+
+  it("lands on the new plan's own week, not the old plan's last one", async () => {
+    // What the app does with a generated plan: persist it and hand it back.
+    function PlanHost() {
+      const [plan, setPlan] = useState(seed);
+      return (
+        <PlanScreen
+          plan={plan}
+          runLogs={[]}
+          today={AFTER_RACE}
+          onGeneratePlan={(_setup, generated) => setPlan(generated)}
+        />
+      );
+    }
+
+    const user = userEvent.setup();
+    render(<PlanHost />);
+    await user.click(screen.getByRole("button", { name: /Set up next race/ }));
+
+    const sheet = screen.getByRole("dialog");
+    fireEvent.change(within(sheet).getByLabelText("Race name"), {
+      target: { value: "Spring Half" },
+    });
+    fireEvent.change(within(sheet).getByLabelText("Race date"), {
+      target: { value: "2027-06-05" },
+    });
+    // A start well over eighteen weeks back, so the new plan's current week is
+    // past the end of the eighteen-week plan being replaced.
+    fireEvent.change(within(sheet).getByLabelText(/Start training/), {
+      target: { value: "2026-08-03" },
+    });
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const heading = weekHeading().textContent ?? "";
+    const landed = Number(/Week (\d+) of (\d+)/.exec(heading)![1]);
+    const total = Number(/Week (\d+) of (\d+)/.exec(heading)![2]);
+    expect(total).toBeGreaterThan(seed.weeks.length);
+    expect(landed).toBeGreaterThan(seed.weeks.length);
   });
 
   it("offers no next-race action where the setup flow is not available", () => {

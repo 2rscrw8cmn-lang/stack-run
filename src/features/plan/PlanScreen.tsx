@@ -160,12 +160,20 @@ export function PlanScreen({
       ? (week.days.find((day) => day.workout.id === secondary.workoutId) ?? null)
       : null;
 
-  function goToWeek(next: number) {
+  /**
+   * Moves the screen to a week and closes whatever was open over it.
+   *
+   * `into` is the plan the week number belongs to, which is the plan on screen
+   * except immediately after a rebuild: a week of the new plan has to be
+   * clamped against the new plan's own bounds, or a longer plan lands on the
+   * old one's last week.
+   */
+  function goToWeek(next: number, into: TrainingPlan = plan) {
     setDetailOpen(false);
     setDetailWorkoutId(null);
     setSecondaryOpen(false);
     setSecondary(null);
-    setWeekNumber(clampWeekNumber(plan, next));
+    setWeekNumber(clampWeekNumber(into, next));
   }
 
   function openDetail(workoutId: string) {
@@ -438,7 +446,7 @@ export function PlanScreen({
             // The plan under this screen has been replaced, so the viewed week
             // number no longer means what it did. Land on the new plan's own
             // opening week rather than whatever number was on screen.
-            goToWeek(currentWeekNumber(generated, today));
+            goToWeek(currentWeekNumber(generated, today), generated);
             setAnnouncement(
               `${generated.weeks.length}-week plan built for ${setup.name}.`,
             );
