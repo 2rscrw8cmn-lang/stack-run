@@ -91,8 +91,8 @@ describe("Crew Special Blocks in the shared tower", () => {
     const moving = award("moving", { awardType: "miles" });
     const options = crewAwardLandingOptions(moving, model.blocks);
 
-    expect(options).toHaveLength(6);
+    expect(options).toHaveLength(7);
     expect(options.find((option) => option.columnStart === 1)?.row).toBe(1);
-    expect(options.find((option) => option.columnStart === 6)?.row).toBe(0);
+    expect(options.find((option) => option.columnStart === 7)?.row).toBe(0);
   });
 });
