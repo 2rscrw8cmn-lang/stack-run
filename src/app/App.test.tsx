@@ -50,7 +50,7 @@ describe("App", () => {
 
     const welcome = screen.getByRole("dialog", { name: "STACK" });
     expect(within(welcome).getByText("Build your race.")).toBeInTheDocument();
-    expect(within(welcome).getByText(/Every completed run earns a block/)).toBeInTheDocument();
+    expect(within(welcome).getByText(/Every run you record earns a block/)).toBeInTheDocument();
 
     await user.click(within(welcome).getByRole("button", { name: "Get Started" }));
     expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-current", "page");

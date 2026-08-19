@@ -2763,3 +2763,75 @@ colour on an unlinked day), plus the existing `PlanScreen.test.tsx`,
 to the truthful language.
 
 `npm run check` passes: 152 files, 1,875 tests.
+
+## NEXT-6 — Build + Crew compatibility (STACK Next)
+
+NEXT-1 through NEXT-5 rebuilt what STACK knows about the runner. Build and Crew
+were never revisited, so this phase asked what they should mean now — and found
+that both already behaved correctly for reasons nobody had written down.
+
+### What earns a block
+
+> **A block is earned by a run the runner brought into STACK.**
+
+`earnedBlocks(plan, runLogs)` maps over `RunLog`s, so a run the runner logged by
+hand or accepted from Run Data earns exactly one block. Connected history that
+was never accepted has no `RunLog`, appears in the unified read model as a
+`RunnerRun` with `stack: null`, and earns nothing.
+
+**Owner decision, August 19, 2026: it stays that way, and STACK ships no
+backfill.** Not on install, not on sync, not on request. The reasoning is in
+`docs/NEXT6_BUILD_CREW_COMPATIBILITY.md`; the short version is that the tower
+means *what I built*, an opt-in conversion is a real feature rather than a
+toggle, and a backfill built from `RunLog`s would also make that running
+Crew-visible as a side effect.
+
+An accepted run and its source mirror are one physical run: they reconcile on
+external activity identity, produce one history row, and earn one block.
+
+### What Crew sees
+
+> **Crew sees only what the runner accepted into STACK, never the source mirror.**
+
+Every projection path — `projectSharedRuns`, `projectMemberSummary`,
+`projectionFingerprint` and both upsert paths in `useRaceCrew` — takes an
+`AppState` and reads `state.runLogs` and `state.blockPlacements`. Historical
+activity is not in `AppState`: it lives under its own account-scoped key
+(`stack.history.activities.v1`), so Crew cannot project it.
+
+That was a property of where a value happens to be stored. It is now a rule with
+tests: the projected field list is asserted item by item, and syncing a year of
+history leaves the Crew payload byte-identical to what it was before the sync.
+
+### Language that stopped being true
+
+- `BuildSummaryMetrics.totalActualMiles` was documented as *"every mile actually
+  run"*. It is every mile the runner **recorded** — the tower's material, which
+  is why Build says `miles built`. Runs owns how much the runner actually ran.
+- `Every completed run earns a block` became `Every run you record earns a
+  block` in the welcome sheet, the app tour, Getting Started and the Runs empty
+  state, because with connected history a completed run can exist that earns
+  none. Getting Started's Build destination answers *What have I built?*
+- Crew's `Consistency` comparison is now **`Plan Runs Linked`** (`Linked` on the
+  compact tab). Same window, same stored `consistency_completed` /
+  `consistency_due` columns, same bars and ranking — only the display name moved.
+  The reading is how much of the plan has a linked recorded run, and calling that
+  `Consistency` presented a plan-link ratio as a quality of the runner, which is
+  the reading NEXT-3 ranked last on Runs and NEXT-5 refused as Plan's headline.
+
+### Boundaries this phase did not cross
+
+No backfill of any kind, no historical activity in any Crew payload, no Supabase
+migration, RLS change or new projected field, no change to how an accepted run
+earns a block, no placement, gravity or footprint change, no persistence or
+AppState migration, and no Plan, Today or Runs redesign.
+
+### Tests
+
+`src/history/buildCrewBoundary.test.ts` — a historical-only run earning no block
+and reporting no placed block; the tower being identical whether or not a year of
+history exists; one block for an accepted run that also has a source mirror; the
+storage separation that keeps history out of `AppState`; the exact projected
+field list; and a synced year of history leaving the Crew payload unchanged.
+
+`npm run check` passes: 153 files, 1,886 tests.

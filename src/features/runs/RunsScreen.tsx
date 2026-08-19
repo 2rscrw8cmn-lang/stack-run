@@ -319,8 +319,8 @@ export function RunsScreen({
           icon={<History size={24} strokeWidth={1.6} />}
           title="Nothing recorded yet"
         >
-          Log a run here or connect Run Data in Settings. Your first completed
-          run earns a block.
+          Log a run here or connect Run Data in Settings. The first run you
+          record earns a block.
         </EmptyState>
       ) : (
         <>

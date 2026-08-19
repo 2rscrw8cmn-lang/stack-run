@@ -129,7 +129,7 @@ export function GettingStartedPage() {
               Confirm the plan match or add it as an extra run.
             </ChecklistItem>
             <ChecklistItem number="05" title="Place your block">
-              Every completed run earns a block for your Personal Build.
+              Every run you record earns a block for your Personal Build.
             </ChecklistItem>
           </ol>
         </section>
@@ -357,7 +357,7 @@ export function GettingStartedPage() {
           </div>
           <ul className="getting-started__destinations">
             <AppDestination icon={<CalendarDays size={21} />} name="TODAY" question="What am I doing today?">Your current workout and the things that matter right now.</AppDestination>
-            <AppDestination icon={<Blocks size={21} />} name="BUILD" question="What have I completed?">Every completed run earns a block for your eight-column training tower.</AppDestination>
+            <AppDestination icon={<Blocks size={21} />} name="BUILD" question="What have I built?">Every run you record earns a block for your eight-column training tower.</AppDestination>
             <AppDestination icon={<Activity size={21} />} name="RUNS" question="How is my training going?">Your run history, synced activity details and Training Signals.</AppDestination>
             <AppDestination icon={<UsersRound size={21} />} name="CREW" question="How is everyone doing?">The shared Crew Build, comparisons, recent Crew runs, member Builds and Props.</AppDestination>
             <AppDestination icon={<Footprints size={21} />} name="PLAN" question="What is coming up?">Your upcoming training weeks and scheduled workouts.</AppDestination>

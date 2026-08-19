@@ -84,7 +84,7 @@ function readBootState(): BootState {
 const CORE_TOUR: ReadonlyArray<{ tab: TabId; title: string; copy: string }> = [
   { tab: "plan", title: "Plan", copy: "See what should happen, one training week at a time." },
   { tab: "runs", title: "Runs", copy: "See what actually happened. Log runs here or connect Run Data." },
-  { tab: "build", title: "Build", copy: "Every completed run earns a block. Place it to build your race." },
+  { tab: "build", title: "Build", copy: "Every run you record earns a block. Place it to build your race." },
   { tab: "today", title: "Today", copy: "Start here for today's workout and what matters now." },
 ];
 

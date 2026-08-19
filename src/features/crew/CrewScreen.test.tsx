@@ -435,9 +435,9 @@ describe("Crew comparisons and runs", () => {
       expect.stringContaining("Travis"),
     ]);
     const metricTabs = screen.getByRole("tablist", { name: "Comparison metric" });
-    expect(within(metricTabs).queryByText(/Miles|Long|Consist|Built/)).not.toBeInTheDocument();
+    expect(within(metricTabs).queryByText(/Miles|Long|Linked|Built/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Consistency" }));
+    await user.click(screen.getByRole("tab", { name: "Plan Runs Linked" }));
     expect(screen.getByText("88%")).toBeInTheDocument();
     expect(screen.getByText("· 14/16")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
@@ -458,7 +458,7 @@ describe("Crew comparisons and runs", () => {
     expect(screen.getByRole("button", { name: "Refresh crew data" })).toHaveTextContent("");
   });
 
-  it("swaps Run Days in for Consistency on a Run Club, counting distinct days", async () => {
+  it("swaps Run Days in for the plan-link metric on a Run Club, counting distinct days", async () => {
     const runs = [
       sharedRun("z1", "zack", "2026-08-01"),
       sharedRun("z2", "zack", "2026-08-05"),
@@ -477,7 +477,7 @@ describe("Crew comparisons and runs", () => {
     );
 
     const metricTabs = screen.getByRole("tablist", { name: "Comparison metric" });
-    expect(within(metricTabs).queryByRole("tab", { name: "Consistency" })).not.toBeInTheDocument();
+    expect(within(metricTabs).queryByRole("tab", { name: "Plan Runs Linked" })).not.toBeInTheDocument();
     expect(within(metricTabs).getByRole("tab", { name: "Run Days" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Run Days" }));
@@ -752,10 +752,10 @@ describe("Crew comparisons and runs", () => {
     expect(dialog.querySelector(".crew-member-profile__name")).toHaveTextContent("Zack");
     expect(dialog.querySelector(".crew-member-profile__you")).toHaveTextContent("You");
 
-    // The compact shared stat strip, Race Crew's Consistency slot included.
+    // The compact shared stat strip, Race Crew's plan-link slot included.
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("This Week");
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Longest");
-    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Consistency");
+    expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Plan Runs Linked");
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("75%");
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("3/4");
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Member Build");
@@ -764,7 +764,7 @@ describe("Crew comparisons and runs", () => {
     expect(profile.getByText("Long Run")).toBeInTheDocument();
   });
 
-  it("shows Run Days instead of Consistency in a Run Club's Crew Profile", async () => {
+  it("shows Run Days instead of the plan-link metric in a Run Club's Crew Profile", async () => {
     const user = await openCrew(
       controller({
         account: {
@@ -778,7 +778,7 @@ describe("Crew comparisons and runs", () => {
     await user.click(screen.getByRole("button", { name: "Open Zack's Build" }));
     const dialog = screen.getByRole("dialog", { name: "Crew Profile" });
     expect(dialog.querySelector(".crew-member-profile__stats")).toHaveTextContent("Run Days");
-    expect(dialog.querySelector(".crew-member-profile__stats")).not.toHaveTextContent("Consistency");
+    expect(dialog.querySelector(".crew-member-profile__stats")).not.toHaveTextContent("Plan Runs Linked");
   });
 
   it("keeps run detail and Props as sibling controls inside one compact card", async () => {

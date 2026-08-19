@@ -382,6 +382,23 @@ iPhone Safari.
 - Today is unchanged, including `View Plan`.
 - Logging a run from Plan still earns exactly one block, placed as before.
 
+## NEXT-6 — Build + Crew compatibility (STACK Next)
+
+- A connected historical run that was never accepted appears on Runs and earns
+  no Build block, no pending block and no tower change.
+- Accepting a run from Run Data still earns exactly one block, including when
+  that run already existed in connected history.
+- Deleting a recorded run still removes exactly its block and placement.
+- Build's number is `miles built` and counts recorded runs; Runs may legitimately
+  show more running.
+- Onboarding, the app tour, Getting Started and the Runs empty state promise a
+  block for runs the runner records, not for every run that exists.
+- Crew shows `Plan Runs Linked` where it used to show `Consistency`, over the
+  same window, with the same bars and ranking.
+- A crewmate's shared runs and summary are unchanged by the size of the runner's
+  connected history.
+- Crew Build placement, the Crew Build window and Props behave as before.
+
 ## Race Crew — UI-18 architecture acceptance
 
 UI-18 is research/docs, not production social implementation.
