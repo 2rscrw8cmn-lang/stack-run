@@ -2319,19 +2319,6 @@ textarea.run-input {
   cursor: default;
 }
 
-.week-lead__progress {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.week-lead__count {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 .week-lead__now {
   padding: 3px var(--space-2);
   border-radius: 999px;
@@ -3179,23 +3166,30 @@ textarea.run-input {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  width: 62px;
+  width: 68px;
   color: var(--text-subtle);
+  text-align: center;
 }
 
 .workout-row__status[data-status="completed"] {
   color: var(--accent);
 }
 
-.workout-row__status[data-status="missed"] {
-  color: var(--long);
-}
-
+/*
+ * NEXT-5: a past plan item with no linked run is not a failed one. It used to
+ * be drawn in the long-run colour, which read as a warning about the runner;
+ * what STACK actually knows is only that nothing is linked to it, so it stays
+ * in the same quiet colour as an unrun future day.
+ *
+ * The label is relationship language rather than a machine value, so it is
+ * sentence-case interface sans with room to wrap instead of a cramped
+ * uppercase abbreviation.
+ */
 .workout-row__status-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 
 /* Storage recovery — what the app is when it could not read its own state */
@@ -4420,11 +4414,14 @@ textarea.run-input {
   letter-spacing: 0.05em;
 }
 
-.week-lead__count,
+/*
+ * Dates and week identity are data, so they keep the machine face. The day's
+ * plan relationship is interface language — `Planned`, `Completed`,
+ * `No linked run` — and reads in the normal STACK sans.
+ */
 .week-lead__now,
 .workout-row__weekday,
-.workout-row__day,
-.workout-row__status-label {
+.workout-row__day {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums slashed-zero;
 }

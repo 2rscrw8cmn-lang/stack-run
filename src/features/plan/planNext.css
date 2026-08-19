@@ -5,6 +5,9 @@
  * lead therefore uses two quiet readings instead of a completion hero/progress
  * bar: schedule intent first, actual runner history beside it, and explicit
  * link state below as relationship metadata.
+ *
+ * Interface is quiet, data is STACK: the readings are separated by hairlines
+ * and typography rather than by cards, tints or scoring colour.
  */
 
 .week-lead__summary {
@@ -17,14 +20,15 @@
   background: var(--border);
 }
 
+/* A week that has not happened has one reading, not an empty second cell. */
+.week-lead__summary[data-readings="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .week-lead__reading {
   min-width: 0;
   padding: 11px 10px 10px;
   background: var(--bg);
-}
-
-.week-lead__reading[data-kind="actual"] {
-  background: color-mix(in srgb, var(--accent) 3%, var(--bg));
 }
 
 .week-lead__reading-value,
@@ -41,6 +45,8 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Actual running is the runner's own fact, so it carries the accent. Planned
+   intent stays in text colour: neither one is the good or the bad number. */
 .week-lead__reading[data-kind="actual"] .week-lead__reading-value {
   color: var(--accent);
 }
@@ -48,7 +54,7 @@
 .week-lead__reading-meta {
   margin-top: 4px;
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -63,7 +69,7 @@
 .week-lead__linked {
   min-width: 0;
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -76,9 +82,61 @@
   padding-inline: var(--space-2);
 }
 
+/* Where the plan is in its own life: before it starts, or after the race.
+   One line of type, no container, no countdown, no progress. */
+
+.plan-lifecycle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-lifecycle__headline,
+.plan-lifecycle__detail {
+  margin: 0;
+}
+
+.plan-lifecycle__headline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.plan-lifecycle__headline svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.plan-lifecycle__detail {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-lifecycle__action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-lifecycle__action svg {
+  flex-shrink: 0;
+}
+
 @media (max-width: 340px) {
   .week-lead__summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .week-lead__reading {
