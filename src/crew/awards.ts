@@ -97,9 +97,14 @@ export function isFeatureCrewAward(type: CrewAwardType): boolean {
   return FEATURE_CREW_AWARD_TYPES.includes(type as (typeof FEATURE_CREW_AWARD_TYPES)[number]);
 }
 
+/**
+ * Awards are accent pieces, not another source of large structural spans.
+ * Standard awards stay compact at two columns; Long Haul alone gets one extra
+ * column so it still reads as a span without consuming half the eight-column tower.
+ */
 export function crewAwardFootprint(type: CrewAwardType): { width: BlockWidth; height: 1 } {
   return {
-    width: type === "longHaul" ? 4 : type === "miles" ? 3 : 2,
+    width: type === "longHaul" ? 3 : 2,
     height: 1,
   };
 }
