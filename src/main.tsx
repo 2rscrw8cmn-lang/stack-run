@@ -17,12 +17,15 @@ if (!rootElement) {
 }
 
 const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+const visualStudy = new URLSearchParams(window.location.search).get("visual");
 const content =
-  pathname === "/getting-started"
-    ? <GettingStartedPage />
-    : pathname === "/award-blocks"
-      ? <AwardBlockVisualStudyRoute />
-      : <App />;
+  visualStudy === "award-blocks"
+    ? <AwardBlockVisualStudyRoute />
+    : pathname === "/getting-started"
+      ? <GettingStartedPage />
+      : pathname === "/award-blocks"
+        ? <AwardBlockVisualStudyRoute />
+        : <App />;
 
 createRoot(rootElement).render(
   <StrictMode>
