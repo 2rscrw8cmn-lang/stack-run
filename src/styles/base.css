@@ -22,34 +22,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/*
- * Temporary R3 real-source diagnostic. The data attribute is only written on
- * localhost / Vercel branch previews, so this fixed banner cannot appear on a
- * production/custom domain. It contains outcome metadata only — never source
- * samples, credentials, GPS or raw payloads.
- */
-body[data-run-profile-diagnostic]::after {
-  content: attr(data-run-profile-diagnostic);
-  position: fixed;
-  left: max(12px, env(safe-area-inset-left));
-  right: max(12px, env(safe-area-inset-right));
-  bottom: calc(12px + env(safe-area-inset-bottom));
-  z-index: 10000;
-  padding: 10px 12px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--accent);
-  font-family: var(--font-data);
-  font-size: 11px;
-  line-height: 1.35;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
-  pointer-events: none;
-}
-
 #root {
   min-height: 100dvh;
 }

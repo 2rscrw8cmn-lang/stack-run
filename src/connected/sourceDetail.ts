@@ -50,45 +50,6 @@ export type SourceConnection = IntervalsConnection | string | null | undefined;
 export type SourceDetailReaderFactory = (connection: SourceConnection) => SourceDetailReader | null;
 
 /**
- * Temporary R3 real-source diagnostic.
- *
- * This code only exists on the unmerged R3 branch, so localhost and any Vercel
- * deployment of that branch may expose it. Generated Vercel deployment aliases
- * do not necessarily contain `-git-`, which is why checking that substring hid
- * the banner on the owner's actual preview URL. The diagnostic still reports
- * outcome metadata only — never a credential, URL, sample value, GPS
- * coordinate or raw upstream payload — and it will be removed before merge.
- */
-function profileDiagnosticHost(): boolean {
-  if (typeof window === "undefined") return false;
-  const hostname = window.location.hostname.toLowerCase();
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname.endsWith(".vercel.app")
-  );
-}
-
-function connectionMode(connection: Exclude<SourceConnection, null | undefined | "">): string {
-  if (typeof connection === "string") return "LEGACY PROXY";
-  return connection.mode === "local-api-key" ? "LOCAL API KEY" : "LEGACY PROXY";
-}
-
-function safeDiagnosticMessage(reason: unknown): string {
-  const message = reason instanceof Error ? reason.message : "UNKNOWN ERROR";
-  return message
-    .replace(/https?:\/\/\S+/gi, "[URL]")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 180);
-}
-
-function setProfileDiagnostic(message: string): void {
-  if (!profileDiagnosticHost() || typeof document === "undefined") return;
-  document.body.dataset.runProfileDiagnostic = message;
-}
-
-/**
  * Intervals' streams route is format-sensitive in current deployments. The
  * server-proxy path is fixed in `api/intervals.ts`; local API-key mode reaches
  * Intervals directly, so it must request JSON explicitly here as well.
@@ -139,34 +100,12 @@ function readProfile(
   return fetchIntervalsRunProfile(activityId, connection);
 }
 
-async function readProfileWithDiagnostic(
-  activityId: string,
-  connection: Exclude<SourceConnection, null | undefined | "">,
-): Promise<IntervalsRunProfile | null> {
-  const mode = connectionMode(connection);
-  setProfileDiagnostic(`PROFILE REQUEST STARTED · ${mode}`);
-  try {
-    const profile = await readProfile(activityId, connection);
-    setProfileDiagnostic(
-      profile
-        ? `PROFILE OK · ${mode} · ${profile.samples.length} NORMALIZED SAMPLES`
-        : `PROFILE RESPONSE OK · ${mode} · NORMALIZER RETURNED NULL`,
-    );
-    return profile;
-  } catch (reason: unknown) {
-    setProfileDiagnostic(
-      `PROFILE REQUEST FAILED · ${mode} · ${safeDiagnosticMessage(reason)}`,
-    );
-    throw reason;
-  }
-}
-
 /** The production reader: the existing Intervals reads, with explicit JSON for profile streams. */
 export const intervalsSourceDetailReader: SourceDetailReaderFactory = (connection) =>
   connection
     ? {
         readDetail: (activityId) => fetchIntervalsActivityDetail(activityId, connection),
-        readProfile: (activityId) => readProfileWithDiagnostic(activityId, connection),
+        readProfile: (activityId) => readProfile(activityId, connection),
       }
     : null;
 
