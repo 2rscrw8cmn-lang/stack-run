@@ -41,6 +41,25 @@ function rounded(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
+/** Temporary R3 diagnostic: only the branch preview/local host should show this. */
+function profileDiagnosticEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app");
+}
+
+/** Reduce a rejected profile read to a useful category without exposing upstream/private data. */
+function safeProfileFailure(reason: unknown): string {
+  const message = reason instanceof Error ? reason.message : "";
+  const http = /HTTP\s+(\d{3})/i.exec(message)?.[1];
+  if (http) return `HTTP ${http}`;
+  if (/personal api key|did not accept|unauthor/i.test(message)) return "AUTH REJECTED";
+  if (/rate limit/i.test(message)) return "RATE LIMITED";
+  if (/browser access|could not be reached|network|fetch/i.test(message)) return "NETWORK OR CORS FAILURE";
+  if (/unreadable response/i.test(message)) return "UNREADABLE RESPONSE";
+  return "UNKNOWN PROFILE FAILURE";
+}
+
 /**
  * What each Run Profile metric plots, and what it states beneath the plot.
  *
@@ -169,6 +188,7 @@ export function SourceRunDetail({
   const [profile, setProfile] = useState<IntervalsRunProfile | null>(null);
   /** False until the stream read has resolved either way, so nothing flashes into place and out again. */
   const [profileSettled, setProfileSettled] = useState(false);
+  const [profileDiagnostic, setProfileDiagnostic] = useState("");
   const [selectedProfileMetric, setSelectedProfileMetric] = useState<RunProfileMetricId | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   /** Guards a slow, superseded request from overwriting a newer one's state. */
@@ -189,13 +209,18 @@ export function SourceRunDetail({
     setProfile(null);
     setSelectedProfileMetric(null);
     setError("");
+    setProfileDiagnostic("");
     if (!id || !source) {
       setDetailState("idle");
       setProfileSettled(true);
+      if (profileDiagnosticEnabled()) {
+        setProfileDiagnostic(!id ? "PROFILE NOT REQUESTED · NO ACTIVITY ID" : "PROFILE NOT REQUESTED · NO SOURCE READER");
+      }
       return;
     }
     setDetailState("loading");
     setProfileSettled(false);
+    if (profileDiagnosticEnabled()) setProfileDiagnostic("PROFILE REQUEST STARTED");
     source.readDetail(id)
       .then((result) => {
         if (requestIdRef.current !== requestId) return;
@@ -208,16 +233,27 @@ export function SourceRunDetail({
         setDetailState("error");
       });
     // The Run Profile stream is kept independent: a failure here stays quiet
-    // and simply leaves the Run Profile section absent, same as a run that
-    // never had one.
+    // in the product. The temporary preview diagnostic below records only a
+    // sanitized outcome so the real source boundary can be verified.
     source.readProfile(id)
       .then((result) => {
         if (requestIdRef.current !== requestId) return;
         setProfile(result);
         setProfileSettled(true);
+        if (profileDiagnosticEnabled()) {
+          setProfileDiagnostic(
+            result
+              ? `PROFILE OK · ${result.samples.length} NORMALIZED SAMPLES`
+              : "PROFILE RESPONSE OK · NORMALIZER RETURNED NULL",
+          );
+        }
       })
-      .catch(() => {
-        if (requestIdRef.current === requestId) setProfileSettled(true);
+      .catch((reason: unknown) => {
+        if (requestIdRef.current !== requestId) return;
+        setProfileSettled(true);
+        if (profileDiagnosticEnabled()) {
+          setProfileDiagnostic(`PROFILE REQUEST FAILED · ${safeProfileFailure(reason)}`);
+        }
       });
   }, []);
 
@@ -323,6 +359,26 @@ export function SourceRunDetail({
       )}
 
       {notes}
+
+      {profileDiagnostic && (
+        <div
+          role="status"
+          style={{
+            margin: "14px 0",
+            padding: "10px 12px",
+            border: "1px solid var(--accent)",
+            borderRadius: 6,
+            color: "var(--accent)",
+            fontFamily: "var(--font-data)",
+            fontSize: 11,
+            lineHeight: 1.35,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          R3 PROFILE DEBUG · {profileDiagnostic}
+        </div>
+      )}
 
       {availableProfileMetrics.length > 0 && activeMetric && (
         <section className="run-result-detail__profile">
