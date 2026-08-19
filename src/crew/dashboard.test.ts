@@ -42,6 +42,9 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         crew_build_placed_at: "2026-08-09T13:00:00Z",
         created_at: "2026-08-09T12:00:00Z",
         updated_at: "2026-08-09T12:00:00Z",
+        average_heart_rate: 148,
+        max_heart_rate: 171,
+        manual_heart_rate: null,
       },
     ],
     crew_reactions: [
@@ -105,9 +108,11 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
     );
-    expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
+    // Heart rate is the one deliberate exception, per D-078; everything else
+    // private (training load, effort, notes, source, route, GPS) stays out.
+    expect(String(runSelect?.value)).not.toMatch(/load|effort|note|source|route|gps/i);
     const reactionSelect = calls.find(
       (call) => call.table === "crew_reactions" && call.operation === "select",
     );
@@ -143,6 +148,9 @@ describe("Crew dashboard query", () => {
       crewBuildRow: 7,
       crewBuildColumnStart: 3,
       crewBuildPlacedAt: "2026-08-09T13:00:00Z",
+      averageHeartRate: 148,
+      maxHeartRate: 171,
+      manualHeartRate: null,
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -170,6 +178,7 @@ describe("Crew dashboard query", () => {
         localDate: "2026-08-09",
         activityType: "long",
         distanceMiles: 6.1,
+        durationSeconds: 3522,
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,

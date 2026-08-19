@@ -125,7 +125,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -215,6 +215,9 @@ export async function loadCrewDashboard(
         typeof item.crew_build_placed_at === "string"
           ? item.crew_build_placed_at
           : null,
+      averageHeartRate: nullableInteger(item, "average_heart_rate"),
+      maxHeartRate: nullableInteger(item, "max_heart_rate"),
+      manualHeartRate: nullableInteger(item, "manual_heart_rate"),
       propsCount: 0,
       viewerHasPropped: false,
     };
@@ -295,6 +298,7 @@ export async function loadCrewDashboard(
     localDate: run.localDate,
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
+    durationSeconds: run.durationSeconds,
     createdAt: run.createdAt,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,

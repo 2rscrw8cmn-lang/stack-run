@@ -5,6 +5,7 @@ import {
   CREW_BUILD_COLUMNS,
   crewBuildBlocksOverlap,
   crewBuildContributorIds,
+  crewBuildFootprint,
   crewBuildLandingOptions,
   crewBuildPlacementOptions,
   deriveCrewBuild,
@@ -25,6 +26,7 @@ function run(
     localDate: "2026-08-09",
     activityType: "easy",
     distanceMiles: 4,
+    durationSeconds: 2400,
     createdAt: "2026-08-09T12:00:00Z",
     crewBuildRow: null,
     crewBuildColumnStart: null,
@@ -322,5 +324,20 @@ describe("shared geometry reuse (issue #65)", () => {
     for (const option of options) {
       expect(canPlaceCrewBuildBlock(moving, option, model.blocks)).toBe(true);
     }
+  });
+});
+
+describe("crewBuildFootprint", () => {
+  it("grows a Cross Training block's height with duration, capped at 2", () => {
+    const short = run("short", "zack", { activityType: "cross", durationSeconds: 20 * 60 });
+    const long = run("long", "zack", { activityType: "cross", durationSeconds: 45 * 60 });
+
+    expect(crewBuildFootprint(short).height).toBe(1);
+    expect(crewBuildFootprint(long).height).toBe(2);
+  });
+
+  it("leaves every other activity type's fixed height alone", () => {
+    expect(crewBuildFootprint(run("a", "zack", { activityType: "intervals" })).height).toBe(2);
+    expect(crewBuildFootprint(run("a", "zack", { activityType: "race" })).height).toBe(3);
   });
 });
