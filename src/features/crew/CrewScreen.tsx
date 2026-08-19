@@ -157,6 +157,7 @@ export function CrewScreen({
     buildStartDate: currentCrew?.buildStartDate ?? null,
     today,
   });
+  const refreshAwards = crewAwards.refresh;
 
   const crewBuild = useMemo(
     () => (crewBuildRuns
@@ -185,9 +186,9 @@ export function CrewScreen({
   // changing Crew identity. Recompute only when the shared-run payload moves.
   useEffect(() => {
     if (crewBuildRuns && currentCrewId && currentUserId) {
-      void crewAwards.refresh(true);
+      void refreshAwards(true);
     }
-  }, [crewBuildRuns, currentCrewId, currentUserId, crewAwards.refresh]);
+  }, [crewBuildRuns, currentCrewId, currentUserId, refreshAwards]);
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -263,7 +264,8 @@ export function CrewScreen({
     );
   }
 
-  const dashboardData = crew.crewData;
+  const activeCrew = crew;
+  const dashboardData = activeCrew.crewData;
   const members = dashboardData.members;
   const activeMetric = metric;
   const placedMilesByUserId = new Map<string, number>();
@@ -283,8 +285,8 @@ export function CrewScreen({
   const comparisonRows = orderedComparisonRows(activeMetric, members, comparisonSummaries);
   const syncStatus = crewSyncStatus({
     summaries: dashboardData.summaries,
-    loading: crew.crewDataStatus === "loading",
-    error: Boolean(crew.crewDataError),
+    loading: activeCrew.crewDataStatus === "loading",
+    error: Boolean(activeCrew.crewDataError),
   });
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
   const selectedAward = crewAwards.blocks.find((award) => award.id === selectedAwardId) ?? null;
@@ -354,7 +356,7 @@ export function CrewScreen({
 
   function startPlacement(run: CrewBuildRun) {
     onCrewPlacementHandled?.();
-    crew.clearCrewBuildPlacementError();
+    activeCrew.clearCrewBuildPlacementError();
     crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setPlacingAwardId(null);
@@ -368,7 +370,7 @@ export function CrewScreen({
     const award = crewAwards.blocks.find((item) => item.id === awardId);
     if (!award || award.winnerUserId !== currentUserId) return;
     onCrewPlacementHandled?.();
-    crew.clearCrewBuildPlacementError();
+    activeCrew.clearCrewBuildPlacementError();
     crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setPlacingRunId(null);
@@ -380,7 +382,7 @@ export function CrewScreen({
 
   function cancelPlacement() {
     onCrewPlacementHandled?.();
-    crew.clearCrewBuildPlacementError();
+    activeCrew.clearCrewBuildPlacementError();
     crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(null);
@@ -389,7 +391,7 @@ export function CrewScreen({
   }
 
   function choosePlacement(option: { columnStart: number }) {
-    crew.clearCrewBuildPlacementError();
+    activeCrew.clearCrewBuildPlacementError();
     crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(String(option.columnStart));
@@ -408,7 +410,7 @@ export function CrewScreen({
   async function confirmPlacement() {
     if (!placementCandidate) return;
     if (placingRun) {
-      const placed = await crew.placeCrewBuildBlock(
+      const placed = await activeCrew.placeCrewBuildBlock(
         placingRun.id,
         placementCandidate.row,
         placementCandidate.columnStart,
@@ -438,8 +440,8 @@ export function CrewScreen({
       run: placingRun,
       options: placementOptions,
       candidate: placementCandidate,
-      pending: crew.crewBuildPlacementPending,
-      error: crew.crewBuildPlacementError ?? placementLocalError,
+      pending: activeCrew.crewBuildPlacementPending,
+      error: activeCrew.crewBuildPlacementError ?? placementLocalError,
       onChoose: choosePlacement,
       onStep: stepPlacement,
       onAutoPlace: autoPlacePlacement,
@@ -496,7 +498,7 @@ export function CrewScreen({
                   aria-label={`Choose crew: ${currentCrew.name}`}
                   aria-haspopup="dialog"
                   aria-expanded={isCrewPickerOpen}
-                  disabled={crew.busy}
+                  disabled={activeCrew.busy}
                   onClick={() => setCrewPickerOpen(true)}
                 >
                   <CrewEmblem emblem={currentCrew.emblem} size={46} />
@@ -535,11 +537,11 @@ export function CrewScreen({
                   strokeWidth={1.8}
                 />
               }
-              disabled={crew.crewDataStatus === "loading"}
-              aria-busy={crew.crewDataStatus === "loading"}
+              disabled={activeCrew.crewDataStatus === "loading"}
+              aria-busy={activeCrew.crewDataStatus === "loading"}
               onClick={() => {
-                void crew.refreshCrewData(true);
-                void crewAwards.refresh(true);
+                void activeCrew.refreshCrewData(true);
+                void refreshAwards(true);
               }}
             />
           </div>
@@ -547,9 +549,9 @@ export function CrewScreen({
       </header>
 
       <PropNotifications
-        notifications={crew.visiblePropNotifications}
-        propsSeenAt={crew.account?.profile.propsSeenAt ?? new Date(0).toISOString()}
-        onDismiss={crew.dismissPropNotification}
+        notifications={activeCrew.visiblePropNotifications}
+        propsSeenAt={activeCrew.account?.profile.propsSeenAt ?? new Date(0).toISOString()}
+        onDismiss={activeCrew.dismissPropNotification}
       />
 
       {canSwitchCrews && isCrewPickerOpen && (
@@ -568,10 +570,10 @@ export function CrewScreen({
                     type="button"
                     className="crew-picker__option"
                     aria-pressed={isCurrentCrew}
-                    disabled={crew.busy}
+                    disabled={activeCrew.busy}
                     onClick={() => {
                       setCrewPickerOpen(false);
-                      if (!isCurrentCrew) void crew.switchCrew(option.id);
+                      if (!isCurrentCrew) void activeCrew.switchCrew(option.id);
                     }}
                   >
                     <CrewEmblem emblem={option.emblem} size={34} />
@@ -694,7 +696,7 @@ export function CrewScreen({
           </ol>
         </div>
 
-        {crew.crewDataError && (
+        {activeCrew.crewDataError && (
           <p className="crew-comparison__error" role="status">
             Crew data unavailable. Showing the last loaded view.
           </p>
@@ -713,11 +715,11 @@ export function CrewScreen({
                 key={run.id}
                 run={run}
                 currentUserId={currentUserId ?? ""}
-                propsPending={crew.propsPendingRunIds.includes(run.id)}
-                propsError={crew.propsErrors[run.id] ?? null}
+                propsPending={activeCrew.propsPendingRunIds.includes(run.id)}
+                propsError={activeCrew.propsErrors[run.id] ?? null}
                 propsAvailable={dashboardData.propsAvailable}
                 onOpen={() => setSelectedRunId(run.id)}
-                onToggleProps={() => void crew.toggleProps(run.id)}
+                onToggleProps={() => void activeCrew.toggleProps(run.id)}
               />
             ))}
           </ul>
@@ -746,21 +748,21 @@ export function CrewScreen({
           setSelectedRunId(runId);
         }}
         currentUserId={currentUserId ?? ""}
-        propsPendingRunIds={crew.propsPendingRunIds}
-        propsErrors={crew.propsErrors}
+        propsPendingRunIds={activeCrew.propsPendingRunIds}
+        propsErrors={activeCrew.propsErrors}
         propsAvailable={dashboardData.propsAvailable}
-        onToggleProps={(runId) => void crew.toggleProps(runId)}
+        onToggleProps={(runId) => void activeCrew.toggleProps(runId)}
       />
 
       <CrewRunDetailSheet
         run={selectedRun}
         isOpen={selectedRun !== null}
         currentUserId={currentUserId ?? ""}
-        propsPending={selectedRun ? crew.propsPendingRunIds.includes(selectedRun.id) : false}
-        propsError={selectedRun ? crew.propsErrors[selectedRun.id] ?? null : null}
+        propsPending={selectedRun ? activeCrew.propsPendingRunIds.includes(selectedRun.id) : false}
+        propsError={selectedRun ? activeCrew.propsErrors[selectedRun.id] ?? null : null}
         propsAvailable={dashboardData.propsAvailable}
         onToggleProps={() => {
-          if (selectedRun) void crew.toggleProps(selectedRun.id);
+          if (selectedRun) void activeCrew.toggleProps(selectedRun.id);
         }}
         onMoveBlock={selectedRun && selectedRun.userId === currentUserId && selectedRun.crewBuildRow !== null
           ? () => {
