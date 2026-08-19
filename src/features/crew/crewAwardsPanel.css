@@ -1,0 +1,108 @@
+.crew-awards {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.crew-awards__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crew-awards__heading h2,
+.crew-awards__heading p {
+  margin: 0;
+}
+
+.crew-awards__heading h2 {
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.crew-awards__standings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.crew-awards__row {
+  --award-mark: #d7ff3f;
+  display: grid;
+  grid-template-columns: 4px minmax(88px, .7fr) minmax(0, 1.3fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 47px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.crew-awards__row[data-award="zone2"] { --award-mark: #35e6ff; }
+.crew-awards__row[data-award="pace"] { --award-mark: #ff7048; }
+.crew-awards__row[data-award="runs"] { --award-mark: #ffd94f; }
+.crew-awards__row[data-award="longHaul"] { --award-mark: #f1c66f; }
+.crew-awards__row[data-award="steady"] { --award-mark: #5aa7ff; }
+.crew-awards__row[data-award="onTarget"] { --award-mark: #ff58d4; }
+.crew-awards__row[data-award="levelUp"] { --award-mark: #b77aff; }
+
+.crew-awards__row[data-feature] {
+  box-shadow: inset 0 0 0 1px rgba(210, 170, 98, .22);
+  padding-inline: 6px;
+}
+
+.crew-awards__mark {
+  align-self: stretch;
+  background: var(--award-mark);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--award-mark) 32%, transparent);
+}
+
+.crew-awards__name {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.crew-awards__name strong {
+  font-size: .82rem;
+  line-height: 1.1;
+}
+
+.crew-awards__leader {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.crew-awards__leader > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .8rem;
+}
+
+.crew-awards__leader .data-value {
+  white-space: nowrap;
+  font-size: .78rem;
+}
+
+.crew-awards__empty,
+.crew-awards__loading {
+  opacity: .62;
+}
+
+@media (max-width: 420px) {
+  .crew-awards { padding-inline: 12px; }
+  .crew-awards__row {
+    grid-template-columns: 4px 82px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .crew-awards__leader { grid-template-columns: auto 1fr; }
+  .crew-awards__leader .data-value { grid-column: 2; }
+}
