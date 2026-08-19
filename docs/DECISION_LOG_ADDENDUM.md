@@ -611,3 +611,22 @@ Six choices worth recording:
 7. **Avg Pace narrows the "no pace leaderboard" boundary rather than ignoring it, and the owner asked for it explicitly.** `docs/RACE_CREW.md` and `AGENTS.md` both said *no raw pace leaderboard*, and this pass adds a pace comparison with a best-first order — so the boundary is restated rather than quietly dropped. What stays forbidden is what that rule was protecting against: no individual run's pace is ranked, posted or compared, and the crew-safe run contract still carries no pace field of its own. What is now allowed is one trailing-28-day aggregate per member, in the same encouragement-first comparison module as Weekly Miles and Longest Run. Issue #120 requests this in the owner's own words ("Replace Consistency with a more useful Avg Pace comparison", "lower Avg Pace is better", "use Avg Pace for both Race Crews and Run Clubs"), which is what authorizes the change; `docs/RACE_CREW.md` is updated to match.
 
 This decision authorizes the scope recorded in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not reopen the Crew safe-projection boundary beyond reading back `local_run_id`, does not change Personal or Crew Build placement rules, and does not change Props, Crew Profile run-detail drill-down or invite/membership behavior.
+
+
+## D-079 — Crew Special Blocks are zero-mile weekly Crew awards
+
+**Decision**
+
+Crew Special Blocks are approved as winner-owned, zero-mile pieces that physically participate in the shared Crew Build. Each completed week can produce four standard awards — Most Miles, Best Zone 2, Fastest Avg. Pace, and Most Runs — plus one Feature award rotating weekly through Long Haul, Steady, On Target, and Level Up. Only the winner may place or move the award block. Run blocks and award blocks share the same authoritative collision/support geometry, while `Miles Built` remains the sum of placed run mileage only.
+
+The Crew-safe projection is extended only for derived award scalars: `award_zone2_percent`, `award_target_percent`, `award_level_up_percent`, and `award_steady_seconds` when a verified source exists. Raw heart rate, HR-zone arrays, workout targets/details, routes, exact start times, notes, credentials, and personal history remain private. Award-score sync is scoped to `auth.uid()` so a runner cannot submit or alter another runner's award metrics.
+
+`Steady` must not fabricate a score from average pace. Until STACK has a verified within-run pace-variability source, a Steady week may have no qualifier.
+
+**Reason**
+
+This preserves the Crew Build as the product's shared artifact, gives weekly competition a permanent visual history, and keeps health/training source data on the runner's side of the privacy boundary.
+
+**Status**
+
+Approved for the Crew Special Blocks implementation. See `docs/CREW_SPECIAL_BLOCKS.md`.

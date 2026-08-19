@@ -140,7 +140,7 @@ returns table (
   item_kind text,
   item_id uuid,
   user_id uuid,
-  row integer,
+  build_row integer,
   column_start integer,
   width integer,
   height integer
@@ -409,12 +409,12 @@ begin
       select p.item_id
       from public.crew_build_items(p_crew_id) p
       where p.item_kind = 'run'
-        and p.row > 0
+        and p.build_row > 0
         and not exists (
           select 1
           from public.crew_build_items(p_crew_id) s
           where not (s.item_kind = p.item_kind and s.item_id = p.item_id)
-            and s.row + s.height = p.row
+            and s.build_row + s.height = p.build_row
             and p.column_start < s.column_start + s.width
             and s.column_start < p.column_start + p.width
         )
@@ -430,12 +430,12 @@ begin
       select p.item_id
       from public.crew_build_items(p_crew_id) p
       where p.item_kind = 'award'
-        and p.row > 0
+        and p.build_row > 0
         and not exists (
           select 1
           from public.crew_build_items(p_crew_id) s
           where not (s.item_kind = p.item_kind and s.item_id = p.item_id)
-            and s.row + s.height = p.row
+            and s.build_row + s.height = p.build_row
             and p.column_start < s.column_start + s.width
             and s.column_start < p.column_start + p.width
         )
@@ -499,14 +499,14 @@ begin
     where not (occupied.item_kind = 'run' and occupied.item_id = v_run.id)
       and p_column_start < occupied.column_start + occupied.width
       and occupied.column_start < p_column_start + v_width
-      and p_row < occupied.row + occupied.height
-      and occupied.row < p_row + v_height
+      and p_row < occupied.build_row + occupied.height
+      and occupied.build_row < p_row + v_height
   ) then raise exception 'crew_build_placement_conflict'; end if;
 
   if p_row > 0 and not exists (
     select 1 from public.crew_build_items(v_run.crew_id) support
     where not (support.item_kind = 'run' and support.item_id = v_run.id)
-      and support.row + support.height = p_row
+      and support.build_row + support.height = p_row
       and p_column_start < support.column_start + support.width
       and support.column_start < p_column_start + v_width
   ) then raise exception 'crew_build_placement_unsupported'; end if;
@@ -521,11 +521,11 @@ begin
       select 'run', v_run.id, v_run.user_id, p_row, p_column_start, v_width, v_height
     )
     select 1 from placed p
-    where p.row > 0
+    where p.build_row > 0
       and not exists (
         select 1 from supports s
         where not (s.item_kind = p.item_kind and s.item_id = p.item_id)
-          and s.row + s.height = p.row
+          and s.build_row + s.height = p.build_row
           and p.column_start < s.column_start + s.width
           and s.column_start < p.column_start + p.width
       )
@@ -582,14 +582,14 @@ begin
     where not (occupied.item_kind = 'award' and occupied.item_id = v_award.id)
       and p_column_start < occupied.column_start + occupied.width
       and occupied.column_start < p_column_start + v_width
-      and p_row < occupied.row + occupied.height
-      and occupied.row < p_row + v_height
+      and p_row < occupied.build_row + occupied.height
+      and occupied.build_row < p_row + v_height
   ) then raise exception 'crew_build_placement_conflict'; end if;
 
   if p_row > 0 and not exists (
     select 1 from public.crew_build_items(v_award.crew_id) support
     where not (support.item_kind = 'award' and support.item_id = v_award.id)
-      and support.row + support.height = p_row
+      and support.build_row + support.height = p_row
       and p_column_start < support.column_start + support.width
       and support.column_start < p_column_start + v_width
   ) then raise exception 'crew_build_placement_unsupported'; end if;
@@ -605,11 +605,11 @@ begin
         p_row, p_column_start, v_width, v_height
     )
     select 1 from placed p
-    where p.row > 0
+    where p.build_row > 0
       and not exists (
         select 1 from supports s
         where not (s.item_kind = p.item_kind and s.item_id = p.item_id)
-          and s.row + s.height = p.row
+          and s.build_row + s.height = p.build_row
           and p.column_start < s.column_start + s.width
           and s.column_start < p.column_start + p.width
       )

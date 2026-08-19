@@ -731,3 +731,21 @@ Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 Other watch/services may skip HealthFit when they already sync directly to Intervals.
 
 The friend-facing explanation is controlled by `docs/RUN_DATA_SETUP.md`.
+
+
+## Crew Special Blocks — implementation review
+
+**Status:** Implemented on draft PR #123; not merged to `main`.
+
+Implemented scope:
+- four standard weekly awards: Most Miles, Best Zone 2, Fastest Avg. Pace, Most Runs;
+- one weekly rotating Feature award: Long Haul / Steady / On Target / Level Up;
+- winner-owned zero-mile award persistence and READY placement;
+- approved graphite award artwork with runner identity and award-specific glyph/color;
+- live weekly standings and award detail/move flow;
+- mixed run/award collision and support in the authoritative Crew Build RPCs;
+- run-only Miles Built accounting;
+- RLS and winner-only placement;
+- derived-scalar award projection without raw HR-zone, workout-target, route, credential, or personal-history disclosure.
+
+Verification on the feature branch includes lint, TypeScript/Vite build, Vitest, Vercel preview, and dedicated Supabase/RLS coverage. `Steady` intentionally remains without a fabricated fallback until a verified within-run pace-variability source is available.
