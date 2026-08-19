@@ -182,8 +182,6 @@ export function CrewScreen({
     }
   }, [crewStatus, currentCrewId, markPropsSeen]);
 
-  // A new or edited local run can change the live leaderboard without
-  // changing Crew identity. Recompute only when the shared-run payload moves.
   useEffect(() => {
     if (crewBuildRuns && currentCrewId && currentUserId) {
       void refreshAwards(true);
@@ -265,7 +263,7 @@ export function CrewScreen({
   }
 
   const activeCrew = crew;
-  const dashboardData = activeCrew.crewData;
+  const dashboardData = activeCrew.crewData!;
   const members = dashboardData.members;
   const activeMetric = metric;
   const placedMilesByUserId = new Map<string, number>();
