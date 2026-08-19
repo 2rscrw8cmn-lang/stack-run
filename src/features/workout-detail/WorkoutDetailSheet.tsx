@@ -14,6 +14,12 @@ import { RunResultDetail } from "./RunResultDetail";
 interface WorkoutDetailSheetProps {
   workout: Workout;
   state: BlockState;
+  /**
+   * Optional context-specific copy for the same underlying state. Plan uses
+   * relationship language (`No linked run`) instead of claiming a past
+   * unlinked workout proves the runner missed running altogether.
+   */
+  statusLabel?: string;
   runLog?: RunLog | null;
   /** Provided by Plan for a run whose day has arrived and that has no log yet. */
   onLogRun?: () => void;
@@ -40,6 +46,7 @@ interface WorkoutDetailSheetProps {
 export function WorkoutDetailSheet({
   workout,
   state,
+  statusLabel,
   runLog,
   onLogRun,
   onEditRun,
@@ -58,7 +65,7 @@ export function WorkoutDetailSheet({
       <div className="workout-detail">
         <p className="workout-detail__status" data-state={state}>
           <StatusIcon size={20} strokeWidth={1.8} aria-hidden="true" />
-          <span>{BLOCK_STATE_LABEL[state]}</span>
+          <span>{statusLabel ?? BLOCK_STATE_LABEL[state]}</span>
         </p>
 
         <dl className="workout-detail__facts">
