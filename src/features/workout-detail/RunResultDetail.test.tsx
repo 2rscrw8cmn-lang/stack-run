@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { IntervalsRunProfile } from "../../connected/intervals";
 import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail";
 import type { RunLog } from "../../domain/types";
 import { RunResultDetail } from "./RunResultDetail";
@@ -415,10 +416,11 @@ describe("accepted run through the shared source-detail path", () => {
   });
 
   it("never lets a superseded run's slow answer land in the run now open", async () => {
-    const pending = new Map<string, (profile: unknown) => void>();
+    const pending = new Map<string, (profile: IntervalsRunProfile | null) => void>();
     const factory: SourceDetailReaderFactory = () => ({
       readDetail: async () => ({ intervals: [] }),
-      readProfile: (id) => new Promise((resolve) => pending.set(id, resolve)) as Promise<null>,
+      readProfile: (id) =>
+        new Promise<IntervalsRunProfile | null>((resolve) => pending.set(id, resolve)),
     });
     const other: RunLog = {
       ...syncedRun,

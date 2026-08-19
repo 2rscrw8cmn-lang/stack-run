@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { IntervalsRunProfile } from "../../connected/intervals";
 import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail";
 import { historicalRun } from "../../history/runnerFixtures";
 import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
@@ -50,13 +51,11 @@ function respondWith(detail: object, streams: object) {
     .mockResolvedValueOnce(new Response(JSON.stringify(streams)));
 }
 
+/** A reader whose profile read behaves however one test needs it to. */
 function readerFactory(
-  readProfile: SourceDetailReaderFactory extends never ? never : (id: string) => Promise<unknown>,
+  readProfile: (id: string) => Promise<IntervalsRunProfile | null>,
 ): SourceDetailReaderFactory {
-  return () => ({
-    readDetail: async () => ({ intervals: [] }),
-    readProfile: (id) => readProfile(id) as never,
-  });
+  return () => ({ readDetail: async () => ({ intervals: [] }), readProfile });
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -156,12 +155,10 @@ describe("historical-only run detail", () => {
   });
 
   it("never lets a superseded run's slow answer land in the run now open", async () => {
-    const pending = new Map<string, (profile: unknown) => void>();
-    const factory: SourceDetailReaderFactory = () => ({
-      readDetail: async () => ({ intervals: [] }),
-      readProfile: (id) =>
-        new Promise((resolve) => pending.set(id, resolve)) as Promise<null>,
-    });
+    const pending = new Map<string, (profile: IntervalsRunProfile | null) => void>();
+    const factory = readerFactory(
+      (id) => new Promise<IntervalsRunProfile | null>((resolve) => pending.set(id, resolve)),
+    );
 
     const view = render(
       <SourceDetailReaderProvider value={factory}>

@@ -1,6 +1,8 @@
 # Run Detail — Product Specification
 
-**Status:** proposed clarification/enrichment contract for STACK Next.  
+**Status:** enrichment contract for STACK Next. R3 implemented the shared
+source-detail architecture and the QA review states described here; owner
+visual acceptance is outstanding.  
 **Companion:** `docs/RUNS_PRODUCT_MODEL.md` and `docs/RUNS_VISUALIZATION_SYSTEM.md`.
 
 ## Purpose
@@ -52,7 +54,7 @@ The current rule remains:
 
 Do not rebuild these concepts in a second renderer.
 
-## Why QA currently looks less visual
+## Why QA used to look less visual — and what R3 changed
 
 The reusable QA Runner intentionally:
 
@@ -60,17 +62,39 @@ The reusable QA Runner intentionally:
 - never reads a real Intervals credential;
 - never calls Intervals.
 
-Therefore its accepted synthetic runs can display imported summary metrics and zones, but the current QA harness does not supply the on-demand Run Profile response that `RunResultDetail` normally fetches. The profile chart is consequently absent in QA review.
+Its accepted synthetic runs could therefore display imported summary metrics
+and zones, but nothing supplied the on-demand Run Profile response that
+`RunResultDetail` fetches, so the profile chart was absent from every review.
 
-This is a **review-fixture gap**, not proof that the production-capable Run Detail lacks a profile chart.
+That was a **review-fixture gap**, not proof that the production-capable Run
+Detail lacked a profile chart.
 
-The Runs reframe must make the rich Run Detail state reviewable with synthetic data without weakening the production secret/network boundary.
+R3 closed it at the read boundary rather than in the components, and without
+weakening the production secret/network boundary: the QA Runner injects a
+synthetic `SourceDetailReader`, and the production factory still refuses to
+produce a reader without a real connection. QA remains credential-free and
+network-free.
 
-## Two run-detail paths today
+## One source-owned path, two callers (R3)
+
+R3 replaced the two divergent detail paths below with one shared source-owned
+presentation. `src/features/workout-detail/SourceRunDetail.tsx` renders the
+result, the Run Profile, the imported aggregates, the heart-rate zones and the
+structured source groups; `src/features/workout-detail/sourceRunFacts.ts` is
+the factual vocabulary it takes, built from either a `RunLog` or a `RunnerRun`.
+
+No `RunnerRun` is ever shaped into a fake `RunLog` to reach it. That is what
+keeps STACK-owned semantics off a run nobody has decided anything about.
+
+The two external reads it needs are an injectable boundary,
+`src/connected/sourceDetail.ts`. Production delegates to
+`fetchIntervalsActivityDetail` / `fetchIntervalsRunProfile` and still produces
+no reader at all without a real connection; the QA Runner injects a synthetic
+one. Ordinary product code cannot tell the difference.
 
 ### STACK-owned / accepted run
 
-Uses `RunDetailSheet` → `RunResultDetail`.
+Uses `RunDetailSheet` → `RunResultDetail` → `SourceRunDetail`.
 
 It may have:
 
@@ -85,20 +109,17 @@ It may have:
 
 ### Historical-only run
 
-Uses `HistoricalRunSheet`.
+Uses `HistoricalRunSheet` → `SourceRunDetail`.
 
-It currently shows normalized source summary facts only:
+It shows normalized source summary facts — distance, duration, pace,
+average/max HR, elevation gain, cadence, Training Load, source name/date — and,
+since R3, the same source-owned Run Profile, heart-rate zones and structured
+groups when it has a stable `externalActivityId` and this device has a usable
+connection.
 
-- distance;
-- duration;
-- pace;
-- average/max HR;
-- elevation gain;
-- cadence;
-- Training Load;
-- source name/date.
-
-It intentionally has no edit/import/plan/Build action and currently does not fetch on-demand profile streams.
+It intentionally has no edit, import, accept, plan or Build action, and gains
+no effort, notes, plan link or activity classification. It remains read-only
+source history.
 
 ## Target content hierarchy
 
@@ -247,18 +268,26 @@ Do not duplicate the same methodology in two paragraphs.
 
 ## Historical-only visual enrichment
 
-The long-term target is for a historical-only run to be able to show the same **source-owned visual telemetry** as an accepted run when:
+**Implemented in R3.** A historical-only run shows the same **source-owned
+visual telemetry** as an accepted run when:
 
 - the run has a stable Intervals source id;
 - the current device has a usable Intervals connection;
 - the on-demand source response is recognized;
 - no STACK-owned semantics are invented.
 
-That means a historical-only run could eventually gain:
+A historical-only run may therefore gain:
 
 - Run Profile;
-- HR-zone visualization (already possible from normalized zone durations if a shared renderer is used);
+- HR-zone visualization from its normalized zone durations;
 - structured interval source detail.
+
+Loading is summary-first: the normalized `RunnerRun` renders immediately,
+because STACK already holds it. The source reads start on open and only
+because one run's detail is open; a `null`, unrecognized or failed profile
+leaves the summary intact, shows no chart frame and raises no alert; and a
+superseded run's late answer can never land in the run now open. Nothing here
+triggers historical sync, resync or reconciliation.
 
 It must still remain historical-only:
 
@@ -268,11 +297,13 @@ It must still remain historical-only:
 - no plan link invented;
 - no Build block invented.
 
-Prefer extracting/reusing shared source-detail presentation rather than making `HistoricalRunSheet` copy `RunResultDetail` and drift.
+`HistoricalRunSheet` does not copy `RunResultDetail`. Both render the one
+shared `SourceRunDetail`.
 
 ## QA contract
 
-The QA Runner should support deterministic review of both:
+**Implemented in R3.** See `docs/QA_RUNNER.md` for what to open. The QA Runner
+supports deterministic review of both:
 
 1. an **aggregate-only** run, proving graceful omission; and
 2. a **rich-profile** synthetic run, proving the Pace / HR / Elevation / Cadence visual state without any network request.
@@ -286,7 +317,10 @@ The synthetic profile must:
 - preserve the real production presentation components;
 - not add a `?demo=run-detail` mode.
 
-Prefer an injectable detail/profile source or QA-only adapter at the existing fetch boundary over conditionals scattered through `RunResultDetail`.
+The injection point is `SourceDetailReader` in `src/connected/sourceDetail.ts`,
+answered in QA by `src/qa/qaSourceDetail.ts` from raw payloads routed through
+the production normalizers. There are no QA conditionals inside `RunResultDetail`,
+`HistoricalRunSheet` or `SourceRunDetail`.
 
 The QA rich-profile state should be visually reviewed specifically for:
 

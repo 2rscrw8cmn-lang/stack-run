@@ -2514,3 +2514,130 @@ history and now omits Load, Gain and Zones on deterministic subsets, which
 exercises honest partial coverage. It remains in-memory, credential-free and
 network-free. R2 adds no page-specific demo, persistence/schema change,
 history fetch, stream fixture or R3 Run Detail work.
+
+## Runs Reframe R3 — Run Detail enrichment + QA stream review (STACK Next)
+
+**Status: implemented on `feature/run-detail-enrichment` (PR #122, draft),
+awaiting owner visual acceptance.** R1 and R2 are merged into
+`feature/stack-next`. NEXT-5 remains paused.
+
+R3 changed no product concept. It removed a duplication and closed a review
+gap, and both were solved by the same seam.
+
+### The external read boundary
+
+`src/connected/sourceDetail.ts` names the only two things Run Detail needs from
+outside the app:
+
+```ts
+interface SourceDetailReader {
+  readDetail(activityId: string): Promise<IntervalsActivityDetail>;
+  readProfile(activityId: string): Promise<IntervalsRunProfile | null>;
+}
+```
+
+A `SourceDetailReaderFactory` turns this device's connection into a reader, or
+into `null` when there can be none. `intervalsSourceDetailReader` is the
+production factory and the React context default, so ordinary product code
+never opts in: it delegates to the unchanged `fetchIntervalsActivityDetail` and
+`fetchIntervalsRunProfile`, and still refuses to produce a reader without a real
+connection. Nothing about the token/network boundary was relaxed.
+
+`useSourceDetailReader(connection)` memoizes on the connection's **value** —
+mode plus credential — rather than its object identity. `App.tsx` rebuilds its
+`IntervalsConnection` object on every render, so before R3 an open detail sheet
+re-issued its source reads whenever anything in the app changed. It no longer
+does: the source is read because a run's detail opened.
+
+### One source-owned presentation
+
+`src/features/workout-detail/SourceRunDetail.tsx` is the source-owned half of
+Run Detail 2.0, extracted once instead of copied:
+
+- primary result — distance, moving/duration, average pace;
+- the Run Profile with its Pace / Heart Rate / Elevation / Cadence selectors;
+- the imported secondary aggregates;
+- the heart-rate zone donut;
+- the structured source-interval list and its concise retry.
+
+`src/features/workout-detail/sourceRunFacts.ts` is its input vocabulary:
+`SourceRunFacts` plus `sourceRunFactsFromRunLog` and
+`sourceRunFactsFromRunnerRun`. No `RunnerRun` is ever dressed up as a `RunLog`
+to reach the shared surface, which is what keeps STACK-owned semantics from
+leaking onto a run nobody has decided anything about.
+
+Two callers wrap it:
+
+- `RunResultDetail` keeps exactly what a historical-only run does not have —
+  the `Synced via` / effort / elapsed meta line, and the runner's notes — and
+  passes them as slots. Its props are unchanged, so Runs, Plan, Build and Crew
+  call it as before.
+- `HistoricalRunSheet` renders the shared surface from a normalized `RunnerRun`
+  and `run.externalActivityId`, plus its date/source-name/`History` context and
+  the existing "not logged in STACK" note. It adds no effort, notes, plan link,
+  activity classification, Build block, import or accept action.
+
+`RunsScreen` passes its existing `syncToken` to `HistoricalRunSheet` as
+`connection`. Detail routing from Overview and History Explorer is unchanged.
+
+### Historical-only enrichment behavior
+
+1. the normalized `RunnerRun` summary renders immediately — it is already held;
+2. with `externalActivityId` **and** a reader, detail and profile reads start on
+   open, independently of each other;
+3. a usable profile appears when it resolves;
+4. an unrecognized shape, a `null` profile or a failed profile read leaves the
+   summary intact, shows no chart frame and raises no alert;
+5. a superseded run's late answer cannot land in the run now open;
+6. nothing here touches historical sync, resync, reconciliation or identity.
+
+### Source-truth discipline, unchanged and now in one place
+
+Streams provide shape; aggregates provide the stated numbers. Pace is the run's
+own distance over duration; Avg/Max HR and Gain are the source's aggregates;
+cadence is verbatim, undoubled and unlabelled; elevation Low/High are the only
+facts read off a series, because they are properties of that series. Missing
+stays missing. `normalizeIntervalsRunProfile` still answers `null` for a shape
+it does not recognize.
+
+### QA review states
+
+`src/qa/qaSourceDetail.ts` is the QA factory. It answers from deterministic
+**raw** payloads routed through the production `normalizeIntervalsRunProfile`
+and `normalizeIntervalsActivityDetail`, so QA exercises the real normalizer,
+chart, selectors and summary discipline rather than a QA-only renderer. It
+holds no credential, issues no request, writes nothing, and is mounted only by
+`QaRunnerApp`.
+
+The fixture adds one run for each corner of the review:
+
+| Activity id | Ownership | Source detail |
+| --- | --- | --- |
+| `qa-detail-rich` | accepted, extra run, today−2 | 150 samples over 49:40, all four metrics, strap/position gaps, one standing-still sample, seven structured groups, zones |
+| `qa-detail-aggregate` | accepted, extra run, today−4 | aggregates and zones only |
+| `qa-detail-history-rich` | historical-only, today−9 | 200 samples over 1:20:03, all four metrics, gaps, zones, no structured groups |
+| `qa-detail-history-aggregate` | historical-only, today−11 | distance and duration only |
+
+Synthetic cadence stays around 79, never 158. There is no route, coordinate,
+FIT payload or personal data in the fixture, and nothing is persisted.
+
+### Accessibility and phone behavior
+
+Run Profile selectors became R2-style controls: a real `button` at the 44px
+interaction floor with a smaller visible chip inside it, `aria-pressed` for the
+selected metric. The primary result grid sizes itself to the facts the source
+stated (`data-count`), and pace shrinks because it is pace
+(`[data-metric="pace"]`) rather than because it happens to be last — which is
+what keeps a duration-less historical run from leaving two empty columns.
+
+### Boundaries R3 did not cross
+
+No maps/routes/GPS, FIT parsing, PR or best-effort detection, cross-run trends,
+VO2 max, readiness/recovery/fatigue, prediction, wellness, historical Build
+backfill, automatic plan change, new workout-type inference, durable raw-stream
+storage, persistence/schema/migration, or NEXT-5 work.
+`docs/CONNECTED_DATA_FIELDS.md` is unchanged: the Run Profile stream rows stay
+`Expected`, because synthetic QA data verifies rendering and never a source
+field.
+
+`npm run check` passes: 147 files, 1,844 tests.
