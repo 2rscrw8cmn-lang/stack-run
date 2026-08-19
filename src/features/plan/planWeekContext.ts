@@ -34,19 +34,29 @@ export function planWeekActualContext(
   };
 }
 
+/** A plan target is persisted as text; only a finite numeric target is summable. */
+function numericTargetMiles(value: string | null): number | null {
+  if (value === null || value.trim() === "") return null;
+  const miles = Number(value);
+  return Number.isFinite(miles) ? miles : null;
+}
+
 /**
  * What the schedule asked for, kept separate from what the runner did.
  *
- * Planned miles are shown only when every scheduled run states a distance.
- * Missing target distance stays missing rather than silently turning into zero.
+ * Planned miles are shown only when every scheduled run states a numeric
+ * distance. Missing/non-numeric target distance stays missing rather than
+ * silently turning into zero.
  */
 export function planWeekIntentContext(
   week: PlanWeekViewModel,
 ): PlanWeekIntentContext {
   const runDays = week.days.filter((day) => day.status !== "rest");
-  const targetMiles = runDays.map((day) => day.workout.targetDistanceMiles);
+  const targetMiles = runDays.map((day) =>
+    numericTargetMiles(day.workout.targetDistanceMiles),
+  );
   const plannedMiles = targetMiles.every(
-    (miles): miles is number => typeof miles === "number" && Number.isFinite(miles),
+    (miles): miles is number => miles !== null,
   )
     ? targetMiles.reduce((sum, miles) => sum + miles, 0)
     : null;
