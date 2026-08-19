@@ -12,10 +12,19 @@ import type { AppState, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { unifiedRunnerHistory } from "../history/runnerRun";
 import {
   createQaRunnerAppState,
+  qaPlanLifecycleFrom,
   qaRunnerHistoricalActivities,
+  QA_PLAN_LIFECYCLES,
 } from "./qaRunner";
 import { qaSourceDetailReaderFor } from "./qaSourceDetail";
 import "./qaRunner.css";
+
+/** Short enough for the notice row on a 320px phone. */
+const QA_LIFECYCLE_LINK_LABEL = {
+  active: "Active",
+  "before-plan": "Before",
+  "after-race": "After",
+} as const;
 
 const EMPTY_CONNECTED_SYNC: ConnectedSync = {
   candidates: [],
@@ -52,8 +61,24 @@ function replaceRun(
  */
 export function QaRunnerApp() {
   const today = todayLocalDate();
-  const initial = useMemo(() => createQaRunnerAppState(today), [today]);
-  const activities = useMemo(() => qaRunnerHistoricalActivities(today), [today]);
+  /**
+   * NEXT-5 review states. The harness could only ever show an active plan, so
+   * `Plan starts…` and `Plan complete` were unreviewable on a device. The URL
+   * chooses which side of the plan window the same synthetic runner stands on;
+   * the fixture already resets on reload, so switching by link is the whole
+   * mechanism.
+   */
+  const lifecycle = qaPlanLifecycleFrom(
+    typeof window === "undefined" ? null : window.location.search,
+  );
+  const initial = useMemo(
+    () => createQaRunnerAppState(today, lifecycle),
+    [today, lifecycle],
+  );
+  const activities = useMemo(
+    () => qaRunnerHistoricalActivities(today, lifecycle),
+    [today, lifecycle],
+  );
   const [state, setState] = useState<AppState>(initial);
   const [activeTab, setActiveTab] = useState<TabId>("today");
   const [placingRunLogId, setPlacingRunLogId] = useState<string | null>(null);
@@ -156,7 +181,7 @@ export function QaRunnerApp() {
   function resetPlan() {
     setState((current) => ({
       ...current,
-      plan: createQaRunnerAppState(today).plan,
+      plan: createQaRunnerAppState(today, lifecycle).plan,
     }));
   }
 
@@ -174,7 +199,17 @@ export function QaRunnerApp() {
         notice={
           <div className="qa-runner-notice" role="status">
             <strong>QA RUNNER</strong>
-            <span>Synthetic review data · resets on reload</span>
+            <nav className="qa-runner-notice__states" aria-label="Plan lifecycle review state">
+              {QA_PLAN_LIFECYCLES.map((state) => (
+                <a
+                  key={state}
+                  href={state === "active" ? "?" : `?qa=${state}`}
+                  aria-current={state === lifecycle ? "page" : undefined}
+                >
+                  {QA_LIFECYCLE_LINK_LABEL[state]}
+                </a>
+              ))}
+            </nav>
           </div>
         }
         plan={state.plan}

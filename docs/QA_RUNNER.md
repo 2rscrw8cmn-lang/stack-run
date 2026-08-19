@@ -99,6 +99,30 @@ real pipeline verifies them.
 
 Review at 320px, 390px, 430px, desktop and real iPhone Safari.
 
+## Plan lifecycle review states
+
+NEXT-5 gave Plan three lifecycles, and two of them sit outside the plan window.
+The harness always placed an active plan around today, so `Plan starts…` and
+`Plan complete` could be read only in a test — the same review gap R3 hit with
+Run Profile.
+
+The synthetic runner can now stand on either side of its own plan window. The
+fixture is otherwise identical — same seed plan, same generated runs, same
+history — so a review compares the lifecycle and nothing else.
+
+| Link in the QA notice | URL | What it shows |
+| --- | --- | --- |
+| `Active` | `?` (default) | Training underway, mid-week: planned intent, actual running, linked days, `This week`. |
+| `Before` | `?qa=before-plan` | Training starts in ten days. Week 1 is a preview, every day reads `Planned`, no actual reading appears, and the runner's real recent running stays outside week 1. |
+| `After` | `?qa=after-race` | Race day was twelve days ago. `Plan complete`, the final week not presented as active, linked and unlinked days both present, earlier weeks browsable, and `Set up next race` into the existing race setup sheet. |
+
+The three links sit in the QA notice at the top of every screen. The fixture
+already resets on reload, so a reload *is* the state change — there is no
+in-memory switch to get wrong and no persistence to clean up.
+
+An unknown `?qa=` value loads the active plan rather than failing, and the
+active fixture is byte-identical to what it was before this option existed.
+
 ## Safety boundary
 
 QA mode requires **both**:

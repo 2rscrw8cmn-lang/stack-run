@@ -21,6 +21,23 @@
   text-align: right;
 }
 
+/* Which side of the plan window this review is standing on. Links rather than
+   controls: the fixture resets on reload, so a reload is the state change. */
+.qa-runner-notice__states {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.qa-runner-notice__states a {
+  padding: 2px 0;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.qa-runner-notice__states a[aria-current="page"] {
+  color: var(--accent);
+}
+
 @media (max-width: 340px) {
   .qa-runner-notice {
     align-items: flex-start;
@@ -30,5 +47,9 @@
 
   .qa-runner-notice span {
     text-align: left;
+  }
+
+  .qa-runner-notice__states {
+    gap: var(--space-3);
   }
 }
