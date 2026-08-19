@@ -1,4 +1,4 @@
-import { Dumbbell, History } from "lucide-react";
+import { Dumbbell, History, Trophy } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
 import { Section } from "../../components/ui/Section";
@@ -12,6 +12,12 @@ import {
   formatComparisonReading,
   type ComparisonSummary,
 } from "../../crew/comparisons";
+import {
+  CREW_AWARD_LABEL,
+  formatCrewAwardResult,
+  isFeatureCrewAward,
+  type CrewAwardBlockRecord,
+} from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import {
   faceCulledMiniBuildTower,
@@ -20,8 +26,10 @@ import {
 } from "../../crew/miniBuild";
 import type { CrewMember, CrewSharedRun } from "../../crew/types";
 import { Brick, type BrickFaceLabel } from "../build/Brick";
+import { AwardGlyph } from "./AwardBrick";
 import { CrewRunRow } from "./CrewRunRow";
 import { RunnerIcon } from "./RunnerIcon";
+import "./awardBlock.css";
 
 // Profiles are compared side by side, so their Build field keeps one stable
 // frame. Taller towers remain readable through the viewport's own scroll.
@@ -36,9 +44,12 @@ interface CrewMemberProfileSheetProps {
   summary: ComparisonSummary | null;
   /** This member's shared runs, newest first — the same `CrewSharedRun` contract as Recent Crew Runs. */
   runs: CrewSharedRun[];
+  /** This member's Special Blocks, newest first. */
+  awards: CrewAwardBlockRecord[];
   isOpen: boolean;
   onClose: () => void;
   onSelectRun: (runId: string) => void;
+  onSelectAward: (awardId: string) => void;
   currentUserId: string;
   propsPendingRunIds: readonly string[];
   propsErrors: Readonly<Record<string, string>>;
@@ -82,9 +93,11 @@ export function CrewMemberProfileSheet({
   model,
   summary,
   runs,
+  awards,
   isOpen,
   onClose,
   onSelectRun,
+  onSelectAward,
   currentUserId,
   propsPendingRunIds,
   propsErrors,
@@ -155,6 +168,48 @@ export function CrewMemberProfileSheet({
             <dt className="machine-label">Member Build</dt>
           </div>
         </dl>
+
+        <Section
+          className="crew-member-profile__awards"
+          icon={<Trophy size={15} strokeWidth={2} />}
+          title="Awards"
+        >
+          {awards.length === 0 ? (
+            <p className="crew-recent__empty">No awards yet.</p>
+          ) : (
+            <ul className="crew-member-profile__award-list">
+              {awards.map((award) => (
+                <li key={award.id}>
+                  <button
+                    type="button"
+                    className="crew-member-profile__award-row"
+                    onClick={() => onSelectAward(award.id)}
+                  >
+                    <span
+                      className="award-brick crew-member-profile__award-glyph"
+                      data-award={award.awardType}
+                      data-feature={isFeatureCrewAward(award.awardType) || undefined}
+                      aria-hidden="true"
+                    >
+                      <span className="award-brick__badge">
+                        <AwardGlyph type={award.awardType} />
+                      </span>
+                    </span>
+                    <span className="crew-member-profile__award-text">
+                      <span className="data-value">{CREW_AWARD_LABEL[award.awardType]}</span>
+                      <span className="machine-label">
+                        Week of {formatDateLabel(award.weekStart, { month: "short", day: "numeric" })}
+                      </span>
+                    </span>
+                    <span className="machine-label crew-member-profile__award-result">
+                      {formatCrewAwardResult(award.awardType, award.resultValue)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
 
         <section className="crew-build" aria-labelledby="crew-member-profile-build-title">
           <div className="crew-build__lead">

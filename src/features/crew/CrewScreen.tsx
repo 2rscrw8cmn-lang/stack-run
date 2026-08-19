@@ -136,6 +136,7 @@ export function CrewScreen({
   const [selectedAwardId, setSelectedAwardId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [runDetailFromProfile, setRunDetailFromProfile] = useState(false);
+  const [awardDetailFromProfile, setAwardDetailFromProfile] = useState(false);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const [isCrewPickerOpen, setCrewPickerOpen] = useState(false);
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
@@ -295,6 +296,11 @@ export function CrewScreen({
     : null;
   const selectedMemberRuns = selectedMember
     ? dashboardData.runs.filter((run) => run.userId === selectedMember.userId)
+    : [];
+  const selectedMemberAwards = selectedMember
+    ? crewAwards.blocks
+      .filter((award) => award.winnerUserId === selectedMember.userId)
+      .sort((a, b) => b.weekStart.localeCompare(a.weekStart) || b.createdAt.localeCompare(a.createdAt))
     : [];
   const recentRunPool = dashboardData.runs.slice(0, MAX_RECENT_RUNS);
   const recentRuns = showAllRecentRuns
@@ -730,14 +736,19 @@ export function CrewScreen({
         model={selectedMember ? deriveCrewMiniBuild(dashboardData.miniBuildRuns, selectedMember.userId) : null}
         summary={selectedMemberSummary}
         runs={selectedMemberRuns}
-        isOpen={selectedMember !== null && !runDetailFromProfile}
+        awards={selectedMemberAwards}
+        isOpen={selectedMember !== null && !runDetailFromProfile && !awardDetailFromProfile}
         onClose={() => {
-          if (runDetailFromProfile) return;
+          if (runDetailFromProfile || awardDetailFromProfile) return;
           setSelectedMemberId(null);
         }}
         onSelectRun={(runId) => {
           setRunDetailFromProfile(true);
           setSelectedRunId(runId);
+        }}
+        onSelectAward={(awardId) => {
+          setAwardDetailFromProfile(true);
+          setSelectedAwardId(awardId);
         }}
         currentUserId={currentUserId ?? ""}
         propsPendingRunIds={activeCrew.propsPendingRunIds}
@@ -783,7 +794,10 @@ export function CrewScreen({
             startAwardPlacement(awardId);
           }
           : undefined}
-        onClose={() => setSelectedAwardId(null)}
+        onClose={() => {
+          setSelectedAwardId(null);
+          setAwardDetailFromProfile(false);
+        }}
       />
     </div>
   );

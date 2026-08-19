@@ -6626,7 +6626,7 @@ textarea.run-input {
 
 .crew-comparison__selector {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin-top: 5px;
 }
@@ -7310,6 +7310,52 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   font-size: 9px;
 }
 
+.crew-member-profile__award-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.crew-member-profile__award-row {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-strong);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.crew-member-profile__award-row:hover { border-color: var(--border-strong); }
+.crew-member-profile__award-glyph { flex: 0 0 auto; }
+.crew-member-profile__award-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 2px;
+}
+.crew-member-profile__award-text .data-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.crew-member-profile__award-text .machine-label {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+.crew-member-profile__award-result {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 @media (min-width: 420px) {
   .crew-member-profile__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .crew-member-profile__stats > div:nth-child(odd) { border-left: 1px solid var(--border); }
@@ -7337,7 +7383,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 
 @media (min-width: 620px) {
-  .crew-comparison__selector { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .crew-comparison__selector { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   /* Desktop gets a bigger tower rather than a different app. */
   .crew-build {
     --course-height: 34px;
@@ -7398,15 +7444,15 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   text-transform: uppercase;
 }
 .crew-comparison__selector {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 9px;
 }
 .crew-comparison__selector button {
   width: 100%;
   gap: 0;
-  padding-inline: 4px;
+  padding-inline: 2px;
 }
-.crew-comparison__selector button svg { width: 19px; height: 19px; }
+.crew-comparison__selector button svg { width: 18px; height: 18px; }
 
 .today-crew-activity.section {
   gap: 7px;
