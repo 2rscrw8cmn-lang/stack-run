@@ -30,10 +30,15 @@ Then the four-week Feature cycle repeats from the Crew Build-start week.
 - Award finalization is idempotent.
 - Once a Crew/week/award winner is created, late sync does not silently transfer that historical award to somebody else.
 - An award has one winner and only that winner may place or move it.
-- An unplaced award is `READY` for its winner.
+- An unplaced award is `READY` only for its winner.
+- In normal product UI, only the winning runner sees the compact `Special Block Ready` placement prompt.
+- Other Crew members do not see another runner's unplaced award as something they can place.
+- After placement, every Crew member can see and inspect the award in the shared tower.
 - Award placement uses the same eight-column gravity/support rules as normal Crew Build blocks.
 - Run blocks and award blocks collide with and support one another server-side.
 - Moving a supporting block is rejected if the move would leave another block unsupported.
+
+The full five-row current-week standings panel is a QA surface, not normal product UI. Add `?awardTest=1` to a preview URL to expose that diagnostic view while testing award calculations and empty states.
 
 ## Zero-mile rule
 
@@ -52,6 +57,23 @@ Miles Built = sum(placed run mileage only)
 ```
 
 Award geometry is intentionally rectangular so the existing placement engine remains authoritative. Award identity is visual, not collision geometry.
+
+## Footprints
+
+Awards stay compact so they read as accents inside the eight-column tower rather than replacing the tower's run-built structure.
+
+| Award | Footprint |
+| --- | --- |
+| Most Miles | 2 × 1 |
+| Best Zone 2 | 2 × 1 |
+| Fastest Avg. Pace | 2 × 1 |
+| Most Runs | 2 × 1 |
+| Long Haul | 3 × 1 |
+| Steady | 2 × 1 |
+| On Target | 2 × 1 |
+| Level Up | 2 × 1 |
+
+Long Haul is the only intentionally longer award piece. It gets one extra column so it still reads as a span without consuming half of the Crew Build.
 
 ## Visual language
 
