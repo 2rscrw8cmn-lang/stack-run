@@ -127,7 +127,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Previous week" }));
     await user.click(
       screen.getByRole("button", {
-        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Missed",
+        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, No linked run",
       }),
     );
     await user.click(screen.getByRole("button", { name: "Log Run" }));
@@ -141,7 +141,7 @@ describe("App", () => {
         name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Completed",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 plan runs linked")).toBeInTheDocument();
 
     // The log is dated by the workout it belongs to, not by the entry time.
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
@@ -152,7 +152,7 @@ describe("App", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Plan" }));
     await user.click(screen.getByRole("button", { name: "Previous week" }));
-    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 plan runs linked")).toBeInTheDocument();
   });
 
   it("earns a block on save and keeps it pending until it is placed", async () => {
@@ -311,16 +311,16 @@ describe("App", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Monday, August 3, 6 x 400m, Intervals, 5 mi, Missed",
+        name: "Monday, August 3, 6 x 400m, Intervals, 5 mi, No linked run",
       }),
     ).toBeInTheDocument();
     // The week now schedules five runs rather than four.
-    expect(screen.getByText("0 of 5 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("0 of 5 plan runs linked")).toBeInTheDocument();
 
     unmount();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    expect(screen.getByText("0 of 5 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("0 of 5 plan runs linked")).toBeInTheDocument();
   });
 
   it("resets everything back to the seed after two confirmations", async () => {
@@ -340,7 +340,7 @@ describe("App", () => {
       within(sheet).getByRole("button", { name: "Yes, Erase Everything" }),
     );
 
-    expect(screen.getByText("0 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("0 of 4 plan runs linked")).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
     expect(stored.runLogs).toEqual([]);
     expect(stored.blockPlacements).toEqual([]);
@@ -461,7 +461,7 @@ describe("App", () => {
     // The day is still complete: editing what happened never edits the plan,
     // and never quietly turns a scheduled run into an extra one.
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 plan runs linked")).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
     expect(stored.runLogs).toHaveLength(1);
     expect(stored.runLogs[0].workoutId).toBe("workout-002");

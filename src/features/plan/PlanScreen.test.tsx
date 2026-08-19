@@ -67,7 +67,7 @@ describe("PlanScreen week navigation", () => {
   it("opens on week 1 before the plan starts and week 18 after the race", () => {
     const { unmount } = renderPlan({ today: "2026-07-01" });
     expect(weekHeading()).toHaveTextContent("Week 1 of 18");
-    expect(screen.getByText("Preview")).toBeInTheDocument();
+    expect(screen.getByText("Plan starts Aug 3")).toBeInTheDocument();
     expect(screen.queryByText("This week")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Current Week" })).not.toBeInTheDocument();
     unmount();
