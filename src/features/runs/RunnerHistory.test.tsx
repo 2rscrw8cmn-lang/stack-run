@@ -135,7 +135,9 @@ describe("Runs history", () => {
     const sheet = within(screen.getByRole("dialog"));
     expect(sheet.getByText("Distance")).toBeInTheDocument();
     expect(sheet.getByText("Duration")).toBeInTheDocument();
-    expect(sheet.getByText("Pace")).toBeInTheDocument();
+    // R3 shares one source-owned presentation with accepted runs, so the
+    // label is the accepted run's "Avg pace" rather than a second wording.
+    expect(sheet.getByText("Avg pace")).toBeInTheDocument();
     expect(sheet.queryByText("Avg HR")).not.toBeInTheDocument();
     expect(sheet.queryByText("Gain")).not.toBeInTheDocument();
     expect(sheet.queryByText(/0 bpm/)).not.toBeInTheDocument();

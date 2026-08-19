@@ -1,6 +1,6 @@
 # Runs Reframe — Implementation Plan
 
-**Status:** R0 is accepted. R1 is implemented in PR #109 and remains under owner review, not accepted or merged. R2 is implemented on top of R1 and has had one owner-directed product-polish pass over that implementation; it is awaiting owner visual review in the same stacked draft PR and is not accepted or merged. R3 and NEXT-5 remain paused.
+**Status:** R0 is accepted. R1 and R2 are owner-accepted and merged into `feature/stack-next`. R3 is implemented on `feature/run-detail-enrichment` (PR #122, draft) and is awaiting owner visual acceptance. R4 and NEXT-5 remain paused.
 **Integration branch:** `feature/stack-next`.
 
 ## Why this exists
@@ -21,15 +21,14 @@ Implementation should follow those documents rather than reinterpret them from s
 ## Branch sequence
 
 ```text
-feature/stack-next
-└── feature/runs-overview                 (R1, PR #109)
-    └── feature/runs-history-explorer     (R2 stacked draft)
+feature/stack-next                        (R1 + R2 merged)
+└── feature/run-detail-enrichment         (R3, PR #122, draft)
 ```
 
-While R1 remains under review, the R2 PR targets `feature/runs-overview` so its
-diff contains only the R2 delta. It may be retargeted to `feature/stack-next`
-after R1 is owner-accepted and merged there. Neither branch is merged by this
-implementation record, and neither targets `main`.
+R1 and R2 were reviewed as a stacked pair and are merged into
+`feature/stack-next`. R3 branches from that integration branch and targets it.
+No Runs reframe branch targets `main`, and PR #122 is not merged by this
+implementation record.
 
 Do not begin NEXT-5 Plan role revision until the Runs reframe is coherent enough to review as one product system.
 
@@ -324,7 +323,12 @@ R2 is ready for owner review when:
 
 ## R3 — Run Detail enrichment + QA stream review
 
-**Recommended branch:** `feature/run-detail-enrichment`
+**Branch:** `feature/run-detail-enrichment` — implemented, PR #122 draft,
+awaiting owner visual acceptance.
+
+The authoritative brief is `docs/RUNS_R3_RUN_DETAIL_ENRICHMENT.md`; what was
+built is recorded in `docs/CURRENT_APPLICATION_STRUCTURE.md` and
+`docs/RUN_DETAIL_PRODUCT_SPEC.md`.
 
 Goal:
 
@@ -359,9 +363,26 @@ Target behavior:
 
 Do not make `HistoricalRunSheet` a copy-paste fork of `RunResultDetail`.
 
+### What R3 implemented
+
+- `src/connected/sourceDetail.ts` — the injectable external detail/profile read
+  boundary. Production delegates to the existing Intervals reads and still
+  produces no reader without a real connection; the reader is memoized on the
+  connection's value, so an open detail sheet no longer re-reads on every app
+  render.
+- `src/features/workout-detail/SourceRunDetail.tsx` plus `sourceRunFacts.ts` —
+  one source-owned presentation. `RunResultDetail` wraps it with the accepted
+  run's effort, notes and actions; `HistoricalRunSheet` renders it from a
+  normalized `RunnerRun` and adds nothing STACK-owned.
+- `src/qa/qaSourceDetail.ts` plus four named QA review runs — rich and
+  aggregate-only, accepted and historical-only — answered from raw payloads
+  routed through the production normalizers. No credential, no request, no
+  `?demo=run-detail`.
+
 ### Stream verification boundary
 
-`docs/CONNECTED_DATA_FIELDS.md` remains authoritative.
+`docs/CONNECTED_DATA_FIELDS.md` remains authoritative and is **unchanged by
+R3**: the Run Profile stream rows stay `Expected`.
 
 Do not promote unverified stream shapes/units based on QA fixtures.
 

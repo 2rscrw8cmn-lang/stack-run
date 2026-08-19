@@ -161,4 +161,41 @@ The NEXT-1 real-Intervals smoke test also remains outstanding as a program-level
 
 ### Integration decision
 
-NEXT-4 is approved and merged into `feature/stack-next`. NEXT-5 — Plan role revision — is the active engineering phase.
+NEXT-4 is approved and merged into `feature/stack-next`. NEXT-5 — Plan role revision — was subsequently paused while the Runs reframe was completed.
+
+## Runs Reframe R3 — Run Detail enrichment + QA stream review
+
+**Owner decision:** accepted for integration into `feature/stack-next` on August 18, 2026.
+
+**PR:** #122 — `feature/run-detail-enrichment` → `feature/stack-next`
+
+### Acceptance basis
+
+Accepted based on:
+
+- Run Detail keeps one shared source-owned presentation rather than maintaining separate accepted-run and historical-only telemetry implementations;
+- accepted STACK runs preserve effort, notes, plan relationship, editing and Build semantics;
+- historical-only runs remain read-only source history and gain only source-owned enrichment when a stable Intervals activity id and usable device connection exist;
+- the reusable QA Runner now includes deterministic rich-profile and aggregate-only states without an Intervals credential, network request, page-specific demo mode or persistence;
+- the owner reviewed the rich QA Run Profile presentation on phone and accepted the result/profile/zones hierarchy;
+- the production Run Profile path was then exercised on a real owner Intervals-backed run in iPhone Safari after connecting Intervals on that preview hostname;
+- the real run rendered Run Profile successfully, confirming that the direct local-key source read and current normalizer can produce the real profile presentation;
+- the earlier apparent failure was correctly traced to the Intervals credential being browser/domain-local: the Vercel preview had no source reader until that hostname was connected;
+- both direct and proxy implementations now request the explicit `/streams.json` resource and tests lock that path;
+- summary facts remain aggregate-owned while streams provide shape; pace, HR, elevation-gain and cadence summary semantics were not replaced by stream calculations;
+- profile failure still degrades to honest aggregate-only detail rather than an empty chart shell or invalid summary;
+- no maps/routes/GPS, raw-stream persistence, FIT parsing, readiness, prediction, historical Build backfill or plan mutation was added;
+- temporary real-source diagnostics were removed after verification;
+- the final clean preview deployment completed successfully.
+
+### Remaining verification
+
+R3 proved the real **direct local-key** Run Profile path on an owner run. The following remain narrower source-validation items rather than R3 blockers:
+
+- separately exercise the deployed `/api/intervals` proxy stream path on a real run if that connection mode is still intended to remain supported;
+- record metric-by-metric per-sample stream semantics in `CONNECTED_DATA_FIELDS.md` only when each stream is explicitly spot-checked against source truth;
+- the broader NEXT-1 365-day historical-sync smoke test remains a program-level pre-release item.
+
+### Integration decision
+
+R3 is approved to merge into `feature/stack-next`. **R4 — Runs integration review is next.** After R4 confirms Overview → History → Run Detail works as one coherent product system, NEXT-5 — Plan role revision — may resume.

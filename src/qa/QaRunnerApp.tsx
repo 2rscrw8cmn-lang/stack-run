@@ -5,6 +5,7 @@ import type { PlacementRequest } from "../features/build/BuildScreen";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
 import type { RunnerHistory } from "../features/runs/useRunnerHistory";
 import type { ValidRunEntry } from "../features/run-entry/runValidation";
+import { SourceDetailReaderProvider } from "../connected/sourceDetail";
 import { useRaceCrew } from "../crew/useRaceCrew";
 import { todayLocalDate } from "../domain/dates";
 import type { AppState, RunLog, TrainingPlan, Workout } from "../domain/types";
@@ -13,6 +14,7 @@ import {
   createQaRunnerAppState,
   qaRunnerHistoricalActivities,
 } from "./qaRunner";
+import { qaSourceDetailReaderFor } from "./qaSourceDetail";
 import "./qaRunner.css";
 
 const EMPTY_CONNECTED_SYNC: ConnectedSync = {
@@ -40,6 +42,13 @@ function replaceRun(
  * same state and the same unified history. The fixture is in memory only and
  * resets on reload, which makes review repeatable and prevents synthetic data
  * from entering the owner's personal account or the historical mirror.
+ *
+ * R3 adds one injection: the external source-detail reader. `intervalsConnection`
+ * stays null — the harness has no credential and makes no request — but Run
+ * Detail's on-demand reads now go through a boundary, so a synthetic reader can
+ * answer them and the real Run Profile presentation becomes reviewable. The
+ * production reader is the context default, so nothing outside this harness is
+ * affected by the substitution.
  */
 export function QaRunnerApp() {
   const today = todayLocalDate();
@@ -156,73 +165,75 @@ export function QaRunnerApp() {
   }
 
   return (
-    <AppShell
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      crewAvailable={crewAvailable}
-      onReplayTour={() => setActiveTab("today")}
-      notice={
-        <div className="qa-runner-notice" role="status">
-          <strong>QA RUNNER</strong>
-          <span>Synthetic review data · resets on reload</span>
-        </div>
-      }
-      plan={state.plan}
-      runLogs={state.runLogs}
-      blockPlacements={state.blockPlacements}
-      onSaveRun={saveRun}
-      onDeleteRun={deleteRun}
-      onLinkRun={linkRun}
-      onUnlinkRun={unlinkRun}
-      onEditPlan={editPlan}
-      onResetPlan={resetPlan}
-      availability={state.availability}
-      onSaveAvailability={(availability) =>
-        setState((current) => ({ ...current, availability }))
-      }
-      runDays={state.runDays}
-      onSaveRunDays={(runDays, plan) =>
-        setState((current) => ({ ...current, runDays, plan }))
-      }
-      raceSetup={state.raceSetup}
-      onGeneratePlan={(raceSetup, plan) =>
-        setState((current) => ({ ...current, raceSetup, plan }))
-      }
-      onPlaceBlock={placeBlock}
-      placingRunLogId={placingRunLogId}
-      onPlacingChange={setPlacingRunLogId}
-      appState={state}
-      syncToken={null}
-      intervalsConnection={null}
-      connectedSync={EMPTY_CONNECTED_SYNC}
-      onConnectIntervals={() => undefined}
-      onForgetIntervals={() => undefined}
-      onConnectIntervalsApiKey={() => undefined}
-      onForgetIntervalsApiKey={() => undefined}
-      raceCrew={raceCrew}
-      runnerHistory={runnerHistory}
-      onImportIntervals={() => undefined}
-      onAttachIntervals={() => undefined}
-      onIgnoreIntervals={(externalId) =>
-        setState((current) => ({
-          ...current,
-          intervalsSync: {
-            ...current.intervalsSync,
-            ignoredActivityIds: Array.from(
-              new Set([...current.intervalsSync.ignoredActivityIds, externalId]),
-            ),
-          },
-        }))
-      }
-      onClearIgnoredIntervals={() =>
-        setState((current) => ({
-          ...current,
-          intervalsSync: {
-            ...current.intervalsSync,
-            ignoredActivityIds: [],
-          },
-        }))
-      }
-    />
+    <SourceDetailReaderProvider value={qaSourceDetailReaderFor}>
+      <AppShell
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        crewAvailable={crewAvailable}
+        onReplayTour={() => setActiveTab("today")}
+        notice={
+          <div className="qa-runner-notice" role="status">
+            <strong>QA RUNNER</strong>
+            <span>Synthetic review data · resets on reload</span>
+          </div>
+        }
+        plan={state.plan}
+        runLogs={state.runLogs}
+        blockPlacements={state.blockPlacements}
+        onSaveRun={saveRun}
+        onDeleteRun={deleteRun}
+        onLinkRun={linkRun}
+        onUnlinkRun={unlinkRun}
+        onEditPlan={editPlan}
+        onResetPlan={resetPlan}
+        availability={state.availability}
+        onSaveAvailability={(availability) =>
+          setState((current) => ({ ...current, availability }))
+        }
+        runDays={state.runDays}
+        onSaveRunDays={(runDays, plan) =>
+          setState((current) => ({ ...current, runDays, plan }))
+        }
+        raceSetup={state.raceSetup}
+        onGeneratePlan={(raceSetup, plan) =>
+          setState((current) => ({ ...current, raceSetup, plan }))
+        }
+        onPlaceBlock={placeBlock}
+        placingRunLogId={placingRunLogId}
+        onPlacingChange={setPlacingRunLogId}
+        appState={state}
+        syncToken={null}
+        intervalsConnection={null}
+        connectedSync={EMPTY_CONNECTED_SYNC}
+        onConnectIntervals={() => undefined}
+        onForgetIntervals={() => undefined}
+        onConnectIntervalsApiKey={() => undefined}
+        onForgetIntervalsApiKey={() => undefined}
+        raceCrew={raceCrew}
+        runnerHistory={runnerHistory}
+        onImportIntervals={() => undefined}
+        onAttachIntervals={() => undefined}
+        onIgnoreIntervals={(externalId) =>
+          setState((current) => ({
+            ...current,
+            intervalsSync: {
+              ...current.intervalsSync,
+              ignoredActivityIds: Array.from(
+                new Set([...current.intervalsSync.ignoredActivityIds, externalId]),
+              ),
+            },
+          }))
+        }
+        onClearIgnoredIntervals={() =>
+          setState((current) => ({
+            ...current,
+            intervalsSync: {
+              ...current.intervalsSync,
+              ignoredActivityIds: [],
+            },
+          }))
+        }
+      />
+    </SourceDetailReaderProvider>
   );
 }

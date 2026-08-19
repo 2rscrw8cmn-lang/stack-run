@@ -1,12 +1,18 @@
 import { Sheet } from "../../components/ui/Sheet";
+import type { SourceConnection } from "../../connected/sourceDetail";
 import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { formatPaceSeconds } from "../../domain/runs";
+import { SourceRunDetail } from "../workout-detail/SourceRunDetail";
+import { sourceRunFactsFromRunnerRun } from "../workout-detail/sourceRunFacts";
 import type { RunnerRun } from "../../history/runnerRun";
 
 interface HistoricalRunSheetProps {
   run: RunnerRun | null;
+  /**
+   * This device's Intervals connection, if it has one. Only used to offer the
+   * run's own source detail on demand; a device without one shows the
+   * normalized summary and nothing is requested.
+   */
+  connection?: SourceConnection;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -25,46 +31,26 @@ interface HistoricalRunSheetProps {
  * warns against. A runner who wants a historical run in their Build can still
  * log it; they are not being asked to.
  *
+ * R3 gave this sheet the same **source-owned** presentation an accepted run
+ * uses — `SourceRunDetail`, not a copy of it — so a run that happens never to
+ * have been accepted is no longer visually second-class for it. Nothing
+ * STACK-owned is invented to make that work: the shared component is handed
+ * the run's normalized facts and its source activity id, and everything a
+ * `RunLog` would have added around them is simply absent.
+ *
  * Every optional metric is omitted when the source did not supply it, rather
  * than shown as a zero or a dash. A row that is not there says "the source did
  * not measure this"; a row reading `0 bpm` would say something false.
  */
-export function HistoricalRunSheet({ run, isOpen, onClose }: HistoricalRunSheetProps) {
+export function HistoricalRunSheet({ run, connection, isOpen, onClose }: HistoricalRunSheetProps) {
   return (
     <Sheet className="sheet--run-detail" title="Run Detail" isOpen={isOpen} onClose={onClose}>
-      {run && <HistoricalRunBody run={run} />}
+      {run && <HistoricalRunBody run={run} connection={connection} />}
     </Sheet>
   );
 }
 
-function HistoricalRunBody({ run }: { run: RunnerRun }) {
-  const metrics: { label: string; value: string }[] = [
-    { label: "Distance", value: `${formatRunsMiles(run.distanceMiles)} mi` },
-    ...(run.durationSeconds === null
-      ? []
-      : [{ label: "Duration", value: formatDurationSeconds(run.durationSeconds) }]),
-    ...(run.paceSecondsPerMile === null
-      ? []
-      : [{ label: "Pace", value: formatPaceSeconds(run.paceSecondsPerMile) }]),
-    ...(run.averageHeartRate === null
-      ? []
-      : [{ label: "Avg HR", value: `${Math.round(run.averageHeartRate)} bpm` }]),
-    ...(run.maxHeartRate === null
-      ? []
-      : [{ label: "Max HR", value: `${Math.round(run.maxHeartRate)} bpm` }]),
-    ...(run.elevationGainFeet === null
-      ? []
-      : [{ label: "Gain", value: `${Math.round(run.elevationGainFeet)} ft` }]),
-    // Verbatim, with no unit: the only source-verified fact about cadence is the
-    // number itself. See the cadence convention in docs/CONNECTED_DATA_FIELDS.md.
-    ...(run.averageCadence === null
-      ? []
-      : [{ label: "Cadence", value: String(Math.round(run.averageCadence)) }]),
-    ...(run.trainingLoad === null
-      ? []
-      : [{ label: "Load", value: String(Math.round(run.trainingLoad)) }]),
-  ];
-
+function HistoricalRunBody({ run, connection }: { run: RunnerRun; connection: SourceConnection }) {
   return (
     <div className="workout-detail historical-run">
       <div className="run-detail__context">
@@ -86,14 +72,12 @@ function HistoricalRunBody({ run }: { run: RunnerRun }) {
         </div>
       </div>
 
-      <dl className="signal-facts" data-count={Math.min(metrics.length, 4)}>
-        {metrics.map((metric) => (
-          <div key={metric.label} className="signal-facts__item data-module">
-            <dt className="machine-label">{metric.label}</dt>
-            <dd className="data-value">{metric.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <SourceRunDetail
+        facts={sourceRunFactsFromRunnerRun(run)}
+        activityId={run.externalActivityId}
+        runKey={run.id}
+        connection={connection}
+      />
 
       <p className="historical-run__note">
         This run came from your connected history. It is not logged in STACK, so it
