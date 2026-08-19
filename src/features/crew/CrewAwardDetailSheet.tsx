@@ -7,6 +7,7 @@ import {
 } from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import type { CrewMember } from "../../crew/types";
+import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
 import { RunnerIcon } from "./RunnerIcon";
 
@@ -14,11 +15,13 @@ export function CrewAwardDetailSheet({
   award,
   member,
   isOpen,
+  onMoveBlock,
   onClose,
 }: {
   award: CrewAwardBlockRecord | null;
   member: CrewMember | null;
   isOpen: boolean;
+  onMoveBlock?: () => void;
   onClose: () => void;
 }) {
   if (!award) return null;
@@ -60,6 +63,9 @@ export function CrewAwardDetailSheet({
         <p className="crew-award-detail__note">
           Award blocks add no mileage. This piece records the weekly win and lives in the Crew Build.
         </p>
+        {onMoveBlock && (
+          <Button variant="secondary" onClick={onMoveBlock}>Move Award Block</Button>
+        )}
       </div>
     </Sheet>
   );
