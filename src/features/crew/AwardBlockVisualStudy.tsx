@@ -22,6 +22,8 @@ interface AwardBlockDefinition {
   column: number;
   row: number;
   runner: number;
+  /** The four rotating weekly awards share one subtle premium frame treatment. */
+  feature: boolean;
 }
 
 /**
@@ -29,14 +31,14 @@ interface AwardBlockDefinition {
  * Every outer footprint remains a plain rectangle; only the award face changes.
  */
 const AWARD_BLOCKS: readonly AwardBlockDefinition[] = [
-  { kind: "onTarget", label: "On Target", shortLabel: "TARGET", width: 2, face: "target", column: 2, row: 3, runner: 2 },
-  { kind: "levelUp", label: "Level Up", shortLabel: "LEVEL UP", width: 2, face: "rise", column: 4, row: 3, runner: 3 },
-  { kind: "runs", label: "Most Runs", shortLabel: "RUNS", width: 2, face: "stack", column: 1, row: 4, runner: 1 },
-  { kind: "zone2", label: "Best Zone 2", shortLabel: "ZONE 2", width: 2, face: "rings", column: 3, row: 4, runner: 0 },
-  { kind: "pace", label: "Fastest Avg. Pace", shortLabel: "PACE", width: 2, face: "chevron", column: 5, row: 4, runner: 3 },
-  { kind: "steady", label: "Steady", shortLabel: "STEADY", width: 2, face: "equal", column: 7, row: 4, runner: 2 },
-  { kind: "longHaul", label: "Long Haul", shortLabel: "LONG", width: 4, face: "span", column: 1, row: 5, runner: 0 },
-  { kind: "miles", label: "Most Miles", shortLabel: "MILES", width: 3, face: "heavy", column: 5, row: 5, runner: 1 },
+  { kind: "onTarget", label: "On Target", shortLabel: "TARGET", width: 2, face: "target", column: 2, row: 3, runner: 2, feature: true },
+  { kind: "levelUp", label: "Level Up", shortLabel: "LEVEL UP", width: 2, face: "rise", column: 4, row: 3, runner: 3, feature: true },
+  { kind: "runs", label: "Most Runs", shortLabel: "RUNS", width: 2, face: "stack", column: 1, row: 4, runner: 1, feature: false },
+  { kind: "zone2", label: "Best Zone 2", shortLabel: "ZONE 2", width: 2, face: "rings", column: 3, row: 4, runner: 0, feature: false },
+  { kind: "pace", label: "Fastest Avg. Pace", shortLabel: "PACE", width: 2, face: "chevron", column: 5, row: 4, runner: 3, feature: false },
+  { kind: "steady", label: "Steady", shortLabel: "STEADY", width: 2, face: "equal", column: 7, row: 4, runner: 2, feature: true },
+  { kind: "longHaul", label: "Long Haul", shortLabel: "LONG", width: 4, face: "span", column: 1, row: 5, runner: 0, feature: true },
+  { kind: "miles", label: "Most Miles", shortLabel: "MILES", width: 3, face: "heavy", column: 5, row: 5, runner: 1, feature: false },
 ] as const;
 
 interface DemoRunner {
@@ -91,6 +93,7 @@ function AwardStudyBlock({ block }: { block: AwardBlockDefinition }) {
     <li
       className="award-study__block"
       data-award={block.kind}
+      data-feature={block.feature || undefined}
       style={
         {
           gridColumn: `${block.column} / span ${block.width}`,
@@ -104,8 +107,10 @@ function AwardStudyBlock({ block }: { block: AwardBlockDefinition }) {
         <span className="award-study__top" aria-hidden="true" />
         <span className="award-study__right" aria-hidden="true" />
         <span className="award-study__front">
-          <span className="award-study__identity" aria-hidden="true">
-            <RunnerIcon icon={runner.icon} accent={runner.accent} size={13} />
+          <span className="award-study__identity-bay" aria-hidden="true">
+            <span className="award-study__identity">
+              <RunnerIcon icon={runner.icon} accent={runner.accent} size={21} />
+            </span>
           </span>
           <span className="award-study__badge" aria-hidden="true">
             <AwardGlyph face={block.face} />
@@ -132,7 +137,7 @@ export function AwardBlockVisualStudy() {
         <p className="machine-label">Crew Build / visual study</p>
         <h2 id="award-study-title">Special Blocks</h2>
         <p>
-          Zero-mile award pieces. The small runner stamp identifies who won it; the oversized face mark identifies the award.
+          Zero-mile award pieces. Runner icon identifies the winner; color and face mark identify the award. Rotating Feature blocks carry a brass keyline.
         </p>
       </header>
 
@@ -144,9 +149,12 @@ export function AwardBlockVisualStudy() {
 
       <div className="award-study__key">
         {AWARD_BLOCKS.map((block) => (
-          <div key={block.kind} className="award-study__key-row">
-            <span className="machine-label">{block.shortLabel}</span>
-            <span>{block.label}</span>
+          <div key={block.kind} className="award-study__key-row" data-award={block.kind} data-feature={block.feature || undefined}>
+            <span className="award-study__key-mark" aria-hidden="true" />
+            <span>
+              <span className="machine-label">{block.shortLabel}</span>
+              <span className="award-study__key-name">{block.label}</span>
+            </span>
           </div>
         ))}
       </div>
