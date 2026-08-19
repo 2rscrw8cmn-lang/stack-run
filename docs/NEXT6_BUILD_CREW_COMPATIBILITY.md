@@ -1,6 +1,6 @@
 # STACK Next — NEXT-6 Build + Crew Compatibility
 
-- **Status:** implemented on `feature/stack-next-integration`, awaiting owner acceptance.
+- **Status:** accepted by the owner on August 19, 2026 for integration into `feature/stack-next` (PR #130). See `docs/STACK_NEXT_ACCEPTANCE_LOG.md`.
 - **Branch:** `feature/stack-next-integration`.
 - **Base:** `feature/stack-next` after accepted NEXT-5.
 - **Phase:** NEXT-6.

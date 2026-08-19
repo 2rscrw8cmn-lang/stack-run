@@ -276,3 +276,51 @@ The NEXT-1 real-Intervals 365-day historical-sync smoke test and the R3 deployed
 ### Integration decision
 
 NEXT-5 is approved to merge into `feature/stack-next`. **NEXT-6 — Build + Crew compatibility pass is the next engineering phase.**
+
+## NEXT-6 — Build + Crew compatibility pass
+
+**Owner decision:** accepted for integration into `feature/stack-next` on August 19, 2026.
+
+**PR:** #130 — `feature/stack-next-integration` → `feature/stack-next`
+
+**Accepted head:** `85086f9e1281576b32923d962460d9f877643148`
+
+### Acceptance basis
+
+Accepted based on:
+
+- the compatibility pass audited Build and Crew against the runner-history model and found both already behaving correctly, for reasons that were recorded nowhere and protected by no test;
+- a block remains earned by a run the runner brought into STACK — logged by hand, or reviewed and accepted from Run Data;
+- connected history that was never accepted earns no block, contributes no pending block and changes no tower geometry;
+- an accepted run that also exists in connected history reconciles on external activity identity into one history row and earns exactly one block;
+- Crew continues to project accepted runs and placements only, and the structural reason it cannot project the source mirror — projection takes `AppState`, history is stored outside it under its own account-scoped key — is now asserted rather than assumed;
+- the Crew projected field list is asserted item by item, so widening the safe projection has to be deliberate;
+- syncing a year of connected history leaves the Crew payload byte-identical, which is the assertion that fails if a projection path ever starts reading the source mirror;
+- Build's own language now matches what Build counts: `totalActualMiles` is documented as every mile the runner recorded rather than every mile they ran, and `Every completed run earns a block` became `Every run you record earns a block` wherever the promise is made;
+- Crew's `Consistency` comparison became `Plan Runs Linked` over the same window, from the same stored columns, with the same bars and ranking;
+- no Supabase migration, RLS policy, projected field, Crew Build window, placement rule, footprint, persistence or AppState change was included;
+- no Plan, Today or Runs behavior changed;
+- `npm install`, `npm run check` and `git diff --check` were all executed on the final head in the implementing environment: check passed with 153 files and 1,886 tests, and `git diff --check` was clean;
+- the Vercel deployment for the accepted head completed successfully.
+
+### Owner decisions recorded by this phase
+
+**Historical Build backfill: never.** Historical activity does not earn a Build block, and STACK ships no backfill — not on install, on sync, on upgrade or on request. The reasoning is recorded in `docs/NEXT6_BUILD_CREW_COMPATIBILITY.md`: the tower means what the runner built; an opt-in conversion is a real feature needing dedupe against re-sync, an undo and a rule for later source changes; and a backfill built from `RunLog`s would also have made that running Crew-visible, so the decision was never only about the tower.
+
+This closes the review item `docs/STACK_NEXT_IMPLEMENTATION.md` required to be answered explicitly rather than left to a silent migration. Should an opt-in version ever be wanted, it is its own phase with its own decisions, not a flag added to this one.
+
+**Crew `Consistency`: renamed, not removed.** The reading is how much of the plan has a linked recorded run, and its former name presented that ratio as a quality of the runner — the reading NEXT-3 ranked last on Runs and NEXT-5 refused as Plan's headline.
+
+### Verification caveat
+
+Mobile, desktop, keyboard and reduced-motion review was not repeated on a device for this phase, and no screenshots were attached. NEXT-6 changed no layout, component or animation: the only visible differences are five copy strings and one metric label rendering inside existing components. This is recorded rather than presented as a completed device pass.
+
+### Outstanding program-level verification
+
+The NEXT-1 real-Intervals 365-day historical-sync smoke test and the R3 deployed-proxy stream-path check remain outstanding pre-release items. Neither is a NEXT-6 blocker and neither is closed by this acceptance.
+
+The deferred nullable-`TrainingPlan` decision from NEXT-5 also remains open, and NEXT-7's current-user migration review is its natural home.
+
+### Integration decision
+
+NEXT-6 is approved to merge into `feature/stack-next`. **NEXT-7 — Product integration + release candidate is the final phase**, and only after its owner acceptance should `feature/stack-next` be considered for merge to `main`.

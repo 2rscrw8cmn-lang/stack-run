@@ -745,7 +745,7 @@ Do not delete working plan features solely to make the product feel new.
 
 ### NEXT-6 — Build + Crew compatibility pass
 
-- **Status: implemented on `feature/stack-next-integration`, awaiting owner acceptance.**
+- **Status: accepted for integration into `feature/stack-next` on August 19, 2026.**
 - **Branch:** `feature/stack-next-integration` → PR into `feature/stack-next`.
 - **Authoritative brief:** `docs/NEXT6_BUILD_CREW_COMPATIBILITY.md`.
 

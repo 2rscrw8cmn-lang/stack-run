@@ -640,7 +640,7 @@ product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
 | NEXT-4 | Today / Home revision | `feature/today-next` | Accepted and merged (PR #105), August 16, 2026 |
 | Runs R1–R4 | Runs reframe: overview, history, Run Detail, integration | `feature/runs-*` | Accepted and merged (PRs #109, #110, #122, #124), August 18–19, 2026 |
 | NEXT-5 | Plan role revision | `feature/plan-next` | Accepted and merged (PR #125), August 19, 2026 |
-| NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Implemented; owner acceptance outstanding |
+| NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Accepted and merged (PR #130), August 19, 2026 |
 | NEXT-7 | Product integration + release candidate | — | Not started |
 
 ### NEXT-1 — accepted, awaiting real-data verification
@@ -853,7 +853,7 @@ onboarding. It stays an open owner decision.
 - `npm run check` passes: 152 files, 1,880 tests.
 - `docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's acceptance.
 
-### NEXT-6 — implemented, awaiting owner acceptance
+### NEXT-6 — accepted and merged
 
 The compatibility pass found Build and Crew already behaving correctly, for
 reasons nobody had written down.
