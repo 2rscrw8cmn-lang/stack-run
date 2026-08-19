@@ -691,20 +691,55 @@ from the surfaces this phase replaced).
 
 ### NEXT-5 — Plan role revision
 
-**Recommended branch:** `feature/plan-next`
+- **Status: implemented on `feature/plan-next`, awaiting owner acceptance.**
+- **Branch:** `feature/plan-next` → PR #125 into `feature/stack-next`.
+- **Authoritative brief:** `docs/NEXT5_PLAN_ROLE_REVISION.md`.
 
 Goal:
 
 > Keep the plan useful while removing the assumption that it defines the runner.
 
-Review:
+The rule the phase is built on:
 
-- navigation prominence;
-- plan creation/editing flow;
-- how plan intent overlays historical actuals;
-- plan-vs-actual comparisons worth retaining;
-- behavior for runners with no active plan;
-- race countdown/goals without forcing plan-centric navigation.
+> Actual history says what happened. Plan says what was intended. A link says
+> how an actual run relates to that intent.
+
+#### What the phase reviewed, and what it decided
+
+| Review item | Decision |
+|---|---|
+| Navigation prominence | **KEEP.** Plan stays a bottom-navigation destination. The schedule is a real, frequently used forward-looking surface, and Today/Runs already carry the runner-first hierarchy. "Plan should be less central" did not turn into "remove the Plan tab" without a demonstrated problem. |
+| Plan creation/editing flow | **REUSE.** After the race Plan offers one `Set up next race` action that opens the existing `RaceSetupSheet` — the same component and `onGeneratePlan` contract Settings opens. No second setup implementation. |
+| How plan intent overlays historical actuals | **SEPARATE.** Planned intent, actual running in the week's dates and explicit plan links are three readings that never substitute for one another. Historical-only activity counts as actual and satisfies nothing. |
+| Plan-vs-actual comparisons worth retaining | **LINKAGE ONLY.** `X of Y plan runs linked` as quiet context, the planned target beside a linked run's detail, and the week's actual totals. No adherence score, percentage hero, grading or red/green semantics. |
+| Behavior for runners with no active plan | **DEFERRED, DELIBERATELY.** Nullable `TrainingPlan` is an AppState decision that cascades through Today, Build, Crew and onboarding; NEXT-5 solves the two lifecycle states the product can already represent (before start, after race) instead of forcing a schema redesign into this phase. |
+| Race countdown/goals | **UNCHANGED.** Today already owns race context; Plan adds no countdown hero. Its after-race line names the race once as lifecycle context. |
+
+#### Lifecycle
+
+`planLifecycle.ts` is pure: `before-plan` / `active` / `after-race`, with the
+start date and race day inside the training window, plus the one quiet line
+Plan says about itself — `Plan starts Aug 3` before it begins, `Plan complete`
+with the race it was built for after it ends, and nothing at all while training
+is underway. Week 1 stays a preview rather than an unfinished week; the final
+week stops being the active training surface while every earlier week stays
+browsable, with a lifecycle-aware shortcut (`First Week` / `Current Week` /
+`Final Week`) as the way back.
+
+#### What NEXT-5 deliberately did not do
+
+No navigation change, no second plan generator, no nullable-plan or AppState
+migration, no automatic plan mutation, no adherence/quality score, no historical
+workout classification or automatic run-to-workout matching, no Plan charts or
+Signals, no second Run Detail, no Build earning/ownership/placement change, no
+Crew change, no persistence, schema or dependency change, and no R1–R4 Runs
+behavior change.
+
+Full delivered detail, including the language and styling decisions, is recorded
+in `docs/CURRENT_APPLICATION_STRUCTURE.md` under
+`## NEXT-5 — Plan role revision (STACK Next)`.
+
+`npm run check` passes: 152 files, 1,875 tests.
 
 Do not delete working plan features solely to make the product feel new.
 

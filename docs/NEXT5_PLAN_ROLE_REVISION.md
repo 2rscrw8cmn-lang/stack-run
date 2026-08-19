@@ -1,9 +1,9 @@
 # STACK Next — NEXT-5 Plan Role Revision
 
-**Status:** active implementation brief.  
-**Branch:** `feature/plan-next`.  
-**Base:** `feature/stack-next` after accepted Runs R4.  
-**Phase:** NEXT-5.
+- **Status:** implemented on `feature/plan-next` (PR #125, draft), awaiting owner review.
+- **Branch:** `feature/plan-next`.
+- **Base:** `feature/stack-next` after accepted Runs R4.
+- **Phase:** NEXT-5.
 
 ## Goal
 
@@ -222,6 +222,10 @@ The plan may **read** unified history for context. It does not own or rewrite it
 - keep planned and linked counts separate;
 - no new persistence.
 
+**Delivered.** `src/features/plan/planWeekContext.ts` — pure, React-free, and
+tested on its own. `PlanScreen` reads `runnerRuns` through the existing
+`AppShell` boundary and opens no second history hook or sync.
+
 ### N5B — Week lead reframe
 
 - remove completion progress as the dominant lead;
@@ -230,12 +234,22 @@ The plan may **read** unified history for context. It does not own or rewrite it
 - show plan-link count only as secondary context;
 - keep week navigation/current-week behavior.
 
+**Delivered.** `WeekLead` reads week identity → planned intent → actual running
+in the week's dates → `X of Y plan runs linked`. A future week shows the intent
+reading alone and the summary collapses to one column rather than presenting an
+empty `0 actual` cell.
+
 ### N5C — Schedule row language
 
 - replace visible `Missed` language with truthful relationship language such as `No linked run`;
 - preserve underlying edit/log affordances;
 - keep future `Planned`, linked `Completed`/`Linked`, and rest semantics clear;
 - do not infer historical matches.
+
+**Delivered.** `PLAN_DAY_STATUS_LABEL.missed` is `No linked run` in the row, the
+Workout Detail sheet and Today's This Week day list. The internal `missed`
+scheduling state is unchanged, so logging, editing, moving and rest behavior are
+unaffected, and no date/distance/title/pace/type/proximity matching exists.
 
 ### N5D — Lifecycle / plan setup review
 
@@ -244,7 +258,36 @@ The plan may **read** unified history for context. It does not own or rewrite it
 - reuse the existing race/plan generation flow if Plan exposes a next-plan action;
 - do not introduce a duplicate race setup implementation.
 
+**Delivered.** `src/features/plan/planLifecycle.ts` is the pure lifecycle
+layer: `before-plan` / `active` / `after-race`, with the start date and race day
+inside the training window, and one quiet line — rendered by
+`PlanLifecycleNote` — that Plan says about itself.
+
+- **Before the plan starts:** Plan still opens on Week 1 as a preview and says
+  `Plan starts <date>` with *training has not started yet*. Every scheduled day
+  reads `Planned`, no actual reading appears, and running done before the start
+  date stays out of Week 1 because it is outside Week 1's dates. Plan editing
+  and setup are untouched.
+- **After the race:** `Plan complete`, the race the plan was built for, and the
+  weeks kept as the structure that race was built on. `This week` is absent, so
+  the final week is not presented as the active training surface; every earlier
+  week stays browsable and the shortcut becomes `Final Week` so browsing has a
+  way back. Nothing is deleted, archived or mutated.
+- **Next race:** one compact `Set up next race` action opens the existing
+  `RaceSetupSheet` with the `raceSetup` / `runDays` / `onGeneratePlan` contract
+  `AppShell` already held. No second setup system; the action is simply absent
+  where no setup flow is provided.
+
 ### N5E — Product polish + QA
+
+**Delivered.** The week summary collapses to a single reading for a week with no
+actual story rather than leaving an empty cell; supporting labels sit at an 11px
+floor instead of phone microtype; an unlinked past day lost the warning colour
+that read as a verdict and its label moved from cramped uppercase machine type
+into interface sans; the orphaned completion-hero rules were removed. These
+decisions are locked by `planPresentationStyling.test.ts`. Real iPhone Safari
+review remains an owner step on the Vercel preview.
+
 
 Review:
 
@@ -259,6 +302,18 @@ Review:
 - editing/moving/logging/deleting/linking behavior;
 - 320px / 390px / 430px / desktop;
 - real iPhone Safari.
+
+## Deferred decision — no active plan
+
+Representing *no active plan* properly is a data-model decision, not a screen.
+The persistent model always contains a `TrainingPlan`, and making it nullable
+cascades through Today, Build, Crew and onboarding.
+
+NEXT-5 therefore solves the two inactive states the product can already
+represent — before the plan starts, and after the race — and routes the next
+race into the existing setup flow. The nullable-`TrainingPlan` question is
+recorded as a later explicit owner decision rather than forced into this phase
+to produce an empty state.
 
 ## Non-goals
 

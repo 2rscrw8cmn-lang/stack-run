@@ -2641,3 +2641,125 @@ storage, persistence/schema/migration, or NEXT-5 work.
 field.
 
 `npm run check` passes: 147 files, 1,844 tests.
+
+## NEXT-5 — Plan role revision (STACK Next)
+
+The governing rule, from `docs/NEXT5_PLAN_ROLE_REVISION.md`:
+
+> **Actual history says what happened. Plan says what was intended. A link says
+> how an actual run relates to that intent.**
+
+Plan remains useful, editable, race-specific structure. It no longer gets to
+define whether the runner ran.
+
+### The three separate readings
+
+`src/features/plan/planWeekContext.ts` is pure and React-free.
+`planWeekActualContext` reports actual miles and run count from the unified
+`RunnerRun[]` history inside the viewed week's exact dates — including
+historical-only activity, because it happened — and links nothing.
+`planWeekIntentContext` reports what the schedule asked for, and states planned
+mileage only when every scheduled run has a numeric target; a missing target
+keeps the number missing rather than inventing a zero.
+
+`WeekLead` therefore reads: which week, phase and dates → planned intent →
+actual running in those dates → `X of Y plan runs linked` as quiet relationship
+metadata → the seven day rows. There is no completion hero, no progress bar, no
+percentage, no adherence grade and no red/green pair. A future week shows the
+intent reading alone; the summary collapses to one column rather than leaving an
+empty `0 actual` cell.
+
+`PlanScreen` receives `runnerRuns` through the `AppShell` boundary Today and
+Runs already use. It opens no second history hook, no second sync and no
+Plan-specific persistence.
+
+### Lifecycle
+
+`src/features/plan/planLifecycle.ts` is pure: `planLifecycle` resolves
+`before-plan` / `active` / `after-race` (the start date and race day are both
+inside the window), and `planLifecycleNote` returns the one quiet line Plan says
+about itself, or null while training is underway.
+
+- **Before the plan starts** — Plan still opens on Week 1 as a preview.
+  `Plan starts Aug 3` plus *training has not started yet* is stated once, in a
+  line rather than a card. Every scheduled day reads `Planned`; nothing is
+  missed, unlinked or incomplete, no zero-actual reading appears, and running
+  done before the start date stays outside Week 1 because it is outside Week 1's
+  dates. Plan editing and setup are unchanged.
+- **During training** — no lifecycle line at all; the week carries the screen.
+- **After the race** — `Plan complete`, the race it was built for, and the
+  weeks kept as the structure that race was built on. The final week is not
+  presented as the active training surface: `This week` is absent, because
+  `isCurrentWeek` was already false after race day. Every earlier week stays
+  browsable, and the week shortcut becomes `Final Week` so browsing has a way
+  back. Nothing is deleted, archived or mutated.
+
+The shortcut label follows the lifecycle (`Current Week` / `First Week` /
+`Final Week`) because outside the training window there is no current week to
+return to.
+
+### The next race
+
+Once the race has passed, Plan offers one compact `Set up next race` action that
+opens the **existing** `RaceSetupSheet` — the same component, inputs and
+`onGeneratePlan` contract Settings opens. Plan owns no plan generation of its
+own and there is no second setup implementation. `AppShell` passes the
+`raceSetup`, `runDays` and `onGeneratePlan` it already held; without
+`onGeneratePlan` the action is simply absent. After a plan is generated the
+screen lands on the new plan's own opening week rather than on a week number
+that no longer means anything.
+
+### Language
+
+`PLAN_DAY_STATUS_LABEL.missed` is `No linked run`, in Plan rows, in the Workout
+Detail sheet and in Today's This Week day list, which reads the same map. The
+underlying `missed` scheduling state is unchanged, so logging, editing, moving
+and rest-day behavior are unaffected. Nothing infers that a nearby historical
+activity was the intended workout: no date, distance, title, pace, type or
+proximity matching exists anywhere in this phase, and an explicit `RunLog`
+plan link remains the only relationship between an actual run and a planned
+workout.
+
+An unlinked past day also lost its warning colour — it used to be drawn in the
+long-run hue, which read as a verdict — and its label moved from cramped
+uppercase machine type into interface sans, because a relationship is interface
+language while dates and values stay machine type.
+
+### What NEXT-5 deliberately did not change
+
+Navigation is untouched: Plan remains a bottom-navigation destination, which
+`docs/NEXT5_PLAN_ROLE_REVISION.md` reasoned about explicitly rather than
+removing for novelty. Today keeps its recent-training context, Training Signal,
+Build summary and Crew, and its `View Plan` handoff is unchanged. Runs remains
+the only place for historical trends, Signals, complete history and Run Detail;
+Plan gained no chart and no second Runs screen. No Build earning, ownership or
+placement change; no Crew change; no schema, migration, persistence or
+dependency change; no R1–R4 Runs behavior change.
+
+### Deferred: no active plan
+
+STACK's persistent model always contains a `TrainingPlan`. Representing *no
+active plan* properly — an empty Plan destination, a Today with no schedule, a
+Build with no race, onboarding without a generated plan — is an AppState schema
+decision that cascades through Today, Build, Crew and onboarding. NEXT-5 does
+not force it: the after-race plan stays available as historical intent and the
+existing setup flow is the path to the next race. The nullable-plan question is
+recorded here as a later explicit decision, not as work this phase skipped.
+
+### Tests
+
+`planLifecycle.test.ts` (window boundaries, silence during training, and that
+neither lifecycle line grades the runner), `PlanLifecycle.test.tsx` (before-plan
+Week 1 implying no failure, no zero-actual noise, pre-plan running staying out
+of Week 1, the final week not reading as active, earlier weeks staying browsable
+with a way back, the next-race action routing into the existing sheet, its
+absence during training and without a setup flow, no input plan/run-log/runner-run
+mutation, and a plan move leaving what a run earned untouched),
+`planPresentationStyling.test.ts` (no scoring rules, the single-reading week, an
+11px floor for supporting labels, the 44px next-race target, and no warning
+colour on an unlinked day), plus the existing `PlanScreen.test.tsx`,
+`planWeekContext.test.ts`, `PlanEditing.test.tsx`, `RunDays.test.tsx`,
+`RaceSetup.test.tsx`, availability conflict and `App.test.tsx` coverage, updated
+to the truthful language.
+
+`npm run check` passes: 152 files, 1,875 tests.
