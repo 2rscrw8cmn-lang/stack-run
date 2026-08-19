@@ -52,11 +52,12 @@ export type SourceDetailReaderFactory = (connection: SourceConnection) => Source
 /**
  * Temporary R3 real-source diagnostic.
  *
- * Only localhost and Vercel branch previews expose this. It deliberately
- * reports the connection mode and outcome only — never a credential, URL,
- * sample value, GPS coordinate or raw upstream payload. Production/custom
- * domains never receive the body data attribute, so there is no visible debug
- * surface to accidentally ship as product UI.
+ * This code only exists on the unmerged R3 branch, so localhost and any Vercel
+ * deployment of that branch may expose it. Generated Vercel deployment aliases
+ * do not necessarily contain `-git-`, which is why checking that substring hid
+ * the banner on the owner's actual preview URL. The diagnostic still reports
+ * outcome metadata only — never a credential, URL, sample value, GPS
+ * coordinate or raw upstream payload — and it will be removed before merge.
  */
 function profileDiagnosticHost(): boolean {
   if (typeof window === "undefined") return false;
@@ -64,7 +65,7 @@ function profileDiagnosticHost(): boolean {
   return (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    (hostname.endsWith(".vercel.app") && hostname.includes("-git-"))
+    hostname.endsWith(".vercel.app")
   );
 }
 
