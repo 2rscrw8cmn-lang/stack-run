@@ -8,7 +8,6 @@ import {
 import { earnedBlockPhrase } from "../../domain/build";
 import {
   formatDateLabel,
-  isAfterLocalDate,
   isBeforeLocalDate,
   todayLocalDate,
 } from "../../domain/dates";
@@ -28,6 +27,8 @@ import {
   PlanEditError,
   type PlannedRunValues,
 } from "../../domain/planEdit";
+import type { RacePlanSetup } from "../../domain/racePlan";
+import type { Weekday } from "../../domain/runDays";
 import type {
   RunLog,
   TrainingPlan,
@@ -41,6 +42,9 @@ import type { ValidRunEntry } from "../run-entry/runValidation";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
 import { EditWorkoutSheet } from "./EditWorkoutSheet";
 import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
+import { planLifecycle, planLifecycleNote } from "./planLifecycle";
+import { PlanLifecycleNote } from "./PlanLifecycleNote";
+import { RaceSetupSheet } from "./RaceSetupSheet";
 import {
   planWeekActualContext,
   planWeekIntentContext,
@@ -74,6 +78,14 @@ interface PlanScreenProps {
    * it rules out and offers to move the runs that land on them.
    */
   availability?: AvailabilityCalendar | null;
+  /**
+   * The existing race/plan setup, and the one way to rebuild a plan. Plan owns
+   * no plan generation of its own: when the race has passed it opens the same
+   * `RaceSetupSheet` Settings opens, with the same inputs and the same result.
+   */
+  raceSetup?: RacePlanSetup | null;
+  runDays?: Weekday[] | null;
+  onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   syncToken?: IntervalsConnection | string | null;
 }
 
@@ -84,7 +96,8 @@ interface PlanScreenProps {
  */
 type Secondary =
   | { kind: "run-entry" | "edit-workout" | "move-workout"; workoutId: string }
-  | { kind: "conflicts" };
+  | { kind: "conflicts" }
+  | { kind: "race-setup" };
 
 /**
  * The complete editable schedule: one training week at a time, opening on the
@@ -105,6 +118,9 @@ export function PlanScreen({
   onDeleteRun = () => undefined,
   onEditPlan = () => undefined,
   availability = null,
+  raceSetup = null,
+  runDays = null,
+  onGeneratePlan,
   syncToken,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
@@ -120,11 +136,11 @@ export function PlanScreen({
   const [announcement, setAnnouncement] = useState("");
 
   const week = selectPlanWeekViewModel(plan, runLogs, weekNumber, today);
-  const lifecycle = isBeforeLocalDate(today, plan.startDate)
-    ? "before-plan"
-    : isAfterLocalDate(today, plan.race.date)
-      ? "after-race"
-      : "active";
+  const lifecycle = planLifecycle(plan, today);
+  const lifecycleNote = planLifecycleNote(plan, today);
+  // The week Plan opens on: this week while training runs, otherwise the first
+  // or last week of the plan. It is where the shortcut returns to.
+  const anchorWeekNumber = currentWeekNumber(plan, today);
   const actualRuns = runnerRuns ?? unifiedRunnerHistory({ runLogs });
   const actual = planWeekActualContext(actualRuns, week.startDate, week.endDate);
   const intent = planWeekIntentContext(week);
@@ -243,9 +259,21 @@ export function PlanScreen({
         actual={actual}
         intent={intent}
         showActual={showActual}
+        isAnchorWeek={week.weekNumber === anchorWeekNumber}
         onStep={(direction) => goToWeek(week.weekNumber + direction)}
-        onCurrentWeek={() => goToWeek(currentWeekNumber(plan, today))}
+        onAnchorWeek={() => goToWeek(anchorWeekNumber)}
       />
+
+      {lifecycleNote && (
+        <PlanLifecycleNote
+          note={lifecycleNote}
+          onSetUpNextRace={
+            lifecycleNote.lifecycle === "after-race" && onGeneratePlan
+              ? () => openSecondary({ kind: "race-setup" })
+              : undefined
+          }
+        />
+      )}
 
       {conflicts.length > 0 && (
         <button
@@ -390,6 +418,29 @@ export function PlanScreen({
             applyPlanEdit(
               () => moveWorkout(plan, workout.id, toDate),
               `${workout.title} moved to ${formatDateLabel(toDate)}.`,
+            );
+          }}
+        />
+      )}
+
+      {secondary?.kind === "race-setup" && onGeneratePlan && (
+        <RaceSetupSheet
+          key={secondaryVisit}
+          plan={plan}
+          setup={raceSetup}
+          runDays={runDays}
+          runLogs={runLogs}
+          today={today}
+          isOpen={isSecondaryOpen}
+          onClose={closeSecondary}
+          onGenerate={(setup, generated) => {
+            onGeneratePlan(setup, generated);
+            // The plan under this screen has been replaced, so the viewed week
+            // number no longer means what it did. Land on the new plan's own
+            // opening week rather than whatever number was on screen.
+            goToWeek(currentWeekNumber(generated, today));
+            setAnnouncement(
+              `${generated.weeks.length}-week plan built for ${setup.name}.`,
             );
           }}
         />

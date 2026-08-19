@@ -254,6 +254,9 @@ export function AppShell({
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
             availability={availability}
+            raceSetup={raceSetup}
+            runDays={runDays}
+            onGeneratePlan={onGeneratePlan}
             syncToken={intervalsConnection}
           />
         )}
