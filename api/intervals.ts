@@ -134,7 +134,7 @@ export async function readIntervals(request: Request, env: Environment = process
   } else if (resource === "activity-streams") {
     const id = url.searchParams.get("id");
     if (!id || !ACTIVITY_ID.test(id)) return json(400, { error: "invalid_activity_id", message: "That activity id is not readable." });
-    upstream = new URL(`${BASE}/activity/${encodeURIComponent(id)}/streams`);
+    upstream = new URL(`${BASE}/activity/${encodeURIComponent(id)}/streams.json`);
     upstream.searchParams.set("types", RUN_PROFILE_STREAM_TYPES);
   } else return json(400, { error: "invalid_resource", message: "STACK Run Data reader: deployed and configured. Ask for resource=status, activities, activity, activity-streams or wellness." });
 
