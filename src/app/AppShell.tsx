@@ -147,33 +147,13 @@ export function AppShell({
 
   return (
     <div className="app-shell">
-      {/*
-        The brand is a small standing lockup rather than a headline. Each
-        screen leads with the thing it is actually about — the date, the miles,
-        the week — so nothing on any screen has to be titled with its own name.
-        Nothing else belongs up here: the one action that used to share the row
-        wrapped onto two lines on a phone, and it is a setting anyway.
-      */}
       <header className="app-shell__header">
         <div className="app-shell__header-row">
           <div className="brand">
             <StackMark size={22} />
             <p className="wordmark">STACK</p>
           </div>
-          {/*
-            Settings is configuration, not a place the app can be, so it is a
-            gear up here rather than a fifth thing in a bar of destinations. It
-            opens over whatever tab you are on and closes back to it — the tab
-            never changes, so there is nothing to restore.
-          */}
           <div className="app-shell__header-actions">
-            {/*
-              The signed-in runner's own icon, standing next to the gear as
-              the account affordance. It is the same mark their crewmates see,
-              which is the point: this is who STACK currently is. It sits
-              inside the existing row at the gear's own height, so the header
-              gains an identity without gaining a pixel.
-            */}
             {runnerProfile && (
               <button
                 type="button"
@@ -269,6 +249,7 @@ export function AppShell({
           <PlanScreen
             plan={plan}
             runLogs={runLogs}
+            runnerRuns={runnerHistory?.runs}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
