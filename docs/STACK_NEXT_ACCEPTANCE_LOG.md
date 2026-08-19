@@ -230,3 +230,49 @@ Program-level real-data/source verification items already recorded under NEXT-1 
 ### Integration decision
 
 R4 is approved to merge into `feature/stack-next`. The Runs reframe is considered coherent enough to close as an architecture phase. **NEXT-5 — Plan role revision resumes next on a fresh `feature/plan-next` branch.**
+
+## NEXT-5 — Plan role revision
+
+**Owner decision:** accepted for integration into `feature/stack-next` on August 19, 2026.
+
+**PR:** #125 — `feature/plan-next` → `feature/stack-next`
+
+**Accepted head:** `2df6bb10acbb5076ebfde7ea51e7082f54130ee9`
+
+### Acceptance basis
+
+Accepted based on:
+
+- Plan reads as upcoming intent and historical race structure rather than as the record of what the runner did;
+- the governing rule holds in the interface: actual history says what happened, the plan says what was intended, and an explicit link says how an actual run relates to that intent;
+- the viewed week keeps planned intent, actual running in that week's exact dates, and explicit plan links as three separate readings, none of which substitutes for another;
+- actual week miles and run count include historical-only activity because it happened, and satisfy no scheduled workout;
+- an explicit `RunLog` plan link remains the only relationship between an actual run and a planned one — no date, distance, title, pace, activity-type or proximity matching was introduced;
+- the completion hero and progress bar are gone, and no adherence grade, percentage, red/green pair or coaching judgment replaced them;
+- a past scheduled workout with no linked run says `No linked run` in the row, the Workout Detail sheet and Today's week strip, and is drawn no louder than any other quiet day;
+- planned mileage stays missing when any scheduled target is missing rather than being invented;
+- a future week shows intent only, with no zero-actual reading and no empty actual block;
+- the plan lifecycle is explicit: before the start date Plan previews week 1 and says training has not started, during training it says nothing about lifecycle, and after race day it says the plan is complete without presenting the final week as the active training surface;
+- running done before the plan's start date stays outside week 1 and remains actual history on Runs;
+- every earlier week stays browsable after the race, with a lifecycle-aware shortcut back, and nothing about a finished plan is deleted, archived or mutated;
+- the post-race next-step action opens the existing `RaceSetupSheet` with the setup contract `AppShell` already held, so no second plan-generation system was created;
+- week navigation, logging, editing, moving, changing to rest, blocked-day conflict review and race-day restrictions are preserved;
+- Build earning, ownership and placement, Crew, persistence, schema and the R1–R4 Runs behavior are unchanged;
+- the QA Runner now carries all three plan lifecycles, so the before-plan and after-race states were reviewed on a real device rather than only in tests;
+- the owner reviewed the deployed preview and accepted the phone presentation;
+- `npm install`, `npm run check` and `git diff --check` were all executed on the final head in the implementing environment: check passed with 152 files and 1,880 tests, and `git diff --check` was clean;
+- the final Vercel preview deployment for the accepted head completed successfully.
+
+### Deferred decision — no active plan
+
+Representing *no active plan* properly — an empty Plan destination, a Today with no schedule, a Build with no race, onboarding without a generated plan — requires making `TrainingPlan` nullable in AppState, which cascades through Today, Build, Crew and onboarding.
+
+NEXT-5 deliberately did not force that migration. It solved the two inactive states the current model can already represent, before plan start and after the race, and routed the next race into the existing setup flow. The nullable-`TrainingPlan` question remains an open owner decision, recorded in `docs/NEXT5_PLAN_ROLE_REVISION.md` and `docs/CURRENT_APPLICATION_STRUCTURE.md`, and is not reopened by acceptance of this phase.
+
+### Outstanding program-level verification
+
+The NEXT-1 real-Intervals 365-day historical-sync smoke test and the R3 deployed-proxy stream-path check remain outstanding pre-release items. Neither is a NEXT-5 blocker and neither is closed by this acceptance.
+
+### Integration decision
+
+NEXT-5 is approved to merge into `feature/stack-next`. **NEXT-6 — Build + Crew compatibility pass is the next engineering phase.**

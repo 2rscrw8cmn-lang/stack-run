@@ -1,6 +1,6 @@
 # STACK Next — NEXT-5 Plan Role Revision
 
-- **Status:** implemented on `feature/plan-next` (PR #125, draft), awaiting owner review.
+- **Status:** accepted by the owner on August 19, 2026 for integration into `feature/stack-next` (PR #125). See `docs/STACK_NEXT_ACCEPTANCE_LOG.md`.
 - **Branch:** `feature/plan-next`.
 - **Base:** `feature/stack-next` after accepted Runs R4.
 - **Phase:** NEXT-5.

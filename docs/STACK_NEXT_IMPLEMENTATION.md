@@ -691,7 +691,7 @@ from the surfaces this phase replaced).
 
 ### NEXT-5 — Plan role revision
 
-- **Status: implemented on `feature/plan-next`, awaiting owner acceptance.**
+- **Status: accepted for integration into `feature/stack-next` on August 19, 2026.**
 - **Branch:** `feature/plan-next` → PR #125 into `feature/stack-next`.
 - **Authoritative brief:** `docs/NEXT5_PLAN_ROLE_REVISION.md`.
 
