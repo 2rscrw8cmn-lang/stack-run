@@ -56,18 +56,70 @@
 }
 
 .award-study__block {
+  --award-mark: #d7ff3f;
+  --award-glow: rgba(215, 255, 63, .22);
   position: relative;
   height: 40px;
   margin: 0;
 }
 
+/* Award colors answer "what did they win?"; the runner mark answers "who won it?". */
+.award-study__block[data-award="miles"],
+.award-study__key-row[data-award="miles"] {
+  --award-mark: #d7ff3f;
+  --award-glow: rgba(215, 255, 63, .24);
+}
+
+.award-study__block[data-award="zone2"],
+.award-study__key-row[data-award="zone2"] {
+  --award-mark: #35e6ff;
+  --award-glow: rgba(53, 230, 255, .24);
+}
+
+.award-study__block[data-award="pace"],
+.award-study__key-row[data-award="pace"] {
+  --award-mark: #ff7048;
+  --award-glow: rgba(255, 112, 72, .25);
+}
+
+.award-study__block[data-award="runs"],
+.award-study__key-row[data-award="runs"] {
+  --award-mark: #ffd94f;
+  --award-glow: rgba(255, 217, 79, .24);
+}
+
+.award-study__block[data-award="longHaul"],
+.award-study__key-row[data-award="longHaul"] {
+  --award-mark: #f1c66f;
+  --award-glow: rgba(241, 198, 111, .24);
+}
+
+.award-study__block[data-award="steady"],
+.award-study__key-row[data-award="steady"] {
+  --award-mark: #5aa7ff;
+  --award-glow: rgba(90, 167, 255, .24);
+}
+
+.award-study__block[data-award="onTarget"],
+.award-study__key-row[data-award="onTarget"] {
+  --award-mark: #ff58d4;
+  --award-glow: rgba(255, 88, 212, .24);
+}
+
+.award-study__block[data-award="levelUp"],
+.award-study__key-row[data-award="levelUp"] {
+  --award-mark: #b77aff;
+  --award-glow: rgba(183, 122, 255, .24);
+}
+
 .award-study__brick {
-  --award-face: #83919a;
-  --award-top: #a9b3b9;
-  --award-side: #4d5961;
-  --award-edge: #0a0f12;
-  --award-inset: #202a30;
-  --award-mark: #e6ff62;
+  --award-face: #171d21;
+  --award-top: #343d43;
+  --award-side: #0c1114;
+  --award-edge: #050708;
+  --award-inset: #080d10;
+  --award-trim: #aeb9bf;
+  --feature-keyline: #d2aa62;
   position: absolute;
   inset: 0;
 }
@@ -82,24 +134,36 @@
 .award-study__front {
   inset: 0;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 8px;
+  grid-template-columns: 28px minmax(0, 1fr) 6px;
   align-items: center;
-  gap: 4px;
-  padding: 4px 5px;
+  gap: 3px;
+  padding: 3px 4px;
   z-index: 3;
   overflow: hidden;
-  background: var(--award-face);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 45%),
+    var(--award-face);
   box-shadow:
-    inset 0 0 0 2px rgba(218, 227, 231, .36),
-    inset 0 0 0 4px rgba(40, 50, 56, .44),
-    inset 0 -5px 0 rgba(20, 27, 31, .13);
+    inset 0 0 0 1px rgba(220, 231, 236, .24),
+    inset 0 0 0 3px rgba(0, 0, 0, .55),
+    inset 0 -5px 0 rgba(0, 0, 0, .2);
 }
 
 .award-study__front::before {
   content: "";
   position: absolute;
   inset: 5px;
-  border: 1px solid rgba(227, 236, 239, .18);
+  border: 1px solid rgba(227, 236, 239, .09);
+  pointer-events: none;
+}
+
+/* Feature awards use the same hardware, with one restrained brass keyline. */
+.award-study__block[data-feature] .award-study__front::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(210, 170, 98, .82);
+  box-shadow: inset 0 0 0 1px rgba(210, 170, 98, .08);
   pointer-events: none;
 }
 
@@ -125,41 +189,54 @@
   z-index: 1;
 }
 
-/* Winner identity is deliberately subordinate to the award mark. */
-.award-study__identity {
+.award-study__identity-bay {
   position: relative;
   z-index: 2;
-  width: 16px;
-  height: 16px;
+  width: 28px;
+  height: 30px;
   display: grid;
   place-items: center;
   justify-self: start;
-  border: 1px solid #d4dde1;
-  background: #0c1215;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.5);
+  border: 1px solid rgba(202, 214, 220, .62);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.05), transparent 52%),
+    #0b1013;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.025),
+    0 0 0 1px rgba(0,0,0,.72);
+}
+
+.award-study__identity {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
   overflow: hidden;
 }
 
-/* The machined inset is the award-specific part. Outer collision geometry stays rectangular. */
+/* The inset plaque carries the award language. Collision geometry stays rectangular. */
 .award-study__badge {
   position: relative;
   z-index: 1;
-  width: 48px;
+  width: 40px;
   height: 28px;
   display: grid;
   place-items: center;
   justify-self: center;
-  border: 1px solid rgba(224, 234, 238, .72);
-  background: var(--award-inset);
+  overflow: hidden;
+  border: 1px solid rgba(181, 194, 201, .46);
+  background:
+    radial-gradient(circle at 50% 48%, var(--award-glow), transparent 58%),
+    var(--award-inset);
   box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,.045),
-    0 1px 0 rgba(255,255,255,.1);
+    inset 0 0 0 2px rgba(255,255,255,.025),
+    0 1px 0 rgba(255,255,255,.08);
 }
 
 .award-study__hardware {
   position: relative;
   z-index: 2;
-  width: 8px;
+  width: 6px;
   height: 24px;
   display: flex;
   flex-direction: column;
@@ -172,16 +249,17 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #d7dfe2;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.45);
+  background: #b8c3c8;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.65);
 }
 
 .award-study__glyph {
   position: relative;
   display: block;
-  width: 42px;
+  width: 38px;
   height: 26px;
   color: var(--award-mark);
+  filter: drop-shadow(0 0 4px var(--award-glow));
 }
 
 .award-study__glyph i {
@@ -190,64 +268,73 @@
   background: currentColor;
 }
 
+/* MILES — three heavy structural slabs. */
 .award-study__glyph--heavy i {
-  top: 5px;
-  bottom: 5px;
+  top: 4px;
+  bottom: 4px;
   width: 7px;
 }
-.award-study__glyph--heavy i:nth-child(1) { left: 7px; }
-.award-study__glyph--heavy i:nth-child(2) { left: 18px; }
-.award-study__glyph--heavy i:nth-child(3) { left: 29px; }
+.award-study__glyph--heavy i:nth-child(1) { left: 5px; }
+.award-study__glyph--heavy i:nth-child(2) { left: 15px; }
+.award-study__glyph--heavy i:nth-child(3) { left: 25px; }
 
+/* ZONE 2 — a broad outer band with a calm inner zone. */
 .award-study__glyph--rings i:first-child {
   width: 24px;
   height: 24px;
-  left: 9px;
+  left: 7px;
   top: 1px;
-  border: 3px solid currentColor;
+  border: 4px solid currentColor;
   border-radius: 50%;
   background: transparent;
 }
 .award-study__glyph--rings i:last-child {
-  width: 10px;
-  height: 10px;
-  left: 16px;
-  top: 8px;
-  border: 2px solid currentColor;
+  width: 8px;
+  height: 8px;
+  left: 15px;
+  top: 9px;
   border-radius: 50%;
-  background: transparent;
+  background: currentColor;
+  box-shadow: 0 0 0 3px var(--award-inset);
 }
 
-.award-study__glyph--chevron i {
-  width: 20px;
+/* PACE — a hard, forward double-chevron instead of a generic tick. */
+.award-study__glyph--chevron::before,
+.award-study__glyph--chevron::after,
+.award-study__glyph--chevron i::before,
+.award-study__glyph--chevron i::after {
+  content: "";
+  position: absolute;
+  width: 16px;
   height: 5px;
-  top: 10px;
-}
-.award-study__glyph--chevron i:nth-child(1) {
-  left: 5px;
-  transform: rotate(38deg);
+  background: currentColor;
   transform-origin: right center;
 }
-.award-study__glyph--chevron i:nth-child(2) {
-  left: 18px;
-  transform: rotate(-38deg);
-  transform-origin: left center;
-}
+.award-study__glyph--chevron::before { left: 1px; top: 6px; transform: rotate(38deg); }
+.award-study__glyph--chevron::after { left: 1px; top: 15px; transform: rotate(-38deg); }
+.award-study__glyph--chevron i:first-child::before { left: 16px; top: -4px; transform: rotate(38deg); }
+.award-study__glyph--chevron i:first-child::after { left: 16px; top: 5px; transform: rotate(-38deg); }
+.award-study__glyph--chevron > i { background: transparent; }
+.award-study__glyph--chevron > i:last-child { display: none; }
 
+/* RUNS — three miniature STACK bricks, not a chart. */
 .award-study__glyph--stack i {
-  left: 7px;
-  height: 4px;
+  height: 7px;
+  border: 1px solid currentColor;
+  background: currentColor;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.24);
 }
-.award-study__glyph--stack i:nth-child(1) { top: 3px; width: 18px; }
-.award-study__glyph--stack i:nth-child(2) { top: 11px; width: 24px; }
-.award-study__glyph--stack i:nth-child(3) { top: 19px; width: 30px; }
+.award-study__glyph--stack i:nth-child(1) { left: 3px; top: 3px; width: 19px; }
+.award-study__glyph--stack i:nth-child(2) { right: 3px; top: 10px; width: 23px; }
+.award-study__glyph--stack i:nth-child(3) { left: 6px; top: 17px; width: 27px; }
 
+/* LONG HAUL — a long structural span with fixed end anchors. */
 .award-study__glyph--span {
-  width: 72px;
+  width: 74px;
 }
 .award-study__glyph--span i {
-  left: 5px;
-  right: 5px;
+  left: 7px;
+  right: 7px;
   top: 11px;
   height: 4px;
 }
@@ -255,26 +342,28 @@
 .award-study__glyph--span::after {
   content: "";
   position: absolute;
-  top: 5px;
-  width: 4px;
-  height: 16px;
+  top: 4px;
+  width: 5px;
+  height: 18px;
   background: currentColor;
 }
 .award-study__glyph--span::before { left: 5px; }
 .award-study__glyph--span::after { right: 5px; }
 
+/* STEADY — two unbroken, equal lines. */
 .award-study__glyph--equal i {
-  left: 6px;
+  left: 4px;
   width: 30px;
   height: 5px;
 }
 .award-study__glyph--equal i:nth-child(1) { top: 6px; }
 .award-study__glyph--equal i:nth-child(2) { top: 15px; }
 
+/* TARGET — keep the instantly legible bullseye. */
 .award-study__glyph--target i:first-child {
   width: 24px;
   height: 24px;
-  left: 9px;
+  left: 7px;
   top: 1px;
   border: 3px solid currentColor;
   border-radius: 50%;
@@ -284,25 +373,21 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  left: 17px;
+  left: 15px;
   top: 9px;
 }
 
+/* LEVEL UP — three unmistakable rising steps. */
 .award-study__glyph--rise i {
   bottom: 3px;
   width: 8px;
 }
-.award-study__glyph--rise i:nth-child(1) { left: 5px; height: 7px; }
-.award-study__glyph--rise i:nth-child(2) { left: 17px; height: 13px; }
-.award-study__glyph--rise i:nth-child(3) { left: 29px; height: 20px; }
+.award-study__glyph--rise i:nth-child(1) { left: 4px; height: 7px; }
+.award-study__glyph--rise i:nth-child(2) { left: 15px; height: 13px; }
+.award-study__glyph--rise i:nth-child(3) { left: 26px; height: 20px; }
 
-/* Award identity lives inside the face, never in the physical footprint. */
 .award-study__block[data-award="miles"] .award-study__badge {
-  width: 58px;
-  box-shadow:
-    inset 5px 0 0 rgba(230,255,98,.12),
-    inset -5px 0 0 rgba(230,255,98,.12),
-    inset 0 0 0 2px rgba(255,255,255,.04);
+  width: 54px;
 }
 
 .award-study__block[data-award="zone2"] .award-study__badge,
@@ -313,38 +398,35 @@
 }
 
 .award-study__block[data-award="pace"] .award-study__badge {
-  width: 48px;
-  clip-path: polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%, 10% 50%);
+  width: 44px;
+  clip-path: polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%, 8% 50%);
 }
 
 .award-study__block[data-award="runs"] .award-study__badge {
-  width: 46px;
-  background:
-    linear-gradient(to bottom, transparent 0 29%, rgba(230,255,98,.14) 29% 34%, transparent 34% 63%, rgba(230,255,98,.14) 63% 68%, transparent 68%),
-    var(--award-inset);
+  width: 44px;
 }
 
 .award-study__block[data-award="longHaul"] .award-study__badge {
-  width: 92px;
-  border-left-width: 3px;
-  border-right-width: 3px;
+  width: 94px;
+  border-left-color: var(--award-mark);
+  border-right-color: var(--award-mark);
 }
 
 .award-study__block[data-award="steady"] .award-study__badge {
-  width: 48px;
-  border-top-color: rgba(230,255,98,.7);
-  border-bottom-color: rgba(230,255,98,.7);
+  width: 42px;
+  border-top-color: var(--award-mark);
+  border-bottom-color: var(--award-mark);
 }
 
 .award-study__block[data-award="onTarget"] .award-study__badge {
   box-shadow:
-    0 0 0 3px rgba(32,42,48,.9),
-    0 0 0 4px rgba(224,234,238,.3);
+    0 0 0 2px var(--award-inset),
+    0 0 0 3px rgba(255, 88, 212, .34),
+    inset 0 0 0 2px rgba(255,255,255,.025);
 }
 
 .award-study__block[data-award="levelUp"] .award-study__badge {
-  width: 48px;
-  clip-path: polygon(0 100%, 0 66%, 32% 66%, 32% 38%, 64% 38%, 64% 8%, 100% 8%, 100% 100%);
+  width: 44px;
 }
 
 .award-study__key {
@@ -357,9 +439,31 @@
 
 .award-study__key-row {
   display: grid;
-  gap: 3px;
+  grid-template-columns: 5px minmax(0, 1fr);
+  gap: 9px;
+  align-items: stretch;
   padding: 10px 12px;
   background: var(--surface, #111417);
+}
+
+.award-study__key-row[data-feature] {
+  box-shadow: inset 0 0 0 1px rgba(210, 170, 98, .24);
+}
+
+.award-study__key-mark {
+  width: 5px;
+  min-height: 34px;
+  background: var(--award-mark);
+  box-shadow: 0 0 8px var(--award-glow);
+}
+
+.award-study__key-row > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.award-study__key-name {
+  display: block;
 }
 
 @media (max-width: 420px) {
@@ -377,11 +481,21 @@
     padding-inline: 12px;
   }
 
+  .award-study__front {
+    grid-template-columns: 27px minmax(0, 1fr) 5px;
+    gap: 2px;
+    padding-inline: 3px;
+  }
+
+  .award-study__identity-bay {
+    width: 27px;
+  }
+
   .award-study__badge {
-    transform: scale(.92);
+    transform: scale(.9);
   }
 
   .award-study__block[data-award="longHaul"] .award-study__badge {
-    width: 82px;
+    width: 84px;
   }
 }
