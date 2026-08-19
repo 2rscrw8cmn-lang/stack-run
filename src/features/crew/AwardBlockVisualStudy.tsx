@@ -33,14 +33,14 @@ const AWARD_BLOCKS: readonly AwardBlockDefinition[] = [
 ] as const;
 
 const DEMO_ICON: RunnerIconModel = {
-  background: 0,
-  body: 0,
-  face: 0,
-  cap: 0,
-  flair: 0,
+  background: 2,
+  head: 3,
+  face: 2,
+  body: 1,
+  flair: 1,
 };
 
-const DEMO_ACCENT: CrewMemberAccent = "orange";
+const DEMO_ACCENT: CrewMemberAccent = "vermilion";
 
 function AwardGlyph({ face }: { face: AwardBlockDefinition["face"] }) {
   switch (face) {
