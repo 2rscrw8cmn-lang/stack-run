@@ -47,6 +47,7 @@ describe("Crew Awards panel", () => {
     expect(screen.getByText("Special Block Ready")).toBeInTheDocument();
     expect(screen.getByText("Most Miles")).toBeInTheDocument();
     expect(screen.queryByText("Crew Awards · Test View")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Seed 8 QA Blocks" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(onPlaceAward).toHaveBeenCalledWith("award-1");
@@ -66,9 +67,10 @@ describe("Crew Awards panel", () => {
 
     expect(screen.queryByText("Special Blocks")).not.toBeInTheDocument();
     expect(screen.queryByText("Special Block Ready")).not.toBeInTheDocument();
+    expect(screen.queryByText("Temporary QA Harness")).not.toBeInTheDocument();
   });
 
-  it("reveals the full standings only with the awardTest query flag", () => {
+  it("reveals the full standings and deterministic harness only with awardTest", () => {
     window.history.replaceState({}, "", "/?awardTest=1");
     render(
       <CrewAwardsPanel
@@ -81,6 +83,9 @@ describe("Crew Awards panel", () => {
       />,
     );
 
+    expect(screen.getByText("Temporary QA Harness")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Seed 8 QA Blocks" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear QA Blocks" })).toBeInTheDocument();
     expect(screen.getByText("Crew Awards · Test View")).toBeInTheDocument();
     expect(screen.getByText("Special Blocks")).toBeInTheDocument();
     expect(screen.getByText("Most Miles")).toBeInTheDocument();
