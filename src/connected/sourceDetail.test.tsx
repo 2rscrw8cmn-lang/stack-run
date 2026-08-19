@@ -36,7 +36,7 @@ describe("production source-detail boundary", () => {
     expect(intervalsSourceDetailReader("")).toBeNull();
   });
 
-  it("delegates to the existing Intervals reads, unchanged", async () => {
+  it("delegates legacy proxy reads through the existing STACK reader", async () => {
     // A fresh Response per call: a body can only be read once.
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockImplementation(async () => new Response(JSON.stringify({ icu_intervals: [] })));
@@ -53,6 +53,22 @@ describe("production source-detail boundary", () => {
       expect.stringContaining("resource=activity-streams&id=a1"),
       expect.anything(),
     );
+  });
+
+  it("requests explicit JSON from Intervals for local API-key profile reads", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify([
+        { type: "time", data: [0, 60] },
+        { type: "heartrate", data: [140, 145] },
+      ])));
+
+    const reader = intervalsSourceDetailReader({ mode: "local-api-key", credential: "key" })!;
+    const profile = await reader.readProfile("activity-1");
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      "/api/v1/activity/activity-1/streams.json?types=time,heartrate,altitude,velocity_smooth,cadence",
+    );
+    expect(profile?.samples).toHaveLength(2);
   });
 });
 
