@@ -745,22 +745,41 @@ Do not delete working plan features solely to make the product feel new.
 
 ### NEXT-6 — Build + Crew compatibility pass
 
-**Recommended branch:** `feature/stack-next-integration`
+- **Status: implemented on `feature/stack-next-integration`, awaiting owner acceptance.**
+- **Branch:** `feature/stack-next-integration` → PR into `feature/stack-next`.
+- **Authoritative brief:** `docs/NEXT6_BUILD_CREW_COMPATIBILITY.md`.
 
 Goal:
 
 > Ensure the new personal-history model coexists cleanly with the two distinctive existing STACK systems: Build and Race Crew.
 
-Review:
+#### What the review found, and what it decided
 
-- which historical activities earn Build blocks, if any;
-- migration/backfill behavior;
-- imported-vs-existing block ownership;
-- Crew safe projection from the new activity source of truth;
-- avoiding accidental upload of historical private health data;
-- no regressions to Crew RLS or runner-owned Crew Build placement.
+| Review item | Finding | Decision |
+|---|---|---|
+| Which historical activities earn Build blocks | None do. `earnedBlocks` maps over `RunLog`s, and a historical-only run has no `RunLog` — correct behavior, protected by nothing. | **Owner decision: never.** A block is earned by a run the runner logged or accepted. Now stated and tested. |
+| Migration/backfill behavior | No backfill exists anywhere. | **Owner decision: none ships.** Reasoning recorded in the brief, including that a `RunLog`-based backfill would also make that running Crew-visible. |
+| Imported-vs-existing block ownership | An accepted run and its source mirror reconcile on external identity into one row. | Unchanged, and now locked: one physical run, one row, one block. |
+| Crew safe projection from the new source of truth | Every projection path takes `AppState`; historical activity is stored outside it under its own account-scoped key. Crew structurally cannot see it. | Keep Crew run-log-only. The boundary is now a test rather than an accident of storage layout. |
+| Avoiding accidental upload of historical health data | `projectSharedRun` constructs its output field by field. | Locked: the projected field list is asserted, and a synced year of history leaves the payload byte-identical. |
+| Crew RLS / runner-owned Crew Build placement | No phase since NEXT-1 has touched `supabase/`; placement and the Build window are untouched. | No regression; no migration in this phase. |
 
-Any historical Build backfill must be an explicit owner-facing decision, never a silent migration.
+One reading was renamed: Crew's `Consistency` comparison is now `Plan Runs
+Linked`, the same bars and the same stored columns under a name that says it
+measures the plan relationship rather than the runner.
+
+Build's own language follows: `Every completed run earns a block` became
+`Every run you record earns a block`, because with connected history a completed
+run can exist that earns none.
+
+#### What NEXT-6 deliberately did not do
+
+No backfill, no historical activity in any Crew payload, no Supabase migration,
+RLS change or new projected field, no change to how an accepted run earns a
+block, no placement/gravity/footprint change, no persistence or AppState
+migration, and no Plan, Today or Runs redesign.
+
+`npm run check` passes: 153 files, 1,886 tests.
 
 ### NEXT-7 — Product integration + release candidate
 

@@ -67,7 +67,7 @@ const MAX_RECENT_RUNS = 20;
 const METRIC_LABEL: Record<ComparisonMetric, string> = {
   "weekly-miles": "Weekly Miles",
   "longest-run": "Longest Run",
-  consistency: "Consistency",
+  consistency: "Plan Runs Linked",
   "run-days": "Run Days",
   "miles-built": "Miles Built",
 };
@@ -86,12 +86,19 @@ const LONGEST_RUN_METRIC: MetricDescriptor =
 const MILES_BUILT_METRIC: MetricDescriptor =
   { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 };
 
-// Race Crew comparisons keep Consistency, which needs a training plan. Run
-// Club has no plan to measure against, so Run Days takes the same slot.
+// Race Crew compares how much of the plan has a linked run, which needs a
+// training plan. Run Club has no plan to measure against, so Run Days takes
+// the same slot.
+//
+// NEXT-6: the reading is unchanged and so are the bars, but it is named for
+// what it counts. `Consistency` presented a plan-link ratio as a quality of
+// the runner, which is the reading NEXT-3 ranked last on Runs and NEXT-5
+// refused as Plan's headline. A crewmate whose runs are real but unlinked is
+// not a less consistent runner.
 const RACE_METRICS: MetricDescriptor[] = [
   WEEKLY_MILES_METRIC,
   LONGEST_RUN_METRIC,
-  { id: "consistency", shortLabel: "Consist", window: "Recent plan weeks", Icon: CalendarCheck2 },
+  { id: "consistency", shortLabel: "Linked", window: "Recent plan weeks", Icon: CalendarCheck2 },
   MILES_BUILT_METRIC,
 ];
 const CLUB_METRICS: MetricDescriptor[] = [
@@ -274,7 +281,7 @@ export function CrewScreen({
   const dashboardData = crew.crewData;
   const members = dashboardData.members;
   const metrics = metricsForCrewType(currentCrew.crewType);
-  // Consistency needs a plan and Run Days needs a Run Club: switching crews
+  // Plan links need a plan and Run Days needs a Run Club: switching crews
   // (or a metric no longer offered) falls back to the first tab rather than
   // rendering a tab that isn't shown.
   const activeMetric = metrics.some((item) => item.id === metric) ? metric : metrics[0].id;
@@ -316,10 +323,10 @@ export function CrewScreen({
   // a fabricated countdown for a Crew with no race.
   const isRaceCrew = currentCrew.crewType === "race";
   // The Member Profile's stat strip mirrors the comparison section's own
-  // Race Crew / Run Club split: Consistency needs a training plan, Run Club
-  // has none, so Run Days takes that slot instead (issue #87).
+  // Race Crew / Run Club split: the plan-link reading needs a training plan,
+  // Run Club has none, so Run Days takes that slot instead (issue #87).
   const profileMetric = isRaceCrew
-    ? { id: "consistency" as const, label: "Consistency" }
+    ? { id: "consistency" as const, label: "Plan Runs Linked" }
     : { id: "run-days" as const, label: "Run Days" };
   const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
   const countdown = isRaceCrew && currentCrew.raceDate

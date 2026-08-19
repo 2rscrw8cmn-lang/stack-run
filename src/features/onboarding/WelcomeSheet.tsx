@@ -16,7 +16,7 @@ export function WelcomeSheet({ isOpen, onGetStarted, onDismiss }: WelcomeSheetPr
         <StackMark size={40} />
         <h2>Build your race.</h2>
         <p>
-          Your plan tells you what to run. Every completed run earns a block.
+          Your plan tells you what to run. Every run you record earns a block.
           Build your training all the way to race day.
         </p>
         <Button icon={<ArrowRight size={18} />} onClick={onGetStarted}>

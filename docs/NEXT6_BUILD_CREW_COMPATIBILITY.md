@@ -1,6 +1,6 @@
 # STACK Next — NEXT-6 Build + Crew Compatibility
 
-- **Status:** audit complete, decisions pending owner input.
+- **Status:** implemented on `feature/stack-next-integration`, awaiting owner acceptance.
 - **Branch:** `feature/stack-next-integration`.
 - **Base:** `feature/stack-next` after accepted NEXT-5.
 - **Phase:** NEXT-6.
@@ -76,16 +76,32 @@ Crew Build placement or the safe projection: no phase since NEXT-1 has touched
 
 ## Decisions
 
-### D-N6-1 — Historical Build backfill
+### D-N6-1 — Historical Build backfill: never
 
-**Requires an explicit owner decision.** `docs/STACK_NEXT_IMPLEMENTATION.md`:
-*"Any historical Build backfill must be an explicit owner-facing decision, never
-a silent migration."*
+**Owner decision, August 19, 2026: historical activity never earns a Build
+block, and STACK ships no backfill.**
 
-Options and consequences are recorded in the PR discussion for this phase. Note
-that any backfill which works by creating `RunLog`s would also make that running
-**Crew-visible**, because Crew projects run logs — so the decision is not only
-about the tower.
+A block is earned by a run the runner brought into STACK — logged by hand, or
+reviewed and accepted from Run Data. Connected history that was never accepted
+stays what it is: real running, owned by Runs, with no block and no tower
+presence. Nothing converts it, on install, on sync, on upgrade or on request.
+
+Reasoning recorded with the decision:
+
+- the tower means *what I built*, and a year of imported running arriving as
+  blocks nobody placed would flood that meaning rather than reward it;
+- the alternative — an opt-in Settings backfill — is not a small feature: it
+  needs dedupe against re-sync, an undo, and a rule for what happens when the
+  source later changes a run it already converted;
+- a backfill built from `RunLog`s would also make that running **Crew-visible**,
+  because Crew projects run logs. The decision was therefore never only about
+  the tower, and "quietly show my history to my crew" is not something a Build
+  feature should do as a side effect.
+
+This closes the review item `docs/STACK_NEXT_IMPLEMENTATION.md` required to be
+answered explicitly. It is a product decision, not a technical limitation: the
+data is present and the conversion would be easy, which is exactly why the rule
+has tests behind it now.
 
 ### D-N6-2 — Build language
 
@@ -101,15 +117,26 @@ boundary — projection reads `AppState`, history lives outside it — is kept a
 locked by tests rather than left as an accident of where a value happens to be
 stored.
 
-### D-N6-4 — Crew Consistency
+### D-N6-4 — Crew Consistency: renamed, not removed
 
-Pending owner input alongside D-N6-1. The minimum is honest labeling of what the
-comparison measures; the alternative is demoting it the way NEXT-3 demoted the
-same reading on Runs.
+**Owner decision, August 19, 2026: keep the comparison, name it honestly.**
+
+`Consistency` is now **`Plan Runs Linked`** (`Linked` on the compact metric tab),
+over the same window and from the same stored summary. The bars, the ranking,
+the projected columns and the member profile slot are unchanged; a crewmate sees
+the same comparison under a name that says what it counts.
+
+The reading is how much of the plan has a linked recorded run. Calling that
+`Consistency` presented a plan-link ratio as a quality of the runner — the same
+reading NEXT-3 ranked last on Runs and NEXT-5 refused as Plan's headline. A
+crewmate whose runs are real but unlinked is not a less consistent runner.
+
+No projection field, database column or RLS policy changed: `consistency_completed`
+and `consistency_due` remain the stored facts, and only the display name moved.
 
 ## Implementation sequence
 
-### N6A — Lock the boundaries
+### N6A — Lock the boundaries — **done**
 
 Tests that state the rules the product already follows:
 
@@ -122,18 +149,22 @@ Tests that state the rules the product already follows:
 - the Crew Build window, RLS expectations and runner-owned placement are
   unchanged by the presence of history.
 
-### N6B — Truthful Build language
+### N6B — Truthful Build language — **done**
 
-D-N6-2, as the smallest copy change that makes the promise exact.
+`Every completed run earns a block` became `Every run you record earns a block`
+in the welcome sheet, the app tour, Getting Started (twice) and the Runs empty
+state, and Getting Started's Build destination now answers *What have I built?*
+rather than *What have I completed?*. `BuildSummaryMetrics` says what the number
+is and what it deliberately is not.
 
-### N6C — Crew reading review
+### N6C — Crew reading review — **done**
 
-D-N6-4, once decided.
+D-N6-4, applied as a display-name change only.
 
-### N6D — Owner decision record
+### N6D — Owner decision record — **done**
 
-Whatever D-N6-1 resolves to is written down as a decision with its reasoning,
-including what it means for Crew visibility.
+D-N6-1 and D-N6-4 above, plus `docs/STACK_NEXT_IMPLEMENTATION.md` and
+`docs/CURRENT_APPLICATION_STRUCTURE.md`.
 
 ## Non-goals
 
