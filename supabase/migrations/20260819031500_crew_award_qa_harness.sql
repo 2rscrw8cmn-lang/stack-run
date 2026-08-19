@@ -2,8 +2,9 @@
 --
 -- Gives the owner of the dedicated TEST CLUB a deterministic eight-award
 -- fixture for end-to-end preview testing. It cannot operate on any other Crew.
--- The fixture uses fixed UUIDs and future week dates so it never collides with
--- naturally finalized weekly awards. Both seed and clear are idempotent.
+-- The fixture uses fixed UUIDs and pre-product week dates so it never collides
+-- with naturally finalized weekly awards and sorts ahead of any real READY
+-- awards during QA. Both seed and clear are idempotent.
 
 create or replace function public.qa_seed_crew_award_fixture()
 returns integer
@@ -61,14 +62,14 @@ begin
     source_shared_run_id, crew_build_row, crew_build_column_start,
     crew_build_placed_at, created_at
   ) values
-    ('a19a0000-0000-4000-8000-000000000001', v_crew_id, date '2099-01-05', 'miles',    v_user_id,        18.4, null, null, null, null, now() + interval '1 second'),
-    ('a19a0000-0000-4000-8000-000000000002', v_crew_id, date '2099-01-12', 'zone2',    v_second_user_id,  91,   null, null, null, null, now() + interval '2 seconds'),
-    ('a19a0000-0000-4000-8000-000000000003', v_crew_id, date '2099-01-19', 'pace',     v_user_id,        425,   null, null, null, null, now() + interval '3 seconds'),
-    ('a19a0000-0000-4000-8000-000000000004', v_crew_id, date '2099-01-26', 'runs',     v_second_user_id,   5,   null, null, null, null, now() + interval '4 seconds'),
-    ('a19a0000-0000-4000-8000-000000000005', v_crew_id, date '2099-02-02', 'longHaul', v_user_id,        10.2, null, null, null, null, now() + interval '5 seconds'),
-    ('a19a0000-0000-4000-8000-000000000006', v_crew_id, date '2099-02-09', 'steady',   v_second_user_id,  12,   null, null, null, null, now() + interval '6 seconds'),
-    ('a19a0000-0000-4000-8000-000000000007', v_crew_id, date '2099-02-16', 'onTarget', v_user_id,        100,   null, null, null, null, now() + interval '7 seconds'),
-    ('a19a0000-0000-4000-8000-000000000008', v_crew_id, date '2099-02-23', 'levelUp',  v_second_user_id,   8,   null, null, null, null, now() + interval '8 seconds');
+    ('a19a0000-0000-4000-8000-000000000001', v_crew_id, date '1900-01-01', 'miles',    v_user_id,        18.4, null, null, null, null, now() + interval '1 second'),
+    ('a19a0000-0000-4000-8000-000000000002', v_crew_id, date '1900-01-08', 'zone2',    v_second_user_id,  91,   null, null, null, null, now() + interval '2 seconds'),
+    ('a19a0000-0000-4000-8000-000000000003', v_crew_id, date '1900-01-15', 'pace',     v_user_id,        425,   null, null, null, null, now() + interval '3 seconds'),
+    ('a19a0000-0000-4000-8000-000000000004', v_crew_id, date '1900-01-22', 'runs',     v_second_user_id,   5,   null, null, null, null, now() + interval '4 seconds'),
+    ('a19a0000-0000-4000-8000-000000000005', v_crew_id, date '1900-01-29', 'longHaul', v_user_id,        10.2, null, null, null, null, now() + interval '5 seconds'),
+    ('a19a0000-0000-4000-8000-000000000006', v_crew_id, date '1900-02-05', 'steady',   v_second_user_id,  12,   null, null, null, null, now() + interval '6 seconds'),
+    ('a19a0000-0000-4000-8000-000000000007', v_crew_id, date '1900-02-12', 'onTarget', v_user_id,        100,   null, null, null, null, now() + interval '7 seconds'),
+    ('a19a0000-0000-4000-8000-000000000008', v_crew_id, date '1900-02-19', 'levelUp',  v_second_user_id,   8,   null, null, null, null, now() + interval '8 seconds');
 
   get diagnostics v_inserted = row_count;
   return v_inserted;
