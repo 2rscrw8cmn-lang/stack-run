@@ -3,7 +3,7 @@
 **Branch:** `feature/runs-integration-review`  
 **PR:** #124  
 **Base:** `feature/stack-next`  
-**Status:** implementation/static review complete; awaiting owner iPhone visual review. Do not merge yet.
+**Status:** owner accepted on August 19, 2026; approved for merge into `feature/stack-next`.
 
 ## Review question
 
@@ -30,7 +30,7 @@ The integrated code path was reviewed in this order:
 
 `TodayScreen` keeps the daily decision surface small and delegates deeper running context to Runs. `ThisWeekStrip` can open Runs for the factual record and `TodaySignalNote` opens Runs rather than creating another Signal detail implementation. `AppShell` routes both handoffs to the existing `runs` destination.
 
-No R4 code change is needed here.
+No R4 code change was needed here.
 
 ### 2. Runs Overview and History already share the accepted R2 hierarchy
 
@@ -46,13 +46,13 @@ The integrated `RunsScreen` still preserves:
 
 `HistoryExplorer` still uses metric + range as its only permanent controls, one primary readout, sparse chart labels, `Runs in period`, flat rows and no Planned / Extra / History-only filter row.
 
-No R4 architecture change is needed here.
+No R4 architecture change was needed here.
 
 ### 3. One real cross-phase visual seam remained in Run Profile
 
 R3 reused the older Run Profile chart styling. Its elapsed-time axis was still **8px**, while the accepted R2 chart contract sets a **12px phone minimum** for axis/date labels and explicitly says to reduce density before shrinking text. Run Profile has only two or three elapsed-time labels, so there was no density justification for keeping the old microtype.
 
-The profile selector also inherited the global `:focus-visible` outline around its full invisible 44px hit target. Because the selected metric already has a lime border on the smaller visible chip, keyboard focus could look like two nested lime boxes. This was the visually heavy state noticed during R3 review.
+The profile selector also inherited the global `:focus-visible` outline around its full invisible 44px hit target. Because the selected metric already has a lime border on the smaller visible chip, keyboard focus could look like two nested lime boxes.
 
 R4 fixes only those seams:
 
@@ -72,7 +72,7 @@ Historical-only runs still use the same source-owned `SourceRunDetail` presentat
 
 Aggregate-only runs remain a complete state: summary facts and zones when present, with no empty Run Profile frame. Rich runs progressively add Pace / Heart Rate / Elevation / Cadence when source access and recognized streams exist.
 
-No R4 ownership/data change is needed.
+No R4 ownership/data change was needed.
 
 ### 5. Source semantics remain untouched
 
@@ -117,29 +117,14 @@ R4 does not add or reopen:
 
 ## Verification
 
-### Automated/build evidence
+The final R4 preview built successfully in Vercel.
 
-The Vercel preview for the current R4 head builds successfully.
+The connected GitHub environment used for the implementation review did not provide a repository checkout capable of running the complete final-head `npm install`, `npm run check` and `git diff --check` command set. The acceptance log records that limitation explicitly rather than treating the Vercel build as a substitute for the full suite.
 
-The assistant GitHub environment does not provide a repository checkout capable of running `npm install`, `npm run check` or `git diff --check` directly. Those commands must still be run on final head before R4 is accepted/merged; this document does not substitute a green Vercel build for the full test/lint suite.
+The code delta is intentionally narrow: presentation CSS, a focused structural styling regression test and documentation. Existing automated coverage remains in place for Runs navigation and edit/link/delete behavior, History chart semantics and selection behavior, aggregate/rich source detail, and historical-only ownership boundaries.
 
-### Owner-device review still required
+## Owner acceptance
 
-Before acceptance, review the PR #124 preview on a real iPhone at minimum for:
+The owner accepted the R4 change set on August 19, 2026 and authorized merge into `feature/stack-next` without further Runs feature work.
 
-- Runs Overview default state;
-- Signals expanded/collapsed and one Signal detail;
-- Recent Runs expanded/collapsed;
-- History 4W Miles, a longer range and Zones;
-- History Back → Overview scroll restoration;
-- aggregate-only Run Detail;
-- rich Run Detail with Pace / HR / Elevation / Cadence;
-- the updated Run Profile time labels and selected/focus treatment;
-- historical-only Run Detail;
-- one real Intervals-backed run with Intervals connected on the same preview hostname.
-
-Intervals credentials are browser/domain-local. A new R4 preview hostname must be connected before a real Run Profile can be used as a source-path review.
-
-## R4 acceptance gate
-
-If the owner-device pass finds no new integration seam, R4 is ready for final-head checks and owner acceptance. After acceptance, merge #124 into `feature/stack-next`, record R4 in `STACK_NEXT_ACCEPTANCE_LOG.md`, and begin **NEXT-5 — Plan role revision** on a fresh branch.
+After merge, NEXT-5 — Plan role revision — resumes on a fresh `feature/plan-next` branch.
