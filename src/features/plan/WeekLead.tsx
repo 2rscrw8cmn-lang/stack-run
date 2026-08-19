@@ -1,32 +1,51 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
-import { ProgressBar } from "../../components/ui/ProgressBar";
+import { formatRunsMiles } from "../../domain/distance";
 import type { PlanWeekViewModel } from "../../domain/plan";
+import type {
+  PlanWeekActualContext,
+  PlanWeekIntentContext,
+} from "./planWeekContext";
 
 interface WeekLeadProps {
   week: PlanWeekViewModel;
   totalWeeks: number;
   lifecycle: "before-plan" | "active" | "after-race";
+  actual: PlanWeekActualContext;
+  intent: PlanWeekIntentContext;
+  /** Future weeks have no actual story yet, so do not headline a truthful but useless 0. */
+  showActual: boolean;
   onStep: (direction: -1 | 1) => void;
   onCurrentWeek: () => void;
 }
 
 /**
- * The week you are looking at, and the way to another one.
+ * The viewed week as intent first, with actual history beside it rather than
+ * hidden inside a completion score.
  *
- * Stepping the week and describing the week used to be two stacked cards
- * under a screen titled "Plan" — three bands of chrome before the first
- * training day. They are one thing: which week, and how it is going. The week
- * is also the screen's heading, because it is what the screen is about.
+ * Plan no longer gets to define whether the runner ran. Its own count answers
+ * only how many scheduled items have explicit linked RunLogs. The actual line
+ * comes from unified RunnerRun history and includes runs the plan never asked
+ * for or that were never accepted into STACK.
  */
 export function WeekLead({
   week,
   totalWeeks,
   lifecycle,
+  actual,
+  intent,
+  showActual,
   onStep,
   onCurrentWeek,
 }: WeekLeadProps) {
+  const plannedRunLabel = `${intent.plannedRuns} planned ${intent.plannedRuns === 1 ? "run" : "runs"}`;
+  const plannedMilesLabel =
+    intent.plannedMiles === null
+      ? null
+      : `${formatRunsMiles(intent.plannedMiles)} mi planned`;
+  const actualRunLabel = `${actual.runCount} ${actual.runCount === 1 ? "run" : "runs"}`;
+
   return (
     <div className="week-lead">
       <div className="week-lead__bar">
@@ -59,10 +78,33 @@ export function WeekLead({
         />
       </div>
 
-      <div className="week-lead__progress">
-        <p className="week-lead__count data-value">
-          {week.completedRuns} of {week.scheduledRuns} runs complete
-        </p>
+      <div className="week-lead__summary" aria-label={`Week ${week.weekNumber} plan and actual context`}>
+        <div className="week-lead__reading" data-kind="intent">
+          <p className="week-lead__reading-value data-value">
+            {plannedRunLabel}
+          </p>
+          {plannedMilesLabel && (
+            <p className="week-lead__reading-meta machine-label">{plannedMilesLabel}</p>
+          )}
+        </div>
+
+        {showActual && (
+          <div className="week-lead__reading" data-kind="actual">
+            <p className="week-lead__reading-value data-value">
+              {formatRunsMiles(actual.miles)} mi actual
+            </p>
+            <p className="week-lead__reading-meta machine-label">{actualRunLabel}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="week-lead__relationship">
+        {showActual && intent.plannedRuns > 0 && (
+          <span className="week-lead__linked machine-label">
+            {intent.linkedRuns} of {intent.plannedRuns} plan {intent.plannedRuns === 1 ? "run" : "runs"} linked
+          </span>
+        )}
+
         {week.isCurrentWeek ? (
           <span className="week-lead__now">This week</span>
         ) : lifecycle === "before-plan" ? (
@@ -70,8 +112,6 @@ export function WeekLead({
         ) : lifecycle === "after-race" ? (
           <span className="week-lead__now">Plan complete</span>
         ) : (
-          // The shortcut back only exists while it would do something, so the
-          // week you are actually training on stays quiet.
           <Button
             variant="ghost"
             className="week-lead__shortcut"
@@ -81,12 +121,6 @@ export function WeekLead({
           </Button>
         )}
       </div>
-
-      <ProgressBar
-        value={week.completedRuns}
-        max={week.scheduledRuns}
-        label={`Week ${week.weekNumber} progress`}
-      />
     </div>
   );
 }
