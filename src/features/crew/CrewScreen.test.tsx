@@ -113,7 +113,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
@@ -121,6 +121,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       localDate,
       activityType,
       distanceMiles,
+      durationSeconds,
       createdAt,
       crewBuildRow,
       crewBuildColumnStart,
@@ -409,6 +410,7 @@ describe("Crew comparisons and runs", () => {
               localDate: soloRun.localDate,
               activityType: soloRun.activityType,
               distanceMiles: soloRun.distanceMiles,
+              durationSeconds: soloRun.durationSeconds,
               createdAt: soloRun.createdAt,
               crewBuildRow: soloRun.crewBuildRow,
               crewBuildColumnStart: soloRun.crewBuildColumnStart,
@@ -832,7 +834,9 @@ describe("Crew comparisons and runs", () => {
     expect(detail.getByText("9:37 /MI")).toBeInTheDocument();
     expect(detail.getByText("0 crew members")).toBeInTheDocument();
     expect(detail.getByRole("button", { name: "Give Props to Drew" })).toBeInTheDocument();
-    expect(detail.queryByText(/heart|155|load|72|effort|great/i)).not.toBeInTheDocument();
+    // Average heart rate is now the one deliberate exception, per D-079.
+    expect(detail.getByText("155 BPM")).toBeInTheDocument();
+    expect(detail.queryByText(/load|72|effort|great/i)).not.toBeInTheDocument();
     expect(detail.queryByText("Private crew note")).not.toBeInTheDocument();
     expect(detail.queryByText("intervals-secret-id")).not.toBeInTheDocument();
     expect(detail.queryByRole("button", { name: /Edit|Delete|Intervals/i })).not.toBeInTheDocument();

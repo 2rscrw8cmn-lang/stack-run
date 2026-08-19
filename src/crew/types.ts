@@ -102,8 +102,11 @@ export interface CrewMemberSummary {
 /**
  * The complete run contract available to UI-19.
  *
- * This intentionally does not resemble a personal RunLog: there is no source,
- * external id, exact start time, health data, effort, note, route or plan.
+ * This intentionally does not resemble a personal RunLog: there is no
+ * source, external id, exact start time, cadence, elevation, training load,
+ * HR zones, effort, note, route or plan. Heart rate is the one piece of
+ * health data shared, deliberately, per D-079 — average, max, and the
+ * manual-entry fallback for a run with no imported average.
  */
 export interface CrewSharedRun {
   id: string;
@@ -133,6 +136,11 @@ export interface CrewSharedRun {
   crewBuildColumnStart: number | null;
   /** Dedicated construction time; projection updates never change it. */
   crewBuildPlacedAt: string | null;
+  /** Source-verified, from `RunLog.importedMetrics`. Never present without a sync. */
+  averageHeartRate?: number | null;
+  maxHeartRate?: number | null;
+  /** Hand-typed, from `RunLog.manualHeartRate` — see its fallback rule in `CrewRunDetailSheet`. */
+  manualHeartRate?: number | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -160,6 +168,8 @@ export interface CrewMiniBuildRun {
  * describes one runner's private arrangement and has no meaning in a tower
  * everybody contributes to, so the Crew Build cannot read it even by accident.
  * `createdAt` is present because it is the communal contribution order.
+ * `durationSeconds` is present only so a Cross Training block's height can
+ * scale with it, the same rule personal Build uses; no other type reads it.
  */
 /**
  * `runnerIcon` is deliberately absent. A Crew Build block is member-colored
@@ -174,6 +184,7 @@ export interface CrewBuildRun {
   localDate: string;
   activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
+  durationSeconds: number;
   createdAt: string;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
