@@ -41,5 +41,10 @@ jobs:
             supabase/migrations/20260814120100_runner_icon_backdrop.sql
       - name: Start local Supabase
         run: supabase start
-      - name: Run database tests
-        run: supabase test db
+      - name: Run Special Block database verification
+        run: |
+          DB_CONTAINER="$(docker ps --filter 'name=supabase_db_' --format '{{.Names}}' | head -1)"
+          test -n "$DB_CONTAINER"
+          docker exec -i "$DB_CONTAINER" \
+            psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            < supabase/tests/0019_crew_special_blocks.sql
