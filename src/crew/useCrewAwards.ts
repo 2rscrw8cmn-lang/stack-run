@@ -74,7 +74,10 @@ export function useCrewAwards(input: {
   }, [input.buildStartDate, input.crewId, input.today, input.viewerUserId]);
 
   useEffect(() => {
-    void refresh(true);
+    const timer = window.setTimeout(() => {
+      void refresh(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [refresh]);
 
   const placeAward = useCallback(async (
