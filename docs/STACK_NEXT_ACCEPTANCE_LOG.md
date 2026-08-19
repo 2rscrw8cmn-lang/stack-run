@@ -199,3 +199,34 @@ R3 proved the real **direct local-key** Run Profile path on an owner run. The fo
 ### Integration decision
 
 R3 is approved to merge into `feature/stack-next`. **R4 — Runs integration review is next.** After R4 confirms Overview → History → Run Detail works as one coherent product system, NEXT-5 — Plan role revision — may resume.
+
+## Runs Reframe R4 — Integration review
+
+**Owner decision:** accepted for integration into `feature/stack-next` on August 19, 2026.
+
+**PR:** #124 — `feature/runs-integration-review` → `feature/stack-next`
+
+### Acceptance basis
+
+Accepted based on:
+
+- the full Today → Runs Overview → Signal/History → Run Detail → back-to-Runs flow was reviewed as one integrated product system;
+- Runs remains organized around actual runner history, with Overview for understanding, History for exploration/lookup and Run Detail for investigation;
+- Signals and Recent Runs retain bounded inline expansion while History remains a distinct child-screen destination;
+- accepted and historical-only runs share the same source-owned telemetry presentation without inventing STACK-owned effort, notes, plan status, edit controls or Build ownership for historical-only activity;
+- aggregate-only Run Detail remains an intentional complete state and rich source profiles remain progressive enhancement;
+- the R4 static integration pass found no need to rearchitect Today, Runs, History, Signal Detail, Plan linking or Build semantics;
+- one remaining cross-phase visual seam was corrected: Run Profile elapsed-time labels now follow the Runs chart readability floor, supporting fact labels were raised from microtype, and keyboard focus is drawn around the visible metric chip while preserving a 44px target;
+- no Signal formula, unified-history identity, source aggregate truth, cadence convention, elevation-gain semantics, matching/linking, Build behavior, Crew boundary, persistence or schema behavior changed;
+- the owner accepted the R4 change set as sufficient and authorized merge without further feature work;
+- the final Vercel preview deployment completed successfully.
+
+### Verification caveat
+
+The connected GitHub environment used for the R4 pass did not provide a repository checkout capable of executing the final-head `npm install`, `npm run check` and `git diff --check` commands. R4 added only presentation CSS, a focused styling regression test and documentation, and Vercel built the final preview successfully. This limitation is recorded rather than treating the preview build as proof of the full suite.
+
+Program-level real-data/source verification items already recorded under NEXT-1 and R3 remain outstanding and are not reopened by R4.
+
+### Integration decision
+
+R4 is approved to merge into `feature/stack-next`. The Runs reframe is considered coherent enough to close as an architecture phase. **NEXT-5 — Plan role revision resumes next on a fresh `feature/plan-next` branch.**
