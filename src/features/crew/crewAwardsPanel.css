@@ -62,6 +62,54 @@
   opacity: .82;
 }
 
+.crew-awards-test-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.crew-awards-qa {
+  display: grid;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px dashed rgba(215, 255, 63, .42);
+  background:
+    linear-gradient(135deg, rgba(215, 255, 63, .045), transparent 48%),
+    #080d10;
+}
+
+.crew-awards-qa h3,
+.crew-awards-qa p {
+  margin: 0;
+}
+
+.crew-awards-qa h3 {
+  margin-top: 2px;
+  font-size: .9rem;
+}
+
+.crew-awards-qa > div > p:last-child {
+  margin-top: 7px;
+  max-width: 68ch;
+  font-size: .75rem;
+  line-height: 1.45;
+  opacity: .72;
+}
+
+.crew-awards-qa__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.crew-awards-qa__status {
+  color: #d7ff3f;
+}
+
+.crew-awards-qa__error {
+  font-size: .75rem;
+  color: #ff8d73;
+}
+
 .crew-awards {
   display: grid;
   gap: 12px;
@@ -162,6 +210,15 @@
   .crew-award-ready .button {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .crew-awards-qa__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .crew-awards-qa__actions .button {
+    width: 100%;
   }
 
   .crew-awards { padding-inline: 12px; }
