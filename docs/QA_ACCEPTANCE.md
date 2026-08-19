@@ -323,6 +323,65 @@ Verify UI-17 adds none of:
 - Race generation/start-date/load safety invariants hold.
 - Imported sync never automatically edits/reschedules the plan.
 
+## NEXT-5 — Plan role revision (STACK Next)
+
+Review on the branch preview through the QA Runner, which now carries all three
+plan lifecycles (`Active` / `Before` / `After` in the QA notice — see
+`docs/QA_RUNNER.md`). Review each at 320px, ~390px, 430px, desktop and real
+iPhone Safari.
+
+### Current week (QA `Active`)
+
+- The week leads with which week / phase / dates, then planned intent, then
+  actual running in those dates, then `X of Y plan runs linked`.
+- No progress bar, no percentage, no adherence grade, no red/green pair, no
+  `behind` / `ahead` / `good` / `bad` language anywhere on the screen.
+- Actual miles/runs may exceed or fall short of the planned line without either
+  reading as an error.
+- A day with a linked run reads `Completed`; a past day with none reads
+  `No linked run` and is drawn no louder than any other quiet day.
+- Tapping a day still opens detail; `Log Run`, `Edit Run`, `Edit Workout`,
+  `Move Workout` and `Change to Rest` all still work, and race day still
+  refuses plan edits.
+- A blocked-day banner still opens conflict review and moving from it works.
+
+### Past weeks (QA `Active`, step back)
+
+- The week answers both what was asked for and what actually ran in its dates.
+- An unlinked past workout never says `Missed`, and no historical activity is
+  silently adopted as the run the plan asked for.
+
+### Future weeks (QA `Active`, step forward)
+
+- Intent only: phase, dates, scheduled run count, target mileage when every
+  target is known, and the scheduled days.
+- No `0 actual`, no `0 runs`, no empty actual block, no linked line.
+- Planned mileage is absent rather than invented when any target is missing.
+
+### Before the plan starts (QA `Before`)
+
+- Plan opens on week 1 as a preview and says `Plan starts <date>`.
+- Nothing implies week 1 is incomplete, late or missed.
+- Recent real running does not appear inside week 1.
+- Plan editing and race setup still work.
+
+### After the race (QA `After`)
+
+- `Plan complete` with the race it was built for; the final week does not
+  present itself as the current training week.
+- Every earlier week still opens, and `Final Week` returns to the end.
+- `Set up next race` opens the existing race setup sheet — the same one
+  Settings opens — and building a plan from it lands on the new plan's own
+  opening week.
+- Nothing about the finished plan is deleted, archived or rewritten.
+
+### Boundaries
+
+- Plan shows no trend chart, Training Signal, complete run history or second
+  Run Detail.
+- Today is unchanged, including `View Plan`.
+- Logging a run from Plan still earns exactly one block, placed as before.
+
 ## Race Crew — UI-18 architecture acceptance
 
 UI-18 is research/docs, not production social implementation.

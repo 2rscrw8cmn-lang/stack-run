@@ -29,7 +29,44 @@ export const QA_RUNNER_DISPLAY_NAME = "QA Runner";
 
 /** The seed plan's second Sunday. We shift the whole plan so this day is today. */
 const QA_PLAN_ANCHOR_DATE = "2026-08-16";
+const QA_RACE_NAME = "QA Half Marathon";
 const METERS_PER_MILE = 1609.344;
+
+/**
+ * Which side of the plan window the review runner stands on.
+ *
+ * NEXT-5 gave Plan three lifecycles, and two of them were unreachable in
+ * review: the harness always placed an active plan around today, so
+ * `Plan starts…` and `Plan complete` could only ever be read in a test. The
+ * fixture is otherwise identical — same seed plan, same runs, same history
+ * generator — so what a review compares is the lifecycle and nothing else.
+ */
+export type QaPlanLifecycle = "active" | "before-plan" | "after-race";
+
+export const QA_PLAN_LIFECYCLES: QaPlanLifecycle[] = [
+  "active",
+  "before-plan",
+  "after-race",
+];
+
+/**
+ * How far today sits from the edge of the plan window. Both are deliberately
+ * close in: a plan starting next week and a race a fortnight gone are the
+ * states a runner actually opens Plan in, and a distant edge would hide
+ * whether the screen still reads well beside recent running.
+ */
+const QA_LIFECYCLE_EDGE_DAYS = {
+  /** Training starts in ten days, so week 1 is a genuine preview. */
+  "before-plan": 10,
+  /** Race day was twelve days ago, so the finished plan is still recent. */
+  "after-race": -12,
+} as const;
+
+/** The QA lifecycle a review URL asks for, defaulting to the active plan. */
+export function qaPlanLifecycleFrom(search: string | null | undefined): QaPlanLifecycle {
+  const requested = new URLSearchParams(search ?? "").get("qa");
+  return QA_PLAN_LIFECYCLES.find((lifecycle) => lifecycle === requested) ?? "active";
+}
 
 interface LocationLike {
   hostname: string;
@@ -61,16 +98,37 @@ function shiftDate(date: string, days: number): string {
   return addDaysToLocalDate(date, days);
 }
 
-function shiftedPlan(today: string): TrainingPlan {
+/**
+ * How far the seed plan moves so that its window lands where the reviewed
+ * lifecycle needs it: around today, entirely ahead of it, or entirely behind.
+ */
+function planDelta(today: string, lifecycle: QaPlanLifecycle): number {
   const source = loadSeedPlan();
-  const delta = daysBetweenLocalDates(QA_PLAN_ANCHOR_DATE, today);
+  if (lifecycle === "before-plan") {
+    return daysBetweenLocalDates(
+      source.startDate,
+      addDaysToLocalDate(today, QA_LIFECYCLE_EDGE_DAYS["before-plan"]),
+    );
+  }
+  if (lifecycle === "after-race") {
+    return daysBetweenLocalDates(
+      source.race.date,
+      addDaysToLocalDate(today, QA_LIFECYCLE_EDGE_DAYS["after-race"]),
+    );
+  }
+  return daysBetweenLocalDates(QA_PLAN_ANCHOR_DATE, today);
+}
+
+function shiftedPlan(today: string, lifecycle: QaPlanLifecycle = "active"): TrainingPlan {
+  const source = loadSeedPlan();
+  const delta = planDelta(today, lifecycle);
   return {
     ...source,
     id: "stack-qa-runner-plan",
     name: "QA Half Marathon Build",
     race: {
       ...source.race,
-      name: "QA Half Marathon",
+      name: QA_RACE_NAME,
       date: shiftDate(source.race.date, delta),
       location: "Preview City",
     },
@@ -83,6 +141,9 @@ function shiftedPlan(today: string): TrainingPlan {
       workouts: week.workouts.map((workout) => ({
         ...workout,
         date: shiftDate(workout.date, delta),
+        // Race day carries the race's own name, so a review never sees the
+        // synthetic race called one thing in the plan and another on the day.
+        ...(workout.type === "race" ? { title: QA_RACE_NAME } : {}),
       })),
     })),
   };
@@ -508,8 +569,11 @@ function backgroundActivities(today: string): HistoricalActivity[] {
   return result;
 }
 
-export function createQaRunnerAppState(today: string): AppState {
-  const plan = shiftedPlan(today);
+export function createQaRunnerAppState(
+  today: string,
+  lifecycle: QaPlanLifecycle = "active",
+): AppState {
+  const plan = shiftedPlan(today, lifecycle);
   const runLogs = [...planRunLogs(plan, today), ...reviewRunLogs(today)];
   const initial = createInitialAppState();
   return {
@@ -524,10 +588,13 @@ export function createQaRunnerAppState(today: string): AppState {
   };
 }
 
-export function qaRunnerHistoricalActivities(today: string): HistoricalActivity[] {
+export function qaRunnerHistoricalActivities(
+  today: string,
+  lifecycle: QaPlanLifecycle = "active",
+): HistoricalActivity[] {
   // The plan runs' mirrors are generated from the plan runs alone: the review
   // runs below bring their own, with the metrics their detail state needs.
-  const planRuns = planRunLogs(shiftedPlan(today), today);
+  const planRuns = planRunLogs(shiftedPlan(today, lifecycle), today);
   return [
     ...backgroundActivities(today),
     ...planActivities(planRuns, today),

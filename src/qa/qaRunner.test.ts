@@ -8,6 +8,7 @@ import {
   isQaPreviewHost,
   isQaRunnerEmail,
   isQaRunnerSession,
+  qaPlanLifecycleFrom,
   qaRunnerHistoricalActivities,
   QA_RUNNER_EMAIL,
 } from "./qaRunner";
@@ -131,5 +132,62 @@ describe("QA Runner fixture", () => {
     expect(families.has("long-run")).toBe(true);
     expect(families.has("workload")).toBe(true);
     expect(families.has("zone-distribution")).toBe(true);
+  });
+});
+
+/**
+ * NEXT-5 made Plan's lifecycle a product behavior, and two of its three states
+ * sit outside the plan window. The harness can now stand on either side of that
+ * window so both are reviewable on a device rather than only in a test.
+ */
+describe("QA Runner plan lifecycle states", () => {
+  const today = "2026-08-16";
+
+  it("defaults to the active plan, and ignores an unknown request", () => {
+    expect(qaPlanLifecycleFrom(null)).toBe("active");
+    expect(qaPlanLifecycleFrom("")).toBe("active");
+    expect(qaPlanLifecycleFrom("?qa=after-race")).toBe("after-race");
+    expect(qaPlanLifecycleFrom("?qa=before-plan")).toBe("before-plan");
+    expect(qaPlanLifecycleFrom("?qa=nonsense")).toBe("active");
+  });
+
+  it("places the whole plan window ahead of today for the before-plan review", () => {
+    const state = createQaRunnerAppState(today, "before-plan");
+
+    expect(state.plan.startDate > today).toBe(true);
+    // Nothing scheduled has happened, so nothing is linked and no plan run can
+    // read as missed. The runner still has real running behind them.
+    expect(state.runLogs.every((run) => run.workoutId === null)).toBe(true);
+    expect(state.runLogs.length).toBeGreaterThan(0);
+    expect(
+      qaRunnerHistoricalActivities(today, "before-plan").length,
+    ).toBeGreaterThan(20);
+  });
+
+  it("places the whole plan window behind today for the after-race review", () => {
+    const state = createQaRunnerAppState(today, "after-race");
+
+    expect(state.plan.race.date < today).toBe(true);
+    const scheduled = state.plan.weeks
+      .flatMap((week) => week.workouts)
+      .filter((workout) => workout.type !== "rest");
+    expect(scheduled.every((workout) => workout.date < today)).toBe(true);
+
+    // A finished plan worth reviewing has both relationships in it: linked
+    // days, and days nothing was ever linked to.
+    const linked = new Set(
+      state.runLogs.flatMap((run) => (run.workoutId ? [run.workoutId] : [])),
+    );
+    expect(linked.size).toBeGreaterThan(0);
+    expect(scheduled.some((workout) => !linked.has(workout.id))).toBe(true);
+  });
+
+  it("leaves the active fixture exactly as it was", () => {
+    expect(createQaRunnerAppState(today)).toEqual(
+      createQaRunnerAppState(today, "active"),
+    );
+    expect(qaRunnerHistoricalActivities(today)).toEqual(
+      qaRunnerHistoricalActivities(today, "active"),
+    );
   });
 });
