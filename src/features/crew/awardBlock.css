@@ -1,15 +1,16 @@
+/* Accent per award — the OUC Half v1 monoline icon set's own palette. */
 .award-brick {
-  --award-mark: #d7ff3f;
-  --award-glow: rgba(215, 255, 63, .24);
+  --award-mark: #39ff6a;
+  --award-glow: rgba(57, 255, 106, .24);
 }
 
-.award-brick[data-award="zone2"] { --award-mark: #35e6ff; --award-glow: rgba(53, 230, 255, .24); }
-.award-brick[data-award="pace"] { --award-mark: #ff7048; --award-glow: rgba(255, 112, 72, .25); }
-.award-brick[data-award="runs"] { --award-mark: #ffd94f; --award-glow: rgba(255, 217, 79, .24); }
-.award-brick[data-award="longHaul"] { --award-mark: #f1c66f; --award-glow: rgba(241, 198, 111, .24); }
-.award-brick[data-award="steady"] { --award-mark: #5aa7ff; --award-glow: rgba(90, 167, 255, .24); }
-.award-brick[data-award="onTarget"] { --award-mark: #ff58d4; --award-glow: rgba(255, 88, 212, .24); }
-.award-brick[data-award="levelUp"] { --award-mark: #b77aff; --award-glow: rgba(183, 122, 255, .24); }
+.award-brick[data-award="zone2"] { --award-mark: #ff5a5f; --award-glow: rgba(255, 90, 95, .24); }
+.award-brick[data-award="pace"] { --award-mark: #35d6ff; --award-glow: rgba(53, 214, 255, .24); }
+.award-brick[data-award="runs"] { --award-mark: #ffb038; --award-glow: rgba(255, 176, 56, .24); }
+.award-brick[data-award="longHaul"] { --award-mark: #b6ff3a; --award-glow: rgba(182, 255, 58, .24); }
+.award-brick[data-award="steady"] { --award-mark: #2fe6c4; --award-glow: rgba(47, 230, 196, .24); }
+.award-brick[data-award="onTarget"] { --award-mark: #ff5ac8; --award-glow: rgba(255, 90, 200, .24); }
+.award-brick[data-award="levelUp"] { --award-mark: #9d7bff; --award-glow: rgba(157, 123, 255, .24); }
 
 /*
  * Runner identity leads (who won it); the award glyph is a smaller, secondary
@@ -76,136 +77,31 @@
     0 1px 0 rgba(255,255,255,.08);
 }
 
+/* On Target is the one badge that keeps a circular chip — it frames the bullseye. */
+.award-brick[data-award="onTarget"] .award-brick__badge {
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px #080d10,
+    0 0 0 3px rgba(255, 90, 200, .34),
+    inset 0 0 0 2px rgba(255,255,255,.025);
+}
+
+/*
+ * Real SVG icons (OUC Half v1, per-award <path>/<circle>/<rect> content lives
+ * in AwardBrick.tsx) — the glyph is legible at this size per the source
+ * design's own spec, so it needs no per-award positioning hacks anymore.
+ */
 .award-brick__glyph {
-  position: relative;
   display: block;
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
   color: var(--award-mark);
   filter: drop-shadow(0 0 4px var(--award-glow));
 }
 
-.award-brick__glyph i {
-  position: absolute;
-  display: block;
-  background: currentColor;
-}
-
-.award-brick__glyph--miles i { top: 6px; bottom: 6px; width: 4px; }
-.award-brick__glyph--miles i:nth-child(1) { left: 4px; }
-.award-brick__glyph--miles i:nth-child(2) { left: 12px; }
-.award-brick__glyph--miles i:nth-child(3) { left: 20px; }
-
-/* Zone 2 is a calm gauge; Target keeps the circular bullseye. */
-.award-brick[data-award="zone2"] .award-brick__badge {
-  border-radius: 999px;
-}
-.award-brick__glyph--zone2 i:first-child {
-  width: 16px;
-  height: 8px;
-  left: 6px;
-  top: 6px;
-  border: 2px solid currentColor;
-  border-bottom: 0;
-  border-radius: 16px 16px 0 0;
-  background: transparent;
-}
-.award-brick__glyph--zone2 i:last-child {
-  width: 10px;
-  height: 3px;
-  left: 9px;
-  top: 15px;
-  border-radius: 999px;
-  box-shadow: -6px 0 0 rgba(53,230,255,.28), 6px 0 0 rgba(53,230,255,.28);
-}
-
-.award-brick[data-award="pace"] .award-brick__badge { width: 30px; }
-.award-brick__glyph--pace i {
-  height: 3px;
-  border-radius: 999px;
-  box-shadow: 0 0 6px var(--award-glow);
-}
-.award-brick__glyph--pace i:nth-child(1) { top: 6px; left: 6px; width: 10px; }
-.award-brick__glyph--pace i:nth-child(2) { top: 12px; left: 8px; width: 13px; }
-.award-brick__glyph--pace i:nth-child(3) { top: 18px; left: 10px; width: 16px; }
-
-.award-brick[data-award="runs"] .award-brick__badge { width: 30px; }
-.award-brick__glyph--runs i {
-  height: 5px;
-  border: 1px solid currentColor;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.24);
-}
-.award-brick__glyph--runs i:nth-child(1) { left: 3px; top: 3px; width: 16px; }
-.award-brick__glyph--runs i:nth-child(2) { left: 7px; top: 11px; width: 16px; }
-.award-brick__glyph--runs i:nth-child(3) { left: 3px; top: 19px; width: 20px; }
-
-.award-brick[data-award="longHaul"] .award-brick__badge {
-  width: 70px;
-  border-left-color: var(--award-mark);
-  border-right-color: var(--award-mark);
-}
-.award-brick__glyph--long { width: 56px; }
-.award-brick__glyph--long i { left: 5px; right: 5px; top: 11px; height: 4px; }
-.award-brick__glyph--long::before,
-.award-brick__glyph--long::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  width: 4px;
-  height: 18px;
-  background: currentColor;
-}
-.award-brick__glyph--long::before { left: 4px; }
-.award-brick__glyph--long::after { right: 4px; }
-
-.award-brick[data-award="steady"] .award-brick__badge {
-  width: 30px;
-  border-top-color: var(--award-mark);
-  border-bottom-color: var(--award-mark);
-}
-.award-brick__glyph--steady i { left: 4px; width: 22px; height: 4px; }
-.award-brick__glyph--steady i:nth-child(1) { top: 7px; }
-.award-brick__glyph--steady i:nth-child(2) { top: 17px; }
-
-.award-brick[data-award="onTarget"] .award-brick__badge {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 2px #080d10,
-    0 0 0 3px rgba(255, 88, 212, .34),
-    inset 0 0 0 2px rgba(255,255,255,.025);
-}
-.award-brick[data-award="onTarget"] .award-brick__glyph { width: 26px; height: 26px; }
-.award-brick__glyph--target i:first-child {
-  width: 18px;
-  height: 18px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  border: 3px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-}
-.award-brick__glyph--target i:last-child {
-  width: 6px;
-  height: 6px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-}
-
-.award-brick[data-award="levelUp"] .award-brick__badge { width: 30px; }
-.award-brick__glyph--level i { bottom: 3px; width: 6px; }
-.award-brick__glyph--level i:nth-child(1) { left: 4px; height: 5px; }
-.award-brick__glyph--level i:nth-child(2) { left: 13px; height: 10px; }
-.award-brick__glyph--level i:nth-child(3) { left: 22px; height: 15px; }
-
 /*
- * The award detail sheet reuses the same glyph at hero size instead of a
- * second icon set — swap this block, not AwardBrick, once real award
- * artwork lands.
+ * The award detail sheet reuses the same glyph at hero size rather than a
+ * second icon set — the glyph's own stroke scales with it via `transform`.
  */
 .crew-award-detail__glyph {
   position: relative;
@@ -219,17 +115,12 @@
   border-radius: 14px;
 }
 
+.award-brick[data-award="onTarget"] .award-brick__badge--large {
+  border-radius: 50%;
+}
+
 .award-brick__badge--large .award-brick__glyph {
   transform: scale(3.2);
-}
-
-.award-brick[data-award="onTarget"] .award-brick__badge--large {
-  width: 96px;
-  height: 96px;
-}
-
-.award-brick[data-award="longHaul"] .award-brick__badge--large {
-  width: 168px;
 }
 
 .award-brick[data-feature] .award-brick__badge--large::after {
@@ -248,8 +139,4 @@
     padding-inline: 4px;
   }
   .award-brick__runner { width: 25px; }
-  .award-brick__badge { transform: scale(.9); }
-  .award-brick[data-award="zone2"] .award-brick__badge,
-  .award-brick[data-award="onTarget"] .award-brick__badge { transform: none; }
-  .award-brick[data-award="longHaul"] .award-brick__badge { width: 62px; }
 }
