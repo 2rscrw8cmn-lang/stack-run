@@ -1,8 +1,9 @@
 # Runs Reframe R4 — Integration Review
 
-**Status:** implementation/review brief for `feature/runs-integration-review`.  
+**Status:** active review brief for `feature/runs-integration-review`; static integration pass complete, owner iPhone review pending.  
 **Base:** `feature/stack-next`.  
 **Phase:** R4. R1, R2 and R3 are owner-accepted and merged into `feature/stack-next`.  
+**Results:** `RUNS_R4_REVIEW_RESULTS.md`.  
 **Purpose:** review Runs as one finished product system and make only the integration/polish fixes needed for coherence before NEXT-5 resumes.
 
 ## Goal
