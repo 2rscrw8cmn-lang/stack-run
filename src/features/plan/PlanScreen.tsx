@@ -15,6 +15,7 @@ import {
 import {
   clampWeekNumber,
   currentWeekNumber,
+  PLAN_DAY_STATUS_LABEL,
   selectPlanWeekViewModel,
 } from "../../domain/plan";
 import {
@@ -33,18 +34,30 @@ import type {
   Workout,
 } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
 import { ConflictReviewSheet } from "../availability/ConflictReviewSheet";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
 import { EditWorkoutSheet } from "./EditWorkoutSheet";
 import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
+import {
+  planWeekActualContext,
+  planWeekIntentContext,
+} from "./planWeekContext";
 import { WeekLead } from "./WeekLead";
 import { WorkoutRow } from "./WorkoutRow";
+import "./planNext.css";
 
 interface PlanScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
+  /**
+   * The runner's unified actual history. Plan reads it for viewed-week context
+   * but never links or rewrites it. Falls back to accepted run logs only for a
+   * manual-only/caller that has no historical layer.
+   */
+  runnerRuns?: readonly RunnerRun[];
   /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (
@@ -77,14 +90,16 @@ type Secondary =
  * The complete editable schedule: one training week at a time, opening on the
  * week that contains today.
  *
- * Two kinds of change live here and stay separate. Logging or editing a run
- * records what happened. Editing, moving, or clearing a workout changes what
- * the plan asks for. Nothing does both at once, and nothing here recommends a
- * change — the plan only moves when the user moves it.
+ * NEXT-5 keeps Plan as intent. The week still owns editing/moving the schedule
+ * and explicit run links, but the factual actual summary now comes from unified
+ * runner history. A run may therefore count in `actual` without satisfying any
+ * plan item, which is deliberate: actual history says what happened, while an
+ * explicit link says how that activity relates to the plan.
  */
 export function PlanScreen({
   plan,
   runLogs,
+  runnerRuns,
   today = todayLocalDate(),
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
@@ -110,6 +125,12 @@ export function PlanScreen({
     : isAfterLocalDate(today, plan.race.date)
       ? "after-race"
       : "active";
+  const actualRuns = runnerRuns ?? unifiedRunnerHistory({ runLogs });
+  const actual = planWeekActualContext(actualRuns, week.startDate, week.endDate);
+  const intent = planWeekIntentContext(week);
+  // A future week has no actual story yet. Hide the technically correct zero
+  // rather than presenting absence-of-future-data as a runner fact.
+  const showActual = !isBeforeLocalDate(today, week.startDate);
   const blocked = blockedDates(availability);
   const conflicts = findAvailabilityConflicts(plan, availability, runLogs, today);
   const satisfiedWorkoutIds = new Set(
@@ -219,6 +240,9 @@ export function PlanScreen({
         week={week}
         totalWeeks={plan.weeks.length}
         lifecycle={lifecycle}
+        actual={actual}
+        intent={intent}
+        showActual={showActual}
         onStep={(direction) => goToWeek(week.weekNumber + direction)}
         onCurrentWeek={() => goToWeek(currentWeekNumber(plan, today))}
       />
@@ -259,10 +283,6 @@ export function PlanScreen({
         ))}
       </ul>
 
-      {/* Nothing hangs off the foot of the schedule now: the plan's settings
-          are in the header gear, and Training Trends is on Runs, next to the
-          actual runs it is a reading of. */}
-
       <p className="visually-hidden" aria-live="polite">
         {announcement}
       </p>
@@ -271,6 +291,7 @@ export function PlanScreen({
         <WorkoutDetailSheet
           workout={detailDay.workout}
           state={detailDay.status}
+          statusLabel={PLAN_DAY_STATUS_LABEL[detailDay.status]}
           runLog={detailDay.runLog}
           syncToken={syncToken}
           isOpen={isDetailOpen}
