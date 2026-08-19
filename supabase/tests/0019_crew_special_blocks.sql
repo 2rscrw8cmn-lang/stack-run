@@ -60,7 +60,7 @@ update award_test_ids set member_run_id = (select id from inserted);
 
 select public.sync_crew_award_metrics(
   (select crew_id from award_test_ids),
-  '[{"localRunId":"member-award-run","zone2Percent":92,"targetPercent":99,"levelUpPercent":4.5,"steadySeconds":null}]'::jsonb
+  '[{"localRunId":"member-award-run","zone2Percent":92,"targetPercent":99,"levelUpPercent":4.5,"steadySeconds":15}]'::jsonb
 );
 
 do $$
@@ -71,7 +71,7 @@ begin
       and award_zone2_percent = 92
       and award_target_percent = 99
       and award_level_up_percent = 4.5
-      and award_steady_seconds is null
+      and award_steady_seconds = 15
   ) then raise exception 'metric sync failure: derived scalar scores were not stored'; end if;
 end;
 $$;
@@ -94,7 +94,7 @@ update award_test_ids set owner_run_id = (select id from inserted);
 
 select public.sync_crew_award_metrics(
   (select crew_id from award_test_ids),
-  '[{"localRunId":"owner-award-run","zone2Percent":90,"targetPercent":100,"levelUpPercent":7,"steadySeconds":null}]'::jsonb
+  '[{"localRunId":"owner-award-run","zone2Percent":90,"targetPercent":100,"levelUpPercent":7,"steadySeconds":20}]'::jsonb
 );
 
 -- A runner cannot use scalar sync to alter a teammate's row because the RPC
