@@ -1,7 +1,26 @@
+/*
+ * Special Blocks are hollow.
+ *
+ * Every award uses one treatment: the frame is the runner's colour (the same
+ * `--piece-color` a run block of theirs carries, so the tower reads ownership
+ * one way everywhere), the middle is a recess, and the award's glyph is
+ * suspended in the recess in its own colour. Two independent channels — whose,
+ * and which award — with no second runner mark, no badge, and no separate
+ * Feature treatment.
+ */
+
 /* Accent per award — the OUC Half v1 monoline icon set's own palette. */
 .award-brick {
   --award-mark: #39ff6a;
   --award-glow: rgba(57, 255, 106, .24);
+  /*
+   * Frame thickness. A course is 26px (`--course-height`), so this is most of
+   * the budget: 4px of frame each side leaves an 18px opening for a 14px
+   * glyph. Thicker reads better in isolation and leaves no window at all on a
+   * real one-course block.
+   */
+  --award-frame: 4px;
+  --award-recess: #0b1013;
 }
 
 .award-brick[data-award="zone2"] { --award-mark: #ff5a5f; --award-glow: rgba(255, 90, 95, .24); }
@@ -13,130 +32,99 @@
 .award-brick[data-award="levelUp"] { --award-mark: #9d7bff; --award-glow: rgba(157, 123, 255, .24); }
 
 /*
- * Runner identity leads (who won it); the award glyph is a smaller, secondary
- * chip pinned to the side (what they won) — see docs/CREW_SPECIAL_BLOCKS.md's
- * "Runner Icon = who, glyph = what" visual language.
+ * The frame keeps the run brick's own front-face gradient — it is the same
+ * moulded piece, just with a hole in it — so an award and a run by the same
+ * runner sit together without looking like two different materials.
  */
 .award-brick__front {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: center;
-  justify-items: start;
-  gap: 5px;
-  padding: 3px 5px;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.035), transparent 45%),
-    #171d21 !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(220, 231, 236, .24),
-    inset 0 0 0 3px rgba(0, 0, 0, .55),
-    inset 0 -5px 0 rgba(0, 0, 0, .2);
-}
-
-.award-brick[data-feature] .award-brick__front::after {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border: 1px solid rgba(210, 170, 98, .82);
-  box-shadow: inset 0 0 0 1px rgba(210, 170, 98, .08);
-  pointer-events: none;
-}
-
-.award-brick__edge {
-  --piece-color: #262e33;
-}
-
-.award-brick__runner {
-  position: relative;
-  z-index: 2;
-  width: 28px;
-  height: 28px;
-  display: grid;
   place-items: center;
-  justify-self: start;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.9));
-}
-
-.award-brick__badge {
-  position: relative;
-  z-index: 1;
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  justify-self: end;
-  overflow: hidden;
-  border: 1px solid rgba(181, 194, 201, .46);
-  border-radius: 6px;
-  background:
-    radial-gradient(circle at 50% 50%, var(--award-glow), transparent 58%),
-    #080d10;
-  box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,.025),
-    0 1px 0 rgba(255,255,255,.08);
-}
-
-/* On Target is the one badge that keeps a circular chip — it frames the bullseye. */
-.award-brick[data-award="onTarget"] .award-brick__badge {
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 2px #080d10,
-    0 0 0 3px rgba(255, 90, 200, .34),
-    inset 0 0 0 2px rgba(255,255,255,.025);
+  padding: 0;
 }
 
 /*
- * Real SVG icons (OUC Half v1, per-award <path>/<circle>/<rect> content lives
- * in AwardBrick.tsx) — the glyph is legible at this size per the source
- * design's own spec, so it needs no per-award positioning hacks anymore.
+ * The recess. Inset by the frame width on every side, with the shadow reading
+ * as depth: dark at the top where the frame overhangs, a thin lift along the
+ * bottom lip. No border, no chip, no glass.
  */
+.award-brick__window {
+  /* The face is already an absolutely positioned box, so the frame is just an
+     inset on all four sides — no percentage maths that a centred grid item
+     would resolve against its own content. */
+  position: absolute;
+  inset: var(--award-frame);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--award-recess);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, .55),
+    inset 0 -1px 0 color-mix(in srgb, var(--piece-color) 45%, transparent);
+}
+
 .award-brick__glyph {
   display: block;
+  /* Sized to the opening, not to the ink: the 24-unit viewBox carries about
+     3 units of padding a side, so a box this size draws roughly 13px of
+     stroke and still clears the frame. */
   width: 18px;
   height: 18px;
   color: var(--award-mark);
-  filter: drop-shadow(0 0 4px var(--award-glow));
+  filter: drop-shadow(0 0 5px var(--award-glow));
+}
+
+/* Narrow phones give the frame back a millimetre so the glyph keeps its air. */
+@media (max-width: 420px) {
+  .award-brick { --award-frame: 3px; }
+  .award-brick__glyph { width: 20px; height: 20px; }
 }
 
 /*
- * The award detail sheet reuses the same glyph at hero size rather than a
- * second icon set — the glyph's own stroke scales with it via `transform`.
+ * The same hollow block away from the tower.
+ *
+ * The award detail sheet shows it at hero size and the member profile lists it
+ * at row size; both are portraits of the block, so they are built from the
+ * same frame + recess + suspended glyph rather than a second treatment. They
+ * are flat (no top/right faces) because nothing is stacking on them.
+ */
+.award-brick--portrait {
+  position: relative;
+  display: block;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--piece-color) 92%, white),
+    var(--piece-color) 55%,
+    color-mix(in srgb, var(--piece-color) 80%, black)
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45);
+}
+
+/*
+ * The hero keeps a standard award's own proportions — two columns by one
+ * course, roughly 2:1 — so it reads as the same piece enlarged rather than a
+ * different, squarer object. The frame scales with it at about the same
+ * fraction of height the tower block uses.
  */
 .crew-award-detail__glyph {
-  position: relative;
-  display: inline-flex;
+  --award-frame: 11px;
+  width: 152px;
+  height: 76px;
   margin-bottom: 2px;
 }
 
-.award-brick__badge--large {
-  width: 96px;
-  height: 96px;
-  border-radius: 14px;
+.crew-award-detail__glyph .award-brick__glyph {
+  width: 46px;
+  height: 46px;
 }
 
-.award-brick[data-award="onTarget"] .award-brick__badge--large {
-  border-radius: 50%;
+.crew-member-profile__award-glyph {
+  --award-frame: 4px;
+  width: 42px;
+  height: 28px;
+  flex: 0 0 auto;
 }
 
-.award-brick__badge--large .award-brick__glyph {
-  transform: scale(3.2);
-}
-
-.award-brick[data-feature] .award-brick__badge--large::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border: 1px solid rgba(210, 170, 98, .82);
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-@media (max-width: 420px) {
-  .award-brick__front {
-    grid-template-columns: 25px minmax(0, 1fr);
-    gap: 4px;
-    padding-inline: 4px;
-  }
-  .award-brick__runner { width: 25px; }
+.crew-member-profile__award-glyph .award-brick__glyph {
+  width: 19px;
+  height: 19px;
 }

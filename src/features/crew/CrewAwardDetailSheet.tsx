@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { addDaysToLocalDate, formatDateLabel } from "../../domain/dates";
 import {
   CREW_AWARD_DESCRIPTION,
@@ -38,12 +39,18 @@ export function CrewAwardDetailSheet({
     >
       <div className="crew-award-detail__body">
         <span
-          className="award-brick crew-award-detail__glyph"
+          className="award-brick award-brick--portrait crew-award-detail__glyph"
           data-award={award.awardType}
-          data-feature={isFeatureCrewAward(award.awardType) || undefined}
           aria-hidden="true"
+          style={
+            {
+              "--piece-color": member
+                ? `var(--member-${crewMemberAccent(member.userId, member.accentColor)})`
+                : "var(--line)",
+            } as CSSProperties
+          }
         >
-          <span className="award-brick__badge award-brick__badge--large">
+          <span className="award-brick__window">
             <AwardGlyph type={award.awardType} />
           </span>
         </span>

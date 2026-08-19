@@ -15,7 +15,6 @@ import {
 import {
   CREW_AWARD_LABEL,
   formatCrewAwardResult,
-  isFeatureCrewAward,
   type CrewAwardBlockRecord,
 } from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
@@ -186,12 +185,16 @@ export function CrewMemberProfileSheet({
                     onClick={() => onSelectAward(award.id)}
                   >
                     <span
-                      className="award-brick crew-member-profile__award-glyph"
+                      className="award-brick award-brick--portrait crew-member-profile__award-glyph"
                       data-award={award.awardType}
-                      data-feature={isFeatureCrewAward(award.awardType) || undefined}
                       aria-hidden="true"
+                      style={
+                        {
+                          "--piece-color": `var(--member-${crewMemberAccent(member.userId, member.accentColor)})`,
+                        } as CSSProperties
+                      }
                     >
-                      <span className="award-brick__badge">
+                      <span className="award-brick__window">
                         <AwardGlyph type={award.awardType} />
                       </span>
                     </span>

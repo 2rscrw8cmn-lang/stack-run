@@ -635,6 +635,8 @@ The Crew-safe projection is extended only for derived award scalars: `award_zone
 
 **Weekly standings are not a v1 surface.** `finalize_crew_awards` is the single authority on who won a week, so the client carries no mirror of the ranking logic: no leaderboard, no live leader row, no client-side week derivation. Crew shows the winner their own placement prompt and nothing else. A Special Block enters the tower by being placed, not by being announced. This also removes a whole class of drift — a client mirror of the rotation and the ranking rules would have to be kept in step with the SQL finalizer forever, and the first version of it was already wrong across a DST boundary.
 
+**Every Special Block is a hollow block.** One treatment for standard and Feature awards alike: the frame carries the runner's own `--piece-color` — the same colour a run block of theirs wears — and the award's glyph is suspended in the opening in its own colour. Ownership and award are two independent channels, so the face needs no runner icon, Feature awards need no brass keyline, and there are no badges, inset chips or added borders. The block's accessible name still leads with the runner's display name, so colour is never the only carrier of ownership. The same hollow block is the award's portrait in the detail sheet and in a member's profile list.
+
 Award geometry binds to D-079's two-argument `crew_build_height(activity_type, duration_seconds)`. Run and award rectangles are compared through one normalized `crew_build_items()` read, so a Cross Training block's duration-derived height is authoritative in mixed collision and support checks too.
 
 **Reason**

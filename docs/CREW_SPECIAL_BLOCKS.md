@@ -80,25 +80,46 @@ Long Haul is the only intentionally longer award piece. It gets one extra column
 
 ## Visual language
 
-All award blocks share a dark graphite/trophy-hardware shell.
+Every Special Block, standard and Feature alike, is one treatment: a **hollow block**.
 
-- Runner Icon on the face = **who won it**.
-- Award color + glyph = **what they won**.
-- Feature awards add a restrained brass keyline.
+- The **frame** is the runner's own colour — the same `--piece-color` a run block of
+  theirs carries — so ownership reads identically everywhere in the tower.
+- The **opening** is a recess, not a badge or a panel.
+- The **award glyph** is suspended in the recess in the award's own colour, independent
+  of the frame.
+
+So the block answers two questions on two independent channels: the frame says *whose*,
+the glyph says *which award*.
+
+Rules that follow from that:
+
+- No runner icon on the face. The frame colour is the ownership signal, and a second
+  mark would say the same thing twice.
+- No separate Feature treatment. Feature awards are the same hollow block; the glyph and
+  its colour are the only difference. There is no brass keyline.
+- No badges, inset chips, extra borders, or metal/stone/glass texture. The look stays
+  arcade-simple.
 - Award blocks show no mileage text.
+- Geometry is unchanged from a run block: same 2:1 oblique, same top/right faces, same
+  collision and support rules, so awards stack natively.
 
-Approved award language:
+The same hollow block is the award's portrait away from the tower — the detail sheet
+renders it at hero size and a member's profile lists it at row size, both in the
+winner's frame colour. They are flat (no top/right faces) because nothing stacks on them.
 
-| Award | Face language |
-| --- | --- |
-| Most Miles | lime / three heavy vertical slabs |
-| Best Zone 2 | cyan / controlled-effort gauge |
-| Fastest Avg. Pace | orange / horizontal speed streaks |
-| Most Runs | yellow / stacked mini bricks |
-| Long Haul | brass / long structural span |
-| Steady | blue / equal parallel lines |
-| On Target | magenta / centered bullseye |
-| Level Up | purple / rising steps |
+Approved award language (OUC Half v1 monoline set; the glyph paths live in
+`src/features/crew/AwardBrick.tsx`, the colours in `src/features/crew/awardBlock.css`):
+
+| Award | Glyph colour | Glyph |
+| --- | --- | --- |
+| Most Miles | green `#39ff6a` | measured span between two rules |
+| Best Zone 2 | red `#ff5a5f` | heart with a controlled-effort trace |
+| Fastest Avg. Pace | cyan `#35d6ff` | stopwatch |
+| Most Runs | amber `#ffb038` | stacked mini bricks |
+| Long Haul | lime `#b6ff3a` | long structural span |
+| Steady | teal `#2fe6c4` | metronome |
+| On Target | magenta `#ff5ac8` | centred bullseye |
+| Level Up | purple `#9d7bff` | rising steps |
 
 ## Safe Crew projection
 

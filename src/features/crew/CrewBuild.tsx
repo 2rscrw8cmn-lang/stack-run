@@ -282,18 +282,10 @@ export function CrewBuild({
                           topFace={block.topFace}
                           rightFace={block.rightFace}
                         />
-                      ) : member ? (
+                      ) : (
                         <AwardBrick
                           awardType={block.awardType}
-                          runnerIcon={member.runnerIcon}
-                          runnerAccent={accent}
-                          topFace={block.topFace}
-                          rightFace={block.rightFace}
-                        />
-                      ) : (
-                        <Brick
-                          pieceColor="#171d21"
-                          label={null}
+                          pieceColor={memberPieceColor(block.userId, member?.accentColor ?? null)}
                           topFace={block.topFace}
                           rightFace={block.rightFace}
                         />

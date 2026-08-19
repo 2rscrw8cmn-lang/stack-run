@@ -1,11 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import {
-  isFeatureCrewAward,
-  type CrewAwardType,
-} from "../../crew/awards";
-import type { CrewMemberAccent } from "../../crew/memberAccent";
-import type { RunnerIcon as RunnerIconModel } from "../../crew/runnerIcon";
-import { RunnerIcon } from "./RunnerIcon";
+import type { CrewAwardType } from "../../crew/awards";
 import "./awardBlock.css";
 
 /**
@@ -92,20 +86,27 @@ export function AwardGlyph({ type }: { type: CrewAwardType }) {
 
 interface AwardBrickProps {
   awardType: CrewAwardType;
-  runnerIcon: RunnerIconModel;
-  runnerAccent?: CrewMemberAccent;
+  /**
+   * CSS custom property reference for the runner who earned it, e.g.
+   * `"var(--member-sky)"` — the same value a run block of theirs would use.
+   */
+  pieceColor: string;
   topFace: readonly boolean[];
   rightFace: readonly boolean[];
 }
 
 /**
- * A zero-mile Crew award using the exact same outer 3D face geometry as a run
- * brick. Only the front face changes: runner mark = who, colored glyph = what.
+ * A zero-mile Crew award: the same 3D face-set as a run brick, hollowed out.
+ *
+ * The frame is the runner's colour, exactly as a run block of theirs would be,
+ * so ownership is read the same way everywhere in the tower and needs no
+ * second runner mark on the face. The opening is a recess, and the award's own
+ * glyph is suspended in it in the award's own colour — so the block answers
+ * "whose" and "which award" on two independent channels (D-080).
  */
 export function AwardBrick({
   awardType,
-  runnerIcon,
-  runnerAccent,
+  pieceColor,
   topFace,
   rightFace,
 }: AwardBrickProps) {
@@ -113,15 +114,11 @@ export function AwardBrick({
     <span
       className="placed-block__brick award-brick"
       data-award={awardType}
-      data-feature={isFeatureCrewAward(awardType) || undefined}
       aria-hidden="true"
-      style={{ "--piece-color": "#171d21" } as CSSProperties}
+      style={{ "--piece-color": pieceColor } as CSSProperties}
     >
       <span className="placed-block__face placed-block__face--front award-brick__front">
-        <span className="award-brick__runner">
-          <RunnerIcon icon={runnerIcon} accent={runnerAccent} size={24} />
-        </span>
-        <span className="award-brick__badge">
+        <span className="award-brick__window">
           <AwardGlyph type={awardType} />
         </span>
       </span>
@@ -129,7 +126,7 @@ export function AwardBrick({
         visible ? (
           <span
             key={`top-${column}`}
-            className="placed-block__face placed-block__face--top award-brick__edge"
+            className="placed-block__face placed-block__face--top"
             style={{
               "--face-offset": column,
               "--face-cells": topFace.length,
@@ -141,7 +138,7 @@ export function AwardBrick({
         visible ? (
           <span
             key={`right-${row}`}
-            className="placed-block__face placed-block__face--right award-brick__edge"
+            className="placed-block__face placed-block__face--right"
             style={{
               "--face-offset": row,
               "--face-cells": rightFace.length,
