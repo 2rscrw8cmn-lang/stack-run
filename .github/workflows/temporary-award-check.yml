@@ -32,6 +32,13 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+      - name: Normalize pre-existing duplicate migration version
+        run: |
+          # main currently contains two unrelated 20260814120000 migrations.
+          # Rename one only inside this disposable CI workspace so Supabase can
+          # build the existing schema before exercising the Special Block SQL.
+          mv supabase/migrations/20260814120000_runner_icon_backdrop.sql \
+            supabase/migrations/20260814120100_runner_icon_backdrop.sql
       - name: Start local Supabase
         run: supabase start
       - name: Run database tests
