@@ -160,32 +160,48 @@ sheet is open — never during ordinary sync, and never persisted beyond the
 open sheet's component state:
 
 ```text
-GET /api/v1/activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth,cadence
+GET /api/v1/activity/{id}/streams.json?types=time,heartrate,altitude,velocity_smooth,cadence
 ```
+
+### Real-source path verified on iPhone, August 18, 2026
+
+During R3 / PR #122, the owner connected Intervals on the Vercel preview
+hostname and reopened a real Intervals-backed personal run in iPhone Safari.
+The production direct local-key stream request completed and STACK rendered a
+real Run Profile through `normalizeIntervalsRunProfile` and the production
+Run Profile components.
+
+The earlier apparent failure was not a source or normalizer failure. The
+Intervals API key is intentionally stored in account-scoped browser
+`localStorage`, so the preview hostname had no source reader until Intervals
+was connected on that browser/domain. Once connected, the same real run
+rendered the Run Profile successfully.
+
+This verifies the **direct local-key transport path and payload compatibility
+with the current normalizer**. It does not, by itself, promote every individual
+stream's units/semantics: those remain `Expected` until each metric is
+explicitly spot-checked against source truth. No raw stream values, route data,
+GPS, credential material or complete source payload are recorded here.
 
 | STACK concept | Intervals candidate | Status | UI phase | Notes |
 |---|---|---|---|---|
-| Elapsed-time axis | `time` stream | Expected | UI-23 | Seconds from run start. Required; the profile is not shown at all without it. Also supplies the `0:00 → duration` x-axis. |
-| Heart rate over time | `heartrate` stream | Expected | UI-23 | bpm per sample. Shape only — the stated Avg/Max come from the verified summary aggregates. |
-| Elevation over time | `altitude` stream | Expected | UI-23 | Meters per sample; converted to feet. The only series whose own low/high are stated, because those are properties of the series. Total gain is **not** derived from it. |
-| Pace over time | derived from `velocity_smooth` stream | Expected | UI-23 | Metres/second, an unambiguous unit; STACK derives seconds-per-mile rather than trusting an assumed-unit `pace` field. Shape only — the stated pace is the run's own. |
-| Cadence over time | `cadence` stream | Expected | UI-23 | Verbatim, per the verified convention above. A zero sample is a stop, so it is treated as absent and drawn as a gap. |
+| Elapsed-time axis | `time` stream | Expected | UI-23 | Required by the normalizer and therefore present in at least one real payload that produced a Run Profile, but exact units/sample semantics have not been separately recorded. |
+| Heart rate over time | `heartrate` stream | Expected | UI-23 | bpm per sample. Shape only — the stated Avg/Max come from the verified summary aggregates. Still needs an explicit source spot-check before promotion. |
+| Elevation over time | `altitude` stream | Expected | UI-23 | Meters per sample; converted to feet. The only series whose own low/high are stated, because those are properties of the series. Total gain is **not** derived from it. Still needs explicit source spot-check. |
+| Pace over time | derived from `velocity_smooth` stream | Expected | UI-23 | Metres/second under the candidate contract; STACK derives seconds-per-mile rather than trusting an assumed-unit `pace` field. Shape only — the stated pace is the run's own. Still needs explicit source spot-check. |
+| Cadence over time | `cadence` stream | Expected | UI-23 | Verbatim, per the verified aggregate convention above. A zero sample is a stop, so it is treated as absent and drawn as a gap. Stream convention still needs explicit source spot-check. |
 
-**The per-sample stream shapes remain `Expected`, not `Verified`.** The August
-13 review verified the *summary aggregates* this feature states — pace, average
-and max HR, elevation gain, cadence — but it did not capture the streams
-payload itself, and this repository has no network path to Intervals.icu to
-check it (the same "cannot be performed in the secret-free repository
-environment" limitation recorded elsewhere in this file). The endpoint and
-field names follow Intervals.icu's documented streams contract, the way every
-other candidate here started.
+The R3 owner-device test establishes that the real Intervals response is
+recognized well enough to produce a profile; QA is no longer the only evidence
+that the path works. The individual rows above remain `Expected` because the
+review did not record each stream's source values/units separately, and this
+catalog deliberately does not infer semantics merely because a chart rendered.
 
-`normalizeIntervalsRunProfile` in `src/connected/intervals.ts` is written
-defensively for that reason: a shape it does not recognize resolves to `null`
-rather than a guess, and Run Detail simply shows no Run Profile section — the
-same as a run with no profile data. Because no stated number depends on the
-streams, an unverified stream shape can cost a chart but can never produce a
-wrong figure.
+`normalizeIntervalsRunProfile` in `src/connected/intervals.ts` remains
+defensive: a shape it does not recognize resolves to `null` rather than a guess,
+and Run Detail simply shows no Run Profile section — the same as a run with no
+profile data. Because no stated summary number depends on the streams, a missing
+or unrecognized stream can cost a chart but cannot manufacture a run fact.
 
 ### Streams give shape; aggregates give numbers
 
@@ -302,16 +318,18 @@ UI-8 field discovery is complete when:
 
 ## UI-23 discovery: Run Profile streams
 
-The August 13 review verified the summary aggregates Run Detail *states*. The
-per-sample stream shapes behind the *lines* are still outstanding. Complete
-before promoting the Run Profile streams rows above to `Verified`:
+R3 established that a real owner Intervals activity can be fetched through the
+direct local-key path and normalized into the production Run Profile. Complete
+the remaining source-semantic checks before promoting the individual stream rows
+above to `Verified`:
 
-- [ ] `GET /activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth,cadence` is confirmed reachable through the deployed `/api/intervals` proxy and the direct local-key path.
-- [ ] The response shape (array of `{type, data}` descriptors vs. a map) is recorded here.
-- [ ] `time` stream presence/units is confirmed on a real HealthFit-originated run.
-- [ ] `heartrate` stream presence is confirmed and spot-checked against the run's known average HR.
-- [ ] `altitude` stream presence/unit is confirmed, and its low/high span is checked against the ~72–113 ft the August 13 review saw.
-- [ ] `velocity_smooth` presence/unit is confirmed and the derived pace is spot-checked against the run's known average pace.
-- [ ] `cadence` stream presence is confirmed, and its values are checked to sit around the same 79 the summary field reports — **not** around 158. A doubled stream against an undoubled summary would be the clearest possible signal that the convention differs between the two, and must be recorded here before either is displayed differently.
+- [x] Direct local-key `GET /activity/{id}/streams.json?types=time,heartrate,altitude,velocity_smooth,cadence` is confirmed reachable on a real owner run.
+- [ ] The deployed `/api/intervals` proxy stream path is separately confirmed on a real owner run if that legacy connection mode remains supported.
+- [x] The returned payload is compatible with the current normalizer and produced a real Run Profile. Exact raw response shape is intentionally not stored here.
+- [ ] `time` stream presence/units are explicitly recorded on a real HealthFit-originated run.
+- [ ] `heartrate` stream presence is explicitly spot-checked against the run's known average HR.
+- [ ] `altitude` stream presence/unit is explicitly recorded, and its low/high span is checked against source truth.
+- [ ] `velocity_smooth` presence/unit is explicitly recorded and the derived pace is spot-checked against the run's known average pace.
+- [ ] `cadence` stream presence is explicitly checked against the verified undoubled source convention.
 - [ ] A run genuinely lacking streams (e.g. an older or manually uploaded activity) is confirmed to render with no Run Profile section rather than an error.
-- [ ] A run whose stream drops out mid-activity is confirmed to render a visible gap rather than a line drawn across it.
+- [ ] A real run whose stream drops out mid-activity is confirmed to render a visible gap rather than a line drawn across it.
