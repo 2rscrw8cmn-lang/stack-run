@@ -12,6 +12,12 @@ import type {
 import type { HistoricalActivity } from "../history/historicalActivity";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 import { createInitialAppState } from "../storage/migrations";
+import {
+  QA_AGGREGATE_ONLY_ACTIVITY_ID,
+  QA_HISTORICAL_AGGREGATE_ACTIVITY_ID,
+  QA_HISTORICAL_RICH_ACTIVITY_ID,
+  QA_RICH_PROFILE_ACTIVITY_ID,
+} from "./qaSourceDetail";
 
 /**
  * Public synthetic review credentials. They unlock no real runner data and are
@@ -204,6 +210,195 @@ function planRunLogs(plan: TrainingPlan, today: string): RunLog[] {
   });
 }
 
+
+/**
+ * The four runs R3 exists to make reviewable, and the reason they are named
+ * rather than picked out of the crowd.
+ *
+ * Run Detail has two axes that have never been reviewable together: whether a
+ * run is STACK-owned or historical-only, and whether its source supplied a
+ * profile or only summary aggregates. These are one run for each corner, so an
+ * owner can open all four in a row and see that the rich state is rich, the
+ * poor state is honest, and neither one invents anything it does not have.
+ *
+ * Their activity ids are the same ones `qaSourceDetail.ts` answers profile
+ * reads for. Nothing else in the fixture has a profile, which is deliberate:
+ * the ordinary case is a run with aggregates only, and it should look ordinary.
+ */
+const QA_REVIEW_DAYS_AGO = {
+  richAccepted: 2,
+  aggregateAccepted: 4,
+  richHistorical: 9,
+  aggregateHistorical: 11,
+} as const;
+
+/**
+ * Two accepted runs: one whose source has a full profile and structured
+ * groups, one whose source has neither.
+ *
+ * Both are extra runs. Attaching them to scheduled workouts would change which
+ * plan days read as completed, and R3 is not a plan phase.
+ */
+function reviewRunLogs(today: string): RunLog[] {
+  const richDate = addDaysToLocalDate(today, -QA_REVIEW_DAYS_AGO.richAccepted);
+  const aggregateDate = addDaysToLocalDate(today, -QA_REVIEW_DAYS_AGO.aggregateAccepted);
+  const stamp = (date: string) => `${date}T13:00:00.000Z`;
+
+  return [
+    {
+      id: "qa-run-detail-rich",
+      workoutId: null,
+      completedDate: richDate,
+      activityType: "intervals",
+      distanceMiles: 5.2,
+      durationSeconds: 2980,
+      effort: "great",
+      notes: "Reps held together to the end.",
+      createdAt: stamp(richDate),
+      updatedAt: stamp(richDate),
+      source: "intervals",
+      externalSource: {
+        provider: "intervals",
+        activityId: QA_RICH_PROFILE_ACTIVITY_ID,
+        sourceUpdatedAt: stamp(richDate),
+        importedAt: stamp(richDate),
+      },
+      importedMetrics: {
+        averageHeartRate: 147,
+        maxHeartRate: 171,
+        // Present, and expected to move into the profile rather than the grid.
+        averageCadence: 79,
+        elevationGainFeet: 214,
+        elapsedTimeSeconds: 3110,
+        trainingLoad: 74,
+        hrZoneSeconds: zoneSeconds(2980, 0.61),
+      },
+    },
+    {
+      id: "qa-run-detail-aggregate",
+      workoutId: null,
+      completedDate: aggregateDate,
+      activityType: "easy",
+      distanceMiles: 4.1,
+      durationSeconds: 2440,
+      effort: "solid",
+      notes: "",
+      createdAt: stamp(aggregateDate),
+      updatedAt: stamp(aggregateDate),
+      source: "intervals",
+      externalSource: {
+        provider: "intervals",
+        activityId: QA_AGGREGATE_ONLY_ACTIVITY_ID,
+        sourceUpdatedAt: stamp(aggregateDate),
+        importedAt: stamp(aggregateDate),
+      },
+      importedMetrics: {
+        averageHeartRate: 141,
+        maxHeartRate: 158,
+        // No stream to move it into, so this one stays in the summary grid.
+        averageCadence: 80,
+        elevationGainFeet: 96,
+        trainingLoad: 48,
+        hrZoneSeconds: zoneSeconds(2440, 0.78),
+      },
+    },
+  ];
+}
+
+/**
+ * The source mirrors for the two accepted review runs, plus two historical-only
+ * runs nobody has ever accepted.
+ *
+ * The historical aggregate-only run is deliberately the poorest row in the
+ * fixture: distance and duration and nothing else. It is the one that proves a
+ * detail sheet can be honest about having very little and still not look
+ * broken.
+ */
+function reviewActivities(today: string): HistoricalActivity[] {
+  const seenAt = `${today}T12:00:00.000Z`;
+  const richDate = addDaysToLocalDate(today, -QA_REVIEW_DAYS_AGO.richAccepted);
+  const aggregateDate = addDaysToLocalDate(today, -QA_REVIEW_DAYS_AGO.aggregateAccepted);
+  const historicalRichDate = addDaysToLocalDate(today, -QA_REVIEW_DAYS_AGO.richHistorical);
+  const historicalAggregateDate = addDaysToLocalDate(
+    today,
+    -QA_REVIEW_DAYS_AGO.aggregateHistorical,
+  );
+  const historicalRichSeconds = 4803;
+
+  return [
+    activity({
+      sourceId: QA_RICH_PROFILE_ACTIVITY_ID,
+      date: richDate,
+      miles: 5.2,
+      paceSecondsPerMile: 2980 / 5.2,
+      averageHeartRate: 147,
+      maxHeartRate: 171,
+      cadence: 79,
+      trainingLoad: 74,
+      lowerZoneShare: 0.61,
+      seenAt,
+      name: "Interval Session",
+    }),
+    activity({
+      sourceId: QA_AGGREGATE_ONLY_ACTIVITY_ID,
+      date: aggregateDate,
+      miles: 4.1,
+      paceSecondsPerMile: 2440 / 4.1,
+      averageHeartRate: 141,
+      maxHeartRate: 158,
+      cadence: 80,
+      trainingLoad: 48,
+      lowerZoneShare: 0.78,
+      seenAt,
+      name: "Easy Run",
+    }),
+    {
+      provider: "intervals",
+      sourceId: QA_HISTORICAL_RICH_ACTIVITY_ID,
+      startDateLocal: historicalRichDate,
+      startTimeLocal: `${historicalRichDate}T07:15:00`,
+      sourceType: "Run",
+      name: "History Long Run",
+      distanceMeters: 7.4 * METERS_PER_MILE,
+      movingTimeSeconds: historicalRichSeconds,
+      elapsedTimeSeconds: historicalRichSeconds + 140,
+      averageHeartRate: 138,
+      maxHeartRate: 159,
+      hrZoneSeconds: zoneSeconds(historicalRichSeconds, 0.82),
+      elevationGainMeters: 96,
+      averageCadence: 78,
+      trainingLoad: 96,
+      sourceUpdatedAt: seenAt,
+      firstSeenAt: seenAt,
+      lastSeenAt: seenAt,
+      reconciledAt: null,
+    },
+    {
+      provider: "intervals",
+      sourceId: QA_HISTORICAL_AGGREGATE_ACTIVITY_ID,
+      startDateLocal: historicalAggregateDate,
+      startTimeLocal: `${historicalAggregateDate}T18:40:00`,
+      sourceType: "Run",
+      name: "History Shakeout",
+      distanceMeters: 3.4 * METERS_PER_MILE,
+      movingTimeSeconds: 2077,
+      elapsedTimeSeconds: null,
+      // Nothing else was measured. Every one of these has to disappear from
+      // the sheet rather than arrive as a zero.
+      averageHeartRate: null,
+      maxHeartRate: null,
+      hrZoneSeconds: null,
+      elevationGainMeters: null,
+      averageCadence: null,
+      trainingLoad: null,
+      sourceUpdatedAt: seenAt,
+      firstSeenAt: seenAt,
+      lastSeenAt: seenAt,
+      reconciledAt: null,
+    },
+  ];
+}
+
 function placementsFor(runLogs: readonly RunLog[]): BlockPlacement[] {
   const placements: BlockPlacement[] = [];
   const ordered = [...runLogs].sort(
@@ -315,7 +510,7 @@ function backgroundActivities(today: string): HistoricalActivity[] {
 
 export function createQaRunnerAppState(today: string): AppState {
   const plan = shiftedPlan(today);
-  const runLogs = planRunLogs(plan, today);
+  const runLogs = [...planRunLogs(plan, today), ...reviewRunLogs(today)];
   const initial = createInitialAppState();
   return {
     ...initial,
@@ -330,8 +525,14 @@ export function createQaRunnerAppState(today: string): AppState {
 }
 
 export function qaRunnerHistoricalActivities(today: string): HistoricalActivity[] {
-  const state = createQaRunnerAppState(today);
-  return [...backgroundActivities(today), ...planActivities(state.runLogs, today)].sort(
+  // The plan runs' mirrors are generated from the plan runs alone: the review
+  // runs below bring their own, with the metrics their detail state needs.
+  const planRuns = planRunLogs(shiftedPlan(today), today);
+  return [
+    ...backgroundActivities(today),
+    ...planActivities(planRuns, today),
+    ...reviewActivities(today),
+  ].sort(
     (a, b) =>
       b.startDateLocal.localeCompare(a.startDateLocal) ||
       (b.startTimeLocal ?? "").localeCompare(a.startTimeLocal ?? "") ||

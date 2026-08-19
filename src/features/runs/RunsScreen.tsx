@@ -416,6 +416,7 @@ export function RunsScreen({
 
       <HistoricalRunSheet
         run={historicalRun}
+        connection={syncToken}
         isOpen={isHistoricalOpen}
         onClose={() => {
           setHistoricalOpen(false);

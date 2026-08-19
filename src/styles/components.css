@@ -4859,11 +4859,21 @@ textarea.run-input {
   margin: 0;
 }
 
+/* A historical run whose source stated no duration has one primary fact, not
+   three columns with two empty. The result stays centred either way. */
 .run-result-detail__primary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 13px 0 14px;
   border-top: 1px solid var(--border-strong);
   border-bottom: 1px solid var(--border-strong);
+}
+
+.run-result-detail__primary[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.run-result-detail__primary[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .run-result-detail__primary > div,
@@ -4891,7 +4901,10 @@ textarea.run-input {
   white-space: nowrap;
 }
 
-.run-result-detail__primary > div:last-child dd {
+/* Pace is the longest of the three values and the one that has to shrink for
+   320px. Keyed on the metric rather than on position, so a run with no pace
+   does not shrink whatever happens to be last instead. */
+.run-result-detail__primary > div[data-metric="pace"] dd {
   font-size: clamp(17px, 4.9vw, 24px);
   letter-spacing: -0.055em;
 }
@@ -4965,25 +4978,41 @@ textarea.run-input {
 .run-profile__selectors {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
 }
 
+/* Same rule the R2 history controls follow: the visible chip stays small and
+   quiet, and the thing a thumb has to hit is 44px regardless. */
 .run-profile__selector {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+  font: inherit;
+  cursor: pointer;
+}
+
+.run-profile__selector > span {
   padding: 5px 10px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-subtle);
   font-family: var(--font-data);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
 .run-profile__selector[aria-pressed="true"] {
-  border-color: var(--accent);
   color: var(--accent);
+}
+
+.run-profile__selector[aria-pressed="true"] > span {
+  border-color: var(--accent);
 }
 
 .run-profile-chart {
