@@ -2,6 +2,7 @@ import {
   CREW_AWARD_LABEL,
   STANDARD_CREW_AWARD_TYPES,
   formatCrewAwardResult,
+  isFeatureCrewAward,
   type CrewAwardWeek,
   type CrewAwardType,
 } from "../../crew/awards";
@@ -15,10 +16,16 @@ import "./crewAwardsPanel.css";
 interface CrewAwardsPanelProps {
   week: CrewAwardWeek | null;
   members: CrewMember[];
+  /** Already filtered upstream to awards owned by the current viewer. */
   readyAwards: readonly CrewBuildReadyAward[];
   available: boolean;
   loading: boolean;
   onPlaceAward: (awardId: string) => void;
+}
+
+function awardTestModeEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("awardTest") === "1";
 }
 
 function AwardStanding({
@@ -57,6 +64,41 @@ function AwardStanding({
   );
 }
 
+function ReadyAwardPrompt({
+  readyAwards,
+  onPlaceAward,
+}: Pick<CrewAwardsPanelProps, "readyAwards" | "onPlaceAward">) {
+  const firstReady = readyAwards[0] ?? null;
+  if (!firstReady) return null;
+  const remaining = Math.max(0, readyAwards.length - 1);
+
+  return (
+    <section
+      className="crew-award-ready"
+      data-award={firstReady.awardType}
+      data-feature={isFeatureCrewAward(firstReady.awardType) || undefined}
+      aria-labelledby="crew-award-ready-title"
+    >
+      <span className="crew-award-ready__mark" aria-hidden="true" />
+      <div className="crew-award-ready__copy">
+        <p className="machine-label">
+          {readyAwards.length === 1
+            ? "Special Block Ready"
+            : `${readyAwards.length} Special Blocks Ready`}
+        </p>
+        <h2 id="crew-award-ready-title">{CREW_AWARD_LABEL[firstReady.awardType]}</h2>
+        <p className="crew-award-ready__result data-value">
+          {formatCrewAwardResult(firstReady.awardType, firstReady.resultValue)}
+          {remaining > 0 ? ` · +${remaining} more waiting` : ""}
+        </p>
+      </div>
+      <Button variant="primary" onClick={() => onPlaceAward(firstReady.id)}>
+        Place Block
+      </Button>
+    </section>
+  );
+}
+
 export function CrewAwardsPanel({
   week,
   members,
@@ -65,13 +107,17 @@ export function CrewAwardsPanel({
   loading,
   onPlaceAward,
 }: CrewAwardsPanelProps) {
+  if (!awardTestModeEnabled()) {
+    return <ReadyAwardPrompt readyAwards={readyAwards} onPlaceAward={onPlaceAward} />;
+  }
+
   if (!available && !loading) return null;
   const firstReady = readyAwards[0] ?? null;
   return (
     <section className="crew-awards" aria-labelledby="crew-awards-title">
       <div className="crew-awards__heading">
         <div>
-          <p className="machine-label">Crew Awards</p>
+          <p className="machine-label">Crew Awards · Test View</p>
           <h2 id="crew-awards-title">Special Blocks</h2>
         </div>
         {firstReady && (
