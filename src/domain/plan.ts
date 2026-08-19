@@ -15,11 +15,18 @@ import type { RunLog, TrainingPlan, TrainingWeek, Workout } from "./types";
  */
 export type PlanDayStatus = "rest" | "completed" | "planned" | "missed";
 
+/**
+ * Visible Plan language describes the relationship to the schedule, not a
+ * verdict on whether the runner ran. A past workout with no linked RunLog may
+ * still have a real historical activity in unified history, so `missed`
+ * remains an internal scheduling state while the interface says what STACK
+ * actually knows: no run is linked to this plan item.
+ */
 export const PLAN_DAY_STATUS_LABEL: Record<PlanDayStatus, string> = {
   rest: "Rest",
   completed: "Completed",
   planned: "Planned",
-  missed: "Missed",
+  missed: "No linked run",
 };
 
 export interface PlanDay {
