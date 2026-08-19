@@ -72,7 +72,7 @@ function AwardGlyph({ face }: { face: AwardBlockDefinition["face"] }) {
     case "rings":
       return <span className="award-study__glyph award-study__glyph--rings"><i /><i /></span>;
     case "chevron":
-      return <span className="award-study__glyph award-study__glyph--chevron"><i /><i /></span>;
+      return <span className="award-study__glyph award-study__glyph--chevron"><i /><i /><i /></span>;
     case "stack":
       return <span className="award-study__glyph award-study__glyph--stack"><i /><i /><i /></span>;
     case "span":
@@ -107,10 +107,8 @@ function AwardStudyBlock({ block }: { block: AwardBlockDefinition }) {
         <span className="award-study__top" aria-hidden="true" />
         <span className="award-study__right" aria-hidden="true" />
         <span className="award-study__front">
-          <span className="award-study__identity-bay" aria-hidden="true">
-            <span className="award-study__identity">
-              <RunnerIcon icon={runner.icon} accent={runner.accent} size={21} />
-            </span>
+          <span className="award-study__identity" aria-hidden="true">
+            <RunnerIcon icon={runner.icon} accent={runner.accent} size={18} />
           </span>
           <span className="award-study__badge" aria-hidden="true">
             <AwardGlyph face={block.face} />
@@ -137,7 +135,7 @@ export function AwardBlockVisualStudy() {
         <p className="machine-label">Crew Build / visual study</p>
         <h2 id="award-study-title">Special Blocks</h2>
         <p>
-          Zero-mile award pieces. Runner icon identifies the winner; color and face mark identify the award. Rotating Feature blocks carry a brass keyline.
+          Zero-mile award pieces. Runner icon is applied directly to the block; color and face mark identify the award. Rotating Feature blocks carry a brass keyline.
         </p>
       </header>
 
