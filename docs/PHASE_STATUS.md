@@ -765,3 +765,34 @@ duration_seconds)`, so `20260819025500_crew_special_blocks.sql` must stay behind
 
 Known gap: `Steady` has no verified within-run pace-variability source, so one week in
 four currently produces no Feature award. Recorded rather than faked — see D-080.
+
+## Crew Build occupancy and projection handoff (issue #128)
+
+**Status:** Implemented on top of D-080; authorized by D-081.
+
+Implemented scope:
+- one canonical definition of Crew Build occupancy shared by rendering, landing options, collision/support validation and repair;
+- `crew_build_items()` restricted to rectangles the client can draw — Build-window runs, whole footprints inside the eight columns;
+- `canonicalize_crew_build()` returning non-renderable, overlapping and floating construction to READY, in place, for its owner;
+- both placement RPCs canonicalizing under the existing Crew advisory lock before they validate;
+- `heal_crew_build_support()` delegating to the same pass, which retires its runs-only view of support;
+- a visible, recoverable Crew projection wait while this device adopts the account's canonical personal cache, retried the moment personal sync reports ready;
+- a post-placement refresh that is a read barrier rather than another read;
+- Crew placement copy without numbered-column language, with the coordinate kept for controls and accessible names.
+
+Healing is demotion only: no block is relocated, no contribution is deleted, and no runner's valid placement is moved to make room for another's.
+
+The migration is idempotent and safe to re-apply. It backfills once per Crew, so existing ghost coordinates are cleared at apply time.
+
+Verification: `supabase/tests/0023_crew_build_canonical_occupancy.sql` (fails on the pre-fix schema with `crew_build_placement_conflict`, passes after), plus `src/crew/useRaceCrew.projectionHandoff.test.tsx`, `src/crew/useRaceCrew.placementBarrier.test.tsx` and the migration assertions in `src/crew/migration.test.ts`.
+
+Rollout aids for the same change:
+- `supabase/checks/crew_build_ghost_inventory.sql` — read-only, runs *before* the
+  migration and lists exactly which rows the backfill will return to READY, and why.
+  An empty result means the backfill is a no-op on that database.
+- `supabase/rollback/20260820150000_revert_crew_build_canonical_occupancy.sql` — a
+  hand-run revert that restores main's `crew_build_items()`, both placement RPCs and
+  `heal_crew_build_support()`. It is deliberately outside `supabase/migrations/` so the
+  CLI never applies it. Do not roll back by re-applying the older migration files
+  directly: several are older than migrations that redefine the same functions, so
+  re-running them out of order clobbers newer definitions.

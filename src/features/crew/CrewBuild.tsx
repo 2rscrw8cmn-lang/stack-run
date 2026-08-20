@@ -201,7 +201,7 @@ export function CrewBuild({
           <p className="data-value">
             {placement.kind === "run" ? runIdentity(placement.run) : awardIdentity(placement.award)}
           </p>
-          <p>Drag sideways or tap a column. The block lands where gravity puts it.</p>
+          <p>Drag sideways or tap a spot. Your block will land where it fits.</p>
         </div>
       )}
 
@@ -338,6 +338,7 @@ export function CrewBuild({
             ? `${placement.run.crewBuildRow === null ? "Place" : "Move"} ${WORKOUT_TYPE_LABEL[placement.run.activityType]}`
             : `${placement.award.crewBuildRow === null ? "Place" : "Move"} ${CREW_AWARD_LABEL[placement.award.awardType]}`}
           positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
+          showPositionLabel={false}
           canStepBack={
             !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
           }

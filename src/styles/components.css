@@ -6582,6 +6582,24 @@ textarea.run-input {
 }
 .crew-view__state p { margin: 0; }
 
+/* A Crew projection held back while personal STACK finishes its account
+   handoff. This is a wait, not a failure, so it reads as a quiet note rather
+   than borrowing the comparison error's danger colour. */
+/* The literal reason a Crew upload was refused, under the reassurance. */
+.crew-settings__note--detail {
+  margin-top: 4px;
+  color: var(--text-subtle);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.crew-view__waiting {
+  margin: 9px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .crew-comparison {
   min-width: 0;
   padding: 12px;

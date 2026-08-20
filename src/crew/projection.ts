@@ -126,9 +126,9 @@ export function projectSharedRun(
     buildColumnStart: sharedPlacement?.buildColumnStart ?? null,
     buildWidth: sharedPlacement?.buildWidth ?? null,
     buildHeight: sharedPlacement?.buildHeight ?? null,
-    averageHeartRate: run.importedMetrics?.averageHeartRate ?? null,
-    maxHeartRate: run.importedMetrics?.maxHeartRate ?? null,
-    manualHeartRate: run.manualHeartRate ?? null,
+    averageHeartRate: crewSafeHeartRate(run.importedMetrics?.averageHeartRate),
+    maxHeartRate: crewSafeHeartRate(run.importedMetrics?.maxHeartRate),
+    manualHeartRate: crewSafeHeartRate(run.manualHeartRate),
     awardZone2Percent: awardMetrics?.zone2Percent ?? null,
     awardTargetPercent: awardMetrics?.targetPercent ?? null,
     awardLevelUpPercent: awardMetrics?.levelUpPercent ?? null,
@@ -144,6 +144,28 @@ export function projectSharedRun(
  * is applied only where those windowed views are actually derived (crew
  * comparisons/summary, the Crew Build itself, and RLS on the server).
  */
+/**
+ * Crew's heart-rate columns are constrained to 30-250 bpm or null, and the
+ * whole projection is one upsert: a single value the server refuses takes
+ * every run in the batch down with it, for every crew, silently, until the
+ * offending value is corrected.
+ *
+ * Run entry has enforced this range since manual heart rate shipped, but an
+ * AppState written before that, or by any other path, is not bound by it. A
+ * value Crew cannot store is not worth failing a runner's whole contribution
+ * over: share what is valid and omit what is not.
+ */
+const CREW_HEART_RATE_MIN = 30;
+const CREW_HEART_RATE_MAX = 250;
+
+function crewSafeHeartRate(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return rounded >= CREW_HEART_RATE_MIN && rounded <= CREW_HEART_RATE_MAX
+    ? rounded
+    : null;
+}
+
 export function projectSharedRuns(
   runLogs: readonly RunLog[],
   placements: readonly BlockPlacement[] = [],

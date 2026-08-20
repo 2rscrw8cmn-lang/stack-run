@@ -633,3 +633,52 @@ describe("Race Crew projection", () => {
     expect(summary.longestRun28dMiles).toBe(8);
   });
 });
+
+/*
+ * Issue #128: the whole projection is one upsert, so a single heart rate the
+ * server refuses (30-250 or null) fails every run in the batch, for every
+ * crew, and the runner's contributions stop arriving entirely. This is what
+ * "my run is in my Build but not in Crew" actually looked like in production:
+ * PostgREST reporting shared_runs_manual_heart_rate_check, over and over.
+ */
+describe("Crew heart rate stays inside what Crew can store", () => {
+  const base: RunLog = {
+    id: "run-1",
+    workoutId: null,
+    completedDate: "2026-08-20",
+    activityType: "easy",
+    distanceMiles: 4.12,
+    durationSeconds: 2100,
+    effort: "solid",
+    notes: "",
+    createdAt: "2026-08-20T10:39:00.000Z",
+    updatedAt: "2026-08-20T10:39:00.000Z",
+  };
+
+  it("omits a manual heart rate the server would refuse", () => {
+    for (const bad of [0, 29, 251, 1500, -60, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const [projected] = projectSharedRuns([{ ...base, manualHeartRate: bad }]);
+      expect(projected.manualHeartRate, `manual ${bad} must not be sent`).toBeNull();
+    }
+  });
+
+  it("omits imported heart rates the server would refuse", () => {
+    const [projected] = projectSharedRuns([
+      { ...base, importedMetrics: { averageHeartRate: 0, maxHeartRate: 999 } },
+    ]);
+    expect(projected.averageHeartRate).toBeNull();
+    expect(projected.maxHeartRate).toBeNull();
+  });
+
+  it("still shares a heart rate the server accepts, including the boundaries", () => {
+    for (const good of [30, 142, 250]) {
+      const [projected] = projectSharedRuns([{ ...base, manualHeartRate: good }]);
+      expect(projected.manualHeartRate, `manual ${good} must be shared`).toBe(good);
+    }
+    const [imported] = projectSharedRuns([
+      { ...base, importedMetrics: { averageHeartRate: 148, maxHeartRate: 176 } },
+    ]);
+    expect(imported.averageHeartRate).toBe(148);
+    expect(imported.maxHeartRate).toBe(176);
+  });
+});

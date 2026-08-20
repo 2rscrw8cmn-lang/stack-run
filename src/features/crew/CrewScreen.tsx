@@ -589,6 +589,18 @@ export function CrewScreen({
         </Sheet>
       )}
 
+      {/*
+        * Issue #128: a runner whose personal cache is still being adopted has
+        * eligible runs that genuinely have not reached the crew yet. Say so
+        * where they are looking for their READY blocks, rather than showing a
+        * tower that silently omits them.
+        */}
+      {activeCrew.projectionWaitingForPersonal && (
+        <p className="crew-view__waiting" role="status">
+          Your runs reach the crew as soon as personal STACK finishes syncing on this device.
+        </p>
+      )}
+
       <CrewBuild
         model={build}
         members={railMembers}
