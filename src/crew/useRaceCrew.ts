@@ -186,6 +186,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   /** Freshness is per crew: each one owns its Build window and its own sync. */
   const lastProjection = useRef(new Map<string, { fingerprint: string; syncedAt: number }>());
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
+  const latestCrewData = useRef<CrewDashboardData | null>(null);
   const dashboardInFlight = useRef<{ crewId: string; request: Promise<void> } | null>(null);
   const propsInFlight = useRef(new Set<string>());
 
@@ -193,6 +194,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     setLatestInviteUrl(null);
     lastProjection.current.clear();
     setProjectionError(null);
+    latestCrewData.current = null;
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
@@ -442,10 +444,22 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       lastDashboard.current.crewId === crewId &&
       Date.now() - lastDashboard.current.loadedAt < CREW_DASHBOARD_STALE_MS;
     if (!force && fresh) return;
-    // Only a request for the crew being asked about can be shared; switching
-    // crews must not be answered with the previous crew's load.
-    if (dashboardInFlight.current?.crewId === crewId) {
-      return dashboardInFlight.current.request;
+
+    // A normal refresh may share a same-Crew request. A forced refresh is a
+    // post-mutation read barrier: it must wait out every request that started
+    // before the mutation, then issue a new query so stale data cannot confirm
+    // a placement that the server has already accepted.
+    while (dashboardInFlight.current?.crewId === crewId) {
+      const inFlight = dashboardInFlight.current;
+      if (!force) return inFlight.request;
+      await inFlight.request;
+      if (
+        latest.current.account?.crew?.id !== crewId ||
+        latest.current.user?.id !== userId
+      ) return;
+      if (dashboardInFlight.current?.request === inFlight.request) {
+        dashboardInFlight.current = null;
+      }
     }
 
     const request = (async () => {
@@ -461,11 +475,15 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
           buildStartDate,
         );
         if (latest.current.account?.crew?.id !== crewId) return;
+        latestCrewData.current = loaded;
         setCrewData(loaded);
         setCrewDataStatus("ready");
         setPropsErrors({});
         lastDashboard.current = { crewId, loadedAt: Date.now() };
       } catch (reason) {
+        // The visible dashboard may remain on its last good snapshot, but a
+        // mutation confirmation may not use that snapshot as proof of success.
+        latestCrewData.current = null;
         const currentUser = latest.current.user;
         if (currentUser) {
           try {
@@ -499,6 +517,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   useEffect(() => {
     const crewId = account?.crew?.id ?? "";
     if (lastDashboard.current.crewId === crewId) return;
+    latestCrewData.current = null;
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
@@ -731,6 +750,17 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       });
       lastDashboard.current.loadedAt = 0;
       await refreshCrewData(true);
+      const confirmed = latestCrewData.current?.crewBuildRuns.find(
+        (run) => run.id === runId,
+      );
+      if (
+        !confirmed ||
+        confirmed.crewBuildRow !== row ||
+        confirmed.crewBuildColumnStart !== columnStart
+      ) {
+        setCrewBuildPlacementError("That placement could not be confirmed. Try again.");
+        return false;
+      }
       return true;
     } catch (reason) {
       if (reason instanceof CrewBuildPlacementError && reason.kind === "conflict") {
