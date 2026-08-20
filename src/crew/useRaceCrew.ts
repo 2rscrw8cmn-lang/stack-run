@@ -74,6 +74,8 @@ import type {
 } from "./types";
 
 const PROJECTION_STALE_MS = 30 * 60_000;
+const PROJECTION_WAITING_FOR_PERSONAL =
+  "Crew sharing is waiting for personal STACK to finish syncing.";
 
 export type RaceCrewSessionStatus =
   | "unconfigured"
@@ -190,6 +192,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const resetCrewClientState = useCallback((): void => {
     setLatestInviteUrl(null);
     lastProjection.current.clear();
+    setProjectionError(null);
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
@@ -347,7 +350,10 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     if (
       loadActivePersonalOwner() !== activeUser.id ||
       !loadPersonalMetadata(activeUser.id).initialized
-    ) return;
+    ) {
+      setProjectionError(PROJECTION_WAITING_FOR_PERSONAL);
+      return;
+    }
     const today = todayLocalDate();
     const failures: string[] = [];
 
@@ -511,6 +517,44 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     const timer = window.setTimeout(() => void syncProjection(false), 0);
     return () => window.clearTimeout(timer);
   }, [account?.crew, fingerprint, syncProjection, user]);
+
+  // Joining can finish before the canonical personal cache has completed its
+  // account handoff. Keep that safety gate, but make it recoverable: once the
+  // personal cache becomes ready, force the projection that the join-time
+  // attempt could not safely publish instead of waiting for a later focus.
+  useEffect(() => {
+    if (
+      !account?.crew ||
+      !user ||
+      projectionError !== PROJECTION_WAITING_FOR_PERSONAL
+    ) return;
+
+    let active = true;
+    let timer: number | null = null;
+    const retryWhenReady = () => {
+      if (!active) return;
+      const personalReady =
+        loadActivePersonalOwner() === user.id &&
+        loadPersonalMetadata(user.id).initialized;
+      if (personalReady) {
+        // Personal sync writes its canonical cache immediately around this
+        // metadata transition. Give React one short turn to publish that state
+        // into `latest` before projecting it to every crew.
+        timer = window.setTimeout(() => {
+          timer = null;
+          if (active) void syncProjection(true);
+        }, 100);
+        return;
+      }
+      timer = window.setTimeout(retryWhenReady, 250);
+    };
+
+    timer = window.setTimeout(retryWhenReady, 250);
+    return () => {
+      active = false;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [account?.crew, projectionError, syncProjection, user]);
 
   useEffect(() => {
     if (!account?.crew || !user) return;

@@ -209,7 +209,7 @@ export function CrewBuild({
         <div className="crew-build__placement-lead">
           <p className="machine-label">Place your block</p>
           <p className="data-value">{runIdentity(placement.run)}</p>
-          <p>Drag sideways or tap a column. Your block snaps to the eight-column Build and lands where gravity puts it.</p>
+          <p>Drag sideways or tap a spot. Your block will land where it fits.</p>
         </div>
       )}
 
@@ -336,6 +336,7 @@ export function CrewBuild({
           height={placementFootprint?.height ?? 1}
           title={`${placement.run.crewBuildRow === null ? "Place" : "Move"} ${WORKOUT_TYPE_LABEL[placement.run.activityType]}`}
           positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
+          showPositionLabel={false}
           canStepBack={
             !!candidate &&
             placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
