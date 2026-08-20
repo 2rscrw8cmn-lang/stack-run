@@ -13,7 +13,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
@@ -40,6 +40,7 @@ import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
 import type { PersonalSyncController } from "../../personal-sync/types";
+import { PropNotifications } from "./PropNotifications";
 import { RunnerIcon } from "./RunnerIcon";
 import { RunnerIconBuilder } from "./RunnerIconBuilder";
 
@@ -972,6 +973,13 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
   const raceCrew = crew.account?.crew ?? null;
   const isOwner = crew.account?.role === "owner";
   const crewCount = crew.account?.memberships.length ?? 0;
+  const markPropsSeen = crew.markPropsSeen;
+
+  // Opening the sheet is a read: whatever Props were unread when it opened
+  // clear from here and the runner's header icon alike.
+  useEffect(() => {
+    if (isOpen && signedIn) void markPropsSeen();
+  }, [isOpen, signedIn, markPropsSeen]);
 
   // A create that actually produced a crew is recognized as a changed
   // membership count, so the sheet returns to the hub as soon as that count
@@ -1131,6 +1139,14 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
                   </li>
                 </ul>
 
+                {crew.account?.crew && (
+                  <PropNotifications
+                    notifications={crew.visiblePropNotifications}
+                    propsSeenAt={crew.account.profile.propsSeenAt}
+                    onDismiss={crew.dismissPropNotification}
+                  />
+                )}
+
                 <PendingInvitePanel crew={crew} localRace={localRace} />
 
                 <CrewHubList
@@ -1144,9 +1160,24 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
 
             {crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
             {crew.message && <p role="status" className="crew-settings__message">{crew.message}</p>}
-            {crew.projectionError && (
-              <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
-            )}
+            {crew.projectionWaitingForPersonal ? (
+              <p className="crew-settings__note" role="status">
+                Crew sharing starts as soon as personal STACK finishes syncing on this device.
+              </p>
+            ) : crew.projectionError ? (
+              <>
+                <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
+                {/*
+                  * Issue #128 asked that a blocked projection not fail
+                  * silently. Reassurance alone was still silent about the one
+                  * thing anyone diagnosing this needs: the reason the upload
+                  * was refused.
+                  */}
+                <p className="crew-settings__note crew-settings__note--detail">
+                  {crew.projectionError}
+                </p>
+              </>
+            ) : null}
           </>
         )}
         {visibleView !== "main" && crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}

@@ -85,6 +85,8 @@ interface PlanScreenProps {
    */
   raceSetup?: RacePlanSetup | null;
   runDays?: Weekday[] | null;
+  /** The days the runner cross-trains, so a rebuilt plan keeps them. */
+  crossTrainingDays?: Weekday[] | null;
   onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   syncToken?: IntervalsConnection | string | null;
 }
@@ -120,6 +122,7 @@ export function PlanScreen({
   availability = null,
   raceSetup = null,
   runDays = null,
+  crossTrainingDays = null,
   onGeneratePlan,
   syncToken,
 }: PlanScreenProps) {
@@ -437,6 +440,7 @@ export function PlanScreen({
           plan={plan}
           setup={raceSetup}
           runDays={runDays}
+          crossTrainingDays={crossTrainingDays}
           runLogs={runLogs}
           today={today}
           isOpen={isSecondaryOpen}

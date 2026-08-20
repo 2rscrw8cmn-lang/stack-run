@@ -99,6 +99,7 @@ const ACTIVITY_TYPES = new Set<RunActivityType>([
   "simulation",
   "long",
   "race",
+  "cross",
 ]);
 const EFFORTS = new Set<Effort>(["rough", "solid", "great"]);
 const SOURCES = new Set<RunSource>(["manual", "intervals"]);
@@ -147,6 +148,7 @@ function parseRunRow(value: unknown): PersonalCloudRun {
   const runRevision = revision(row.revision);
   const createdAt = string(row.created_at);
   const updatedAt = string(row.updated_at);
+  const manualHeartRate = finite(row.manual_heart_rate);
   if (
     !id ||
     !completedDate ||
@@ -154,7 +156,8 @@ function parseRunRow(value: unknown): PersonalCloudRun {
     !activityType ||
     !ACTIVITY_TYPES.has(activityType) ||
     distanceMiles === null ||
-    distanceMiles <= 0 ||
+    distanceMiles < 0 ||
+    (activityType !== "cross" && distanceMiles <= 0) ||
     durationSeconds === null ||
     !Number.isInteger(durationSeconds) ||
     durationSeconds <= 0 ||
@@ -166,7 +169,10 @@ function parseRunRow(value: unknown): PersonalCloudRun {
     !createdAt ||
     !updatedAt ||
     !Number.isFinite(Date.parse(createdAt)) ||
-    !Number.isFinite(Date.parse(updatedAt))
+    !Number.isFinite(Date.parse(updatedAt)) ||
+    (row.manual_heart_rate !== null && row.manual_heart_rate !== undefined &&
+      (manualHeartRate === null || !Number.isInteger(manualHeartRate) ||
+        manualHeartRate < 30 || manualHeartRate > 250))
   ) {
     throw new Error("Cloud run data is malformed.");
   }
@@ -207,6 +213,7 @@ function parseRunRow(value: unknown): PersonalCloudRun {
             }
           : null,
       importedMetrics: parseMetrics(row.imported_metrics),
+      manualHeartRate,
       createdAt,
       updatedAt,
     },
@@ -259,6 +266,13 @@ function parseTrainingRow(value: unknown): {
   ) {
     throw new Error("Cloud run-day data is malformed.");
   }
+  if (
+    row.cross_training_days !== null &&
+    row.cross_training_days !== undefined &&
+    !Array.isArray(row.cross_training_days)
+  ) {
+    throw new Error("Cloud Cross Training day data is malformed.");
+  }
   return {
     revision: rowRevision,
     document: {
@@ -267,6 +281,7 @@ function parseTrainingRow(value: unknown): {
       raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
       availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
       runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],
+      crossTrainingDays: (row.cross_training_days ?? null) as PersonalTrainingDocument["crossTrainingDays"],
     },
   };
 }
@@ -319,12 +334,14 @@ function parseCandidate(value: unknown): IntervalsCandidate | null {
   const durationSeconds = finite(item?.durationSeconds);
   const metrics = record(item?.metrics);
   const sourceUpdatedAt = nullableString(item?.sourceUpdatedAt);
+  const inferredActivityType = string(item?.inferredActivityType) as RunActivityType | null;
   if (
     !externalId || !sourceType || !completedDate ||
     !/^\d{4}-\d{2}-\d{2}$/.test(completedDate) ||
-    distanceMiles === null || distanceMiles <= 0 ||
+    distanceMiles === null || distanceMiles < 0 ||
     durationSeconds === null || durationSeconds <= 0 || !metrics ||
-    (sourceUpdatedAt !== null && !Number.isFinite(Date.parse(sourceUpdatedAt)))
+    (sourceUpdatedAt !== null && !Number.isFinite(Date.parse(sourceUpdatedAt))) ||
+    !inferredActivityType || !ACTIVITY_TYPES.has(inferredActivityType)
   ) return null;
   return {
     externalId,
@@ -334,6 +351,7 @@ function parseCandidate(value: unknown): IntervalsCandidate | null {
     durationSeconds,
     sourceUpdatedAt,
     metrics: parseMetrics(metrics) ?? {},
+    inferredActivityType,
   };
 }
 

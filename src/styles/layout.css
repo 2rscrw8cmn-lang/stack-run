@@ -40,6 +40,7 @@
   gap: var(--space-1);
 }
 .app-shell__runner {
+  position: relative;
   min-width: 44px;
   min-height: 44px;
   display: grid;
@@ -51,6 +52,18 @@
 }
 .app-shell__runner:hover { filter: brightness(1.12); }
 
+/* An unread Prop rings the runner's own icon rather than adding a badge —
+   the mark itself is the notification, not a decoration on top of it. */
+.app-shell__runner[data-unread="true"]::after {
+  content: "";
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--danger);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
 /* The gear's 44px target is larger than the gear; pull the padding back off
    the edge so the icon sits where the eye expects it, not the box. */
 .app-shell__header-row > .icon-button {
@@ -59,7 +72,12 @@
 
 .app-shell__main {
   flex: 1;
-  padding: 0 var(--space-4) var(--space-8);
+  /* Enough clearance for the sticky nav's own height plus its safe-area
+     inset, so scrolling to the end of any tab's content clears the bar
+     instead of leaving real content (e.g. the last row of Crew Build)
+     sitting only under its blur. */
+  padding: 0 var(--space-4)
+    calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
 }
 
 .app-shell__nav {

@@ -1,4 +1,4 @@
-import { History } from "lucide-react";
+import { Dumbbell, History, Trophy } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
 import { Section } from "../../components/ui/Section";
@@ -8,10 +8,15 @@ import { formatDateLabel } from "../../domain/dates";
 import { formatCompactMiles, formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { GRID_COLUMNS } from "../../domain/placement";
 import {
+  AVG_PACE_WINDOW_LABEL,
   formatComparisonReading,
-  type ComparisonMetric,
   type ComparisonSummary,
 } from "../../crew/comparisons";
+import {
+  CREW_AWARD_LABEL,
+  formatCrewAwardResult,
+  type CrewAwardBlockRecord,
+} from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import {
   faceCulledMiniBuildTower,
@@ -20,19 +25,15 @@ import {
 } from "../../crew/miniBuild";
 import type { CrewMember, CrewSharedRun } from "../../crew/types";
 import { Brick, type BrickFaceLabel } from "../build/Brick";
+import { AwardGlyph } from "./AwardBrick";
 import { CrewRunRow } from "./CrewRunRow";
 import { RunnerIcon } from "./RunnerIcon";
+import "./awardBlock.css";
 
 // Profiles are compared side by side, so their Build field keeps one stable
 // frame. Taller towers remain readable through the viewport's own scroll.
 const PROFILE_VISIBLE_COURSES = 10;
 const DEFAULT_VISIBLE_RUNS = 5;
-
-/** The Race Crew / Run Club stat the profile's third strip cell shows (issue #87). */
-export interface CrewMemberProfileMetric {
-  id: ComparisonMetric;
-  label: string;
-}
 
 interface CrewMemberProfileSheetProps {
   member: CrewMember | null;
@@ -40,12 +41,14 @@ interface CrewMemberProfileSheetProps {
   isYou: boolean;
   model: CrewMiniBuildModel | null;
   summary: ComparisonSummary | null;
-  consistencyMetric: CrewMemberProfileMetric;
   /** This member's shared runs, newest first — the same `CrewSharedRun` contract as Recent Crew Runs. */
   runs: CrewSharedRun[];
+  /** This member's Special Blocks, newest first. */
+  awards: CrewAwardBlockRecord[];
   isOpen: boolean;
   onClose: () => void;
   onSelectRun: (runId: string) => void;
+  onSelectAward: (awardId: string) => void;
   currentUserId: string;
   propsPendingRunIds: readonly string[];
   propsErrors: Readonly<Record<string, string>>;
@@ -60,11 +63,14 @@ function blockLabel(memberName: string, block: Pick<CrewMiniBuildFacedBlock, "ac
   )}, ${formatMiles(block.distanceMiles)} miles`;
 }
 
-/** Same convention as Personal/Crew Build's brick face: compact mileage, `RACE` on a race. */
+/**
+ * Same convention as Personal/Crew Build's brick face: compact mileage,
+ * `RACE` on a race, a dumbbell on Cross Training (often distanceless).
+ */
 function faceLabel(block: Pick<CrewMiniBuildFacedBlock, "activityType" | "distanceMiles" | "width">): BrickFaceLabel {
-  return block.activityType === "race"
-    ? { text: "RACE", unit: false }
-    : { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
+  if (block.activityType === "race") return { text: "RACE", unit: false };
+  if (block.activityType === "cross") return { icon: Dumbbell };
+  return { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
 }
 
 /**
@@ -85,11 +91,12 @@ export function CrewMemberProfileSheet({
   isYou,
   model,
   summary,
-  consistencyMetric,
   runs,
+  awards,
   isOpen,
   onClose,
   onSelectRun,
+  onSelectAward,
   currentUserId,
   propsPendingRunIds,
   propsErrors,
@@ -108,7 +115,7 @@ export function CrewMemberProfileSheet({
 
   const weeklyMiles = formatComparisonReading("weekly-miles", summary);
   const longestRun = formatComparisonReading("longest-run", summary);
-  const consistency = formatComparisonReading(consistencyMetric.id, summary);
+  const avgPace = formatComparisonReading("avg-pace", summary);
 
   const visibleRuns = showAllRuns ? runs : runs.slice(0, DEFAULT_VISIBLE_RUNS);
   const hiddenRunCount = runs.length - visibleRuns.length;
@@ -146,18 +153,66 @@ export function CrewMemberProfileSheet({
             <dd className="data-value">{longestRun.value}</dd>
             <dt className="machine-label">Longest</dt>
           </div>
+          {/*
+            Consistency needed a training plan, so it read differently for a
+            Race Crew and a Run Club and matched neither's comparison tab.
+            Avg Pace is the same measurement for everybody (issue #120).
+          */}
           <div>
-            <dd className="data-value">
-              {consistency.value}
-              {consistency.detail && <span className="machine-label"> · {consistency.detail}</span>}
-            </dd>
-            <dt className="machine-label">{consistencyMetric.label}</dt>
+            <dd className="data-value">{avgPace.value}</dd>
+            <dt className="machine-label">Avg Pace · {AVG_PACE_WINDOW_LABEL}</dt>
           </div>
           <div>
             <dd className="data-value">{formatMilesBuilt(model.totalMiles)} MI</dd>
             <dt className="machine-label">Member Build</dt>
           </div>
         </dl>
+
+        <Section
+          className="crew-member-profile__awards"
+          icon={<Trophy size={15} strokeWidth={2} />}
+          title="Awards"
+        >
+          {awards.length === 0 ? (
+            <p className="crew-recent__empty">No awards yet.</p>
+          ) : (
+            <ul className="crew-member-profile__award-list">
+              {awards.map((award) => (
+                <li key={award.id}>
+                  <button
+                    type="button"
+                    className="crew-member-profile__award-row"
+                    onClick={() => onSelectAward(award.id)}
+                  >
+                    <span
+                      className="award-brick award-brick--portrait crew-member-profile__award-glyph"
+                      data-award={award.awardType}
+                      aria-hidden="true"
+                      style={
+                        {
+                          "--piece-color": `var(--member-${crewMemberAccent(member.userId, member.accentColor)})`,
+                        } as CSSProperties
+                      }
+                    >
+                      <span className="award-brick__window">
+                        <AwardGlyph type={award.awardType} />
+                      </span>
+                    </span>
+                    <span className="crew-member-profile__award-text">
+                      <span className="data-value">{CREW_AWARD_LABEL[award.awardType]}</span>
+                      <span className="machine-label">
+                        Week of {formatDateLabel(award.weekStart, { month: "short", day: "numeric" })}
+                      </span>
+                    </span>
+                    <span className="machine-label crew-member-profile__award-result">
+                      {formatCrewAwardResult(award.awardType, award.resultValue)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
 
         <section className="crew-build" aria-labelledby="crew-member-profile-build-title">
           <div className="crew-build__lead">

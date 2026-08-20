@@ -228,6 +228,19 @@ document here contains another. Plausible aliases — `VirtualRun`, `TrailRun`,
 rejections are covered by explicit tests so the filtering is a decision rather
 than invisible behavior.
 
+Cross Training (`"cross"`) has its own allowlist, `VERIFIED_CROSS_TRAINING_TYPES`,
+following the same source-verified-only policy as running. It holds exactly
+one entry: `HighIntensityIntervalTraining`, captured from a real HIIT
+session recorded on watch and synced through HealthFit on 2026-08-13. That
+activity's `distance` and `icu_distance` fields were both null — Intervals
+reports no distance at all for this type — which is why Cross Training is
+the one STACK activity type `runValidation.ts` lets go unentered (0 miles),
+and why `normalizeIntervalsActivity` does not require `distance` for a
+cross-training candidate the way it does for a running one. Plausible
+aliases for other cross-training sports — `WeightTraining`, `Workout`,
+`Elliptical`, `Crossfit` — stay out until a real payload shows one, same as
+running.
+
 ## Normalization boundary
 
 Never pass raw Intervals response objects throughout React.

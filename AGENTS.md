@@ -48,9 +48,14 @@ When documents conflict on a STACK Next branch:
 6. `docs/CONNECTED_DATA_FIELDS.md` for exact verified source fields and semantics
 7. `docs/INTERVALS_INTEGRATION.md`
 8. `docs/DATA_AND_STORAGE.md`
-9. `docs/PRODUCT_AND_SCOPE.md`
-10. other existing program/phase documents
-11. existing code
+9. `docs/CREW_PROJECTION_CONTRACT.md` before touching `shared_runs`, any
+   Crew CHECK constraint, or any value the device uploads to Crew
+10. `docs/DECISION_LOG_ADDENDUM.md`
+11. `docs/ENGINEERING_STANDARDS.md`
+12. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+13. `docs/PRODUCT_AND_SCOPE.md`
+14. other existing program/phase documents
+15. existing code
 
 The Runs-specific docs supersede the older Runs information hierarchy in `docs/ARCADE_DESIGN_PASS.md` where they conflict. The Performance Arcade visual language itself remains active.
 
@@ -338,6 +343,18 @@ Private by default includes:
 - private calendar/availability.
 
 Race Crew changes require reading the current Race Crew implementation/security docs before modification.
+
+## Crew upload discipline
+
+The Crew projection uploads a runner's whole history in one `upsert`, so one
+value the database refuses fails every run, in every crew, on every retry —
+and stays invisible, because personal STACK saves runs one at a time and is
+unaffected. Never send Crew a value it is constrained to refuse: mirror the
+constraint on the device, send `null` for a nullable column, and leave an
+unstorable run out of the batch rather than losing the batch. Read
+`docs/CREW_PROJECTION_CONTRACT.md` before adding a constrained Crew column.
+
+## Database/RLS discipline
 
 ## Storage and secret discipline
 

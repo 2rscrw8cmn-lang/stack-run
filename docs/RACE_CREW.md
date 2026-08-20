@@ -189,8 +189,13 @@ Approved comparison facts:
 
 - **Weekly Miles** — actual miles in current Monday–Sunday week;
 - **Longest Run** — longest actual run in trailing 28 days;
-- **Consistency** — scheduled completion across the most recent up-to-4 plan weeks through today;
+- **Avg Pace** — trailing-28-day total running duration ÷ total running distance, excluding Cross Training and zero-distance/duration activity (D-078; replaced Consistency, and Run Club's `Run Days` substitute, in that slot);
 - **Miles Built** — total actual miles represented in the runner's current local plan/Build history.
+
+**Consistency** — scheduled completion across the most recent up-to-4 plan
+weeks through today — is still projected and still stored, but no longer
+displayed anywhere (D-078). It needed a training plan, so it could never mean
+the same thing for a Race Crew and a Run Club.
 
 These summaries are derived locally and uploaded as safe factual numbers.
 
@@ -301,12 +306,19 @@ Selectable:
 
 - Weekly Miles;
 - Longest Run;
-- Consistency;
+- Avg Pace (trailing 28 days);
 - Miles Built.
+
+The same four for a Race Crew and a Run Club, since none of them needs a
+training plan (D-078).
 
 Encouragement-first, not competition-first.
 
-No raw/faster-is-better pace leaderboard.
+Avg Pace is a trailing-28-day aggregate, deliberately not a per-run pace
+leaderboard: no individual run's pace is ever ranked, posted or compared, and
+the crew-safe run contract still carries no pace field of its own (D-078
+narrows the original "no raw/faster-is-better pace leaderboard" boundary to
+exactly that — raw and per-run — at the owner's request in issue #120).
 
 ### 3. Recent Crew Runs
 

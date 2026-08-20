@@ -5,6 +5,7 @@ import { selectRecentCrewActivity } from "./recentActivity";
 function run(id: string, userId: string, localDate: string): CrewSharedRun {
   return {
     id,
+    localRunId: `local-${id}`,
     userId,
     displayName: userId,
     accentColor: null,

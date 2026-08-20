@@ -170,6 +170,7 @@ describe("canonical hydration and account-wide Intervals state", () => {
     durationSeconds: 1800,
     sourceUpdatedAt: null,
     metrics: {},
+    inferredActivityType: "easy",
   });
 
   it("hydrates plan, run and Build from the canonical snapshot", () => {
@@ -183,6 +184,7 @@ describe("canonical hydration and account-wide Intervals state", () => {
         raceSetup: seed.raceSetup,
         availability: seed.availability,
         runDays: seed.runDays,
+        crossTrainingDays: seed.crossTrainingDays,
       },
       trainingRevision: 4,
       runs: [cloud(canonicalRun, { revision: 3 })],

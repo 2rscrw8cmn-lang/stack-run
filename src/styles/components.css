@@ -138,7 +138,7 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-3) 0;
-  min-height: 52px;
+  min-height: var(--bottom-nav-height);
   background: none;
   border: none;
   color: var(--text-subtle);
@@ -695,61 +695,10 @@
   color: var(--accent);
 }
 
-.run-found__headline {
-  margin: var(--space-2) 0 0;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.run-found__facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2) var(--space-3);
-  margin: var(--space-3) 0 0;
-}
-
-.run-found__facts dt {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
-
-.run-found__facts dd {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .run-found__match {
   margin: var(--space-3) 0 0;
   font-size: 13px;
   color: var(--text-muted);
-}
-
-.run-found__actions {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-/* Deliberately not buttons-shaped: neither is the thing to do next. */
-.run-found__quiet-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-}
-
-.run-found__quiet-actions button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-subtle);
-  font-size: 12px;
 }
 
 /* Build preview */
@@ -858,38 +807,82 @@
   width: 100%;
 }
 
-.completed-run-summary__stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4) var(--space-3);
-  margin: 0;
+/*
+ * Today's completed state (issue #120): a confirmation line, not a card of
+ * restated facts. It stays short by construction — a title row, one facts
+ * line, and whichever block placements the run still owes.
+ */
+.today-completed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-color: var(--border-strong);
+  background: #080f15;
 }
 
-.completed-run-summary__stats > div {
+.today-completed__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
   min-width: 0;
-}
-
-.completed-run-summary__stats dt {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+}
+
+.today-completed__title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-completed__facts {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.today-completed__actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.today-completed__actions .button { width: 100%; }
+
+/* Editing a run that is already recorded is never the thing to do next. */
+.today-completed__quiet-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.today-completed__quiet-actions button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--text-subtle);
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.completed-run-summary__stats dd {
-  margin: var(--space-1) 0 0;
-  font-size: 16px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
+.today-completed__quiet-actions button:hover { color: var(--text); }
+
+/* Run Found is a prompt now, so its facts are one line rather than a table. */
+.run-found__facts {
+  margin: 8px 0 0;
+  color: var(--text);
+  font-size: clamp(16px, 5vw, 20px);
+  font-weight: 700;
 }
 
-@media (max-width: 359px) {
-  .completed-run-summary__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+.run-found .button { width: 100%; margin-top: var(--space-3); }
 
 /* Complete Run */
 
@@ -965,12 +958,8 @@
 .activity-type-picker__option[data-type="intervals"] { --activity-picker-color: var(--intervals); }
 .activity-type-picker__option[data-type="long"] { --activity-picker-color: var(--long); }
 .activity-type-picker__option[data-type="simulation"] { --activity-picker-color: var(--simulation); }
-.activity-type-picker__option[data-type="race"] {
-  --activity-picker-color: var(--race);
-  width: calc(50% - 4px);
-  grid-column: 1 / -1;
-  justify-self: center;
-}
+.activity-type-picker__option[data-type="cross"] { --activity-picker-color: var(--cross); }
+.activity-type-picker__option[data-type="race"] { --activity-picker-color: var(--race); }
 .activity-type-picker__option svg { flex: 0 0 auto; color: var(--activity-picker-color); }
 .activity-type-picker__option[aria-checked="true"] {
   border-color: var(--activity-picker-color);
@@ -1434,6 +1423,15 @@ textarea.run-input {
   font-weight: 700;
   letter-spacing: 0.06em;
   opacity: 0.72;
+}
+
+/* Cross Training has no mileage worth stamping on the face, so it wears its
+   icon instead — the same role RACE's text fills for the one other type that
+   skips the number. Inherits `color: var(--bg)` from the label via
+   currentColor, so it needs no colour of its own. */
+.placed-block__icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
 /*
@@ -1939,8 +1937,7 @@ textarea.run-input {
 
 /* Shared block chip: width follows the span, so the reward is legible. */
 .pending-tray__chip,
-.place-block__chip,
-.earned-block__chip {
+.place-block__chip {
   flex-shrink: 0;
   height: 20px;
   width: calc(10px + var(--piece-span) * 10px);
@@ -1953,28 +1950,6 @@ textarea.run-input {
     var(--piece-color)
   );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
-}
-
-/* Today: the block a completed run just earned */
-
-.earned-block {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-soft);
-}
-
-.earned-block__chip {
-  height: 26px;
-  width: calc(12px + var(--piece-span) * 12px);
-}
-
-.earned-block__text {
-  margin: 0;
-  font-size: 15px;
 }
 
 /* Place Block */
@@ -3355,6 +3330,10 @@ textarea.run-input {
 }
 
 .run-data__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
   margin: 0;
   font-size: 12px;
   font-weight: 650;
@@ -3362,6 +3341,23 @@ textarea.run-input {
   letter-spacing: 0.06em;
   color: var(--text-subtle);
 }
+
+/*
+ * The review state replaces the candidate list rather than sitting under it
+ * (issue #120), so this is the only way back to the runs still waiting.
+ */
+.run-data__back {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.run-data__back:hover { color: var(--text); }
 
 .run-data__status {
   display: flex;
@@ -3389,11 +3385,6 @@ textarea.run-input {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.run-data__review {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
 }
 
 .run-data__facts {
@@ -3677,6 +3668,7 @@ textarea.run-input {
 .run-row__icon[data-type="intervals"] { color: var(--intervals); }
 .run-row__icon[data-type="simulation"] { color: var(--simulation); }
 .run-row__icon[data-type="long"] { color: var(--long); }
+.run-row__icon[data-type="cross"] { color: var(--cross); }
 .run-row__icon[data-type="race"] { color: var(--race); }
 
 .run-row__body {
@@ -4176,8 +4168,7 @@ textarea.run-input {
   letter-spacing: 0.09em;
 }
 
-.today-workout-card__distance,
-.run-found__headline {
+.today-workout-card__distance {
   font-weight: 750;
   letter-spacing: -0.045em;
 }
@@ -4435,6 +4426,7 @@ textarea.run-input {
 .workout-row[data-type="intervals"] { border-left-color: color-mix(in srgb, var(--intervals) 72%, transparent); }
 .workout-row[data-type="simulation"] { border-left-color: color-mix(in srgb, var(--simulation) 72%, transparent); }
 .workout-row[data-type="long"] { border-left-color: color-mix(in srgb, var(--long) 72%, transparent); }
+.workout-row[data-type="cross"] { border-left-color: color-mix(in srgb, var(--cross) 72%, transparent); }
 .workout-row[data-type="race"] { border-left-color: color-mix(in srgb, var(--race) 72%, transparent); }
 
 .workout-row[data-today] {
@@ -4820,6 +4812,7 @@ textarea.run-input {
 .run-detail__type[data-type="intervals"] { color: var(--intervals); }
 .run-detail__type[data-type="simulation"] { color: var(--simulation); }
 .run-detail__type[data-type="long"] { color: var(--long); }
+.run-detail__type[data-type="cross"] { color: var(--cross); }
 .run-detail__type[data-type="race"] { color: var(--race); }
 
 /* The extra-or-planned status is metadata, not a section: one small tag next
@@ -5187,20 +5180,6 @@ textarea.run-input {
   padding: 14px;
 }
 
-.run-found__primary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.run-found__primary > div + div { border-left: 1px solid var(--border); }
-.run-found__primary dd,
-.run-found__primary dt { margin: 0; text-align: center; }
-.run-found__primary dd { font-size: clamp(14px, 4.4vw, 19px); font-weight: 700; white-space: nowrap; }
-.run-found__primary dt { margin-top: 4px; color: var(--text-muted); font-size: 9px; }
 .run-found__meta { margin: 8px 0 0; color: var(--text-muted); font-size: 9px; }
 .run-found__match { color: var(--accent); font-size: 9px; }
 
@@ -5217,6 +5196,7 @@ textarea.run-input {
 .run-row[data-type="intervals"] { border-left-color: var(--intervals); }
 .run-row[data-type="simulation"] { border-left-color: var(--simulation); }
 .run-row[data-type="long"] { border-left-color: var(--long); }
+.run-row[data-type="cross"] { border-left-color: var(--cross); }
 .run-row[data-type="race"] { border-left-color: var(--race); }
 .run-row__icon { border-radius: 5px; }
 .run-row__extra { border-radius: 3px; font-family: var(--font-data); }
@@ -6109,24 +6089,16 @@ textarea.run-input {
 }
 .crew-view__countdown[data-kind="race-day"] { color: var(--race); }
 .crew-view__countdown[data-kind="complete"] { color: var(--text-subtle); }
-/* Freshness sits beside the control that fixes it (issue #93), not below
-   the comparison rows it used to detach from. Compact on narrow phones: a
-   short right-aligned label, never a second line. */
 .crew-view__refresh-group {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.crew-view__freshness {
-  margin: 0;
-  color: var(--text-subtle);
-  font-size: 8px;
-  text-align: right;
-  white-space: nowrap;
-}
-.crew-view__freshness[data-warning="true"] { color: var(--long); }
+/* Issue #120: the state is the icon, so the icon carries the colour. */
 .crew-view__refresh { flex: 0 0 44px; color: var(--text-muted); }
+.crew-view__refresh[data-sync-state="healthy"] { color: var(--accent); }
+.crew-view__refresh[data-sync-state="attention"] { color: var(--long); }
 .crew-view__refresh:disabled { cursor: wait; opacity: 0.55; }
 
 /* The Crew Build — the largest object on the screen, and the reason Crew is a
@@ -6368,31 +6340,45 @@ textarea.run-input {
   font-size: 11px;
 }
 
-.crew-build__legend {
+/*
+ * Issue #120: the named legend wrapped to a second and third row as the crew
+ * grew, and every row it took came out of the tower. This is one row, always:
+ * icons only, scrolled sideways when there are more runners than width, and
+ * never `flex-wrap`. Each icon is a 44px target that opens Crew Profile.
+ */
+.crew-build__rail {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px 13px;
-  margin: 11px 0 0;
+  flex-wrap: nowrap;
+  gap: 2px;
+  margin: 9px 0 0;
   padding: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
   list-style: none;
 }
-.crew-build__legend li {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-  font-family: var(--font-data);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.crew-build__rail li { flex: 0 0 auto; }
+.crew-build__rail-runner {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
 }
-.crew-build__legend li > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 12ch;
+.crew-build__rail-runner:hover { border-color: var(--border-strong); }
+.crew-build__rail-runner:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.crew-build__invite-note {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 .crew-view__state {
   min-height: 180px;
@@ -6403,6 +6389,24 @@ textarea.run-input {
   color: var(--text-muted);
 }
 .crew-view__state p { margin: 0; }
+
+/* A Crew projection held back while personal STACK finishes its account
+   handoff. This is a wait, not a failure, so it reads as a quiet note rather
+   than borrowing the comparison error's danger colour. */
+/* The literal reason a Crew upload was refused, under the reassurance. */
+.crew-settings__note--detail {
+  margin-top: 4px;
+  color: var(--text-subtle);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.crew-view__waiting {
+  margin: 9px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
 
 .crew-comparison {
   min-width: 0;
@@ -6448,7 +6452,7 @@ textarea.run-input {
 
 .crew-comparison__selector {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin-top: 5px;
 }
@@ -6518,13 +6522,30 @@ textarea.run-input {
   gap: 10px;
 }
 
+/*
+ * The runner identity is a control now (issue #120) — it opens Crew Profile —
+ * but it must not look like one: no button chrome, no colour change, just the
+ * same name it always was, with a focus ring for keyboard use.
+ */
 .crew-comparison__member {
   display: flex;
   align-items: center;
   gap: 7px;
   min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.crew-comparison__member:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .crew-comparison__member > span:nth-child(2) {
@@ -6644,6 +6665,7 @@ textarea.run-input {
 .crew-run-item[data-type="intervals"] { --activity-accent: var(--intervals); }
 .crew-run-item[data-type="simulation"] { --activity-accent: var(--simulation); }
 .crew-run-item[data-type="long"] { --activity-accent: var(--long); }
+.crew-run-item[data-type="cross"] { --activity-accent: var(--cross); }
 .crew-run-item[data-type="race"] { --activity-accent: var(--race); }
 
 .crew-run-row {
@@ -6676,6 +6698,7 @@ textarea.run-input {
 .crew-run-detail__icon[data-type="intervals"] { color: var(--intervals); }
 .crew-run-detail__icon[data-type="simulation"] { color: var(--simulation); }
 .crew-run-detail__icon[data-type="long"] { color: var(--long); }
+.crew-run-detail__icon[data-type="cross"] { color: var(--cross); }
 .crew-run-detail__icon[data-type="race"] { color: var(--race); }
 /* `min-width: 0` on the grid items too: without it a nowrap meta line sets
    the track's minimum and pushes the whole card past the viewport at 320px. */
@@ -6849,150 +6872,6 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   border-top: 1px solid var(--border);
 }
 .crew-run-detail__move .button { width: 100%; }
-
-.crew-builds.section {
-  gap: 9px;
-  padding-top: 10px;
-  border-top-color: var(--border-strong);
-}
-.crew-builds .section__title,
-.crew-builds .section__icon {
-  color: var(--text-muted);
-  font-family: var(--font-data);
-  font-weight: 700;
-  letter-spacing: 0.07em;
-}
-.crew-builds__intro,
-.crew-builds__invite-note {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
-.crew-builds__unavailable {
-  margin: 0;
-  padding: 18px 10px;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 11px;
-  text-align: center;
-}
-/*
- * Issue #86: the rail's cards used to size to 84% of the viewport (max
- * 286px), which on a phone left almost nothing of the next card in view —
- * the rail read as a single full-bleed panel rather than something
- * swipeable. Capping well below the old max and dropping the mobile share
- * keeps a full card plus a real peek of the next one on-screen together.
- */
-.crew-builds__rail {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: min(70%, 228px);
-  gap: 8px;
-  margin: 0;
-  padding: 0 2px 7px;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: inline proximity;
-  scrollbar-width: thin;
-  list-style: none;
-}
-/*
- * One intentional construction grid per card: `CrewMiniBuild` draws the
- * field grid itself, so the card is a plain bordered surface around it
- * rather than a second `technical-grid` background stacked behind it.
- */
-.crew-build-card {
-  width: 100%;
-  min-width: 0;
-  display: grid;
-  grid-template-rows: auto minmax(64px, 84px) auto;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background-color: var(--data-surface);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  scroll-snap-align: start;
-}
-.crew-build-card:hover { border-color: var(--border-strong); }
-.crew-build-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.crew-build-card[data-you="true"] {
-  border-left: 2px solid var(--accent);
-  background-color: color-mix(in srgb, var(--accent) 3%, var(--data-surface));
-}
-.crew-build-card__name {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 750;
-}
-.crew-build-card__name > span:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.crew-build-card__you { color: var(--accent); font-size: 8px; }
-/* Mileage and block count share one compact footer line rather than the
-   mileage sitting up in the identity row. */
-.crew-build-card__context {
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
-  color: var(--text-subtle);
-  font-size: 8px;
-}
-.crew-build-card__miles {
-  color: var(--text);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.crew-build-card__miles span { color: var(--text-muted); font-size: 8px; }
-.crew-build-card__blocks { white-space: nowrap; }
-
-/*
- * No border here: the outer `.crew-build-card` already frames the card, so a
- * second border around the mini tower drew a box-inside-a-box (issue #86).
- * The dark fill still gives the field grid contrast against the card.
- */
-.crew-mini-build {
-  min-width: 0;
-  height: 84px;
-  padding: 4px 5px 2px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.18);
-}
-.crew-mini-build svg { width: 100%; height: 100%; display: block; }
-.crew-mini-build__blocks rect {
-  stroke: color-mix(in srgb, var(--bg) 82%, transparent);
-  stroke-width: 0.75;
-}
-.crew-mini-build__blocks rect[data-type="easy"] { fill: var(--easy); }
-.crew-mini-build__blocks rect[data-type="intervals"] { fill: var(--intervals); }
-.crew-mini-build__blocks rect[data-type="simulation"] { fill: var(--simulation); }
-.crew-mini-build__blocks rect[data-type="long"] { fill: var(--long); }
-.crew-mini-build__blocks rect[data-type="race"] { fill: var(--race); }
-.crew-mini-build__ground { stroke: var(--border-strong); stroke-width: 1; }
-.crew-mini-build__empty {
-  min-height: 64px;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--text-muted);
-  font-size: 11px;
-}
 
 .sheet--crew-member-profile .sheet__panel {
   background: #070d12;
@@ -7257,6 +7136,52 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   font-size: 9px;
 }
 
+.crew-member-profile__award-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.crew-member-profile__award-row {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-strong);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.crew-member-profile__award-row:hover { border-color: var(--border-strong); }
+.crew-member-profile__award-glyph { flex: 0 0 auto; }
+.crew-member-profile__award-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 2px;
+}
+.crew-member-profile__award-text .data-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.crew-member-profile__award-text .machine-label {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+.crew-member-profile__award-result {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 @media (min-width: 420px) {
   .crew-member-profile__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .crew-member-profile__stats > div:nth-child(odd) { border-left: 1px solid var(--border); }
@@ -7273,7 +7198,6 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
     --iso-rise: 6px;
     padding-inline: 9px;
   }
-  .crew-build__legend { gap: 4px 10px; }
   .crew-comparison { padding-inline: 9px; }
   .crew-comparison__rows li { padding-inline: 4px; }
   .crew-comparison__reading .data-value { font-size: 14px; }
@@ -7285,8 +7209,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 
 @media (min-width: 620px) {
-  .crew-comparison__selector { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .crew-builds__rail { grid-auto-columns: min(38%, 232px); }
+  .crew-comparison__selector { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   /* Desktop gets a bigger tower rather than a different app. */
   .crew-build {
     --course-height: 34px;
@@ -7347,15 +7270,15 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   text-transform: uppercase;
 }
 .crew-comparison__selector {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 9px;
 }
 .crew-comparison__selector button {
   width: 100%;
   gap: 0;
-  padding-inline: 4px;
+  padding-inline: 2px;
 }
-.crew-comparison__selector button svg { width: 19px; height: 19px; }
+.crew-comparison__selector button svg { width: 18px; height: 18px; }
 
 .today-crew-activity.section {
   gap: 7px;
@@ -7382,6 +7305,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .today-crew-activity__list > li[data-type="intervals"] { --activity-accent: var(--intervals); }
 .today-crew-activity__list > li[data-type="simulation"] { --activity-accent: var(--simulation); }
 .today-crew-activity__list > li[data-type="long"] { --activity-accent: var(--long); }
+.today-crew-activity__list > li[data-type="cross"] { --activity-accent: var(--cross); }
 .today-crew-activity__list > li[data-type="race"] { --activity-accent: var(--race); }
 .today-crew-activity__list .runner-icon { justify-self: center; }
 .today-crew-activity__type { color: var(--activity-accent, var(--text-muted)); font-weight: 700; }
@@ -7406,6 +7330,85 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .today-crew-activity__list .crew-props__count { font-size: 11px; }
 .today-crew-activity__list .crew-props__error { grid-column: 2 / -1; }
 .today-crew-activity > .button { justify-self: start; }
+
+.prop-notifications.section {
+  gap: 7px;
+  padding-top: 10px;
+  border-top-color: var(--border-strong);
+}
+.prop-notifications__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.prop-notifications__list > li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 6px 6px;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid transparent;
+  /* A swipe is a horizontal gesture on an otherwise vertically scrolling
+     list; this is what keeps the page free to scroll until the drag proves
+     itself horizontal (see useSwipeToDismiss), rather than the browser
+     eating every pointer move as a pan. */
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+}
+.prop-notifications__list > li:last-child {
+  border-bottom: 0;
+}
+.prop-notifications__list > li[data-unread="true"] {
+  border-left-color: var(--danger);
+}
+.prop-notifications__list > li[data-exiting="true"] {
+  opacity: 0;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.prop-notifications__body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.prop-notifications__body strong { font-weight: 700; }
+.prop-notifications__body .machine-label {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+.prop-notifications__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+.prop-notifications__dismiss:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.prop-notifications__dismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 699px) {
+  /* Narrow enough that roughly 1.5–1.8 cards show at once — the peeking
+     next card is the affordance that this is a rail, not a full row. */
+
+}
 
 @media (max-width: 340px) {
   .crew-comparison { padding-inline: 0; }

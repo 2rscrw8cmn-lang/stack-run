@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
+import type { LucideIcon } from "lucide-react";
 
-export interface BrickFaceLabel {
-  text: string;
-  unit: boolean;
-}
+export type BrickFaceLabel =
+  | { text: string; unit: boolean }
+  | { icon: LucideIcon };
 
 interface BrickProps {
   /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */
@@ -37,8 +37,14 @@ export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
       <span className="placed-block__face placed-block__face--front">
         {label && (
           <span className="placed-block__label">
-            {label.text}
-            {label.unit && <span className="placed-block__unit">MI</span>}
+            {"icon" in label ? (
+              <label.icon className="placed-block__icon" size={14} strokeWidth={2.5} />
+            ) : (
+              <>
+                {label.text}
+                {label.unit && <span className="placed-block__unit">MI</span>}
+              </>
+            )}
           </span>
         )}
       </span>

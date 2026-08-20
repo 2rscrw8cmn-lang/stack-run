@@ -1,4 +1,5 @@
 import {
+  crossTrainingHeightForDuration,
   heightForActivityType,
   widthForMiles,
   type BlockHeight,
@@ -16,58 +17,57 @@ import {
   type PlacementOption,
 } from "../domain/placement";
 import type { RunActivityType } from "../domain/types";
+import {
+  crewAwardFootprint,
+  type CrewAwardBlockRecord,
+  type CrewAwardType,
+} from "./awards";
 import type { CrewMemberAccent } from "./memberAccent";
 import type { CrewBuildRun } from "./types";
 
-/** Safety ceiling for the private ten-person Crew read. */
+/** Safety ceiling for the private ten-person Crew run read. */
 export const CREW_BUILD_BLOCK_LIMIT = 1280;
-/**
- * The shared tower is the same eight-column grid Personal Build stacks
- * on — reused rather than redeclared so the two can never drift apart.
- */
 export const CREW_BUILD_COLUMNS = GRID_COLUMNS;
-/**
- * How much field the Crew stage holds open under an empty or short tower.
- *
- * Six courses made the shared Build read as a compressed table rather than a
- * construction site (issue #65). Ten gives the tower real sky to grow into
- * while still leaving the Crew dashboard's comparison and runs below the
- * fold-line — Crew's field is deliberately shorter than the Build tab's.
- */
 export const CREW_BUILD_MIN_VISIBLE_COURSES = 10;
 
 export interface CrewBuildPlacement {
-  /** 0-based course counted up from the ground. */
   row: number;
-  /** 1-based, inclusive. */
   columnStart: number;
 }
 
-export interface CrewBuildBlock extends CrewBuildPlacement {
-  /** The shared run id, which also opens crew-safe Run Detail. */
+interface CrewBuildBlockBase extends CrewBuildPlacement {
   id: string;
   userId: string;
-  displayName: string;
-  accentColor: CrewMemberAccent | null;
-  activityType: RunActivityType;
   width: BlockWidth;
   height: BlockHeight;
-  distanceMiles: number;
-  localDate: string;
   crewBuildPlacedAt: string | null;
   recentlyPlaced: boolean;
-  /**
-   * Visible faces, computed with the same neighbour-aware culling as
-   * Personal Build (`faceVisibilityOf`), so connected Crew blocks read as one
-   * physical structure rather than a stack of separate cards.
-   */
   topFace: boolean[];
   rightFace: boolean[];
-  /** Paint order — see `PlacedBlock.depth` in Personal Build for why. */
   depth: number;
 }
 
+export interface CrewBuildRunBlock extends CrewBuildBlockBase {
+  kind: "run";
+  displayName: string;
+  accentColor: CrewMemberAccent | null;
+  activityType: RunActivityType;
+  distanceMiles: number;
+  localDate: string;
+}
+
+export interface CrewBuildAwardBlock extends CrewBuildBlockBase {
+  kind: "award";
+  awardType: CrewAwardType;
+  weekStart: string;
+  resultValue: number;
+  sourceSharedRunId: string | null;
+}
+
+export type CrewBuildBlock = CrewBuildRunBlock | CrewBuildAwardBlock;
+
 export interface CrewBuildReadyRun {
+  kind: "run";
   id: string;
   userId: string;
   displayName: string;
@@ -80,27 +80,36 @@ export interface CrewBuildReadyRun {
   createdAt: string;
 }
 
+export interface CrewBuildReadyAward {
+  kind: "award";
+  id: string;
+  userId: string;
+  awardType: CrewAwardType;
+  weekStart: string;
+  resultValue: number;
+  sourceSharedRunId: string | null;
+  width: BlockWidth;
+  height: BlockHeight;
+  createdAt: string;
+}
+
 export interface CrewBuildModel {
-  /** Only physically placed contributions. */
+  /** Run and award rectangles physically present in the same shared tower. */
   blocks: CrewBuildBlock[];
-  /** Unplaced contributions, oldest earned contribution first. */
   readyRuns: CrewBuildReadyRun[];
-  /** READY contributions the current viewer can actually place. */
   viewerReadyRuns: CrewBuildReadyRun[];
-  /**
-   * Openings the tower spans, drawn so a bridging block is not left
-   * floating — the same concept as Personal Build's `TowerVoid`.
-   */
+  readyAwards: CrewBuildReadyAward[];
+  viewerReadyAwards: CrewBuildReadyAward[];
   voids: GridVoid[];
-  /** Courses tall, counted from the ground. */
   courses: number;
-  /** Miles represented by blocks physically present in the shared tower. */
+  /** Run mileage only. Award blocks always contribute zero. */
   placedMiles: number;
-  /** Eligible shared contributions, retained for truncation/accounting only. */
   runCount: number;
   placedCount: number;
   readyCount: number;
-  /** True when safe runs were dropped at the ceiling above. */
+  awardCount: number;
+  placedAwardCount: number;
+  readyAwardCount: number;
   truncated: boolean;
 }
 
@@ -108,12 +117,17 @@ export const EMPTY_CREW_BUILD: CrewBuildModel = {
   blocks: [],
   readyRuns: [],
   viewerReadyRuns: [],
+  readyAwards: [],
+  viewerReadyAwards: [],
   voids: [],
   courses: 0,
   placedMiles: 0,
   runCount: 0,
   placedCount: 0,
   readyCount: 0,
+  awardCount: 0,
+  placedAwardCount: 0,
+  readyAwardCount: 0,
   truncated: false,
 };
 
@@ -130,7 +144,6 @@ export function isRecentCrewBuildPlacement(
   return age >= 0 && age <= RECENT_PLACEMENT_MS;
 }
 
-/** Stable ordering for the READY queue: oldest earned contribution first. */
 export function compareCrewBuildReadyRuns(
   left: CrewBuildRun,
   right: CrewBuildRun,
@@ -142,13 +155,26 @@ export function compareCrewBuildReadyRuns(
   );
 }
 
-export function crewBuildFootprint(run: Pick<CrewBuildRun, "activityType" | "distanceMiles">): {
-  width: BlockWidth;
-  height: BlockHeight;
-} {
+function compareReadyAwards(
+  left: CrewBuildReadyAward,
+  right: CrewBuildReadyAward,
+): number {
+  return (
+    left.weekStart.localeCompare(right.weekStart) ||
+    left.createdAt.localeCompare(right.createdAt) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+export function crewBuildFootprint(
+  run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "durationSeconds">,
+): { width: BlockWidth; height: BlockHeight } {
   return {
     width: widthForMiles(run.distanceMiles),
-    height: heightForActivityType(run.activityType),
+    height:
+      run.activityType === "cross"
+        ? crossTrainingHeightForDuration(run.durationSeconds)
+        : heightForActivityType(run.activityType),
   };
 }
 
@@ -169,12 +195,12 @@ export function crewBuildBlocksOverlap(
   left: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
   right: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
 ): boolean {
-  const columnsOverlap =
+  return (
     left.columnStart < right.columnStart + right.width &&
-    right.columnStart < left.columnStart + left.width;
-  const rowsOverlap =
-    left.row < right.row + right.height && right.row < left.row + left.height;
-  return columnsOverlap && rowsOverlap;
+    right.columnStart < left.columnStart + left.width &&
+    left.row < right.row + right.height &&
+    right.row < left.row + left.height
+  );
 }
 
 function crewBuildBlocksShareSupport(
@@ -188,15 +214,23 @@ function crewBuildBlocksShareSupport(
   );
 }
 
+function sameBuildItem(
+  left: Pick<CrewBuildBlock, "kind" | "id">,
+  right: Pick<CrewBuildBlock, "kind" | "id">,
+): boolean {
+  return left.kind === right.kind && left.id === right.id;
+}
+
 export function isCrewBuildBlockSupported(
-  block: CrewBuildPlacement & { id: string; width: BlockWidth },
+  block: Pick<CrewBuildBlock, "kind" | "id" | "row" | "columnStart" | "width">,
   blocks: readonly CrewBuildBlock[],
 ): boolean {
   return (
     block.row === 0 ||
     blocks.some(
       (support) =>
-        support.id !== block.id && crewBuildBlocksShareSupport(block, support),
+        !sameBuildItem(block as Pick<CrewBuildBlock, "kind" | "id">, support) &&
+        crewBuildBlocksShareSupport(block, support),
     )
   );
 }
@@ -207,21 +241,13 @@ export function isCrewBuildStructurallyValid(
   return blocks.every((block) => isCrewBuildBlockSupported(block, blocks));
 }
 
-/** Client mirror of the RPC's grid, collision, support and move checks. */
-export function canPlaceCrewBuildBlock(
-  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+function runCandidate(
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   placement: CrewBuildPlacement,
-  blocks: readonly CrewBuildBlock[],
-): boolean {
+): CrewBuildRunBlock {
   const footprint = crewBuildFootprint(run);
-  if (!isCrewBuildPlacementWithinGrid(placement, footprint.width)) return false;
-  const others = blocks.filter((block) => block.id !== run.id);
-  if (others.some(
-    (block) =>
-      crewBuildBlocksOverlap({ ...placement, ...footprint }, block),
-  )) return false;
-
-  const candidate: CrewBuildBlock = {
+  return {
+    kind: "run",
     id: run.id,
     userId: "",
     displayName: "",
@@ -231,14 +257,44 @@ export function canPlaceCrewBuildBlock(
     localDate: "",
     crewBuildPlacedAt: null,
     recentlyPlaced: false,
-    // Unused by the support/collision checks below — faces and paint order
-    // only matter once a placement is actually rendered.
     topFace: [],
     rightFace: [],
     depth: 0,
     ...placement,
     ...footprint,
   };
+}
+
+function awardCandidate(
+  award: Pick<CrewAwardBlockRecord, "id" | "winnerUserId" | "awardType" | "weekStart" | "resultValue" | "sourceSharedRunId">,
+  placement: CrewBuildPlacement,
+): CrewBuildAwardBlock {
+  const footprint = crewAwardFootprint(award.awardType);
+  return {
+    kind: "award",
+    id: award.id,
+    userId: award.winnerUserId,
+    awardType: award.awardType,
+    weekStart: award.weekStart,
+    resultValue: award.resultValue,
+    sourceSharedRunId: award.sourceSharedRunId,
+    crewBuildPlacedAt: null,
+    recentlyPlaced: false,
+    topFace: [],
+    rightFace: [],
+    depth: 0,
+    ...placement,
+    ...footprint,
+  };
+}
+
+function canPlaceCandidate(
+  candidate: CrewBuildBlock,
+  blocks: readonly CrewBuildBlock[],
+): boolean {
+  if (!isCrewBuildPlacementWithinGrid(candidate, candidate.width)) return false;
+  const others = blocks.filter((block) => !sameBuildItem(block, candidate));
+  if (others.some((block) => crewBuildBlocksOverlap(candidate, block))) return false;
   const afterMove = [...others, candidate];
   return (
     isCrewBuildBlockSupported(candidate, afterMove) &&
@@ -246,34 +302,42 @@ export function canPlaceCrewBuildBlock(
   );
 }
 
-/**
- * Column-only landing options for a run, exactly like Personal Build: the
- * user picks a column and gravity computes the row, so there is at most one
- * option per column instead of a row-by-column scan. Reuses Personal's
- * `placementOptions` unmodified — a landing that rests fully on the tallest
- * spanned column is always either on the ground or resting on some block
- * below it, so it satisfies Crew's own support rule for free.
- */
+/** Client mirror of the mixed RPC's grid, collision, support and move checks. */
+export function canPlaceCrewBuildBlock(
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
+  placement: CrewBuildPlacement,
+  blocks: readonly CrewBuildBlock[],
+): boolean {
+  return canPlaceCandidate(runCandidate(run, placement), blocks);
+}
+
+export function canPlaceCrewAwardBlock(
+  award: Pick<CrewAwardBlockRecord, "id" | "winnerUserId" | "awardType" | "weekStart" | "resultValue" | "sourceSharedRunId">,
+  placement: CrewBuildPlacement,
+  blocks: readonly CrewBuildBlock[],
+): boolean {
+  return canPlaceCandidate(awardCandidate(award, placement), blocks);
+}
+
 export function crewBuildLandingOptions(
-  run: Pick<CrewBuildRun, "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "durationSeconds">,
   blocks: readonly CrewBuildBlock[],
 ): PlacementOption[] {
   const { width, height } = crewBuildFootprint(run);
   return placementOptions(width, height, blocks);
 }
 
-/**
- * Finite snapped positions shown in placement mode. The grid grows with the
- * actual tower and always includes breathing room above it.
- *
- * @deprecated Superseded by `crewBuildLandingOptions`, which mirrors
- * Personal Build's horizontal-drag-then-gravity interaction (issue #65).
- * Kept for the client-side collision mirror `canPlaceCrewBuildBlock` still
- * relies on internally and for any caller that still needs every valid
- * anchor rather than one landing per column.
- */
+export function crewAwardLandingOptions(
+  award: Pick<CrewAwardBlockRecord, "awardType">,
+  blocks: readonly CrewBuildBlock[],
+): PlacementOption[] {
+  const { width, height } = crewAwardFootprint(award.awardType);
+  return placementOptions(width, height, blocks);
+}
+
+/** Kept for tests/callers that need every snapped run anchor. */
 export function crewBuildPlacementOptions(
-  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles">,
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   blocks: readonly CrewBuildBlock[],
   rows = Math.max(
     CREW_BUILD_MIN_VISIBLE_COURSES,
@@ -290,38 +354,65 @@ export function crewBuildPlacementOptions(
   return options;
 }
 
-/**
- * Builds the shared read model from persisted Crew coordinates only.
- *
- * Personal `build_row` / `build_column_start` never enter this contract. A
- * run with no valid Crew placement remains READY and receives no invented
- * physical position. The hero mileage is derived only from surviving placed
- * blocks; READY mileage remains deliberately separate.
- */
-export function deriveCrewBuild(
+function readyRun(run: CrewBuildRun): CrewBuildReadyRun {
+  const { width, height } = crewBuildFootprint(run);
+  return {
+    kind: "run",
+    id: run.id,
+    userId: run.userId,
+    displayName: run.displayName,
+    accentColor: run.accentColor,
+    activityType: run.activityType,
+    width,
+    height,
+    distanceMiles: run.distanceMiles,
+    localDate: run.localDate,
+    createdAt: run.createdAt,
+  };
+}
+
+function readyAward(award: CrewAwardBlockRecord): CrewBuildReadyAward {
+  const { width, height } = crewAwardFootprint(award.awardType);
+  return {
+    kind: "award",
+    id: award.id,
+    userId: award.winnerUserId,
+    awardType: award.awardType,
+    weekStart: award.weekStart,
+    resultValue: award.resultValue,
+    sourceSharedRunId: award.sourceSharedRunId,
+    width,
+    height,
+    createdAt: award.createdAt,
+  };
+}
+
+function deriveMixedCrewBuild(
   runs: readonly CrewBuildRun[],
-  limit = CREW_BUILD_BLOCK_LIMIT,
-  viewerUserId?: string,
-  now = Date.now(),
+  awards: readonly CrewAwardBlockRecord[],
+  limit: number,
+  viewerUserId: string | undefined,
+  now: number,
 ): CrewBuildModel {
   const ceiling = Math.max(0, limit);
-  const ordered = [...runs].sort(compareCrewBuildReadyRuns);
-  const contributing = ordered.slice(0, ceiling);
-  const blocks: CrewBuildBlock[] = [];
+  const orderedRuns = [...runs].sort(compareCrewBuildReadyRuns);
+  const contributingRuns = orderedRuns.slice(0, ceiling);
+  const candidateBlocks: CrewBuildBlock[] = [];
   const readyRuns: CrewBuildReadyRun[] = [];
+  const readyAwards: CrewBuildReadyAward[] = [];
 
-  for (const run of contributing) {
+  for (const run of contributingRuns) {
     const { width, height } = crewBuildFootprint(run);
-    const placement =
-      run.crewBuildRow === null || run.crewBuildColumnStart === null
-        ? null
-        : { row: run.crewBuildRow, columnStart: run.crewBuildColumnStart };
+    const placement = run.crewBuildRow === null || run.crewBuildColumnStart === null
+      ? null
+      : { row: run.crewBuildRow, columnStart: run.crewBuildColumnStart };
     if (
       placement &&
       isCrewBuildPlacementWithinGrid(placement, width) &&
-      !blocks.some((block) => crewBuildBlocksOverlap({ ...placement, width, height }, block))
+      !candidateBlocks.some((block) => crewBuildBlocksOverlap({ ...placement, width, height }, block))
     ) {
-      blocks.push({
+      candidateBlocks.push({
+        kind: "run",
         id: run.id,
         userId: run.userId,
         displayName: run.displayName,
@@ -335,99 +426,132 @@ export function deriveCrewBuild(
         localDate: run.localDate,
         crewBuildPlacedAt: run.crewBuildPlacedAt,
         recentlyPlaced: isRecentCrewBuildPlacement(run.crewBuildPlacedAt, now),
-        // Faces and depth depend on the whole tower, so they're filled in
-        // once below, after unsupported construction has been removed.
         topFace: [],
         rightFace: [],
         depth: topOf({ row: placement.row, height }),
       });
     } else {
-      readyRuns.push({
-        id: run.id,
-        userId: run.userId,
-        displayName: run.displayName,
-        accentColor: run.accentColor,
-        activityType: run.activityType,
-        width,
-        height,
-        distanceMiles: run.distanceMiles,
-        localDate: run.localDate,
-        createdAt: run.createdAt,
-      });
+      readyRuns.push(readyRun(run));
     }
   }
 
-  // Persisted data can predate server support validation or lose a supporting
-  // block during lifecycle cleanup. Remove unsupported construction from the
-  // read model until the remaining tower is structurally valid; those runs
-  // return to READY and are never auto-relocated.
-  let structurallyValid = blocks;
-  let removedUnsupported = true;
-  while (removedUnsupported) {
+  const orderedAwards = [...awards].sort((left, right) =>
+    left.weekStart.localeCompare(right.weekStart) ||
+    left.createdAt.localeCompare(right.createdAt) ||
+    left.id.localeCompare(right.id));
+  for (const award of orderedAwards) {
+    const { width, height } = crewAwardFootprint(award.awardType);
+    const placement = award.crewBuildRow === null || award.crewBuildColumnStart === null
+      ? null
+      : { row: award.crewBuildRow, columnStart: award.crewBuildColumnStart };
+    if (
+      placement &&
+      isCrewBuildPlacementWithinGrid(placement, width) &&
+      !candidateBlocks.some((block) => crewBuildBlocksOverlap({ ...placement, width, height }, block))
+    ) {
+      candidateBlocks.push({
+        kind: "award",
+        id: award.id,
+        userId: award.winnerUserId,
+        awardType: award.awardType,
+        weekStart: award.weekStart,
+        resultValue: award.resultValue,
+        sourceSharedRunId: award.sourceSharedRunId,
+        width,
+        height,
+        row: placement.row,
+        columnStart: placement.columnStart,
+        crewBuildPlacedAt: award.crewBuildPlacedAt,
+        recentlyPlaced: isRecentCrewBuildPlacement(award.crewBuildPlacedAt, now),
+        topFace: [],
+        rightFace: [],
+        depth: topOf({ row: placement.row, height }),
+      });
+    } else {
+      readyAwards.push(readyAward(award));
+    }
+  }
+
+  // Persisted construction can become unsupported after a deletion. Settle it
+  // to READY defensively until server repair catches up; never auto-relocate.
+  let structurallyValid = candidateBlocks;
+  let changed = true;
+  while (changed) {
     const next = structurallyValid.filter((block) =>
-      isCrewBuildBlockSupported(block, structurallyValid),
-    );
-    removedUnsupported = next.length !== structurallyValid.length;
+      isCrewBuildBlockSupported(block, structurallyValid));
+    changed = next.length !== structurallyValid.length;
     structurallyValid = next;
   }
-  const validIds = new Set(structurallyValid.map((block) => block.id));
-  for (const block of blocks) {
-    if (validIds.has(block.id)) continue;
-    const source = contributing.find((run) => run.id === block.id);
-    if (!source) continue;
-    readyRuns.push({
-      id: source.id,
-      userId: source.userId,
-      displayName: source.displayName,
-      accentColor: source.accentColor,
-      activityType: source.activityType,
-      width: block.width,
-      height: block.height,
-      distanceMiles: source.distanceMiles,
-      localDate: source.localDate,
-      createdAt: source.createdAt,
-    });
+  const validKeys = new Set(structurallyValid.map((block) => `${block.kind}:${block.id}`));
+  for (const block of candidateBlocks) {
+    if (validKeys.has(`${block.kind}:${block.id}`)) continue;
+    if (block.kind === "run") {
+      const source = contributingRuns.find((run) => run.id === block.id);
+      if (source && !readyRuns.some((item) => item.id === source.id)) readyRuns.push(readyRun(source));
+    } else {
+      const source = awards.find((award) => award.id === block.id);
+      if (source && !readyAwards.some((item) => item.id === source.id)) readyAwards.push(readyAward(source));
+    }
   }
+
   readyRuns.sort((left, right) =>
     left.localDate.localeCompare(right.localDate) ||
     left.createdAt.localeCompare(right.createdAt) ||
-    left.id.localeCompare(right.id),
-  );
+    left.id.localeCompare(right.id));
+  readyAwards.sort(compareReadyAwards);
 
-  // Face culling and voids are the same neighbour-aware geometry Personal
-  // Build's `selectBuildViewModel` uses, run over the final, structurally
-  // valid Crew tower rather than the intermediate list unsupported blocks
-  // were still part of.
   const filled = occupiedCellsOf(structurallyValid);
-  const finalBlocks: CrewBuildBlock[] = structurallyValid.map((block) => {
+  const finalBlocks = structurallyValid.map((block): CrewBuildBlock => {
     const { topFace, rightFace }: FaceVisibility = faceVisibilityOf(block, filled);
     return { ...block, topFace, rightFace };
   });
   const voids = voidsOf(structurallyValid, filled);
+  const placedRuns = finalBlocks.filter((block): block is CrewBuildRunBlock => block.kind === "run");
+  const placedAwards = finalBlocks.filter((block): block is CrewBuildAwardBlock => block.kind === "award");
 
   return {
     blocks: finalBlocks,
     readyRuns,
+    viewerReadyRuns: viewerUserId ? readyRuns.filter((run) => run.userId === viewerUserId) : [],
+    readyAwards,
+    viewerReadyAwards: viewerUserId ? readyAwards.filter((award) => award.userId === viewerUserId) : [],
     voids,
-    viewerReadyRuns: viewerUserId
-      ? readyRuns.filter((run) => run.userId === viewerUserId)
-      : [],
     courses: structurallyValid.reduce(
       (highest, block) => Math.max(highest, block.row + block.height),
       0,
     ),
-    placedMiles: structurallyValid.reduce(
-      (total, block) => total + block.distanceMiles,
-      0,
-    ),
-    runCount: contributing.length,
-    placedCount: structurallyValid.length,
+    placedMiles: placedRuns.reduce((total, block) => total + block.distanceMiles, 0),
+    runCount: contributingRuns.length,
+    placedCount: placedRuns.length,
     readyCount: readyRuns.length,
-    truncated: ordered.length > contributing.length,
+    awardCount: awards.length,
+    placedAwardCount: placedAwards.length,
+    readyAwardCount: readyAwards.length,
+    truncated: orderedRuns.length > contributingRuns.length,
   };
 }
 
-/** The runners with at least one physically placed block. */
+/** Backward-compatible run-only derivation used by existing callers/tests. */
+export function deriveCrewBuild(
+  runs: readonly CrewBuildRun[],
+  limit = CREW_BUILD_BLOCK_LIMIT,
+  viewerUserId?: string,
+  now = Date.now(),
+): CrewBuildModel {
+  return deriveMixedCrewBuild(runs, [], limit, viewerUserId, now);
+}
+
+/** Production Crew Build: run blocks plus physically real zero-mile awards. */
+export function deriveCrewBuildWithAwards(
+  runs: readonly CrewBuildRun[],
+  awards: readonly CrewAwardBlockRecord[],
+  viewerUserId?: string,
+  limit = CREW_BUILD_BLOCK_LIMIT,
+  now = Date.now(),
+): CrewBuildModel {
+  return deriveMixedCrewBuild(runs, awards, limit, viewerUserId, now);
+}
+
 export function crewBuildContributorIds(model: CrewBuildModel): string[] {
   const seen: string[] = [];
   for (const block of model.blocks) {

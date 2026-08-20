@@ -538,7 +538,10 @@ Current acceptance:
 - **UI-22 — Final Product Polish + Onboarding** is complete and accepted (merged PR #39).
 - **UI-23 — Run Detail 2.0** is authorized by D-073 and is in review.
 - **Runner Icons** are authorized by D-074 and are in review.
-- No later phase is planned or authorized beyond UI-23.
+- **Cross Training** is authorized by D-077 and is in review.
+- **Crew Cross Training duration height + Crew heart rate** is authorized by D-079 and is in review.
+- **Crew Special Blocks** are authorized by D-080 and are in review.
+- No later UI-numbered phase is planned; Cross Training, Runner Icons, D-079 and D-080 are additional scope opened as new decisions, the way this note requires.
 
 ## D-076 — The Crew Emblem is three layers, and the four-part library is retired outright
 
@@ -573,3 +576,125 @@ See:
 - `docs/RACE_CREW_SETUP.md`
 - `docs/RUN_DATA_SETUP.md`
 - `docs/RACE_CREW_IMPLEMENTATION.md`
+
+## D-077 — Cross Training is a sixth activity type, with its own Intervals verification and its own opt-in plan preference
+
+**Decision:** UI-22 said no later phase was planned; a runner asking to log and plan for Cross Training (HIIT, lifting, mobility) alongside running is exactly the kind of additional scope that note said requires a new decision. This adds `"cross"` as a sixth `WorkoutType`/`RunActivityType` — not a separate category bolted alongside running — so every existing mechanism (blocks, Build, Crew sharing, Trends, plan editing) already knows what to do with it once the type union carries it.
+
+Four choices worth recording:
+
+1. **Distance is optional, and only for this one type, because a real payload said so.** A HIIT activity recorded on watch and synced through HealthFit on 2026-08-13 reports `distance` and `icu_distance` as both `null` from Intervals.icu — not a UX guess that Cross Training "probably" has no meaningful mileage. `runValidation.ts`, the cloud sync round-trip, and both Supabase `distance_miles` checks all relax from a flat `> 0` to a per-type rule, and every other activity type keeps the original requirement unchanged.
+2. **The Intervals sync mapping follows the running allowlist's existing never-guess policy exactly.** `VERIFIED_RUNNING_TYPES` had stayed at exactly `Run` for months on the strength of that policy; `VERIFIED_CROSS_TRAINING_TYPES` opens with exactly one entry, `HighIntensityIntervalTraining`, the literal string from the same August 13 capture. Plausible aliases (`WeightTraining`, `Workout`, `Elliptical`, `Crossfit`) stay out until a real payload shows one, the same as `VirtualRun`/`TrailRun`/`Treadmill` still do for running.
+3. **A hand-rolled allowlist without a `Record<RunActivityType, …>`/`Set` sourced from `ACTIVITY_TYPES` is a real bug waiting on this type, not a hypothetical one.** `tsc` catches every exhaustive `Record`/array literal automatically, but several consumers held their own copy of the five running types as a runtime check instead: `crew/dashboard.ts`'s `activityTypeFrom` would have thrown and broken the Crew dashboard for any teammate's Cross Training run; `domain/trends.ts`'s Run Mix chart would have silently dropped Cross Training miles from its legend while still counting them in the total; `storage/migrations.ts`'s `validateCurrentAppState` would have thrown `InvalidAppStateError` and broken app load outright the moment any workout used the type. All three were found by deliberately auditing every such site rather than trusting the compiler, and are fixed in the same change.
+4. **Cross Training Days is additive, not a reshaping preference like Run Days.** Run Days *moves* existing runs to preferred weekdays and treats zero chosen days as an error state (a plan with no run days is not a plan). Cross Training Days only ever *fills* a rest day that lands on a chosen weekday — it never displaces a scheduled run, never touches the past or race day, and an empty selection is the ordinary state most plans start in and may stay in. It is built on the existing `addPlannedRun` plan-edit primitive, one rest day at a time, the same way `applyRunDays` is built on `moveWorkout`.
+
+Two Supabase migrations carry this: `20260817120000_cross_training_activity_type.sql` (the `activity_type`/`distance_miles` widening and `crew_build_height()`) and `20260818120000_cross_training_days.sql` (`personal_training_state.cross_training_days`, threaded through the three generation-aware training-state RPCs). Neither had been applied to any project or verified against a live Postgres as of this decision — no Docker was available in the environment this was built in — so `supabase db reset` and the two new `supabase/tests/*.sql` files are the outstanding verification, tracked in PR #115.
+
+This decision authorizes Cross Training as scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not authorize any change to what `generateTrainingPlan()` itself schedules — Cross Training Days stays a post-generation fill, never a generation input — and it does not reopen Crew's safe-projection boundary beyond the one field (`activity_type`/`activityType` already carried `"cross"` as a value everywhere it was already plumbed).
+
+## D-078 — Avg Pace replaces Consistency for every crew, and Today stops confirming what it already knows
+
+**Decision:** This is a space and hierarchy correction across Crew, Today and Run Data (issue #120), not a new product phase. It adds no capability, no Supabase migration, no AppState migration and no dependency. The rule it applies everywhere: once STACK knows something happened, stop spending space confirming it happened, and use that space to show what the runner should do next.
+
+Six choices worth recording:
+
+1. **Avg Pace is total duration ÷ total distance, never the mean of per-run paces.** Averaging each run's own pace lets a one-mile shakeout outvote a twelve-mile long run, which is not what "how fast has this runner been running" means. Cross Training is excluded because it is not a running pace and is often distanceless (D-077), and a member with no eligible running in the window is absent rather than present at a fabricated `0:00`.
+
+2. **Avg Pace serves a Race Crew and a Run Club identically, so the D-070 metric split ends.** Consistency needed a training plan, which is why a Run Club got `Run Days` in that slot instead — two crews could never compare the same four things. Avg Pace comes from shared runs, so both crew types now show Weekly Miles, Longest Run, Avg Pace and Miles Built, and Crew Profile's third stat cell finally matches the comparison tab it sits beside. `src/crew/runDays.ts` is deleted. `CrewMemberSummary.consistencyCompleted` / `consistencyDue` stay in the projection and in Supabase, unread — removing them would be a migration this correction does not need.
+
+3. **Lower-is-better is explicit in the comparison model rather than special-cased at the call site.** `lowerIsBetter()` drives both the sort direction and the bar scale, and the bar is drawn against the *best* reading on screen rather than the largest — so the fastest pace has the full bar even though its number is the smallest. A pace comparison scaled the old descending way would have read as a leaderboard upside down.
+
+4. **The Crew Build's member legend becomes an icon-only rail, and the main-screen mini Builds are deleted outright.** Both were per-member surfaces that grew with the crew and took the space from the tower they were annotating — the legend wrapped to new rows, the `The Crew` rail added a card per runner. Nothing large replaces the mini Builds: Crew Profile keeps the full individual Build and now has two consistent front doors, the rail icon and the runner identity in each comparison row. That identity is a control but is deliberately styled as plain text, so tapping a name can never be mistaken for switching the metric.
+
+5. **Today reads `CrewSharedRun.localRunId` to know whether a run still owes a Crew block — a field the projection already writes.** Personal and Crew placement are independent (D-066), so a completed run can owe two blocks, one, or none, and Today can only offer the right ones if it can match its own local run to the viewer's shared contribution. The local STACK run id is already inside the approved shared-run contract (it is how a projection finds the row it owns), so `dashboard.ts` reading `local_run_id` back is not a widening of the privacy boundary. `Place Crew Block` then carries that specific shared run into Crew's placement flow rather than dropping the runner on the Crew page to find their own READY block. `CrewScreen` consumes the handoff during render and retires it through a callback on confirm/cancel/reselect — never through a `setState` in an effect, which the repo's lint rules correctly reject.
+
+6. **Today's Run Found becomes a prompt, and Run Data becomes two states.** The dashboard was running most of the import workflow (match, extra, activity type, effort, notes, ignore) inside a card, while Run Data — which owns all of it — rendered the selected run's review *below* the entire candidate list, so choosing the first of six runs on a first sync opened a form the runner had to scroll past that list to reach. Today now states the run, what it looks like, and `Review Run →`; Run Data's review state replaces its candidate list, with a quiet `← Back to runs`. `RunDataReview.asExtra` is removed because Today no longer decides that, and `useConnectedSync`'s session-only `dismiss` is deleted with the `Not now` control that was its only caller — an unreachable capability is worse than a smaller hook.
+
+7. **Avg Pace narrows the "no pace leaderboard" boundary rather than ignoring it, and the owner asked for it explicitly.** `docs/RACE_CREW.md` and `AGENTS.md` both said *no raw pace leaderboard*, and this pass adds a pace comparison with a best-first order — so the boundary is restated rather than quietly dropped. What stays forbidden is what that rule was protecting against: no individual run's pace is ranked, posted or compared, and the crew-safe run contract still carries no pace field of its own. What is now allowed is one trailing-28-day aggregate per member, in the same encouragement-first comparison module as Weekly Miles and Longest Run. Issue #120 requests this in the owner's own words ("Replace Consistency with a more useful Avg Pace comparison", "lower Avg Pace is better", "use Avg Pace for both Race Crews and Run Clubs"), which is what authorizes the change; `docs/RACE_CREW.md` is updated to match.
+
+This decision authorizes the scope recorded in `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md`. It does not reopen the Crew safe-projection boundary beyond reading back `local_run_id`, does not change Personal or Crew Build placement rules, and does not change Props, Crew Profile run-detail drill-down or invite/membership behavior.
+
+## D-079 — Cross Training block height scales with duration everywhere it is built, and Crew narrows D-056's heart-rate exclusion
+
+**Decision:** Two focused owner requests, neither a new UI phase.
+
+1. **Height by duration is not a personal-only rule.** Cross Training's block height was made duration-aware (under 30 minutes is height 1, 30 minutes or more is height 2, never height 3) in personal Build only, because `crew_build_height()` had no duration to work from — `CrewBuildRun`/`CrewMiniBuildRun` didn't carry it. The rule now applies everywhere a Cross Training block renders: `CrewBuildRun` gains `durationSeconds` (Member Build's `CrewMiniBuildRun` still needs no change, since its `buildHeight` is a frozen snapshot copied from the personal placement that already computed it correctly). `crew_build_height()` becomes a two-argument function; every SQL function that called it — `place_crew_build_block`, `update_crew`, `heal_crew_build_support`, `demote_changed_crew_footprint` — is redefined at its current body to pass `duration_seconds` through, since PL/pgSQL resolves a function call's signature at creation time, not per-call. Two one-time healing passes ship with the migration: `shared_runs.build_height` is backfilled for every already-placed Cross Training row, and `heal_crew_build_support()` runs once for every crew, since a Crew Build block resting on a Cross Training support that just shrank from height 2 to height 1 would otherwise be left floating rather than demoted to READY.
+2. **Crew sees heart rate now, narrowing D-056.** D-056 said "do not share by default: ... HR/max HR" as part of Crew's original safe-projection boundary, and D-077 explicitly declined to reopen it. This decision reopens exactly that one line, on request, and only that far: `shared_runs` gains `average_heart_rate`, `max_heart_rate` and `manual_heart_rate`, each nullable and range-checked 30–250 bpm like `personal_runs.manual_heart_rate` already is. Training Load, cadence, HR zones, GPS/routes, exact start time, effort and notes are unchanged and stay personal-only — this is a narrowing of one exclusion, not a reopening of the whole boundary. `projectSharedRun` populates the three fields by explicit name, keeping the file's existing "never spread a RunLog" discipline; `CrewRunDetailSheet` renders Avg HR / Max HR with the same manual-entry fallback rule (`RunResultDetail`'s `showManualHeartRate`: a hand-typed reading only fills in when no imported average exists) rather than a new one.
+
+Both migrations (`20260818140000_cross_training_crew_duration_height.sql`, `20260818150000_crew_heart_rate.sql`) were initially written and reasoned about statically, for the same reason D-077 records — no Docker in the environment this was built in. That gap is now closed: Docker Desktop and the Supabase CLI were set up locally and `supabase db reset` was run for real against every migration in this repo's history plus every `supabase/tests/*.sql` file, the first time any of it had actually executed. That run surfaced three real bugs — one in this decision's own `update_crew()` redefinition (a stale, mismatched-signature copy that created an ambiguous overload instead of replacing the live 7-argument version), and two pre-existing ones unrelated to this decision, split out as their own fix (a duplicate migration timestamp from D-074's era, and a `->`/`->>` test-assertion bug in the manual-heart-rate test). All three are fixed and the full chain now applies and verifies cleanly.
+
+## D-080 — Crew Special Blocks are zero-mile weekly Crew awards
+
+**Decision**
+
+Crew Special Blocks are approved as winner-owned, zero-mile pieces that physically participate in the shared Crew Build. Each completed week can produce four standard awards — Most Miles, Best Zone 2, Fastest Avg. Pace, and Most Runs — plus one Feature award rotating weekly through Long Haul, Steady, On Target, and Level Up. Only the winner may place or move the award block. Run blocks and award blocks share the same authoritative collision/support geometry, while `Miles Built` remains the sum of placed run mileage only.
+
+The Crew-safe projection is extended only for derived award scalars: `award_zone2_percent`, `award_target_percent`, `award_level_up_percent`, and `award_steady_seconds` when a verified source exists. Raw heart rate, HR-zone arrays, workout targets/details, routes, exact start times, notes, credentials, and personal history remain private. Award-score sync is scoped to `auth.uid()` so a runner cannot submit or alter another runner's award metrics.
+
+`Steady` must not fabricate a score from average pace. Until STACK has a verified within-run pace-variability source, a Steady week produces no Feature award — one week in four. That gap is recorded rather than papered over.
+
+**Weekly standings are not a v1 surface.** `finalize_crew_awards` is the single authority on who won a week, so the client carries no mirror of the ranking logic: no leaderboard, no live leader row, no client-side week derivation. Crew shows the winner their own placement prompt and nothing else. A Special Block enters the tower by being placed, not by being announced. This also removes a whole class of drift — a client mirror of the rotation and the ranking rules would have to be kept in step with the SQL finalizer forever, and the first version of it was already wrong across a DST boundary.
+
+**Every Special Block is a hollow block.** One treatment for standard and Feature awards alike: the frame carries the runner's own `--piece-color` — the same colour a run block of theirs wears — and the award's glyph is suspended in the opening in its own colour. Ownership and award are two independent channels, so the face needs no runner icon, Feature awards need no brass keyline, and there are no badges, inset chips or added borders. The block's accessible name still leads with the runner's display name, so colour is never the only carrier of ownership. The same hollow block is the award's portrait in the detail sheet and in a member's profile list.
+
+**Special Blocks roll out forward, never backward.** `crews.awards_start_date` floors weekly finalization: it defaults to a Crew's creation date, and existing Crews were backfilled to the rollout date. A Crew that has been running for months therefore starts clean instead of minting an award for every week it already existed and handing each member a stack of READY blocks. This is a fairness rule as much as a launch one — Zone 2, On Target and Level Up rank on derived scalars a runner's own device publishes, and a Crew load syncs the viewer's whole history immediately before finalizing, so any retroactive week would be swept by whoever opened Crew first rather than won by whoever earned it. The same floor applies to a new Crew whose owner backdates `build_start_date`. Backfilling a Crew's history is deliberately not offered: the evidence those three awards need was never recorded for weeks that closed before the feature existed.
+
+**Award scores ride the ordinary projection upload.** They were first published by their own RPC from the Crew screen, which meant a runner who logged runs all week but never opened the Crew tab had null scores when the week closed — and since finalization freezes its answer, Zone 2, On Target and Level Up went to whoever opened Crew before the first finalization rather than to whoever earned them. `syncCrewProjection` now writes them beside distance, duration and heart rate, and they are part of the projection fingerprint so a device that synced earlier backfills on its next upload. `shared_runs` UPDATE is column-scoped, so the grant is extended the same additive way D-079 extended it for heart rate. This does not change finalization: the server still mints only completed weeks, still starts at `awards_start_date`, and still never rewrites a week it has already decided.
+
+Award geometry binds to D-079's two-argument `crew_build_height(activity_type, duration_seconds)`. Run and award rectangles are compared through one normalized `crew_build_items()` read, so a Cross Training block's duration-derived height is authoritative in mixed collision and support checks too.
+
+**Reason**
+
+This preserves the Crew Build as the product's shared artifact, gives weekly competition a permanent visual history, and keeps health/training source data on the runner's side of the privacy boundary. Keeping ranking server-only means the artifact and the competition can never disagree about who won.
+
+**Status**
+
+Approved for the Crew Special Blocks implementation. See `docs/CREW_SPECIAL_BLOCKS.md`.
+
+## D-081 — One canonical definition of Crew Build occupancy, and a projection handoff that says when it is waiting
+
+**Decision**
+
+The Crew Build has exactly one definition of what is physically in the tower, and every surface uses it: client rendering, landing-option generation, server collision and support validation, and repair. That definition is what the Crew screen can actually draw — a run inside its Crew's `build_start_date` window, both coordinates present, and the whole footprint inside the eight columns rather than merely the anchor; the earlier rectangle winning any overlap; and nothing left floating.
+
+`crew_build_items()` now applies those rules on read, and `canonicalize_crew_build()` writes them back to storage. Both placement RPCs canonicalize under the Crew advisory lock they already take, immediately before they validate. A landing the client offers can therefore only be refused by a block that a refresh will actually reveal — the reported failure was a runner being told `That space was just taken. Choose another spot.` about a cell that stayed visibly empty afterwards, because the occupying row had fallen out of the Build window and only the server could still see it.
+
+**Healing only ever demotes.** Invalid construction returns to READY, in place, for the runner who earned it. Nothing is relocated, no other runner's block is moved to make room, and no contribution is deleted. `heal_crew_build_support()` delegates to the same canonical pass rather than keeping its own runs-only view of support — that view could not see a Special Block, so it demoted every run resting on one.
+
+**A Crew projection blocked by personal sync is a state, not a silence.** Projection still refuses to publish until this device owns the account's canonical personal cache; publishing from a cache that is not yet authoritative could share the wrong runs. What changes is that the refusal is visible and recoverable. Crew says its blocks are waiting on personal STACK, and personal sync reports the moment its cache becomes canonical, which forces the projection that join time could not safely publish. Existing eligible runs become READY Crew blocks as soon as the handoff completes, rather than when some unrelated later focus or edit happens to retry. A runner joining a Run Club with months of history behind them no longer sees an empty Crew that fills itself in later for no visible reason.
+
+**The forced refresh after a placement is a read barrier.** It waits out any dashboard request that was already running, because that request may have queried before the write, and then issues its own. A read that fails is reported as a dashboard error; it is not evidence that a write the server accepted did not happen.
+
+**The eight-column grid is a mechanic, not a readout.** Crew placement stops naming `Column N` and stops teaching numbered-column language. The coordinate stays where it is genuinely needed: the placement controls, and the landing slots' accessible names, which still say which column a block would land in.
+
+**Reason**
+
+Two runners hit the same class of bug from opposite ends — one had contributions the server would not accept, the other had contributions the server had never received — and both looked to the runner like the Crew quietly losing their work. Neither is fixable by adding another retry; both come from two components disagreeing about a fact that only one of them should own. Naming the canonical definition once, and making the one legitimate wait say so out loud, is what stops that class of drift rather than the two instances of it.
+
+**Status**
+
+Approved. Closes issue #128. See `supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql` and `supabase/tests/0023_crew_build_canonical_occupancy.sql`.
+
+## D-082 — A run Crew cannot store costs that run, never the batch
+
+**Decision**
+
+The device never sends Crew a value the database is constrained to refuse.
+
+The Crew projection uploads a runner's whole history in one `upsert`, which is one SQL statement: Postgres evaluates every CHECK on every row in it, and a single violation aborts the entire statement. One unusable value therefore costs the runner every run, in every crew they belong to, on every retry, indefinitely. Personal STACK saves runs one at a time, so the same value fails only its own run there and everything else stays healthy. The runner sees a full personal Build and empty crews, and nothing about that symptom points at the cause.
+
+For a nullable column the device mirrors the CHECK and sends `null` — a value Crew cannot store is never worth failing a runner's whole contribution over. For a NOT NULL column there is nothing to omit, so `isShareableWithCrew` leaves that one run out of the batch and the rest upload. Either way the projection reports what it left behind: `syncCrewProjection` returns a count and a runner-facing sentence rather than succeeding silently or failing wholesale.
+
+**Calculated values get the most suspicion.** A heart rate is reported by a device and is occasionally wrong. The four award scores are derived on this device — one division by a near-zero baseline puts a percentage outside 0-100 — so they are the likeliest to drift out of range and have no external source to blame.
+
+A per-run fallback backs this up: when a batch fails anyway, `upsertSharedRuns` retries one row at a time so a constraint this code was never taught about costs only the rows actually at fault. It is a backstop, not a substitute. It runs only after a failure, costs a request per run when it does, and cannot say which rule was broken — the client-side guard is what makes the failure comprehensible.
+
+**Reason**
+
+This is D-081's root cause in a second place: the client and the server disagreeing about a fact only one of them owns. There the disagreement was about which blocks physically exist; here it is about which values are storable. Both produced a failure that was silent, total, and pointed somewhere other than its cause. The live instance was `manual_heart_rate` outside its 30-250 CHECK — a value that was never required, and was not missing, merely unusable, with nothing on the device checking.
+
+Batching is worth keeping: it is one request instead of one per run, on phones, for a group of about ten friends. What is not acceptable is that its failure mode is all-or-nothing and invisible. This makes the batch the fast path and bounds what its failure can cost.
+
+**Status**
+
+Approved. Follows issue #128. See `docs/CREW_PROJECTION_CONTRACT.md`, which is required reading before adding a constrained Crew column.

@@ -37,6 +37,12 @@ export function CrewRunDetailSheet({
 }: CrewRunDetailSheetProps) {
   if (!run) return null;
   const pace = formatPace(run.distanceMiles, run.durationSeconds);
+  // A hand-typed heart rate is never a source-verified fact the way an
+  // imported average is, so it only ever fills in for a run with no
+  // imported reading rather than standing beside one — same rule as
+  // personal Run Detail's RunResultDetail.
+  const showManualHeartRate = run.averageHeartRate == null && run.manualHeartRate != null;
+  const hasHeartRate = run.averageHeartRate != null || showManualHeartRate || run.maxHeartRate != null;
 
   return (
     <Sheet
@@ -77,6 +83,29 @@ export function CrewRunDetailSheet({
             </div>
           )}
         </dl>
+
+        {hasHeartRate && (
+          <dl className="crew-run-detail__facts" aria-label="Heart rate">
+            {run.averageHeartRate != null && (
+              <div>
+                <dd className="data-value">{Math.round(run.averageHeartRate)} BPM</dd>
+                <dt className="machine-label">Avg HR</dt>
+              </div>
+            )}
+            {showManualHeartRate && (
+              <div>
+                <dd className="data-value">{Math.round(run.manualHeartRate!)} BPM</dd>
+                <dt className="machine-label">Avg HR</dt>
+              </div>
+            )}
+            {run.maxHeartRate != null && (
+              <div>
+                <dd className="data-value">{Math.round(run.maxHeartRate)} BPM</dd>
+                <dt className="machine-label">Max HR</dt>
+              </div>
+            )}
+          </dl>
+        )}
 
         <section className="crew-run-detail__props" aria-labelledby="crew-run-props-title">
           <div>

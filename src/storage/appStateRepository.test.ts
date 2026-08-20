@@ -706,6 +706,7 @@ describe("editing an actual run", () => {
     durationSeconds: 3141,
     sourceUpdatedAt: null,
     metrics: { averageHeartRate: 151, elapsedTimeSeconds: 3300 },
+    inferredActivityType: "easy" as const,
   };
 
   it("never moves the run to another workout, or off the plan entirely", () => {

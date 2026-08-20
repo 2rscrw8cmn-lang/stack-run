@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
+import { applyCrossTrainingDays } from "../../domain/crossTrainingDays";
 import { formatDateLabel } from "../../domain/dates";
 import {
   countQualitySessions,
@@ -31,6 +32,7 @@ interface RaceSetupSheetProps {
   plan: TrainingPlan;
   setup: RacePlanSetup | null;
   runDays: Weekday[] | null;
+  crossTrainingDays: Weekday[] | null;
   runLogs: RunLog[];
   today: string;
   isOpen: boolean;
@@ -52,6 +54,7 @@ export function RaceSetupSheet({
   plan,
   setup,
   runDays,
+  crossTrainingDays,
   runLogs,
   today,
   isOpen,
@@ -145,9 +148,15 @@ export function RaceSetupSheet({
       level,
       ...(chosenStart ? { startDate: mondayOf(chosenStart) } : {}),
     };
+    const generated = generateTrainingPlan(chosen, {
+      today,
+      runDays: runDays ?? undefined,
+    });
     onGenerate(
       chosen,
-      generateTrainingPlan(chosen, { today, runDays: runDays ?? undefined }),
+      crossTrainingDays?.length
+        ? applyCrossTrainingDays(generated, crossTrainingDays, { today })
+        : generated,
     );
   }
 

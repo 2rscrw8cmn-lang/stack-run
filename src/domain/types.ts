@@ -8,7 +8,8 @@ export type WorkoutType =
   | "intervals"
   | "simulation"
   | "long"
-  | "race";
+  | "race"
+  | "cross";
 
 /** Every workout type that produces an actual run. Rest is never an activity. */
 export type RunActivityType = Exclude<WorkoutType, "rest">;
@@ -46,7 +47,7 @@ export interface BuildAssignment {
   weekRow: number;
   orderInWeek: number | null;
   span: 0 | 1 | 2 | 3 | 4;
-  colorKey: "neutral" | "easy" | "intervals" | "simulation" | "long" | "race";
+  colorKey: "neutral" | "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
 }
 
 export interface Workout {
@@ -103,6 +104,14 @@ export interface RunLog {
   source?: RunSource;
   externalSource?: ExternalRunSource | null;
   importedMetrics?: ImportedRunMetrics | null;
+  /**
+   * A heart rate the runner typed in by hand, in bpm — never a source-verified
+   * fact the way `importedMetrics.averageHeartRate` is. Kept as its own field
+   * rather than folded into `importedMetrics` so the two can never be
+   * confused: this is the one number in Run Detail that is not something a
+   * watch measured.
+   */
+  manualHeartRate?: number | null;
 }
 
 export interface IntervalsSyncState {
@@ -158,6 +167,13 @@ export interface AppState {
    * it to, and does not police edits made afterwards.
    */
   runDays: Weekday[] | null;
+  /**
+   * The weekdays the runner wants Cross Training on, or null/empty while they
+   * have not said. Like `runDays`, a preference rather than a rule: applying
+   * it fills in rest days that land on these weekdays, and never touches a
+   * day that already schedules a run or one already lived.
+   */
+  crossTrainingDays: Weekday[] | null;
   /**
    * The race the plan was generated for — name, date, distance, level — or
    * null for the plan STACK shipped with. One race at a time: a plan is for

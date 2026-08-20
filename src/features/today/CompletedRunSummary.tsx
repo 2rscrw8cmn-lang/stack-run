@@ -1,94 +1,73 @@
-import { CircleCheck } from "lucide-react";
-import type { CSSProperties } from "react";
+import { Check } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import {
-  earnedBlockPhrase,
-  WORKOUT_TYPE_LABEL,
-} from "../../domain/build";
-import { footprintFor } from "../../domain/footprint";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
+import { formatPace } from "../../domain/runs";
 import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
-import { EFFORT_LABEL } from "../../domain/workout";
 
 interface CompletedRunSummaryProps {
   workout: Workout;
   runLog: RunLog;
   placement?: BlockPlacement | null;
+  /** The viewer's own Crew Build contribution for this run, while it is READY. */
+  crewBlockRunId?: string | null;
   onEditRun: () => void;
   onPlaceBlock: () => void;
-  onViewBuild: () => void;
+  onPlaceCrewBlock: (sharedRunId: string) => void;
 }
 
 /**
- * The completed state on Today. Logging the run earns the block; the block is
- * not part of the structure until the user places it, so the primary action
- * here is Place Block until that happens.
+ * The completed state on Today, as short as the fact it reports (issue #120).
+ *
+ * Once the run exists, STACK already knows it happened and so does the runner;
+ * a card restating the distance, the duration, the effort and the sentence
+ * "your block is built into the tower" spent most of a screen confirming
+ * something nobody doubted. What is left after logging is what has *not*
+ * happened yet: the earned Personal block, and — independently — the Crew
+ * Build contribution. Each action appears only while it is still owed, so a
+ * fully settled run collapses to one line and a quiet Edit.
  */
 export function CompletedRunSummary({
   workout,
   runLog,
   placement,
+  crewBlockRunId = null,
   onEditRun,
   onPlaceBlock,
-  onViewBuild,
+  onPlaceCrewBlock,
 }: CompletedRunSummaryProps) {
-  const typeLabel = WORKOUT_TYPE_LABEL[runLog.activityType];
-  const { width, height } = footprintFor(runLog);
+  const pace = formatPace(runLog.distanceMiles, runLog.durationSeconds);
+  const facts = [
+    `${formatMiles(runLog.distanceMiles)} mi`,
+    formatDurationSeconds(runLog.durationSeconds),
+    ...(pace ? [pace] : []),
+  ].join(" · ");
 
   return (
-    <Card className="today-workout-card">
-      <p className="today-workout-card__eyebrow machine-label" aria-live="polite">
-        <CircleCheck size={16} strokeWidth={1.8} aria-hidden="true" /> Run
-        complete
+    <Card className="today-completed">
+      <p className="today-completed__title" aria-live="polite">
+        <Check size={15} strokeWidth={2.4} aria-hidden="true" />
+        <span>{workout.title}</span>
       </p>
-      <p className="today-workout-card__title">{workout.title}</p>
-      <dl className="completed-run-summary__stats" role="group" aria-label="Completed run">
-        <div>
-          <dt className="machine-label">Distance</dt>
-          <dd className="data-value">{formatMiles(runLog.distanceMiles)} mi</dd>
-        </div>
-        <div>
-          <dt className="machine-label">Duration</dt>
-          <dd className="data-value">{formatDurationSeconds(runLog.durationSeconds)}</dd>
-        </div>
-        <div>
-          <dt className="machine-label">Effort</dt>
-          <dd>{EFFORT_LABEL[runLog.effort]}</dd>
-        </div>
-      </dl>
+      <p className="today-completed__facts data-value">{facts}</p>
 
-      <div className="earned-block">
-        <span
-          className="earned-block__chip"
-          style={
-            {
-              "--piece-color": `var(--${runLog.activityType})`,
-              "--piece-span": width,
-              "--piece-height": height,
-            } as CSSProperties
-          }
-          aria-hidden="true"
-        />
-        <p className="earned-block__text">
-          {placement
-            ? `Your ${typeLabel} block is built into the tower.`
-            : `You earned ${earnedBlockPhrase(runLog.activityType)}.`}
-        </p>
-      </div>
+      {(!placement || crewBlockRunId) && (
+        <div className="today-completed__actions">
+          {!placement && <Button onClick={onPlaceBlock}>Place Personal Block</Button>}
+          {crewBlockRunId && (
+            <Button
+              variant={placement ? "primary" : "secondary"}
+              onClick={() => onPlaceCrewBlock(crewBlockRunId)}
+            >
+              Place Crew Block
+            </Button>
+          )}
+        </div>
+      )}
 
-      <div className="today-workout-card__actions">
-        {placement ? (
-          <Button variant="secondary" onClick={onViewBuild}>
-            View Build
-          </Button>
-        ) : (
-          <Button onClick={onPlaceBlock}>Place Block</Button>
-        )}
-        <Button variant="secondary" onClick={onEditRun}>
-          Edit Run
-        </Button>
+      <div className="today-completed__quiet-actions">
+        <button type="button" onClick={onEditRun}>Edit</button>
       </div>
     </Card>
   );

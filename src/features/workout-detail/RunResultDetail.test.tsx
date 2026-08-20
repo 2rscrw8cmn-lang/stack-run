@@ -103,6 +103,23 @@ describe("connected run result", () => {
     expect(zones).not.toHaveTextContent("Zone 4");
   });
 
+  it("shows a hand-typed heart rate on a manual run that has no imported one", () => {
+    render(<RunResultDetail run={{ ...base, manualHeartRate: 142 }} />);
+    expect(screen.getByText("142 bpm")).toBeInTheDocument();
+    expect(screen.getByText("Avg HR")).toBeInTheDocument();
+  });
+
+  it("never shows a manual heart rate beside an imported one", () => {
+    render(
+      <RunResultDetail
+        run={{ ...syncedRun, importedMetrics: { averageHeartRate: 151 }, manualHeartRate: 999 }}
+      />,
+    );
+    expect(screen.getByText("151 bpm")).toBeInTheDocument();
+    expect(screen.queryByText("999 bpm")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Avg HR")).toHaveLength(1);
+  });
+
   it("keeps the phone summary metrics to one 2×2 grid, with cadence living in the profile", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);

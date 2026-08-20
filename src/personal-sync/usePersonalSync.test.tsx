@@ -112,6 +112,7 @@ function snapshot(runLogs: RunLog[] = [], accountGeneration = 1): PersonalCloudS
       raceSetup: seed.raceSetup,
       availability: seed.availability,
       runDays: seed.runDays,
+      crossTrainingDays: seed.crossTrainingDays,
     },
     trainingRevision: 1,
     runs: runLogs.map((run) => ({ run, revision: 1, deletedAt: null, aliases: [] })),

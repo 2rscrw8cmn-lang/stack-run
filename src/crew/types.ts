@@ -9,6 +9,8 @@ export interface CrewProfile {
   accentColor: CrewMemberAccent | null;
   /** Always renderable: an account with no saved icon gets its stable derived one. */
   runnerIcon: RunnerIcon;
+  /** Props on the runner's own shared runs created after this are unread. */
+  propsSeenAt: string;
 }
 
 /** `race`: the original race-centered Crew. `club`: an ongoing Run Club with no race required. */
@@ -100,17 +102,27 @@ export interface CrewMemberSummary {
 /**
  * The complete run contract available to UI-19.
  *
- * This intentionally does not resemble a personal RunLog: there is no source,
- * external id, exact start time, health data, effort, note, route or plan.
+ * This intentionally does not resemble a personal RunLog: there is no
+ * source, external id, exact start time, cadence, elevation, training load,
+ * HR zones, effort, note, route or plan. Heart rate is the one piece of
+ * health data shared, deliberately, per D-079 — average, max, and the
+ * manual-entry fallback for a run with no imported average.
  */
 export interface CrewSharedRun {
   id: string;
+  /**
+   * The contributing runner's own local STACK run id — already part of the
+   * approved shared-run contract, since it is how a projection finds the row
+   * it owns. Today reads it to tell whether the run it just logged still owes
+   * the Crew Build a block (issue #120).
+   */
+  localRunId: string;
   userId: string;
   displayName: string;
   accentColor: CrewMemberAccent | null;
   runnerIcon: RunnerIcon;
   localDate: string;
-  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   durationSeconds: number;
   createdAt: string;
@@ -124,6 +136,11 @@ export interface CrewSharedRun {
   crewBuildColumnStart: number | null;
   /** Dedicated construction time; projection updates never change it. */
   crewBuildPlacedAt: string | null;
+  /** Source-verified, from `RunLog.importedMetrics`. Never present without a sync. */
+  averageHeartRate?: number | null;
+  maxHeartRate?: number | null;
+  /** Hand-typed, from `RunLog.manualHeartRate` — see its fallback rule in `CrewRunDetailSheet`. */
+  manualHeartRate?: number | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -136,7 +153,7 @@ export interface CrewMiniBuildRun {
   id: string;
   userId: string;
   localDate: string;
-  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   buildRow: number | null;
   buildColumnStart: number | null;
@@ -151,6 +168,8 @@ export interface CrewMiniBuildRun {
  * describes one runner's private arrangement and has no meaning in a tower
  * everybody contributes to, so the Crew Build cannot read it even by accident.
  * `createdAt` is present because it is the communal contribution order.
+ * `durationSeconds` is present only so a Cross Training block's height can
+ * scale with it, the same rule personal Build uses; no other type reads it.
  */
 /**
  * `runnerIcon` is deliberately absent. A Crew Build block is member-colored
@@ -163,12 +182,27 @@ export interface CrewBuildRun {
   displayName: string;
   accentColor: CrewMemberAccent | null;
   localDate: string;
-  activityType: "easy" | "intervals" | "simulation" | "long" | "race";
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
+  durationSeconds: number;
   createdAt: string;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
   crewBuildPlacedAt: string | null;
+}
+
+/** One teammate's Props on one of the viewer's own shared runs. */
+export interface CrewPropNotification {
+  id: string;
+  runId: string;
+  runLocalDate: string;
+  runActivityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
+  runDistanceMiles: number;
+  actorUserId: string;
+  actorDisplayName: string;
+  actorAccentColor: CrewMemberAccent | null;
+  actorRunnerIcon: RunnerIcon;
+  createdAt: string;
 }
 
 export interface CrewDashboardData {
@@ -181,5 +215,7 @@ export interface CrewDashboardData {
   /** True when the safety ceiling was reached and older shared runs were not read. */
   sharedRunsTruncated: boolean;
   propsAvailable: boolean;
+  /** Props on the viewer's own runs only, newest first. */
+  propNotifications: CrewPropNotification[];
   loadedAt: string;
 }

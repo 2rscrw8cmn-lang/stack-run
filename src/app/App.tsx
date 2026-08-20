@@ -13,6 +13,7 @@ import {
   savePlan,
   saveGeneratedPlan,
   saveRunDays,
+  saveCrossTrainingDays,
   saveRunLog,
   StorageLoadError,
   acceptIntervalsRun,
@@ -140,14 +141,15 @@ export function App() {
     onReplaceState: replacePersonalState,
   });
   /**
-   * Crew is a destination only while there is a crew to be in. Membership is
-   * the account's to lose — signing out, leaving, or being removed all take it
-   * away — so the tab is derived from it rather than remembered.
+   * Crew is a destination while the authenticated account still has a known
+   * active membership. Supabase can briefly report `loading` while refreshing
+   * the same signed-in session; that transient state must not hide the Crew
+   * tab or kick the runner back to Runs.
    */
-  const crewAvailable =
-    raceCrew.status === "signed-in" && Boolean(raceCrew.account?.crew);
+  const crewAvailable = Boolean(raceCrew.userId && raceCrew.account?.crew);
   const raceCrewUserId = raceCrew.userId;
   const refreshCrewData = raceCrew.refreshCrewData;
+  const notePersonalSyncReady = raceCrew.notePersonalSyncReady;
 
   function persistOnboarding(next: OnboardingState) {
     setOnboarding(next);
@@ -206,10 +208,20 @@ export function App() {
     });
   }, [raceCrewUserId]);
 
+  // The account's personal cache has just become canonical on this device.
+  // Crew sharing may have stood down at join time waiting for exactly that, so
+  // publish the projection it could not publish before reading the crew back —
+  // otherwise existing runs stay invisible to the crew until something
+  // unrelated changes and triggers a later sync.
   useEffect(() => {
     if (!personalSync.initialized || !raceCrewUserId) return;
-    void refreshCrewData(true);
-  }, [personalSync.initialized, raceCrewUserId, refreshCrewData]);
+    void notePersonalSyncReady().then(() => refreshCrewData(true));
+  }, [
+    notePersonalSyncReady,
+    personalSync.initialized,
+    raceCrewUserId,
+    refreshCrewData,
+  ]);
 
   useEffect(() => onStorageWriteError((error) => setWriteError(error.message)), []);
 
@@ -411,6 +423,10 @@ export function App() {
       runDays={boot.state.runDays}
       onSaveRunDays={(runDays, plan) =>
         setAppState((current) => saveRunDays(current, runDays, plan))
+      }
+      crossTrainingDays={boot.state.crossTrainingDays}
+      onSaveCrossTrainingDays={(crossTrainingDays, plan) =>
+        setAppState((current) => saveCrossTrainingDays(current, crossTrainingDays, plan))
       }
       onEditPlan={(plan) => setAppState((current) => savePlan(current, plan))}
       onResetPlan={() => {

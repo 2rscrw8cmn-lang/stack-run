@@ -14,6 +14,16 @@ import type { RunActivityType, RunLog } from "./types";
  * from the block: the user could not say why a brick came out the size it did.
  * A block you can explain at a glance is worth more than one that is subtly
  * fair.
+ *
+ * Cross Training is the one deliberate exception: it has no meaningful
+ * distance to size anything from, so duration stands in for distance just
+ * for its height — a 45-minute ride reads as a taller block than a
+ * 20-minute mobility session, same "explain it at a glance" principle, just
+ * with a different axis feeding it. See `crossTrainingHeightForDuration`.
+ * This only applies in personal `footprintFor`: Crew Build and Member Build
+ * don't carry a run's duration (by the same design that keeps heart rate and
+ * imported metrics out of Crew), so their Cross Training blocks keep the
+ * fixed height below.
  */
 
 export type BlockWidth = 1 | 2 | 3 | 4;
@@ -36,7 +46,10 @@ export const MAX_BLOCK_WIDTH: BlockWidth = 4;
 /**
  * Height by activity type. Easy and Long are one course: a long run is *wide*,
  * not tall. Intervals and Simulation are two because they are hard. The race
- * is three, which with a width of 4 makes it the largest object in the tower.
+ * is three, which with a width of 4 makes it the largest object in the
+ * tower. Cross Training's 2 here is a fallback for callers with no duration
+ * to work from (Crew Build, Member Build); `footprintFor` uses
+ * `crossTrainingHeightForDuration` instead.
  */
 const HEIGHT_BY_TYPE: Record<RunActivityType, BlockHeight> = {
   easy: 1,
@@ -44,7 +57,11 @@ const HEIGHT_BY_TYPE: Record<RunActivityType, BlockHeight> = {
   intervals: 2,
   simulation: 2,
   race: 3,
+  cross: 2,
 };
+
+/** Below this, a Cross Training session reads as a light one. */
+const CROSS_TRAINING_DURATION_THRESHOLD_SECONDS = 30 * 60;
 
 export function widthForMiles(miles: number): BlockWidth {
   for (const band of WIDTH_BANDS) {
@@ -59,10 +76,23 @@ export function heightForActivityType(type: RunActivityType): BlockHeight {
   return HEIGHT_BY_TYPE[type];
 }
 
+/**
+ * Cross Training's height, standing in for the type-based lookup above:
+ * scales with the logged duration since the type alone doesn't say whether
+ * it was a quick mobility session or a long ride. Capped at 2 — Cross
+ * Training never reaches the race's 3, no matter how long the session ran.
+ */
+export function crossTrainingHeightForDuration(durationSeconds: number): BlockHeight {
+  return durationSeconds >= CROSS_TRAINING_DURATION_THRESHOLD_SECONDS ? 2 : 1;
+}
+
 /** The block an activity earns. Frozen onto the placement when it is built. */
 export function footprintFor(runLog: RunLog): Footprint {
   return {
     width: widthForMiles(runLog.distanceMiles),
-    height: heightForActivityType(runLog.activityType),
+    height:
+      runLog.activityType === "cross"
+        ? crossTrainingHeightForDuration(runLog.durationSeconds)
+        : heightForActivityType(runLog.activityType),
   };
 }
