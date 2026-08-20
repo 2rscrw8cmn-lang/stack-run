@@ -20,6 +20,8 @@ import specialBlocksMigration from "../../supabase/migrations/20260819025500_cre
 import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
 import awardStartMigration from "../../supabase/migrations/20260820120000_crew_award_start_date.sql?raw";
 import awardProjectionMigration from "../../supabase/migrations/20260820130000_crew_award_metrics_on_projection.sql?raw";
+import awardCleanupMigration from "../../supabase/migrations/20260820140000_remove_pre_rollout_award_blocks.sql?raw";
+import awardCleanupVerification from "../../supabase/tests/0022_pre_rollout_award_cleanup.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -531,5 +533,60 @@ describe("Award scores ride the projection upload (D-080)", () => {
     expect(statements).not.toMatch(/create or replace function|drop function/i);
     expect(statements).not.toMatch(/finalize_crew_awards|crew_award_blocks/i);
     expect(statements).not.toMatch(/on conflict/i);
+  });
+});
+
+describe("Pre-rollout Special Block cleanup (D-080)", () => {
+  /**
+   * The floor added in 20260820120000 is forward-only: it stops finalization
+   * from minting retroactive awards but leaves rows minted before it standing.
+   * Preview deployments shared the production Supabase project, so those rows
+   * were real and surfaced the moment the feature shipped.
+   */
+  function floorExpressions(sql: string): string[] {
+    return (sql.match(/greatest\(\s*[\s\S]*?%\s*7\)\s*\)/g) ?? []).map((expression) =>
+      expression
+        .replace(/\bv_build_start\b|\bc\.build_start_date\b/g, "BUILD")
+        .replace(/\bv_awards_start\b|\bc\.awards_start_date\b/g, "AWARDS")
+        .replace(/\s+/g, ""),
+    );
+  }
+
+  it("deletes by exactly the floor the finalizer refuses to reach behind", () => {
+    const [finalizerFloor] = floorExpressions(awardStartMigration);
+    const cleanupFloors = floorExpressions(awardCleanupMigration);
+
+    expect(finalizerFloor, "no floor found in the finalizer").toBeTruthy();
+    expect(cleanupFloors.length, "cleanup states no floor").toBeGreaterThan(0);
+    // Character-identical once variable and column names are normalised: if the
+    // two ever disagree, the cleanup removes rows finalization would still mint,
+    // or leaves rows it never would.
+    for (const floor of cleanupFloors) {
+      expect(floor).toBe(finalizerFloor);
+    }
+  });
+
+  it("settles construction that was resting on a removed award", () => {
+    // A placed award is load-bearing. Deleting one without healing leaves the
+    // run above it floating in the shared tower.
+    expect(awardCleanupMigration).toMatch(/perform public\.repair_crew_build_support\(v_crew_id\)/i);
+  });
+
+  it("touches nothing but the award rows below the floor", () => {
+    const statements = awardCleanupMigration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).not.toMatch(/create or replace function|drop function|alter table/i);
+    // shared_runs is only ever reached through the repair function.
+    expect(statements).not.toMatch(/delete from public\.shared_runs|update public\.shared_runs/i);
+    expect(statements.match(/delete from/gi) ?? []).toHaveLength(1);
+  });
+
+  it("ships transactional verification of the cleanup and the healing", () => {
+    expect(awardCleanupVerification).toMatch(/pre-rollout award survived the cleanup/i);
+    expect(awardCleanupVerification).toMatch(/in-window award was destroyed/i);
+    expect(awardCleanupVerification).toMatch(/left floating/i);
+    expect(awardCleanupVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });
