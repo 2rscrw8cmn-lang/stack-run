@@ -114,7 +114,7 @@ describe("TodayScreen workout states", () => {
     const summary = within(screen.getByRole("group", { name: "Completed run" }));
     expect(summary.getByText("2.1 mi")).toBeInTheDocument();
     expect(summary.getByText("20:30")).toBeInTheDocument();
-    expect(summary.getByText("Solid")).toBeInTheDocument();
+    expect(summary.getByText("9:46 /MI")).toBeInTheDocument();
     expect(screen.getByText("You earned an Easy block.")).toBeInTheDocument();
   });
 

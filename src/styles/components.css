@@ -5375,6 +5375,198 @@ textarea.run-input {
   color: var(--text);
 }
 
+/* Completed runs are a small accomplishment panel, not a disabled workout. */
+.today-completed {
+  gap: 0;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border-strong));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 42%),
+    #080f15;
+}
+
+.today-completed::before {
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 26%, transparent) 72%, transparent);
+}
+
+.today-completed__status,
+.today-completed__heading,
+.today-completed .completed-run-summary__stats,
+.today-completed .earned-block,
+.today-completed .today-workout-card__actions {
+  padding-inline: 16px;
+}
+
+.today-completed__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: 17px;
+}
+
+.today-completed .today-workout-card__eyebrow {
+  color: var(--accent);
+}
+
+.today-completed__state {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, transparent);
+  border-radius: 3px;
+  color: var(--accent);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.today-completed__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: 13px;
+  padding-bottom: 14px;
+}
+
+.today-completed__title {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(23px, 7vw, 32px);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.today-completed__type {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  text-align: right;
+}
+
+.today-completed__type span + span::before {
+  margin: 0 5px;
+  color: var(--border-strong);
+  content: "·";
+}
+
+.today-completed .completed-run-summary__stats {
+  gap: 0;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.today-completed .completed-run-summary__stats > div {
+  padding: 0 9px;
+}
+
+.today-completed .completed-run-summary__stats > div:first-child { padding-left: 0; }
+.today-completed .completed-run-summary__stats > div:last-child { padding-right: 0; }
+.today-completed .completed-run-summary__stats > div + div { border-left: 1px solid var(--border); }
+
+.today-completed .completed-run-summary__stats dt {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.today-completed .completed-run-summary__stats dd {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: clamp(14px, 4.4vw, 18px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.today-completed .earned-block {
+  align-items: stretch;
+  gap: 11px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.today-completed .earned-block__visual {
+  display: grid;
+  flex: 0 0 54px;
+  min-height: 42px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--piece-color) 40%, var(--border));
+  border-radius: 5px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--piece-color) 11%, transparent) 1px, transparent 1px) 0 0 / 8px 8px,
+    linear-gradient(color-mix(in srgb, var(--piece-color) 11%, transparent) 1px, transparent 1px) 0 0 / 8px 8px,
+    #091119;
+}
+
+.today-completed .earned-block__chip {
+  height: calc(11px + var(--piece-height) * 8px);
+  width: min(calc(10px + var(--piece-span) * 11px), 42px);
+  border-radius: 3px;
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--piece-color) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.today-completed .earned-block__label {
+  margin: 1px 0 3px;
+  color: var(--accent);
+  font-size: 8px;
+}
+
+.today-completed .earned-block__text {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.32;
+}
+
+.today-completed .today-workout-card__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 0;
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+
+.today-completed .today-workout-card__actions .button:last-child {
+  width: auto;
+  min-width: 0;
+  padding-inline: 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.today-completed .today-workout-card__actions .button:last-child:hover {
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+@media (max-width: 359px) {
+  .today-completed__status,
+  .today-completed__heading,
+  .today-completed .completed-run-summary__stats,
+  .today-completed .earned-block,
+  .today-completed .today-workout-card__actions {
+    padding-inline: 13px;
+  }
+
+  .today-completed__heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .today-completed__type { text-align: left; }
+  .today-completed .completed-run-summary__stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .today-completed .completed-run-summary__stats > div { padding-inline: 6px; }
+  .today-completed .completed-run-summary__stats dd { font-size: 13px; }
+}
+
 .run-found {
   padding: 14px;
 }

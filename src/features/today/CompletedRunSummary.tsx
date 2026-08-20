@@ -9,6 +9,7 @@ import {
 import { footprintFor } from "../../domain/footprint";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
+import { formatPace } from "../../domain/runs";
 import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
 
@@ -36,14 +37,28 @@ export function CompletedRunSummary({
 }: CompletedRunSummaryProps) {
   const typeLabel = WORKOUT_TYPE_LABEL[runLog.activityType];
   const { width, height } = footprintFor(runLog);
+  const pace = formatPace(runLog.distanceMiles, runLog.durationSeconds);
 
   return (
-    <Card className="today-workout-card">
-      <p className="today-workout-card__eyebrow machine-label" aria-live="polite">
-        <CircleCheck size={16} strokeWidth={1.8} aria-hidden="true" /> Run
-        complete
-      </p>
-      <p className="today-workout-card__title">{workout.title}</p>
+    <Card className="today-workout-card today-completed">
+      <div className="today-completed__status">
+        <p className="today-workout-card__eyebrow machine-label" aria-live="polite">
+          <CircleCheck size={16} strokeWidth={2.2} aria-hidden="true" />
+          Run complete
+        </p>
+        <span className="today-completed__state machine-label">
+          {placement ? "Built" : "Block ready"}
+        </span>
+      </div>
+
+      <div className="today-completed__heading">
+        <p className="today-completed__title">{workout.title}</p>
+        <p className="today-completed__type machine-label">
+          <span>{typeLabel} run</span>
+          <span>{EFFORT_LABEL[runLog.effort]}</span>
+        </p>
+      </div>
+
       <dl className="completed-run-summary__stats" role="group" aria-label="Completed run">
         <div>
           <dt className="machine-label">Distance</dt>
@@ -54,14 +69,14 @@ export function CompletedRunSummary({
           <dd className="data-value">{formatDurationSeconds(runLog.durationSeconds)}</dd>
         </div>
         <div>
-          <dt className="machine-label">Effort</dt>
-          <dd>{EFFORT_LABEL[runLog.effort]}</dd>
+          <dt className="machine-label">Avg pace</dt>
+          <dd className="data-value">{pace ?? "—"}</dd>
         </div>
       </dl>
 
       <div className="earned-block">
-        <span
-          className="earned-block__chip"
+        <div
+          className="earned-block__visual"
           style={
             {
               "--piece-color": `var(--${runLog.activityType})`,
@@ -70,12 +85,19 @@ export function CompletedRunSummary({
             } as CSSProperties
           }
           aria-hidden="true"
-        />
-        <p className="earned-block__text">
-          {placement
-            ? `Your ${typeLabel} block is built into the tower.`
-            : `You earned ${earnedBlockPhrase(runLog.activityType)}.`}
-        </p>
+        >
+          <span
+            className="earned-block__chip"
+          />
+        </div>
+        <div>
+          <p className="earned-block__label machine-label">Build reward</p>
+          <p className="earned-block__text">
+            {placement
+              ? `Your ${typeLabel} block is built into the tower.`
+              : `You earned ${earnedBlockPhrase(runLog.activityType)}.`}
+          </p>
+        </div>
       </div>
 
       <div className="today-workout-card__actions">
