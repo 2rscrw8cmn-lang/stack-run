@@ -336,10 +336,16 @@ export function CrewScreen({
   };
   /*
    * Issue #137: the four figures above the tower. `crewBuildRuns` is already
-   * the Crew-windowed set the tower itself is derived from, so the stats and
-   * the structure below them describe the same crew and the same period.
+   * the Crew-windowed set the tower itself is derived from, and passing the
+   * placed blocks alongside it keeps Miles, Runs and Time describing the
+   * structure on screen rather than the wider pool it is drawn from. Runners
+   * is the roster, so it holds steady while the other three grow.
    */
-  const buildTotals = crewBuildTotals(dashboardData.crewBuildRuns);
+  const buildTotals = crewBuildTotals(
+    dashboardData.crewBuildRuns,
+    crewBuild.blocks,
+    members.length,
+  );
   const viewerReadyRuns = build.viewerReadyRuns;
   const viewerReadyAwards = build.viewerReadyAwards;
 

@@ -56,6 +56,53 @@ describe("Crew Build primacy styling (issue #137)", () => {
     expect(css).not.toMatch(/\.crew-build\.technical-grid/);
   });
 
+  /*
+   * Four numbers in a row at heading size read as one long number. The row is
+   * only useful if the eye can tell where each figure stops, so each one gets
+   * its own panel and its own air.
+   */
+  it("gives each crew figure its own panel instead of a hairline divider", () => {
+    const stats = ruleBody(".crew-build__stats {");
+    const figure = ruleBody(".crew-build__stats > div {");
+
+    // Air between the four, not a shared edge.
+    const gap = /gap:\s*(\d+)px/.exec(stats);
+    expect(gap, "no gap between the figures").not.toBeNull();
+    expect(Number(gap![1])).toBeGreaterThan(0);
+
+    // A panel: bordered on every side and lifted off the page, rather than a
+    // single `border-left` rule standing between two numbers.
+    expect(figure).toMatch(/border:\s*1px solid/);
+    expect(figure).not.toMatch(/border-left:/);
+    expect(figure).toMatch(/background:\s*var\(--surface-strong\)/);
+    expect(figure).toMatch(/padding:\s*\d/);
+  });
+
+  /*
+   * The label is what names the figure above it, so it has to survive being
+   * read at a glance — `--text-subtle` at 8px did not.
+   */
+  it("keeps the figure labels legible rather than decorative", () => {
+    const label = ruleBody(".crew-build__stats dt {");
+
+    expect(label).toMatch(/color:\s*var\(--text-muted\)/);
+    const size = /font-size:\s*(\d+)px/.exec(label);
+    expect(size, "no label font size").not.toBeNull();
+    expect(Number(size![1])).toBeGreaterThanOrEqual(9);
+  });
+
+  /*
+   * The panels are a caption for the tower. They sit on `--surface-strong`,
+   * which is dimmer than the field's own frame, so the row cannot become the
+   * brightest thing on a page whose whole point is the structure below it.
+   */
+  it("keeps the stats row dimmer than the field it captions", () => {
+    const figure = ruleBody(".crew-build__stats > div {");
+
+    expect(figure).not.toMatch(/var\(--accent\)/);
+    expect(figure).toMatch(/border:\s*1px solid var\(--border\)/);
+  });
+
   it("keeps the one remaining frame quieter than the blocks it holds", () => {
     const stage = ruleBody(".crew-build--page .crew-build__stage {");
     expect(stage).toMatch(/border-color:\s*var\(--border-strong\)/);

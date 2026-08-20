@@ -7856,36 +7856,49 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   background: none;
 }
 
-/* Four crew figures, evenly weighted — a snapshot, not a headline. */
+/*
+ * Four crew figures, evenly weighted — a snapshot, not a headline.
+ *
+ * Hairline dividers were not enough to break them up: four numbers set in a
+ * row at this size read as one long number, and the labels underneath were too
+ * faint to say otherwise. Each figure now sits in its own panel with air
+ * between them, so the row scans as four separate facts before it is read.
+ * The panels stay dimmer than the field below — this is a caption for the
+ * tower, and it should not out-shout it.
+ */
 .crew-build__stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
+  gap: 4px;
   margin: 0;
   padding: 0;
 }
 .crew-build__stats > div {
   min-width: 0;
-  padding: 0 6px;
-  border-left: 1px solid var(--border);
-  text-align: right;
+  padding: 7px 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
 }
-.crew-build__stats > div:first-child { border-left: 0; padding-left: 0; }
-.crew-build__stats > div:last-child { padding-right: 0; }
 .crew-build__stats dd {
   margin: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: clamp(19px, 6.4vw, 26px);
+  font-size: clamp(17px, 5.6vw, 24px);
   line-height: 1.05;
   letter-spacing: -0.045em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .crew-build__stats dt {
-  margin-top: 3px;
-  color: var(--text-subtle);
-  font-size: 8px;
+  margin-top: 4px;
+  /*
+   * The label is what tells one panel from the next, so it is legible rather
+   * than decorative: muted instead of subtle, and given room to breathe.
+   */
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
 }
 
 /*
@@ -7936,8 +7949,9 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
     --iso-rise: 7px;
   }
   .crew-build--page .crew-build__stage { padding-inline: 6px; }
-  .crew-build__stats > div { padding: 0 4px; }
-  .crew-build__stats dt { font-size: 7px; letter-spacing: 0.06em; }
+  .crew-build__stats { gap: 3px; }
+  .crew-build__stats > div { padding: 5px 5px 4px; }
+  .crew-build__stats dt { font-size: 8px; letter-spacing: 0.04em; }
 }
 
 @media (min-width: 620px) {
@@ -7949,7 +7963,9 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .crew-build--page .crew-build__viewport {
     max-height: min(66dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
   }
-  .crew-build__stats dd { font-size: 30px; }
+  .crew-build__stats { gap: 6px; }
+  .crew-build__stats > div { padding: 9px 11px 8px; }
+  .crew-build__stats dd { font-size: 28px; }
 }
 
 /*

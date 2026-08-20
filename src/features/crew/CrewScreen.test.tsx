@@ -910,7 +910,8 @@ describe("Shared Crew Build", () => {
 
     expect(screen.queryByText("Crew Build")).not.toBeInTheDocument();
     expect(screen.queryByText("miles built")).not.toBeInTheDocument();
-    // 4 + 8 + 5 miles, three runs, 3 × 39:12 of running, three contributors.
+    // 4 + 8 + 5 miles, three runs, 3 × 39:12 of running, all three placed, and
+    // a roster of three.
     expect(crewTotals()).toEqual(["17.0", "3", "1:57", "3"]);
     expect(
       Array.from(
@@ -1190,10 +1191,11 @@ describe("Shared Crew Build", () => {
     expect(screen.queryByText("Long Run · 8 MI · Aug 8")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Build Now" })).toBeInTheDocument();
     expect(screen.queryByText("0 built · 3 ready")).not.toBeInTheDocument();
-    // The totals are the crew's running, not the tower's masonry: three runs
-    // are earned and none placed, and the row says three runs by two runners
-    // rather than a row of zeroes.
-    expect(crewTotals()).toEqual(["16.0", "3", "1:57", "2"]);
+    // The totals describe the tower, so three READY runs that nobody has
+    // placed yet add nothing to Miles, Runs or Time. Runners is the roster and
+    // reports all three members regardless — it is a fact about the crew, not
+    // about what has been built.
+    expect(crewTotals()).toEqual(["0.0", "0", "0:00", "3"]);
   });
 
   it("does not offer a placement action for another runner's READY block", () => {

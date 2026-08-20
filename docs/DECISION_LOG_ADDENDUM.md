@@ -707,7 +707,15 @@ Approved. Follows issue #128. See `docs/CREW_PROJECTION_CONTRACT.md`, which is r
 
 The outer card is removed entirely. The `CREW BUILD` label goes with it: the active Crew tab already establishes context, so the copy added weight without adding information. Only the build field keeps a border, and that border drops to `--border-strong` with its inset lime glow removed — the blocks provide the page's colour, and the frame's job is to say where the site ends. The field runs to the screen's own gutter, its course height grows so the bricks and the grid scale together, and its viewport cap rises about a quarter. Growing the sky alone would have made the section taller and the build no bigger; the point is a larger build, not more headroom.
 
-**Four crew figures replace the single miles-built heading**: total miles, total runs, total run time, and contributing runners. They are read from the crew's shared runs for the selected crew's Build window rather than from placed blocks — a run that is earned but not yet placed is still a run the crew went out and did, and a stats row that ignored it would disagree with the recent-activity feed on the same screen. The runner figure counts contributors, not roster size. Total time reads as hours and minutes (`14:32`), because a crew passes a hundred hours quickly and nobody reads the seconds.
+**Four crew figures replace the single miles-built heading**: total miles, total runs, total run time, and runners.
+
+Miles, Runs and Time are read from the runs *placed in the tower*, not from every shared run in the Build window. The row sits directly above the structure and captions it, so a figure that counted an unplaced run would claim more than the tower shows. A run that is earned but not yet built is not lost: it appears in Recent Crew Runs and in its runner's own READY prompt, which is where an unbuilt run belongs.
+
+Runners is the roster, not the contributors — a crew of seven where three have run reads `7`. The other three figures are all measures of activity, and a fourth would have been a restatement; what they do not say is how many people this build is for. A crew that has just formed reads `0.0 / 0 / 0:00 / 5`, which is an accurate and useful thing for it to say about itself.
+
+Total time reads as hours and minutes (`14:32`), because a crew passes a hundred hours quickly and nobody reads the seconds.
+
+Each figure sits in its own bordered panel on `--surface-strong` with a gap between them, rather than being separated by hairline dividers. Four numbers set in a row at that size read as one long number, and `--text-subtle` labels at 8px were too faint to break them apart; the labels move to `--text-muted` at 9px. The panels stay dimmer than the field below them — the row is a caption for the tower, not a competitor to it.
 
 `.crew-build` is shared with the Member Build inside Crew Profile, which is a small tower on a sheet and wants none of this, so every rule above is scoped to a `--page` modifier.
 

@@ -210,9 +210,9 @@ export function CrewBuild({
           <dt className="machine-label">Time</dt>
         </div>
         <div>
-          <dd className="data-value">{totals.contributors}</dd>
+          <dd className="data-value">{totals.runners}</dd>
           <dt className="machine-label">
-            {totals.contributors === 1 ? "Runner" : "Runners"}
+            {totals.runners === 1 ? "Runner" : "Runners"}
           </dt>
         </div>
       </dl>
