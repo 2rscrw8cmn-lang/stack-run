@@ -25,6 +25,7 @@ import awardCleanupVerification from "../../supabase/tests/0022_pre_rollout_awar
 import reconcileMigration from "../../supabase/migrations/20260820135000_reconcile_hand_applied_crew_schema.sql?raw";
 import canonicalOccupancyMigration from "../../supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql?raw";
 import canonicalOccupancyVerification from "../../supabase/tests/0023_crew_build_canonical_occupancy.sql?raw";
+import healScopeMigration from "../../supabase/migrations/20260820160000_heal_uses_support_repair_only.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -736,5 +737,35 @@ describe("Canonical Crew Build occupancy (issue #128)", () => {
     expect(canonicalOccupancyVerification).toMatch(/supported by a Special Block was demoted/i);
     expect(canonicalOccupancyVerification).toMatch(/genuinely occupied cell was accepted/i);
     expect(canonicalOccupancyVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Healing stays proportionate to what triggered it (issue #128)", () => {
+  /**
+   * The ordinary Crew projection upserts distance_miles and activity_type for
+   * every run a runner has already shared, and a column-specific trigger fires
+   * on the columns named in an UPDATE rather than on whether they changed. So
+   * anything heal_crew_build_support() does, it does once per already-shared
+   * run, on every projection.
+   */
+  it("keeps the trigger path on support repair, not the full canonical pass", () => {
+    const heal = healScopeMigration.match(
+      /create or replace function public\.heal_crew_build_support[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(heal).toBeTruthy();
+    expect(heal).toMatch(/return public\.repair_crew_build_support\(p_crew_id\)/i);
+    expect(heal).not.toMatch(/canonicalize_crew_build/i);
+  });
+
+  it("still leaves canonicalization where a person caused it", () => {
+    // Both placement RPCs keep it, so the ghost fix is untouched: it runs once
+    // per placement rather than once per row of an unrelated upload.
+    for (const name of ["place_crew_build_block", "place_crew_award_block"]) {
+      const rpc = canonicalOccupancyMigration.match(
+        new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"),
+      )?.[0] ?? "";
+      expect(rpc).toMatch(/perform public\.canonicalize_crew_build/i);
+    }
+    expect(healScopeMigration).not.toMatch(/create or replace function public\.place_crew/i);
   });
 });
