@@ -75,13 +75,28 @@ describe("connected run result", () => {
     expect(screen.getByText("8:00 /MI")).toBeInTheDocument();
     expect(screen.getByText("Solid")).toBeInTheDocument();
     expect(screen.getByText("Felt controlled.")).toBeInTheDocument();
-    expect(screen.queryByText(/Synced via/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /intervals/i })).not.toBeInTheDocument();
+  });
+
+  /*
+   * Issue #129: where a run came from is said the same way for every run, not
+   * only the synced ones, and it stays in the meta line — secondary to the
+   * result it qualifies.
+   */
+  it("names the source of a hand-logged run and of a synced one", () => {
+    const { unmount } = render(<RunResultDetail run={base} />);
+    expect(screen.getByText("Manual entry")).toBeInTheDocument();
+    expect(screen.queryByText("Intervals.icu")).not.toBeInTheDocument();
+    unmount();
+
+    render(<RunResultDetail run={{ ...syncedRun, importedMetrics: {} }} />);
+    expect(screen.getByText("Intervals.icu")).toBeInTheDocument();
+    expect(screen.queryByText("Manual entry")).not.toBeInTheDocument();
   });
 
   it("omits every absent optional metric", () => {
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: {} }} />);
-    expect(screen.getByText("Synced via Intervals.icu")).toBeInTheDocument();
+    expect(screen.getByText("Intervals.icu")).toBeInTheDocument();
     expect(screen.queryByText(/Avg HR|Max HR|Gain|Load|Cadence/)).not.toBeInTheDocument();
   });
 

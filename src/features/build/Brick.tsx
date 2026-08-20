@@ -2,7 +2,17 @@ import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 
 export type BrickFaceLabel =
-  | { text: string; unit: boolean }
+  | {
+      text: string;
+      unit: boolean;
+      /**
+       * Issue #129: a run the runner typed in by hand rather than one a source
+       * synced. Manual entry is the exception, so it is marked with a single
+       * asterisk after the mileage and nothing else — no icon, no badge, no
+       * corner treatment. A synced brick is unchanged.
+       */
+      manual?: boolean;
+    }
   | { icon: LucideIcon };
 
 interface BrickProps {
@@ -42,6 +52,7 @@ export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
             ) : (
               <>
                 {label.text}
+                {label.manual && <span className="placed-block__manual">*</span>}
                 {label.unit && <span className="placed-block__unit">MI</span>}
               </>
             )}

@@ -6,6 +6,7 @@ import { Sheet } from "../../components/ui/Sheet";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatCompactMiles, formatMiles, formatMilesBuilt } from "../../domain/distance";
+import { isManualRun } from "../../domain/runSource";
 import { GRID_COLUMNS } from "../../domain/placement";
 import {
   AVG_PACE_WINDOW_LABEL,
@@ -56,21 +57,28 @@ interface CrewMemberProfileSheetProps {
   onToggleProps: (runId: string) => void;
 }
 
-function blockLabel(memberName: string, block: Pick<CrewMiniBuildFacedBlock, "activityType" | "localDate" | "distanceMiles">) {
+function blockLabel(memberName: string, block: Pick<CrewMiniBuildFacedBlock, "activityType" | "localDate" | "distanceMiles" | "source">) {
+  // The face's asterisk is decoration a screen reader never reaches, so the
+  // name says the same thing in words.
+  const manual = isManualRun(block) ? ", manual entry" : "";
   return `Open ${memberName}'s ${WORKOUT_TYPE_LABEL[block.activityType]} on ${formatDateLabel(
     block.localDate,
     { weekday: "long", month: "long", day: "numeric" },
-  )}, ${formatMiles(block.distanceMiles)} miles`;
+  )}, ${formatMiles(block.distanceMiles)} miles${manual}`;
 }
 
 /**
  * Same convention as Personal/Crew Build's brick face: compact mileage,
  * `RACE` on a race, a dumbbell on Cross Training (often distanceless).
  */
-function faceLabel(block: Pick<CrewMiniBuildFacedBlock, "activityType" | "distanceMiles" | "width">): BrickFaceLabel {
+function faceLabel(block: Pick<CrewMiniBuildFacedBlock, "activityType" | "distanceMiles" | "width" | "source">): BrickFaceLabel {
   if (block.activityType === "race") return { text: "RACE", unit: false };
   if (block.activityType === "cross") return { icon: Dumbbell };
-  return { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
+  return {
+    text: formatCompactMiles(block.distanceMiles),
+    unit: block.width >= 3,
+    manual: isManualRun(block),
+  };
 }
 
 /**

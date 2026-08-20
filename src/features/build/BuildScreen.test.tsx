@@ -235,7 +235,7 @@ describe("BuildScreen", () => {
     const blocks = within(tower()).getAllByRole("button");
     expect(blocks).toHaveLength(1);
     expect(blocks[0]).toHaveAccessibleName(
-      "Tuesday, August 4, Easy, 2.1 miles, week 1, course 0, column 3",
+      "Tuesday, August 4, Easy, 2.1 miles, manual entry, week 1, course 0, column 3",
     );
   });
 
@@ -682,7 +682,9 @@ describe("mileage on the blocks", () => {
     });
 
     // Width 1 and 2 take the compact number; width 3 has room for the unit.
-    expect(labels()).toEqual(["2.1", "4.2", "6.4MI"]);
+    // These fixture runs carry no source, which is a hand-logged run, so each
+    // face also wears issue #129's asterisk.
+    expect(labels()).toEqual(["2.1*", "4.2*", "6.4*MI"]);
   });
 
   it("rounds a converted distance to something a brick can hold", () => {
@@ -692,7 +694,7 @@ describe("mileage on the blocks", () => {
       today: "2026-08-10",
     });
 
-    expect(labels()).toEqual(["4.2"]);
+    expect(labels()).toEqual(["4.2*"]);
   });
 
   it("keeps the full run facts in the block's accessible name", () => {
@@ -703,10 +705,36 @@ describe("mileage on the blocks", () => {
     });
 
     // The compact face rounds, while the name keeps the exact distance.
-    expect(labels()).toEqual(["2.1"]);
+    expect(labels()).toEqual(["2.1*"]);
     expect(within(tower()).getByRole("button")).toHaveAccessibleName(
-      "Tuesday, August 4, Easy, 2.14 miles, week 1, course 0, column 1",
+      "Tuesday, August 4, Easy, 2.14 miles, manual entry, week 1, course 0, column 1",
     );
+  });
+
+  /*
+   * Issue #129: manual entry is the exception, so it is the only one that
+   * gets a mark — one asterisk after the mileage, and nothing else anywhere
+   * on the brick. A synced block is byte-for-byte what it always was.
+   */
+  it("marks a hand-logged block's mileage and leaves a synced one alone", () => {
+    renderBuild({
+      runLogs: [
+        runLogFor("workout-002", { distanceMiles: 2.1, source: "manual" }),
+        runLogFor("workout-004", { distanceMiles: 4.2, source: "intervals" }),
+      ],
+      blockPlacements: [
+        placementFor("run-workout-002", 1, 1),
+        placementFor("run-workout-004", 2, 2),
+      ],
+      today: "2026-08-10",
+    });
+
+    expect(labels()).toEqual(["2.1*", "4.2"]);
+    const [manual, synced] = within(tower()).getAllByRole("button");
+    expect(manual).toHaveAccessibleName(/manual entry/);
+    expect(synced).not.toHaveAccessibleName(/manual entry/);
+    // The asterisk is the whole treatment: no badge, no icon, no legend.
+    expect(tower().querySelectorAll("svg")).toHaveLength(0);
   });
 
   it("does not persist the label it derives", () => {

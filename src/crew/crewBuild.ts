@@ -16,7 +16,7 @@ import {
   type GridVoid,
   type PlacementOption,
 } from "../domain/placement";
-import type { RunActivityType } from "../domain/types";
+import type { RunActivityType, RunSource } from "../domain/types";
 import {
   crewAwardFootprint,
   type CrewAwardBlockRecord,
@@ -54,6 +54,8 @@ export interface CrewBuildRunBlock extends CrewBuildBlockBase {
   activityType: RunActivityType;
   distanceMiles: number;
   localDate: string;
+  /** Issue #129: manual entry earns an asterisk on the face; a synced run does not. */
+  source: RunSource | null;
 }
 
 export interface CrewBuildAwardBlock extends CrewBuildBlockBase {
@@ -255,6 +257,7 @@ function runCandidate(
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     localDate: "",
+    source: null,
     crewBuildPlacedAt: null,
     recentlyPlaced: false,
     topFace: [],
@@ -424,6 +427,7 @@ function deriveMixedCrewBuild(
         columnStart: placement.columnStart,
         distanceMiles: run.distanceMiles,
         localDate: run.localDate,
+        source: run.source ?? null,
         crewBuildPlacedAt: run.crewBuildPlacedAt,
         recentlyPlaced: isRecentCrewBuildPlacement(run.crewBuildPlacedAt, now),
         topFace: [],

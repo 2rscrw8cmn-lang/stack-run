@@ -1,3 +1,4 @@
+import type { RunSource } from "../domain/types";
 import type { CrewEmblem } from "./emblem";
 import type { CrewMemberAccent } from "./memberAccent";
 import type { RunnerIcon } from "./runnerIcon";
@@ -125,6 +126,13 @@ export interface CrewSharedRun {
   activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   durationSeconds: number;
+  /**
+   * Issue #129: manual entry or a connected source. Absent or null on a row
+   * shared before the column existed; every reader treats that as manual
+   * entry, the same default personal STACK applies to a run with no source of
+   * its own.
+   */
+  source?: RunSource | null;
   createdAt: string;
   updatedAt: string;
   buildRow: number | null;
@@ -155,6 +163,12 @@ export interface CrewMiniBuildRun {
   localDate: string;
   activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
+  /**
+   * Issue #129: the same asterisk the shared tower uses. Member Build
+   * reproduces the runner's real Personal Build, so a run cannot be marked
+   * hand-logged there and unmarked here.
+   */
+  source?: RunSource | null;
   buildRow: number | null;
   buildColumnStart: number | null;
   buildWidth?: 1 | 2 | 3 | 4 | null;
@@ -185,6 +199,8 @@ export interface CrewBuildRun {
   activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   durationSeconds: number;
+  /** Issue #129: the one fact behind a manually logged block's asterisk. */
+  source?: RunSource | null;
   createdAt: string;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;

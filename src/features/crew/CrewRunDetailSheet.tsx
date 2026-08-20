@@ -4,6 +4,7 @@ import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
+import { runSourceLabel } from "../../domain/runSource";
 import { formatPace } from "../../domain/runs";
 import type { CrewSharedRun } from "../../crew/types";
 import { crewMemberAccent } from "../../crew/memberAccent";
@@ -63,6 +64,16 @@ export function CrewRunDetailSheet({
             </p>
             <p className="machine-label">
               {WORKOUT_TYPE_LABEL[run.activityType]} · {formatDateLabel(run.localDate)}
+            </p>
+            {/*
+              * Issue #129: where the run came from, under the run's own
+              * identity and in the same quiet register — a footnote to the
+              * result above it, never a badge beside it.
+              */}
+            <p className="crew-run-detail__source machine-label">
+              <span>Source</span>
+              <span aria-hidden="true"> · </span>
+              <strong>{runSourceLabel(run)}</strong>
             </p>
           </div>
         </div>

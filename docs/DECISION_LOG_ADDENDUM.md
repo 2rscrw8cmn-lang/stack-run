@@ -698,3 +698,31 @@ Batching is worth keeping: it is one request instead of one per run, on phones, 
 **Status**
 
 Approved. Follows issue #128. See `docs/CREW_PROJECTION_CONTRACT.md`, which is required reading before adding a constrained Crew column.
+
+## D-083 — The Crew page is the tower, and a manually logged block says so with one asterisk
+
+**Decision**
+
+**The shared tower is the Crew page's primary object, not a widget inside a card.** The Crew Build was a lime-framed `technical-grid` section holding a `CREW BUILD` label, an oversized miles-built heading, and — inside all of that — a second lime frame around the field itself. Two borders, two grids, and the structure everybody came to see squeezed between them.
+
+The outer card is removed entirely. The `CREW BUILD` label goes with it: the active Crew tab already establishes context, so the copy added weight without adding information. Only the build field keeps a border, and that border drops to `--border-strong` with its inset lime glow removed — the blocks provide the page's colour, and the frame's job is to say where the site ends. The field runs to the screen's own gutter, its course height grows so the bricks and the grid scale together, and its viewport cap rises about a quarter. Growing the sky alone would have made the section taller and the build no bigger; the point is a larger build, not more headroom.
+
+**Four crew figures replace the single miles-built heading**: total miles, total runs, total run time, and contributing runners. They are read from the crew's shared runs for the selected crew's Build window rather than from placed blocks — a run that is earned but not yet placed is still a run the crew went out and did, and a stats row that ignored it would disagree with the recent-activity feed on the same screen. The runner figure counts contributors, not roster size. Total time reads as hours and minutes (`14:32`), because a crew passes a hundred hours quickly and nobody reads the seconds.
+
+`.crew-build` is shared with the Member Build inside Crew Profile, which is a small tower on a sheet and wants none of this, so every rule above is scoped to a `--page` modifier.
+
+**A manually logged run's block wears one asterisk after its mileage — `3.1*` — and nothing else.** No icon, no badge, no corner treatment, no legend. Syncing is the norm, so a synced block stays exactly as it was; the exception is what earns a mark. The asterisk is smaller and dimmer than the number it qualifies and inherits the face's own colour. RACE and Cross Training show no mileage for it to follow and are unchanged. The mark is `aria-hidden` decoration, so each block's accessible name carries the words `manual entry` instead.
+
+**Every run detail now names its source, not only the synced ones.** `RunResultDetail`'s meta line reads `Source · Manual entry` or `Source · Intervals.icu` in place of the old `Synced via Intervals.icu`, and `CrewRunDetailSheet` carries the same line under the run's identity. It stays in the secondary register: the source is context for the run, never the point of it.
+
+**`shared_runs` gains a `source` column, narrowing D-056 by one more word.** Crew could not previously tell a hand-typed run from a synced one, so the asterisk had nothing to stand on. The column stores exactly the two words `personal_runs.source` does and nothing about the connection behind them — no external activity id, no import timestamps, no provider credentials. It is nullable, unlike its `personal_runs` counterpart: every row shared before this migration has no source to report and back-filling one would be inventing a fact. Null therefore reads as manual entry everywhere, which is what STACK has always defaulted an unlabelled run to. Nullable also keeps the column out of `isShareableWithCrew` — a run whose origin we cannot name is still a run the crew should have — and per D-082 a value outside the union is sent as `null` by `crewSafeRunSource` rather than failing the batch.
+
+**Reason**
+
+Crew is a destination because of the thing the crew built together. The page had drifted into a dashboard that happened to contain a tower, with the frames and headings taking the space and the attention the structure should have had. Removing a card and a heading is most of the fix; the rest is scaling the build itself rather than the box around it.
+
+The asterisk is the smallest mark that answers "did this actually get measured?" without turning the tower into a legend. Manual entry is rare, so marking it costs almost nothing and marking the common case would have cost every brick.
+
+**Status**
+
+Approved. Closes issue #137, which incorporates issue #129. See `supabase/migrations/20260820170000_shared_run_source.sql`.

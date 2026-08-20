@@ -48,6 +48,7 @@ import { crewMemberAccent } from "../../crew/memberAccent";
 import { deriveCrewMiniBuild } from "../../crew/miniBuild";
 import { viewerFirstMembers } from "../../crew/memberOrder";
 import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import { crewBuildTotals } from "../../crew/crewTotals";
 import type { CrewBuildRun } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { useCrewAwards } from "../../crew/useCrewAwards";
@@ -333,6 +334,12 @@ export function CrewScreen({
     ...crewBuild,
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
+  /*
+   * Issue #137: the four figures above the tower. `crewBuildRuns` is already
+   * the Crew-windowed set the tower itself is derived from, so the stats and
+   * the structure below them describe the same crew and the same period.
+   */
+  const buildTotals = crewBuildTotals(dashboardData.crewBuildRuns);
   const viewerReadyRuns = build.viewerReadyRuns;
   const viewerReadyAwards = build.viewerReadyAwards;
 
@@ -615,6 +622,7 @@ export function CrewScreen({
 
       <CrewBuild
         model={build}
+        totals={buildTotals}
         members={railMembers}
         available={dashboardData.sharedRunsAvailable}
         justPlacedRunId={justPlacedId}

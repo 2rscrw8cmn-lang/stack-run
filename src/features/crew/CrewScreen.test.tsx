@@ -50,6 +50,14 @@ function chosenLandingName(): string {
   return chosen.textContent ?? "";
 }
 
+/** The four figures above the tower, in order: miles, runs, time, runners. */
+function crewTotals(): string[] {
+  return Array.from(
+    document.querySelectorAll(".crew-build__stats dd"),
+    (value) => value.textContent ?? "",
+  );
+}
+
 function sharedRun(
   id: string,
   userId: string,
@@ -67,6 +75,10 @@ function sharedRun(
     activityType: "easy",
     distanceMiles: 4,
     durationSeconds: 2352,
+    // Syncing is the norm, so it is what an unqualified fixture run is. The
+    // manual case — issue #129's asterisk — is opted into by the tests that
+    // are about it.
+    source: "intervals",
     createdAt: `${localDate}T14:00:00Z`,
     updatedAt: `${localDate}T14:00:00Z`,
     buildRow: 0,
@@ -125,7 +137,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, source, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
@@ -134,6 +146,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       activityType,
       distanceMiles,
       durationSeconds,
+      source,
       createdAt,
       crewBuildRow,
       crewBuildColumnStart,
@@ -425,6 +438,7 @@ describe("Crew comparisons and runs", () => {
               activityType: soloRun.activityType,
               distanceMiles: soloRun.distanceMiles,
               durationSeconds: soloRun.durationSeconds,
+              source: soloRun.source,
               createdAt: soloRun.createdAt,
               crewBuildRow: soloRun.crewBuildRow,
               crewBuildColumnStart: soloRun.crewBuildColumnStart,
@@ -435,7 +449,7 @@ describe("Crew comparisons and runs", () => {
       }),
     );
 
-    expect(screen.getByText("miles built").parentElement).toHaveTextContent(/^5\.5/);
+    expect(crewTotals()).toEqual(["5.5", "1", "0:39", "1"]);
     expect(screen.queryByText("1 run · 1 runner")).not.toBeInTheDocument();
     expect(screen.getByText("Invite your crew to build together.")).toBeInTheDocument();
   });
@@ -885,18 +899,46 @@ describe("Shared Crew Build", () => {
     return controller({ crewData: dashboard({ runs: buildRuns, ...overrides }) });
   }
 
-  it("leads with physically placed miles while keeping secondary totals hidden", () => {
+  /*
+   * Issue #137: the tower is the page. The `CREW BUILD` label and the
+   * oversized miles-built heading above it are gone — the tab already says
+   * where you are — and in their place is one compact row of four crew
+   * figures, none of them competing with the structure below.
+   */
+  it("leads with four crew totals instead of a label and an oversized heading", () => {
     openCrew(crewWithBuild());
 
-    expect(screen.getByText("Crew Build")).toBeInTheDocument();
-    expect(screen.getByText("17.0")).toBeInTheDocument();
-    expect(screen.getByText("miles built")).toBeInTheDocument();
-    expect(screen.queryByText("3 runs · 3 runners")).not.toBeInTheDocument();
+    expect(screen.queryByText("Crew Build")).not.toBeInTheDocument();
+    expect(screen.queryByText("miles built")).not.toBeInTheDocument();
+    // 4 + 8 + 5 miles, three runs, 3 × 39:12 of running, three contributors.
+    expect(crewTotals()).toEqual(["17.0", "3", "1:57", "3"]);
+    expect(
+      Array.from(
+        document.querySelectorAll(".crew-build__stats dt"),
+        (label) => label.textContent,
+      ),
+    ).toEqual(["Miles", "Runs", "Time", "Runners"]);
     expect(
       within(screen.getByRole("list", { name: "Crew Build blocks" })).getAllByRole(
         "listitem",
       ),
     ).toHaveLength(3);
+  });
+
+  /*
+   * The old treatment nested the tower inside a second, larger lime frame.
+   * Only the field is framed now, and quietly: the blocks are the colour on
+   * this page.
+   */
+  it("frames only the build field, and not with the accent", () => {
+    openCrew(crewWithBuild());
+
+    const section = document.querySelector(".crew-build");
+    expect(section).not.toHaveClass("technical-grid");
+    expect(section).toHaveClass("crew-build--page");
+    expect(
+      screen.getByRole("list", { name: "Crew Build blocks" }).closest(".crew-build__stage"),
+    ).toBeInTheDocument();
   });
 
   it("draws every member's run into one tower in contribution order", () => {
@@ -964,6 +1006,55 @@ describe("Shared Crew Build", () => {
       expect(mark).toHaveAttribute("aria-hidden", "true");
       expect(entry).toHaveAttribute("data-member-color");
     }
+  });
+
+  /*
+   * Issue #129 on the shared tower: the same single asterisk Personal Build
+   * uses, on the same brick primitive, for a run somebody typed in by hand.
+   * A synced block is untouched, and Crew Run Detail names the source either
+   * way.
+   */
+  it("marks a hand-logged crew block and names its source in Run Detail", async () => {
+    const manual = sharedRun("manual", "zack", "2026-08-05", {
+      distanceMiles: 4,
+      source: "manual",
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
+    });
+    const synced = sharedRun("synced", "drew", "2026-08-06", {
+      activityType: "long",
+      distanceMiles: 8,
+      source: "intervals",
+      crewBuildRow: 0,
+      crewBuildColumnStart: 3,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [manual, synced] }) }));
+
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+    expect(
+      Array.from(
+        tower.querySelectorAll(".placed-block__label"),
+        (face) => face.textContent,
+      ),
+    ).toEqual(["4*", "8MI"]);
+    // The asterisk is decoration; the name says it in words.
+    const manualBlock = screen.getByRole("button", {
+      name: "Zack, Easy, 4 miles, manual entry, August 5",
+    });
+    expect(
+      screen.getByRole("button", { name: "Drew, Long Run, 8 miles, August 6" }),
+    ).toBeInTheDocument();
+
+    await user.click(manualBlock);
+    expect(
+      within(screen.getByRole("dialog", { name: "Run Detail" })).getByText("Manual entry"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    await user.click(screen.getByRole("button", { name: "Drew, Long Run, 8 miles, August 6" }));
+    expect(
+      within(screen.getByRole("dialog", { name: "Run Detail" })).getByText("Intervals.icu"),
+    ).toBeInTheDocument();
   });
 
   it("names each block for a screen reader without exposing its decoration", () => {
@@ -1099,7 +1190,10 @@ describe("Shared Crew Build", () => {
     expect(screen.queryByText("Long Run · 8 MI · Aug 8")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Build Now" })).toBeInTheDocument();
     expect(screen.queryByText("0 built · 3 ready")).not.toBeInTheDocument();
-    expect(screen.getByText("0.0")).toBeInTheDocument();
+    // The totals are the crew's running, not the tower's masonry: three runs
+    // are earned and none placed, and the row says three runs by two runners
+    // rather than a row of zeroes.
+    expect(crewTotals()).toEqual(["16.0", "3", "1:57", "2"]);
   });
 
   it("does not offer a placement action for another runner's READY block", () => {
