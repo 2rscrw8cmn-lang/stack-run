@@ -177,6 +177,7 @@ describe("Account & Crew settings", () => {
         crew={controller({
           projectionError: 'new row violates row-level security policy for table "shared_runs"',
         })}
+        localRace={null}
       />,
     );
 
