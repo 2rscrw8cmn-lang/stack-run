@@ -674,3 +674,27 @@ Two runners hit the same class of bug from opposite ends — one had contributio
 **Status**
 
 Approved. Closes issue #128. See `supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql` and `supabase/tests/0023_crew_build_canonical_occupancy.sql`.
+
+## D-082 — A run Crew cannot store costs that run, never the batch
+
+**Decision**
+
+The device never sends Crew a value the database is constrained to refuse.
+
+The Crew projection uploads a runner's whole history in one `upsert`, which is one SQL statement: Postgres evaluates every CHECK on every row in it, and a single violation aborts the entire statement. One unusable value therefore costs the runner every run, in every crew they belong to, on every retry, indefinitely. Personal STACK saves runs one at a time, so the same value fails only its own run there and everything else stays healthy. The runner sees a full personal Build and empty crews, and nothing about that symptom points at the cause.
+
+For a nullable column the device mirrors the CHECK and sends `null` — a value Crew cannot store is never worth failing a runner's whole contribution over. For a NOT NULL column there is nothing to omit, so `isShareableWithCrew` leaves that one run out of the batch and the rest upload. Either way the projection reports what it left behind: `syncCrewProjection` returns a count and a runner-facing sentence rather than succeeding silently or failing wholesale.
+
+**Calculated values get the most suspicion.** A heart rate is reported by a device and is occasionally wrong. The four award scores are derived on this device — one division by a near-zero baseline puts a percentage outside 0-100 — so they are the likeliest to drift out of range and have no external source to blame.
+
+A per-run fallback backs this up: when a batch fails anyway, `upsertSharedRuns` retries one row at a time so a constraint this code was never taught about costs only the rows actually at fault. It is a backstop, not a substitute. It runs only after a failure, costs a request per run when it does, and cannot say which rule was broken — the client-side guard is what makes the failure comprehensible.
+
+**Reason**
+
+This is D-081's root cause in a second place: the client and the server disagreeing about a fact only one of them owns. There the disagreement was about which blocks physically exist; here it is about which values are storable. Both produced a failure that was silent, total, and pointed somewhere other than its cause. The live instance was `manual_heart_rate` outside its 30-250 CHECK — a value that was never required, and was not missing, merely unusable, with nothing on the device checking.
+
+Batching is worth keeping: it is one request instead of one per run, on phones, for a group of about ten friends. What is not acceptable is that its failure mode is all-or-nothing and invisible. This makes the batch the fast path and bounds what its failure can cost.
+
+**Status**
+
+Approved. Follows issue #128. See `docs/CREW_PROJECTION_CONTRACT.md`, which is required reading before adding a constrained Crew column.

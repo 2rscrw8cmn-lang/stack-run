@@ -28,7 +28,10 @@ const mocks = vi.hoisted(() => {
     personalReady: false,
     loadCrewAccount: vi.fn(),
     loadCrewDashboard: vi.fn(),
-    syncCrewProjection: vi.fn(async () => undefined),
+    syncCrewProjection: vi.fn(
+      async (): Promise<{ skipped: number; message: string | null }> =>
+        ({ skipped: 0, message: null }),
+    ),
   };
 });
 
@@ -160,6 +163,29 @@ describe("Crew projection readiness handoff", () => {
     await waitFor(() =>
       expect(result.current.projectionWaitingForPersonal).toBe(false),
     );
+  });
+
+  /*
+   * A run Crew cannot store is not a failed sync. Everything else uploaded,
+   * so this crew is up to date and its freshness bookkeeping must reflect
+   * that - while the runner is still told a run of theirs is not arriving.
+   */
+  it("reports a skipped run without treating the sync as failed", async () => {
+    mocks.personalReady = true;
+    mocks.syncCrewProjection.mockResolvedValue({
+      skipped: 1,
+      message: "One run could not be shared with your crew. Every other run was shared.",
+    });
+
+    const { result } = renderHook(() => useRaceCrew(createInitialAppState()));
+
+    await waitFor(() => expect(mocks.syncCrewProjection).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(result.current.projectionError).toBe(
+        "One run could not be shared with your crew. Every other run was shared.",
+      ),
+    );
+    expect(result.current.projectionWaitingForPersonal).toBe(false);
   });
 
   it("does not re-upload when nothing was held back", async () => {

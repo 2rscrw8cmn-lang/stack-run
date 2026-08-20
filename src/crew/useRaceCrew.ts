@@ -391,7 +391,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         for (const tombstone of pendingDeletes) {
           await deleteCrewRunProjection(availability.client, tombstone);
         }
-        await syncCrewProjection(availability.client, {
+        const outcome = await syncCrewProjection(availability.client, {
           state,
           crewId: crew.id,
           userId: activeUser.id,
@@ -399,6 +399,10 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
           buildStartDate: crew.buildStartDate,
           authoritativeEmpty: pendingDeletes.length > 0,
         });
+        // A run Crew cannot store is reported, not treated as a failed sync:
+        // every other contribution did upload, so this crew is up to date and
+        // the freshness bookkeeping below is correct.
+        if (outcome.message) failures.push(outcome.message);
         for (const tombstone of pendingDeletes) {
           removeCrewDeleteTombstone(tombstone);
         }

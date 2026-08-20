@@ -796,3 +796,18 @@ Rollout aids for the same change:
   CLI never applies it. Do not roll back by re-applying the older migration files
   directly: several are older than migrations that redefine the same functions, so
   re-running them out of order clobbers newer definitions.
+
+## Crew upload resilience (issue #128 follow-up)
+
+**Status:** Implemented on top of D-081; authorized by D-082.
+
+Implemented scope:
+- every nullable Crew column guarded on the device against its own CHECK constraint — all three heart rates plus the four client-calculated award scores;
+- `isShareableWithCrew` leaving a run that violates a NOT NULL or CHECK column out of the batch instead of losing the batch;
+- `syncCrewProjection` returning a `CrewProjectionOutcome` that names how many runs were left behind, surfaced by `useRaceCrew`;
+- a per-run fallback when a batch fails anyway, bounding an unknown constraint to the rows actually at fault;
+- `docs/CREW_PROJECTION_CONTRACT.md`, added to AGENTS.md required reading and summarized in `docs/ENGINEERING_STANDARDS.md`.
+
+The batch remains the normal path: one request rather than one per run. Only its failure mode changed, from all-or-nothing and silent to bounded and reported.
+
+Verification: `src/crew/projection.test.ts` covers boundary values for every guarded column, the unshareable-run filter, the per-run fallback, and the distinction between a partial refusal and a genuine outage; `src/crew/useRaceCrew.projectionHandoff.test.tsx` covers a skipped run being reported without the sync being treated as failed.
