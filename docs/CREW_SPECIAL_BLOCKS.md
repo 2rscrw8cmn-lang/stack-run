@@ -161,7 +161,9 @@ For award ranking only, a runner's device may publish these derived scalar score
 - `award_level_up_percent`;
 - `award_steady_seconds` when a verified source exists.
 
-The `sync_crew_award_metrics` RPC always scopes updates to `auth.uid()`, so one runner cannot submit or change another runner's award scores. These scalars exist only to make the approved Crew competition deterministic without crossing the raw-health-data boundary.
+These scores are published by the ordinary projection upload (`projectSharedRunsFromState` in `src/crew/projection.ts`), alongside distance, duration and heart rate — not by a separate call from the Crew screen. That matters for fairness: a runner who logs runs all week but never opens the Crew tab would otherwise have null scores when the week closed, and the finalizer freezes its answer, so Zone 2, On Target and Level Up would go to whoever opened Crew first. They are also part of the projection fingerprint, so a device that synced before the scores existed re-uploads once and backfills.
+
+Writing them directly is not a widening of who may write what: RLS policy `shared_runs_update_self` restricts a runner to rows where `user_id = auth.uid()`, and the 0–100 / non-negative CHECK constraints bound the values on every path. The `sync_crew_award_metrics` RPC remains for the same guarantee and is still exercised by `supabase/tests/0021_crew_special_blocks.sql`; it is simply no longer the only writer. These scalars exist only to make the approved Crew competition deterministic without crossing the raw-health-data boundary.
 
 ## Persistence
 

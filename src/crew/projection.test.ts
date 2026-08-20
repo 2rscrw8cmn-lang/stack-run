@@ -5,6 +5,7 @@ import type { RunLog } from "../domain/types";
 import {
   projectMemberSummary,
   projectSharedRuns,
+  projectSharedRunsFromState,
   projectServerBackedSummary,
   projectSharedRun,
   projectionFingerprint,
@@ -121,11 +122,19 @@ describe("Race Crew projection", () => {
       averageHeartRate: 155,
       maxHeartRate: 176,
       manualHeartRate: null,
+      awardZone2Percent: null,
+      awardTargetPercent: null,
+      awardLevelUpPercent: null,
+      awardSteadySeconds: null,
     });
     expect(Object.keys(projected).sort()).toEqual(
       [
         "activityType",
         "averageHeartRate",
+        "awardLevelUpPercent",
+        "awardSteadySeconds",
+        "awardTargetPercent",
+        "awardZone2Percent",
         "buildColumnStart",
         "buildHeight",
         "buildRow",
@@ -138,12 +147,69 @@ describe("Race Crew projection", () => {
         "maxHeartRate",
       ].sort(),
     );
-    // Average/max HR are the one deliberate exception, per D-079; everything
-    // else private (training load, HR zones, effort, notes, source, exact
-    // placement time) stays out.
+    // Average/max HR are the one deliberate exception, per D-079, and the four
+    // award_* scores are derived scalars per D-080 — a number computed from HR
+    // zones is not the zones. Everything genuinely private (training load, the
+    // raw HR-zone array, effort, notes, source, exact placement time) stays out.
     expect(JSON.stringify(projected)).not.toMatch(
       /external-private-id|private note|trainingLoad|hrZoneSeconds|effort|source|placedAt|blockPlacements|private-placement-time/i,
     );
+  });
+
+  /**
+   * The bug this covers: award scores used to be published by their own RPC on
+   * the Crew screen, so a runner who logged runs all week but never opened Crew
+   * had nulls when the week closed — and finalize_crew_awards() freezes its
+   * answer. Riding the ordinary projection is what makes the score present
+   * before anyone finalizes.
+   */
+  it("derives award scores from the whole state during the ordinary projection", () => {
+    const state = createInitialAppState();
+    const [projected] = projectSharedRunsFromState({
+      ...state,
+      runLogs: [privateRun],
+      blockPlacements: [],
+    });
+
+    // 200s of 300s logged in zone 2.
+    expect(projected.awardZone2Percent).toBe(66.67);
+    // Not derivable from one run against an empty plan, and Steady has no
+    // verified source at all — null is the honest answer, not a fabricated one.
+    expect(projected.awardTargetPercent).toBeNull();
+    expect(projected.awardLevelUpPercent).toBeNull();
+    expect(projected.awardSteadySeconds).toBeNull();
+  });
+
+  it("publishes the derived score without the raw zones it came from", () => {
+    const state = createInitialAppState();
+    const [projected] = projectSharedRunsFromState({
+      ...state,
+      runLogs: [privateRun],
+      blockPlacements: [],
+    });
+
+    expect(projected.awardZone2Percent).not.toBeNull();
+    expect(JSON.stringify(projected)).not.toMatch(/hrZoneSeconds|trainingLoad/i);
+    // The zone durations themselves must not survive as values either.
+    expect(Object.values(projected)).not.toContain(100);
+    expect(Object.values(projected)).not.toContain(200);
+  });
+
+  it("changes the projection fingerprint when an award score changes", () => {
+    const state = createInitialAppState();
+    const withZones = { ...state, runLogs: [privateRun] };
+    const withoutZones = {
+      ...state,
+      runLogs: [{
+        ...privateRun,
+        importedMetrics: { ...privateRun.importedMetrics!, hrZoneSeconds: undefined },
+      }],
+    };
+
+    // Without this, a device that already synced its runs before award scores
+    // existed would never re-upload and would stay null forever.
+    expect(projectionFingerprint(withZones, "2026-08-12", "2026-08-01"))
+      .not.toBe(projectionFingerprint(withoutZones, "2026-08-12", "2026-08-01"));
   });
 
   it("omits invalid or missing placement rather than sharing a misleading position", () => {
@@ -249,6 +315,10 @@ describe("Race Crew projection", () => {
       average_heart_rate: 155,
       max_heart_rate: 176,
       manual_heart_rate: null,
+      award_zone2_percent: 66.67,
+      award_target_percent: null,
+      award_level_up_percent: null,
+      award_steady_seconds: null,
       build_row: 2,
       build_column_start: 3,
       build_width: 4,

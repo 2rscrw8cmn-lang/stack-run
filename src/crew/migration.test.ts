@@ -19,6 +19,7 @@ import identityVerification from "../../supabase/tests/0013_crew_contribution_id
 import specialBlocksMigration from "../../supabase/migrations/20260819025500_crew_special_blocks.sql?raw";
 import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
 import awardStartMigration from "../../supabase/migrations/20260820120000_crew_award_start_date.sql?raw";
+import awardProjectionMigration from "../../supabase/migrations/20260820130000_crew_award_metrics_on_projection.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -488,5 +489,47 @@ describe("Crew Special Blocks roll out forward (D-080)", () => {
     expect(specialBlocksVerification).toMatch(
       /update public\.crews\s+set awards_start_date = current_date - 21/i,
     );
+  });
+});
+
+describe("Award scores ride the projection upload (D-080)", () => {
+  const AWARD_COLUMNS = [
+    "award_zone2_percent",
+    "award_target_percent",
+    "award_level_up_percent",
+    "award_steady_seconds",
+  ];
+
+  it("grants the projection upsert update on every award column", () => {
+    // shared_runs UPDATE is column-scoped (20260813150000), so the ordinary
+    // upsert silently cannot write a column that is missing from this grant.
+    const grant = awardProjectionMigration.match(
+      /grant update \(([\s\S]*?)\)\s*on public\.shared_runs to authenticated/i,
+    );
+    expect(grant, "no column grant found").not.toBeNull();
+    for (const column of AWARD_COLUMNS) {
+      expect(grant?.[1], `award column not granted: ${column}`).toContain(column);
+    }
+  });
+
+  it("adds to the existing column grant rather than reissuing it", () => {
+    // GRANT is additive; a bare `revoke update on table` here would strip the
+    // run facts and heart-rate columns granted by earlier migrations.
+    expect(awardProjectionMigration).not.toMatch(
+      /revoke update on table public\.shared_runs/i,
+    );
+  });
+
+  it("leaves the finalizer and its freeze untouched", () => {
+    // The header explains the bug, so match statements rather than words: this
+    // migration may describe finalize_crew_awards but must not redefine it, and
+    // must not touch the award rows or their on-conflict freeze.
+    const statements = awardProjectionMigration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).not.toMatch(/create or replace function|drop function/i);
+    expect(statements).not.toMatch(/finalize_crew_awards|crew_award_blocks/i);
+    expect(statements).not.toMatch(/on conflict/i);
   });
 });

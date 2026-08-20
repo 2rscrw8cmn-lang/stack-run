@@ -543,7 +543,7 @@ export function CrewScreen({
               aria-busy={activeCrew.crewDataStatus === "loading"}
               onClick={() => {
                 void activeCrew.refreshCrewData(true);
-                void refreshAwards(true);
+                void refreshAwards();
               }}
             />
           </div>

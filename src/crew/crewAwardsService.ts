@@ -1,13 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadAppState } from "../storage/appStateRepository";
-import { loadActivePersonalOwner } from "../storage/personalSyncRepository";
 import {
   CrewBuildPlacementError,
   CREW_BUILD_PLACEMENT_CONFLICT,
   CREW_BUILD_PLACEMENT_UNSUPPORTED,
   CREW_BUILD_SUPPORTING_BLOCK,
 } from "./crewBuildPlacement";
-import { crewAwardMetricsByRunId } from "./awardMetrics";
 import {
   type CrewAwardBlockRecord,
   type CrewAwardType,
@@ -65,48 +62,13 @@ function missingAwardSchema(message: string): boolean {
     lower.includes("place_crew_award_block");
 }
 
-async function syncViewerAwardMetrics(
-  client: SupabaseClient,
-  crewId: string,
-  viewerUserId: string,
-): Promise<void> {
-  if (loadActivePersonalOwner() !== viewerUserId) return;
-  let state;
-  try {
-    state = loadAppState();
-  } catch {
-    return;
-  }
-  const metrics = crewAwardMetricsByRunId(state);
-  const payload = state.runLogs.map((run) => {
-    const metric = metrics.get(run.id);
-    return {
-      localRunId: run.id,
-      zone2Percent: metric?.zone2Percent ?? null,
-      targetPercent: metric?.targetPercent ?? null,
-      levelUpPercent: metric?.levelUpPercent ?? null,
-      steadySeconds: metric?.steadySeconds ?? null,
-    };
-  });
-  const result = await client.rpc("sync_crew_award_metrics", {
-    p_crew_id: crewId,
-    p_metrics: payload,
-  });
-  if (result.error) throw new Error(result.error.message);
-}
-
 export async function loadCrewAwards(
   client: SupabaseClient,
-  input: {
-    crewId: string;
-    viewerUserId: string;
-    syncLocalMetrics?: boolean;
-  },
+  input: { crewId: string },
 ): Promise<AwardLoadResult> {
   try {
-    if (input.syncLocalMetrics !== false) {
-      await syncViewerAwardMetrics(client, input.crewId, input.viewerUserId);
-    }
+    // Award scores arrive with the runner's own projection upload
+    // (`projectSharedRunsFromState`), so this only finalizes and reads.
     const finalized = await client.rpc("finalize_crew_awards", { p_crew_id: input.crewId });
     if (finalized.error) throw new Error(finalized.error.message);
 

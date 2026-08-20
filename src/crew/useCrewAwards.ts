@@ -13,7 +13,7 @@ export interface CrewAwardsController {
   blocks: CrewAwardBlockRecord[];
   placementPending: boolean;
   placementError: string | null;
-  refresh: (syncLocalMetrics?: boolean) => Promise<void>;
+  refresh: () => Promise<void>;
   placeAward: (awardId: string, row: number, columnStart: number) => Promise<boolean>;
   clearPlacementError: () => void;
 }
@@ -33,7 +33,7 @@ export function useCrewAwards(input: {
   const [placementError, setPlacementError] = useState<string | null>(null);
   const request = useRef(0);
 
-  const refresh = useCallback(async (syncLocalMetrics = true): Promise<void> => {
+  const refresh = useCallback(async (): Promise<void> => {
     const availability = getSupabaseAvailability();
     if (!availability.configured || !input.crewId || !input.viewerUserId) {
       setAvailable(false);
@@ -43,11 +43,7 @@ export function useCrewAwards(input: {
     const sequence = ++request.current;
     setLoading(true);
     try {
-      const loaded = await loadCrewAwards(availability.client, {
-        crewId: input.crewId,
-        viewerUserId: input.viewerUserId,
-        syncLocalMetrics,
-      });
+      const loaded = await loadCrewAwards(availability.client, { crewId: input.crewId });
       if (sequence !== request.current) return;
       setAvailable(loaded.available);
       setState({ blocks: loaded.blocks });
@@ -64,7 +60,7 @@ export function useCrewAwards(input: {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void refresh(true);
+      void refresh();
     }, 0);
     return () => window.clearTimeout(timer);
   }, [refresh]);
@@ -80,12 +76,12 @@ export function useCrewAwards(input: {
     setPlacementError(null);
     try {
       await placeCrewAwardBlock(availability.client, { awardBlockId: awardId, row, columnStart });
-      await refresh(false);
+      await refresh();
       return true;
     } catch (reason) {
       if (reason instanceof CrewBuildPlacementError && reason.kind === "conflict") {
         setPlacementError("That space was just taken. Choose another spot.");
-        await refresh(false);
+        await refresh();
       } else if (reason instanceof CrewBuildPlacementError && reason.kind === "unsupported") {
         setPlacementError("That block needs support from the Crew Build.");
       } else if (reason instanceof CrewBuildPlacementError && reason.kind === "supporting") {
