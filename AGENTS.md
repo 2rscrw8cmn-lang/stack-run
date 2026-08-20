@@ -19,6 +19,8 @@ Read in this order:
 11. `docs/DECISION_LOG_ADDENDUM.md`
 12. `docs/ENGINEERING_STANDARDS.md`
 13. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+14. `docs/CREW_PROJECTION_CONTRACT.md` before touching `shared_runs`, any
+    Crew CHECK constraint, or any value the device uploads to Crew
 
 Older Trends/Arcade/original phase docs are historical/current-behavior references where they do not conflict with the active Race Crew docs.
 
@@ -176,6 +178,16 @@ Never send to Crew/Supabase:
 - effort;
 - notes;
 - private calendar/availability.
+
+## Crew upload discipline
+
+The Crew projection uploads a runner's whole history in one `upsert`, so one
+value the database refuses fails every run, in every crew, on every retry —
+and stays invisible, because personal STACK saves runs one at a time and is
+unaffected. Never send Crew a value it is constrained to refuse: mirror the
+constraint on the device, send `null` for a nullable column, and leave an
+unstorable run out of the batch rather than losing the batch. Read
+`docs/CREW_PROJECTION_CONTRACT.md` before adding a constrained Crew column.
 
 ## Database/RLS discipline
 

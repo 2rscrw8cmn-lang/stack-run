@@ -129,10 +129,10 @@ export function projectSharedRun(
     averageHeartRate: crewSafeHeartRate(run.importedMetrics?.averageHeartRate),
     maxHeartRate: crewSafeHeartRate(run.importedMetrics?.maxHeartRate),
     manualHeartRate: crewSafeHeartRate(run.manualHeartRate),
-    awardZone2Percent: awardMetrics?.zone2Percent ?? null,
-    awardTargetPercent: awardMetrics?.targetPercent ?? null,
-    awardLevelUpPercent: awardMetrics?.levelUpPercent ?? null,
-    awardSteadySeconds: awardMetrics?.steadySeconds ?? null,
+    awardZone2Percent: crewSafePercent(awardMetrics?.zone2Percent),
+    awardTargetPercent: crewSafePercent(awardMetrics?.targetPercent),
+    awardLevelUpPercent: crewSafePercent(awardMetrics?.levelUpPercent),
+    awardSteadySeconds: crewSafeNonNegative(awardMetrics?.steadySeconds),
   };
 }
 
@@ -145,15 +145,19 @@ export function projectSharedRun(
  * comparisons/summary, the Crew Build itself, and RLS on the server).
  */
 /**
- * Crew's heart-rate columns are constrained to 30-250 bpm or null, and the
- * whole projection is one upsert: a single value the server refuses takes
- * every run in the batch down with it, for every crew, silently, until the
- * offending value is corrected.
+ * Crew's own storage rules, mirrored on the device that uploads.
  *
- * Run entry has enforced this range since manual heart rate shipped, but an
- * AppState written before that, or by any other path, is not bound by it. A
- * value Crew cannot store is not worth failing a runner's whole contribution
- * over: share what is valid and omit what is not.
+ * The whole projection is one upsert, so a single value the server refuses
+ * takes every run in the batch down with it, for every crew, on every retry,
+ * until the offending value is corrected. That failure is silent to the
+ * runner: personal STACK saves runs one at a time and is entirely unaffected,
+ * so their Build looks healthy while their crews receive nothing. Issue #128
+ * is exactly this, seen from the outside.
+ *
+ * Every column below is nullable in `shared_runs`, so a value Crew cannot
+ * store is never worth failing a runner's whole contribution over: share what
+ * is valid, omit what is not. These bounds must match the CHECK constraints on
+ * `shared_runs` — see `docs/CREW_PROJECTION_CONTRACT.md`.
  */
 const CREW_HEART_RATE_MIN = 30;
 const CREW_HEART_RATE_MAX = 250;
@@ -164,6 +168,50 @@ function crewSafeHeartRate(value: number | null | undefined): number | null {
   return rounded >= CREW_HEART_RATE_MIN && rounded <= CREW_HEART_RATE_MAX
     ? rounded
     : null;
+}
+
+/**
+ * Award scores are derived on this device rather than reported by a source,
+ * so they are the likeliest of these to land outside their range: one
+ * division by a near-zero baseline is all it takes. `shared_runs` bounds all
+ * three percentages to 0-100.
+ */
+function crewSafePercent(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return value >= 0 && value <= 100 ? value : null;
+}
+
+/** `award_steady_seconds` is a non-negative pace-variability figure. */
+function crewSafeNonNegative(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return value >= 0 ? value : null;
+}
+
+/**
+ * The columns Crew cannot store a null in. A run failing any of these cannot
+ * be shared at all — unlike an optional value, there is nothing to omit — so
+ * the only sane outcome is to leave that one run behind and share the rest.
+ *
+ * Mirrors the NOT NULL and CHECK constraints on `shared_runs`. Cross Training
+ * alone may record zero distance.
+ */
+const CREW_ACTIVITY_TYPES: readonly RunActivityType[] = [
+  "easy", "intervals", "simulation", "long", "race", "cross",
+];
+const CREW_LOCAL_RUN_ID_MAX = 160;
+
+export function isShareableWithCrew(run: CrewSharedRunProjection): boolean {
+  return (
+    typeof run.localRunId === "string" &&
+    run.localRunId.length >= 1 &&
+    run.localRunId.length <= CREW_LOCAL_RUN_ID_MAX &&
+    /^\d{4}-\d{2}-\d{2}$/.test(run.localDate) &&
+    CREW_ACTIVITY_TYPES.includes(run.activityType) &&
+    Number.isFinite(run.distanceMiles) &&
+    (run.activityType === "cross" ? run.distanceMiles >= 0 : run.distanceMiles > 0) &&
+    Number.isInteger(run.durationSeconds) &&
+    run.durationSeconds > 0
+  );
 }
 
 export function projectSharedRuns(
@@ -356,6 +404,108 @@ export function projectServerBackedSummary(
   };
 }
 
+
+/** One run's row, in the shape `shared_runs` expects. */
+function sharedRunRow(
+  crewId: string,
+  userId: string,
+  run: CrewSharedRunProjection,
+): Record<string, unknown> {
+  return {
+    crew_id: crewId,
+    user_id: userId,
+    local_run_id: run.localRunId,
+    local_date: run.localDate,
+    activity_type: run.activityType,
+    distance_miles: run.distanceMiles,
+    duration_seconds: run.durationSeconds,
+    average_heart_rate: run.averageHeartRate,
+    max_heart_rate: run.maxHeartRate,
+    manual_heart_rate: run.manualHeartRate,
+    award_zone2_percent: run.awardZone2Percent,
+    award_target_percent: run.awardTargetPercent,
+    award_level_up_percent: run.awardLevelUpPercent,
+    award_steady_seconds: run.awardSteadySeconds,
+    ...(run.buildRow === null || run.buildColumnStart === null
+      ? {}
+      : {
+          build_row: run.buildRow,
+          build_column_start: run.buildColumnStart,
+          build_width: run.buildWidth,
+          build_height: run.buildHeight,
+        }),
+  };
+}
+
+/**
+ * What a completed projection has to say for itself. A run Crew cannot store
+ * is not a failed sync: everything else uploaded, and the crew is better off
+ * with those contributions than with none. It is not a silent success either —
+ * the runner is told a run of theirs is not arriving, rather than left to
+ * wonder why their Build and their Crew disagree.
+ */
+export interface CrewProjectionOutcome {
+  /** Runs left behind because Crew could not store them. */
+  skipped: number;
+  /** Runner-facing sentence, or null when everything was shared. */
+  message: string | null;
+}
+
+function outcomeFor(skipped: number): CrewProjectionOutcome {
+  if (skipped <= 0) return { skipped: 0, message: null };
+  return {
+    skipped,
+    message: skipped === 1
+      ? "One run could not be shared with your crew. Every other run was shared."
+      : `${skipped} runs could not be shared with your crew. Every other run was shared.`,
+  };
+}
+
+/**
+ * The batch is the fast path and stays the normal one. A batch that fails is
+ * the case issue #128 was: PostgREST refuses the whole statement over one row,
+ * so the runner's entire history stops arriving and keeps not arriving.
+ *
+ * `isShareableWithCrew` mirrors today's constraints, but a mirror can only
+ * check the rules it knows. When the batch fails anyway — a constraint added
+ * later, a column this code has not learned about — fall back to one upsert
+ * per run so the damage is bounded to the rows actually at fault. Only ever
+ * reached on failure, so the normal path still costs one request.
+ */
+async function upsertSharedRuns(
+  client: SupabaseClient,
+  crewId: string,
+  userId: string,
+  runs: readonly CrewSharedRunProjection[],
+): Promise<number> {
+  const options = {
+    onConflict: "crew_id,user_id,local_run_id",
+    // Missing Member Build coordinates mean "unknown on this device",
+    // not "clear the server value".
+    defaultToNull: false,
+  };
+  const batch = await client
+    .from("shared_runs")
+    .upsert(runs.map((run) => sharedRunRow(crewId, userId, run)), options);
+  if (!batch.error) return 0;
+
+  let refused = 0;
+  let lastError = batch.error.message;
+  for (const run of runs) {
+    const single = await client
+      .from("shared_runs")
+      .upsert([sharedRunRow(crewId, userId, run)], options);
+    if (single.error) {
+      refused += 1;
+      lastError = single.error.message;
+    }
+  }
+  // Every row refused means the fault is not row-specific — a permission or
+  // connectivity failure — so report it as the failure it is.
+  if (refused === runs.length) throw new Error(lastError);
+  return refused;
+}
+
 /**
  * Collapses this runner's stored contributions onto one row per canonical
  * personal run. A crew still holds the rows a pre-DATA-1 device projected under
@@ -391,42 +541,14 @@ export async function syncCrewProjection(
     /** True only while retrying an explicit-deletion tombstone. */
     authoritativeEmpty?: boolean;
   },
-): Promise<void> {
-  const runs = projectSharedRunsFromState(input.state);
+): Promise<CrewProjectionOutcome> {
+  const projected = projectSharedRunsFromState(input.state);
+  const runs = projected.filter(isShareableWithCrew);
+  // Counted, never thrown here: the summary, reconciliation and deletion work
+  // below all still have to happen for the runs that did upload.
+  let skipped = projected.length - runs.length;
   if (runs.length > 0) {
-    const { error } = await client.from("shared_runs").upsert(
-      runs.map((run) => ({
-        crew_id: input.crewId,
-        user_id: input.userId,
-        local_run_id: run.localRunId,
-        local_date: run.localDate,
-        activity_type: run.activityType,
-        distance_miles: run.distanceMiles,
-        duration_seconds: run.durationSeconds,
-        average_heart_rate: run.averageHeartRate,
-        max_heart_rate: run.maxHeartRate,
-        manual_heart_rate: run.manualHeartRate,
-        award_zone2_percent: run.awardZone2Percent,
-        award_target_percent: run.awardTargetPercent,
-        award_level_up_percent: run.awardLevelUpPercent,
-        award_steady_seconds: run.awardSteadySeconds,
-        ...(run.buildRow === null || run.buildColumnStart === null
-          ? {}
-          : {
-              build_row: run.buildRow,
-              build_column_start: run.buildColumnStart,
-              build_width: run.buildWidth,
-              build_height: run.buildHeight,
-            }),
-      })),
-      {
-        onConflict: "crew_id,user_id,local_run_id",
-        // Missing Member Build coordinates mean "unknown on this device",
-        // not "clear the server value".
-        defaultToNull: false,
-      },
-    );
-    if (error) throw new Error(error.message);
+    skipped += await upsertSharedRuns(client, input.crewId, input.userId, runs);
   }
 
   // Reconcile before reading the server rows back: every crew-visible total
@@ -499,6 +621,8 @@ export async function syncCrewProjection(
     { onConflict: "crew_id,user_id" },
   );
   if (error) throw new Error(error.message);
+
+  return outcomeFor(skipped);
 }
 
 /** Deletes exactly one explicitly removed personal run contribution. */

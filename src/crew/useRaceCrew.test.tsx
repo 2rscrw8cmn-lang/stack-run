@@ -28,7 +28,10 @@ const mocks = vi.hoisted(() => {
     deleteCrew: vi.fn(async () => undefined),
     updatePropsSeenAt: vi.fn(async () => undefined),
     loadCrewDashboard: vi.fn(),
-    syncCrewProjection: vi.fn(async () => undefined),
+    syncCrewProjection: vi.fn(
+      async (): Promise<{ skipped: number; message: string | null }> =>
+        ({ skipped: 0, message: null }),
+    ),
     deleteCrewRunProjection: vi.fn(async () => undefined),
   };
 });
