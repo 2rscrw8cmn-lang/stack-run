@@ -164,6 +164,28 @@ async function openCrewSettings(user: ReturnType<typeof userEvent.setup>, crewNa
 }
 
 describe("Account & Crew settings", () => {
+  /*
+   * Issue #128: "Crew sharing will retry later" reassures and explains
+   * nothing. Diagnosing a refused upload took a database session because the
+   * one useful fact — the server's reason — was discarded at render.
+   */
+  it("shows the reason a Crew upload was refused, not just reassurance", () => {
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={() => {}}
+        crew={controller({
+          projectionError: 'new row violates row-level security policy for table "shared_runs"',
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/Crew sharing will retry later/)).toBeInTheDocument();
+    expect(
+      screen.getByText('new row violates row-level security policy for table "shared_runs"'),
+    ).toBeInTheDocument();
+  });
+
   it("keeps an unconfigured build factual and non-blocking", () => {
     render(
       <AccountCrewSheet

@@ -1165,7 +1165,18 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
                 Crew sharing starts as soon as personal STACK finishes syncing on this device.
               </p>
             ) : crew.projectionError ? (
-              <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
+              <>
+                <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
+                {/*
+                  * Issue #128 asked that a blocked projection not fail
+                  * silently. Reassurance alone was still silent about the one
+                  * thing anyone diagnosing this needs: the reason the upload
+                  * was refused.
+                  */}
+                <p className="crew-settings__note crew-settings__note--detail">
+                  {crew.projectionError}
+                </p>
+              </>
             ) : null}
           </>
         )}
