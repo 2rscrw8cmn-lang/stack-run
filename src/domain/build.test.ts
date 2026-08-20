@@ -65,7 +65,7 @@ function placementFor(
 describe("earnsBlock", () => {
   it("is every workout type except rest", () => {
     expect(earnsBlock("rest")).toBe(false);
-    for (const type of ["easy", "intervals", "simulation", "long", "race"] as const) {
+    for (const type of ["easy", "intervals", "simulation", "long", "race", "cross"] as const) {
       expect(earnsBlock(type)).toBe(true);
     }
   });

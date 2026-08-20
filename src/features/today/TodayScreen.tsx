@@ -9,6 +9,7 @@ import {
   findPlacementForRunLog,
   selectBuildViewModel,
 } from "../../domain/build";
+import { readyCrewBlockForLocalRun } from "../../crew/todayCrewBlock";
 import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type {
   BlockPlacement,
@@ -46,6 +47,12 @@ interface TodayScreenProps {
   onViewRuns?: () => void;
   onViewBuild?: () => void;
   onStartPlacing?: (runLogId: string) => void;
+  /**
+   * Hands one shared run to Crew, which opens straight into placement for it.
+   * Crew placement is independent of Personal placement (D-066), so a run can
+   * still owe a Crew block after its Personal block is standing.
+   */
+  onStartCrewPlacing?: (sharedRunId: string) => void;
   today?: string;
   onSaveRun?: (
     workout: Workout | null,
@@ -55,9 +62,8 @@ interface TodayScreenProps {
   onDeleteRun?: (runLogId: string) => void;
   availability?: AvailabilityCalendar | null;
   candidates?: IntervalsCandidate[];
-  onReviewCandidate?: (candidate: IntervalsCandidate, asExtra: boolean) => void;
-  onDismissCandidate?: (externalId: string) => void;
-  onIgnoreCandidate?: (externalId: string) => void;
+  /** Opens Run Data on this candidate's own review state. */
+  onReviewCandidate?: (candidate: IntervalsCandidate) => void;
   syncError?: string | null;
   onRetrySync?: () => void;
   isSyncing?: boolean;
@@ -78,13 +84,12 @@ export function TodayScreen({
   onViewBuild = () => undefined,
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
+  onStartCrewPlacing = () => undefined,
   onSaveRun = () => undefined,
   onDeleteRun = () => undefined,
   availability = null,
   candidates = [],
   onReviewCandidate = () => undefined,
-  onDismissCandidate = () => undefined,
-  onIgnoreCandidate = () => undefined,
   syncError = null,
   onRetrySync = () => undefined,
   isSyncing = false,
@@ -138,6 +143,15 @@ export function TodayScreen({
       : null;
   const completedPlacement = completed
     ? (findPlacementForRunLog(effectivePlacements, completed.runLog.id) ?? null)
+    : null;
+  // The same run's Crew Build contribution, only while it is still unplaced.
+  // The demo runner has no crew, and must never reach a real one.
+  const completedCrewBlockRunId = completed && !isDemo
+    ? readyCrewBlockForLocalRun(
+      raceCrew?.crewData?.runs,
+      raceCrew?.account?.profile.id,
+      completed.runLog.id,
+    )
     : null;
 
   function openEntry(next: Entry) {
@@ -214,10 +228,13 @@ export function TodayScreen({
               runLog: completed.runLog,
             })
           }
+          crewBlockRunId={completedCrewBlockRunId}
           onPlaceBlock={() => {
             if (!isDemo) onStartPlacing(completed.runLog.id);
           }}
-          onViewBuild={onViewBuild}
+          onPlaceCrewBlock={(sharedRunId) => {
+            if (!isDemo) onStartCrewPlacing(sharedRunId);
+          }}
         />
       )}
 
@@ -225,10 +242,7 @@ export function TodayScreen({
         <RunFoundCard
           found={found}
           today={effectiveToday}
-          onConfirmMatch={() => onReviewCandidate(found.candidate, false)}
-          onAddAsExtra={() => onReviewCandidate(found.candidate, true)}
-          onDismiss={() => onDismissCandidate(found.candidate.externalId)}
-          onIgnore={() => onIgnoreCandidate(found.candidate.externalId)}
+          onReview={() => onReviewCandidate(found.candidate)}
         />
       )}
 

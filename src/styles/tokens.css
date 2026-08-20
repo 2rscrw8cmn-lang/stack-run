@@ -41,6 +41,10 @@
   --simulation: #a14cff;
   --long: #ffd21a;
   --race: #f6f7f8;
+  /* Sits in the narrow gap between --intervals and --simulation — the only
+     span left with 22°+ hue clearance from both the other activity colors and
+     the runner-identity palette below. Revisit if that palette grows. */
+  --cross: #5f6dff;
   --danger: #ff6b6b;
 
   /* UI-17's ordered seven-zone palette. Text labels remain authoritative. */
@@ -55,8 +59,8 @@
   /*
    * The runner-identity palette (16 options, picked in Settings). Every hue
    * sits at least ~22° from every activity color above (easy, intervals,
-   * simulation, long) so a member's color is never confusable with what a
-   * block's own fill already means. Deliberately its own set rather than a
+   * simulation, long, cross) so a member's color is never confusable with
+   * what a block's own fill already means. Deliberately its own set rather than a
    * reuse of --easy/--intervals/--zone-* — those still mean "activity" and
    * "heart-rate zone" elsewhere and must stay free to mean only that.
    */
@@ -96,6 +100,12 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 22px;
+
+  /* The bottom nav's own content height, excluding its safe-area padding.
+     Shared with `.app-shell__main`'s bottom clearance so scrolled-to-the-end
+     content can never end up sitting only under the sticky bar's blur with
+     no room to clear it — the two must move together, not by coincidence. */
+  --bottom-nav-height: 52px;
 
   --space-1: 4px;
   --space-2: 8px;

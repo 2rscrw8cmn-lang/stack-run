@@ -16,6 +16,16 @@ import crewTypeMigration from "../../supabase/migrations/20260812220000_crew_typ
 import crewTypeVerification from "../../supabase/tests/0011_crew_type_run_club.sql?raw";
 import identityMigration from "../../supabase/migrations/20260814120000_crew_contribution_identity.sql?raw";
 import identityVerification from "../../supabase/tests/0013_crew_contribution_identity.sql?raw";
+import specialBlocksMigration from "../../supabase/migrations/20260819025500_crew_special_blocks.sql?raw";
+import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
+import awardStartMigration from "../../supabase/migrations/20260820120000_crew_award_start_date.sql?raw";
+import awardProjectionMigration from "../../supabase/migrations/20260820130000_crew_award_metrics_on_projection.sql?raw";
+import awardCleanupMigration from "../../supabase/migrations/20260820140000_remove_pre_rollout_award_blocks.sql?raw";
+import awardCleanupVerification from "../../supabase/tests/0022_pre_rollout_award_cleanup.sql?raw";
+import reconcileMigration from "../../supabase/migrations/20260820135000_reconcile_hand_applied_crew_schema.sql?raw";
+import canonicalOccupancyMigration from "../../supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql?raw";
+import canonicalOccupancyVerification from "../../supabase/tests/0023_crew_build_canonical_occupancy.sql?raw";
+import healScopeMigration from "../../supabase/migrations/20260820160000_heal_uses_support_repair_only.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -385,5 +395,377 @@ describe("Crew contribution identity SQL", () => {
       /another runner reconciliation touched these contributions/i,
     );
     expect(identityVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew Special Blocks SQL (D-080)", () => {
+  // This migration redefines place_crew_build_block, so it silently owns the
+  // run-geometry contract for every deployment after it. A one-argument
+  // crew_build_height() call here would compile, run, and quietly undo D-079's
+  // duration-aware Cross Training height in collision and support checks.
+  it("reads run height through D-079's duration-aware signature everywhere", () => {
+    const calls = specialBlocksMigration.match(/crew_build_height\([^)]*\)/gi) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toMatch(/crew_build_height\([^,)]+,[^)]+\)/i);
+    }
+  });
+
+  it("keeps D-071's Build-window guard when it redefines run placement", () => {
+    expect(specialBlocksMigration).toMatch(
+      /create or replace function public\.place_crew_build_block/i,
+    );
+    expect(specialBlocksMigration).toMatch(
+      /is_crew_run_in_build_window\(v_run\.crew_id, v_run\.local_date\)[\s\S]*?crew_build_placement_before_window/i,
+    );
+  });
+
+  it("re-checks the locked row before trusting its ownership guards", () => {
+    // SELECT ... INTO leaves the record all-NULL when the row is gone, which
+    // makes every <> comparison NULL rather than true, so the guards below it
+    // pass and the RPC silently no-ops.
+    const locks = specialBlocksMigration.match(/for update;/gi) ?? [];
+    const guarded = specialBlocksMigration.match(
+      /for update;\s*if not found then raise exception/gi,
+    ) ?? [];
+    expect(locks).toHaveLength(2);
+    expect(guarded).toHaveLength(locks.length);
+  });
+
+  it("gives award rows RLS with no direct client write path", () => {
+    expect(specialBlocksMigration).toMatch(
+      /alter table public\.crew_award_blocks enable row level security/i,
+    );
+    expect(specialBlocksMigration).toMatch(
+      /create policy crew_award_blocks_member_select[\s\S]*?using \(public\.is_crew_member\(crew_id\)\)/i,
+    );
+    for (const write of ["insert", "update", "delete"]) {
+      expect(specialBlocksMigration).not.toMatch(
+        new RegExp(`create policy [a-z_]+\\s+on public\\.crew_award_blocks\\s+for ${write}`, "i"),
+      );
+    }
+  });
+
+  it("ships no temporary QA fixture routine", () => {
+    expect(specialBlocksMigration).not.toMatch(/qa_seed|qa_clear|test club/i);
+    expect(specialBlocksVerification).not.toMatch(/qa_seed|qa_clear|test club/i);
+  });
+
+  it("ships transactional verification of finalization, privacy and mixed support", () => {
+    expect(specialBlocksVerification).toMatch(/sync_crew_award_metrics/i);
+    expect(specialBlocksVerification).toMatch(/mixed support failure/i);
+    expect(specialBlocksVerification).toMatch(/mixed collision failure/i);
+    expect(specialBlocksVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew Special Blocks roll out forward (D-080)", () => {
+  it("gives every Crew a floor, defaulted to the day it starts awarding", () => {
+    expect(awardStartMigration).toMatch(
+      /alter table public\.crews\s+add column if not exists awards_start_date date/i,
+    );
+    // Existing Crews are backfilled to the migration's own day, so a Crew that
+    // has been running for months starts clean rather than minting a block for
+    // every week it already existed.
+    expect(awardStartMigration).toMatch(
+      /update public\.crews\s+set awards_start_date = current_date\s+where awards_start_date is null/i,
+    );
+    expect(awardStartMigration).toMatch(/alter column awards_start_date set default current_date/i);
+    expect(awardStartMigration).toMatch(/alter column awards_start_date set not null/i);
+  });
+
+  it("starts finalization at the later of the Build start and that floor", () => {
+    expect(awardStartMigration).toMatch(
+      /create or replace function public\.finalize_crew_awards/i,
+    );
+    // greatest() of the two week starts, with the floor rounded up to its
+    // first Monday — never a bare build_start_date week again.
+    expect(awardStartMigration).toMatch(
+      /v_week := greatest\([\s\S]*?v_build_start[\s\S]*?v_awards_start[\s\S]*?\)/i,
+    );
+    expect(awardStartMigration).not.toMatch(
+      /v_week := v_build_start - \(extract\(isodow from v_build_start\)/i,
+    );
+  });
+
+  it("verifies the floor holds before it opens it", () => {
+    expect(specialBlocksVerification).toMatch(
+      /award start date failure: a week before awards_start_date was finalized/i,
+    );
+    expect(specialBlocksVerification).toMatch(
+      /update public\.crews\s+set awards_start_date = current_date - 21/i,
+    );
+  });
+});
+
+describe("Award scores ride the projection upload (D-080)", () => {
+  const AWARD_COLUMNS = [
+    "award_zone2_percent",
+    "award_target_percent",
+    "award_level_up_percent",
+    "award_steady_seconds",
+  ];
+
+  it("grants the projection upsert update on every award column", () => {
+    // shared_runs UPDATE is column-scoped (20260813150000), so the ordinary
+    // upsert silently cannot write a column that is missing from this grant.
+    const grant = awardProjectionMigration.match(
+      /grant update \(([\s\S]*?)\)\s*on public\.shared_runs to authenticated/i,
+    );
+    expect(grant, "no column grant found").not.toBeNull();
+    for (const column of AWARD_COLUMNS) {
+      expect(grant?.[1], `award column not granted: ${column}`).toContain(column);
+    }
+  });
+
+  it("adds to the existing column grant rather than reissuing it", () => {
+    // GRANT is additive; a bare `revoke update on table` here would strip the
+    // run facts and heart-rate columns granted by earlier migrations.
+    expect(awardProjectionMigration).not.toMatch(
+      /revoke update on table public\.shared_runs/i,
+    );
+  });
+
+  it("leaves the finalizer and its freeze untouched", () => {
+    // The header explains the bug, so match statements rather than words: this
+    // migration may describe finalize_crew_awards but must not redefine it, and
+    // must not touch the award rows or their on-conflict freeze.
+    const statements = awardProjectionMigration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).not.toMatch(/create or replace function|drop function/i);
+    expect(statements).not.toMatch(/finalize_crew_awards|crew_award_blocks/i);
+    expect(statements).not.toMatch(/on conflict/i);
+  });
+});
+
+describe("Pre-rollout Special Block cleanup (D-080)", () => {
+  /**
+   * The floor added in 20260820120000 is forward-only: it stops finalization
+   * from minting retroactive awards but leaves rows minted before it standing.
+   * Preview deployments shared the production Supabase project, so those rows
+   * were real and surfaced the moment the feature shipped.
+   */
+  function floorExpressions(sql: string): string[] {
+    return (sql.match(/greatest\(\s*[\s\S]*?%\s*7\)\s*\)/g) ?? []).map((expression) =>
+      expression
+        .replace(/\bv_build_start\b|\bc\.build_start_date\b/g, "BUILD")
+        .replace(/\bv_awards_start\b|\bc\.awards_start_date\b/g, "AWARDS")
+        .replace(/\s+/g, ""),
+    );
+  }
+
+  it("deletes by exactly the floor the finalizer refuses to reach behind", () => {
+    const [finalizerFloor] = floorExpressions(awardStartMigration);
+    const cleanupFloors = floorExpressions(awardCleanupMigration);
+
+    expect(finalizerFloor, "no floor found in the finalizer").toBeTruthy();
+    expect(cleanupFloors.length, "cleanup states no floor").toBeGreaterThan(0);
+    // Character-identical once variable and column names are normalised: if the
+    // two ever disagree, the cleanup removes rows finalization would still mint,
+    // or leaves rows it never would.
+    for (const floor of cleanupFloors) {
+      expect(floor).toBe(finalizerFloor);
+    }
+  });
+
+  it("settles construction that was resting on a removed award", () => {
+    // A placed award is load-bearing. Deleting one without healing leaves the
+    // run above it floating in the shared tower.
+    expect(awardCleanupMigration).toMatch(/perform public\.repair_crew_build_support\(v_crew_id\)/i);
+  });
+
+  it("touches nothing but the award rows below the floor", () => {
+    const statements = awardCleanupMigration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).not.toMatch(/create or replace function|drop function|alter table/i);
+    // shared_runs is only ever reached through the repair function.
+    expect(statements).not.toMatch(/delete from public\.shared_runs|update public\.shared_runs/i);
+    expect(statements.match(/delete from/gi) ?? []).toHaveLength(1);
+  });
+
+  it("ships transactional verification of the cleanup and the healing", () => {
+    expect(awardCleanupVerification).toMatch(/pre-rollout award survived the cleanup/i);
+    expect(awardCleanupVerification).toMatch(/in-window award was destroyed/i);
+    expect(awardCleanupVerification).toMatch(/left floating/i);
+    expect(awardCleanupVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Reconciling a hand-applied Crew schema (D-080)", () => {
+  /**
+   * Preview QA applied the branch's pre-review migrations straight to the
+   * production project, so definitions that never reached main are live there.
+   * Newer files cannot correct them, because none of them redefine what the
+   * superseded migrations created.
+   */
+  it("rebinds run geometry to the duration-aware height", () => {
+    const items = reconcileMigration.match(
+      /create or replace function public\.crew_build_items[\s\S]*?\$\$;/i,
+    )?.[0];
+    expect(items, "crew_build_items is not reissued").toBeTruthy();
+    expect(items).toMatch(/crew_build_height\([^)]*duration_seconds[^)]*\)/i);
+    expect(items).not.toMatch(/crew_build_height\(\s*r\.activity_type\s*\)/i);
+  });
+
+  it("retires the resurrected one-argument height only after nothing binds it", () => {
+    const dropAt = reconcileMigration.search(/drop function if exists public\.crew_build_height\(text\)/i);
+    const itemsAt = reconcileMigration.search(/create or replace function public\.crew_build_items/i);
+    expect(dropAt).toBeGreaterThan(-1);
+    // Dropping before the rebind would leave crew_build_items resolving to a
+    // function that no longer exists.
+    expect(dropAt).toBeGreaterThan(itemsAt);
+  });
+
+  it("restores the Build-window guard and the locked-row re-checks", () => {
+    expect(reconcileMigration).toMatch(
+      /is_crew_run_in_build_window\(v_run\.crew_id, v_run\.local_date\)[\s\S]*?crew_build_placement_before_window/i,
+    );
+    const guarded = reconcileMigration.match(
+      /for update;\s*if not found then raise exception/gi,
+    ) ?? [];
+    expect(guarded).toHaveLength(2);
+  });
+
+  it("retires the temporary QA harness wherever it was applied", () => {
+    // security definer, granted to authenticated: leaving it live lets any
+    // signed-in owner of a Crew named TEST CLUB mint award blocks.
+    expect(reconcileMigration).toMatch(/drop function if exists public\.qa_seed_crew_award_fixture\(\)/i);
+    expect(reconcileMigration).toMatch(/drop function if exists public\.qa_clear_crew_award_fixture\(\)/i);
+  });
+
+  it("is safe on a database that never saw the hand-applied state", () => {
+    // Every drop guarded, every definition a replace: applying this to a fresh
+    // reset must be a no-op rather than an error.
+    const drops = reconcileMigration.match(/^drop function(?! if exists)/gim) ?? [];
+    expect(drops).toHaveLength(0);
+    const creates = reconcileMigration.match(/^create (?!or replace)/gim) ?? [];
+    expect(creates).toHaveLength(0);
+  });
+
+  it("reissues definitions identical to main's", () => {
+    // Generated from 20260819025500, not retyped: drift here would reintroduce
+    // the defect it exists to remove.
+    for (const name of ["crew_build_items", "place_crew_build_block", "place_crew_award_block"]) {
+      const from = (sql: string) =>
+        sql.match(new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"))?.[0];
+      expect(from(reconcileMigration)).toBe(from(specialBlocksMigration));
+    }
+  });
+});
+
+describe("Canonical Crew Build occupancy (issue #128)", () => {
+  /**
+   * The Crew screen derives its tower from what it can draw. Anything the
+   * server counted as occupied but the client dropped was an invisible
+   * blocker: a landing the client offered came back as
+   * `crew_build_placement_conflict`, and no refresh could ever reveal the
+   * occupant, because there was none to reveal.
+   */
+  it("reads only the rectangles the client would draw", () => {
+    const items = canonicalOccupancyMigration.match(
+      /create or replace function public\.crew_build_items[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(items).toBeTruthy();
+    // A run outside the Crew's Build window is filtered out of the dashboard
+    // read, so it cannot be occupancy either.
+    expect(items).toMatch(/is_crew_run_in_build_window\(r\.crew_id, r\.local_date\)/i);
+    // Both kinds must fit the eight-column grid whole, not just anchor inside
+    // it: the table CHECK bounds the anchor only.
+    expect(items).toMatch(
+      /r\.crew_build_column_start \+ public\.crew_build_width\(r\.distance_miles\) - 1 <= 8/i,
+    );
+    expect(items).toMatch(
+      /a\.crew_build_column_start \+ public\.crew_award_width\(a\.award_type\) - 1 <= 8/i,
+    );
+    // Redefining the function resets its privileges; it stays internal.
+    expect(canonicalOccupancyMigration).toMatch(
+      /revoke all on function public\.crew_build_items\(uuid\) from public, anon, authenticated/i,
+    );
+  });
+
+  it("canonicalizes under the Crew lock before either RPC validates", () => {
+    for (const name of ["place_crew_build_block", "place_crew_award_block"]) {
+      const rpc = canonicalOccupancyMigration.match(
+        new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"),
+      )?.[0] ?? "";
+      expect(rpc, `${name} is not redefined`).toBeTruthy();
+      const lock = rpc.search(/pg_advisory_xact_lock/i);
+      const canonicalize = rpc.search(/perform public\.canonicalize_crew_build/i);
+      const conflict = rpc.search(/crew_build_placement_conflict/i);
+      expect(lock, `${name} does not lock the crew`).toBeGreaterThan(-1);
+      expect(canonicalize, `${name} does not canonicalize`).toBeGreaterThan(lock);
+      expect(conflict, `${name} validates before canonicalizing`).toBeGreaterThan(canonicalize);
+    }
+  });
+
+  it("only ever demotes construction to READY", () => {
+    const canonicalize = canonicalOccupancyMigration.match(
+      /create or replace function public\.canonicalize_crew_build[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(canonicalize).toBeTruthy();
+    // Healing corrects what is invisible; it never relocates a runner's block
+    // and never deletes a contribution. Every write it makes is a demotion.
+    const writes = canonicalize.match(/set crew_build_row = [^,]*/gi) ?? [];
+    expect(writes.length).toBeGreaterThan(0);
+    for (const write of writes) expect(write).toBe("set crew_build_row = null");
+    expect(canonicalize).not.toMatch(/delete from/i);
+  });
+
+  it("gives every repair entry point the same definition of occupancy", () => {
+    // The runs-only healing behind the footprint-change trigger could not see
+    // a Special Block, so it demoted every run resting on one.
+    const heal = canonicalOccupancyMigration.match(
+      /create or replace function public\.heal_crew_build_support[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(heal).toMatch(/return public\.canonicalize_crew_build\(p_crew_id\)/i);
+    expect(heal).not.toMatch(/shared_runs/i);
+  });
+
+  it("clears the ghosts already in the database once", () => {
+    expect(canonicalOccupancyMigration).toMatch(
+      /for v_crew_id in select id from public\.crews loop[\s\S]*?perform public\.canonicalize_crew_build\(v_crew_id\)/i,
+    );
+  });
+
+  it("ships transactional verification of the ghost and the genuine conflict", () => {
+    expect(canonicalOccupancyVerification).toMatch(/visually open landing was refused/i);
+    expect(canonicalOccupancyVerification).toMatch(/invisible coordinate stayed placed/i);
+    expect(canonicalOccupancyVerification).toMatch(/supported by a Special Block was demoted/i);
+    expect(canonicalOccupancyVerification).toMatch(/genuinely occupied cell was accepted/i);
+    expect(canonicalOccupancyVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Healing stays proportionate to what triggered it (issue #128)", () => {
+  /**
+   * The ordinary Crew projection upserts distance_miles and activity_type for
+   * every run a runner has already shared, and a column-specific trigger fires
+   * on the columns named in an UPDATE rather than on whether they changed. So
+   * anything heal_crew_build_support() does, it does once per already-shared
+   * run, on every projection.
+   */
+  it("keeps the trigger path on support repair, not the full canonical pass", () => {
+    const heal = healScopeMigration.match(
+      /create or replace function public\.heal_crew_build_support[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(heal).toBeTruthy();
+    expect(heal).toMatch(/return public\.repair_crew_build_support\(p_crew_id\)/i);
+    expect(heal).not.toMatch(/canonicalize_crew_build/i);
+  });
+
+  it("still leaves canonicalization where a person caused it", () => {
+    // Both placement RPCs keep it, so the ghost fix is untouched: it runs once
+    // per placement rather than once per row of an unrelated upload.
+    for (const name of ["place_crew_build_block", "place_crew_award_block"]) {
+      const rpc = canonicalOccupancyMigration.match(
+        new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"),
+      )?.[0] ?? "";
+      expect(rpc).toMatch(/perform public\.canonicalize_crew_build/i);
+    }
+    expect(healScopeMigration).not.toMatch(/create or replace function public\.place_crew/i);
   });
 });

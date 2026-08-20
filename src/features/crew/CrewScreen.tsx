@@ -1,12 +1,12 @@
 import {
   BarChart3,
-  CalendarCheck2,
-  CalendarDays,
   ChevronDown,
+  Gauge,
   History,
   Layers3,
   Mountain,
   RefreshCw,
+  Trophy,
   UserRoundPlus,
   UsersRound,
   WifiOff,
@@ -26,40 +26,43 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
 import { Section } from "../../components/ui/Section";
 import { Sheet } from "../../components/ui/Sheet";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { CrewBuildRun, CrewType } from "../../crew/types";
 import {
+  awardsWonByUserId,
   comparisonBarPercent,
+  comparisonBest,
   comparisonValue,
   formatComparisonReading,
   orderedComparisonRows,
   type ComparisonMetric,
   type ComparisonSummary,
 } from "../../crew/comparisons";
-import { crewFreshness } from "../../crew/freshness";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { RunnerIcon } from "./RunnerIcon";
-import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
-import { runDaysByUserId, RUN_DAYS_WINDOW } from "../../crew/runDays";
+import { avgPaceSecondsByUserId, AVG_PACE_WINDOW } from "../../crew/avgPace";
 import {
+  crewAwardLandingOptions,
   crewBuildLandingOptions,
-  deriveCrewBuild,
+  deriveCrewBuildWithAwards,
   EMPTY_CREW_BUILD,
 } from "../../crew/crewBuild";
+import { crewSyncStatus } from "../../crew/freshness";
+import { crewMemberAccent } from "../../crew/memberAccent";
+import { deriveCrewMiniBuild } from "../../crew/miniBuild";
+import { viewerFirstMembers } from "../../crew/memberOrder";
+import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import type { CrewBuildRun } from "../../crew/types";
+import type { RaceCrewController } from "../../crew/useRaceCrew";
+import { useCrewAwards } from "../../crew/useCrewAwards";
 import { todayLocalDate } from "../../domain/dates";
-import { formatMilesBuilt } from "../../domain/distance";
 import { autoPlaceOption } from "../../domain/placement";
 import { useJustPlaced } from "../build/useJustPlaced";
-import { CrewBuild } from "./CrewBuild";
+import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet";
+import { CrewAwardsPanel } from "./CrewAwardsPanel";
+import { CrewBuild, type CrewBuildPlacementMode } from "./CrewBuild";
 import { CrewEmblem } from "./CrewEmblem";
+import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
-import { CrewMiniBuild } from "./CrewMiniBuild";
-import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
-import {
-  deriveCrewMiniBuild,
-  orderedMiniBuildMembers,
-} from "../../crew/miniBuild";
+import { PropNotifications } from "./PropNotifications";
+import { RunnerIcon } from "./RunnerIcon";
 
 const DEFAULT_RECENT_RUNS = 6;
 const MAX_RECENT_RUNS = 20;
@@ -67,9 +70,9 @@ const MAX_RECENT_RUNS = 20;
 const METRIC_LABEL: Record<ComparisonMetric, string> = {
   "weekly-miles": "Weekly Miles",
   "longest-run": "Longest Run",
-  consistency: "Plan Runs Linked",
-  "run-days": "Run Days",
+  "avg-pace": "Avg Pace",
   "miles-built": "Miles Built",
+  "awards-28d": "Awards",
 };
 
 type MetricDescriptor = {
@@ -79,43 +82,30 @@ type MetricDescriptor = {
   Icon: LucideIcon;
 };
 
-const WEEKLY_MILES_METRIC: MetricDescriptor =
-  { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 };
-const LONGEST_RUN_METRIC: MetricDescriptor =
-  { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain };
-const MILES_BUILT_METRIC: MetricDescriptor =
-  { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 };
-
-// Race Crew compares how much of the plan has a linked run, which needs a
-// training plan. Run Club has no plan to measure against, so Run Days takes
-// the same slot.
-//
-// NEXT-6: the reading is unchanged and so are the bars, but it is named for
-// what it counts. `Consistency` presented a plan-link ratio as a quality of
-// the runner, which is the reading NEXT-3 ranked last on Runs and NEXT-5
-// refused as Plan's headline. A crewmate whose runs are real but unlinked is
-// not a less consistent runner.
-const RACE_METRICS: MetricDescriptor[] = [
-  WEEKLY_MILES_METRIC,
-  LONGEST_RUN_METRIC,
-  { id: "consistency", shortLabel: "Linked", window: "Recent plan weeks", Icon: CalendarCheck2 },
-  MILES_BUILT_METRIC,
+/*
+ * One comparison set for both crew types.
+ *
+ * NEXT-6 renamed the plan-link comparison (`Consistency` → `Plan Runs Linked`)
+ * because presenting a plan-link ratio as a quality of the runner was the
+ * reading NEXT-3 ranked last on Runs and NEXT-5 refused as Plan's headline.
+ * Main had already gone further and removed the metric outright, replacing the
+ * Race/Club split with Avg Pace and Awards — measures that need no training
+ * plan and so serve both crew types. The removal satisfies the rename's whole
+ * intent, so the removal stands.
+ */
+const METRICS: MetricDescriptor[] = [
+  { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 },
+  { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
+  { id: "avg-pace", shortLabel: "Pace", window: `Trailing ${AVG_PACE_WINDOW} days`, Icon: Gauge },
+  { id: "miles-built", shortLabel: "Built", window: "All time", Icon: Layers3 },
+  { id: "awards-28d", shortLabel: "Awards", window: "Trailing 28 days", Icon: Trophy },
 ];
-const CLUB_METRICS: MetricDescriptor[] = [
-  WEEKLY_MILES_METRIC,
-  LONGEST_RUN_METRIC,
-  { id: "run-days", shortLabel: "Days", window: `Trailing ${RUN_DAYS_WINDOW} days`, Icon: CalendarDays },
-  MILES_BUILT_METRIC,
-];
-
-function metricsForCrewType(crewType: CrewType): MetricDescriptor[] {
-  return crewType === "club" ? CLUB_METRICS : RACE_METRICS;
-}
 
 interface CrewScreenProps {
   crew: RaceCrewController | null;
   onOpenAccountCrew: () => void;
-  /** Defaults to the real local date; overridable so tests don't need fake timers. */
+  placeCrewRunId?: string | null;
+  onCrewPlacementHandled?: () => void;
   today?: string;
 }
 
@@ -145,41 +135,28 @@ function CrewAccessState({
   );
 }
 
-/**
- * Crew — the shared destination.
- *
- * The hierarchy is deliberate and reads top to bottom: the tower we are
- * building together, then how our training compares, then what just happened,
- * then each runner's own Build. Everything below the Crew Build is support for
- * it, which is why the crew name, the runner count and Miles Built are each
- * stated once rather than repeated by every module.
- */
 export function CrewScreen({
   crew,
   onOpenAccountCrew,
+  placeCrewRunId = null,
+  onCrewPlacementHandled,
   today = todayLocalDate(),
 }: CrewScreenProps) {
   const [metric, setMetric] = useState<ComparisonMetric>("weekly-miles");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedAwardId, setSelectedAwardId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  // Run Detail opened from inside Crew Profile is a drill-down, not a
-  // replacement: the member stays selected underneath it, and closing Run
-  // Detail restores the same profile rather than dropping to the Crew page
-  // (issue #93). Run Detail opened from the main Recent Crew Runs feed
-  // never sets this, so it still closes back to the Crew page as before.
   const [runDetailFromProfile, setRunDetailFromProfile] = useState(false);
+  const [awardDetailFromProfile, setAwardDetailFromProfile] = useState(false);
   const [showAllRecentRuns, setShowAllRecentRuns] = useState(false);
   const [isCrewPickerOpen, setCrewPickerOpen] = useState(false);
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
-  // The chosen column, held as a key rather than the full landing option, so
-  // it survives the options list being recomputed on every render — the same
-  // pattern Personal Build's `BuildScreen` uses.
+  const [placingAwardId, setPlacingAwardId] = useState<string | null>(null);
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
   const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
-  // Only a placement this viewer just confirmed lands; refreshes and reloads
-  // of the same shared tower never do (issue #76).
   const { justPlacedId, markJustPlaced } = useJustPlaced();
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   const currentCrew = crew?.account?.crew ?? null;
   const currentCrewId = currentCrew?.id ?? null;
   const memberships = crew?.account?.memberships ?? [];
@@ -187,15 +164,24 @@ export function CrewScreen({
   const currentUserId = crew?.account?.profile.id;
   const crewStatus = crew?.status;
   const refreshCrewData = crew?.refreshCrewData;
+  const markPropsSeen = crew?.markPropsSeen;
   const crewBuildRuns = crew?.crewData?.crewBuildRuns;
 
-  // One read-model derivation per loaded payload. The server owns the Crew
-  // coordinates; refresh only separates their placed and READY views.
+  const crewAwards = useCrewAwards({
+    crewId: currentCrewId,
+    viewerUserId: currentUserId,
+  });
+  const refreshAwards = crewAwards.refresh;
+
   const crewBuild = useMemo(
     () => (crewBuildRuns
-      ? deriveCrewBuild(crewBuildRuns, undefined, currentUserId)
+      ? deriveCrewBuildWithAwards(
+        crewBuildRuns,
+        crewAwards.blocks,
+        currentUserId ?? undefined,
+      )
       : EMPTY_CREW_BUILD),
-    [crewBuildRuns, currentUserId],
+    [crewAwards.blocks, crewBuildRuns, currentUserId],
   );
 
   useEffect(() => {
@@ -203,6 +189,12 @@ export function CrewScreen({
       void refreshCrewData(false);
     }
   }, [crewStatus, currentCrewId, refreshCrewData]);
+
+  useEffect(() => {
+    if (crewStatus === "signed-in" && currentCrewId && markPropsSeen) {
+      void markPropsSeen();
+    }
+  }, [crewStatus, currentCrewId, markPropsSeen]);
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -278,29 +270,37 @@ export function CrewScreen({
     );
   }
 
-  const dashboardData = crew.crewData;
+  const activeCrew = crew;
+  const dashboardData = activeCrew.crewData!;
   const members = dashboardData.members;
-  const metrics = metricsForCrewType(currentCrew.crewType);
-  // Plan links need a plan and Run Days needs a Run Club: switching crews
-  // (or a metric no longer offered) falls back to the first tab rather than
-  // rendering a tab that isn't shown.
-  const activeMetric = metrics.some((item) => item.id === metric) ? metric : metrics[0].id;
+  const activeMetric = metric;
   const placedMilesByUserId = new Map<string, number>();
   for (const block of crewBuild.blocks) {
+    if (block.kind !== "run") continue;
     placedMilesByUserId.set(
       block.userId,
       (placedMilesByUserId.get(block.userId) ?? 0) + block.distanceMiles,
     );
   }
-  const runDays = runDaysByUserId(dashboardData.runs, today);
+  const avgPace = avgPaceSecondsByUserId(dashboardData.runs, today);
+  const awardsWon = awardsWonByUserId(crewAwards.blocks, today);
   const comparisonSummaries: ComparisonSummary[] = dashboardData.summaries.map((summary) => ({
     ...summary,
     milesBuilt: placedMilesByUserId.get(summary.userId) ?? 0,
-    runDays: runDays.get(summary.userId) ?? 0,
+    avgPaceSeconds: avgPace.get(summary.userId) ?? null,
+    awardsWon28d: awardsWon.get(summary.userId) ?? 0,
   }));
   const comparisonRows = orderedComparisonRows(activeMetric, members, comparisonSummaries);
-  const freshness = crewFreshness(dashboardData.summaries);
+  const syncStatus = crewSyncStatus({
+    summaries: dashboardData.summaries,
+    loading: activeCrew.crewDataStatus === "loading",
+    error: Boolean(activeCrew.crewDataError),
+  });
   const selectedRun = dashboardData.runs.find((run) => run.id === selectedRunId) ?? null;
+  const selectedAward = crewAwards.blocks.find((award) => award.id === selectedAwardId) ?? null;
+  const selectedAwardMember = selectedAward
+    ? members.find((member) => member.userId === selectedAward.winnerUserId) ?? null
+    : null;
   const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
   const selectedMemberSummary = selectedMember
     ? comparisonSummaries.find((row) => row.userId === selectedMember.userId) ?? null
@@ -308,26 +308,20 @@ export function CrewScreen({
   const selectedMemberRuns = selectedMember
     ? dashboardData.runs.filter((run) => run.userId === selectedMember.userId)
     : [];
+  const selectedMemberAwards = selectedMember
+    ? crewAwards.blocks
+      .filter((award) => award.winnerUserId === selectedMember.userId)
+      .sort((a, b) => b.weekStart.localeCompare(a.weekStart) || b.createdAt.localeCompare(a.createdAt))
+    : [];
   const recentRunPool = dashboardData.runs.slice(0, MAX_RECENT_RUNS);
   const recentRuns = showAllRecentRuns
     ? recentRunPool
     : recentRunPool.slice(0, DEFAULT_RECENT_RUNS);
   const hiddenRecentRunCount = recentRunPool.length - recentRuns.length;
-  const miniBuildMembers = orderedMiniBuildMembers(members, currentUserId);
-  const maxDisplayedValue = comparisonRows.reduce((maximum, row) => {
-    const value = comparisonValue(activeMetric, row.summary);
-    return value === null ? maximum : Math.max(maximum, value);
-  }, 0);
-  // Race Crew leads with the race and its countdown; a Run Club has neither,
-  // so it states a compact non-race context instead — never both, never
-  // a fabricated countdown for a Crew with no race.
+  const railMembers = viewerFirstMembers(members, currentUserId);
+  const bestDisplayedValue = comparisonBest(activeMetric, comparisonRows);
   const isRaceCrew = currentCrew.crewType === "race";
-  // The Member Profile's stat strip mirrors the comparison section's own
-  // Race Crew / Run Club split: the plan-link reading needs a training plan,
-  // Run Club has none, so Run Days takes that slot instead (issue #87).
-  const profileMetric = isRaceCrew
-    ? { id: "consistency" as const, label: "Plan Runs Linked" }
-    : { id: "run-days" as const, label: "Run Days" };
+
   const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
   const countdown = isRaceCrew && currentCrew.raceDate
     ? raceCountdown(currentCrew.raceDate, today)
@@ -340,44 +334,79 @@ export function CrewScreen({
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
   const viewerReadyRuns = build.viewerReadyRuns;
-  const placingRun = dashboardData.crewBuildRuns.find((run) => run.id === placingRunId) ?? null;
+  const viewerReadyAwards = build.viewerReadyAwards;
 
-  // A block being moved does not block its own current position — the same
-  // rule Personal Build's `BuildScreen` applies before computing options.
-  const placementBlocks = placingRun
-    ? build.blocks.filter((block) => block.id !== placingRun.id)
-    : build.blocks;
+  const requestedPlacementRun = placeCrewRunId
+    ? dashboardData.crewBuildRuns.find((run) => run.id === placeCrewRunId) ?? null
+    : null;
+  const placingAward = placingAwardId
+    ? crewAwards.blocks.find((award) => award.id === placingAwardId) ?? null
+    : null;
+  const placingAwardMember = placingAward
+    ? members.find((member) => member.userId === placingAward.winnerUserId) ?? null
+    : null;
+  const placingRun = placingAward
+    ? null
+    : dashboardData.crewBuildRuns.find((run) => run.id === placingRunId)
+      ?? requestedPlacementRun;
+
+  const placementBlocks = build.blocks.filter((block) => {
+    if (placingRun) return !(block.kind === "run" && block.id === placingRun.id);
+    if (placingAward) return !(block.kind === "award" && block.id === placingAward.id);
+    return true;
+  });
   const placementOptions = placingRun
     ? crewBuildLandingOptions(placingRun, placementBlocks)
-    : [];
+    : placingAward
+      ? crewAwardLandingOptions(placingAward, placementBlocks)
+      : [];
   const placementCandidate =
     placementOptions.find((option) => String(option.columnStart) === candidateColumn) ??
     autoPlaceOption(placementOptions) ??
     null;
   const placementCandidateIndex = placementCandidate
-    ? placementOptions.findIndex(
-      (option) => option.columnStart === placementCandidate.columnStart,
-    )
+    ? placementOptions.findIndex((option) => option.columnStart === placementCandidate.columnStart)
     : -1;
 
   function startPlacement(run: CrewBuildRun) {
-    crew!.clearCrewBuildPlacementError();
+    onCrewPlacementHandled?.();
+    activeCrew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
     setPlacementLocalError(null);
+    setPlacingAwardId(null);
     setPlacingRunId(run.id);
     setCandidateColumn(
       run.crewBuildColumnStart === null ? null : String(run.crewBuildColumnStart),
     );
   }
 
+  function startAwardPlacement(awardId: string) {
+    const award = crewAwards.blocks.find((item) => item.id === awardId);
+    if (!award || award.winnerUserId !== currentUserId) return;
+    onCrewPlacementHandled?.();
+    activeCrew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
+    setPlacementLocalError(null);
+    setPlacingRunId(null);
+    setPlacingAwardId(award.id);
+    setCandidateColumn(
+      award.crewBuildColumnStart === null ? null : String(award.crewBuildColumnStart),
+    );
+  }
+
   function cancelPlacement() {
-    crew!.clearCrewBuildPlacementError();
+    onCrewPlacementHandled?.();
+    activeCrew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(null);
     setPlacingRunId(null);
+    setPlacingAwardId(null);
   }
 
   function choosePlacement(option: { columnStart: number }) {
-    crew!.clearCrewBuildPlacementError();
+    activeCrew.clearCrewBuildPlacementError();
+    crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(String(option.columnStart));
   }
@@ -393,17 +422,62 @@ export function CrewScreen({
   }
 
   async function confirmPlacement() {
-    if (!placingRun || !placementCandidate) return;
-    const placed = await crew!.placeCrewBuildBlock(
-      placingRun.id,
-      placementCandidate.row,
-      placementCandidate.columnStart,
-    );
-    if (placed) {
-      markJustPlaced(placingRun.id);
-      cancelPlacement();
-    } else setCandidateColumn(null);
+    if (!placementCandidate) return;
+    if (placingRun) {
+      const placed = await activeCrew.placeCrewBuildBlock(
+        placingRun.id,
+        placementCandidate.row,
+        placementCandidate.columnStart,
+      );
+      if (placed) {
+        markJustPlaced(placingRun.id);
+        cancelPlacement();
+      } else setCandidateColumn(null);
+      return;
+    }
+    if (placingAward) {
+      const placed = await crewAwards.placeAward(
+        placingAward.id,
+        placementCandidate.row,
+        placementCandidate.columnStart,
+      );
+      if (placed) {
+        markJustPlaced(placingAward.id);
+        cancelPlacement();
+      } else setCandidateColumn(null);
+    }
   }
+
+  const placementMode: CrewBuildPlacementMode | null = placingRun
+    ? {
+      kind: "run",
+      run: placingRun,
+      options: placementOptions,
+      candidate: placementCandidate,
+      pending: activeCrew.crewBuildPlacementPending,
+      error: activeCrew.crewBuildPlacementError ?? placementLocalError,
+      onChoose: choosePlacement,
+      onStep: stepPlacement,
+      onAutoPlace: autoPlacePlacement,
+      onConfirm: () => void confirmPlacement(),
+      onCancel: cancelPlacement,
+    }
+    : placingAward && placingAwardMember
+      ? {
+        kind: "award",
+        award: placingAward,
+        member: placingAwardMember,
+        options: placementOptions,
+        candidate: placementCandidate,
+        pending: crewAwards.placementPending,
+        error: crewAwards.placementError ?? placementLocalError,
+        onChoose: choosePlacement,
+        onStep: stepPlacement,
+        onAutoPlace: autoPlacePlacement,
+        onConfirm: () => void confirmPlacement(),
+        onCancel: cancelPlacement,
+      }
+      : null;
 
   function changeMetricFromKeyboard(
     event: KeyboardEvent<HTMLButtonElement>,
@@ -411,26 +485,22 @@ export function CrewScreen({
   ) {
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      nextIndex = (currentIndex + 1) % metrics.length;
+      nextIndex = (currentIndex + 1) % METRICS.length;
     } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      nextIndex = (currentIndex - 1 + metrics.length) % metrics.length;
+      nextIndex = (currentIndex - 1 + METRICS.length) % METRICS.length;
     } else if (event.key === "Home") {
       nextIndex = 0;
     } else if (event.key === "End") {
-      nextIndex = metrics.length - 1;
+      nextIndex = METRICS.length - 1;
     }
     if (nextIndex === null) return;
     event.preventDefault();
-    setMetric(metrics[nextIndex].id);
+    setMetric(METRICS[nextIndex].id);
     metricRefs.current[nextIndex]?.focus();
   }
 
   return (
     <div className="crew-view">
-      {/*
-        The crew identity is a compact standing line, not another bordered
-        card: the visual weight below it belongs to the Crew Build.
-      */}
       <header className="crew-view__lead">
         <div className={`crew-view__lead-row${canSwitchCrews ? " crew-view__lead-row--picker" : ""}`}>
           {canSwitchCrews ? (
@@ -442,7 +512,7 @@ export function CrewScreen({
                   aria-label={`Choose crew: ${currentCrew.name}`}
                   aria-haspopup="dialog"
                   aria-expanded={isCrewPickerOpen}
-                  disabled={crew.busy}
+                  disabled={activeCrew.busy}
                   onClick={() => setCrewPickerOpen(true)}
                 >
                   <CrewEmblem emblem={currentCrew.emblem} size={46} />
@@ -458,11 +528,7 @@ export function CrewScreen({
             </div>
           ) : (
             <>
-              <CrewEmblem
-                className="crew-view__emblem"
-                emblem={currentCrew.emblem}
-                size={46}
-              />
+              <CrewEmblem className="crew-view__emblem" emblem={currentCrew.emblem} size={46} />
               <div className="crew-view__identity">
                 <h1 className="crew-view__name data-value">{currentCrew.name}</h1>
                 {contextLine && (
@@ -473,37 +539,34 @@ export function CrewScreen({
               </div>
             </>
           )}
-          {/*
-            Freshness lives beside the control that fixes it (issue #93):
-            it used to sit below the comparison rows, detached from both
-            Refresh and its own meaning. It appears exactly once.
-          */}
           <div className="crew-view__refresh-group">
-            {freshness && (
-              <p
-                className="crew-view__freshness machine-label"
-                data-warning={freshness.warning || undefined}
-              >
-                {freshness.label}
-              </p>
-            )}
             <IconButton
               className="crew-view__refresh"
-              label="Refresh crew data"
+              data-sync-state={syncStatus.state}
+              label={syncStatus.label}
               icon={
                 <RefreshCw
-                  className={crew.crewDataStatus === "loading" ? "crew-comparison__refresh-icon--loading" : undefined}
+                  className={syncStatus.state === "syncing" ? "crew-comparison__refresh-icon--loading" : undefined}
                   size={16}
                   strokeWidth={1.8}
                 />
               }
-              disabled={crew.crewDataStatus === "loading"}
-              aria-busy={crew.crewDataStatus === "loading"}
-              onClick={() => void crew.refreshCrewData(true)}
+              disabled={activeCrew.crewDataStatus === "loading"}
+              aria-busy={activeCrew.crewDataStatus === "loading"}
+              onClick={() => {
+                void activeCrew.refreshCrewData(true);
+                void refreshAwards();
+              }}
             />
           </div>
         </div>
       </header>
+
+      <PropNotifications
+        notifications={activeCrew.visiblePropNotifications}
+        propsSeenAt={activeCrew.account?.profile.propsSeenAt ?? new Date(0).toISOString()}
+        onDismiss={activeCrew.dismissPropNotification}
+      />
 
       {canSwitchCrews && isCrewPickerOpen && (
         <Sheet
@@ -521,10 +584,10 @@ export function CrewScreen({
                     type="button"
                     className="crew-picker__option"
                     aria-pressed={isCurrentCrew}
-                    disabled={crew.busy}
+                    disabled={activeCrew.busy}
                     onClick={() => {
                       setCrewPickerOpen(false);
-                      if (!isCurrentCrew) void crew.switchCrew(option.id);
+                      if (!isCurrentCrew) void activeCrew.switchCrew(option.id);
                     }}
                   >
                     <CrewEmblem emblem={option.emblem} size={34} />
@@ -538,23 +601,25 @@ export function CrewScreen({
         </Sheet>
       )}
 
+      {/*
+        * Issue #128: a runner whose personal cache is still being adopted has
+        * eligible runs that genuinely have not reached the crew yet. Say so
+        * where they are looking for their READY blocks, rather than showing a
+        * tower that silently omits them.
+        */}
+      {activeCrew.projectionWaitingForPersonal && (
+        <p className="crew-view__waiting" role="status">
+          Your runs reach the crew as soon as personal STACK finishes syncing on this device.
+        </p>
+      )}
+
       <CrewBuild
         model={build}
-        members={members}
+        members={railMembers}
         available={dashboardData.sharedRunsAvailable}
         justPlacedRunId={justPlacedId}
-        placement={placingRun ? {
-          run: placingRun,
-          options: placementOptions,
-          candidate: placementCandidate,
-          pending: crew.crewBuildPlacementPending,
-          error: crew.crewBuildPlacementError ?? placementLocalError,
-          onChoose: choosePlacement,
-          onStep: stepPlacement,
-          onAutoPlace: autoPlacePlacement,
-          onConfirm: () => void confirmPlacement(),
-          onCancel: cancelPlacement,
-        } : null}
+        justPlacedAwardId={justPlacedId}
+        placement={placementMode}
         onStartReady={() => {
           const next = viewerReadyRuns[0];
           if (next) {
@@ -563,6 +628,13 @@ export function CrewScreen({
           }
         }}
         onSelectRun={(runId) => setSelectedRunId(runId)}
+        onSelectAward={(awardId) => setSelectedAwardId(awardId)}
+        onSelectMember={(userId) => setSelectedMemberId(userId)}
+      />
+
+      <CrewAwardsPanel
+        readyAwards={viewerReadyAwards}
+        onPlaceAward={startAwardPlacement}
       />
 
       <section
@@ -573,12 +645,12 @@ export function CrewScreen({
         <div className="crew-comparison__heading">
           <h2 id="crew-comparison-title">{METRIC_LABEL[activeMetric]}</h2>
           <p className="crew-comparison__window machine-label">
-            {metrics.find((item) => item.id === activeMetric)?.window}
+            {METRICS.find((item) => item.id === activeMetric)?.window}
           </p>
         </div>
 
         <div className="crew-comparison__selector" role="tablist" aria-label="Comparison metric">
-          {metrics.map(({ id, Icon }, index) => (
+          {METRICS.map(({ id, Icon }, index) => (
             <button
               key={id}
               ref={(element) => { metricRefs.current[index] = element; }}
@@ -603,14 +675,11 @@ export function CrewScreen({
           role="tabpanel"
           aria-labelledby={`crew-metric-${activeMetric}`}
         >
-          <ol
-            className="crew-comparison__rows"
-            aria-label={`${METRIC_LABEL[activeMetric]} comparison`}
-          >
+          <ol className="crew-comparison__rows" aria-label={`${METRIC_LABEL[activeMetric]} comparison`}>
             {comparisonRows.map(({ member, summary }) => {
               const formatted = formatComparisonReading(activeMetric, summary);
               const isYou = member.userId === currentUserId;
-              const percent = comparisonBarPercent(activeMetric, summary, maxDisplayedValue);
+              const percent = comparisonBarPercent(activeMetric, summary, bestDisplayedValue);
               const barStyle = { "--crew-bar-value": `${percent}%` } as CSSProperties;
               return (
                 <li
@@ -619,16 +688,19 @@ export function CrewScreen({
                   data-member-color={crewMemberAccent(member.userId, member.accentColor)}
                 >
                   <div className="crew-comparison__row-topline">
-                    <span className="crew-comparison__member">
+                    <button
+                      type="button"
+                      className="crew-comparison__member"
+                      aria-label={`Open ${member.displayName}'s Crew Profile`}
+                      onClick={() => setSelectedMemberId(member.userId)}
+                    >
                       <RunnerIcon icon={member.runnerIcon} size={26} />
                       <span>{member.displayName}</span>
                       {isYou && <span className="crew-comparison__you machine-label">You</span>}
-                    </span>
+                    </button>
                     <span className="crew-comparison__reading">
                       <span className="data-value">{formatted.value}</span>
-                      {formatted.detail && (
-                        <span className="machine-label">· {formatted.detail}</span>
-                      )}
+                      {formatted.detail && <span className="machine-label">· {formatted.detail}</span>}
                     </span>
                   </div>
                   <span
@@ -646,73 +718,14 @@ export function CrewScreen({
           </ol>
         </div>
 
-        {crew.crewDataError && (
+        {activeCrew.crewDataError && (
           <p className="crew-comparison__error" role="status">
             Crew data unavailable. Showing the last loaded view.
           </p>
         )}
       </section>
 
-      {/*
-        The Crew now sits above Recent Crew Runs (issue #93): who is here
-        outranks what they just did, now that tapping a member opens a real
-        profile rather than just a mini Build widget.
-      */}
-      <Section
-        className="crew-builds"
-        icon={<Layers3 size={15} strokeWidth={2} />}
-        title="The Crew"
-      >
-        {members.length === 1 && (
-          <p className="crew-builds__invite-note">Invite your crew to build together.</p>
-        )}
-        {!dashboardData.sharedRunsAvailable ? (
-          <p className="crew-builds__unavailable">Member Builds unavailable.</p>
-        ) : <ul className="crew-builds__rail" aria-label="Member Builds">
-          {miniBuildMembers.map((member) => {
-            const model = deriveCrewMiniBuild(dashboardData.miniBuildRuns, member.userId);
-            const isYou = member.userId === currentUserId;
-            return (
-              <li
-                key={member.userId}
-                data-member-color={crewMemberAccent(member.userId, member.accentColor)}
-                data-you={isYou || undefined}
-              >
-                <button
-                  type="button"
-                  className="crew-build-card"
-                  data-you={isYou || undefined}
-                  aria-label={`Open ${member.displayName}'s Build`}
-                  onClick={() => setSelectedMemberId(member.userId)}
-                >
-                  <span className="crew-build-card__name">
-                    <RunnerIcon icon={member.runnerIcon} size={24} />
-                    <span>{member.displayName}</span>
-                    {isYou && <span className="crew-build-card__you machine-label">You</span>}
-                  </span>
-                  <CrewMiniBuild model={model} />
-                  <span className="crew-build-card__context machine-label">
-                    <span className="crew-build-card__miles data-value">
-                      {formatMilesBuilt(model.totalMiles)} MI <span>BUILT</span>
-                    </span>
-                    {model.sourceRunCount > 0 && (
-                      <span className="crew-build-card__blocks">
-                        {model.sourceRunCount} {model.sourceRunCount === 1 ? "block" : "blocks"}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>}
-      </Section>
-
-      <Section
-        className="crew-recent"
-        icon={<History size={15} strokeWidth={2} />}
-        title="Recent Crew Runs"
-      >
+      <Section className="crew-recent" icon={<History size={15} strokeWidth={2} />} title="Recent Crew Runs">
         {!dashboardData.sharedRunsAvailable ? (
           <p className="crew-recent__empty">Recent crew runs unavailable.</p>
         ) : dashboardData.runs.length === 0 ? (
@@ -724,11 +737,11 @@ export function CrewScreen({
                 key={run.id}
                 run={run}
                 currentUserId={currentUserId ?? ""}
-                propsPending={crew.propsPendingRunIds.includes(run.id)}
-                propsError={crew.propsErrors[run.id] ?? null}
+                propsPending={activeCrew.propsPendingRunIds.includes(run.id)}
+                propsError={activeCrew.propsErrors[run.id] ?? null}
                 propsAvailable={dashboardData.propsAvailable}
                 onOpen={() => setSelectedRunId(run.id)}
-                onToggleProps={() => void crew.toggleProps(run.id)}
+                onToggleProps={() => void activeCrew.toggleProps(run.id)}
               />
             ))}
           </ul>
@@ -746,50 +759,42 @@ export function CrewScreen({
         isYou={selectedMember?.userId === currentUserId}
         model={selectedMember ? deriveCrewMiniBuild(dashboardData.miniBuildRuns, selectedMember.userId) : null}
         summary={selectedMemberSummary}
-        consistencyMetric={profileMetric}
         runs={selectedMemberRuns}
-        // Visually closed while its own Run Detail drill-down is open, so
-        // only one dialog is ever interactive at a time (issue #93). The
-        // member stays selected underneath, so this sheet reopens on the
-        // same profile — same scroll position — once Run Detail closes.
-        isOpen={selectedMember !== null && !runDetailFromProfile}
+        awards={selectedMemberAwards}
+        isOpen={selectedMember !== null && !runDetailFromProfile && !awardDetailFromProfile}
         onClose={() => {
-          // The native <dialog> fires this same "close" event whether a
-          // person dismissed it or the drill-down above just hid it
-          // programmatically. Only the former should drop the member
-          // selection — otherwise opening Run Detail from inside the
-          // profile would itself clear the profile it is drilling into.
-          if (runDetailFromProfile) return;
+          if (runDetailFromProfile || awardDetailFromProfile) return;
           setSelectedMemberId(null);
         }}
         onSelectRun={(runId) => {
           setRunDetailFromProfile(true);
           setSelectedRunId(runId);
         }}
+        onSelectAward={(awardId) => {
+          setAwardDetailFromProfile(true);
+          setSelectedAwardId(awardId);
+        }}
         currentUserId={currentUserId ?? ""}
-        propsPendingRunIds={crew.propsPendingRunIds}
-        propsErrors={crew.propsErrors}
+        propsPendingRunIds={activeCrew.propsPendingRunIds}
+        propsErrors={activeCrew.propsErrors}
         propsAvailable={dashboardData.propsAvailable}
-        onToggleProps={(runId) => void crew.toggleProps(runId)}
+        onToggleProps={(runId) => void activeCrew.toggleProps(runId)}
       />
 
       <CrewRunDetailSheet
         run={selectedRun}
         isOpen={selectedRun !== null}
         currentUserId={currentUserId ?? ""}
-        propsPending={selectedRun ? crew.propsPendingRunIds.includes(selectedRun.id) : false}
-        propsError={selectedRun ? crew.propsErrors[selectedRun.id] ?? null : null}
+        propsPending={selectedRun ? activeCrew.propsPendingRunIds.includes(selectedRun.id) : false}
+        propsError={selectedRun ? activeCrew.propsErrors[selectedRun.id] ?? null : null}
         propsAvailable={dashboardData.propsAvailable}
         onToggleProps={() => {
-          if (selectedRun) void crew.toggleProps(selectedRun.id);
+          if (selectedRun) void activeCrew.toggleProps(selectedRun.id);
         }}
         onMoveBlock={selectedRun && selectedRun.userId === currentUserId && selectedRun.crewBuildRow !== null
           ? () => {
-            const source = dashboardData.crewBuildRuns.find((run) => run.id === selectedRun!.id);
+            const source = dashboardData.crewBuildRuns.find((run) => run.id === selectedRun.id);
             if (!source) return;
-            // Moving a block leaves the read-only profile for the main
-            // Crew Build's placement flow, so the drill-down ends here
-            // rather than reopening the profile underneath it.
             setSelectedMemberId(null);
             setRunDetailFromProfile(false);
             setSelectedRunId(null);
@@ -799,6 +804,23 @@ export function CrewScreen({
         onClose={() => {
           setSelectedRunId(null);
           setRunDetailFromProfile(false);
+        }}
+      />
+
+      <CrewAwardDetailSheet
+        award={selectedAward}
+        member={selectedAwardMember}
+        isOpen={selectedAward !== null}
+        onMoveBlock={selectedAward && selectedAward.winnerUserId === currentUserId && selectedAward.crewBuildRow !== null
+          ? () => {
+            const awardId = selectedAward.id;
+            setSelectedAwardId(null);
+            startAwardPlacement(awardId);
+          }
+          : undefined}
+        onClose={() => {
+          setSelectedAwardId(null);
+          setAwardDetailFromProfile(false);
         }}
       />
     </div>

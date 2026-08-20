@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { CrewMember } from "./types";
-import { comparisonBarPercent, orderedComparisonRows, type ComparisonSummary } from "./comparisons";
+import {
+  awardsWonByUserId,
+  comparisonBarPercent,
+  comparisonBest,
+  formatComparisonReading,
+  orderedComparisonRows,
+  type ComparisonSummary,
+} from "./comparisons";
 
 const members: CrewMember[] = [
   { userId: "a", displayName: "A", role: "owner", joinedAt: "1", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },
@@ -18,9 +25,21 @@ function summary(userId: string, weeklyMiles: number): ComparisonSummary {
     consistencyCompleted: 0,
     consistencyDue: 0,
     milesBuilt: weeklyMiles,
-    runDays: weeklyMiles,
+    avgPaceSeconds: null,
+    awardsWon28d: 0,
     updatedAt: "2026-08-10T00:00:00Z",
   };
+}
+
+function paced(userId: string, avgPaceSeconds: number | null): ComparisonSummary {
+  return { ...summary(userId, 0), avgPaceSeconds };
+}
+
+function rowsOf(summaries: ComparisonSummary[]) {
+  return summaries.map((item) => ({
+    member: members.find((member) => member.userId === item.userId)!,
+    summary: item,
+  }));
 }
 
 describe("Crew comparisons", () => {
@@ -33,35 +52,96 @@ describe("Crew comparisons", () => {
     expect(rows.map((row) => row.member.userId)).toEqual(["b", "c", "a"]);
   });
 
-  it("puts zero-due consistency in the neutral unavailable group", () => {
-    const rows = orderedComparisonRows("consistency", members, [
-      { ...summary("a", 0), consistencyCompleted: 2, consistencyDue: 4 },
-      summary("b", 0),
-      { ...summary("c", 0), consistencyCompleted: 3, consistencyDue: 4 },
+  it("scales factual mile bars to the best displayed value", () => {
+    expect(comparisonBarPercent("weekly-miles", summary("a", 10), 20)).toBe(50);
+    expect(comparisonBarPercent("weekly-miles", summary("b", 20), 20)).toBe(100);
+  });
+
+  /* Issue #120: pace is the one metric where a smaller number is the better one. */
+  it("ranks a faster Avg Pace ahead of a slower one", () => {
+    const rows = orderedComparisonRows("avg-pace", members, [
+      paced("a", 9 * 60 + 42),
+      paced("b", 8 * 60),
+      paced("c", 11 * 60),
+    ]);
+    expect(rows.map((row) => row.member.userId)).toEqual(["b", "a", "c"]);
+  });
+
+  it("puts a member with no Avg Pace reading last, not first", () => {
+    const rows = orderedComparisonRows("avg-pace", members, [
+      paced("a", 10 * 60),
+      paced("b", null),
+      paced("c", 9 * 60),
     ]);
     expect(rows.map((row) => row.member.userId)).toEqual(["c", "a", "b"]);
   });
 
-  it("scales factual mile bars to the displayed maximum and consistency to 100%", () => {
-    expect(comparisonBarPercent("weekly-miles", summary("a", 10), 20)).toBe(50);
-    expect(comparisonBarPercent("weekly-miles", summary("b", 20), 20)).toBe(100);
-    expect(
-      comparisonBarPercent(
-        "consistency",
-        { ...summary("a", 0), consistencyCompleted: 3, consistencyDue: 4 },
-        0.75,
-      ),
-    ).toBe(75);
-    expect(comparisonBarPercent("consistency", summary("b", 0), 1)).toBe(0);
+  it("takes the fastest pace as the full bar and shortens the slower ones", () => {
+    const best = comparisonBest("avg-pace", rowsOf([paced("a", 600), paced("b", 480)]));
+    expect(best).toBe(480);
+    expect(comparisonBarPercent("avg-pace", paced("b", 480), best)).toBe(100);
+    expect(comparisonBarPercent("avg-pace", paced("a", 600), best)).toBe(80);
+    expect(comparisonBarPercent("avg-pace", paced("c", null), best)).toBe(0);
   });
 
-  it("orders and scales Run Days like any other plan-independent count", () => {
-    const rows = orderedComparisonRows("run-days", members, [
-      { ...summary("a", 0), runDays: 3 },
-      { ...summary("b", 0), runDays: 6 },
-      { ...summary("c", 0), runDays: 0 },
+  it("takes the largest value as the full bar for a mileage metric", () => {
+    expect(comparisonBest("weekly-miles", rowsOf([summary("a", 10), summary("b", 22)]))).toBe(22);
+  });
+
+  it("prints Avg Pace as minutes per mile", () => {
+    expect(formatComparisonReading("avg-pace", paced("a", 9 * 60 + 42))).toEqual({
+      value: "9:42 /MI",
+      detail: null,
+    });
+    expect(formatComparisonReading("avg-pace", paced("b", null)).value).toBe("—");
+  });
+
+  it("pluralizes the Awards reading only above one", () => {
+    expect(formatComparisonReading("awards-28d", { ...summary("a", 0), awardsWon28d: 1 })).toEqual({
+      value: "1",
+      detail: "AWARD",
+    });
+    expect(formatComparisonReading("awards-28d", { ...summary("a", 0), awardsWon28d: 3 })).toEqual({
+      value: "3",
+      detail: "AWARDS",
+    });
+  });
+
+  it("ranks members with more trailing Awards ahead of fewer", () => {
+    const rows = orderedComparisonRows("awards-28d", members, [
+      { ...summary("a", 0), awardsWon28d: 1 },
+      { ...summary("b", 0), awardsWon28d: 3 },
+      { ...summary("c", 0), awardsWon28d: 0 },
     ]);
     expect(rows.map((row) => row.member.userId)).toEqual(["b", "a", "c"]);
-    expect(comparisonBarPercent("run-days", { ...summary("a", 0), runDays: 3 }, 6)).toBe(50);
+  });
+
+  describe("awardsWonByUserId", () => {
+    const today = "2026-08-19";
+
+    it("counts each award once per winner inside the trailing 28 days", () => {
+      const counts = awardsWonByUserId(
+        [
+          { winnerUserId: "a", weekStart: "2026-08-10" },
+          { winnerUserId: "a", weekStart: "2026-08-03" },
+          { winnerUserId: "b", weekStart: "2026-08-17" },
+        ],
+        today,
+      );
+      expect(counts.get("a")).toBe(2);
+      expect(counts.get("b")).toBe(1);
+    });
+
+    it("excludes a week that starts before the trailing window", () => {
+      // The window covers the 28 days up to and including today, so it opens on 2026-07-23.
+      const counts = awardsWonByUserId(
+        [
+          { winnerUserId: "a", weekStart: "2026-07-23" },
+          { winnerUserId: "a", weekStart: "2026-07-22" },
+        ],
+        today,
+      );
+      expect(counts.get("a")).toBe(1);
+    });
   });
 });

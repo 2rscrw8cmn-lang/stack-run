@@ -63,6 +63,38 @@ describe("CompleteRunSheet", () => {
       durationSeconds: 1902,
       effort: "great",
       notes: "Felt good",
+      manualHeartRate: null,
+    });
+  });
+
+  it("saves a Cross Training entry with no distance entered", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={null}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: "Cross Training" }));
+    expect(screen.getByLabelText(/Distance/)).not.toBeRequired();
+
+    await user.type(screen.getByLabelText(/Duration/), "4500");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+    expect(onSave).toHaveBeenCalledWith(null, {
+      completedDate: TODAY,
+      activityType: "cross",
+      distanceMiles: 0,
+      durationSeconds: 2700,
+      effort: "solid",
+      notes: "",
+      manualHeartRate: null,
     });
   });
 
@@ -173,6 +205,7 @@ describe("CompleteRunSheet", () => {
       durationSeconds: 2400,
       effort: "solid",
       notes: "",
+      manualHeartRate: null,
     });
   });
 
@@ -197,7 +230,7 @@ describe("CompleteRunSheet", () => {
       "aria-checked",
       "true",
     );
-    expect(screen.getAllByRole("radio")).toHaveLength(5);
+    expect(screen.getAllByRole("radio")).toHaveLength(6);
     expect(screen.queryByRole("combobox", { name: "Activity" })).not.toBeInTheDocument();
   });
 
@@ -268,5 +301,78 @@ describe("CompleteRunSheet", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(confirm).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves a hand-typed heart rate, and lets it stay blank", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={workout}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Distance/), "3.2");
+    await user.type(screen.getByLabelText(/Duration/), "3142");
+    await user.type(screen.getByLabelText(/Heart Rate/), "151");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      workout,
+      expect.objectContaining({ manualHeartRate: 151 }),
+    );
+  });
+
+  it("rejects an implausible heart rate rather than saving it", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={workout}
+        today={TODAY}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Distance/), "3.2");
+    await user.type(screen.getByLabelText(/Duration/), "3142");
+    await user.type(screen.getByLabelText(/Heart Rate/), "999");
+    await user.click(screen.getByRole("button", { name: "Solid" }));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(screen.getByText(/30 and 250/)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("prefills a saved heart rate when editing, and lets it be cleared", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <CompleteRunSheet
+        isOpen
+        workout={workout}
+        today={TODAY}
+        runLog={{ ...runLog, manualHeartRate: 132 }}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    expect(screen.getByLabelText(/Heart Rate/)).toHaveValue("132");
+
+    await user.clear(screen.getByLabelText(/Heart Rate/));
+    await user.click(screen.getByRole("button", { name: "Save Run" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      workout,
+      expect.objectContaining({ manualHeartRate: null }),
+    );
   });
 });

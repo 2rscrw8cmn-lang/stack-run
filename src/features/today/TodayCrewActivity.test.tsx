@@ -13,6 +13,7 @@ function run(
 ): CrewSharedRun {
   return {
     id,
+    localRunId: `local-${id}`,
     userId,
     displayName: userId === "zack" ? "Zack" : "Drew",
     accentColor: null,
@@ -44,6 +45,7 @@ function controller(runs: CrewSharedRun[], toggleProps = vi.fn(async () => undef
     sharedRunsAvailable: true,
     sharedRunsTruncated: false,
     propsAvailable: true,
+    propNotifications: [],
     loadedAt: "2026-08-12T12:00:00Z",
   };
   return {

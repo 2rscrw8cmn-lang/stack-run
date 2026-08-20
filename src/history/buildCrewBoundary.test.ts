@@ -164,10 +164,21 @@ describe("Crew never sees the source mirror", () => {
     );
     // The safe projection's whole field list, restated here so widening it is a
     // deliberate act rather than a diff nobody reads.
+    //
+    // It has widened once, deliberately: D-079 sends Crew a heart rate and
+    // D-080 four derived award scores, both computed on this device from
+    // accepted runs. Every field below still comes from a `RunLog` — no
+    // historical-only activity reaches this payload, which is what the rest of
+    // this file exists to hold.
     for (const run of projected) {
       expect(Object.keys(run).sort()).toEqual(
         [
           "activityType",
+          "averageHeartRate",
+          "awardLevelUpPercent",
+          "awardSteadySeconds",
+          "awardTargetPercent",
+          "awardZone2Percent",
           "buildColumnStart",
           "buildHeight",
           "buildRow",
@@ -176,6 +187,8 @@ describe("Crew never sees the source mirror", () => {
           "durationSeconds",
           "localDate",
           "localRunId",
+          "manualHeartRate",
+          "maxHeartRate",
         ].sort(),
       );
     }

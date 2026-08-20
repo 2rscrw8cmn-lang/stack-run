@@ -1,0 +1,38 @@
+name: STACK Next Release Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    name: STACK Next Release Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce STACK Next release lock
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          RELEASE_UNLOCKED: ${{ vars.STACK_NEXT_RELEASE_UNLOCKED }}
+        run: |
+          if [[ "$HEAD_REF" != "feature/stack-next" ]]; then
+            echo "Normal PR into main; STACK Next release gate does not apply."
+            exit 0
+          fi
+
+          if [[ "$RELEASE_UNLOCKED" == "true" ]]; then
+            echo "STACK Next release gate is unlocked."
+            exit 0
+          fi
+
+          echo "::error title=STACK Next is release-locked::feature/stack-next cannot merge into main until repository variable STACK_NEXT_RELEASE_UNLOCKED is explicitly set to true."
+          exit 1

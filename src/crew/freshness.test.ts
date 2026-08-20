@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CrewMemberSummary } from "./types";
-import { crewFreshness } from "./freshness";
+import { crewFreshness, crewSyncStatus } from "./freshness";
 
 function summary(updatedAt: string): CrewMemberSummary {
   return {
@@ -30,5 +30,33 @@ describe("Crew comparison freshness", () => {
         now,
       ),
     ).toEqual({ label: "Updated 3h ago", warning: true });
+  });
+});
+
+describe("Crew sync status (issue #120)", () => {
+  const now = new Date("2026-08-10T15:00:00Z").getTime();
+
+  it("stays green while the numbers are current enough to compare", () => {
+    expect(
+      crewSyncStatus({ summaries: [summary("2026-08-10T14:30:00Z")], loading: false, error: false, now }),
+    ).toEqual({ state: "healthy", label: "Refresh crew data. Crew data is up to date." });
+  });
+
+  it("reports syncing while a refresh is running, whatever the data says", () => {
+    expect(
+      crewSyncStatus({ summaries: [summary("2026-08-10T09:00:00Z")], loading: true, error: false, now }),
+    ).toEqual({ state: "syncing", label: "Refreshing crew data" });
+  });
+
+  it("asks for attention once the numbers are meaningfully stale", () => {
+    expect(
+      crewSyncStatus({ summaries: [summary("2026-08-10T12:00:00Z")], loading: false, error: false, now }),
+    ).toEqual({ state: "attention", label: "Refresh crew data. Updated 3h ago." });
+  });
+
+  it("asks for attention after a failed refresh even with fresh numbers", () => {
+    expect(
+      crewSyncStatus({ summaries: [summary("2026-08-10T14:59:00Z")], loading: false, error: true, now }),
+    ).toEqual({ state: "attention", label: "Refresh crew data. Last refresh failed." });
   });
 });

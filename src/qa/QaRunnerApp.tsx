@@ -32,7 +32,6 @@ const EMPTY_CONNECTED_SYNC: ConnectedSync = {
   error: null,
   sync: async () => undefined,
   findOlderRuns: async () => null,
-  dismiss: () => undefined,
   settle: () => undefined,
 };
 
@@ -228,6 +227,10 @@ export function QaRunnerApp() {
         runDays={state.runDays}
         onSaveRunDays={(runDays, plan) =>
           setState((current) => ({ ...current, runDays, plan }))
+        }
+        crossTrainingDays={state.crossTrainingDays}
+        onSaveCrossTrainingDays={(crossTrainingDays, plan) =>
+          setState((current) => ({ ...current, crossTrainingDays, plan }))
         }
         raceSetup={state.raceSetup}
         onGeneratePlan={(raceSetup, plan) =>

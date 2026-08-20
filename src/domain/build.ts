@@ -38,6 +38,7 @@ export const WORKOUT_TYPE_LABEL: Record<WorkoutType, string> = {
   simulation: "Simulation",
   long: "Long Run",
   race: "Race",
+  cross: "Cross Training",
 };
 
 export const BLOCK_STATE_LABEL: Record<BlockState, string> = {
@@ -53,6 +54,7 @@ export const ACTIVITY_TYPES: RunActivityType[] = [
   "simulation",
   "long",
   "race",
+  "cross",
 ];
 
 /** The five block types shown in the legend. */

@@ -1,4 +1,4 @@
-import type { ImportedRunMetrics, RunLog, TrainingPlan, Workout } from "../domain/types";
+import type { ImportedRunMetrics, RunActivityType, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { daysBetweenLocalDates } from "../domain/dates";
 
 const METERS_PER_MILE = 1609.344;
@@ -13,6 +13,14 @@ const FEET_PER_METER = 3.28084;
 const MILE_DECIMALS = 2;
 /** Intervals' canonical running activity type. Add source-verified aliases here only. */
 export const VERIFIED_RUNNING_TYPES = new Set(["Run"]);
+/**
+ * Intervals' cross-training source type, captured from a real HIIT activity
+ * recorded on watch and synced through HealthFit on 2026-08-13. As with
+ * running, add source-verified aliases here only — do not guess at what
+ * Intervals reports for weight training, elliptical, or other cross-training
+ * sports until a real payload shows one.
+ */
+export const VERIFIED_CROSS_TRAINING_TYPES = new Set(["HighIntensityIntervalTraining"]);
 
 export type IntervalsConnection =
   | { mode: "legacy-proxy"; credential: string }
@@ -40,6 +48,13 @@ export interface IntervalsCandidate {
   durationSeconds: number;
   sourceUpdatedAt: string | null;
   metrics: ImportedRunMetrics;
+  /**
+   * What an unmatched import should default to — `easy` for a verified
+   * running type, `cross` for a verified cross-training type. A matched
+   * scheduled workout's own type still wins over this; it only decides the
+   * default an Extra Run import opens with.
+   */
+  inferredActivityType: RunActivityType;
 }
 
 export interface IntervalsActivityInterval {
@@ -100,11 +115,17 @@ export function normalizeIntervalsActivity(raw: unknown): IntervalsCandidate | n
   const activity = raw as Record<string, unknown>;
   const externalId = typeof activity.id === "string" || typeof activity.id === "number" ? String(activity.id) : "";
   const sourceType = typeof activity.type === "string" ? activity.type : "";
+  const isRunning = VERIFIED_RUNNING_TYPES.has(sourceType);
+  const isCrossTraining = VERIFIED_CROSS_TRAINING_TYPES.has(sourceType);
   const completedDate = date(activity.start_date_local);
   const meters = positive(activity.distance);
   const moving = positive(activity.moving_time);
   const elapsed = positive(activity.elapsed_time);
-  if (!externalId || !VERIFIED_RUNNING_TYPES.has(sourceType) || !completedDate || !meters || (!moving && !elapsed)) return null;
+  // A run with no distance is not a run STACK can size a block from. Cross
+  // Training carries no such requirement — a HIIT session genuinely has none.
+  if (!externalId || !completedDate || (!moving && !elapsed)) return null;
+  if (isRunning && !meters) return null;
+  if (!isRunning && !isCrossTraining) return null;
 
   const metrics: ImportedRunMetrics = {};
   const averageHeartRate = positive(activity.average_heartrate);
@@ -122,7 +143,16 @@ export function normalizeIntervalsActivity(raw: unknown): IntervalsCandidate | n
     const zones = activity.icu_hr_zone_times.map(nonnegative);
     if (zones.length > 0 && zones.every((zone): zone is number => zone !== undefined) && zones.some((zone) => zone > 0)) metrics.hrZoneSeconds = zones;
   }
-  return { externalId, sourceType, completedDate, distanceMiles: miles(meters), durationSeconds: Math.round(moving ?? elapsed!), sourceUpdatedAt: typeof activity.updated === "string" ? activity.updated : null, metrics };
+  return {
+    externalId,
+    sourceType,
+    completedDate,
+    distanceMiles: meters ? miles(meters) : 0,
+    durationSeconds: Math.round(moving ?? elapsed!),
+    sourceUpdatedAt: typeof activity.updated === "string" ? activity.updated : null,
+    metrics,
+    inferredActivityType: isCrossTraining ? "cross" : "easy",
+  };
 }
 
 /**

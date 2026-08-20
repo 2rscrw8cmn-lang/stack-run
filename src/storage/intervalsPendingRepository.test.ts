@@ -16,6 +16,7 @@ const candidate: IntervalsCandidate = {
   durationSeconds: 2700,
   sourceUpdatedAt: "2026-07-04T13:00:00Z",
   metrics: { averageHeartRate: 148, hrZoneSeconds: [10, 20, 30] },
+  inferredActivityType: "easy",
 };
 
 afterEach(() => {
@@ -46,6 +47,7 @@ describe("pending Intervals candidates", () => {
       "distanceMiles",
       "durationSeconds",
       "externalId",
+      "inferredActivityType",
       "metrics",
       "sourceType",
       "sourceUpdatedAt",

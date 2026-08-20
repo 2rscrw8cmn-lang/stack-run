@@ -91,14 +91,14 @@ describe("an old synced run stays reviewable and matchable", () => {
 
     // Day one: the first connection reaches back far enough to find it.
     const first = render(<Harness initial={startingState()} read={vi.fn(async () => [activity])} />);
-    await screen.findByText("1 run to review");
+    await screen.findByText("Runs to Review");
     first.unmount();
 
     // Day two, a reload and a rolling read that does not mention the run.
     const synced = saveIntervalsSync(startingState(), new Date(Date.now() - 60 * 60_000).toISOString());
     render(<Harness initial={synced} read={vi.fn(async () => [])} />);
 
-    expect(await screen.findByText("1 run to review")).toBeInTheDocument();
+    expect(await screen.findByText("Runs to Review")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /4 mi.*Aug 5/ }));
 
     // Nothing within two days is free, so STACK proposes nothing — correctly.

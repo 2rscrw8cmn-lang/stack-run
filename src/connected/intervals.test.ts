@@ -2,9 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { createInitialAppState } from "../storage/migrations";
 import { addDaysToLocalDate } from "../domain/dates";
 import type { RunLog } from "../domain/types";
-import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_RUNNING_TYPES } from "./intervals";
+import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
+/**
+ * Shaped after the real activity captured 2026-08-13: a HealthFit-synced HIIT
+ * session with no distance at all, only elapsed/moving time and heart rate.
+ */
+const hiit = { id: "i-hiit", type: "HighIntensityIntervalTraining", start_date_local: "2026-08-13T06:04:12", distance: null, moving_time: 1715, elapsed_time: 1772, average_heartrate: 97, max_heartrate: 120 };
 
 function runLog(overrides: Partial<RunLog> = {}): RunLog {
   return { id: "run", workoutId: null, completedDate: "2026-06-10", activityType: "easy", distanceMiles: 3.1, durationSeconds: 1500, effort: "solid", notes: "", createdAt: "now", updatedAt: "now", source: "manual", externalSource: null, importedMetrics: null, ...overrides };
@@ -91,6 +96,47 @@ describe("verified running activity types", () => {
     (type) => {
       expect(normalizeIntervalsActivity({ ...activity, type })).toBeNull();
       expect(normalizeActivityList([{ ...activity, type }], [], [])).toEqual([]);
+    },
+  );
+});
+
+/**
+ * `HighIntensityIntervalTraining` is the one Intervals cross-training source
+ * type this repository has observed: captured from a real HIIT session,
+ * recorded on watch and synced through HealthFit on 2026-08-13. It carried no
+ * distance at all — Intervals' own `distance` and `icu_distance` fields were
+ * both null — which is why Cross Training is the one STACK activity type that
+ * does not require one (see `runValidation.ts`).
+ */
+describe("verified cross-training activity types", () => {
+  it("accepts exactly the source-verified Intervals cross-training type", () => {
+    expect([...VERIFIED_CROSS_TRAINING_TYPES]).toEqual(["HighIntensityIntervalTraining"]);
+    const run = normalizeIntervalsActivity(hiit);
+    expect(run).not.toBeNull();
+    expect(run?.inferredActivityType).toBe("cross");
+  });
+
+  it("defaults a HIIT candidate's distance to zero rather than rejecting it", () => {
+    const run = normalizeIntervalsActivity(hiit)!;
+    expect(run.distanceMiles).toBe(0);
+    expect(run.durationSeconds).toBe(1715);
+    expect(run.metrics.averageHeartRate).toBe(97);
+    expect(run.metrics.maxHeartRate).toBe(120);
+  });
+
+  it("still needs a duration even with distance excused", () => {
+    expect(normalizeIntervalsActivity({ ...hiit, moving_time: undefined, elapsed_time: undefined })).toBeNull();
+  });
+
+  it("infers easy, never cross, for a verified running type", () => {
+    expect(normalizeIntervalsActivity(activity)?.inferredActivityType).toBe("easy");
+  });
+
+  it.each(["Workout", "Elliptical", "WeightTraining", "Crossfit", "hiit", ""])(
+    "leaves a plausible but unverified cross-training type %s out rather than guessing",
+    (type) => {
+      expect(normalizeIntervalsActivity({ ...hiit, type })).toBeNull();
+      expect(normalizeActivityList([{ ...hiit, type }], [], [])).toEqual([]);
     },
   );
 });

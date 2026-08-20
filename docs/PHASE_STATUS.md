@@ -441,7 +441,7 @@ What it adds:
   editor), plus a Runner Icon view under Edit Profile;
 - one column, `profiles.runner_icon`
   (`supabase/migrations/20260813170000_runner_icon.sql`, widened for the
-  five-part code in `20260814120000_runner_icon_backdrop.sql`), self-only,
+  five-part code in `20260814120001_runner_icon_backdrop.sql`), self-only,
   nullable, never backfilled;
 - runner icons in Crew member rows and roster, Recent Crew Runs, Today's Crew
   Activity, comparisons, Member Build cards and sheet, crew-safe Run Detail and
@@ -623,6 +623,92 @@ freshly generated invite after deploy (Link Presentation caches per URL).
 
 - `npm run check` passes.
 
+## Cross Training — a sixth activity type (PR #115) — in review
+
+Additional scope beyond the planned UI-18–UI-22 sequence, authorized by
+D-077 and scoped in `docs/CURRENT_APPLICATION_STRUCTURE.md`. Adds `"cross"`
+as a full sixth activity type, wires the Intervals.icu sync mapping for it
+against a real captured HIIT payload, and adds an opt-in Cross Training Days
+plan preference alongside the existing Run Days.
+
+What it adds:
+
+- `"cross"` threaded through `WorkoutType`/`RunActivityType`: label, icon,
+  activity picker, block color/height, and every hand-rolled allowlist that
+  assumed only five running types existed (`crew/dashboard.ts`,
+  `domain/trends.ts`'s Run Mix chart, `storage/migrations.ts`'s AppState
+  validation, `personalCloudRepository.ts`'s cloud round-trip);
+- distance made optional for Cross Training only, in `runValidation.ts` and
+  in the two Supabase `distance_miles` checks, verified against a real HIIT
+  activity captured 2026-08-13 (Intervals reports no distance for that type
+  at all);
+- `VERIFIED_CROSS_TRAINING_TYPES` (`HighIntensityIntervalTraining`, from that
+  same capture) in `src/connected/intervals.ts`, following the existing
+  never-guess-a-source-type policy the running allowlist already used;
+  `IntervalsCandidate.inferredActivityType` so an unmatched Cross Training
+  import defaults its picker to Cross Training instead of a hardcoded Easy;
+- `src/domain/crossTrainingDays.ts` and `CrossTrainingDaysSheet.tsx`: choose
+  weekdays, and STACK fills every rest day landing on one of them across the
+  whole plan, additive and opt-in rather than reshaping like Run Days. New
+  Settings row between Run Days and Availability. Applies automatically on
+  plan (re)generation from Race Setup;
+- `AppState.crossTrainingDays: Weekday[] | null`, added to schema 9 without a
+  version bump; `supabase/migrations/20260817120000_cross_training_activity_type.sql`
+  and `20260818120000_cross_training_days.sql`, with
+  `supabase/tests/0017_cross_training_activity_type.sql`.
+
+What it deliberately does not do: teach `generateTrainingPlan()` any
+Cross Training methodology — Cross Training Days is a post-generation fill,
+not a generation input, so no UI copy suggests how many days or which ones;
+the runner decides entirely.
+
+Owner verification still outstanding: neither Supabase migration has been
+applied to any project or run through `supabase db reset` against a real
+Postgres (no Docker available in the environment this was built in) — see
+PR #115 for the handoff steps and one naming assumption worth a second pair
+of eyes. No real-device/browser QA; covered instead by 17 new automated
+tests (domain logic, Settings sheet interaction, Intervals sync mapping,
+Race Setup regeneration).
+
+- `npm run check` passes (lint, 1449 tests, build).
+
+## Crew + Today space pass (issue #120)
+
+Status: **Implemented / owner review and real-device QA pending.**
+
+- Crew Build's wrapping named legend becomes a single icon-only member rail
+  that scrolls sideways instead of taking a second row from the tower; each
+  icon opens that runner's Crew Profile.
+- Crew comparisons drop Consistency (and Run Club's `Run Days` substitute)
+  for **Avg Pace**, trailing 28 days, total duration ÷ total distance,
+  excluding Cross Training and zero-distance/duration activity. Lower is
+  better, and the bar scale follows. Crew Profile shows `Avg Pace · 28D` in
+  the same slot.
+- The main Crew screen's `The Crew` / Member Builds rail is removed; the full
+  individual Build stays inside Crew Profile, which is now reached from the
+  Crew Build rail and from runner identity in each comparison row.
+- Visible Crew freshness copy is replaced by refresh-icon state — healthy,
+  syncing, attention — with the status preserved in the accessible name.
+- Today's completed run collapses to a title, one facts line and a quiet
+  `Edit`, plus `Place Personal Block` / `Place Crew Block` shown only while
+  each block is genuinely unplaced. `Place Crew Block` enters Crew placement
+  for that specific shared run.
+- Today's `Run Found` reduces to run identity, likely match and `Review Run`;
+  match/extra/type/effort/notes/ignore all live in Run Data.
+- Run Data splits into candidate and review states: selecting a run replaces
+  the list, so matching controls need no scrolling, with `← Back to runs`
+  and a return to the remaining candidates after each run is settled.
+
+No Supabase migration, no AppState migration, no new dependency. `CrewSharedRun`
+gains `localRunId`, read back from the `local_run_id` the projection already
+writes. `src/crew/runDays.ts`, `CrewMiniBuild.tsx` and `useConnectedSync`'s
+session-only `dismiss` are deleted with the surfaces that used them. See D-078.
+
+Owner verification still outstanding: no real-device/browser QA; covered
+instead by automated tests across Crew, Today, Run Data, comparisons, Avg
+Pace, sync status and the stylesheet's member-rail rules.
+
+- `npm run check` passes (lint, 1493 tests, build).
 ## STACK Next program (`feature/stack-next`)
 
 A separate program from the UI phases above. `main` remains the stable
@@ -901,3 +987,83 @@ Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 Other watch/services may skip HealthFit when they already sync directly to Intervals.
 
 The friend-facing explanation is controlled by `docs/RUN_DATA_SETUP.md`.
+
+
+## Crew Special Blocks — implementation review
+
+**Status:** Implemented and rebased onto `main` after D-079; authorized by D-080.
+
+Implemented scope:
+- four standard weekly awards: Most Miles, Best Zone 2, Fastest Avg. Pace, Most Runs;
+- one weekly rotating Feature award: Long Haul / Steady / On Target / Level Up;
+- winner-owned zero-mile award persistence and READY placement;
+- approved graphite award artwork with runner identity and award-specific glyph/color;
+- winner-only placement prompt and award detail/move flow;
+- mixed run/award collision and support in the authoritative Crew Build RPCs;
+- run-only Miles Built accounting;
+- RLS and winner-only placement;
+- derived-scalar award projection without raw HR-zone, workout-target, route, credential, or personal-history disclosure.
+
+Rollout is forward-only: `crews.awards_start_date` floors finalization at the Crew's
+creation date (existing Crews backfilled to the rollout date), so no member inherits a
+backlog of READY blocks and no week is awarded on evidence that was never recorded. The
+migration reads `current_date` at apply time, so it must ship with the client.
+
+Deliberately out of scope: weekly standings. The finalizer is the only authority on
+who won a week, so the client carries no mirror of the ranking logic and Crew shows
+the winner's placement prompt rather than a leaderboard. The temporary preview-only
+QA harness that accompanied the first draft is removed; `supabase/tests/0021_crew_special_blocks.sql`
+is the standing coverage.
+
+Award geometry binds to D-079's two-argument `crew_build_height(activity_type,
+duration_seconds)`, so `20260819025500_crew_special_blocks.sql` must stay behind
+`20260818140000_cross_training_crew_duration_height.sql` in timestamp order.
+
+Known gap: `Steady` has no verified within-run pace-variability source, so one week in
+four currently produces no Feature award. Recorded rather than faked — see D-080.
+
+## Crew Build occupancy and projection handoff (issue #128)
+
+**Status:** Implemented on top of D-080; authorized by D-081.
+
+Implemented scope:
+- one canonical definition of Crew Build occupancy shared by rendering, landing options, collision/support validation and repair;
+- `crew_build_items()` restricted to rectangles the client can draw — Build-window runs, whole footprints inside the eight columns;
+- `canonicalize_crew_build()` returning non-renderable, overlapping and floating construction to READY, in place, for its owner;
+- both placement RPCs canonicalizing under the existing Crew advisory lock before they validate;
+- `heal_crew_build_support()` delegating to the same pass, which retires its runs-only view of support;
+- a visible, recoverable Crew projection wait while this device adopts the account's canonical personal cache, retried the moment personal sync reports ready;
+- a post-placement refresh that is a read barrier rather than another read;
+- Crew placement copy without numbered-column language, with the coordinate kept for controls and accessible names.
+
+Healing is demotion only: no block is relocated, no contribution is deleted, and no runner's valid placement is moved to make room for another's.
+
+The migration is idempotent and safe to re-apply. It backfills once per Crew, so existing ghost coordinates are cleared at apply time.
+
+Verification: `supabase/tests/0023_crew_build_canonical_occupancy.sql` (fails on the pre-fix schema with `crew_build_placement_conflict`, passes after), plus `src/crew/useRaceCrew.projectionHandoff.test.tsx`, `src/crew/useRaceCrew.placementBarrier.test.tsx` and the migration assertions in `src/crew/migration.test.ts`.
+
+Rollout aids for the same change:
+- `supabase/checks/crew_build_ghost_inventory.sql` — read-only, runs *before* the
+  migration and lists exactly which rows the backfill will return to READY, and why.
+  An empty result means the backfill is a no-op on that database.
+- `supabase/rollback/20260820150000_revert_crew_build_canonical_occupancy.sql` — a
+  hand-run revert that restores main's `crew_build_items()`, both placement RPCs and
+  `heal_crew_build_support()`. It is deliberately outside `supabase/migrations/` so the
+  CLI never applies it. Do not roll back by re-applying the older migration files
+  directly: several are older than migrations that redefine the same functions, so
+  re-running them out of order clobbers newer definitions.
+
+## Crew upload resilience (issue #128 follow-up)
+
+**Status:** Implemented on top of D-081; authorized by D-082.
+
+Implemented scope:
+- every nullable Crew column guarded on the device against its own CHECK constraint — all three heart rates plus the four client-calculated award scores;
+- `isShareableWithCrew` leaving a run that violates a NOT NULL or CHECK column out of the batch instead of losing the batch;
+- `syncCrewProjection` returning a `CrewProjectionOutcome` that names how many runs were left behind, surfaced by `useRaceCrew`;
+- a per-run fallback when a batch fails anyway, bounding an unknown constraint to the rows actually at fault;
+- `docs/CREW_PROJECTION_CONTRACT.md`, added to AGENTS.md required reading and summarized in `docs/ENGINEERING_STANDARDS.md`.
+
+The batch remains the normal path: one request rather than one per run. Only its failure mode changed, from all-or-nothing and silent to bounded and reported.
+
+Verification: `src/crew/projection.test.ts` covers boundary values for every guarded column, the unshareable-run filter, the per-run fallback, and the distinction between a partial refusal and a genuine outage; `src/crew/useRaceCrew.projectionHandoff.test.tsx` covers a skipped run being reported without the sync being treated as failed.

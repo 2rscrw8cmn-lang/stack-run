@@ -95,12 +95,12 @@ describe("useConnectedSync", () => {
     expect(onSynced).not.toHaveBeenCalled();
   });
 
-  it("hides a dismissed run for the session and drops a settled one outright", async () => {
+  it("drops a settled run outright", async () => {
     const read = vi.fn(reader(() => [activity("i1", "2026-08-09"), activity("i2", "2026-08-08")]));
     const { result } = renderHook(() => useConnectedSync({ token: "t", state: stateWith(), onSynced: vi.fn(), read }));
     await waitFor(() => expect(result.current.candidates).toHaveLength(2));
 
-    act(() => result.current.dismiss("i1"));
+    act(() => result.current.settle("i1"));
     expect(result.current.candidates.map((candidate) => candidate.externalId)).toEqual(["i2"]);
 
     act(() => result.current.settle("i2"));
@@ -177,19 +177,6 @@ describe("the unresolved Run Data queue", () => {
     const { result } = renderHook(() => useConnectedSync({ token: "t", state: stateWith({ ...SYNCED_BEFORE, ignoredActivityIds: ["a"] }), onSynced: vi.fn(), read }));
     await waitFor(() => expect(ids(result)).toEqual(["c", "b"]));
     expect(loadPendingIntervalsCandidates().map((item) => item.externalId)).not.toContain("a");
-  });
-
-  it("hides a dismissed run for this session only and offers it again in the next", async () => {
-    const first = await firstSync();
-    act(() => first.result.current.dismiss("c"));
-    expect(ids(first.result)).toEqual(["b", "a"]);
-    // Closing a suggestion is not ignoring it, so it stays on the device.
-    expect(loadPendingIntervalsCandidates().map((item) => item.externalId)).toEqual(["c", "b", "a"]);
-    first.unmount();
-
-    const read = vi.fn(reader(() => []));
-    const { result } = renderHook(() => useConnectedSync({ token: "t", state: stateWith(SYNCED_BEFORE), onSynced: vi.fn(), read }));
-    expect(ids(result)).toEqual(["c", "b", "a"]);
   });
 
   it("updates a re-read run in place rather than listing it twice", async () => {

@@ -11,6 +11,7 @@ import {
 function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
   return {
     id: "run-1",
+    localRunId: "local-run-1",
     userId: "runner-2",
     displayName: "Runner 2",
     accentColor: null,
@@ -42,6 +43,7 @@ function dashboard(runs: CrewSharedRun[]): CrewDashboardData {
     sharedRunsAvailable: true,
     sharedRunsTruncated: false,
     propsAvailable: true,
+    propNotifications: [],
     loadedAt: "now",
   };
 }

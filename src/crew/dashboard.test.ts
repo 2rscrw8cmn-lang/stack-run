@@ -30,6 +30,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
     shared_runs: [
       {
         id: "run-1",
+        local_run_id: "local-run-1",
         user_id: "user-1",
         local_date: "2026-08-09",
         activity_type: "long",
@@ -42,11 +43,14 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         crew_build_placed_at: "2026-08-09T13:00:00Z",
         created_at: "2026-08-09T12:00:00Z",
         updated_at: "2026-08-09T12:00:00Z",
+        average_heart_rate: 148,
+        max_heart_rate: 171,
+        manual_heart_rate: null,
       },
     ],
     crew_reactions: [
-      { shared_run_id: "run-1", user_id: "user-1" },
-      { shared_run_id: "run-1", user_id: "user-2" },
+      { shared_run_id: "run-1", user_id: "user-1", created_at: "2026-08-09T13:00:00Z" },
+      { shared_run_id: "run-1", user_id: "user-2", created_at: "2026-08-09T14:00:00Z" },
     ],
   };
 
@@ -105,9 +109,15 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
     );
-    expect(String(runSelect?.value)).not.toMatch(/heart|load|effort|note|source|route|gps/i);
+    // Heart rate is the one deliberate exception, per D-079; everything else
+    // private (training load, effort, notes, source, route, GPS) stays out.
+    expect(String(runSelect?.value)).not.toMatch(/load|effort|note|source|route|gps/i);
+    const reactionSelect = calls.find(
+      (call) => call.table === "crew_reactions" && call.operation === "select",
+    );
+    expect(reactionSelect?.value).toBe("shared_run_id,user_id,created_at");
     expect(calls).toContainEqual({
       table: "shared_runs",
       operation: "order:local_date",
@@ -121,6 +131,7 @@ describe("Crew dashboard query", () => {
     expect(calls).toContainEqual({ table: "shared_runs", operation: "limit", value: 128 });
     expect(loaded.runs[0]).toEqual({
       id: "run-1",
+      localRunId: "local-run-1",
       userId: "user-1",
       displayName: "Runner",
       accentColor: null,
@@ -139,6 +150,9 @@ describe("Crew dashboard query", () => {
       crewBuildRow: 7,
       crewBuildColumnStart: 3,
       crewBuildPlacedAt: "2026-08-09T13:00:00Z",
+      averageHeartRate: 148,
+      maxHeartRate: 171,
+      manualHeartRate: null,
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -166,10 +180,28 @@ describe("Crew dashboard query", () => {
         localDate: "2026-08-09",
         activityType: "long",
         distanceMiles: 6.1,
+        durationSeconds: 3522,
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
         crewBuildPlacedAt: "2026-08-09T13:00:00Z",
+      },
+    ]);
+    // Only the teammate's Props on the viewer's own run become a
+    // notification; the viewer's own reaction is not one, even in test data
+    // that (unrealistically) allows it.
+    expect(loaded.propNotifications).toEqual([
+      {
+        id: "run-1:user-2",
+        runId: "run-1",
+        runLocalDate: "2026-08-09",
+        runActivityType: "long",
+        runDistanceMiles: 6.1,
+        actorUserId: "user-2",
+        actorDisplayName: "Runner",
+        actorAccentColor: null,
+        actorRunnerIcon: runnerIconFromSeed("user-2"),
+        createdAt: "2026-08-09T14:00:00Z",
       },
     ]);
     expect(loaded.sharedRunsTruncated).toBe(false);
@@ -186,6 +218,7 @@ describe("Crew dashboard query", () => {
     expect(loaded.sharedRunsAvailable).toBe(false);
     expect(loaded.sharedRunsTruncated).toBe(false);
     expect(loaded.propsAvailable).toBe(false);
+    expect(loaded.propNotifications).toEqual([]);
   });
 
   it("defensively excludes server rows before the Crew Build start from the windowed Crew views only", async () => {
@@ -200,6 +233,7 @@ describe("Crew dashboard query", () => {
     // stay scoped to the Crew Build start date.
     expect(loaded.runs).toEqual([]);
     expect(loaded.crewBuildRuns).toEqual([]);
+    expect(loaded.propNotifications).toEqual([]);
     // Member Build is unwindowed: it reproduces the runner's real Personal
     // Build regardless of when the Crew's own window opened.
     expect(loaded.miniBuildRuns).toEqual([

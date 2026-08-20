@@ -6,6 +6,7 @@ import type {
   CrewDashboardData,
   CrewMember,
   CrewMemberSummary,
+  CrewPropNotification,
   CrewRole,
   CrewSharedRun,
 } from "./types";
@@ -64,7 +65,8 @@ function activityTypeFrom(value: unknown): RunActivityType {
     value === "intervals" ||
     value === "simulation" ||
     value === "long" ||
-    value === "race"
+    value === "race" ||
+    value === "cross"
   ) {
     return value;
   }
@@ -101,6 +103,7 @@ export async function loadCrewDashboard(
       sharedRunsAvailable: true,
       sharedRunsTruncated: false,
       propsAvailable: true,
+      propNotifications: [],
       loadedAt: new Date().toISOString(),
     };
   }
@@ -122,7 +125,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at",
+        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -192,6 +195,7 @@ export async function loadCrewDashboard(
     const localDate = requiredString(item, "local_date");
     return {
       id: requiredString(item, "id"),
+      localRunId: requiredString(item, "local_run_id"),
       userId,
       displayName: displayName(userId),
       accentColor: accentColorOf(userId),
@@ -212,6 +216,9 @@ export async function loadCrewDashboard(
         typeof item.crew_build_placed_at === "string"
           ? item.crew_build_placed_at
           : null,
+      averageHeartRate: nullableInteger(item, "average_heart_rate"),
+      maxHeartRate: nullableInteger(item, "max_heart_rate"),
+      manualHeartRate: nullableInteger(item, "manual_heart_rate"),
       propsCount: 0,
       viewerHasPropped: false,
     };
@@ -227,18 +234,40 @@ export async function loadCrewDashboard(
     ? { data: [], error: null }
     : await client
       .from("crew_reactions")
-      .select("shared_run_id,user_id")
+      .select("shared_run_id,user_id,created_at")
       .eq("crew_id", crewId);
   const propsAvailable = sharedRunsAvailable && !reactionResult.error;
 
+  const eligibleRunsById = new Map(crewEligibleRuns.map((run) => [run.id, run] as const));
   const propsCounts = new Map<string, number>();
   const viewerProps = new Set<string>();
+  const propNotifications: CrewPropNotification[] = [];
   for (const item of rows(propsAvailable ? reactionResult.data : [])) {
     const runId = requiredString(item, "shared_run_id");
     const userId = requiredString(item, "user_id");
     propsCounts.set(runId, (propsCounts.get(runId) ?? 0) + 1);
     if (userId === viewerUserId) viewerProps.add(runId);
+
+    // A notification only exists for Props a teammate gave on the viewer's
+    // own run — never the crew-wide feed, and never the viewer propping
+    // someone else.
+    const run = eligibleRunsById.get(runId);
+    if (run && run.userId === viewerUserId && userId !== viewerUserId) {
+      propNotifications.push({
+        id: `${runId}:${userId}`,
+        runId,
+        runLocalDate: run.localDate,
+        runActivityType: run.activityType,
+        runDistanceMiles: run.distanceMiles,
+        actorUserId: userId,
+        actorDisplayName: displayName(userId),
+        actorAccentColor: accentColorOf(userId),
+        actorRunnerIcon: runnerIconOf(userId),
+        createdAt: requiredString(item, "created_at"),
+      });
+    }
   }
+  propNotifications.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const runs = crewEligibleRuns.map((run) => ({
     ...run,
@@ -270,6 +299,7 @@ export async function loadCrewDashboard(
     localDate: run.localDate,
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
+    durationSeconds: run.durationSeconds,
     createdAt: run.createdAt,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,
@@ -288,6 +318,7 @@ export async function loadCrewDashboard(
     // the Crew screen says so instead of implying completeness.
     sharedRunsTruncated: sharedRunsAvailable && allRuns.length >= sharedRunReadLimit,
     propsAvailable,
+    propNotifications,
     loadedAt: new Date().toISOString(),
   };
 }

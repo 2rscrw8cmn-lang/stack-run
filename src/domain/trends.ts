@@ -474,6 +474,7 @@ export function selectTrainingSignals(
     "simulation",
     "long",
     "race",
+    "cross",
   ];
   const slices = activityOrder.flatMap((activityType) => {
     const runs = mixRuns.filter((run) => run.activityType === activityType);
