@@ -7861,15 +7861,15 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
  *
  * Hairline dividers were not enough to break them up: four numbers set in a
  * row at this size read as one long number, and the labels underneath were too
- * faint to say otherwise. Each figure is now a squared-off instrument tile
- * carrying a coloured rule across its top edge, so the row separates into four
- * facts before a single digit is read.
+ * faint to say otherwise. Each figure now hangs off a coloured rule across its
+ * top edge, so the row separates into four facts before a single digit is read.
  *
- * The rule is the whole of the colour. No icon sits beside the number: an
- * icon would be a second thing to decode in a tile whose only job is to show
- * one figure, and four of them would start competing with the blocks below.
- * The tiles sit on `--data-surface-strong`, the same instrument ground Runs
- * and the charts use, which keeps them quieter than the field they caption.
+ * The rule and the figure share a colour, and that is the whole of the
+ * treatment — no frame, no fill. Boxing each figure made four panels compete
+ * with the tower they caption; the rule alone delimits them, and setting the
+ * number in its hue keeps the pairing without drawing an edge to hold it. No
+ * icon sits beside the number either: an icon would be a second thing to
+ * decode where the only job is to show one figure.
  */
 .crew-build__stats {
   display: grid;
@@ -7880,13 +7880,18 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 .crew-build__stat {
   min-width: 0;
-  /* Roughly square: the tile is a panel, not a strip of text. */
-  padding: 11px 10px 9px;
-  border: 1px solid var(--border);
+  /*
+   * No frame and no ground: the tile's border and fill both went. Four boxed
+   * panels above the tower were four more objects on a page that only has
+   * room for one, and the rule across the top was already doing the whole job
+   * of separating one figure from the next.
+   */
+  padding: 8px 0 0;
+  border: 0;
   /* The coloured rule. Thick enough to register as a bar rather than an edge. */
   border-top: 3px solid var(--crew-stat-colour);
-  border-radius: 3px;
-  background: var(--data-surface-strong);
+  border-radius: 0;
+  background: none;
 }
 .crew-build__stat--miles { --crew-stat-colour: var(--crew-stat-miles); }
 .crew-build__stat--runs { --crew-stat-colour: var(--crew-stat-runs); }
@@ -7895,7 +7900,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .crew-build__stats dd {
   margin: 0;
   overflow: hidden;
-  color: var(--text);
+  /*
+   * With the frame gone the figure carries its own colour: the number is set
+   * in the same hue as the rule above it, so the pairing that used to be made
+   * by a shared box is now made by the colour itself.
+   */
+  color: var(--crew-stat-colour);
   font-size: clamp(18px, 5.8vw, 26px);
   line-height: 1.05;
   letter-spacing: -0.045em;
@@ -7962,7 +7972,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   }
   .crew-build--page .crew-build__stage { padding-inline: 6px; }
   .crew-build__stats { gap: 3px; }
-  .crew-build__stat { padding: 8px 6px 7px; border-top-width: 2px; }
+  .crew-build__stat { padding: 6px 0 0; border-top-width: 2px; }
   .crew-build__stats dt { margin-top: 4px; font-size: 8px; letter-spacing: 0.05em; }
 }
 
@@ -7976,7 +7986,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
     max-height: min(66dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
   }
   .crew-build__stats { gap: 7px; }
-  .crew-build__stat { padding: 15px 14px 13px; border-top-width: 4px; }
+  .crew-build__stat { padding: 11px 0 0; border-top-width: 4px; }
   .crew-build__stats dd { font-size: 30px; }
 }
 
