@@ -31,6 +31,12 @@ Then the four-week Feature cycle repeats from the Crew Build-start week.
   Crews were backfilled to the rollout date, so nobody inherits a stack of READY blocks
   for weeks that closed before Special Blocks existed. The first awarded week is the
   first full Monday–Sunday week on or after that floor.
+- The floor is forward-only. It stops finalization from minting retroactive awards but
+  does not remove rows minted before it existed, and preview deployments shared the
+  production Supabase project, so QA finalization wrote real award rows. Migration
+  `20260820140000_remove_pre_rollout_award_blocks.sql` is the one-time cleanup: it deletes
+  exactly the rows the finalizer would no longer create, then heals any construction that
+  was resting on a removed award back to READY.
 - The floor is a fairness rule, not just a launch convenience. Zone 2, On Target and
   Level Up rank on `award_*` scalars that each runner's own device publishes, and a
   Crew load syncs the viewer's history immediately before finalizing — so a retroactive

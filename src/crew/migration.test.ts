@@ -20,6 +20,9 @@ import specialBlocksMigration from "../../supabase/migrations/20260819025500_cre
 import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
 import awardStartMigration from "../../supabase/migrations/20260820120000_crew_award_start_date.sql?raw";
 import awardProjectionMigration from "../../supabase/migrations/20260820130000_crew_award_metrics_on_projection.sql?raw";
+import awardCleanupMigration from "../../supabase/migrations/20260820140000_remove_pre_rollout_award_blocks.sql?raw";
+import awardCleanupVerification from "../../supabase/tests/0022_pre_rollout_award_cleanup.sql?raw";
+import reconcileMigration from "../../supabase/migrations/20260820135000_reconcile_hand_applied_crew_schema.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -531,5 +534,122 @@ describe("Award scores ride the projection upload (D-080)", () => {
     expect(statements).not.toMatch(/create or replace function|drop function/i);
     expect(statements).not.toMatch(/finalize_crew_awards|crew_award_blocks/i);
     expect(statements).not.toMatch(/on conflict/i);
+  });
+});
+
+describe("Pre-rollout Special Block cleanup (D-080)", () => {
+  /**
+   * The floor added in 20260820120000 is forward-only: it stops finalization
+   * from minting retroactive awards but leaves rows minted before it standing.
+   * Preview deployments shared the production Supabase project, so those rows
+   * were real and surfaced the moment the feature shipped.
+   */
+  function floorExpressions(sql: string): string[] {
+    return (sql.match(/greatest\(\s*[\s\S]*?%\s*7\)\s*\)/g) ?? []).map((expression) =>
+      expression
+        .replace(/\bv_build_start\b|\bc\.build_start_date\b/g, "BUILD")
+        .replace(/\bv_awards_start\b|\bc\.awards_start_date\b/g, "AWARDS")
+        .replace(/\s+/g, ""),
+    );
+  }
+
+  it("deletes by exactly the floor the finalizer refuses to reach behind", () => {
+    const [finalizerFloor] = floorExpressions(awardStartMigration);
+    const cleanupFloors = floorExpressions(awardCleanupMigration);
+
+    expect(finalizerFloor, "no floor found in the finalizer").toBeTruthy();
+    expect(cleanupFloors.length, "cleanup states no floor").toBeGreaterThan(0);
+    // Character-identical once variable and column names are normalised: if the
+    // two ever disagree, the cleanup removes rows finalization would still mint,
+    // or leaves rows it never would.
+    for (const floor of cleanupFloors) {
+      expect(floor).toBe(finalizerFloor);
+    }
+  });
+
+  it("settles construction that was resting on a removed award", () => {
+    // A placed award is load-bearing. Deleting one without healing leaves the
+    // run above it floating in the shared tower.
+    expect(awardCleanupMigration).toMatch(/perform public\.repair_crew_build_support\(v_crew_id\)/i);
+  });
+
+  it("touches nothing but the award rows below the floor", () => {
+    const statements = awardCleanupMigration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).not.toMatch(/create or replace function|drop function|alter table/i);
+    // shared_runs is only ever reached through the repair function.
+    expect(statements).not.toMatch(/delete from public\.shared_runs|update public\.shared_runs/i);
+    expect(statements.match(/delete from/gi) ?? []).toHaveLength(1);
+  });
+
+  it("ships transactional verification of the cleanup and the healing", () => {
+    expect(awardCleanupVerification).toMatch(/pre-rollout award survived the cleanup/i);
+    expect(awardCleanupVerification).toMatch(/in-window award was destroyed/i);
+    expect(awardCleanupVerification).toMatch(/left floating/i);
+    expect(awardCleanupVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Reconciling a hand-applied Crew schema (D-080)", () => {
+  /**
+   * Preview QA applied the branch's pre-review migrations straight to the
+   * production project, so definitions that never reached main are live there.
+   * Newer files cannot correct them, because none of them redefine what the
+   * superseded migrations created.
+   */
+  it("rebinds run geometry to the duration-aware height", () => {
+    const items = reconcileMigration.match(
+      /create or replace function public\.crew_build_items[\s\S]*?\$\$;/i,
+    )?.[0];
+    expect(items, "crew_build_items is not reissued").toBeTruthy();
+    expect(items).toMatch(/crew_build_height\([^)]*duration_seconds[^)]*\)/i);
+    expect(items).not.toMatch(/crew_build_height\(\s*r\.activity_type\s*\)/i);
+  });
+
+  it("retires the resurrected one-argument height only after nothing binds it", () => {
+    const dropAt = reconcileMigration.search(/drop function if exists public\.crew_build_height\(text\)/i);
+    const itemsAt = reconcileMigration.search(/create or replace function public\.crew_build_items/i);
+    expect(dropAt).toBeGreaterThan(-1);
+    // Dropping before the rebind would leave crew_build_items resolving to a
+    // function that no longer exists.
+    expect(dropAt).toBeGreaterThan(itemsAt);
+  });
+
+  it("restores the Build-window guard and the locked-row re-checks", () => {
+    expect(reconcileMigration).toMatch(
+      /is_crew_run_in_build_window\(v_run\.crew_id, v_run\.local_date\)[\s\S]*?crew_build_placement_before_window/i,
+    );
+    const guarded = reconcileMigration.match(
+      /for update;\s*if not found then raise exception/gi,
+    ) ?? [];
+    expect(guarded).toHaveLength(2);
+  });
+
+  it("retires the temporary QA harness wherever it was applied", () => {
+    // security definer, granted to authenticated: leaving it live lets any
+    // signed-in owner of a Crew named TEST CLUB mint award blocks.
+    expect(reconcileMigration).toMatch(/drop function if exists public\.qa_seed_crew_award_fixture\(\)/i);
+    expect(reconcileMigration).toMatch(/drop function if exists public\.qa_clear_crew_award_fixture\(\)/i);
+  });
+
+  it("is safe on a database that never saw the hand-applied state", () => {
+    // Every drop guarded, every definition a replace: applying this to a fresh
+    // reset must be a no-op rather than an error.
+    const drops = reconcileMigration.match(/^drop function(?! if exists)/gim) ?? [];
+    expect(drops).toHaveLength(0);
+    const creates = reconcileMigration.match(/^create (?!or replace)/gim) ?? [];
+    expect(creates).toHaveLength(0);
+  });
+
+  it("reissues definitions identical to main's", () => {
+    // Generated from 20260819025500, not retyped: drift here would reintroduce
+    // the defect it exists to remove.
+    for (const name of ["crew_build_items", "place_crew_build_block", "place_crew_award_block"]) {
+      const from = (sql: string) =>
+        sql.match(new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"))?.[0];
+      expect(from(reconcileMigration)).toBe(from(specialBlocksMigration));
+    }
   });
 });
