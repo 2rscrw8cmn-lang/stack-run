@@ -9,7 +9,6 @@ import {
   faceVisibilityOf,
   GRID_COLUMNS,
   occupiedCellsOf,
-  placementOptions,
   topOf,
   voidsOf,
   type FaceVisibility,
@@ -322,20 +321,97 @@ export function canPlaceCrewAwardBlock(
   return canPlaceCandidate(awardCandidate(award, placement), blocks);
 }
 
-export function crewBuildLandingOptions(
-  run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "durationSeconds">,
+function landingOption(
+  candidate: CrewBuildBlock,
+  filled: ReadonlySet<string>,
+): PlacementOption {
+  let opened = 0;
+  for (
+    let column = candidate.columnStart;
+    column < candidate.columnStart + candidate.width;
+    column += 1
+  ) {
+    for (let row = candidate.row - 1; row >= 0; row -= 1) {
+      if (filled.has(`${column}:${row}`)) break;
+      opened += 1;
+    }
+  }
+
+  let flush = 0;
+  for (let row = candidate.row; row < candidate.row + candidate.height; row += 1) {
+    const leftColumn = candidate.columnStart - 1;
+    const rightColumn = candidate.columnStart + candidate.width;
+    if (leftColumn < 1 || filled.has(`${leftColumn}:${row}`)) flush += 1;
+    if (rightColumn > CREW_BUILD_COLUMNS || filled.has(`${rightColumn}:${row}`)) flush += 1;
+  }
+
+  return {
+    row: candidate.row,
+    columnStart: candidate.columnStart,
+    columnEnd: candidate.columnStart + candidate.width - 1,
+    opened,
+    flush,
+  };
+}
+
+/**
+ * One lowest structurally valid row per horizontal anchor.
+ *
+ * Crew placement is not Personal Build gravity: an overhang may leave a
+ * supported, collision-free cavity that another contribution can occupy.
+ * Scan from the ground upward and let the same mixed run/Special Block
+ * validator used by placement preview decide which first row is legal.
+ */
+function lowestCrewBuildLandingOptions(
+  candidateAt: (placement: CrewBuildPlacement) => CrewBuildBlock,
   blocks: readonly CrewBuildBlock[],
 ): PlacementOption[] {
-  const { width, height } = crewBuildFootprint(run);
-  return placementOptions(width, height, blocks);
+  const identity = candidateAt({ row: 0, columnStart: 1 });
+  const others = blocks.filter((block) => !sameBuildItem(block, identity));
+  const highestOccupiedRow = others.reduce(
+    (highest, block) => Math.max(highest, block.row + block.height),
+    0,
+  );
+  const filled = occupiedCellsOf(others);
+  const options: PlacementOption[] = [];
+
+  for (
+    let columnStart = 1;
+    columnStart + identity.width - 1 <= CREW_BUILD_COLUMNS;
+    columnStart += 1
+  ) {
+    for (let row = 0; row <= highestOccupiedRow; row += 1) {
+      const candidate = candidateAt({ row, columnStart });
+      if (!canPlaceCandidate(candidate, others)) continue;
+      options.push(landingOption(candidate, filled));
+      break;
+    }
+  }
+
+  return options;
+}
+
+export function crewBuildLandingOptions(
+  run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
+  blocks: readonly CrewBuildBlock[],
+): PlacementOption[] {
+  return lowestCrewBuildLandingOptions(
+    (placement) => runCandidate(run, placement),
+    blocks,
+  );
 }
 
 export function crewAwardLandingOptions(
-  award: Pick<CrewAwardBlockRecord, "awardType">,
+  award: Pick<
+    CrewAwardBlockRecord,
+    "id" | "winnerUserId" | "awardType" | "weekStart" | "resultValue" | "sourceSharedRunId"
+  >,
   blocks: readonly CrewBuildBlock[],
 ): PlacementOption[] {
-  const { width, height } = crewAwardFootprint(award.awardType);
-  return placementOptions(width, height, blocks);
+  return lowestCrewBuildLandingOptions(
+    (placement) => awardCandidate(award, placement),
+    blocks,
+  );
 }
 
 /** Kept for tests/callers that need every snapped run anchor. */

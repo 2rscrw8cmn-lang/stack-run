@@ -3052,3 +3052,18 @@ Crew now has a separate weekly award domain in addition to shared runs. `crew_aw
 The shared Crew Build geometry is now a discriminated union of run rectangles and award rectangles. Both kinds collide with and support each other through the same eight-column placement rules, but `placedMiles` and Miles Built remain run-only. Production award rendering lives in `src/features/crew/AwardBrick.tsx` and `src/features/crew/awardBlock.css`; the winner's placement prompt and the award detail/move flow are wired through `CrewAwardsPanel`, `CrewAwardDetailSheet`, `useCrewAwards`, and `crewAwardsService`. There is no standings surface — ranking lives entirely in `finalize_crew_awards`.
 
 See `docs/CREW_SPECIAL_BLOCKS.md` and D-080 for scoring, lifecycle, and the derived-scalar privacy exception.
+
+## Crew Build cavity placement (issue #140)
+
+Crew placement no longer delegates its offered positions to Personal Build's
+skyline-only `placementOptions`. `src/crew/crewBuild.ts` scans from the ground
+upward for each horizontal anchor and returns the first coordinate that passes
+the existing mixed Crew validator. A supported, collision-free void beneath a
+bridge is therefore selectable instead of being hidden by the bridge's
+skyline.
+
+Run blocks and Special Blocks use the same generator and the same
+`canPlaceCandidate` authority, preserving grid bounds, mixed run/award
+collision, support, and support-preserving move rules. The UI still receives
+at most one option per horizontal anchor. Personal Build keeps its original
+skyline/gravity behavior, with no migration or stored-coordinate change.

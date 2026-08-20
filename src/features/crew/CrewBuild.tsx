@@ -39,6 +39,7 @@ import { RunnerIcon } from "./RunnerIcon";
 const MAX_VISIBLE_COURSES = 14;
 
 interface PlacementBase {
+  /** One lowest structurally valid landing for each horizontal anchor. */
   options: PlacementOption[];
   candidate: PlacementOption | null;
   pending: boolean;
