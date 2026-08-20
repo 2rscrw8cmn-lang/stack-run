@@ -4,8 +4,11 @@
 -- uploads (projects). This answers the one question the app cannot show you:
 -- did the run reach the Crew's table at all?
 --
---   row missing  -> the run never projected from the device. That is the
---                   sync-handoff bug, fixed by the client deploy.
+--   NO ROW for that date -> the run never projected from the device. Note
+--                   this shows up as an ABSENT row, not as a labelled one:
+--                   Crew has no record of a run that never arrived, so there
+--                   is nothing to join to. The 'NOT IN CREW' label only
+--                   appears for a crew where the runner has no runs at all.
 --   'before the Build start date' -> it reached Crew, but the crew's Build
 --                   window starts later. Hidden by design, not a bug.
 --   'READY to place' -> it is in Crew and available right now.
