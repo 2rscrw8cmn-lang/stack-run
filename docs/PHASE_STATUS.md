@@ -1067,3 +1067,22 @@ Implemented scope:
 The batch remains the normal path: one request rather than one per run. Only its failure mode changed, from all-or-nothing and silent to bounded and reported.
 
 Verification: `src/crew/projection.test.ts` covers boundary values for every guarded column, the unshareable-run filter, the per-run fallback, and the distinction between a partial refusal and a genuine outage; `src/crew/useRaceCrew.projectionHandoff.test.tsx` covers a skipped run being reported without the sync being treated as failed.
+
+## Crew Build valid-void placement (issue #140)
+
+**Status:** Implemented as a focused Crew placement correction; no product or
+schema change.
+
+Implemented scope:
+- one lowest structurally valid placement per horizontal anchor, scanned from
+  the ground upward;
+- supported cavities beneath run or Special Block bridges are selectable;
+- run and Special Block options share the existing mixed collision/support
+  validator used by placement preview and mirrored from the RPCs;
+- movement still cannot strand another block;
+- Personal Build retains skyline/gravity placement unchanged.
+
+Verification: the production-shaped 3.1-mile bridge regression and a Special
+Block bridge regression live in `src/crew/crewBuild.test.ts` and
+`src/crew/crewBuildAwards.test.ts`. `npm run check` passes: 173 test files,
+2,105 tests, lint, TypeScript, and the production build.
