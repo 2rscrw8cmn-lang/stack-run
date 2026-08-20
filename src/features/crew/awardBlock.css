@@ -3,33 +3,48 @@
  *
  * Every award uses one treatment: the frame is the runner's colour (the same
  * `--piece-color` a run block of theirs carries, so the tower reads ownership
- * one way everywhere), the middle is a recess, and the award's glyph is
- * suspended in the recess in its own colour. Two independent channels — whose,
- * and which award — with no second runner mark, no badge, and no separate
- * Feature treatment.
+ * one way everywhere), the middle is a recess with real wall depth, and the
+ * award's glyph is suspended in the recess, lit in its own colour. Two
+ * independent channels — whose, and which award — with no second runner mark,
+ * no badge, and no separate Feature treatment.
  */
 
-/* Accent per award — the OUC Half v1 monoline icon set's own palette. */
+/*
+ * Accent per award — the OUC Half v1 monoline icon set's own palette. Every
+ * glow in this file is mixed from `--award-mark`, so a glyph and its light can
+ * never drift apart.
+ */
 .award-brick {
   --award-mark: #39ff6a;
-  --award-glow: rgba(57, 255, 106, .24);
   /*
    * Frame thickness. A course is 26px (`--course-height`), so this is most of
-   * the budget: 4px of frame each side leaves an 18px opening for a 14px
-   * glyph. Thicker reads better in isolation and leaves no window at all on a
-   * real one-course block.
+   * the budget: 4px of frame each side leaves an 18px opening for the glyph.
+   * Thicker reads better in isolation and leaves no window at all on a real
+   * one-course block.
    */
   --award-frame: 4px;
-  --award-recess: #0b1013;
+  --award-recess: #05090b;
+  --award-halo: color-mix(in srgb, var(--award-mark) 42%, transparent);
 }
 
-.award-brick[data-award="zone2"] { --award-mark: #ff5a5f; --award-glow: rgba(255, 90, 95, .24); }
-.award-brick[data-award="pace"] { --award-mark: #35d6ff; --award-glow: rgba(53, 214, 255, .24); }
-.award-brick[data-award="runs"] { --award-mark: #ffb038; --award-glow: rgba(255, 176, 56, .24); }
-.award-brick[data-award="longHaul"] { --award-mark: #b6ff3a; --award-glow: rgba(182, 255, 58, .24); }
-.award-brick[data-award="steady"] { --award-mark: #2fe6c4; --award-glow: rgba(47, 230, 196, .24); }
-.award-brick[data-award="onTarget"] { --award-mark: #ff5ac8; --award-glow: rgba(255, 90, 200, .24); }
-.award-brick[data-award="levelUp"] { --award-mark: #9d7bff; --award-glow: rgba(157, 123, 255, .24); }
+.award-brick[data-award="zone2"] { --award-mark: #ff5a5f; }
+.award-brick[data-award="pace"] { --award-mark: #35d6ff; }
+.award-brick[data-award="runs"] { --award-mark: #ffb038; }
+.award-brick[data-award="longHaul"] { --award-mark: #b6ff3a; }
+.award-brick[data-award="steady"] { --award-mark: #2fe6c4; }
+.award-brick[data-award="onTarget"] { --award-mark: #ff5ac8; }
+.award-brick[data-award="levelUp"] { --award-mark: #9d7bff; }
+
+/*
+ * A placed award is lit from inside: the runner's frame catches a soft halo of
+ * their own colour, so a Special Block reads as switched on next to the matte
+ * run blocks around it rather than as another rectangle.
+ */
+.award-brick {
+  filter:
+    drop-shadow(0 0 2px color-mix(in srgb, var(--piece-color) 30%, transparent))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--piece-color) 16%, transparent));
+}
 
 /*
  * The frame keeps the run brick's own front-face gradient — it is the same
@@ -43,34 +58,49 @@
 }
 
 /*
- * The recess. Inset by the frame width on every side, with the shadow reading
- * as depth: dark at the top where the frame overhangs, a thin lift along the
- * bottom lip. No border, no chip, no glass.
+ * The recess, and the four walls that make it one.
+ *
+ * The face is already an absolutely positioned box, so the frame is just an
+ * inset on all four sides. The shadow stack is the depth: the frame overhangs
+ * the opening at the top and left, the bottom lip catches the runner's colour
+ * the way a real moulding would, and the award's own light washes up off the
+ * floor of the recess.
  */
 .award-brick__window {
-  /* The face is already an absolutely positioned box, so the frame is just an
-     inset on all four sides — no percentage maths that a centred grid item
-     would resolve against its own content. */
   position: absolute;
   inset: var(--award-frame);
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: var(--award-recess);
+  background:
+    radial-gradient(
+      120% 150% at 50% 118%,
+      color-mix(in srgb, var(--award-mark) 17%, transparent),
+      transparent 68%
+    ),
+    var(--award-recess);
   box-shadow:
-    inset 0 2px 3px rgba(0, 0, 0, .55),
-    inset 0 -1px 0 color-mix(in srgb, var(--piece-color) 45%, transparent);
+    inset 0 calc(var(--award-frame) * 0.7) calc(var(--award-frame) * 1.1)
+      calc(var(--award-frame) * -0.45) rgba(0, 0, 0, .95),
+    inset calc(var(--award-frame) * 0.55) 0 calc(var(--award-frame) * 1.1)
+      calc(var(--award-frame) * -0.5) rgba(0, 0, 0, .8),
+    inset 0 -1px 0 color-mix(in srgb, var(--piece-color) 60%, transparent);
 }
 
+/*
+ * Sized to the opening, not to the ink: the 24-unit viewBox carries about 3
+ * units of padding a side, so a box this size draws roughly 13px of stroke and
+ * still clears the frame. The two shadows are one light: a tight core that
+ * keeps the stroke crisp, and a wide bloom that spills onto the recess floor.
+ */
 .award-brick__glyph {
   display: block;
-  /* Sized to the opening, not to the ink: the 24-unit viewBox carries about
-     3 units of padding a side, so a box this size draws roughly 13px of
-     stroke and still clears the frame. */
   width: 18px;
   height: 18px;
   color: var(--award-mark);
-  filter: drop-shadow(0 0 5px var(--award-glow));
+  filter:
+    drop-shadow(0 0 2px color-mix(in srgb, var(--award-mark) 85%, transparent))
+    drop-shadow(0 0 7px var(--award-halo));
 }
 
 /* Narrow phones give the frame back a millimetre so the glyph keeps its air. */
@@ -80,12 +110,8 @@
 }
 
 /*
- * The same hollow block away from the tower.
- *
- * The award detail sheet shows it at hero size and the member profile lists it
- * at row size; both are portraits of the block, so they are built from the
- * same frame + recess + suspended glyph rather than a second treatment. They
- * are flat (no top/right faces) because nothing is stacking on them.
+ * The same hollow block, flat, for a list row — small enough that the depth
+ * faces would only muddy it.
  */
 .award-brick--portrait {
   position: relative;
@@ -99,24 +125,6 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45);
 }
 
-/*
- * The hero keeps a standard award's own proportions — two columns by one
- * course, roughly 2:1 — so it reads as the same piece enlarged rather than a
- * different, squarer object. The frame scales with it at about the same
- * fraction of height the tower block uses.
- */
-.crew-award-detail__glyph {
-  --award-frame: 11px;
-  width: 152px;
-  height: 76px;
-  margin-bottom: 2px;
-}
-
-.crew-award-detail__glyph .award-brick__glyph {
-  width: 46px;
-  height: 46px;
-}
-
 .crew-member-profile__award-glyph {
   --award-frame: 4px;
   width: 42px;
@@ -127,4 +135,140 @@
 .crew-member-profile__award-glyph .award-brick__glyph {
   width: 19px;
   height: 19px;
+}
+
+/* ---- Award detail sheet ------------------------------------------------ */
+
+.sheet--crew-award-detail .sheet__panel { background: #070d12; }
+
+.sheet--crew-award-detail .sheet__title {
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.sheet--crew-award-detail .sheet__header { margin-bottom: 2px; }
+
+.crew-award-detail {
+  display: grid;
+  gap: 16px;
+  /* The award's colour leads the sheet's own accents, not the app accent. */
+  --award-mark: #39ff6a;
+}
+
+.crew-award-detail[data-award="zone2"] { --award-mark: #ff5a5f; }
+.crew-award-detail[data-award="pace"] { --award-mark: #35d6ff; }
+.crew-award-detail[data-award="runs"] { --award-mark: #ffb038; }
+.crew-award-detail[data-award="longHaul"] { --award-mark: #b6ff3a; }
+.crew-award-detail[data-award="steady"] { --award-mark: #2fe6c4; }
+.crew-award-detail[data-award="onTarget"] { --award-mark: #ff5ac8; }
+.crew-award-detail[data-award="levelUp"] { --award-mark: #9d7bff; }
+
+.crew-award-detail__kind {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/*
+ * The block and its facts share one band: the piece on the left at a size the
+ * tower can never give it, the three facts stacked beside it.
+ */
+.crew-award-detail__lead {
+  display: grid;
+  grid-template-columns: minmax(0, 128px) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+/*
+ * The hero is a real `AwardBrick`, so the depth axis is the same 2:1 oblique
+ * the tower uses — just scaled up, with room reserved for the overhang the top
+ * and right faces cast outside the front face's box.
+ */
+.crew-award-detail__hero {
+  --iso-run: 26px;
+  --iso-rise: 13px;
+  --award-frame: 11px;
+  position: relative;
+  width: 100px;
+  height: 54px;
+  margin: var(--iso-rise) var(--iso-run) 0 0;
+  justify-self: center;
+}
+
+.crew-award-detail__hero .award-brick__glyph {
+  width: 30px;
+  height: 30px;
+}
+
+.crew-award-detail__facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.crew-award-detail__fact {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.crew-award-detail__fact-name {
+  font-size: clamp(16px, 4.8vw, 20px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.crew-award-detail__fact-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--award-mark);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--award-mark) 40%, transparent));
+}
+
+.crew-award-detail__fact dt,
+.crew-award-detail__fact dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.crew-award-detail__fact dt {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.crew-award-detail__fact dd {
+  margin-top: 3px;
+  font-weight: 700;
+  font-size: clamp(15px, 4.6vw, 19px);
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crew-award-detail__note {
+  margin: 0;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.crew-award-detail__move .button { width: 100%; }
+
+/* Below this the two-column band would squeeze the facts into two words a line. */
+@media (max-width: 359px) {
+  .crew-award-detail__lead {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 16px;
+  }
+  .crew-award-detail__facts { width: 100%; }
 }

@@ -103,9 +103,16 @@ Rules that follow from that:
 - Geometry is unchanged from a run block: same 2:1 oblique, same top/right faces, same
   collision and support rules, so awards stack natively.
 
-The same hollow block is the award's portrait away from the tower — the detail sheet
-renders it at hero size and a member's profile lists it at row size, both in the
-winner's frame colour. They are flat (no top/right faces) because nothing stacks on them.
+A placed award is lit: the frame carries a soft halo of the runner's own colour and the
+glyph burns in the award's colour, with its light washing up off the floor of the recess.
+That is what separates a Special Block from the matte run blocks around it — the piece
+reads as switched on rather than as another rectangle.
+
+The award detail sheet is the block's own trophy case. It renders the same `AwardBrick`
+at a size the tower can never give it, with both depth faces drawn because nothing is
+stacked on it there, beside three facts — winner, winning result, week — each carrying
+the award's colour. A member's profile lists the same block flat at row size, small
+enough that depth faces would only muddy it.
 
 Approved award language (OUC Half v1 monoline set; the glyph paths live in
 `src/features/crew/AwardBrick.tsx`, the colours in `src/features/crew/awardBlock.css`):
