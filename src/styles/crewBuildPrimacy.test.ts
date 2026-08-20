@@ -61,7 +61,7 @@ describe("Crew Build primacy styling (issue #137)", () => {
    * only useful if the eye can tell where each figure stops, so each one gets
    * its own tile, its own air, and its own colour.
    */
-  it("gives each crew figure its own tile instead of a hairline divider", () => {
+  it("separates each crew figure with air and a rule, not a frame", () => {
     const stats = ruleBody(".crew-build__stats {");
     const tile = ruleBody(".crew-build__stat {");
 
@@ -70,14 +70,14 @@ describe("Crew Build primacy styling (issue #137)", () => {
     expect(gap, "no gap between the figures").not.toBeNull();
     expect(Number(gap![1])).toBeGreaterThan(0);
 
-    // A tile: bordered on every side and lifted off the page, rather than a
-    // single `border-left` rule standing between two numbers.
-    expect(tile).toMatch(/border:\s*1px solid/);
-    expect(tile).not.toMatch(/border-left:/);
-    expect(tile).toMatch(/background:\s*var\(--data-surface-strong\)/);
-    // Squared off and padded on every side, so it reads as a panel rather
-    // than a strip of text.
-    expect(tile).toMatch(/padding:\s*\d+px \d+px \d+px/);
+    // No box around the figure and no ground under it: the coloured rule
+    // across the top is the whole of the separation.
+    expect(tile).toMatch(/border:\s*0/);
+    expect(tile).not.toMatch(/border-left:|border-right:|border-bottom:/);
+    expect(tile).toMatch(/background:\s*none/);
+    expect(tile).not.toMatch(/background:\s*var\(/);
+    // Nothing left to round off either.
+    expect(tile).toMatch(/border-radius:\s*0/);
   });
 
   /*
@@ -145,12 +145,15 @@ describe("Crew Build primacy styling (issue #137)", () => {
    * which is dimmer than the field's own frame, so the row cannot become the
    * brightest thing on a page whose whole point is the structure below it.
    */
-  it("keeps the stats row dimmer than the field it captions", () => {
+  it("carries the figure's colour in the number rather than a filled panel", () => {
     const tile = ruleBody(".crew-build__stat {");
+    const figure = ruleBody(".crew-build__stats dd {");
 
-    // The colour is confined to the bar: the tile's own frame stays neutral,
-    // so four coloured rules delimit the row without lighting it up.
-    expect(tile).toMatch(/border:\s*1px solid var\(--border\)/);
+    // The number takes the same hue as the rule above it, which is what ties
+    // the two together now that no box does.
+    expect(figure).toMatch(/color:\s*var\(--crew-stat-colour\)/);
+    // And the colour stays in the rule and the digits: no wash of it behind
+    // them, which would put the row ahead of the tower it captions.
     expect(tile).not.toMatch(/background:\s*var\(--crew-stat/);
   });
 
