@@ -650,3 +650,27 @@ This preserves the Crew Build as the product's shared artifact, gives weekly com
 **Status**
 
 Approved for the Crew Special Blocks implementation. See `docs/CREW_SPECIAL_BLOCKS.md`.
+
+## D-081 — One canonical definition of Crew Build occupancy, and a projection handoff that says when it is waiting
+
+**Decision**
+
+The Crew Build has exactly one definition of what is physically in the tower, and every surface uses it: client rendering, landing-option generation, server collision and support validation, and repair. That definition is what the Crew screen can actually draw — a run inside its Crew's `build_start_date` window, both coordinates present, and the whole footprint inside the eight columns rather than merely the anchor; the earlier rectangle winning any overlap; and nothing left floating.
+
+`crew_build_items()` now applies those rules on read, and `canonicalize_crew_build()` writes them back to storage. Both placement RPCs canonicalize under the Crew advisory lock they already take, immediately before they validate. A landing the client offers can therefore only be refused by a block that a refresh will actually reveal — the reported failure was a runner being told `That space was just taken. Choose another spot.` about a cell that stayed visibly empty afterwards, because the occupying row had fallen out of the Build window and only the server could still see it.
+
+**Healing only ever demotes.** Invalid construction returns to READY, in place, for the runner who earned it. Nothing is relocated, no other runner's block is moved to make room, and no contribution is deleted. `heal_crew_build_support()` delegates to the same canonical pass rather than keeping its own runs-only view of support — that view could not see a Special Block, so it demoted every run resting on one.
+
+**A Crew projection blocked by personal sync is a state, not a silence.** Projection still refuses to publish until this device owns the account's canonical personal cache; publishing from a cache that is not yet authoritative could share the wrong runs. What changes is that the refusal is visible and recoverable. Crew says its blocks are waiting on personal STACK, and personal sync reports the moment its cache becomes canonical, which forces the projection that join time could not safely publish. Existing eligible runs become READY Crew blocks as soon as the handoff completes, rather than when some unrelated later focus or edit happens to retry. A runner joining a Run Club with months of history behind them no longer sees an empty Crew that fills itself in later for no visible reason.
+
+**The forced refresh after a placement is a read barrier.** It waits out any dashboard request that was already running, because that request may have queried before the write, and then issues its own. A read that fails is reported as a dashboard error; it is not evidence that a write the server accepted did not happen.
+
+**The eight-column grid is a mechanic, not a readout.** Crew placement stops naming `Column N` and stops teaching numbered-column language. The coordinate stays where it is genuinely needed: the placement controls, and the landing slots' accessible names, which still say which column a block would land in.
+
+**Reason**
+
+Two runners hit the same class of bug from opposite ends — one had contributions the server would not accept, the other had contributions the server had never received — and both looked to the runner like the Crew quietly losing their work. Neither is fixable by adding another retry; both come from two components disagreeing about a fact that only one of them should own. Naming the canonical definition once, and making the one legitimate wait say so out loud, is what stops that class of drift rather than the two instances of it.
+
+**Status**
+
+Approved. Closes issue #128. See `supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql` and `supabase/tests/0023_crew_build_canonical_occupancy.sql`.

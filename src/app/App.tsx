@@ -144,6 +144,7 @@ export function App() {
   const crewAvailable = Boolean(raceCrew.userId && raceCrew.account?.crew);
   const raceCrewUserId = raceCrew.userId;
   const refreshCrewData = raceCrew.refreshCrewData;
+  const notePersonalSyncReady = raceCrew.notePersonalSyncReady;
 
   function persistOnboarding(next: OnboardingState) {
     setOnboarding(next);
@@ -202,10 +203,20 @@ export function App() {
     });
   }, [raceCrewUserId]);
 
+  // The account's personal cache has just become canonical on this device.
+  // Crew sharing may have stood down at join time waiting for exactly that, so
+  // publish the projection it could not publish before reading the crew back —
+  // otherwise existing runs stay invisible to the crew until something
+  // unrelated changes and triggers a later sync.
   useEffect(() => {
     if (!personalSync.initialized || !raceCrewUserId) return;
-    void refreshCrewData(true);
-  }, [personalSync.initialized, raceCrewUserId, refreshCrewData]);
+    void notePersonalSyncReady().then(() => refreshCrewData(true));
+  }, [
+    notePersonalSyncReady,
+    personalSync.initialized,
+    raceCrewUserId,
+    refreshCrewData,
+  ]);
 
   useEffect(() => onStorageWriteError((error) => setWriteError(error.message)), []);
 

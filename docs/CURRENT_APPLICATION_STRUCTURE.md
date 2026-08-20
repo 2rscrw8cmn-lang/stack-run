@@ -1088,6 +1088,8 @@ The coordinate pairs are independent. Dashboard reads preserve both for their se
 
 `src/crew/crewBuildPlacement.ts` is the narrow client boundary. `useRaceCrew.ts` owns pending/error state and refreshes after success or server conflict. A specific collision keeps the block READY or in its prior position and reports: `That space was just taken. Choose another spot.`
 
+`20260820150000_crew_build_canonical_occupancy.sql` makes that collision check mean the same thing as the tower on screen. `crew_build_items()` returns only rectangles the client would draw — a run inside its Crew's Build window, both coordinates present, and the whole footprint inside the eight columns rather than just the anchor — and `canonicalize_crew_build()` writes that definition back to storage: non-renderable coordinates return to READY, an overlap is resolved in the client's own acceptance order (runs by earned date, then awards by week), and whatever is left floating settles through the mixed support repair. Both placement RPCs canonicalize under the Crew advisory lock they already hold, immediately before they validate, so a landing the client offered can only be refused by a block a refresh will actually show. `heal_crew_build_support()` delegates to the same pass, which also retires its runs-only view of support — that view demoted any run resting on a Special Block. Healing only ever demotes; nothing is relocated and no contribution is deleted. `supabase/tests/0023_crew_build_canonical_occupancy.sql` is the standing coverage.
+
 ### READY and placement interaction
 
 `src/crew/crewBuild.ts` preserves valid stored Crew coordinates and never invents them. Unplaced, invalid, colliding, or structurally unsupported rows enter READY order by `localDate`, `createdAt`, then id. Width still derives from distance; height and activity color still derive from activity type. Geometry helpers power snapped placement options and client-side overlap checks.
@@ -1372,7 +1374,21 @@ retired only by a completed projection sync, because that sync is what proves
 the smaller local view is authoritative. `switchCrew(crewId)` refuses a crew the
 account is not in, remembers the choice, clears crew-scoped client state and
 reloads. The dashboard in-flight guard is now keyed by crew id, so switching
-crews can no longer be answered with the previous crew's load.
+crews can no longer be answered with the previous crew's load. A forced
+refresh is a read barrier rather than another read: it waits out any request
+that was already running — that request may have queried before the write — and
+then issues its own, so a placement is confirmed against the Crew as it is now.
+A read that fails proves nothing either way and is reported as a dashboard
+error rather than as a rejected placement.
+
+Projection still refuses to publish until this device owns the account's
+canonical personal cache, but the refusal is now visible and recoverable.
+`projectionWaitingForPersonal` says so on the Crew screen and in Account &
+Crew, and `notePersonalSyncReady()` — called by `App.tsx` when
+`usePersonalSync` reports the account initialized — forces the projection that
+join time could not safely publish, then re-reads the crew. Existing eligible
+runs therefore become READY Crew blocks as soon as the handoff completes,
+instead of waiting for an unrelated later focus or edit.
 
 `src/crew/emblem.ts` owns crew emblems. See "The three-layer Crew Emblem"
 below for the current model; the four-part `E1-…` library this section

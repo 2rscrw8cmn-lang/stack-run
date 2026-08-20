@@ -12,6 +12,12 @@ interface PlacementBarProps {
   title: string;
   /** e.g. "Column 3", or null when nothing fits. */
   positionLabel: string | null;
+  /**
+   * Whether the readout names the column. Personal Build does; Crew Build
+   * keeps the coordinate for its controls and the landing slots' accessible
+   * names, but a numbered grid column is not something a runner picks.
+   */
+  showPositionLabel?: boolean;
   canStepBack: boolean;
   canStepForward: boolean;
   onStep: (direction: -1 | 1) => void;
@@ -31,9 +37,10 @@ interface PlacementBarProps {
  * and keyboard path: step the block along with the arrows, see it in
  * position, and commit with `Drop`. Both paths are complete on their own.
  *
- * The readout names the column and stops there. The course it will land on is
- * gravity's answer rather than a choice, and saying it turned this into a
- * packing readout.
+ * Where the readout names the column it stops there. The course it will land
+ * on is gravity's answer rather than a choice, and saying it turned this into
+ * a packing readout. The "no room left" state is always shown: that one is
+ * about the tower, not about the grid.
  *
  * Generic over which tower it belongs to, so Personal and Crew Build share
  * one placement control rather than a bar apiece — Crew layers a pending
@@ -45,6 +52,7 @@ export function PlacementBar({
   height,
   title,
   positionLabel,
+  showPositionLabel = true,
   canStepBack,
   canStepForward,
   onStep,
@@ -70,9 +78,11 @@ export function PlacementBar({
         />
         <div className="placement-bar__detail">
           <p className="placement-bar__title">{title}</p>
-          <p className="placement-bar__position">
-            {positionLabel ?? "No room left in the tower"}
-          </p>
+          {(showPositionLabel || positionLabel === null) && (
+            <p className="placement-bar__position">
+              {positionLabel ?? "No room left in the tower"}
+            </p>
+          )}
         </div>
         <IconButton
           label="Cancel placing"

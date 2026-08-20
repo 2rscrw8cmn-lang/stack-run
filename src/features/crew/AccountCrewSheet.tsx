@@ -1160,9 +1160,13 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
 
             {crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
             {crew.message && <p role="status" className="crew-settings__message">{crew.message}</p>}
-            {crew.projectionError && (
+            {crew.projectionWaitingForPersonal ? (
+              <p className="crew-settings__note" role="status">
+                Crew sharing starts as soon as personal STACK finishes syncing on this device.
+              </p>
+            ) : crew.projectionError ? (
               <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
-            )}
+            ) : null}
           </>
         )}
         {visibleView !== "main" && crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}

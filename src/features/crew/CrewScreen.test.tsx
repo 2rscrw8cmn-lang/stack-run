@@ -38,6 +38,18 @@ function summary(
   };
 }
 
+/**
+ * Crew placement no longer prints "Column N" — the runner does not choose a
+ * numbered grid column. The chosen landing is still observable through the
+ * slot the tower marks as chosen, which keeps the column in its accessible
+ * name for exactly this purpose.
+ */
+function chosenLandingName(): string {
+  const chosen = document.querySelector('.built-tower__slot[data-chosen="true"] button');
+  if (!chosen) throw new Error("No landing slot is chosen.");
+  return chosen.textContent ?? "";
+}
+
 function sharedRun(
   id: string,
   userId: string,
@@ -203,6 +215,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     pendingInvite: null,
     latestInviteUrl: null,
     projectionError: null,
+    projectionWaitingForPersonal: false,
     crewData: dashboard(),
     crewDataStatus: "ready",
     crewDataError: null,
@@ -229,6 +242,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     removeMember: action,
     deleteRunContribution: action,
     refreshCrewData: action,
+    notePersonalSyncReady: action,
     toggleProps: action,
     markPropsSeen: action,
     dismissPropNotification: vi.fn(),
@@ -1114,7 +1128,8 @@ describe("Shared Crew Build", () => {
     // Gravity already picked a landing — flush against the left edge of empty
     // ground — the same Auto Place default Personal Build uses, with no row
     // to choose.
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
+    expect(screen.queryByText("Column 1")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
     expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
@@ -1190,7 +1205,8 @@ describe("Shared Crew Build", () => {
     expect(slots[0]).toHaveAccessibleName("Place Easy block in columns 1 through 2");
 
     await user.click(screen.getByRole("button", { name: "Move block right" }));
-    expect(screen.getByText("Column 2")).toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 2 through 3");
+    expect(screen.queryByText("Column 2")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(place).toHaveBeenCalledWith("ready-own", 0, 2);
   });
@@ -1212,8 +1228,54 @@ describe("Shared Crew Build", () => {
     // The block stays in hand with a freshly recomputed gravity landing —
     // "refresh, recompute, retry" per issue #65 — rather than stranded with
     // nothing to drop.
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
     expect(screen.queryByText("1 built · 0 ready")).not.toBeInTheDocument();
+  });
+
+  /*
+   * Issue #128: joining can finish before this device owns the account's
+   * canonical personal cache, and the runs held back by that are exactly the
+   * ones the runner came to Crew to see. The wait is stated where they are
+   * looking, instead of the tower silently omitting them.
+   */
+  it("says when Crew sharing is waiting on personal STACK", async () => {
+    openCrew(controller({
+      crewData: dashboard({ runs: [] }),
+      projectionWaitingForPersonal: true,
+    }));
+
+    expect(
+      screen.getByText(
+        "Your runs reach the crew as soon as personal STACK finishes syncing on this device.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about personal sync once the handoff is done", async () => {
+    openCrew(controller({ crewData: dashboard({ runs: [] }) }));
+
+    expect(screen.queryByText(/personal STACK finishes syncing/)).not.toBeInTheDocument();
+  });
+
+  /*
+   * Issue #128: the eight-column grid is a placement mechanic, not something
+   * the runner is choosing between. Crew placement says where the block will
+   * go in plain terms and keeps the column where it is genuinely needed — the
+   * landing slots' accessible names.
+   */
+  it("places without teaching numbered-column language", async () => {
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [ready] }) }));
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    expect(
+      screen.getByText("Drag sideways or tap a spot. Your block will land where it fits."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Column \d+$/)).not.toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
   });
 
   it("offers Move Block only for the current runner's placed Crew block", async () => {

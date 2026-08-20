@@ -23,6 +23,8 @@ import awardProjectionMigration from "../../supabase/migrations/20260820130000_c
 import awardCleanupMigration from "../../supabase/migrations/20260820140000_remove_pre_rollout_award_blocks.sql?raw";
 import awardCleanupVerification from "../../supabase/tests/0022_pre_rollout_award_cleanup.sql?raw";
 import reconcileMigration from "../../supabase/migrations/20260820135000_reconcile_hand_applied_crew_schema.sql?raw";
+import canonicalOccupancyMigration from "../../supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql?raw";
+import canonicalOccupancyVerification from "../../supabase/tests/0023_crew_build_canonical_occupancy.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -651,5 +653,88 @@ describe("Reconciling a hand-applied Crew schema (D-080)", () => {
         sql.match(new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"))?.[0];
       expect(from(reconcileMigration)).toBe(from(specialBlocksMigration));
     }
+  });
+});
+
+describe("Canonical Crew Build occupancy (issue #128)", () => {
+  /**
+   * The Crew screen derives its tower from what it can draw. Anything the
+   * server counted as occupied but the client dropped was an invisible
+   * blocker: a landing the client offered came back as
+   * `crew_build_placement_conflict`, and no refresh could ever reveal the
+   * occupant, because there was none to reveal.
+   */
+  it("reads only the rectangles the client would draw", () => {
+    const items = canonicalOccupancyMigration.match(
+      /create or replace function public\.crew_build_items[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(items).toBeTruthy();
+    // A run outside the Crew's Build window is filtered out of the dashboard
+    // read, so it cannot be occupancy either.
+    expect(items).toMatch(/is_crew_run_in_build_window\(r\.crew_id, r\.local_date\)/i);
+    // Both kinds must fit the eight-column grid whole, not just anchor inside
+    // it: the table CHECK bounds the anchor only.
+    expect(items).toMatch(
+      /r\.crew_build_column_start \+ public\.crew_build_width\(r\.distance_miles\) - 1 <= 8/i,
+    );
+    expect(items).toMatch(
+      /a\.crew_build_column_start \+ public\.crew_award_width\(a\.award_type\) - 1 <= 8/i,
+    );
+    // Redefining the function resets its privileges; it stays internal.
+    expect(canonicalOccupancyMigration).toMatch(
+      /revoke all on function public\.crew_build_items\(uuid\) from public, anon, authenticated/i,
+    );
+  });
+
+  it("canonicalizes under the Crew lock before either RPC validates", () => {
+    for (const name of ["place_crew_build_block", "place_crew_award_block"]) {
+      const rpc = canonicalOccupancyMigration.match(
+        new RegExp(`create or replace function public\\.${name}[\\s\\S]*?\\$\\$;`, "i"),
+      )?.[0] ?? "";
+      expect(rpc, `${name} is not redefined`).toBeTruthy();
+      const lock = rpc.search(/pg_advisory_xact_lock/i);
+      const canonicalize = rpc.search(/perform public\.canonicalize_crew_build/i);
+      const conflict = rpc.search(/crew_build_placement_conflict/i);
+      expect(lock, `${name} does not lock the crew`).toBeGreaterThan(-1);
+      expect(canonicalize, `${name} does not canonicalize`).toBeGreaterThan(lock);
+      expect(conflict, `${name} validates before canonicalizing`).toBeGreaterThan(canonicalize);
+    }
+  });
+
+  it("only ever demotes construction to READY", () => {
+    const canonicalize = canonicalOccupancyMigration.match(
+      /create or replace function public\.canonicalize_crew_build[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(canonicalize).toBeTruthy();
+    // Healing corrects what is invisible; it never relocates a runner's block
+    // and never deletes a contribution. Every write it makes is a demotion.
+    const writes = canonicalize.match(/set crew_build_row = [^,]*/gi) ?? [];
+    expect(writes.length).toBeGreaterThan(0);
+    for (const write of writes) expect(write).toBe("set crew_build_row = null");
+    expect(canonicalize).not.toMatch(/delete from/i);
+  });
+
+  it("gives every repair entry point the same definition of occupancy", () => {
+    // The runs-only healing behind the footprint-change trigger could not see
+    // a Special Block, so it demoted every run resting on one.
+    const heal = canonicalOccupancyMigration.match(
+      /create or replace function public\.heal_crew_build_support[\s\S]*?\$\$;/i,
+    )?.[0] ?? "";
+    expect(heal).toMatch(/return public\.canonicalize_crew_build\(p_crew_id\)/i);
+    expect(heal).not.toMatch(/shared_runs/i);
+  });
+
+  it("clears the ghosts already in the database once", () => {
+    expect(canonicalOccupancyMigration).toMatch(
+      /for v_crew_id in select id from public\.crews loop[\s\S]*?perform public\.canonicalize_crew_build\(v_crew_id\)/i,
+    );
+  });
+
+  it("ships transactional verification of the ghost and the genuine conflict", () => {
+    expect(canonicalOccupancyVerification).toMatch(/visually open landing was refused/i);
+    expect(canonicalOccupancyVerification).toMatch(/invisible coordinate stayed placed/i);
+    expect(canonicalOccupancyVerification).toMatch(/supported by a Special Block was demoted/i);
+    expect(canonicalOccupancyVerification).toMatch(/genuinely occupied cell was accepted/i);
+    expect(canonicalOccupancyVerification.trim().toLowerCase()).toMatch(/rollback;$/);
   });
 });
