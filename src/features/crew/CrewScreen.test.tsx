@@ -918,7 +918,7 @@ describe("Shared Crew Build", () => {
         document.querySelectorAll(".crew-build__stats dt"),
         (label) => label.textContent,
       ),
-    ).toEqual(["Miles", "Runs", "Time", "Runners"]);
+    ).toEqual(["Miles", "Runs", "Hours", "Runners"]);
     expect(
       within(screen.getByRole("list", { name: "Crew Build blocks" })).getAllByRole(
         "listitem",

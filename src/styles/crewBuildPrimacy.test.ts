@@ -59,23 +59,72 @@ describe("Crew Build primacy styling (issue #137)", () => {
   /*
    * Four numbers in a row at heading size read as one long number. The row is
    * only useful if the eye can tell where each figure stops, so each one gets
-   * its own panel and its own air.
+   * its own tile, its own air, and its own colour.
    */
-  it("gives each crew figure its own panel instead of a hairline divider", () => {
+  it("gives each crew figure its own tile instead of a hairline divider", () => {
     const stats = ruleBody(".crew-build__stats {");
-    const figure = ruleBody(".crew-build__stats > div {");
+    const tile = ruleBody(".crew-build__stat {");
 
     // Air between the four, not a shared edge.
     const gap = /gap:\s*(\d+)px/.exec(stats);
     expect(gap, "no gap between the figures").not.toBeNull();
     expect(Number(gap![1])).toBeGreaterThan(0);
 
-    // A panel: bordered on every side and lifted off the page, rather than a
+    // A tile: bordered on every side and lifted off the page, rather than a
     // single `border-left` rule standing between two numbers.
-    expect(figure).toMatch(/border:\s*1px solid/);
-    expect(figure).not.toMatch(/border-left:/);
-    expect(figure).toMatch(/background:\s*var\(--surface-strong\)/);
-    expect(figure).toMatch(/padding:\s*\d/);
+    expect(tile).toMatch(/border:\s*1px solid/);
+    expect(tile).not.toMatch(/border-left:/);
+    expect(tile).toMatch(/background:\s*var\(--data-surface-strong\)/);
+    // Squared off and padded on every side, so it reads as a panel rather
+    // than a strip of text.
+    expect(tile).toMatch(/padding:\s*\d+px \d+px \d+px/);
+  });
+
+  /*
+   * The bar across the top is what actually delimits one figure from the
+   * next — it is read before any digit is. Each of the four is a different
+   * hue, and every hue is its own token rather than one borrowed from the
+   * activity or zone palettes, which would attach a meaning these do not have.
+   */
+  it("rules each figure off with its own colour bar", () => {
+    const tile = ruleBody(".crew-build__stat {");
+    const bar = /border-top:\s*(\d+)px solid var\(--crew-stat-colour\)/.exec(tile);
+    expect(bar, "no colour bar above the figure").not.toBeNull();
+    // Thick enough to register as a bar, not as an edge.
+    expect(Number(bar![1])).toBeGreaterThanOrEqual(3);
+
+    const hues = ["miles", "runs", "time", "runners"].map((stat) => {
+      const rule = ruleBody(`.crew-build__stat--${stat} {`);
+      const match = /--crew-stat-colour:\s*var\((--crew-stat-[a-z]+)\)/.exec(rule);
+      expect(match, `${stat} has no colour`).not.toBeNull();
+      return match![1];
+    });
+    // Four figures, four distinct colours.
+    expect(new Set(hues).size).toBe(4);
+
+    // And each one is defined, as its own token rather than an activity or
+    // zone colour wearing a second meaning.
+    const tokens = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "tokens.css"),
+      "utf8",
+    );
+    for (const hue of hues) {
+      expect(tokens, `${hue} is not defined`).toMatch(
+        new RegExp(`${hue}:\\s*#[0-9a-f]{6}`, "i"),
+      );
+    }
+  });
+
+  /*
+   * The mock this row was drawn from set a small block icon beside every
+   * number. It went: the tile shows one figure, an icon is a second thing to
+   * decode, and four of them start competing with the blocks below.
+   */
+  it("puts nothing beside the number but the number", () => {
+    const stats = ruleBody(".crew-build__stats {");
+    expect(stats).not.toMatch(/flex/);
+    // No generated content hanging off the figure or its label.
+    expect(css).not.toMatch(/\.crew-build__stat(s)?[^{]*::(before|after)/);
   });
 
   /*
@@ -97,10 +146,12 @@ describe("Crew Build primacy styling (issue #137)", () => {
    * brightest thing on a page whose whole point is the structure below it.
    */
   it("keeps the stats row dimmer than the field it captions", () => {
-    const figure = ruleBody(".crew-build__stats > div {");
+    const tile = ruleBody(".crew-build__stat {");
 
-    expect(figure).not.toMatch(/var\(--accent\)/);
-    expect(figure).toMatch(/border:\s*1px solid var\(--border\)/);
+    // The colour is confined to the bar: the tile's own frame stays neutral,
+    // so four coloured rules delimit the row without lighting it up.
+    expect(tile).toMatch(/border:\s*1px solid var\(--border\)/);
+    expect(tile).not.toMatch(/background:\s*var\(--crew-stat/);
   });
 
   it("keeps the one remaining frame quieter than the blocks it holds", () => {

@@ -7861,44 +7861,56 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
  *
  * Hairline dividers were not enough to break them up: four numbers set in a
  * row at this size read as one long number, and the labels underneath were too
- * faint to say otherwise. Each figure now sits in its own panel with air
- * between them, so the row scans as four separate facts before it is read.
- * The panels stay dimmer than the field below — this is a caption for the
- * tower, and it should not out-shout it.
+ * faint to say otherwise. Each figure is now a squared-off instrument tile
+ * carrying a coloured rule across its top edge, so the row separates into four
+ * facts before a single digit is read.
+ *
+ * The rule is the whole of the colour. No icon sits beside the number: an
+ * icon would be a second thing to decode in a tile whose only job is to show
+ * one figure, and four of them would start competing with the blocks below.
+ * The tiles sit on `--data-surface-strong`, the same instrument ground Runs
+ * and the charts use, which keeps them quieter than the field they caption.
  */
 .crew-build__stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
+  gap: 5px;
   margin: 0;
   padding: 0;
 }
-.crew-build__stats > div {
+.crew-build__stat {
   min-width: 0;
-  padding: 7px 8px 6px;
+  /* Roughly square: the tile is a panel, not a strip of text. */
+  padding: 11px 10px 9px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-strong);
+  /* The coloured rule. Thick enough to register as a bar rather than an edge. */
+  border-top: 3px solid var(--crew-stat-colour);
+  border-radius: 3px;
+  background: var(--data-surface-strong);
 }
+.crew-build__stat--miles { --crew-stat-colour: var(--crew-stat-miles); }
+.crew-build__stat--runs { --crew-stat-colour: var(--crew-stat-runs); }
+.crew-build__stat--time { --crew-stat-colour: var(--crew-stat-time); }
+.crew-build__stat--runners { --crew-stat-colour: var(--crew-stat-runners); }
 .crew-build__stats dd {
   margin: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: clamp(17px, 5.6vw, 24px);
+  font-size: clamp(18px, 5.8vw, 26px);
   line-height: 1.05;
   letter-spacing: -0.045em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .crew-build__stats dt {
-  margin-top: 4px;
+  margin-top: 6px;
   /*
-   * The label is what tells one panel from the next, so it is legible rather
-   * than decorative: muted instead of subtle, and given room to breathe.
+   * The label names the figure above it, so it is legible rather than
+   * decorative: muted instead of subtle, and given room to breathe.
    */
   color: var(--text-muted);
   font-size: 9px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 /*
@@ -7950,8 +7962,8 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   }
   .crew-build--page .crew-build__stage { padding-inline: 6px; }
   .crew-build__stats { gap: 3px; }
-  .crew-build__stats > div { padding: 5px 5px 4px; }
-  .crew-build__stats dt { font-size: 8px; letter-spacing: 0.04em; }
+  .crew-build__stat { padding: 8px 6px 7px; border-top-width: 2px; }
+  .crew-build__stats dt { margin-top: 4px; font-size: 8px; letter-spacing: 0.05em; }
 }
 
 @media (min-width: 620px) {
@@ -7963,9 +7975,9 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .crew-build--page .crew-build__viewport {
     max-height: min(66dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
   }
-  .crew-build__stats { gap: 6px; }
-  .crew-build__stats > div { padding: 9px 11px 8px; }
-  .crew-build__stats dd { font-size: 28px; }
+  .crew-build__stats { gap: 7px; }
+  .crew-build__stat { padding: 15px 14px 13px; border-top-width: 4px; }
+  .crew-build__stats dd { font-size: 30px; }
 }
 
 /*

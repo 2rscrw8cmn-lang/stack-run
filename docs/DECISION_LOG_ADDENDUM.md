@@ -713,9 +713,11 @@ Miles, Runs and Time are read from the runs *placed in the tower*, not from ever
 
 Runners is the roster, not the contributors — a crew of seven where three have run reads `7`. The other three figures are all measures of activity, and a fourth would have been a restatement; what they do not say is how many people this build is for. A crew that has just formed reads `0.0 / 0 / 0:00 / 5`, which is an accurate and useful thing for it to say about itself.
 
-Total time reads as hours and minutes (`14:32`), because a crew passes a hundred hours quickly and nobody reads the seconds.
+Total time reads as hours and minutes (`14:32`) under the label `Hours`, because a crew passes a hundred hours quickly and nobody reads the seconds.
 
-Each figure sits in its own bordered panel on `--surface-strong` with a gap between them, rather than being separated by hairline dividers. Four numbers set in a row at that size read as one long number, and `--text-subtle` labels at 8px were too faint to break them apart; the labels move to `--text-muted` at 9px. The panels stay dimmer than the field below them — the row is a caption for the tower, not a competitor to it.
+**Each figure is a squared-off tile carrying a coloured rule across its top edge.** Hairline dividers were not enough: four numbers set in a row at that size read as one long number, and `--text-subtle` labels at 8px were too faint to break them apart. The bar is what actually delimits them — it is read before a single digit is — and the labels move to `--text-muted` at 9px behind it. The four colours are their own `--crew-stat-*` tokens rather than borrowings from the activity or zone palettes: reusing `--simulation` for Runs would say a crew's runs are simulations, and reusing the zone ramp would imply the four figures are ordered. They are not; here colour is a delimiter and carries no meaning of its own.
+
+The colour is confined to the bar. The tiles sit on `--data-surface-strong` — the same instrument ground Runs and the charts use — with a neutral `--border` frame, so the row stays quieter than the field it captions. No icon sits beside any number: an icon is a second thing to decode in a tile whose only job is to show one figure, and four of them would compete with the blocks below.
 
 `.crew-build` is shared with the Member Build inside Crew Profile, which is a small tower on a sheet and wants none of this, so every rule above is scoped to a `--page` modifier.
 

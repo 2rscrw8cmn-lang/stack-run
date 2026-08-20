@@ -197,19 +197,19 @@ export function CrewBuild({
         * even crew figures, none of them shouting.
         */}
       <dl className="crew-build__stats" aria-label="Crew totals">
-        <div>
+        <div className="crew-build__stat crew-build__stat--miles">
           <dd className="data-value">{formatMilesBuilt(totals.miles)}</dd>
           <dt className="machine-label">Miles</dt>
         </div>
-        <div>
+        <div className="crew-build__stat crew-build__stat--runs">
           <dd className="data-value">{totals.runs}</dd>
           <dt className="machine-label">Runs</dt>
         </div>
-        <div>
+        <div className="crew-build__stat crew-build__stat--time">
           <dd className="data-value">{formatTotalHoursMinutes(totals.durationSeconds)}</dd>
-          <dt className="machine-label">Time</dt>
+          <dt className="machine-label">Hours</dt>
         </div>
-        <div>
+        <div className="crew-build__stat crew-build__stat--runners">
           <dd className="data-value">{totals.runners}</dd>
           <dt className="machine-label">
             {totals.runners === 1 ? "Runner" : "Runners"}
