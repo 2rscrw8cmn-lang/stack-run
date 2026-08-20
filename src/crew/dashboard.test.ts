@@ -36,6 +36,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         activity_type: "long",
         distance_miles: 6.1,
         duration_seconds: 3522,
+        source: "intervals",
         build_row: 4,
         build_column_start: 2,
         crew_build_row: 7,
@@ -109,11 +110,12 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
+      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
     );
-    // Heart rate is the one deliberate exception, per D-079; everything else
-    // private (training load, effort, notes, source, route, GPS) stays out.
-    expect(String(runSelect?.value)).not.toMatch(/load|effort|note|source|route|gps/i);
+    // Heart rate is the one deliberate exception, per D-079, and `source` is
+    // the two-word origin issue #129 needs to mark a manual block; everything
+    // else private (training load, effort, notes, route, GPS) stays out.
+    expect(String(runSelect?.value)).not.toMatch(/load|effort|note|route|gps|external/i);
     const reactionSelect = calls.find(
       (call) => call.table === "crew_reactions" && call.operation === "select",
     );
@@ -141,6 +143,7 @@ describe("Crew dashboard query", () => {
       activityType: "long",
       distanceMiles: 6.1,
       durationSeconds: 3522,
+      source: "intervals",
       createdAt: "2026-08-09T12:00:00Z",
       updatedAt: "2026-08-09T12:00:00Z",
       buildRow: 4,
@@ -163,6 +166,7 @@ describe("Crew dashboard query", () => {
         localDate: "2026-08-09",
         activityType: "long",
         distanceMiles: 6.1,
+        source: "intervals",
         buildRow: 4,
         buildColumnStart: 2,
         buildWidth: null,
@@ -181,6 +185,7 @@ describe("Crew dashboard query", () => {
         activityType: "long",
         distanceMiles: 6.1,
         durationSeconds: 3522,
+        source: "intervals",
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
@@ -243,6 +248,7 @@ describe("Crew dashboard query", () => {
         localDate: "2026-08-09",
         activityType: "long",
         distanceMiles: 6.1,
+        source: "intervals",
         buildRow: 4,
         buildColumnStart: 2,
         buildWidth: null,

@@ -161,7 +161,7 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Synced via Intervals.icu")).toBeInTheDocument();
+    expect(sheet.getByText("Intervals.icu")).toBeInTheDocument();
     expect(sheet.getByText("151 bpm")).toBeInTheDocument();
     expect(
       sheet.getByRole("list", { name: "Heart rate zone distribution" }),

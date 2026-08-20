@@ -698,3 +698,41 @@ Batching is worth keeping: it is one request instead of one per run, on phones, 
 **Status**
 
 Approved. Follows issue #128. See `docs/CREW_PROJECTION_CONTRACT.md`, which is required reading before adding a constrained Crew column.
+
+## D-083 — The Crew page is the tower, and a manually logged block says so with one asterisk
+
+**Decision**
+
+**The shared tower is the Crew page's primary object, not a widget inside a card.** The Crew Build was a lime-framed `technical-grid` section holding a `CREW BUILD` label, an oversized miles-built heading, and — inside all of that — a second lime frame around the field itself. Two borders, two grids, and the structure everybody came to see squeezed between them.
+
+The outer card is removed entirely. The `CREW BUILD` label goes with it: the active Crew tab already establishes context, so the copy added weight without adding information. Only the build field keeps a border, and that border drops to `--border-strong` with its inset lime glow removed — the blocks provide the page's colour, and the frame's job is to say where the site ends. The field runs to the screen's own gutter, its course height grows so the bricks and the grid scale together, and its viewport cap rises about a quarter. Growing the sky alone would have made the section taller and the build no bigger; the point is a larger build, not more headroom.
+
+**Four crew figures replace the single miles-built heading**: total miles, total runs, total run time, and runners.
+
+Miles, Runs and Time are read from the runs *placed in the tower*, not from every shared run in the Build window. The row sits directly above the structure and captions it, so a figure that counted an unplaced run would claim more than the tower shows. A run that is earned but not yet built is not lost: it appears in Recent Crew Runs and in its runner's own READY prompt, which is where an unbuilt run belongs.
+
+Runners is the roster, not the contributors — a crew of seven where three have run reads `7`. The other three figures are all measures of activity, and a fourth would have been a restatement; what they do not say is how many people this build is for. A crew that has just formed reads `0.0 / 0 / 0:00 / 5`, which is an accurate and useful thing for it to say about itself.
+
+Total time reads as hours and minutes (`14:32`) under the label `Hours`, because a crew passes a hundred hours quickly and nobody reads the seconds.
+
+**Each figure is a squared-off tile carrying a coloured rule across its top edge.** Hairline dividers were not enough: four numbers set in a row at that size read as one long number, and `--text-subtle` labels at 8px were too faint to break them apart. The bar is what actually delimits them — it is read before a single digit is — and the labels move to `--text-muted` at 9px behind it. The four colours are their own `--crew-stat-*` tokens rather than borrowings from the activity or zone palettes: reusing `--simulation` for Runs would say a crew's runs are simulations, and reusing the zone ramp would imply the four figures are ordered. They are not; here colour is a delimiter and carries no meaning of its own.
+
+The colour is confined to the bar. The tiles sit on `--data-surface-strong` — the same instrument ground Runs and the charts use — with a neutral `--border` frame, so the row stays quieter than the field it captions. No icon sits beside any number: an icon is a second thing to decode in a tile whose only job is to show one figure, and four of them would compete with the blocks below.
+
+`.crew-build` is shared with the Member Build inside Crew Profile, which is a small tower on a sheet and wants none of this, so every rule above is scoped to a `--page` modifier.
+
+**A manually logged run's block wears one asterisk after its mileage — `3.1*` — and nothing else.** No icon, no badge, no corner treatment, no legend. Syncing is the norm, so a synced block stays exactly as it was; the exception is what earns a mark. The asterisk is smaller and dimmer than the number it qualifies and inherits the face's own colour. RACE and Cross Training show no mileage for it to follow and are unchanged. The mark is `aria-hidden` decoration, so each block's accessible name carries the words `manual entry` instead.
+
+**Every run detail now names its source, not only the synced ones.** `RunResultDetail`'s meta line reads `Source · Manual entry` or `Source · Intervals.icu` in place of the old `Synced via Intervals.icu`, and `CrewRunDetailSheet` carries the same line under the run's identity. It stays in the secondary register: the source is context for the run, never the point of it.
+
+**`shared_runs` gains a `source` column, narrowing D-056 by one more word.** Crew could not previously tell a hand-typed run from a synced one, so the asterisk had nothing to stand on. The column stores exactly the two words `personal_runs.source` does and nothing about the connection behind them — no external activity id, no import timestamps, no provider credentials. It is nullable, unlike its `personal_runs` counterpart: every row shared before this migration has no source to report and back-filling one would be inventing a fact. Null therefore reads as manual entry everywhere, which is what STACK has always defaulted an unlabelled run to. Nullable also keeps the column out of `isShareableWithCrew` — a run whose origin we cannot name is still a run the crew should have — and per D-082 a value outside the union is sent as `null` by `crewSafeRunSource` rather than failing the batch.
+
+**Reason**
+
+Crew is a destination because of the thing the crew built together. The page had drifted into a dashboard that happened to contain a tower, with the frames and headings taking the space and the attention the structure should have had. Removing a card and a heading is most of the fix; the rest is scaling the build itself rather than the box around it.
+
+The asterisk is the smallest mark that answers "did this actually get measured?" without turning the tower into a legend. Manual entry is rare, so marking it costs almost nothing and marking the common case would have cost every brick.
+
+**Status**
+
+Approved. Closes issue #137, which incorporates issue #129. See `supabase/migrations/20260820170000_shared_run_source.sql`.

@@ -129,6 +129,7 @@ describe("Race Crew projection", () => {
       activityType: "long",
       distanceMiles: 8,
       durationSeconds: 4200,
+      source: "intervals",
       buildRow: 3,
       buildColumnStart: 2,
       buildWidth: 4,
@@ -159,14 +160,17 @@ describe("Race Crew projection", () => {
         "localRunId",
         "manualHeartRate",
         "maxHeartRate",
+        "source",
       ].sort(),
     );
-    // Average/max HR are the one deliberate exception, per D-079, and the four
+    // Average/max HR are the one deliberate exception, per D-079; the four
     // award_* scores are derived scalars per D-080 — a number computed from HR
-    // zones is not the zones. Everything genuinely private (training load, the
-    // raw HR-zone array, effort, notes, source, exact placement time) stays out.
+    // zones is not the zones; and `source` is one of two words naming where the
+    // run came from, per issue #129, never the connection behind it. Everything
+    // genuinely private (training load, the raw HR-zone array, the external
+    // activity id, effort, notes, exact placement time) stays out.
     expect(JSON.stringify(projected)).not.toMatch(
-      /external-private-id|private note|trainingLoad|hrZoneSeconds|effort|source|placedAt|blockPlacements|private-placement-time/i,
+      /external-private-id|private note|trainingLoad|hrZoneSeconds|effort|externalSource|sourceUpdatedAt|importedAt|placedAt|blockPlacements|private-placement-time/i,
     );
   });
 
@@ -326,6 +330,7 @@ describe("Race Crew projection", () => {
       activity_type: "long",
       distance_miles: 8,
       duration_seconds: 4200,
+      source: "intervals",
       average_heart_rate: 155,
       max_heart_rate: 176,
       manual_heart_rate: null,
@@ -339,7 +344,7 @@ describe("Race Crew projection", () => {
       build_height: 1,
     }]);
     expect(JSON.stringify(shared)).not.toMatch(
-      /placedAt|blockPlacements|load|effort|notes|source|private-placement-time/i,
+      /placedAt|blockPlacements|load|effort|notes|externalSource|external-private-id|private-placement-time/i,
     );
     expect(sharedCall?.options).toEqual({
       onConflict: "crew_id,user_id,local_run_id",
@@ -684,6 +689,29 @@ describe("Crew values stay inside what Crew can store", () => {
     expect(projected.maxHeartRate).toBeNull();
   });
 
+  /*
+   * `shared_runs_source_check` accepts exactly `manual`, `intervals` or null.
+   * A run whose stored source is neither — a provider a later build adds, or a
+   * corrupted local row — is worth a missing footnote, never a refused batch.
+   */
+  it("omits a run source the server would refuse", () => {
+    for (const bad of ["strava", "", "MANUAL", "intervals.icu"]) {
+      const [projected] = projectSharedRuns([
+        { ...base, source: bad as RunLog["source"] },
+      ]);
+      expect(projected.source, `source ${bad} must not be sent`).toBeNull();
+    }
+    const [unset] = projectSharedRuns([base]);
+    expect(unset.source).toBeNull();
+  });
+
+  it("shares both run sources the server accepts", () => {
+    for (const good of ["manual", "intervals"] as const) {
+      const [projected] = projectSharedRuns([{ ...base, source: good }]);
+      expect(projected.source, `source ${good} must be shared`).toBe(good);
+    }
+  });
+
   it("still shares a heart rate the server accepts, including the boundaries", () => {
     for (const good of [30, 142, 250]) {
       const [projected] = projectSharedRuns([{ ...base, manualHeartRate: good }]);
@@ -763,6 +791,7 @@ describe("A run Crew cannot store does not cost the rest", () => {
     activityType: "easy",
     distanceMiles: 4.12,
     durationSeconds: 2100,
+    source: "manual",
     buildRow: null, buildColumnStart: null, buildWidth: null, buildHeight: null,
     averageHeartRate: null, maxHeartRate: null, manualHeartRate: null,
     awardZone2Percent: null, awardTargetPercent: null,

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { RunActivityType } from "../domain/types";
+import type { RunActivityType, RunSource } from "../domain/types";
 import { accentColorFrom, type CrewMemberAccent } from "./memberAccent";
 import { resolveRunnerIcon, runnerIconFromSeed, type RunnerIcon } from "./runnerIcon";
 import type {
@@ -52,6 +52,17 @@ function nullableInteger(source: Row, key: string): number | null {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isInteger(parsed)) throw new Error(`Race Crew returned invalid ${key}.`);
   return parsed;
+}
+
+/**
+ * Issue #129: a row shared before `shared_runs.source` existed reports no
+ * source at all, and so does any value this build does not recognise. Both
+ * read as null here rather than throwing — where a run came from is a
+ * footnote, and a missing footnote is never worth failing the whole crew
+ * read over.
+ */
+function runSourceFrom(value: unknown): RunSource | null {
+  return value === "manual" || value === "intervals" ? value : null;
 }
 
 function roleFrom(value: unknown): CrewRole {
@@ -125,7 +136,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
+        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -204,6 +215,7 @@ export async function loadCrewDashboard(
       activityType: activityTypeFrom(item.activity_type),
       distanceMiles: requiredNumber(item, "distance_miles"),
       durationSeconds: requiredNumber(item, "duration_seconds"),
+      source: runSourceFrom(item.source),
       createdAt: requiredString(item, "created_at"),
       updatedAt: requiredString(item, "updated_at"),
       buildRow: nullableInteger(item, "build_row"),
@@ -283,6 +295,7 @@ export async function loadCrewDashboard(
     localDate: run.localDate,
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
+    source: run.source,
     buildRow: run.buildRow,
     buildColumnStart: run.buildColumnStart,
     buildWidth: run.buildWidth,
@@ -300,6 +313,7 @@ export async function loadCrewDashboard(
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     durationSeconds: run.durationSeconds,
+    source: run.source,
     createdAt: run.createdAt,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,

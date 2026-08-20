@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatCompactMiles, formatMiles } from "../../domain/distance";
+import { isManualRun } from "../../domain/runSource";
 import { Brick, type BrickFaceLabel } from "./Brick";
 import { dropMarks } from "./placementDrop";
 
@@ -33,6 +34,9 @@ function blockLabel(block: PlacedBlockData): string {
     // The visible face carries a rounded mileage at best and nothing at all on
     // a narrow brick, so the accessible name carries the real distance.
     `${formatMiles(runLog.distanceMiles)} miles`,
+    // The face's asterisk is decoration a screen reader never reaches, so the
+    // accessible name says the same thing in words.
+    ...(isManualRun(runLog) ? ["manual entry"] : []),
     workout ? `week ${workout.weekNumber}` : "extra run",
     `course ${placement.row}`,
     columns,
@@ -56,6 +60,10 @@ function blockLabel(block: PlacedBlockData): string {
  * Cross Training wears a dumbbell instead of a number for the same reason in
  * reverse: its distance is often zero (D-077), and a bare `0` reads as a
  * broken block rather than a session that never measured mileage at all.
+ *
+ * Issue #129 adds one mark and only one: an asterisk after the mileage of a
+ * run the runner typed in by hand. RACE and Cross Training show no mileage, so
+ * there is nothing for it to follow and they stay exactly as they were.
  */
 function faceLabel(block: PlacedBlockData): BrickFaceLabel | null {
   const { runLog, placement } = block;
@@ -68,6 +76,7 @@ function faceLabel(block: PlacedBlockData): BrickFaceLabel | null {
   return {
     text: formatCompactMiles(runLog.distanceMiles),
     unit: placement.width >= 3,
+    manual: isManualRun(runLog),
   };
 }
 

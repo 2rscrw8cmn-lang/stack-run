@@ -1,5 +1,6 @@
 import type { IntervalsConnection } from "../../connected/intervals";
 import { formatDurationSeconds } from "../../domain/duration";
+import { runSourceLabel } from "../../domain/runSource";
 import type { RunLog } from "../../domain/types";
 import { EFFORT_LABEL } from "../../domain/workout";
 import { SourceRunDetail } from "./SourceRunDetail";
@@ -22,6 +23,13 @@ const ELAPSED_SIGNIFICANCE_SECONDS = 30;
 export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: IntervalsConnection | string | null }) {
   const facts = sourceRunFactsFromRunLog(run);
   const imported = run.externalSource?.provider === "intervals";
+  /**
+   * Issue #129: where a run came from is stated the same way for every run,
+   * not only for the synced ones. It stays in the meta line — secondary to the
+   * result above it — because the source is context for the run, never the
+   * point of it.
+   */
+  const sourceLabel = runSourceLabel(run);
   const elapsed = facts.elapsedTimeSeconds;
   const showElapsed = elapsed !== null &&
     Math.abs(elapsed - run.durationSeconds) >= ELAPSED_SIGNIFICANCE_SECONDS;
@@ -44,7 +52,7 @@ export function RunResultDetail({ run, syncToken }: { run: RunLog; syncToken?: I
       connection={syncToken}
       meta={
         <div className="run-result-detail__meta machine-label">
-          {imported && <span>Synced via Intervals.icu</span>}
+          <span><span>Source</span><span aria-hidden="true"> · </span><strong>{sourceLabel}</strong></span>
           <span><span>Effort</span><span aria-hidden="true"> · </span><strong>{EFFORT_LABEL[run.effort]}</strong></span>
           {manualHeartRate !== null && (
             <span><span>Avg HR</span><span aria-hidden="true"> · </span><strong>{Math.round(manualHeartRate)} bpm</strong></span>

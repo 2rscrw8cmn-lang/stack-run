@@ -10,6 +10,7 @@ import type {
   BlockPlacement,
   RunActivityType,
   RunLog,
+  RunSource,
 } from "../domain/types";
 import { crewAwardMetricsByRunId, type CrewRunAwardMetrics } from "./awardMetrics";
 
@@ -19,6 +20,13 @@ export interface CrewSharedRunProjection {
   activityType: RunActivityType;
   distanceMiles: number;
   durationSeconds: number;
+  /**
+   * Issue #129: which of two words describes where the run came from, so a
+   * Crew block can mark a hand-typed run. Null means "not stated" — a run
+   * stored before the column existed — which every reader treats as manual,
+   * the same default personal STACK has always applied.
+   */
+  source: RunSource | null;
   buildRow: number | null;
   buildColumnStart: number | null;
   buildWidth: BlockPlacement["width"] | null;
@@ -122,6 +130,7 @@ export function projectSharedRun(
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     durationSeconds: run.durationSeconds,
+    source: crewSafeRunSource(run.source),
     buildRow: sharedPlacement?.buildRow ?? null,
     buildColumnStart: sharedPlacement?.buildColumnStart ?? null,
     buildWidth: sharedPlacement?.buildWidth ?? null,
@@ -179,6 +188,19 @@ function crewSafeHeartRate(value: number | null | undefined): number | null {
 function crewSafePercent(value: number | null | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return value >= 0 && value <= 100 ? value : null;
+}
+
+/**
+ * `shared_runs.source` accepts exactly the two words `personal_runs` does. A
+ * value outside that union — a provider this build has not been taught about,
+ * or a corrupted local row — is sent as null rather than failing the whole
+ * batch: an unnamed source costs a footnote, a refused upsert costs the
+ * runner every run in every crew.
+ */
+const CREW_RUN_SOURCES: readonly RunSource[] = ["manual", "intervals"];
+
+function crewSafeRunSource(value: RunSource | null | undefined): RunSource | null {
+  return value != null && CREW_RUN_SOURCES.includes(value) ? value : null;
 }
 
 /** `award_steady_seconds` is a non-negative pace-variability figure. */
@@ -419,6 +441,7 @@ function sharedRunRow(
     activity_type: run.activityType,
     distance_miles: run.distanceMiles,
     duration_seconds: run.durationSeconds,
+    source: run.source,
     average_heart_rate: run.averageHeartRate,
     max_heart_rate: run.maxHeartRate,
     manual_heart_rate: run.manualHeartRate,

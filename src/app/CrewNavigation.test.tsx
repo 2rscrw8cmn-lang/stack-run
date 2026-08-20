@@ -223,7 +223,7 @@ describe("Crew as a conditional destination", () => {
     await user.click(screen.getByRole("button", { name: "Crew" }));
     expect(screen.getByRole("button", { name: "Crew" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("heading", { level: 1, name: "OUC Race Crew" })).toBeInTheDocument();
-    expect(screen.getByText("Crew Build")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Crew Build" })).toBeInTheDocument();
   });
 
   it("introduces Crew once for a member who has not seen it", async () => {
@@ -266,7 +266,7 @@ describe("Crew as a conditional destination", () => {
     const { rerender } = render(<App />);
 
     await user.click(screen.getByRole("button", { name: "Crew" }));
-    expect(screen.getByText("Crew Build")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Crew Build" })).toBeInTheDocument();
 
     await act(async () => {
       current = noCrew;

@@ -57,6 +57,24 @@
   --zone-7: #d270ff;
 
   /*
+   * Issue #137: the four Crew Build figures, each with its own colour.
+   *
+   * The colour is a delimiter, not a meaning. Four numbers set in a row read
+   * as one long number, and the fastest way to break them apart is to give
+   * each its own rule across the top — the eye separates them before it reads
+   * a single digit. Nothing downstream should read these as a scale.
+   *
+   * They are deliberately their own tokens rather than borrowed from the
+   * activity or zone palettes: reusing `--simulation` for Runs would say a
+   * crew's runs are simulations, and reusing the zone ramp would imply these
+   * four are ordered. They are not.
+   */
+  --crew-stat-miles: #a6ff1a;
+  --crew-stat-runs: #a14cff;
+  --crew-stat-time: #2bc6d6;
+  --crew-stat-runners: #ff9f43;
+
+  /*
    * The runner-identity palette (16 options, picked in Settings). Every hue
    * sits at least ~22° from every activity color above (easy, intervals,
    * simulation, long, cross) so a member's color is never confusable with

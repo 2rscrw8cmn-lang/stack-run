@@ -7823,3 +7823,185 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .signal-card { padding: 10px 8px 10px 12px; gap: var(--space-2); }
   .signal-card__headline { font-size: 14px; }
 }
+
+/*
+ * Issue #137: the Crew page, rebuilt around the tower.
+ *
+ * The shared build used to be a widget inside a card: a lime-framed
+ * `technical-grid` section holding a `CREW BUILD` label, an oversized
+ * miles-built heading, and — inside all of that — a second lime frame around
+ * the field itself. Two borders, two grids, and the structure everybody
+ * actually came to see squeezed between them.
+ *
+ * So the outer card is gone. What is left is a stats row, one quiet frame, and
+ * a substantially larger field. The blocks are the colour on this page; the
+ * frame's job is to say where the site ends, and nothing more.
+ *
+ * Scoped to `--page` because `.crew-build` is shared with the Member Build
+ * inside Crew Profile, which is a small tower on a sheet and wants none of it.
+ */
+.crew-build--page {
+  /*
+   * A taller course is the honest way to make the build bigger: it scales the
+   * bricks and the grid together, rather than pouring more empty sky above a
+   * tower the same size as before.
+   */
+  --course-height: 34px;
+  --iso-run: 20px;
+  --iso-rise: 10px;
+  /* No card, so no card padding: the field runs to the screen's own gutter. */
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/*
+ * Four crew figures, evenly weighted — a snapshot, not a headline.
+ *
+ * Hairline dividers were not enough to break them up: four numbers set in a
+ * row at this size read as one long number, and the labels underneath were too
+ * faint to say otherwise. Each figure is now a squared-off instrument tile
+ * carrying a coloured rule across its top edge, so the row separates into four
+ * facts before a single digit is read.
+ *
+ * The rule is the whole of the colour. No icon sits beside the number: an
+ * icon would be a second thing to decode in a tile whose only job is to show
+ * one figure, and four of them would start competing with the blocks below.
+ * The tiles sit on `--data-surface-strong`, the same instrument ground Runs
+ * and the charts use, which keeps them quieter than the field they caption.
+ */
+.crew-build__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+}
+.crew-build__stat {
+  min-width: 0;
+  /* Roughly square: the tile is a panel, not a strip of text. */
+  padding: 11px 10px 9px;
+  border: 1px solid var(--border);
+  /* The coloured rule. Thick enough to register as a bar rather than an edge. */
+  border-top: 3px solid var(--crew-stat-colour);
+  border-radius: 3px;
+  background: var(--data-surface-strong);
+}
+.crew-build__stat--miles { --crew-stat-colour: var(--crew-stat-miles); }
+.crew-build__stat--runs { --crew-stat-colour: var(--crew-stat-runs); }
+.crew-build__stat--time { --crew-stat-colour: var(--crew-stat-time); }
+.crew-build__stat--runners { --crew-stat-colour: var(--crew-stat-runners); }
+.crew-build__stats dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: clamp(18px, 5.8vw, 26px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crew-build__stats dt {
+  margin-top: 6px;
+  /*
+   * The label names the figure above it, so it is legible rather than
+   * decorative: muted instead of subtle, and given room to breathe.
+   */
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+/*
+ * One border around the field, and a quiet one. The lime inset glow and the
+ * accent-mixed edge both went: at this size the frame was reading as the
+ * brightest object on the screen, which is exactly backwards.
+ */
+.crew-build--page .crew-build__stage {
+  margin-top: 10px;
+  padding: 10px 8px 10px;
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+/* The surveyor's brackets stay — they are what makes it a site rather than a
+   box — but in the frame's own colour instead of the accent's. */
+.crew-build--page .crew-build__stage::before {
+  border-top-color: var(--border-strong);
+  border-left-color: var(--border-strong);
+}
+.crew-build--page .crew-build__stage::after {
+  border-right-color: var(--border-strong);
+  border-bottom-color: var(--border-strong);
+}
+/* Placement is the one time the frame should speak: the site is live, and the
+   accent edge says so. */
+.crew-build--page[data-placing="true"] .crew-build__stage {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+/*
+ * Roughly a quarter more field than the old treatment, on top of the taller
+ * course above — the tower is the primary object on the page now, so it gets
+ * the vertical space to be one.
+ */
+.crew-build--page .crew-build__viewport {
+  max-height: min(60dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
+}
+
+/* The runners belong to the tower, so they sit against it rather than a
+   padding's distance below it. */
+.crew-build--page .crew-build__rail { margin-top: 5px; }
+.crew-build--page .crew-build__invite-note { margin-top: 4px; }
+
+@media (max-width: 340px) {
+  .crew-build--page {
+    --course-height: 28px;
+    --iso-run: 14px;
+    --iso-rise: 7px;
+  }
+  .crew-build--page .crew-build__stage { padding-inline: 6px; }
+  .crew-build__stats { gap: 3px; }
+  .crew-build__stat { padding: 8px 6px 7px; border-top-width: 2px; }
+  .crew-build__stats dt { margin-top: 4px; font-size: 8px; letter-spacing: 0.05em; }
+}
+
+@media (min-width: 620px) {
+  .crew-build--page {
+    --course-height: 40px;
+    --iso-run: 24px;
+    --iso-rise: 12px;
+  }
+  .crew-build--page .crew-build__viewport {
+    max-height: min(66dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
+  }
+  .crew-build__stats { gap: 7px; }
+  .crew-build__stat { padding: 15px 14px 13px; border-top-width: 4px; }
+  .crew-build__stats dd { font-size: 30px; }
+}
+
+/*
+ * Issue #129: the one mark a manually logged block wears.
+ *
+ * An asterisk after the mileage, in the face's own colour at a smaller size —
+ * subordinate to the number it qualifies, and never an icon, a badge, a corner
+ * treatment or a legend. A synced block is untouched, because syncing is the
+ * norm and the exception is what earns a mark.
+ */
+.placed-block__manual {
+  margin-left: -1px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+/* Where a shared run came from, under the run's identity in Crew Run Detail. */
+.crew-run-detail__source {
+  margin-top: 3px !important;
+  color: var(--text-subtle);
+}
+.crew-run-detail__source strong {
+  color: var(--text-muted);
+  font-weight: 700;
+}

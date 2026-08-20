@@ -47,3 +47,19 @@ export function formatDurationSeconds(totalSeconds: number): string {
   }
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
+
+/**
+ * A total, in hours and minutes: `14:32` is fourteen and a half hours of
+ * running, not fourteen minutes.
+ *
+ * `formatDurationSeconds` is a run's own time, where seconds matter and hours
+ * rarely appear. A crew's accumulated time is the other shape entirely — it
+ * passes a hundred hours quickly, and nobody reads the seconds — so it drops
+ * them rather than printing `142:37:15` in a stat tile the width of a word.
+ */
+export function formatTotalHoursMinutes(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  return `${hours}:${String(minutes).padStart(2, "0")}`;
+}

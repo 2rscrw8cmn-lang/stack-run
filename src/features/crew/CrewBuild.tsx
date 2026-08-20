@@ -8,6 +8,8 @@ import {
   formatMiles,
   formatMilesBuilt,
 } from "../../domain/distance";
+import { formatTotalHoursMinutes } from "../../domain/duration";
+import { isManualRun } from "../../domain/runSource";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
 import {
   CREW_AWARD_LABEL,
@@ -23,6 +25,7 @@ import {
   type CrewBuildModel,
   type CrewBuildRunBlock,
 } from "../../crew/crewBuild";
+import type { CrewBuildTotals } from "../../crew/crewTotals";
 import type { CrewBuildRun, CrewMember } from "../../crew/types";
 import { Button } from "../../components/ui/Button";
 import { Brick, type BrickFaceLabel } from "../build/Brick";
@@ -53,6 +56,8 @@ export type CrewBuildPlacementMode =
 
 interface CrewBuildProps {
   model: CrewBuildModel;
+  /** Crew-wide totals for the selected crew's Build window (issue #137). */
+  totals: CrewBuildTotals;
   members: CrewMember[];
   available: boolean;
   placement: CrewBuildPlacementMode | null;
@@ -69,6 +74,9 @@ function runBlockLabel(block: CrewBuildRunBlock): string {
     block.displayName,
     WORKOUT_TYPE_LABEL[block.activityType],
     `${formatMiles(block.distanceMiles)} miles`,
+    // The asterisk on the face is decoration a screen reader never reaches,
+    // so the accessible name says the same thing in words.
+    ...(isManualRun(block) ? ["manual entry"] : []),
     formatDateLabel(block.localDate, { month: "long", day: "numeric" }),
     ...(block.recentlyPlaced ? ["newly placed"] : []),
   ].join(", ");
@@ -85,12 +93,21 @@ function awardBlockLabel(block: Extract<CrewBuildBlock, { kind: "award" }>, memb
   ].join(", ");
 }
 
+/**
+ * The same rule Personal Build's own `faceLabel` follows, including issue
+ * #129's asterisk: a hand-typed run's mileage carries one, a synced run's does
+ * not, and RACE and Cross Training show no mileage for it to follow.
+ */
 function faceLabel(
-  block: Pick<CrewBuildRunBlock, "activityType" | "distanceMiles" | "width">,
+  block: Pick<CrewBuildRunBlock, "activityType" | "distanceMiles" | "width" | "source">,
 ): BrickFaceLabel {
   if (block.activityType === "race") return { text: "RACE", unit: false };
   if (block.activityType === "cross") return { icon: Dumbbell };
-  return { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
+  return {
+    text: formatCompactMiles(block.distanceMiles),
+    unit: block.width >= 3,
+    manual: isManualRun(block),
+  };
 }
 
 function memberPieceColor(
@@ -110,6 +127,7 @@ function awardIdentity(award: CrewAwardBlockRecord) {
 
 export function CrewBuild({
   model,
+  totals,
   members,
   available,
   placement,
@@ -168,17 +186,36 @@ export function CrewBuild({
 
   return (
     <section
-      className="crew-build technical-grid"
+      className="crew-build crew-build--page"
       data-placing={placement ? "true" : undefined}
-      aria-labelledby="crew-build-title"
+      aria-label="Crew Build"
     >
-      <div className="crew-build__lead">
-        <p id="crew-build-title" className="machine-label">Crew Build</p>
-        <p className="crew-build__miles data-value">
-          {formatMilesBuilt(model.placedMiles)}
-          <span className="machine-label">miles built</span>
-        </p>
-      </div>
+      {/*
+        * Issue #137: the tower is the page, so nothing above it competes with
+        * it. The `CREW BUILD` label went — the active Crew tab already says
+        * where you are — and the oversized miles-built heading became four
+        * even crew figures, none of them shouting.
+        */}
+      <dl className="crew-build__stats" aria-label="Crew totals">
+        <div className="crew-build__stat crew-build__stat--miles">
+          <dd className="data-value">{formatMilesBuilt(totals.miles)}</dd>
+          <dt className="machine-label">Miles</dt>
+        </div>
+        <div className="crew-build__stat crew-build__stat--runs">
+          <dd className="data-value">{totals.runs}</dd>
+          <dt className="machine-label">Runs</dt>
+        </div>
+        <div className="crew-build__stat crew-build__stat--time">
+          <dd className="data-value">{formatTotalHoursMinutes(totals.durationSeconds)}</dd>
+          <dt className="machine-label">Hours</dt>
+        </div>
+        <div className="crew-build__stat crew-build__stat--runners">
+          <dd className="data-value">{totals.runners}</dd>
+          <dt className="machine-label">
+            {totals.runners === 1 ? "Runner" : "Runners"}
+          </dt>
+        </div>
+      </dl>
 
       {available && firstReady && !placement && (
         <div className="crew-build__ready" role="status">

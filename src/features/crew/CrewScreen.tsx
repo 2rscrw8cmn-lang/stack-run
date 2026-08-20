@@ -48,6 +48,7 @@ import { crewMemberAccent } from "../../crew/memberAccent";
 import { deriveCrewMiniBuild } from "../../crew/miniBuild";
 import { viewerFirstMembers } from "../../crew/memberOrder";
 import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import { crewBuildTotals } from "../../crew/crewTotals";
 import type { CrewBuildRun } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { useCrewAwards } from "../../crew/useCrewAwards";
@@ -333,6 +334,18 @@ export function CrewScreen({
     ...crewBuild,
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
+  /*
+   * Issue #137: the four figures above the tower. `crewBuildRuns` is already
+   * the Crew-windowed set the tower itself is derived from, and passing the
+   * placed blocks alongside it keeps Miles, Runs and Time describing the
+   * structure on screen rather than the wider pool it is drawn from. Runners
+   * is the roster, so it holds steady while the other three grow.
+   */
+  const buildTotals = crewBuildTotals(
+    dashboardData.crewBuildRuns,
+    crewBuild.blocks,
+    members.length,
+  );
   const viewerReadyRuns = build.viewerReadyRuns;
   const viewerReadyAwards = build.viewerReadyAwards;
 
@@ -615,6 +628,7 @@ export function CrewScreen({
 
       <CrewBuild
         model={build}
+        totals={buildTotals}
         members={railMembers}
         available={dashboardData.sharedRunsAvailable}
         justPlacedRunId={justPlacedId}

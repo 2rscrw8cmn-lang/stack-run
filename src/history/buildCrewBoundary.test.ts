@@ -189,6 +189,7 @@ describe("Crew never sees the source mirror", () => {
           "localRunId",
           "manualHeartRate",
           "maxHeartRate",
+          "source",
         ].sort(),
       );
     }

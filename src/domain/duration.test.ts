@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDurationSeconds, parseDurationInput } from "./duration";
+import { formatDurationSeconds, formatTotalHoursMinutes, parseDurationInput } from "./duration";
 
 describe("parseDurationInput", () => {
   it("parses MM:SS", () => {
@@ -56,5 +56,33 @@ describe("formatDurationSeconds", () => {
     const seconds = parseDurationInput("1:02:03");
     expect(seconds).not.toBeNull();
     expect(formatDurationSeconds(seconds as number)).toBe("1:02:03");
+  });
+});
+
+/*
+ * A crew's accumulated running is the other shape entirely from one run's
+ * time: it passes a hundred hours quickly and nobody reads the seconds, so
+ * the stat tile above the shared tower drops them (issue #137).
+ */
+describe("formatTotalHoursMinutes", () => {
+  it("reads hours and minutes, not minutes and seconds", () => {
+    expect(formatTotalHoursMinutes(14 * 3600 + 32 * 60)).toBe("14:32");
+  });
+
+  it("pads the minutes and keeps three-digit hours whole", () => {
+    expect(formatTotalHoursMinutes(3600 + 5 * 60)).toBe("1:05");
+    expect(formatTotalHoursMinutes(142 * 3600 + 37 * 60 + 15)).toBe("142:37");
+  });
+
+  it("shows a crew that has not run yet as 0:00 rather than nothing", () => {
+    expect(formatTotalHoursMinutes(0)).toBe("0:00");
+  });
+
+  it("never prints a negative total", () => {
+    expect(formatTotalHoursMinutes(-90)).toBe("0:00");
+  });
+
+  it("drops the seconds rather than rounding a minute up", () => {
+    expect(formatTotalHoursMinutes(59 * 60 + 59)).toBe("0:59");
   });
 });
