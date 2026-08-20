@@ -9,13 +9,19 @@ import {
   formatMilesBuilt,
 } from "../../domain/distance";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
+import {
+  CREW_AWARD_LABEL,
+  crewAwardFootprint,
+  formatCrewAwardResult,
+  type CrewAwardBlockRecord,
+} from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
-import { RunnerIcon } from "./RunnerIcon";
 import {
   CREW_BUILD_MIN_VISIBLE_COURSES,
   crewBuildFootprint,
   type CrewBuildBlock,
   type CrewBuildModel,
+  type CrewBuildRunBlock,
 } from "../../crew/crewBuild";
 import type { CrewBuildRun, CrewMember } from "../../crew/types";
 import { Button } from "../../components/ui/Button";
@@ -24,12 +30,12 @@ import { LandingSlot } from "../build/LandingSlot";
 import { PlacementBar } from "../build/PlacementBar";
 import { dropMarks, placementImpact } from "../build/placementDrop";
 import { useColumnDragPlacement } from "../build/useColumnDragPlacement";
+import { AwardBrick } from "./AwardBrick";
+import { RunnerIcon } from "./RunnerIcon";
 
 const MAX_VISIBLE_COURSES = 14;
 
-interface CrewBuildPlacementMode {
-  run: CrewBuildRun;
-  /** Column-only gravity landings, exactly like Personal Build's. */
+interface PlacementBase {
   options: PlacementOption[];
   candidate: PlacementOption | null;
   pending: boolean;
@@ -41,24 +47,24 @@ interface CrewBuildPlacementMode {
   onCancel: () => void;
 }
 
+export type CrewBuildPlacementMode =
+  | (PlacementBase & { kind: "run"; run: CrewBuildRun })
+  | (PlacementBase & { kind: "award"; award: CrewAwardBlockRecord; member: CrewMember });
+
 interface CrewBuildProps {
   model: CrewBuildModel;
   members: CrewMember[];
   available: boolean;
   placement: CrewBuildPlacementMode | null;
-  /**
-   * The contribution this viewer just placed, while its landing plays. Only
-   * an intentional placement sets it: a refresh or a fresh load of the same
-   * tower brings every block back already standing (issue #76).
-   */
   justPlacedRunId?: string | null;
+  justPlacedAwardId?: string | null;
   onStartReady: () => void;
   onSelectRun: (runId: string) => void;
-  /** The member rail is one of Crew Profile's two front doors (issue #120). */
+  onSelectAward: (awardId: string) => void;
   onSelectMember: (userId: string) => void;
 }
 
-function blockLabel(block: CrewBuildBlock): string {
+function runBlockLabel(block: CrewBuildRunBlock): string {
   return [
     block.displayName,
     WORKOUT_TYPE_LABEL[block.activityType],
@@ -68,17 +74,25 @@ function blockLabel(block: CrewBuildBlock): string {
   ].join(", ");
 }
 
-/** Same convention as Personal Build's brick face: mileage, RACE, or — for
- * Cross Training, which is often distanceless — a dumbbell instead of a `0`. */
+function awardBlockLabel(block: Extract<CrewBuildBlock, { kind: "award" }>, member: CrewMember | null): string {
+  return [
+    member?.displayName ?? "Crew member",
+    CREW_AWARD_LABEL[block.awardType],
+    formatCrewAwardResult(block.awardType, block.resultValue),
+    `week of ${formatDateLabel(block.weekStart, { month: "long", day: "numeric" })}`,
+    "zero-mile award block",
+    ...(block.recentlyPlaced ? ["newly placed"] : []),
+  ].join(", ");
+}
+
 function faceLabel(
-  block: Pick<CrewBuildBlock, "activityType" | "distanceMiles" | "width">,
+  block: Pick<CrewBuildRunBlock, "activityType" | "distanceMiles" | "width">,
 ): BrickFaceLabel {
   if (block.activityType === "race") return { text: "RACE", unit: false };
   if (block.activityType === "cross") return { icon: Dumbbell };
   return { text: formatCompactMiles(block.distanceMiles), unit: block.width >= 3 };
 }
 
-/** The CSS custom property reference for a member's stable block colour. */
 function memberPieceColor(
   userId: string,
   accentColor: Parameters<typeof crewMemberAccent>[1],
@@ -90,63 +104,48 @@ function runIdentity(run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | 
   return `${WORKOUT_TYPE_LABEL[run.activityType]} · ${formatMiles(run.distanceMiles)} MI · ${formatDateLabel(run.localDate, { month: "short", day: "numeric" })}`;
 }
 
-/**
- * The shared tower and the runner-owned READY interaction that builds it.
- *
- * Reuses Personal Build's brick primitive (`Brick`), landing slot, placement
- * bar and column-drag interaction, per issue #65 — Crew Build is a Crew-
- * scoped skin over the same construction language, not a second renderer.
- * Ownership replaces activity type as the block's colour; the geometry
- * (skyline, gravity, face culling, voids) is computed upstream in
- * `deriveCrewBuild` with the identical helpers Personal Build's view model
- * uses.
- */
+function awardIdentity(award: CrewAwardBlockRecord) {
+  return `${CREW_AWARD_LABEL[award.awardType]} · ${formatCrewAwardResult(award.awardType, award.resultValue)}`;
+}
+
 export function CrewBuild({
   model,
   members,
   available,
   placement,
   justPlacedRunId = null,
+  justPlacedAwardId = null,
   onStartReady,
   onSelectRun,
+  onSelectAward,
   onSelectMember,
 }: CrewBuildProps) {
   const towerRef = useRef<HTMLUListElement>(null);
   const skylineRef = useRef<HTMLDivElement>(null);
 
-  const placementFootprint = placement ? crewBuildFootprint(placement.run) : null;
+  const placementFootprint = placement
+    ? placement.kind === "run"
+      ? crewBuildFootprint(placement.run)
+      : crewAwardFootprint(placement.award.awardType)
+    : null;
   const candidate = placement?.candidate ?? null;
-
-  /*
-   * How many courses the *grid* draws — the tower's own height, and nothing
-   * more, exactly like Personal Build. The tall field comes from the
-   * viewport below, not from padding this out with empty rows: inflating the
-   * grid would push the skyline anchor up into open air, and the scroll that
-   * frames it would then carry the built tower off the bottom of the field.
-   *
-   * While placing it grows by the hovering block's height. That bound is
-   * deliberately independent of which column is hovered — a landing can
-   * never rest higher than the tower's own skyline, so `courses + height`
-   * covers every option the drag can reach. Deriving it from the *current*
-   * candidate instead resized the grid on each column change, which
-   * re-flowed every block's row and slid the tower vertically under the
-   * finger mid-drag.
-   */
   const drawnCourses = Math.max(
     1,
     model.courses + (placement ? (placementFootprint?.height ?? 1) : 0),
   );
-  /* The field: how much site the stage holds open, tower plus sky. */
   const visibleCourses = Math.min(
     MAX_VISIBLE_COURSES,
     Math.max(CREW_BUILD_MIN_VISIBLE_COURSES, drawnCourses + 1),
   );
-  // The block that is landing right now, if it is one of ours and still in
-  // the tower — the shared site response reads its footprint for weight.
-  const justPlaced =
-    model.blocks.find((block) => block.id === justPlacedRunId) ?? null;
+  const justPlacedId = justPlacedAwardId ?? justPlacedRunId;
+  const justPlaced = model.blocks.find((block) => block.id === justPlacedId) ?? null;
   const firstReady = model.viewerReadyRuns[0] ?? null;
-  const contributionCount = model.placedCount + model.readyCount;
+  const contributionCount = model.runCount + model.awardCount;
+  const placementPieceColor = placement
+    ? placement.kind === "run"
+      ? memberPieceColor(placement.run.userId, placement.run.accentColor)
+      : "#171d21"
+    : "#171d21";
 
   const { grab, trackDrag, release, cancelDrag } = useColumnDragPlacement({
     containerRef: towerRef,
@@ -158,20 +157,9 @@ export function CrewBuild({
     onCommit: () => placement?.onConfirm(),
   });
 
-  /*
-   * Frame the top of the tower when placement opens.
-   *
-   * Only when it opens: Crew's field is its own scroll container, so
-   * re-running this on every candidate change yanked the viewport (and the
-   * page under it) sideways-to-vertically on every column the drag crossed.
-   * The grid is already tall enough to show any landing, so there is nothing
-   * to chase once the block is in hand.
-   */
   const isPlacing = placement !== null;
   useEffect(() => {
-    if (isPlacing) {
-      skylineRef.current?.scrollIntoView({ block: "center" });
-    }
+    if (isPlacing) skylineRef.current?.scrollIntoView({ block: "center" });
   }, [isPlacing]);
 
   const stageStyle = {
@@ -207,9 +195,13 @@ export function CrewBuild({
 
       {placement && (
         <div className="crew-build__placement-lead">
-          <p className="machine-label">Place your block</p>
-          <p className="data-value">{runIdentity(placement.run)}</p>
-          <p>Drag sideways or tap a column. Your block snaps to the eight-column Build and lands where gravity puts it.</p>
+          <p className="machine-label">
+            {placement.kind === "award" ? "Place your Special Block" : "Place your block"}
+          </p>
+          <p className="data-value">
+            {placement.kind === "run" ? runIdentity(placement.run) : awardIdentity(placement.award)}
+          </p>
+          <p>Drag sideways or tap a column. The block lands where gravity puts it.</p>
         </div>
       )}
 
@@ -226,11 +218,6 @@ export function CrewBuild({
           <div className="crew-build__viewport">
             <div className="crew-build__sky" aria-hidden="true" />
             <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
-            {/*
-              `built-tower` is Personal Build's own grid class, not a lookalike:
-              it carries the shared course height and the depth padding the 3D
-              faces need to overhang into (issue #65).
-            */}
             <ul
               ref={towerRef}
               className="built-tower crew-build__tower"
@@ -251,70 +238,83 @@ export function CrewBuild({
                   key={`void-${cell.column}:${cell.row}`}
                   className="built-tower__void"
                   aria-hidden="true"
-                  style={
-                    {
-                      gridColumn: cell.column,
-                      gridRow: drawnCourses - cell.row,
-                    } as CSSProperties
-                  }
+                  style={{ gridColumn: cell.column, gridRow: drawnCourses - cell.row } as CSSProperties}
                 />
               ))}
 
-              {model.blocks.map((block) => (
-                <li
-                  key={block.id}
-                  className="placed-block"
-                  data-type={block.activityType}
-                  data-row={block.row}
-                  data-column-start={block.columnStart}
-                  data-member-color={crewMemberAccent(block.userId, block.accentColor)}
-                  data-recent={block.recentlyPlaced || undefined}
-                  // Personal Build's landing marks, on Personal Build's block
-                  // class: the shared Build language, not a Crew copy of it.
-                  {...dropMarks(block.id === justPlacedRunId, block)}
-                  style={
-                    {
-                      gridColumn: `${block.columnStart} / span ${block.width}`,
-                      gridRow: `${drawnCourses - block.row - block.height + 1} / span ${block.height}`,
-                      zIndex: block.depth,
-                    } as CSSProperties
-                  }
-                >
-                  <button
-                    type="button"
-                    className="placed-block__button"
-                    onClick={() => onSelectRun(block.id)}
+              {model.blocks.map((block) => {
+                const member = members.find((item) => item.userId === block.userId) ?? null;
+                const accent = member
+                  ? crewMemberAccent(member.userId, member.accentColor)
+                  : crewMemberAccent(block.userId, block.kind === "run" ? block.accentColor : null);
+                const isJustPlaced = block.id === justPlacedId;
+                return (
+                  <li
+                    key={`${block.kind}-${block.id}`}
+                    className="placed-block"
+                    data-type={block.kind === "run" ? block.activityType : undefined}
+                    data-award={block.kind === "award" ? block.awardType : undefined}
+                    data-row={block.row}
+                    data-column-start={block.columnStart}
+                    data-member-color={accent}
+                    data-recent={block.recentlyPlaced || undefined}
+                    {...dropMarks(isJustPlaced, block)}
+                    style={
+                      {
+                        gridColumn: `${block.columnStart} / span ${block.width}`,
+                        gridRow: `${drawnCourses - block.row - block.height + 1} / span ${block.height}`,
+                        zIndex: block.depth,
+                      } as CSSProperties
+                    }
                   >
-                    <span className="visually-hidden">{blockLabel(block)}</span>
-                    <Brick
-                      pieceColor={memberPieceColor(block.userId, block.accentColor)}
-                      label={faceLabel(block)}
-                      topFace={block.topFace}
-                      rightFace={block.rightFace}
-                    />
-                  </button>
-                </li>
-              ))}
+                    <button
+                      type="button"
+                      className="placed-block__button"
+                      onClick={() => block.kind === "run" ? onSelectRun(block.id) : onSelectAward(block.id)}
+                    >
+                      <span className="visually-hidden">
+                        {block.kind === "run" ? runBlockLabel(block) : awardBlockLabel(block, member)}
+                      </span>
+                      {block.kind === "run" ? (
+                        <Brick
+                          pieceColor={memberPieceColor(block.userId, block.accentColor)}
+                          label={faceLabel(block)}
+                          topFace={block.topFace}
+                          rightFace={block.rightFace}
+                        />
+                      ) : (
+                        <AwardBrick
+                          awardType={block.awardType}
+                          pieceColor={memberPieceColor(block.userId, member?.accentColor ?? null)}
+                          topFace={block.topFace}
+                          rightFace={block.rightFace}
+                        />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
 
-              {placement && placementFootprint &&
-                placement.options.map((option) => (
-                  <LandingSlot
-                    key={option.columnStart}
-                    option={option}
-                    width={placementFootprint.width}
-                    height={placementFootprint.height}
-                    pieceColor={memberPieceColor(placement.run.userId, placement.run.accentColor)}
-                    courses={drawnCourses}
-                    isChosen={option.columnStart === candidate?.columnStart}
-                    blockDescription={`${WORKOUT_TYPE_LABEL[placement.run.activityType]} block`}
-                    onChoose={placement.onChoose}
-                    onGrab={grab}
-                  />
-                ))}
+              {placement && placementFootprint && placement.options.map((option) => (
+                <LandingSlot
+                  key={option.columnStart}
+                  option={option}
+                  width={placementFootprint.width}
+                  height={placementFootprint.height}
+                  pieceColor={placementPieceColor}
+                  courses={drawnCourses}
+                  isChosen={option.columnStart === candidate?.columnStart}
+                  blockDescription={placement.kind === "run"
+                    ? `${WORKOUT_TYPE_LABEL[placement.run.activityType]} block`
+                    : `${CREW_AWARD_LABEL[placement.award.awardType]} award block`}
+                  onChoose={placement.onChoose}
+                  onGrab={grab}
+                />
+              ))}
             </ul>
           </div>
           <div
-            key={justPlaced ? `ground-${justPlaced.id}` : "ground"}
+            key={justPlaced ? `ground-${justPlaced.kind}-${justPlaced.id}` : "ground"}
             className="crew-build__ground"
             aria-hidden="true"
             data-impact={justPlaced ? placementImpact(justPlaced) : undefined}
@@ -322,7 +322,7 @@ export function CrewBuild({
           {!placement && (model.blocks.length === 0 || drawnCourses > MAX_VISIBLE_COURSES) && (
             <p className="crew-build__caption">
               {model.blocks.length === 0
-                ? `${model.readyCount} ${model.readyCount === 1 ? "block is" : "blocks are"} earned and ready to build.`
+                ? `${model.readyCount + model.readyAwardCount} blocks are earned and ready to build.`
                 : "Scroll the field for more courses."}
             </p>
           )}
@@ -331,19 +331,18 @@ export function CrewBuild({
 
       {placement && (
         <PlacementBar
-          pieceColor={memberPieceColor(placement.run.userId, placement.run.accentColor)}
+          pieceColor={placementPieceColor}
           width={placementFootprint?.width ?? 1}
           height={placementFootprint?.height ?? 1}
-          title={`${placement.run.crewBuildRow === null ? "Place" : "Move"} ${WORKOUT_TYPE_LABEL[placement.run.activityType]}`}
+          title={placement.kind === "run"
+            ? `${placement.run.crewBuildRow === null ? "Place" : "Move"} ${WORKOUT_TYPE_LABEL[placement.run.activityType]}`
+            : `${placement.award.crewBuildRow === null ? "Place" : "Move"} ${CREW_AWARD_LABEL[placement.award.awardType]}`}
           positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
           canStepBack={
-            !!candidate &&
-            placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
+            !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
           }
           canStepForward={
-            !!candidate &&
-            placement.options.findIndex((option) => option.columnStart === candidate.columnStart) <
-              placement.options.length - 1
+            !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) < placement.options.length - 1
           }
           onStep={placement.onStep}
           onAutoPlace={placement.onAutoPlace}
@@ -355,17 +354,9 @@ export function CrewBuild({
       )}
 
       {available && model.truncated && (
-        <p className="crew-build__notice" role="status">
-          Showing {model.runCount} shared runs.
-        </p>
+        <p className="crew-build__notice" role="status">Showing {model.runCount} shared runs.</p>
       )}
 
-      {/*
-        The runners, as a single icon-only row (issue #120). A named legend
-        wrapped onto a second and third line as the crew grew, and every line
-        it took came out of the tower above it. Names live one tap away in
-        Crew Profile — and, permanently, in each icon's accessible name.
-      */}
       {members.length > 0 && (
         <ul className="crew-build__rail" aria-label="Crew Build runners">
           {members.map((member) => (

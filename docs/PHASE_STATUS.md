@@ -731,3 +731,37 @@ Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 Other watch/services may skip HealthFit when they already sync directly to Intervals.
 
 The friend-facing explanation is controlled by `docs/RUN_DATA_SETUP.md`.
+
+
+## Crew Special Blocks — implementation review
+
+**Status:** Implemented and rebased onto `main` after D-079; authorized by D-080.
+
+Implemented scope:
+- four standard weekly awards: Most Miles, Best Zone 2, Fastest Avg. Pace, Most Runs;
+- one weekly rotating Feature award: Long Haul / Steady / On Target / Level Up;
+- winner-owned zero-mile award persistence and READY placement;
+- approved graphite award artwork with runner identity and award-specific glyph/color;
+- winner-only placement prompt and award detail/move flow;
+- mixed run/award collision and support in the authoritative Crew Build RPCs;
+- run-only Miles Built accounting;
+- RLS and winner-only placement;
+- derived-scalar award projection without raw HR-zone, workout-target, route, credential, or personal-history disclosure.
+
+Rollout is forward-only: `crews.awards_start_date` floors finalization at the Crew's
+creation date (existing Crews backfilled to the rollout date), so no member inherits a
+backlog of READY blocks and no week is awarded on evidence that was never recorded. The
+migration reads `current_date` at apply time, so it must ship with the client.
+
+Deliberately out of scope: weekly standings. The finalizer is the only authority on
+who won a week, so the client carries no mirror of the ranking logic and Crew shows
+the winner's placement prompt rather than a leaderboard. The temporary preview-only
+QA harness that accompanied the first draft is removed; `supabase/tests/0021_crew_special_blocks.sql`
+is the standing coverage.
+
+Award geometry binds to D-079's two-argument `crew_build_height(activity_type,
+duration_seconds)`, so `20260819025500_crew_special_blocks.sql` must stay behind
+`20260818140000_cross_training_crew_duration_height.sql` in timestamp order.
+
+Known gap: `Steady` has no verified within-run pace-variability source, so one week in
+four currently produces no Feature award. Recorded rather than faked — see D-080.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CrewMember } from "./types";
 import {
+  awardsWonByUserId,
   comparisonBarPercent,
   comparisonBest,
   formatComparisonReading,
@@ -25,6 +26,7 @@ function summary(userId: string, weeklyMiles: number): ComparisonSummary {
     consistencyDue: 0,
     milesBuilt: weeklyMiles,
     avgPaceSeconds: null,
+    awardsWon28d: 0,
     updatedAt: "2026-08-10T00:00:00Z",
   };
 }
@@ -92,5 +94,54 @@ describe("Crew comparisons", () => {
       detail: null,
     });
     expect(formatComparisonReading("avg-pace", paced("b", null)).value).toBe("—");
+  });
+
+  it("pluralizes the Awards reading only above one", () => {
+    expect(formatComparisonReading("awards-28d", { ...summary("a", 0), awardsWon28d: 1 })).toEqual({
+      value: "1",
+      detail: "AWARD",
+    });
+    expect(formatComparisonReading("awards-28d", { ...summary("a", 0), awardsWon28d: 3 })).toEqual({
+      value: "3",
+      detail: "AWARDS",
+    });
+  });
+
+  it("ranks members with more trailing Awards ahead of fewer", () => {
+    const rows = orderedComparisonRows("awards-28d", members, [
+      { ...summary("a", 0), awardsWon28d: 1 },
+      { ...summary("b", 0), awardsWon28d: 3 },
+      { ...summary("c", 0), awardsWon28d: 0 },
+    ]);
+    expect(rows.map((row) => row.member.userId)).toEqual(["b", "a", "c"]);
+  });
+
+  describe("awardsWonByUserId", () => {
+    const today = "2026-08-19";
+
+    it("counts each award once per winner inside the trailing 28 days", () => {
+      const counts = awardsWonByUserId(
+        [
+          { winnerUserId: "a", weekStart: "2026-08-10" },
+          { winnerUserId: "a", weekStart: "2026-08-03" },
+          { winnerUserId: "b", weekStart: "2026-08-17" },
+        ],
+        today,
+      );
+      expect(counts.get("a")).toBe(2);
+      expect(counts.get("b")).toBe(1);
+    });
+
+    it("excludes a week that starts before the trailing window", () => {
+      // The window covers the 28 days up to and including today, so it opens on 2026-07-23.
+      const counts = awardsWonByUserId(
+        [
+          { winnerUserId: "a", weekStart: "2026-07-23" },
+          { winnerUserId: "a", weekStart: "2026-07-22" },
+        ],
+        today,
+      );
+      expect(counts.get("a")).toBe(1);
+    });
   });
 });

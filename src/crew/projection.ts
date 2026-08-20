@@ -11,6 +11,7 @@ import type {
   RunActivityType,
   RunLog,
 } from "../domain/types";
+import { crewAwardMetricsByRunId, type CrewRunAwardMetrics } from "./awardMetrics";
 
 export interface CrewSharedRunProjection {
   localRunId: string;
@@ -26,6 +27,15 @@ export interface CrewSharedRunProjection {
   averageHeartRate: number | null;
   maxHeartRate: number | null;
   manualHeartRate: number | null;
+  /**
+   * Derived award scores, per D-080. Each is a single scalar computed on this
+   * device from data that never leaves it; null means "not derivable", which is
+   * also what `Steady` always is until a verified variability source exists.
+   */
+  awardZone2Percent: number | null;
+  awardTargetPercent: number | null;
+  awardLevelUpPercent: number | null;
+  awardSteadySeconds: number | null;
 }
 
 export interface CrewMemberSummaryProjection {
@@ -103,6 +113,7 @@ function safeSharedPlacement(
 export function projectSharedRun(
   run: RunLog,
   placement?: BlockPlacement,
+  awardMetrics?: CrewRunAwardMetrics,
 ): CrewSharedRunProjection {
   const sharedPlacement = safeSharedPlacement(run, placement);
   return {
@@ -118,6 +129,10 @@ export function projectSharedRun(
     averageHeartRate: run.importedMetrics?.averageHeartRate ?? null,
     maxHeartRate: run.importedMetrics?.maxHeartRate ?? null,
     manualHeartRate: run.manualHeartRate ?? null,
+    awardZone2Percent: awardMetrics?.zone2Percent ?? null,
+    awardTargetPercent: awardMetrics?.targetPercent ?? null,
+    awardLevelUpPercent: awardMetrics?.levelUpPercent ?? null,
+    awardSteadySeconds: awardMetrics?.steadySeconds ?? null,
   };
 }
 
@@ -132,11 +147,34 @@ export function projectSharedRun(
 export function projectSharedRuns(
   runLogs: readonly RunLog[],
   placements: readonly BlockPlacement[] = [],
+  awardMetrics?: ReadonlyMap<string, CrewRunAwardMetrics>,
 ): CrewSharedRunProjection[] {
   const placementsByRunId = new Map(
     placements.map((placement) => [placement.runLogId, placement] as const),
   );
-  return runLogs.map((run) => projectSharedRun(run, placementsByRunId.get(run.id)));
+  return runLogs.map((run) =>
+    projectSharedRun(run, placementsByRunId.get(run.id), awardMetrics?.get(run.id)),
+  );
+}
+
+/**
+ * Award scores ride the ordinary projection because that upload is the only one
+ * a runner is guaranteed to make. They were previously published by their own
+ * RPC on the Crew screen, so a runner who logged runs all week but never opened
+ * Crew had nulls when the week closed — and the finalizer freezes its answer.
+ *
+ * Deriving them needs the whole state, not one run: the plan supplies each run's
+ * distance target, and Level Up measures a run against the runner's own trailing
+ * baseline. So they are computed once per projection rather than per run.
+ */
+export function projectSharedRunsFromState(
+  state: Pick<AppState, "plan" | "runLogs" | "blockPlacements">,
+): CrewSharedRunProjection[] {
+  return projectSharedRuns(
+    state.runLogs,
+    state.blockPlacements,
+    crewAwardMetricsByRunId(state),
+  );
 }
 
 export function projectMemberSummary(
@@ -213,7 +251,10 @@ export function projectionFingerprint(
 ): string {
   return JSON.stringify({
     buildStartDate,
-    runs: projectSharedRuns(state.runLogs, state.blockPlacements),
+    // Award scores are part of the fingerprint, so a device that has not yet
+    // published them re-syncs once and backfills rather than waiting for an
+    // unrelated edit.
+    runs: projectSharedRunsFromState(state),
     summary: projectMemberSummary(state, today, buildStartDate),
   });
 }
@@ -329,7 +370,7 @@ export async function syncCrewProjection(
     authoritativeEmpty?: boolean;
   },
 ): Promise<void> {
-  const runs = projectSharedRuns(input.state.runLogs, input.state.blockPlacements);
+  const runs = projectSharedRunsFromState(input.state);
   if (runs.length > 0) {
     const { error } = await client.from("shared_runs").upsert(
       runs.map((run) => ({
@@ -343,6 +384,10 @@ export async function syncCrewProjection(
         average_heart_rate: run.averageHeartRate,
         max_heart_rate: run.maxHeartRate,
         manual_heart_rate: run.manualHeartRate,
+        award_zone2_percent: run.awardZone2Percent,
+        award_target_percent: run.awardTargetPercent,
+        award_level_up_percent: run.awardLevelUpPercent,
+        award_steady_seconds: run.awardSteadySeconds,
         ...(run.buildRow === null || run.buildColumnStart === null
           ? {}
           : {

@@ -16,6 +16,10 @@ import crewTypeMigration from "../../supabase/migrations/20260812220000_crew_typ
 import crewTypeVerification from "../../supabase/tests/0011_crew_type_run_club.sql?raw";
 import identityMigration from "../../supabase/migrations/20260814120000_crew_contribution_identity.sql?raw";
 import identityVerification from "../../supabase/tests/0013_crew_contribution_identity.sql?raw";
+import specialBlocksMigration from "../../supabase/migrations/20260819025500_crew_special_blocks.sql?raw";
+import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
+import awardStartMigration from "../../supabase/migrations/20260820120000_crew_award_start_date.sql?raw";
+import awardProjectionMigration from "../../supabase/migrations/20260820130000_crew_award_metrics_on_projection.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -385,5 +389,147 @@ describe("Crew contribution identity SQL", () => {
       /another runner reconciliation touched these contributions/i,
     );
     expect(identityVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew Special Blocks SQL (D-080)", () => {
+  // This migration redefines place_crew_build_block, so it silently owns the
+  // run-geometry contract for every deployment after it. A one-argument
+  // crew_build_height() call here would compile, run, and quietly undo D-079's
+  // duration-aware Cross Training height in collision and support checks.
+  it("reads run height through D-079's duration-aware signature everywhere", () => {
+    const calls = specialBlocksMigration.match(/crew_build_height\([^)]*\)/gi) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toMatch(/crew_build_height\([^,)]+,[^)]+\)/i);
+    }
+  });
+
+  it("keeps D-071's Build-window guard when it redefines run placement", () => {
+    expect(specialBlocksMigration).toMatch(
+      /create or replace function public\.place_crew_build_block/i,
+    );
+    expect(specialBlocksMigration).toMatch(
+      /is_crew_run_in_build_window\(v_run\.crew_id, v_run\.local_date\)[\s\S]*?crew_build_placement_before_window/i,
+    );
+  });
+
+  it("re-checks the locked row before trusting its ownership guards", () => {
+    // SELECT ... INTO leaves the record all-NULL when the row is gone, which
+    // makes every <> comparison NULL rather than true, so the guards below it
+    // pass and the RPC silently no-ops.
+    const locks = specialBlocksMigration.match(/for update;/gi) ?? [];
+    const guarded = specialBlocksMigration.match(
+      /for update;\s*if not found then raise exception/gi,
+    ) ?? [];
+    expect(locks).toHaveLength(2);
+    expect(guarded).toHaveLength(locks.length);
+  });
+
+  it("gives award rows RLS with no direct client write path", () => {
+    expect(specialBlocksMigration).toMatch(
+      /alter table public\.crew_award_blocks enable row level security/i,
+    );
+    expect(specialBlocksMigration).toMatch(
+      /create policy crew_award_blocks_member_select[\s\S]*?using \(public\.is_crew_member\(crew_id\)\)/i,
+    );
+    for (const write of ["insert", "update", "delete"]) {
+      expect(specialBlocksMigration).not.toMatch(
+        new RegExp(`create policy [a-z_]+\\s+on public\\.crew_award_blocks\\s+for ${write}`, "i"),
+      );
+    }
+  });
+
+  it("ships no temporary QA fixture routine", () => {
+    expect(specialBlocksMigration).not.toMatch(/qa_seed|qa_clear|test club/i);
+    expect(specialBlocksVerification).not.toMatch(/qa_seed|qa_clear|test club/i);
+  });
+
+  it("ships transactional verification of finalization, privacy and mixed support", () => {
+    expect(specialBlocksVerification).toMatch(/sync_crew_award_metrics/i);
+    expect(specialBlocksVerification).toMatch(/mixed support failure/i);
+    expect(specialBlocksVerification).toMatch(/mixed collision failure/i);
+    expect(specialBlocksVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew Special Blocks roll out forward (D-080)", () => {
+  it("gives every Crew a floor, defaulted to the day it starts awarding", () => {
+    expect(awardStartMigration).toMatch(
+      /alter table public\.crews\s+add column if not exists awards_start_date date/i,
+    );
+    // Existing Crews are backfilled to the migration's own day, so a Crew that
+    // has been running for months starts clean rather than minting a block for
+    // every week it already existed.
+    expect(awardStartMigration).toMatch(
+      /update public\.crews\s+set awards_start_date = current_date\s+where awards_start_date is null/i,
+    );
+    expect(awardStartMigration).toMatch(/alter column awards_start_date set default current_date/i);
+    expect(awardStartMigration).toMatch(/alter column awards_start_date set not null/i);
+  });
+
+  it("starts finalization at the later of the Build start and that floor", () => {
+    expect(awardStartMigration).toMatch(
+      /create or replace function public\.finalize_crew_awards/i,
+    );
+    // greatest() of the two week starts, with the floor rounded up to its
+    // first Monday — never a bare build_start_date week again.
+    expect(awardStartMigration).toMatch(
+      /v_week := greatest\([\s\S]*?v_build_start[\s\S]*?v_awards_start[\s\S]*?\)/i,
+    );
+    expect(awardStartMigration).not.toMatch(
+      /v_week := v_build_start - \(extract\(isodow from v_build_start\)/i,
+    );
+  });
+
+  it("verifies the floor holds before it opens it", () => {
+    expect(specialBlocksVerification).toMatch(
+      /award start date failure: a week before awards_start_date was finalized/i,
+    );
+    expect(specialBlocksVerification).toMatch(
+      /update public\.crews\s+set awards_start_date = current_date - 21/i,
+    );
+  });
+});
+
+describe("Award scores ride the projection upload (D-080)", () => {
+  const AWARD_COLUMNS = [
+    "award_zone2_percent",
+    "award_target_percent",
+    "award_level_up_percent",
+    "award_steady_seconds",
+  ];
+
+  it("grants the projection upsert update on every award column", () => {
+    // shared_runs UPDATE is column-scoped (20260813150000), so the ordinary
+    // upsert silently cannot write a column that is missing from this grant.
+    const grant = awardProjectionMigration.match(
+      /grant update \(([\s\S]*?)\)\s*on public\.shared_runs to authenticated/i,
+    );
+    expect(grant, "no column grant found").not.toBeNull();
+    for (const column of AWARD_COLUMNS) {
+      expect(grant?.[1], `award column not granted: ${column}`).toContain(column);
+    }
+  });
+
+  it("adds to the existing column grant rather than reissuing it", () => {
+    // GRANT is additive; a bare `revoke update on table` here would strip the
+    // run facts and heart-rate columns granted by earlier migrations.
+    expect(awardProjectionMigration).not.toMatch(
+      /revoke update on table public\.shared_runs/i,
+    );
+  });
+
+  it("leaves the finalizer and its freeze untouched", () => {
+    // The header explains the bug, so match statements rather than words: this
+    // migration may describe finalize_crew_awards but must not redefine it, and
+    // must not touch the award rows or their on-conflict freeze.
+    const statements = awardProjectionMigration
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(statements).not.toMatch(/create or replace function|drop function/i);
+    expect(statements).not.toMatch(/finalize_crew_awards|crew_award_blocks/i);
+    expect(statements).not.toMatch(/on conflict/i);
   });
 });

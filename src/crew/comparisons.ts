@@ -1,3 +1,4 @@
+import { addDaysToLocalDate, compareLocalDates } from "../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../domain/distance";
 import { formatPaceSeconds } from "../domain/runs";
 import type { CrewMember, CrewMemberSummary } from "./types";
@@ -7,16 +8,20 @@ export type ComparisonMetric =
   | "weekly-miles"
   | "longest-run"
   | "avg-pace"
-  | "miles-built";
+  | "miles-built"
+  | "awards-28d";
 
 /**
- * The raw synced summary plus Avg Pace, computed by the screen from actual
- * shared runs rather than a training plan — which is why the same four
- * metrics now serve a Race Crew and a Run Club alike (issue #120).
+ * The raw synced summary plus Avg Pace and a trailing award count, computed
+ * by the screen from actual shared runs and award blocks rather than a
+ * training plan — which is why the same metrics now serve a Race Crew and a
+ * Run Club alike (issue #120).
  */
 export interface ComparisonSummary extends CrewMemberSummary {
   /** Trailing-window seconds per mile, or null with no eligible running. */
   avgPaceSeconds: number | null;
+  /** Special Blocks won in the trailing 28 days. */
+  awardsWon28d: number;
 }
 
 export interface ComparisonRow {
@@ -37,6 +42,7 @@ export function comparisonValue(
   if (metric === "weekly-miles") return summary.weeklyMiles;
   if (metric === "longest-run") return summary.longestRun28dMiles;
   if (metric === "miles-built") return summary.milesBuilt;
+  if (metric === "awards-28d") return summary.awardsWon28d;
   return summary.avgPaceSeconds;
 }
 
@@ -92,6 +98,9 @@ export function formatComparisonReading(
   if (metric === "avg-pace") {
     return { value: formatPaceSeconds(value), detail: null };
   }
+  if (metric === "awards-28d") {
+    return { value: String(value), detail: value === 1 ? "AWARD" : "AWARDS" };
+  }
   return {
     value: `${metric === "miles-built" ? formatMilesBuilt(value) : formatMiles(value)} MI`,
     detail: null,
@@ -100,6 +109,26 @@ export function formatComparisonReading(
 
 /** The window Avg Pace is measured over, stated once for every caller. */
 export const AVG_PACE_WINDOW_LABEL = `${AVG_PACE_WINDOW}D`;
+
+export const AWARDS_WINDOW_DAYS = 28;
+
+/**
+ * Special Blocks won per member in the trailing window, counting the week a
+ * block was won rather than when it was placed — a runner who has not
+ * gotten around to placing a recent win still shows it here.
+ */
+export function awardsWonByUserId(
+  awards: readonly { winnerUserId: string; weekStart: string }[],
+  today: string,
+): Map<string, number> {
+  const windowStart = addDaysToLocalDate(today, -(AWARDS_WINDOW_DAYS - 1));
+  const counts = new Map<string, number>();
+  for (const award of awards) {
+    if (compareLocalDates(award.weekStart, windowStart) < 0) continue;
+    counts.set(award.winnerUserId, (counts.get(award.winnerUserId) ?? 0) + 1);
+  }
+  return counts;
+}
 
 /**
  * Best factual order first; equal values remain in membership order, and a
