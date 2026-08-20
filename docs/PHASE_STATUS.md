@@ -748,6 +748,11 @@ Implemented scope:
 - RLS and winner-only placement;
 - derived-scalar award projection without raw HR-zone, workout-target, route, credential, or personal-history disclosure.
 
+Rollout is forward-only: `crews.awards_start_date` floors finalization at the Crew's
+creation date (existing Crews backfilled to the rollout date), so no member inherits a
+backlog of READY blocks and no week is awarded on evidence that was never recorded. The
+migration reads `current_date` at apply time, so it must ship with the client.
+
 Deliberately out of scope: weekly standings. The finalizer is the only authority on
 who won a week, so the client carries no mirror of the ranking logic and Crew shows
 the winner's placement prompt rather than a leaderboard. The temporary preview-only

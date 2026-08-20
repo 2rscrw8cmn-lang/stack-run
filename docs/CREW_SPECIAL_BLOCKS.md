@@ -26,6 +26,17 @@ Then the four-week Feature cycle repeats from the Crew Build-start week.
 
 ## Award lifecycle
 
+- Awards roll out forward, never backward. `crews.awards_start_date` is a floor the
+  finalizer never reaches behind: it defaults to the Crew's creation date, and existing
+  Crews were backfilled to the rollout date, so nobody inherits a stack of READY blocks
+  for weeks that closed before Special Blocks existed. The first awarded week is the
+  first full Monday–Sunday week on or after that floor.
+- The floor is a fairness rule, not just a launch convenience. Zone 2, On Target and
+  Level Up rank on `award_*` scalars that each runner's own device publishes, and a
+  Crew load syncs the viewer's history immediately before finalizing — so a retroactive
+  week would go to whoever opened Crew first rather than to whoever won it, and
+  `on conflict do nothing` would make that permanent. It applies to a new Crew whose
+  owner backdates `build_start_date` for the same reason.
 - The server finalizes only fully completed weeks.
 - Award finalization is idempotent.
 - Once a Crew/week/award winner is created, late sync does not silently transfer that historical award to somebody else.

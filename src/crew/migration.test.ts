@@ -18,6 +18,7 @@ import identityMigration from "../../supabase/migrations/20260814120000_crew_con
 import identityVerification from "../../supabase/tests/0013_crew_contribution_identity.sql?raw";
 import specialBlocksMigration from "../../supabase/migrations/20260819025500_crew_special_blocks.sql?raw";
 import specialBlocksVerification from "../../supabase/tests/0021_crew_special_blocks.sql?raw";
+import awardStartMigration from "../../supabase/migrations/20260820120000_crew_award_start_date.sql?raw";
 
 const TABLES = [
   "profiles",
@@ -448,5 +449,44 @@ describe("Crew Special Blocks SQL (D-080)", () => {
     expect(specialBlocksVerification).toMatch(/mixed support failure/i);
     expect(specialBlocksVerification).toMatch(/mixed collision failure/i);
     expect(specialBlocksVerification.trim().toLowerCase()).toMatch(/rollback;$/);
+  });
+});
+
+describe("Crew Special Blocks roll out forward (D-080)", () => {
+  it("gives every Crew a floor, defaulted to the day it starts awarding", () => {
+    expect(awardStartMigration).toMatch(
+      /alter table public\.crews\s+add column if not exists awards_start_date date/i,
+    );
+    // Existing Crews are backfilled to the migration's own day, so a Crew that
+    // has been running for months starts clean rather than minting a block for
+    // every week it already existed.
+    expect(awardStartMigration).toMatch(
+      /update public\.crews\s+set awards_start_date = current_date\s+where awards_start_date is null/i,
+    );
+    expect(awardStartMigration).toMatch(/alter column awards_start_date set default current_date/i);
+    expect(awardStartMigration).toMatch(/alter column awards_start_date set not null/i);
+  });
+
+  it("starts finalization at the later of the Build start and that floor", () => {
+    expect(awardStartMigration).toMatch(
+      /create or replace function public\.finalize_crew_awards/i,
+    );
+    // greatest() of the two week starts, with the floor rounded up to its
+    // first Monday — never a bare build_start_date week again.
+    expect(awardStartMigration).toMatch(
+      /v_week := greatest\([\s\S]*?v_build_start[\s\S]*?v_awards_start[\s\S]*?\)/i,
+    );
+    expect(awardStartMigration).not.toMatch(
+      /v_week := v_build_start - \(extract\(isodow from v_build_start\)/i,
+    );
+  });
+
+  it("verifies the floor holds before it opens it", () => {
+    expect(specialBlocksVerification).toMatch(
+      /award start date failure: a week before awards_start_date was finalized/i,
+    );
+    expect(specialBlocksVerification).toMatch(
+      /update public\.crews\s+set awards_start_date = current_date - 21/i,
+    );
   });
 });

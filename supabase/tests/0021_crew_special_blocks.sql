@@ -118,6 +118,29 @@ begin
 end;
 $$;
 
+-- A new Crew's awards_start_date is its creation date, so the week that closed
+-- before it existed is out of reach no matter how far back build_start_date
+-- goes. Nothing may be minted yet.
+select public.finalize_crew_awards((select crew_id from award_test_ids));
+
+do $$
+begin
+  if exists (
+    select 1 from public.crew_award_blocks
+    where crew_id = (select crew_id from award_test_ids)
+  ) then
+    raise exception 'award start date failure: a week before awards_start_date was finalized';
+  end if;
+end;
+$$;
+
+-- Open the floor so the rest of this file can exercise real finalization.
+reset role;
+update public.crews
+set awards_start_date = current_date - 21
+where id = (select crew_id from award_test_ids);
+set local role authenticated;
+
 select public.finalize_crew_awards((select crew_id from award_test_ids));
 select public.finalize_crew_awards((select crew_id from award_test_ids));
 
