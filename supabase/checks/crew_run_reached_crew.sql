@@ -1,18 +1,22 @@
 -- READ ONLY. "My run is in personal STACK but not in Crew" — which is it?
 --
 -- Personal STACK lives on the device; Crew only ever sees what that device
--- uploads (projects). This answers the one question that splits the causes:
+-- uploads (projects). This answers the one question the app cannot show you:
 -- did the run reach the Crew's table at all?
 --
---   row present  -> the run DID reach Crew. Look at eligible/state below.
---   row missing  -> the run never projected. That is the sync-handoff bug,
---                   fixed by the client deploy, not by the migration.
+--   row missing  -> the run never projected from the device. That is the
+--                   sync-handoff bug, fixed by the client deploy.
+--   'before the Build start date' -> it reached Crew, but the crew's Build
+--                   window starts later. Hidden by design, not a bug.
+--   'READY to place' -> it is in Crew and available right now.
 --
--- Replace the email on the next line with the account you are testing.
-\set runner_email 'YOUR-EMAIL-HERE'
+-- Paste-ready for the Supabase SQL Editor. Put the account's email on the
+-- marked line below; plain SQL only, no psql variables.
 
 with me as (
-  select id from auth.users where lower(email) = lower(:'runner_email')
+  select id
+  from auth.users
+  where lower(email) = lower('YOUR-EMAIL-HERE')   -- <<< the account to check
 )
 select
   c.name                                as crew,
