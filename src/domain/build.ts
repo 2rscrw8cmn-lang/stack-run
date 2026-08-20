@@ -110,7 +110,15 @@ export interface PlacedBlock {
  * longer computed for this one.
  */
 export interface BuildSummaryMetrics {
-  /** Every mile actually run, extra runs included. */
+  /**
+   * Every mile the runner recorded in STACK, extra runs included — the tower's
+   * own material, which is why Build states it as `miles built`.
+   *
+   * NEXT-6: it is deliberately not every mile the runner ran. Connected history
+   * can hold running that was never accepted into STACK, and that running earns
+   * no block, so counting it here would describe a tower that does not exist.
+   * Runs owns the question of how much the runner has actually run.
+   */
   totalActualMiles: number;
 }
 

@@ -2,29 +2,100 @@
 
 **Build your race.**
 
-STACK is a phone-first running-plan app that turns completed runs into a growing block structure. It keeps one active race/plan simple: know what to run, record what actually happened, see whether training is accumulating, and place the block.
+STACK is a phone-first running app that connects actual training, race intent, a tactile Build system and optional Race Crew.
 
 ![STACK UI reference](reference/stack-ui-reference.png)
 
-## Current product
+## STACK Next branch
 
-The original UI-0 through UI-7 program is implemented.
+This branch is the long-lived integration branch for the next product direction:
+
+```text
+feature/stack-next
+```
+
+The major shift is:
+
+> **The runner and the runner's actual historical training become the foundation. The plan remains useful, but it is no longer the organizing center of the application.**
+
+`main` remains the current stable STACK application until STACK Next is accepted as a whole.
+
+Read these first on this branch:
+
+```text
+docs/STACK_NEXT.md
+docs/INTERVALS_DATA_STRATEGY.md
+docs/STACK_NEXT_IMPLEMENTATION.md
+docs/STACK_NEXT_AGENT_PROMPT.md
+```
+
+Exact verified Intervals field names/semantics remain documented in:
+
+```text
+docs/CONNECTED_DATA_FIELDS.md
+```
+
+## Branch workflow
+
+Do not develop the whole program directly on `feature/stack-next`.
+
+Treat it as the temporary integration branch for the new product:
+
+```text
+main
+└── feature/stack-next
+    ├── feature/historical-data
+    ├── feature/runner-profile
+    ├── feature/training-signals-v2
+    ├── feature/today-next
+    ├── feature/plan-next
+    └── experiment/...
+```
+
+Each substantial STACK Next phase should:
+
+1. branch from the latest `feature/stack-next`;
+2. stay narrowly scoped;
+3. open its PR back into `feature/stack-next`;
+4. be tested/accepted there;
+5. merge into the integration branch;
+6. leave `main` untouched until the complete program is ready.
+
+The first engineering child branch is expected to be:
+
+```text
+feature/historical-data
+```
+
+See `docs/STACK_NEXT_IMPLEMENTATION.md`.
+
+## Current application baseline
+
+The existing application remains the starting point, not throwaway work.
 
 STACK currently includes:
 
-- three persistent tabs: **Today**, **Build**, **Plan**, plus a **Settings** sheet in the bottom bar that is not a fourth destination;
+- phone-first dark responsive UI;
+- Today, Build, Runs and Plan, plus conditional Crew for active crew members;
 - scheduled and extra runs;
-- editable actual run date, distance, duration, effort/type and notes;
+- manual logging fallback;
+- HealthFit → Intervals.icu connected run import;
+- user-confirmed scheduled matching / extra / attach behavior;
+- chronological actual run history;
+- Training Signals;
+- rich connected Run Detail;
 - deterministic 8-column Build tower, one block per actual run;
-- editable/generated one-race plan, with a start date the runner can choose;
-- preferred run-day reshaping;
-- optional availability-calendar conflict proposals;
-- browser-local persistence/recovery;
-- installable dark phone-first PWA-style experience (without offline service worker).
+- editable one-race plan and preferred run days;
+- optional Race Crew with Supabase Auth/Postgres/RLS;
+- runner-owned shared Crew Build placement;
+- browser-local personal persistence/recovery;
+- installable phone-first PWA-style experience.
 
-## Next program — Connected Training
+STACK Next should preserve working behavior until an explicit phase replaces it.
 
-The approved running-data path is:
+## Connected running-data path
+
+Apple Watch:
 
 ```text
 Apple Watch
@@ -38,81 +109,61 @@ Intervals.icu
 STACK
 ```
 
-The goal is to eliminate retyping objective run data while preserving the product loop:
-
-> See the run → run → confirm/record it → earn a block → place it → see the build grow.
+Other watches/services may connect directly to Intervals.icu and skip HealthFit.
 
 Manual logging remains a complete fallback.
 
-Connected phases add:
+The STACK Next opportunity is to use Intervals for more than eliminating manual entry: historical actuals can establish meaningful runner context across months, not just the current race-plan window.
 
-- secure read-only Intervals.icu activity sync;
-- planned-match / extra-run confirmation;
-- attachment of synced data to existing manual runs;
-- pace, HR, cadence, elevation, training load and HR zones when the real source contains them;
-- weekly actual stats;
-- race-training trends;
-- optional HRV/resting-HR/sleep context only after HealthFit → Intervals coverage is verified.
+## STACK Next data priorities
 
-Read:
+High-value foundation data includes:
 
-```text
-docs/CONNECTED_TRAINING.md
-docs/INTERVALS_INTEGRATION.md
-docs/CONNECTED_DATA_FIELDS.md
-```
+- activity identity/date/type;
+- distance and duration;
+- pace derived from trusted run totals;
+- average/max HR and HR-zone duration when present;
+- source-reported elevation gain;
+- verified cadence convention;
+- Intervals training load;
+- structured intervals/laps when verified;
+- on-demand profile streams for run-detail shape.
+
+STACK should prefer derived longitudinal facts such as weekly volume, frequency, long-run progression and comparable-run trends over dumping every upstream field into the UI.
+
+Do not persist raw Intervals payloads, GPS routes, precise coordinates or large streams by default.
+
+See `docs/INTERVALS_DATA_STRATEGY.md`.
 
 ## Product boundaries
 
-STACK is not a replacement for Apple Fitness, HealthFit or Intervals.icu.
-
-It does not become:
+STACK Next is not intended to become:
 
 - a live GPS/run tracker;
-- a social platform;
-- a generic fitness analytics dashboard;
-- an AI coach;
-- an automatic recovery-based plan editor;
-- a medical-readiness tool;
-- a Strava integration;
-- a direct HealthKit/native app;
-- a multi-user cloud service in the personal API-key release.
+- a Strava clone;
+- an Intervals.icu dashboard clone;
+- a public social network;
+- an AI coach that autonomously rewrites training;
+- a medical/readiness product;
+- a route-mapping product;
+- a full cloud archive of personal health/activity data;
+- a game economy with XP/coins/quests.
 
-Build remains deterministic HTML/CSS — no canvas, WebGL or physics engine.
+Build remains a distinctive emotional reward. Race Crew remains optional and receives only its approved safe projection.
 
-## Technical direction
+## Technical baseline
 
 - React
 - TypeScript
 - Vite
 - Plain CSS/design tokens
 - Lucide React
-- Versioned browser localStorage for user state
+- Versioned browser localStorage for personal state
+- Supabase Auth/Postgres/RLS for Race Crew only
 - Vercel deployment
-- Narrow stateless serverless readers under `api/`
+- Existing direct/proxy Intervals connection modes
 
-Current server routes:
-
-- `api/calendar.ts` — availability-calendar reader when source CORS blocks the browser;
-- `api/intervals.ts` — planned for UI-8, protected read-only Intervals proxy.
-
-Connected Training keeps the powerful Intervals personal API key server-side and protects the proxy with a separate local STACK sync token. See `docs/DEPLOYMENT.md`.
-
-## Installing it
-
-STACK is installable to a home screen and opens without browser chrome. It is intentionally **not offline-capable** yet: no service worker ships until offline behavior is separately designed/tested.
-
-On iOS Safari: **Share → Add to Home Screen**.
-
-A browser tab and installed app on the same origin share local training state.
-
-## Persistence
-
-Training state lives under the same browser-origin storage key across deployments. Deploying to the same domain preserves it; changing domains does not.
-
-Unreadable storage enters the recovery flow instead of silently resetting.
-
-Connected Training may add normalized health/run metrics to that local state but does not add a server database.
+Do not add a router, global-state framework, UI framework, canvas/WebGL/physics engine or broader backend merely because STACK Next is a large program. Add infrastructure only when a phase demonstrates the need.
 
 ## Repository map
 
@@ -121,37 +172,33 @@ Connected Training may add normalized health/run metrics to that local state but
 ├─ AGENTS.md
 ├─ START_HERE.md
 ├─ README.md
-├─ api/            narrow Vercel serverless readers
+├─ api/            narrow serverless readers
 ├─ docs/           product, data, integration, QA and phase source of truth
 ├─ public/         manifest and app icons
-├─ scripts/        icon generation
+├─ scripts/
 ├─ seed/
 ├─ src/
 ├─ reference/
+├─ supabase/       Race Crew database migrations/config where applicable
 └─ .github/
 ```
 
-## Build workflow
+## Validation
 
-One implementation phase equals one branch and one pull request.
-
-Connected sequence:
-
-```text
-UI-8  Connected Data Foundation
-UI-9  Connected Run Detail
-UI-10 Connected Today + Week
-UI-11 Training Trends
-UI-12 Wellness / Recovery Context
-UI-13 Optional plan-export investigation (deferred)
-```
-
-Every automated phase must pass without real external credentials:
+Automated phases must pass without real external credentials:
 
 ```bash
 npm run check
 ```
 
-Connected phases then add a separate deployed real-data smoke test using Vercel secrets and the user's own HealthFit/Intervals data.
+Connected-data phases should then define a separate deployed real-data smoke test using the owner's own Intervals connection without committing secrets or raw private payloads.
 
-See `START_HERE.md` and `docs/AGENT_PROMPTS.md` before starting a phase.
+## Where to start
+
+For STACK Next development:
+
+1. read `START_HERE.md`;
+2. read the four STACK Next docs above;
+3. use `docs/STACK_NEXT_AGENT_PROMPT.md` for NEXT-1;
+4. create the implementation branch from `feature/stack-next`;
+5. target the PR back to `feature/stack-next`, not `main`.

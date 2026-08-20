@@ -557,32 +557,6 @@
   color: var(--text-muted);
 }
 
-/*
- * What was actually run, under the bar rather than in it. Three even columns
- * so the row still reads at 320px, and quieter type than the scheduled count
- * above it: this is context for the plan's progress, not a second score.
- */
-.this-week__actuals {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.this-week__actuals dt {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
-
-.this-week__actuals dd {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .this-week__days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -781,15 +755,6 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--accent);
-}
-
-/* A rest day asks nothing of you, so it does not wear the action colour. */
-.today-workout-card--rest {
-  background: var(--surface-soft);
-}
-
-.today-workout-card--rest .today-workout-card__eyebrow {
-  color: var(--text-muted);
 }
 
 .today-workout-card__header {
@@ -2329,19 +2294,6 @@ textarea.run-input {
   cursor: default;
 }
 
-.week-lead__progress {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.week-lead__count {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 .week-lead__now {
   padding: 3px var(--space-2);
   border-radius: 999px;
@@ -3189,23 +3141,30 @@ textarea.run-input {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  width: 62px;
+  width: 68px;
   color: var(--text-subtle);
+  text-align: center;
 }
 
 .workout-row__status[data-status="completed"] {
   color: var(--accent);
 }
 
-.workout-row__status[data-status="missed"] {
-  color: var(--long);
-}
-
+/*
+ * NEXT-5: a past plan item with no linked run is not a failed one. It used to
+ * be drawn in the long-run colour, which read as a warning about the runner;
+ * what STACK actually knows is only that nothing is linked to it, so it stays
+ * in the same quiet colour as an unrun future day.
+ *
+ * The label is relationship language rather than a machine value, so it is
+ * sentence-case interface sans with room to wrap instead of a cramped
+ * uppercase abbreviation.
+ */
 .workout-row__status-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 
 /* Storage recovery — what the app is when it could not read its own state */
@@ -3754,60 +3713,6 @@ textarea.run-input {
   font-variant-numeric: tabular-nums;
 }
 
-/* Training Trends, as a row of cards you push sideways */
-
-.trend-cards__card {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms ease;
-}
-
-.trend-cards__card:hover {
-  border-color: var(--border-strong);
-}
-
-.trend-cards__title {
-  font-size: 11px;
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-subtle);
-}
-
-.trend-cards__value {
-  font-size: 22px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.trend-cards__note {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-/* UI-16 — focused Training Signals */
-
-.trend-cards__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.trend-cards__grid > li { min-width: 0; display: flex; }
-.trend-cards__grid .trend-cards__card { min-height: 96px; }
-
 .signal-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
 
 .signal-detail__intro,
@@ -4039,22 +3944,33 @@ textarea.run-input {
 
 .plan-actual-chart__plot { position: relative; }
 
-/* Transparent, full-height hit targets over each chart column — the chart
-   itself is the week selector, so there is no separate visible pill row. */
-.plan-actual-chart__targets { position: absolute; inset: 0; }
-
-.plan-actual-chart__target {
+/* One full-chart selector keeps every week reachable without overlapping the
+   narrow visual slots. Its thumb is at least 44px for touch; the selected
+   reading remains visible outside the plot in each chart consumer. */
+.plan-actual-chart__scrubber {
+  appearance: none;
   position: absolute;
-  top: 0;
-  left: var(--target-left);
-  width: var(--target-width);
+  z-index: 2;
+  inset: 0;
+  width: 100%;
   height: 100%;
+  margin: 0;
   padding: 0;
   border: 0;
-  background: transparent;
-  cursor: pointer;
+  opacity: 0.01;
+  cursor: ew-resize;
 }
-.plan-actual-chart__target:focus-visible {
+.plan-actual-chart__scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+}
+.plan-actual-chart__scrubber::-moz-range-thumb {
+  width: 44px;
+  height: 44px;
+  border: 0;
+}
+.plan-actual-chart__scrubber:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -4100,10 +4016,6 @@ textarea.run-input {
   .consistency-grid { grid-template-columns: 1fr; }
   .donut { grid-template-columns: 1fr; }
   .donut__plot { max-width: 156px; }
-}
-
-@media (min-width: 700px) {
-  .trend-cards__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .signal-detail__period {
@@ -4241,7 +4153,7 @@ textarea.run-input {
   border-radius: 12px;
 }
 
-.today-workout-card:not(.today-workout-card--rest)::before,
+.today-workout-card::before,
 .run-found::before {
   content: "";
   position: absolute;
@@ -4261,9 +4173,11 @@ textarea.run-input {
   letter-spacing: -0.045em;
 }
 
-.this-week__actuals dt,
-.this-week__actuals dd,
-.this-week__weekday {
+.this-week__weekday,
+.run-found__facts dt,
+.run-found__facts dd,
+.completed-run-summary__stats dt,
+.completed-run-summary__stats dd {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums slashed-zero;
 }
@@ -4288,64 +4202,6 @@ textarea.run-input {
   color: var(--text-muted);
   font-size: 11px;
   letter-spacing: 0.07em;
-}
-
-.trend-cards__card {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  gap: var(--space-2);
-  min-height: 92px;
-  transition: border-color 160ms ease, transform 160ms ease;
-  --signal-accent: var(--accent);
-}
-
-/* The one signal-specific accent: a coloured rail on the left edge. The
-   border stays a neutral dark line on every card, resting or interactive. */
-.trend-cards__card::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--signal-accent);
-}
-
-.trend-cards__card[data-signal="long-run"] { --signal-accent: var(--long); }
-.trend-cards__card[data-signal="easy-pace"] { --signal-accent: var(--easy); }
-.trend-cards__card[data-signal="hr-zones"] { --signal-accent: var(--zone-2); }
-.trend-cards__card[data-signal="training-load"] { --signal-accent: var(--intervals); }
-.trend-cards__card[data-signal="consistency"] { --signal-accent: var(--simulation); }
-.trend-cards__card[data-signal="run-mix"] { --signal-accent: var(--zone-5); }
-
-.trend-cards__card:hover {
-  border-color: var(--border-strong);
-}
-
-.trend-cards__card:focus-visible {
-  outline: 2px solid var(--signal-accent);
-  outline-offset: 2px;
-}
-
-.trend-cards__card:active {
-  transform: translateY(1px);
-}
-
-.trend-cards__title {
-  color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 0.09em;
-}
-
-.trend-cards__value {
-  color: var(--text);
-  font-size: clamp(22px, 7vw, 28px);
-  font-weight: 750;
-  line-height: 1.05;
-}
-
-.trend-cards__note {
-  margin-top: auto;
-  color: var(--text-muted);
 }
 
 .signal-detail__section h3,
@@ -4549,11 +4405,14 @@ textarea.run-input {
   letter-spacing: 0.05em;
 }
 
-.week-lead__count,
+/*
+ * Dates and week identity are data, so they keep the machine face. The day's
+ * plan relationship is interface language — `Planned`, `Completed`,
+ * `No linked run` — and reads in the normal STACK sans.
+ */
 .week-lead__now,
 .workout-row__weekday,
-.workout-row__day,
-.workout-row__status-label {
+.workout-row__day {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums slashed-zero;
 }
@@ -4753,66 +4612,6 @@ textarea.run-input {
   padding-inline: 13px;
 }
 
-.trend-cards.section {
-  gap: 9px;
-  padding-top: 10px;
-  border-top-color: var(--data-border);
-}
-
-.trend-cards .section__title,
-.trend-cards .section__icon {
-  color: var(--accent);
-  font-family: var(--font-data);
-  font-weight: 700;
-  letter-spacing: 0.07em;
-}
-
-.trend-cards__grid {
-  gap: 7px;
-}
-
-.trend-cards__grid .trend-cards__card,
-.trend-cards__card {
-  min-height: 92px;
-  padding: 9px 9px 8px 12px;
-  gap: 3px;
-  border-width: 1px;
-  /* The shared .data-module utility tints its border with --data-border
-     (lime); every compact card overrides back to a neutral dark line — the
-     rail and title are the only signal-specific colour left on the card. */
-  border-color: var(--border);
-  border-radius: 7px;
-  background-color: #071016;
-}
-
-.trend-cards__card::before {
-  width: 2px;
-}
-
-.trend-cards__title {
-  color: color-mix(in srgb, var(--signal-accent) 72%, var(--text));
-  font-size: 9px;
-  line-height: 1.25;
-}
-
-.trend-cards__reading {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.trend-cards__value {
-  font-size: clamp(19px, 5.7vw, 25px);
-  line-height: 1.06;
-}
-
-.trend-cards__note {
-  color: var(--text-muted);
-  font-size: 9px;
-  line-height: 1.25;
-  letter-spacing: 0.045em;
-}
-
 .runs-recent.section {
   gap: 9px;
   padding-top: 10px;
@@ -4825,24 +4624,6 @@ textarea.run-input {
   font-family: var(--font-data);
   font-weight: 700;
   letter-spacing: 0.07em;
-}
-
-@media (min-width: 700px) {
-  .trend-cards__grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  .trend-cards__grid > li {
-    grid-column: span 2;
-  }
-
-  .trend-cards__grid > li:nth-last-child(2):nth-child(3n + 1) {
-    grid-column: 2 / span 2;
-  }
-
-  .trend-cards__grid > li:last-child:nth-child(3n + 1) {
-    grid-column: 3 / span 2;
-  }
 }
 
 /* Focused signal composition */
@@ -4883,8 +4664,10 @@ textarea.run-input {
 }
 
 .chart__tick--x {
-  font-size: 8px;
+  font-size: 13.5px;
 }
+
+.chart__tick--x-selected { font-size: 14.5px; }
 
 .plan-actual-chart__actual {
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 20%, transparent));
@@ -5066,11 +4849,21 @@ textarea.run-input {
   margin: 0;
 }
 
+/* A historical run whose source stated no duration has one primary fact, not
+   three columns with two empty. The result stays centred either way. */
 .run-result-detail__primary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 13px 0 14px;
   border-top: 1px solid var(--border-strong);
   border-bottom: 1px solid var(--border-strong);
+}
+
+.run-result-detail__primary[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.run-result-detail__primary[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .run-result-detail__primary > div,
@@ -5098,7 +4891,10 @@ textarea.run-input {
   white-space: nowrap;
 }
 
-.run-result-detail__primary > div:last-child dd {
+/* Pace is the longest of the three values and the one that has to shrink for
+   320px. Keyed on the metric rather than on position, so a run with no pace
+   does not shrink whatever happens to be last instead. */
+.run-result-detail__primary > div[data-metric="pace"] dd {
   font-size: clamp(17px, 4.9vw, 24px);
   letter-spacing: -0.055em;
 }
@@ -5172,25 +4968,41 @@ textarea.run-input {
 .run-profile__selectors {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
 }
 
+/* Same rule the R2 history controls follow: the visible chip stays small and
+   quiet, and the thing a thumb has to hit is 44px regardless. */
 .run-profile__selector {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+  font: inherit;
+  cursor: pointer;
+}
+
+.run-profile__selector > span {
   padding: 5px 10px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-subtle);
   font-family: var(--font-data);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
 .run-profile__selector[aria-pressed="true"] {
-  border-color: var(--accent);
   color: var(--accent);
+}
+
+.run-profile__selector[aria-pressed="true"] > span {
+  border-color: var(--accent);
 }
 
 .run-profile-chart {
@@ -5519,10 +5331,6 @@ textarea.run-input {
 @media (max-width: 340px) {
   .accomplishment-moment {
     width: calc(100% - var(--space-6));
-  }
-
-  .trend-cards__value {
-    font-size: 24px;
   }
 }
 
@@ -7599,27 +7407,419 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 @media (max-width: 699px) {
   /* Narrow enough that roughly 1.5–1.8 cards show at once — the peeking
      next card is the affordance that this is a rail, not a full row. */
-  .trend-cards__grid {
-    width: 100%;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: clamp(176px, 58%, 208px);
-    grid-template-columns: none;
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-inline: contain;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .trend-cards__grid::-webkit-scrollbar { display: none; }
-  .trend-cards__grid > li {
-    grid-column: auto;
-    min-width: 0;
-  }
+
 }
 
 @media (max-width: 340px) {
   .crew-comparison { padding-inline: 0; }
   .crew-comparison__selector { gap: 5px; }
   .today-crew-activity__list > li { gap: 5px; }
+}
+
+/* NEXT-2 — Runner history + profile
+   ------------------------------------------------------------------
+   The runner snapshot, the recent-volume strip and the unified history list.
+   All of it lives on the existing Runs destination: NEXT-2 adds no navigation,
+   so the visual job here is hierarchy inside one screen rather than a new one.
+   Every reading carries a window label, so the type scale has to leave room for
+   a small caption under each value at 320px. */
+
+.runner-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* The whole block is one target into the profile detail: four readings with
+   four separate hit areas would be four ways to the same place. */
+.runner-snapshot__readings {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--data-border);
+  border-radius: var(--radius-md);
+  background: var(--data-surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+
+.runner-snapshot__readings:hover { border-color: var(--accent); }
+
+.runner-snapshot__readings:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.runner-snapshot__grid {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.runner-snapshot__reading {
+  min-width: 0;
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
+}
+
+.runner-snapshot__reading:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.runner-snapshot__reading dd,
+.runner-snapshot__reading dt { margin: 0; }
+
+.runner-snapshot__value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.runner-snapshot__unit {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.runner-snapshot__reading dt {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.runner-snapshot__more {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--text-subtle);
+}
+
+.runner-snapshot__range {
+  margin: 0;
+  padding-left: 2px;
+  color: var(--text-subtle);
+  font-size: 10px;
+}
+
+.runner-snapshot__status { color: var(--text-muted); }
+
+/* Four readings across a phone leaves about 70px each, which truncates
+   `Longest 28d` and crushes `runs/wk` against its value. Two rows of two keep
+   every window label readable, and the snapshot is the one place on the screen
+   worth the extra 40px. Four across returns once there is room for it. */
+.runner-snapshot__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.runner-snapshot__reading:nth-child(odd) {
+  padding-left: 0;
+  border-left: 0;
+}
+
+@media (min-width: 480px) {
+  .runner-snapshot__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .runner-snapshot__reading:nth-child(odd) {
+    padding-left: var(--space-2);
+    border-left: 1px solid var(--border);
+  }
+  .runner-snapshot__reading:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.runner-volume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.runner-volume__caption {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.runs-screen__more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+/* A run STACK has never been told anything about. Quieter than a logged run
+   rather than flagged: it is a fact, not a chore waiting to be dealt with. */
+.run-row[data-origin="historical-activity"] .run-row__icon { color: var(--text-subtle); }
+.run-row[data-origin="historical-activity"] .run-row__type { color: var(--text-muted); }
+
+.run-detail__status-tag[data-status="history"] {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.historical-run__note {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.runner-profile__coverage {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.runner-profile__coverage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text-subtle);
+  font-size: 10px;
+}
+
+/* Enough of this metric to say something about. Colour is a second signal
+   here; the counts beside it are the statement. */
+.runner-profile__coverage-row[data-sufficient="true"] { color: var(--text); }
+
+.runner-profile .signal-detail__section + .signal-detail__section { margin-top: var(--space-5); }
+
+/* The lead is now two stacked rows — the count and its action, then the
+   snapshot — rather than one row of facts beside a button. */
+.runs-screen__lead {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+/* NEXT-3 — Training Signals v2
+   ------------------------------------------------------------------
+   Observations rather than KPI tiles. The v1 cards were a two-up grid of large
+   numbers; a number that size reads as a score, and two side by side invite a
+   comparison nobody defined. These are full-width rows led by a sentence, with
+   the evidence and the window under it in progressively quieter type.
+
+   Nothing here is coloured by direction. Rising is not green and falling is not
+   red: a lower month is not a failure, and a card that said so would be keeping
+   score. The only colour is the family's own accent rail, exactly as the v1
+   cards used it, so the eye can tell two signals apart without reading them. */
+
+.signal-cards.section {
+  gap: 9px;
+  padding-top: 10px;
+  border-top-color: var(--data-border);
+}
+
+.signal-cards .section__title,
+.signal-cards .section__icon {
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.signal-cards__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal-cards__list > li { min-width: 0; display: flex; }
+
+.signal-cards__waiting {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.signal-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 11px 10px 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background-color: #071016;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+  --signal-accent: var(--accent);
+}
+
+.signal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--signal-accent);
+}
+
+.signal-card[data-signal="run-frequency"] { --signal-accent: var(--easy); }
+.signal-card[data-signal="long-run-progression"] { --signal-accent: var(--long); }
+.signal-card[data-signal="workload-trend"] { --signal-accent: var(--intervals); }
+.signal-card[data-signal="zone-distribution"] { --signal-accent: var(--zone-2); }
+.signal-card[data-signal="plan-completion"] { --signal-accent: var(--simulation); }
+
+.signal-card:hover { border-color: var(--border-strong); }
+
+.signal-card:focus-visible {
+  outline: 2px solid var(--signal-accent);
+  outline-offset: 2px;
+}
+
+.signal-card:active { transform: translateY(1px); }
+
+/* The glyph takes the family's ink, not the direction's: it says which signal
+   this is and which way it moved, and never whether that is good news. */
+.signal-card__mark {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+
+.signal-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.signal-card__headline {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.signal-card__evidence {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.signal-card__window {
+  color: var(--text-subtle);
+  font-size: 9px;
+  letter-spacing: 0.075em;
+}
+
+.signal-card__more {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--text-subtle);
+}
+
+/* The claim, repeated at the top of its own detail, so the sheet opens on the
+   sentence the runner tapped rather than on a table of numbers. */
+.signal-detail__claim {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.signal-detail__headline {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.signal-detail__meaning {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.signal-periods {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.signal-periods > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.signal-periods dt,
+.signal-periods dd {
+  margin: 0;
+  font-size: 10px;
+}
+
+.signal-periods dt { color: var(--text-muted); }
+.signal-periods dd { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.zone-compare {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zone-compare__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+
+.zone-compare__row:last-child { border-bottom: 0; padding-bottom: 0; }
+.zone-compare__row > span:last-child {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 700px) {
+  .signal-cards__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .signal-periods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 340px) {
+  .signal-card { padding: 10px 8px 10px 12px; gap: var(--space-2); }
+  .signal-card__headline { font-size: 14px; }
 }

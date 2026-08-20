@@ -1,7 +1,5 @@
-import { CalendarPlus, PartyPopper } from "lucide-react";
+import { CalendarPlus, Moon, PartyPopper } from "lucide-react";
 import { useState } from "react";
-import { Card } from "../../components/ui/Card";
-import { EmptyState } from "../../components/ui/EmptyState";
 import {
   blockedDates,
   type AvailabilityCalendar,
@@ -12,46 +10,42 @@ import {
   selectBuildViewModel,
 } from "../../domain/build";
 import { readyCrewBlockForLocalRun } from "../../crew/todayCrewBlock";
-import {
-  daysBetweenLocalDates,
-  formatDateLabel,
-  todayLocalDate,
-} from "../../domain/dates";
-import {
-  currentWeekNumber,
-  nextScheduledWorkout,
-  selectPlanWeekViewModel,
-} from "../../domain/plan";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import type {
   BlockPlacement,
   RunLog,
   TrainingPlan,
   Workout,
 } from "../../domain/types";
-import { selectWeekActuals } from "../../domain/weekActuals";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
 import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals";
 import { RunFoundCard } from "../connected/RunFoundCard";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
-import { selectTodayViewModel } from "../../domain/workout";
 import { BuildPreview } from "./BuildPreview";
 import { CompletedRunSummary } from "./CompletedRunSummary";
 import { NextWorkoutCard } from "./NextWorkoutCard";
 import { ThisWeekStrip } from "./ThisWeekStrip";
+import { TodayContext } from "./TodayContext";
 import { TodayHeading } from "./TodayHeading";
+import { TodayNote } from "./TodayNote";
+import { TodaySignalNote } from "./TodaySignalNote";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
+import { isTodayDemoEnabled, todayDemoData } from "./todayDemo";
+import { selectTodayModel } from "./todayModel";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { TodayCrewActivity } from "./TodayCrewActivity";
+import "./todayDecisionSurface.css";
 
 interface TodayScreenProps {
   plan: TrainingPlan;
   runLogs: RunLog[];
+  /** Unified actual history owned by the application. */
+  runnerRuns?: RunnerRun[];
   blockPlacements?: BlockPlacement[];
   onViewPlan: () => void;
-  /** Opens the secondary Training Trends view. */
-  onViewTrends?: () => void;
+  onViewRuns?: () => void;
   onViewBuild?: () => void;
-  /** Hands the earned block to Build, which is where placing happens. */
   onStartPlacing?: (runLogId: string) => void;
   /**
    * Hands one shared run to Crew, which opens straight into placement for it.
@@ -59,7 +53,6 @@ interface TodayScreenProps {
    * still owe a Crew block after its Personal block is standing.
    */
   onStartCrewPlacing?: (sharedRunId: string) => void;
-  /** Defaults to the real local date; overridable so tests don't need fake timers. */
   today?: string;
   onSaveRun?: (
     workout: Workout | null,
@@ -68,11 +61,9 @@ interface TodayScreenProps {
   ) => void;
   onDeleteRun?: (runLogId: string) => void;
   availability?: AvailabilityCalendar | null;
-  /** Unimported synced runs, newest first once Run Data is connected. */
   candidates?: IntervalsCandidate[];
   /** Opens Run Data on this candidate's own review state. */
   onReviewCandidate?: (candidate: IntervalsCandidate) => void;
-  /** The last quiet sync failure, if there is one worth offering a retry for. */
   syncError?: string | null;
   onRetrySync?: () => void;
   isSyncing?: boolean;
@@ -80,21 +71,16 @@ interface TodayScreenProps {
   onViewCrew?: () => void;
 }
 
-/** Which run the entry sheet is open for, and what it is about to write. */
-type Entry =
-  { kind: "scheduled"; workout: Workout; runLog?: RunLog };
+type Entry = { kind: "scheduled"; workout: Workout; runLog?: RunLog };
 
-/**
- * The daily dashboard. It answers, in order: what do I do today, how is the
- * week going, what is next, did I run something the plan never asked for, and
- * what have I built.
- */
+/** Today — the decision surface. */
 export function TodayScreen({
   plan,
   runLogs,
+  runnerRuns,
   blockPlacements = [],
   onViewPlan,
-  onViewTrends,
+  onViewRuns,
   onViewBuild = () => undefined,
   today = todayLocalDate(),
   onStartPlacing = () => undefined,
@@ -115,33 +101,52 @@ export function TodayScreen({
   const [entryVisit, setEntryVisit] = useState(0);
   const [saveAnnouncement, setSaveAnnouncement] = useState("");
 
-  const viewModel = selectTodayViewModel(plan, runLogs, today);
-  const planIsActive =
-    viewModel.kind === "rest" ||
-    viewModel.kind === "run" ||
-    viewModel.kind === "completed";
-  const daysRemaining = daysBetweenLocalDates(today, plan.race.date);
-  const week = selectPlanWeekViewModel(
-    plan,
-    runLogs,
-    currentWeekNumber(plan, today),
-    today,
-  );
-  const next = nextScheduledWorkout(plan, today);
-  const actuals = selectWeekActuals(runLogs, week.startDate, week.endDate);
-  const found = selectRunFound(candidates, plan, runLogs, today);
-  const build = selectBuildViewModel(plan, runLogs, blockPlacements, today);
+  /**
+   * Owner-review mode is an in-memory overlay only. It cannot be enabled on a
+   * production/custom hostname and none of its fake state is handed to a write
+   * callback. This keeps Vercel phone review useful without touching real data.
+   */
+  const isDemo = isTodayDemoEnabled();
+  const demo = isDemo ? todayDemoData() : null;
+  const effectivePlan = demo?.plan ?? plan;
+  const effectiveRunLogs = demo?.runLogs ?? runLogs;
+  const effectivePlacements = demo?.blockPlacements ?? blockPlacements;
+  const effectiveToday = demo?.today ?? today;
+  const runs =
+    demo?.runnerRuns ??
+    runnerRuns ??
+    unifiedRunnerHistory({
+      runLogs: effectiveRunLogs,
+      blockPlacements: effectivePlacements,
+    });
 
-  // The completed run on screen, if today's scheduled workout has been logged.
+  const model = selectTodayModel({
+    plan: effectivePlan,
+    runLogs: effectiveRunLogs,
+    runs,
+    today: effectiveToday,
+  });
+  const { immediate } = model;
+  const found = isDemo
+    ? null
+    : selectRunFound(candidates, effectivePlan, effectiveRunLogs, effectiveToday);
+  const build = selectBuildViewModel(
+    effectivePlan,
+    effectiveRunLogs,
+    effectivePlacements,
+    effectiveToday,
+  );
+
   const completed =
-    viewModel.kind === "completed"
-      ? { workout: viewModel.workout, runLog: viewModel.runLog }
+    immediate.kind === "completed"
+      ? { workout: immediate.workout, runLog: immediate.runLog }
       : null;
   const completedPlacement = completed
-    ? (findPlacementForRunLog(blockPlacements, completed.runLog.id) ?? null)
+    ? (findPlacementForRunLog(effectivePlacements, completed.runLog.id) ?? null)
     : null;
   // The same run's Crew Build contribution, only while it is still unplaced.
-  const completedCrewBlockRunId = completed
+  // The demo runner has no crew, and must never reach a real one.
+  const completedCrewBlockRunId = completed && !isDemo
     ? readyCrewBlockForLocalRun(
       raceCrew?.crewData?.runs,
       raceCrew?.account?.profile.id,
@@ -158,47 +163,55 @@ export function TodayScreen({
   return (
     <div className="today-screen">
       <TodayHeading
-        today={today}
-        race={plan.race}
-        daysRemaining={daysRemaining}
+        today={effectiveToday}
+        race={effectivePlan.race}
+        daysRemaining={model.raceDaysRemaining}
       />
 
-      {viewModel.kind === "before-plan" && (
-        <Card className="today-workout-card">
-          <EmptyState
-            icon={<CalendarPlus size={24} strokeWidth={1.6} />}
-            title="Plan starts soon"
-          >
-            Training begins{" "}
-            {formatDateLabel(viewModel.planStartDate, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-            . Anything you run before then is an extra run, and it still earns
-            a block.
-          </EmptyState>
-        </Card>
+      {isDemo && (
+        <p className="today-screen__demo-banner machine-label">
+          TODAY DEMO · FAKE PREVIEW DATA · REMOVE ?DEMO=TODAY TO RETURN
+        </p>
       )}
 
-      {viewModel.kind === "after-race" && (
-        <Card className="today-workout-card">
-          <EmptyState
-            icon={<PartyPopper size={24} strokeWidth={1.6} />}
-            title="Race complete"
-          >
-            You crossed the finish line. Every block below is a run you
-            actually did.
-          </EmptyState>
-        </Card>
+      {immediate.kind === "before-plan" && (
+        <TodayNote
+          icon={<CalendarPlus size={15} strokeWidth={1.8} />}
+          eyebrow="Plan starts soon"
+        >
+          Training begins{" "}
+          {formatDateLabel(immediate.planStartDate, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+          . Anything you run before then is an extra run, and it still earns a
+          block.
+        </TodayNote>
       )}
 
-      {(viewModel.kind === "rest" || viewModel.kind === "run") && (
+      {immediate.kind === "after-race" && (
+        <TodayNote
+          icon={<PartyPopper size={15} strokeWidth={1.8} />}
+          eyebrow="Race complete"
+        >
+          You crossed the finish line. Every block below is a run you actually
+          did.
+        </TodayNote>
+      )}
+
+      {immediate.kind === "rest" && (
+        <TodayNote icon={<Moon size={15} strokeWidth={1.8} />} eyebrow="Rest Day">
+          {immediate.workout.details}
+        </TodayNote>
+      )}
+
+      {immediate.kind === "run" && (
         <TodayWorkoutCard
-          workout={viewModel.workout}
+          workout={immediate.workout}
           onMarkComplete={() =>
-            openEntry({ kind: "scheduled", workout: viewModel.workout })
+            openEntry({ kind: "scheduled", workout: immediate.workout })
           }
         />
       )}
@@ -216,42 +229,53 @@ export function TodayScreen({
             })
           }
           crewBlockRunId={completedCrewBlockRunId}
-          onPlaceBlock={() => onStartPlacing(completed.runLog.id)}
-          onPlaceCrewBlock={onStartCrewPlacing}
+          onPlaceBlock={() => {
+            if (!isDemo) onStartPlacing(completed.runLog.id);
+          }}
+          onPlaceCrewBlock={(sharedRunId) => {
+            if (!isDemo) onStartCrewPlacing(sharedRunId);
+          }}
         />
       )}
 
       {found && (
         <RunFoundCard
           found={found}
-          today={today}
+          today={effectiveToday}
           onReview={() => onReviewCandidate(found.candidate)}
         />
       )}
 
-      {planIsActive && (
+      <TodayContext readings={model.context} />
+
+      {model.week && (
         <ThisWeekStrip
-          week={week}
-          blocked={blockedDates(availability)}
-          actuals={actuals}
+          week={model.week}
+          blocked={blockedDates(isDemo ? null : availability)}
           onViewPlan={onViewPlan}
-          // Nothing to trend before the first run, and an empty view invites a
-          // tap that answers nothing.
-          onViewTrends={onViewTrends && runLogs.length > 0 ? onViewTrends : undefined}
+          onViewRuns={onViewRuns && runs.length > 0 ? onViewRuns : undefined}
         />
       )}
 
-      {next && <NextWorkoutCard workout={next} />}
+      {model.signal && onViewRuns && (
+        <TodaySignalNote signal={model.signal} onViewSignals={onViewRuns} />
+      )}
 
-      <TodayCrewActivity crew={raceCrew} today={today} onViewCrew={onViewCrew} />
+      {model.next && <NextWorkoutCard workout={model.next} />}
 
-      {/*
-        A failed sync is worth saying and not worth interrupting for: the plan,
-        the log and the Build are all still true without it. So it sits down
-        here, below the workout and the week, with the retry the user would
-        otherwise have to go into Run Data to find.
-      */}
-      {syncError && !found && (
+      <BuildPreview
+        blocks={build.blocks}
+        pendingBlocks={build.pendingBlocks}
+        onViewBuild={onViewBuild}
+      />
+
+      <TodayCrewActivity
+        crew={isDemo ? null : raceCrew}
+        today={effectiveToday}
+        onViewCrew={onViewCrew}
+      />
+
+      {!isDemo && syncError && !found && (
         <p className="today-screen__sync-error">
           <span>{syncError}</span>
           <button type="button" onClick={onRetrySync} disabled={isSyncing}>
@@ -259,12 +283,6 @@ export function TodayScreen({
           </button>
         </p>
       )}
-
-      <BuildPreview
-        blocks={build.blocks}
-        pendingBlocks={build.pendingBlocks}
-        onViewBuild={onViewBuild}
-      />
 
       <p className="visually-hidden" aria-live="polite">
         {saveAnnouncement}
@@ -276,7 +294,7 @@ export function TodayScreen({
           isOpen={isEntryOpen}
           workout={entry.workout}
           runLog={entry.runLog}
-          today={today}
+          today={effectiveToday}
           onClose={() => {
             setEntryOpen(false);
             setEntry(null);
@@ -284,13 +302,22 @@ export function TodayScreen({
           onDelete={
             entry.runLog
               ? () => {
-                  onDeleteRun(entry.runLog!.id);
-                  setSaveAnnouncement("Run deleted.");
+                  if (isDemo) {
+                    setSaveAnnouncement("Demo data is read-only.");
+                  } else {
+                    onDeleteRun(entry.runLog!.id);
+                    setSaveAnnouncement("Run deleted.");
+                  }
                   setEntryOpen(false);
                 }
               : undefined
           }
           onSave={(workout, values) => {
+            if (isDemo) {
+              setSaveAnnouncement("Demo data is read-only.");
+              setEntryOpen(false);
+              return;
+            }
             const wasLogged = entry.runLog !== undefined;
             onSaveRun(workout, values, entry.runLog?.id);
             setSaveAnnouncement(

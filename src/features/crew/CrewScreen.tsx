@@ -82,6 +82,17 @@ type MetricDescriptor = {
   Icon: LucideIcon;
 };
 
+/*
+ * One comparison set for both crew types.
+ *
+ * NEXT-6 renamed the plan-link comparison (`Consistency` → `Plan Runs Linked`)
+ * because presenting a plan-link ratio as a quality of the runner was the
+ * reading NEXT-3 ranked last on Runs and NEXT-5 refused as Plan's headline.
+ * Main had already gone further and removed the metric outright, replacing the
+ * Race/Club split with Avg Pace and Awards — measures that need no training
+ * plan and so serve both crew types. The removal satisfies the rename's whole
+ * intent, so the removal stands.
+ */
 const METRICS: MetricDescriptor[] = [
   { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 },
   { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
@@ -310,6 +321,7 @@ export function CrewScreen({
   const railMembers = viewerFirstMembers(members, currentUserId);
   const bestDisplayedValue = comparisonBest(activeMetric, comparisonRows);
   const isRaceCrew = currentCrew.crewType === "race";
+
   const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
   const countdown = isRaceCrew && currentCrew.raceDate
     ? raceCountdown(currentCrew.raceDate, today)

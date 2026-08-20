@@ -10,13 +10,21 @@ interface NextWorkoutCardProps {
   workout: Workout;
 }
 
-/** What is coming, so Today is still useful on a rest day. */
+/**
+ * What the runner intended to do next.
+ *
+ * This is where the plan belongs naturally on a decision surface: not as a
+ * second workout card competing with today's, but as one compact line of
+ * upcoming intent, subordinate to everything above it. It is omitted entirely
+ * when the plan has nothing left to ask for, and it never invents a suggestion
+ * of its own.
+ */
 export function NextWorkoutCard({ workout }: NextWorkoutCardProps) {
   return (
     <Section
       className="next-workout"
       icon={<CalendarClock size={15} strokeWidth={2} />}
-      title="Next"
+      title="Up next"
     >
       <div className="next-workout__row">
         <span

@@ -170,6 +170,82 @@ Rules:
   failed write is reported in Run Data rather than being silently treated as
   persisted.
 
+### Historical activity history (STACK Next, NEXT-1)
+
+The runner's normalized history of actual running activity lives in:
+
+```text
+stack.history.activities.v1
+```
+
+through `src/storage/historicalActivityRepository.ts`, account-scoped with the
+same `.<user-id>` suffix as the slots above, and outside AppState.
+
+It is a different thing from the review queue. The queue is what the runner is
+*asked about*; this is what they have *done*, over a configurable lookback
+(365 days by default) that has nothing to do with the active plan window.
+
+Rules:
+
+- normalized Tier 1 source facts only — source id, local date and start time,
+  source type, name, distance in metres, moving/elapsed seconds, average and max
+  HR, HR-zone seconds, elevation gain in metres, cadence verbatim, training
+  load, `sourceUpdatedAt` — plus STACK's `firstSeenAt` / `lastSeenAt` /
+  `reconciledAt` bookkeeping;
+- every write is assembled from an explicit field allowlist, so no raw payload,
+  route, coordinate, stream or credential can reach the slot;
+- missing metrics are stored as explicit null and never as zero;
+- source units are stored; conversion to miles and feet is derived at read time;
+- no STACK-derived classification, plan link or Build state is stored — the
+  link to an accepted `RunLog` is derived at read time;
+- `provider + sourceId` is the only dedupe identity, so repeated sync never
+  duplicates;
+- an activity that changed upstream is replaced in place under the same id,
+  keeping `firstSeenAt` and stamping `reconciledAt`; a metric that has gone
+  missing upstream is written back to null rather than left stale;
+- history outside the current sync window is kept, never pruned;
+- outside AppState, so it is in no backup, export, Supabase table or crew
+  projection, and it required no schema migration;
+- unreadable storage yields an empty history rather than a broken app, and a
+  refused write is reported rather than silently treated as persisted.
+
+Nothing in the product clears this slot today. Discarding a year of history is
+a product decision, not a side effect of forgetting a credential, so
+`clearHistoricalActivities` exists without a caller.
+
+### Historical sync bookkeeping (STACK Next, NEXT-2)
+
+When this device last read that history, and how it went:
+
+```text
+stack.history.sync.v1
+```
+
+through `src/storage/historySyncStateRepository.ts`, account-scoped the same way
+and also outside AppState.
+
+Five values, and nothing else: `lastSuccessAt`, `lastCompleteAt`,
+`lastAttemptAt`, `lastFailureMessage`, `storedActivities`. Deliberately
+timestamps rather than a status enum — a stored enum would need migrating every
+time the sync policy learns a new state, and every state
+`src/history/historySyncPolicy.ts` reports is derivable from these.
+
+Rules:
+
+- **neither reading nor writing it can fail an app.** A record that cannot be
+  read is a device that has not synced yet, which costs one extra read; a record
+  that cannot be written is a device that re-syncs sooner than it needed to,
+  which costs one wasted request. Nothing a runner decided lives here, so
+  neither is worth interrupting them about;
+- `useRunnerHistory` also holds an in-session attempt floor in memory, so a
+  browser that refuses writes cannot loop on repeated focus events;
+- values that are not the shape they claim to be are dropped on load rather than
+  trusted — an unparseable timestamp becomes null, which reads as "never", which
+  is the safe direction;
+- no credential, no activity identity and no source payload is stored;
+- outside AppState, so no migration, no backup or export exposure, and nothing
+  reaches Supabase or a crew projection.
+
 ### Supabase session
 
 Supabase JS may persist its own authenticated session in browser storage.

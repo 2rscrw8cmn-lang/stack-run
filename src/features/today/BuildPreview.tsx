@@ -13,9 +13,17 @@ interface BuildPreviewProps {
 const CROP_SIZE = 6;
 
 /**
- * A crop of the tower, not a second Build screen: the last few blocks in the
- * colours and widths they were placed at, so Today ends on what the running
- * built. Anything more belongs behind `View Build`.
+ * A crop of the tower, not a second Build screen.
+ *
+ * The last few blocks in the colours and widths they were placed at, so Today
+ * ends on what the running built. It says one thing — *my work is
+ * accumulating* — and everything else belongs behind `View Build`.
+ *
+ * NEXT-4 tightened it rather than changing it: the count, the crop, the pending
+ * blocks and the way in are all still here, but what was three stacked rows is
+ * now two, with the blocks waiting to be placed stated on the same line as the
+ * way to go and place them. No Build domain logic is touched — placement,
+ * ownership, determinism and which runs earn blocks at all remain NEXT-6's.
  */
 export function BuildPreview({
   blocks,
@@ -30,7 +38,7 @@ export function BuildPreview({
       icon={<Blocks size={15} strokeWidth={2} />}
       title="Your Build"
       meta={
-        <p className="build-preview__count">
+        <p className="build-preview__count machine-label">
           {blocks.length} {blocks.length === 1 ? "block" : "blocks"} built
         </p>
       }
@@ -53,18 +61,20 @@ export function BuildPreview({
         </ul>
       )}
 
-      <p className="build-preview__pending">
-        {pendingBlocks.length > 0
-          ? `${pendingBlocks.length} ready to place`
-          : blocks.length === 0
-            ? "Log a run to earn your first block"
-            : "Nothing waiting to be placed"}
-      </p>
+      <div className="build-preview__footer">
+        <p className="build-preview__pending">
+          {pendingBlocks.length > 0
+            ? `${pendingBlocks.length} ready to place`
+            : blocks.length === 0
+              ? "Log a run to earn your first block"
+              : "Nothing waiting to be placed"}
+        </p>
 
-      <button type="button" className="section__link" onClick={onViewBuild}>
-        View Build
-        <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
-      </button>
+        <button type="button" className="section__link" onClick={onViewBuild}>
+          View Build
+          <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      </div>
     </Section>
   );
 }

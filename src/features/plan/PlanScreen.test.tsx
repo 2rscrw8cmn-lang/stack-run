@@ -2,6 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RunLog } from "../../domain/types";
+import { historicalRun } from "../../history/runnerFixtures";
+import { unifiedRunnerHistory } from "../../history/runnerRun";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { PlanScreen } from "./PlanScreen";
 
@@ -65,7 +67,7 @@ describe("PlanScreen week navigation", () => {
   it("opens on week 1 before the plan starts and week 18 after the race", () => {
     const { unmount } = renderPlan({ today: "2026-07-01" });
     expect(weekHeading()).toHaveTextContent("Week 1 of 18");
-    expect(screen.getByText("Preview")).toBeInTheDocument();
+    expect(screen.getByText("Plan starts Aug 3")).toBeInTheDocument();
     expect(screen.queryByText("This week")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Current Week" })).not.toBeInTheDocument();
     unmount();
@@ -138,7 +140,7 @@ describe("PlanScreen week navigation", () => {
     const { user } = renderPlan();
 
     await user.click(
-      screen.getByRole("button", { name: `${easyTuesday}, Missed` }),
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
@@ -153,7 +155,6 @@ describe("PlanScreen week list", () => {
     const rows = within(weekList()).getAllByRole("listitem");
 
     expect(rows).toHaveLength(7);
-    // The row names the rest day and repeats it as its status.
     expect(within(rows[0]).getAllByText("Rest")).toHaveLength(2);
     expect(within(rows[0]).getByText("No scheduled run")).toBeInTheDocument();
     expect(within(rows[0]).getByRole("button")).toHaveAccessibleName(
@@ -164,19 +165,19 @@ describe("PlanScreen week list", () => {
 
   it("shows target distance and type on a run row", () => {
     renderPlan();
-    const row = screen.getByRole("button", { name: `${easyTuesday}, Missed` });
+    const row = screen.getByRole("button", { name: `${easyTuesday}, No linked run` });
 
     expect(within(row).getByText("2 Miles")).toBeInTheDocument();
     expect(within(row).getByText("Easy · 2 mi")).toBeInTheDocument();
   });
 
-  it("reports completed, missed, and planned status against the run logs", () => {
+  it("reports linked, unlinked, and planned relationship states", () => {
     renderPlan({ runLogs: [runLogFor("workout-004")] });
 
-    // Tuesday's run is in the past and unlogged; Thursday is today and logged;
-    // Saturday's long run is still ahead.
+    // Tuesday is past without an explicit plan link; Thursday is linked;
+    // Sunday's long run is still future intent.
     expect(
-      screen.getByRole("button", { name: `${easyTuesday}, Missed` }),
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: `${easyThursday}, Completed` }),
@@ -186,18 +187,43 @@ describe("PlanScreen week list", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the week's completion count and progress bar", () => {
+  it("separates planned intent, actual history, and explicit plan links", () => {
     renderPlan({
       runLogs: [runLogFor("workout-002"), runLogFor("workout-004")],
     });
 
-    // Week 1 schedules four runs; two of them are logged.
-    expect(screen.getByText("2 of 4 runs complete")).toBeInTheDocument();
-    const progress = screen.getByRole("progressbar", {
-      name: "Week 1 progress",
+    const summary = screen.getByLabelText("Week 1 plan and actual context");
+    expect(within(summary).getByText("4 planned runs")).toBeInTheDocument();
+    expect(within(summary).getByText("4.8 mi actual")).toBeInTheDocument();
+    expect(within(summary).getByText("2 runs")).toBeInTheDocument();
+    expect(screen.getByText("2 of 4 plan runs linked")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Week 1 progress" })).not.toBeInTheDocument();
+  });
+
+  it("counts historical-only running as actual without pretending it satisfies the plan", () => {
+    const runnerRuns = unifiedRunnerHistory({
+      activities: [historicalRun("history-aug4", "2026-08-04", { miles: 6.2 })],
     });
-    expect(progress).toHaveAttribute("aria-valuenow", "2");
-    expect(progress).toHaveAttribute("aria-valuemax", "4");
+
+    renderPlan({ runnerRuns });
+
+    const summary = screen.getByLabelText("Week 1 plan and actual context");
+    expect(within(summary).getByText("6.2 mi actual")).toBeInTheDocument();
+    expect(within(summary).getByText("1 run")).toBeInTheDocument();
+    expect(screen.getByText("0 of 4 plan runs linked")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not headline zero actuals for a week that has not happened yet", async () => {
+    const { user } = renderPlan({ today: "2026-08-06" });
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+
+    const summary = screen.getByLabelText("Week 2 plan and actual context");
+    expect(within(summary).getByText(/planned run/)).toBeInTheDocument();
+    expect(within(summary).queryByText(/actual/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/plan runs linked/)).not.toBeInTheDocument();
   });
 });
 
@@ -222,6 +248,17 @@ describe("PlanScreen workout detail", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows truthful relationship language for a past unlinked plan item", async () => {
+    const { user } = renderPlan();
+
+    await user.click(
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
+    );
+    const sheet = screen.getByRole("dialog");
+    expect(within(sheet).getByText("No linked run")).toBeInTheDocument();
+    expect(within(sheet).queryByText("Missed")).not.toBeInTheDocument();
+  });
+
   it("shows the actual result for a completed run", async () => {
     const { user } = renderPlan({ runLogs: [runLogFor("workout-002")] });
 
@@ -236,15 +273,14 @@ describe("PlanScreen workout detail", () => {
     expect(within(sheet).getByText("Legs felt fresh")).toBeInTheDocument();
   });
 
-  it("logs a past incomplete run from the detail sheet", async () => {
+  it("logs a past unlinked run from the detail sheet", async () => {
     const { user, onSaveRun } = renderPlan();
 
     await user.click(
-      screen.getByRole("button", { name: `${easyTuesday}, Missed` }),
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
     );
     await user.click(screen.getByRole("button", { name: "Log Run" }));
 
-    // The detail sheet gives way to run entry, so only one sheet is ever open.
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(
       screen.getByRole("heading", { name: "Complete Run" }),
@@ -298,7 +334,7 @@ describe("PlanScreen workout detail", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
 
     await user.click(
-      screen.getByRole("button", { name: `${easyTuesday}, Missed` }),
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
     );
     await user.click(screen.getByRole("button", { name: "Log Run" }));
     await user.type(screen.getByLabelText(/Distance/), "9.9");
@@ -306,7 +342,7 @@ describe("PlanScreen workout detail", () => {
     expect(confirm).toHaveBeenCalledTimes(1);
 
     await user.click(
-      screen.getByRole("button", { name: `${easyTuesday}, Missed` }),
+      screen.getByRole("button", { name: `${easyTuesday}, No linked run` }),
     );
     await user.click(screen.getByRole("button", { name: "Log Run" }));
     expect(screen.getByLabelText(/Distance/)).toHaveValue("");

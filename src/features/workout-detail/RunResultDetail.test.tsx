@@ -1,6 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { IntervalsRunProfile } from "../../connected/intervals";
+import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail";
 import type { RunLog } from "../../domain/types";
 import { RunResultDetail } from "./RunResultDetail";
 
@@ -125,7 +127,7 @@ describe("connected run result", () => {
 
     // Exactly four cells, in source order, so the CSS 2×2 lands as designed
     // rather than three across with a fifth stranded underneath.
-    const grid = screen.getByLabelText("Run metrics");
+    const grid = screen.getByLabelText("Imported run metrics");
     expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
       .toEqual(["Avg HR", "Max HR", "Gain", "Load"]);
     expect(screen.getByRole("button", { name: "Cadence" })).toBeInTheDocument();
@@ -337,7 +339,7 @@ describe("Run Profile cadence", () => {
     await screen.findByText("Run Profile");
 
     expect(screen.queryByRole("button", { name: "Cadence" })).not.toBeInTheDocument();
-    const grid = screen.getByLabelText("Run metrics");
+    const grid = screen.getByLabelText("Imported run metrics");
     expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
       .toEqual(["Avg HR", "Max HR", "Gain", "Load", "Cadence"]);
     expect(within(grid).getByText("79")).toBeInTheDocument();
@@ -401,5 +403,88 @@ describe("Run Detail heart-rate zones", () => {
     expect(within(legend).getAllByRole("listitem")).toHaveLength(5);
     expect(legend).toHaveTextContent("Zone 5");
     expect(legend).toHaveTextContent("2:51 · 10%");
+  });
+});
+
+/**
+ * R3 moved the source-owned half of this component into `SourceRunDetail`,
+ * which a historical-only run renders too. These are the accepted run's own
+ * guarantees, restated against the shared path so the refactor cannot quietly
+ * change what a logged run does.
+ */
+describe("accepted run through the shared source-detail path", () => {
+  it("keeps a valid summary when only the optional profile fails", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(NO_INTERVALS)))
+      .mockRejectedValueOnce(new Error("streams unavailable"));
+
+    render(<RunResultDetail run={augustRun} syncToken="token" />);
+
+    // Everything the source already stated survives the failed enrichment,
+    // including the cadence that would have lived in the profile.
+    await screen.findByText("79");
+    expect(screen.getByText("2.76 mi")).toBeInTheDocument();
+    expect(screen.getByText("10:59 /MI")).toBeInTheDocument();
+    expect(screen.getByText("153 bpm")).toBeInTheDocument();
+    expect(screen.getByText("116 ft")).toBeInTheDocument();
+    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    // A missing profile is not an error worth alarming anybody about.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("never lets a superseded run's slow answer land in the run now open", async () => {
+    const pending = new Map<string, (profile: IntervalsRunProfile | null) => void>();
+    const factory: SourceDetailReaderFactory = () => ({
+      readDetail: async () => ({ intervals: [] }),
+      readProfile: (id) =>
+        new Promise<IntervalsRunProfile | null>((resolve) => pending.set(id, resolve)),
+    });
+    const other: RunLog = {
+      ...syncedRun,
+      id: "run-2",
+      externalSource: { provider: "intervals", activityId: "a2", sourceUpdatedAt: null, importedAt: "now" },
+    };
+
+    const view = render(
+      <SourceDetailReaderProvider value={factory}>
+        <RunResultDetail run={syncedRun} syncToken="token" />
+      </SourceDetailReaderProvider>,
+    );
+    view.rerender(
+      <SourceDetailReaderProvider value={factory}>
+        <RunResultDetail run={other} syncToken="token" />
+      </SourceDetailReaderProvider>,
+    );
+
+    pending.get("a1")?.({
+      samples: [
+        { timeSeconds: 0, heartRate: 140 },
+        { timeSeconds: 30, heartRate: 150 },
+      ],
+    });
+    await Promise.resolve();
+
+    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+  });
+
+  it("asks the source for nothing when the run was never synced", () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    render(<RunResultDetail run={base} syncToken="token" />);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+  });
+
+  it("keeps every touch target for the profile selectors a real button", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={augustRun} syncToken="token" />);
+    await screen.findByText("Run Profile");
+
+    for (const selector of within(screen.getByRole("group", { name: "Run Profile metric" }))
+      .getAllByRole("button")) {
+      expect(selector.tagName).toBe("BUTTON");
+      expect(selector).toHaveAttribute("aria-pressed");
+      expect(selector).toHaveClass("run-profile__selector");
+    }
   });
 });

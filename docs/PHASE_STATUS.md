@@ -709,10 +709,266 @@ instead by automated tests across Crew, Today, Run Data, comparisons, Avg
 Pace, sync status and the stylesheet's member-rail rules.
 
 - `npm run check` passes (lint, 1493 tests, build).
+## STACK Next program (`feature/stack-next`)
+
+A separate program from the UI phases above. `main` remains the stable
+application; STACK Next reorganizes the product around the runner's actual
+history rather than around the training plan, and is not merged to `main` until
+the owner accepts the new direction as a whole. `docs/STACK_NEXT.md` is its
+product direction and `docs/STACK_NEXT_IMPLEMENTATION.md` its roadmap.
+
+| Phase | Name | Branch | Status |
+|---|---|---|---|
+| NEXT-0 | Direction + data contract | `feature/stack-next` | Complete — August 15, 2026 |
+| NEXT-1 | Historical Data Foundation | `feature/historical-data` | Accepted and merged (PR #100), August 15, 2026; deployed smoke test outstanding |
+| NEXT-2 | Runner History + Profile Foundation | `feature/runner-profile` | Accepted and merged (PR #102, with #103), August 15, 2026 |
+| NEXT-3 | Training Signals v2 | `feature/training-signals-v2` | Accepted and merged (PR #104), August 15, 2026 |
+| NEXT-4 | Today / Home revision | `feature/today-next` | Accepted and merged (PR #105), August 16, 2026 |
+| Runs R1–R4 | Runs reframe: overview, history, Run Detail, integration | `feature/runs-*` | Accepted and merged (PRs #109, #110, #122, #124), August 18–19, 2026 |
+| NEXT-5 | Plan role revision | `feature/plan-next` | Accepted and merged (PR #125), August 19, 2026 |
+| NEXT-6 | Build + Crew compatibility pass | `feature/stack-next-integration` | Accepted and merged (PR #130), August 19, 2026 |
+| NEXT-7 | Product integration + release candidate | — | Not started |
+
+### NEXT-1 — accepted, awaiting real-data verification
+
+`src/history/` adds a headless historical activity layer behind one service
+boundary: configurable lookback (365 days by default), date-window pagination
+inside the reader's 120-day limit, normalized Tier 1 source facts in source
+units with missing values staying null, dedupe and in-place reconciliation on
+`provider + sourceId`, and persistence at `stack.history.activities.v1` outside
+AppState. `docs/CURRENT_APPLICATION_STRUCTURE.md` describes the modules.
+
+No AppState migration, no schema change, no Supabase migration, no dependency,
+no UI. Manual runs, accepted connected runs, plan links, Build, Crew and the
+safe projection are unchanged, and newly discovered history earns no Build
+block. NEXT-6 settled that permanently: historical activity never earns a block
+and STACK ships no backfill.
+
+- `npm run check` passes: 111 files, 1,462 tests, 59 of them new and all on
+  fake fixtures and fake credentials.
+- **Outstanding:** the deployed smoke test against the owner's real Intervals
+  connection, documented step by step in `docs/STACK_NEXT_IMPLEMENTATION.md`.
+  Until it runs, the lookback, paging, plausible activity counts, repeated-sync
+  dedupe and real optional-metric coverage are verified against fixtures only.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact, because it made no real API call.
+
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-1
+into `feature/stack-next` with the smoke test tracked as a pre-release item.
+
+### NEXT-2 — accepted and merged
+
+The first user-facing STACK Next phase, and it adds **no navigation
+destination**: all of it lands on the existing Runs screen.
+
+`src/history/runnerRun.ts` is a unified actual-history read model over both
+records NEXT-1 left STACK holding — connected history and `RunLog`s reconciled
+on the external activity id into one row per physical run, with STACK-owned
+facts (effort, notes, plan link, Build placement) overlaid at read time and
+never written into the source mirror. Beside it, four pure calculation modules
+that NEXT-3 is meant to reuse: `runnerVolume.ts`, `runnerFrequency.ts`,
+`runnerLongRuns.ts` and `runnerCoverage.ts`, all React-free and all stating the
+window they were computed over.
+
+`src/history/historySyncPolicy.ts` settles the trigger question NEXT-1
+deliberately left open: no connection means no request, sync is attempted only
+on app open and return-to-front with no polling anywhere, a full year is read at
+most once per device and refreshed thereafter with a single 45-day window,
+history stays fresh for 24 hours, and every attempt starts a one-hour
+cooling-off period. A failure never blocks the app and never discards the
+history a partial read managed to store.
+
+Runs now leads with a compact four-reading runner snapshot (each reading
+carrying its own window), a twelve-week actual-volume strip, the unified run
+history including runs the runner never reviewed, and the existing Training
+Signals retained below it. A profile sheet holds the deeper volume, frequency,
+long-run and data-coverage detail.
+
+- Pace and HR are shown per run and **not compared across runs**. A historical
+  activity carries no STACK activity type, so no comparable-run grouping can be
+  defined cleanly yet; coverage is shown and the comparison is deferred to
+  NEXT-3, which must document its qualifying runs, window, sample minimum and
+  coverage requirement.
+- Coverage thresholds live in the domain layer: a metric needs 8 runs **and**
+  60% of the window's runs before STACK will say anything aggregate about it.
+- No AppState migration, no schema change, no Supabase migration, no dependency.
+  Build, plan, Crew projection, the Run Data review queue and existing Run
+  Detail are unchanged, and no historical run earns a Build block.
+- `npm run check` passes: 121 files, 1,570 tests, 108 of them new and all on
+  fake fixtures and fake credentials.
+- **Outstanding:** owner acceptance, and NEXT-1's deployed real-data smoke test,
+  which NEXT-2 does not depend on — no source fact was promoted on fixture
+  evidence, cadence and source-unit semantics are unchanged, and no NEXT-2
+  number requires an optional metric to exist.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact either.
+
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-2
+into `feature/stack-next`, including the account-isolation follow-up in PR #103.
+
+### NEXT-3 — accepted and merged
+
+Training Signals stop asking *did the runner follow the plan?* and start asking
+*what is actually changing in this runner's training?* Seven plan-relative
+statistics become six observations over the unified actual history — five of
+them historical, one retained as plan context and ranked last.
+
+The audit that produced that set, every formula, both windows, all thresholds,
+the coverage and suppression rules and the deterministic ordering are recorded
+in `docs/STACK_NEXT_IMPLEMENTATION.md`. In brief: two equal inclusive 28-day
+windows (`today − 27 … today` against the 28 before it), a four-run floor in
+each window, a rule that the history must reach back past the baseline's first
+day, and NEXT-2's own coverage thresholds — 8 runs and 60% — reused unchanged
+for the two connected-metric signals, plus a coverage-parity rule that is an
+additional requirement rather than a relaxation.
+
+- `src/signals/` is the new domain layer: pure, React-free, one module per
+  family, every threshold a named constant with the reasoning beside it. No
+  formula lives in a component; JSX renders `headline`, `support` and the two
+  windows the domain produced.
+- The words are rules. *Building*, *easing*, *steady*, *more often*, *holding*
+  each correspond to a documented calculation. There is no *good*, *bad* or
+  *failing* anywhere, no overall score, and no readiness, recovery or fatigue
+  reading derived from Training Load.
+- Signals with nothing to say are absent, not empty. When none is available, one
+  compact line says so once; per-metric coverage stays in the Runner Profile
+  sheet where NEXT-2 put it. A manual-only runner still gets every signal their
+  own runs support; connected-only signals disappear gracefully.
+- Aggregate pace and HR comparison is **deferred again**, deliberately. No
+  defensible comparable-run grouping is available from the data STACK holds, and
+  inventing an effort classification to produce a metric is ruled out by the
+  phase contract.
+- The Runs hierarchy is unchanged and Training Signals stay below the history.
+  No navigation destination, no Today/Plan/Build/Crew change, no new
+  persistence, no dependency, no migration.
+- `npm run check` passes: 131 files, 1,660 tests, 126 of them new and all on
+  fake fixtures.
+- **Outstanding:** NEXT-1's deployed real-data smoke test. NEXT-3 does not
+  depend on it — the two optional-metric signals are coverage-gated in both
+  windows and vanish when the metric is absent — but what it would establish for
+  this phase is whether the owner's real Intervals coverage is good enough for
+  those two cards to appear at all.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact either.
+
+`docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's decision to merge NEXT-3
+into `feature/stack-next` in PR #104, including the deployed presentation
+cleanup accepted with it.
+
+### NEXT-4 — accepted and merged
+
+Today stops being a small copy of Plan. It asked *what does my plan say today?*;
+it now asks **what matters now?** — and the plan is not hidden to achieve it. A
+scheduled run today still leads, because it is very likely the runner's most
+important immediate action. What changed is that the rest of the screen
+understands the runner beyond that one workout, so the page is useful on a rest
+day, before a plan starts, after a race, and for a runner whose history STACK
+holds but whose plan has nothing to say.
+
+The element-by-element audit — KEEP / REFRAME / COMPRESS, and what happened to
+each — is recorded in `docs/STACK_NEXT_IMPLEMENTATION.md`. In brief:
+
+- `src/features/today/todayModel.ts` is a pure, React-free, separately tested
+  model. Every decision the screen makes is resolved there; the component
+  renders what it is handed and computes no mileage, defines no window and
+  grades no adherence.
+- **Nothing was recalculated.** Trailing mileage is `runnerVolume`, frequency is
+  `runnerFrequency`, the recent longest run is `runnerLongRuns`, the week's
+  intent is the existing `selectPlanWeekViewModel`, and the observation is the
+  NEXT-3 signal domain unchanged. No new metric window and no second definition
+  of a mile, a week or a run entered the product.
+- **Recent training is at most three facts**, each stating its own window, and
+  never the four-reading Runner Snapshot copied over from Runs. A reading STACK
+  cannot state is omitted; a fully known empty window is still `0 mi`. There is
+  no "not enough history" card anywhere on Today.
+- **At most one Training Signal**, chosen by a documented deterministic rule:
+  presentable only, never plan context, never `steady`, highest-ranked survivor
+  of the NEXT-3 ordering, otherwise nothing. It is an observation and never
+  advice, and it routes into Runs rather than duplicating NEXT-3's detail.
+- **One fact has one job.** A reading the chosen observation already states is
+  dropped by rule rather than by review.
+- **This Week is actual-first.** Miles and runs actually run lead; scheduled
+  completion, the bar, the day markers and the extra chip sit underneath as
+  context. The two measures stay separate exactly as before — an unplanned run
+  is real mileage and still cannot tick off a workout nobody scheduled.
+- **Everything worth preserving was preserved**: scheduled completion, editing
+  and deleting a completed run, Run Found review with dismiss and ignore, manual
+  fallback, sync retry, the earned-block handoff into Build, Crew access and the
+  existing accessible focus and live-region behaviour.
+- Today consumes the history the application already owns, through `AppShell`.
+  No second history hook, sync, persistence or stale/fresh lifecycle.
+- No Plan redesign (NEXT-5), no Build domain change or historical backfill
+  (NEXT-6), no Crew change, no new projection field, no navigation change, no
+  persistence, schema, migration or dependency change, no readiness state and no
+  score.
+- `npm run check` passes: 134 files, 1,709 tests, 53 of them new and all on fake
+  fixtures.
+- **Outstanding:** owner acceptance, real-device iPhone Safari review of the
+  revised screen, and NEXT-1's deployed real-data smoke test.
+- `docs/CONNECTED_DATA_FIELDS.md` is unchanged: this phase established no new
+  source fact either.
+
+### NEXT-5 — accepted and merged
+
+Plan keeps being useful, editable, race-specific structure and stops being the
+authority on whether the runner ran. The rule it is built on:
+
+> Actual history says what happened. Plan says what was intended. A link says
+> how an actual run relates to that intent.
+
+The viewed week states planned intent, actual running inside that week's exact
+dates, and `X of Y plan runs linked` as three separate readings — no completion
+hero, no progress bar, no adherence grade. Actual totals include historical-only
+running because it happened, and satisfy no scheduled workout: an explicit
+`RunLog` link remains the only relationship, with no date/distance/title/pace
+matching anywhere. A past workout nothing is linked to says `No linked run`.
+
+`src/features/plan/planLifecycle.ts` gives the plan window edges: before the
+start date Plan previews week 1 and says training has not started; during
+training it says nothing about lifecycle; after race day it says the plan is
+complete, keeps every week browsable, and offers `Set up next race` into the
+**existing** `RaceSetupSheet` rather than a second plan generator.
+
+The QA Runner carries all three lifecycles, so the before-plan and after-race
+states are reviewable on a device instead of only in tests.
+
+Deferred by decision: representing *no active plan* needs a nullable
+`TrainingPlan` in AppState, which cascades through Today, Build, Crew and
+onboarding. It stays an open owner decision.
+
+- `npm run check` passes: 152 files, 1,880 tests.
+- `docs/STACK_NEXT_ACCEPTANCE_LOG.md` records the owner's acceptance.
+
+### NEXT-6 — accepted and merged
+
+The compatibility pass found Build and Crew already behaving correctly, for
+reasons nobody had written down.
+
+- **Build** earns blocks from `RunLog`s only, so a historical-only run earns
+  none. **Owner decision: it stays that way and no backfill ships** — not on
+  install, sync, upgrade or request. A `RunLog`-based backfill would also have
+  made that running Crew-visible, so the decision was never only about the tower.
+- **Crew** projects `AppState`, and historical activity is stored outside it
+  under its own account-scoped key, so Crew structurally cannot see the source
+  mirror. That was a property of storage layout; it is now a rule with tests,
+  including that syncing a year of history leaves the Crew payload byte-identical.
+- An accepted run that also exists in connected history reconciles on external
+  identity into one row and earns exactly one block.
+
+Language followed the model: `Every completed run earns a block` became `Every
+run you record earns a block`, and Crew's `Consistency` comparison became
+`Plan Runs Linked` — same window, same stored columns, same bars and ranking.
+
+No backfill, no Supabase migration, no RLS or projected-field change, no
+placement change, no AppState migration.
+
+- `npm run check` passes: 153 files, 1,886 tests.
 
 ## Active source documents
 
 - `START_HERE.md`
+- `docs/STACK_NEXT.md` — and `docs/INTERVALS_DATA_STRATEGY.md`,
+  `docs/STACK_NEXT_IMPLEMENTATION.md`, for work on `feature/stack-next`
 - `docs/NEXT_PRODUCT_PROGRAM.md`
 - `docs/RACE_CREW.md`
 - `docs/RACE_CREW_SETUP.md`

@@ -1,0 +1,116 @@
+import { addDaysToLocalDate } from "../../domain/dates";
+import type {
+  BlockPlacement,
+  RunActivityType,
+  RunLog,
+  TrainingPlan,
+  Workout,
+} from "../../domain/types";
+import {
+  compareRunnerRuns,
+  unifiedRunnerHistory,
+  type RunnerRun,
+} from "../../history/runnerRun";
+import { loadSeedPlan } from "../../seed/loadSeedPlan";
+import { signalDemoRuns } from "../signals/signalDemo";
+
+interface TodayDemoLocation {
+  hostname: string;
+  search: string;
+}
+
+export const TODAY_DEMO_DATE = "2026-09-17";
+
+/** Preview-only switch. A production/custom hostname can never enable fake data. */
+export function isTodayDemoEnabled(location?: TodayDemoLocation | null): boolean {
+  const current =
+    location ?? (typeof window === "undefined" ? null : window.location);
+  if (!current) return false;
+
+  const hostname = current.hostname.toLowerCase();
+  const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+  const isVercelBranchPreview =
+    hostname.endsWith(".vercel.app") && hostname.includes("-git-");
+
+  return (
+    (isLocal || isVercelBranchPreview) &&
+    new URLSearchParams(current.search).get("demo") === "today"
+  );
+}
+
+export interface TodayDemoData {
+  plan: TrainingPlan;
+  runLogs: RunLog[];
+  blockPlacements: BlockPlacement[];
+  runnerRuns: RunnerRun[];
+  today: string;
+}
+
+function demoDistance(workout: Workout, index: number): number {
+  const target = workout.targetDistanceMiles
+    ? Number.parseFloat(workout.targetDistanceMiles)
+    : Number.NaN;
+  return Number.isFinite(target) ? target : 3 + (index % 4) * 0.75;
+}
+
+/**
+ * In-memory owner-review data for `?demo=today`.
+ *
+ * The historical side reuses NEXT-3's fake history so the real NEXT-2 and
+ * NEXT-3 calculations drive the screen. Six earlier seed-plan runs give Build
+ * a visible state: five placed, one pending. Nothing is persisted.
+ */
+export function todayDemoData(): TodayDemoData {
+  const plan = loadSeedPlan();
+  const completedWorkouts = plan.weeks
+    .flatMap((week) => week.workouts)
+    .filter(
+      (workout) => workout.type !== "rest" && workout.date < TODAY_DEMO_DATE,
+    )
+    .slice(-6);
+
+  const runLogs: RunLog[] = completedWorkouts.map((workout, index) => {
+    const distanceMiles = demoDistance(workout, index);
+    const timestamp = `${workout.date}T07:00:00.000Z`;
+    return {
+      id: `demo-today-log-${index + 1}`,
+      workoutId: workout.id,
+      completedDate: workout.date,
+      activityType: workout.type as RunActivityType,
+      distanceMiles,
+      durationSeconds: Math.round(distanceMiles * (9.5 + index * 0.08) * 60),
+      effort: "solid",
+      notes: "",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      source: "manual",
+      externalSource: null,
+      importedMetrics: null,
+    };
+  });
+
+  const blockPlacements: BlockPlacement[] = runLogs
+    .slice(0, 5)
+    .map((run, index): BlockPlacement => ({
+      runLogId: run.id,
+      row: index < 4 ? 0 : 1,
+      columnStart: (index < 4 ? index + 1 : 1) as 1 | 2 | 3 | 4,
+      width: 1,
+      height: 1,
+      placedAt: `${run.completedDate}T12:00:00.000Z`,
+    }));
+
+  // End the historical fixture yesterday so the demo does not imply the runner
+  // already ran today while the scheduled workout is still waiting.
+  const historical = signalDemoRuns(addDaysToLocalDate(TODAY_DEMO_DATE, -1));
+  const stackRuns = unifiedRunnerHistory({ runLogs, blockPlacements });
+  const runnerRuns = [...historical, ...stackRuns].sort(compareRunnerRuns);
+
+  return {
+    plan,
+    runLogs,
+    blockPlacements,
+    runnerRuns,
+    today: TODAY_DEMO_DATE,
+  };
+}
