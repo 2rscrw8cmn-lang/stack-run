@@ -1,355 +1,402 @@
-# Product and Scope
+# STACK — Product and Scope
 
-## Product statement
+**Status:** current product source of truth for `main`.
 
-STACK helps a runner follow a race training plan, record what they actually ran, understand how training is progressing, and turn every completed run into a block in a growing structure.
+STACK is a phone-first running product that turns actual training into something a runner can understand, act on and physically build.
 
-The current product now also has an approved optional **Race Crew** path for a small invite-only group training for the same race.
+> **Actual history says what happened. Plan says what was intended. A link says how an actual run relates to that intent.**
+
+The runner's actual history is foundational. Plan is useful race-specific intent, Build is the tangible reward, and Crew is an optional social layer downstream of personal truth.
 
 ## Product promise
 
-Open the app, know what matters today, confirm what you actually ran, understand the training you are building, place the block, and watch the race preparation become something tangible.
+Open STACK and quickly answer:
 
-When Race Crew is enabled, see whether your friends are doing the work without turning STACK into a public social network or exposing private health/location data.
+1. **What matters today?**
+2. **What have I actually been doing?**
+3. **What does that history say about my running right now?**
+4. **What am I planning to do next?**
+5. **What am I building toward?**
 
-## Primary user model
+The product should make training understandable without becoming a live tracker, a giant analytics dashboard, a public social network or an opaque coaching engine.
 
-Personal STACK remains complete and local-first.
+## Primary navigation
 
-Race Crew v1 is optional and intentionally designed for roughly ten known friends.
-
-A user can use STACK without creating a Race Crew account.
-
-## Current implemented product
-
-STACK includes:
-
-1. One active generated/editable race plan.
-2. Today daily briefing.
-3. Scheduled + extra actual runs.
-4. Manual run entry fallback.
-5. HealthFit → Intervals.icu → STACK connected import.
-6. User-confirmed scheduled matching/extra/attach behavior.
-7. Rich run detail with verified imported metrics when present.
-8. Runs as chronological actual-history pillar.
-9. Seven focused Training Signals with plan-vs-actual/richer graphs.
-10. Performance Arcade modern training-computer design language.
-11. One deterministic Build block per actual run.
-12. Object-first 8-column Build tower.
-13. Editable Plan, preferred run days and availability conflict handling.
-14. Settings from icon-only top-right gear.
-15. Local schema-9 persistence/recovery.
-
-UI-16 Trends 2.0 and UI-17 Performance Arcade are complete.
-
-## Current navigation
-
-Exactly:
+The current destination model is:
 
 - **Today** — what matters now.
-- **Build** — the visual reward.
-- **Runs** — actual history + Training Signals; later Race Crew context.
-- **Plan** — future schedule.
+- **Build** — the tangible reward for runs recorded or accepted into STACK.
+- **Runs** — actual history, current-running context, Training Signals, History and Run Detail.
+- **Crew** — optional shared training/build context for a signed-in active Crew member.
+- **Plan** — upcoming and historical race intent.
 
-Settings is utility, not content navigation.
+Crew is conditional. A runner with no active Crew membership keeps the personal product without a Crew destination.
 
-## Active next phase — UI-18 Race Crew Foundation
+Settings and Account & Crew are utilities/sheets, not primary destinations.
 
-Race Crew architecture has been approved for a private hobby group.
+## Today
 
-### Approved infrastructure
+Today is a decision surface, not merely today's plan card.
 
-- Supabase Auth + Postgres + Row Level Security.
-- `@supabase/supabase-js` approved.
-- Browser public config only:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_PUBLISHABLE_KEY`
-- No Supabase secret/service-role key in browser.
+It may surface:
 
-### Account
+- today's scheduled workout when one is genuinely due;
+- a relevant Intervals run waiting for review;
+- a completed run and the next Build/Crew action;
+- compact recent-running context;
+- the current week's actual running;
+- at most one useful Training Signal;
+- upcoming plan intent;
+- Personal Build context;
+- small, relevant Crew activity when available.
 
-- optional for personal use;
-- email + exactly 8 numeric digits presented as STACK PIN;
-- no normal magic-link login;
-- email confirmation intentionally disabled for hobby release;
-- session persists normally.
+Today does not own a second analytics engine or a second connected-data lifecycle. It consumes the shared history, Signals, Plan, Build and Crew systems.
 
-This auth model is explicitly a hobby/private-friends tradeoff, not the future public-product security standard.
+## Runs
 
-### Personal data ownership
+Runs is the factual running-history pillar.
 
-Personal AppState remains local schema 9.
+Its product model is progressive disclosure:
 
-Race Crew does not cloud-sync full:
+- **Overview** — understanding;
+- **History** — chronology and lookup;
+- **Run Detail** — investigation.
 
-- plan;
-- RunLogs/imported metrics;
-- Build placements;
-- availability calendar;
-- AppState.
+### Unified actual history
 
-Creating/signing into account must not replace or upload current local training history.
+STACK combines:
 
-### Per-user connected data
+- accepted/manual `RunLog` records owned by STACK; and
+- normalized historical Intervals running activities that may never have been accepted into a plan or Build.
 
-Apple Watch remains:
+One physical source activity should appear once. When a source activity also has a STACK `RunLog`, STACK-owned editable facts overlay the source mirror at read time rather than rewriting source history.
+
+Historical-only activities are legitimate facts. They do not need acceptance to appear in history and do not silently earn Build blocks.
+
+### Runs Overview
+
+The overview is intentionally not exhaustive. It includes:
+
+- a current running snapshot;
+- a compact recent-training visualization;
+- up to three featured Training Signals, with remaining Signals available through disclosure;
+- three recent runs;
+- entry to History.
+
+### Training Signals
+
+The current Signal families are:
+
+1. Volume;
+2. Frequency;
+3. Long runs;
+4. Workload;
+5. Zone mix;
+6. Plan context.
+
+Signals are descriptive, not grades. Missing or weakly covered metrics are omitted rather than converted to zero. There is no overall training/readiness score.
+
+### History Explorer
+
+History supports multiple ranges and factual metrics such as miles, runs, time, source Training Load, elevation gain and zone composition. Longer ranges aggregate rather than shrinking labels until they are unreadable.
+
+### Run Detail
+
+Run Detail uses trusted source aggregates for stated summary numbers and on-demand source detail/streams for shape.
+
+> **Source aggregates give numbers. Streams give shape.**
+
+Where available, a connected run may show:
+
+- distance, duration and derived pace;
+- average/max heart rate;
+- source elevation gain;
+- source Training Load;
+- cadence using the documented source convention;
+- HR zones;
+- structured interval detail;
+- Pace / Heart Rate / Elevation / Cadence profile charts.
+
+Do not recompute trusted summary facts from streams merely because stream samples exist.
+
+## Plan
+
+Plan is race-specific intent, not the authoritative record of whether the runner ran.
+
+The current product still structurally carries one active `TrainingPlan`, while preserving past weeks as historical intent.
+
+Plan separates:
+
+- what was scheduled;
+- what the runner actually did in those dates; and
+- which actual run has an explicit relationship to a planned workout.
+
+A past workout with no explicit linked run is **No linked run**, not a judgmental `Missed` claim.
+
+Actual historical activity does not automatically satisfy a planned workout. Existing explicit matching/linking rules remain authoritative.
+
+A first-class no-active-plan lifecycle is not implemented yet; that is a future product decision rather than something this document should imply already exists.
+
+## Personal Build
+
+Build is STACK's distinctive emotional reward.
+
+- A run recorded/accepted into STACK earns one deterministic Personal Build block.
+- Historical-only source activities do not silently backfill Personal Build.
+- The tower is eight columns wide and uses deterministic gravity/support rules.
+- The runner deliberately places earned blocks.
+- Deleting/editing runs repairs the structure under the existing domain rules.
+- Placement motion is presentation only; it never changes deterministic geometry.
+
+Build is not XP, a score, currency, levels or a generic achievement economy.
+
+## Connected running data
+
+The common Apple path is:
 
 ```text
 Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
 
-Other watch/training services may skip HealthFit when they already connect to Intervals.
+Other watch/services may connect to Intervals directly and skip HealthFit.
 
-For Race Crew hobby mode each runner uses their **own Intervals personal API key**, stored only on that runner's browser/device outside AppState.
+Manual logging remains a complete fallback.
 
-The key:
+### Intervals connection modes
 
-- is never sent to Supabase;
-- is never shared with crew;
-- is never included in backup/export;
-- is used for direct Intervals `/api/v1/` Basic-auth requests after real Safari/CORS verification.
+STACK currently supports:
 
-Current owner's existing Vercel personal-key proxy remains during migration until the new device-local path is proven.
+- the per-device personal Intervals API-key path; and
+- a legacy protected proxy path retained for compatibility/deprecation work.
 
-Intervals officially recommends OAuth for apps intended for multiple users. The owner has accepted personal keys only as a temporary private-hobby shortcut. OAuth must be revisited before public/open/commercial/stranger onboarding or material scale.
+Intervals credentials remain device-local and outside personal AppState/cloud sync. They are never sent to Crew or stored in Supabase personal-state tables.
 
-## Race Crew product direction
+### Review and matching
 
-Race Crew began inside Runs as a `YOU | CREW` context, explicitly not a fifth tab. **UI-21 changed that (D-065.)** Once every runner's shared runs contribute blocks to one communal Crew Build, Race Crew owns a mechanic no other screen has, and it became a destination:
+Connected reads discover candidates. The runner explicitly chooses the approved relationship:
 
-```text
-Today | Build | Runs | Crew | Plan
-```
+- match/link to a scheduled workout;
+- accept as an extra run; or
+- attach source data to an existing manual run.
 
-Crew is conditional: it appears only for a signed-in active member of a crew. Everybody else keeps the original `Today | Build | Runs | Plan`, and Runs is personal-only again.
+Pending review is durable. A rolling Intervals query is not allowed to erase an unresolved candidate merely because the activity fell outside the next query window.
 
-The Crew Build is the crew's own tower. Every safe shared run earns one Crew block in a READY queue. The runner who earned that block chooses its open position and may later move it; nobody can place or move a teammate's block. Crew placement uses independent `crew_build_row` / `crew_build_column_start` coordinates and never reads or rewrites the runner's personal Build placement, which remains Member-Build-only data. Running earns the block; deliberate runner-owned placement builds the shared tower.
+## Personal account and multi-device sync
 
-Crew:
+Personal use remains available while signed out.
 
-- invite-only;
-- centered on race name/date/distance;
-- one owner/admin for v1;
-- race mismatch warns but never rewrites personal plan;
-- no public discovery/follower graph/DMs.
+### Signed out
 
-Approved comparison metrics:
+- schema-9 personal AppState is local browser state;
+- no account is required for the core personal product.
+
+### Signed in
+
+The account's private Supabase data becomes canonical while local storage remains the offline/cache working copy.
+
+Private personal cloud state is normalized across:
+
+- `personal_training_state`;
+- `personal_runs`;
+- `personal_build_state`;
+- `personal_intervals_state`.
+
+Writes use authenticated revision/generation-enforcing RPCs rather than direct browser-table writes. Runs use durable identity/tombstone rules so stale devices cannot casually resurrect deleted data.
+
+The complete personal AppState is not stored as one opaque cloud blob.
+
+### Credentials remain local
+
+Intervals API keys/proxy tokens are intentionally **not** part of personal cloud sync. A new device can receive canonical plan/runs/Build/review state while still requiring its own Intervals credential.
+
+See `PERSONAL_ACCOUNT_SYNC.md` and `DATA_AND_STORAGE.md` for implementation detail.
+
+## Crew
+
+Crew is an optional invite-only social layer built from a narrow projection of accepted personal runs.
+
+A signed-in account may belong to multiple Crews and views one Crew at a time.
+
+Current Crew identity includes:
+
+- Crew name/type/race context;
+- Crew emblem;
+- runner display name;
+- runner color;
+- Runner Icon.
+
+### Crew types and relationship to personal Plan
+
+Crew race metadata never silently rewrites a runner's personal plan. A mismatch is context/information, not plan mutation.
+
+Club-style Crew behavior does not require every social metric to depend on a personal training plan.
+
+### Shared Crew Build
+
+Crew owns its own communal eight-column Build.
+
+- eligible accepted/shared runs create runner-owned Crew blocks;
+- the runner who earned a block places/moves that block;
+- nobody places or moves a teammate's block;
+- Crew placement coordinates are independent of Personal Build placement;
+- server-side RPCs remain authoritative for collision/support/concurrency rules;
+- the Crew Build has a Crew-owned build-start window;
+- Member Build/history and Crew Build window semantics are intentionally distinct.
+
+### Crew comparisons
+
+The current shared comparison set is:
 
 - Weekly Miles;
 - Longest Run;
-- Consistency;
-- Miles Built.
+- Avg Pace;
+- Miles Built;
+- Awards.
 
-No overall score.
+There is no overall Crew score.
 
-No raw faster-is-better pace leaderboard.
+### Props
 
-## Crew-safe shared data
+Props is lightweight encouragement attached to safe Crew-visible runs. It is intentionally not comments, DMs or a public social feed.
 
-Default shared run fields:
+### Special Blocks / weekly awards
 
-- display name;
-- local run date;
+Completed Crew weeks can mint zero-mile Special Blocks. Current standard awards include Most Miles, Best Zone 2, Fastest Avg. Pace and Most Runs, plus a rotating Feature award where the required fact can be derived honestly.
+
+Special Blocks:
+
+- belong to one winner;
+- are placed by that winner;
+- participate in the same shared Build support/collision rules;
+- never add to Miles Built;
+- preserve the hollow-block visual system documented in `CREW_SPECIAL_BLOCKS.md`.
+
+`Steady` intentionally produces no Feature award until a verified pace-variability scalar exists; STACK does not fabricate a fallback.
+
+## Crew projection and privacy boundary
+
+Crew never receives complete personal history/AppState or raw upstream payloads.
+
+The projection is assembled field-by-field rather than spreading a `RunLog`.
+
+### Current Crew-visible run facts
+
+Depending on availability/validation, the projection may include:
+
+- local run id for canonical Crew identity;
+- local date;
 - STACK activity type;
 - distance;
 - duration;
-- derived pace.
+- run source (`manual` / `intervals`);
+- sanitized Personal-Build placement facts used for Member Build;
+- average, max and manual heart rate under the deliberate D-079 exception;
+- narrowly derived award scalars required for deterministic Special Block ranking.
 
-Approved member summary:
+Optional constrained values are sanitized to `null` rather than being allowed to fail the entire Crew upload.
 
-- current-week miles;
-- trailing-28-day longest run;
-- recent up-to-4-plan-week scheduled consistency completed/due;
-- miles built.
+### Still private / never projected raw
 
-Private by default / not uploaded to Crew:
+Crew does **not** receive raw:
 
-- Intervals API key;
-- Intervals external activity id;
-- raw source payload;
+- Intervals credentials;
+- Intervals external activity ids;
+- source payloads;
 - GPS/routes/location;
 - exact start time;
-- HR/max HR;
-- HR zones;
-- Training Load;
-- wellness;
+- HR-zone arrays/raw zone durations;
+- source Training Load;
+- wellness data;
 - effort;
 - notes;
 - private calendar/availability;
-- full AppState.
+- complete personal AppState;
+- complete historical Intervals mirror.
 
-## Run Data onboarding
+Heart rate is therefore no longer on the never-send list; it is a deliberate, narrow current exception. Raw zones and other health/history detail remain private.
 
-The multi-app pipeline must be explained as a feature, not tribal knowledge.
+See `CREW_PROJECTION_CONTRACT.md`, `RACE_CREW_IMPLEMENTATION.md` and `CREW_SPECIAL_BLOCKS.md` before widening this boundary.
 
-`docs/RUN_DATA_SETUP.md` is the user-facing source of truth.
+## Cross Training
 
-Apple Watch wizard explains:
+Cross Training is a current STACK activity type and may be recorded/accepted into personal state. Crew storage also permits Cross Training, including zero-distance sessions when valid.
 
-1. HealthFit moves Apple Health workouts.
-2. Intervals is STACK's data bridge.
-3. Verify one run reaches Intervals.
-4. Generate Intervals personal API key.
-5. Paste into STACK.
-6. Test connection / Sync Now.
-7. Explain key stays on this device and what Crew can see.
+A known current asymmetry remains: the historical source mirror is intentionally restricted to verified running types, so a source-only Cross Training activity may not join unified historical history while an accepted/logged Cross Training activity can exist in STACK.
 
-Other watch/service users skip HealthFit when Intervals already supports their source.
+Do not silently widen the history allowlist without deciding how non-running activity should affect running-specific volume, pace, long-run and Signal calculations. This is tracked as an explicit future product decision.
 
-## Implementation sequence
+## Persistence boundaries
 
-### UI-18 — Race Crew Foundation
+Current persistence is deliberately split by responsibility:
 
-Complete:
+- **AppState/cache** — schema-9 personal configuration, plan, accepted runs and placement state;
+- **private account tables** — canonical signed-in personal training/runs/Build/Intervals review state;
+- **historical activity repository** — normalized source history outside AppState;
+- **pending Intervals repository** — unresolved source-review queue outside AppState;
+- **credential repository** — device-local sensitive Intervals credential;
+- **Crew/Supabase shared tables** — approved social projection, memberships, Crew Build, Props, awards and identity data.
 
-- Supabase client/config;
-- account auth;
-- Account & Crew Settings;
-- SQL migration + RLS;
-- crew create/join/leave/invite/remove;
-- per-device Intervals credential/client mode;
-- setup wizard;
-- narrow safe projection service;
-- current owner no-loss adoption.
+Do not collapse these into one persistence model merely for convenience.
 
-No social Crew feed/comparison screen yet.
+## Design direction
 
-### UI-19 — Crew Runs + Comparisons
+Current visual direction is **Performance Arcade**.
 
-- YOU | CREW;
-- crew header;
-- four approved comparisons;
-- recent crew runs;
-- crew-safe detail.
+The product-wide presentation principle is:
 
-### UI-20 — Props + Mini Builds
+> **Interface is quiet. Data is STACK.**
 
-- lightweight encouragement;
-- read-only mini Builds;
-- optional member summary.
+Use normal sans typography for interface language and Space Mono/data typography for values, dates, units and machine-like labels where appropriate. Use typography, spacing and thin rules before adding another card/container.
 
-Comments separately reviewable.
+`DESIGN_SYSTEM.md` is the central design reference; specialist chart/Build/Crew docs extend it.
 
-### UI-21 — Crew Destination + Shared Crew Build
+## Current product boundaries
 
-- Crew as a conditional fifth destination;
-- one shared communal Crew Build with runner-owned READY placement and movement;
-- independent persisted Crew coordinates protected by a collision-safe server RPC;
-- `YOU | CREW` removed from Runs;
-- comparisons, recent crew runs, Props and Member Builds moved into Crew.
+STACK is deliberately **not**:
 
-### UI-22 — Final Product Polish + Onboarding
+- a live GPS/run tracker;
+- a Strava clone;
+- an Intervals dashboard clone;
+- a route-mapping product;
+- a public social network;
+- a follower graph/DM/comment platform;
+- an AI coach that autonomously rewrites plans;
+- a medical/injury/readiness product;
+- a generic game economy with XP/coins/quests;
+- a full raw cloud archive of private source data.
 
-Final planned product phase, in review:
+Do not add infrastructure or product breadth merely because an upstream API makes it available.
 
-- whole-product visual and interaction audit at 320px, approximately 390px and desktop;
-- compact Runs entry hierarchy with an obvious Log Run action and no oversized standalone title;
-- one selector taxonomy: segmented controls for small finite choices, a shared styled native select for longer lists, shared activity/effort pickers, and native date controls for dates;
-- normalized spacing, sheet headers, close controls, terminology, pace/date formatting and freshness treatment;
-- implementation-era and repetitive helper copy removed where the interface already explains itself;
-- lightweight device-local onboarding for genuinely new users: welcome, Plan → Run → Build → Today conceptual tour, one Crew explanation when relevant, and replay from Settings;
-- quiet migration for existing users, with onboarding preferences stored separately from AppState schema 9;
-- complete owner lifecycle controls: edit Crew name/race metadata and permanently delete a Crew through explicit confirmation;
-- correct plan lifecycle language: clamped Week 1/final-week selection remains available for Plan preview, while Today shows `This Week` only during the active plan and Plan marks a week current only inside its actual dates through race day.
+## Known current limitations / explicit future decisions
 
-Crew metadata edits never rewrite a member's local race or plan. Crew deletion cascades shared Crew server data but preserves Auth accounts, profiles, and every runner's local plan, runs, Build and Intervals credential.
+The following are known product boundaries, not undocumented surprises:
 
-UI-22 adds no new product system, dependency, router, global state, database migration or AppState migration. Owner edit/delete use the existing `crews` RLS and cascade architecture. It is the end of the currently planned implementation sequence; later work requires a new product decision.
+- no first-class `no active plan` state yet;
+- source-only Cross Training history asymmetry;
+- the legacy Intervals proxy path still exists alongside the verified direct local-key path;
+- Crew `Steady` award awaits a verified pace-variability source;
+- Best Efforts / personal records are not currently claimed;
+- route/GPS data is intentionally absent;
+- historical source activities do not automatically earn Personal Build blocks.
+
+Forward product work is tracked in the Stabilization 1.xx and Evolution 2.xx GitHub issues rather than in this current-state document.
 
 ## Success criteria
 
-STACK is successful when:
+STACK is doing its job when:
 
-- today's assignment is understood quickly;
-- synced runs materially reduce typing;
-- manual logging remains easy;
-- scheduled and extra runs are never conflated;
-- Training Signals invite useful exploration;
-- plan-vs-actual context is obvious;
-- Build is satisfying without a fake game economy;
-- social failures never break personal STACK;
-- account creation never loses local data;
-- a friend can follow the run-data setup without developer help;
-- a Crew member sees useful training facts but not private health/location data;
-- non-members cannot enumerate/read a Crew;
-- codebase remains understandable for a hobby project and coding-agent workflow.
-
-## Locked current parameters
-
-| Parameter | Decision |
-|---|---|
-| Name | STACK |
-| Tagline | Build your race. |
-| Personal user model | Local-first, account optional |
-| Race Crew v1 | Private invite-only hobby group (~10 known friends) |
-| Active plan | One race/plan at a time per personal device/user |
-| Platforms | Responsive web app; phone first |
-| Theme | Dark only |
-| Navigation | Today, Build, Runs, Plan — plus Crew for an active crew member |
-| Settings | Top-right gear |
-| Personal persistence | Browser localStorage schema 9 |
-| Social backend | Supabase Auth + Postgres + RLS |
-| Account login | Email + 8-digit STACK PIN; no normal magic links |
-| Personal cloud sync | No |
-| Connected source | Intervals.icu |
-| Apple bridge | HealthFit |
-| New Race Crew credential mode | Each runner's Intervals personal API key stored device-local |
-| Legacy owner credential mode | Existing protected Vercel proxy retained during migration |
-| Strava | No |
-| Direct HealthKit | No |
-| Upstream writes | None; Plan Export deferred |
-| Analytics | Training Signals; no readiness/coaching engine |
-| Wellness | Deferred/skipped |
-| Visual direction | Performance Arcade |
-| Build | One deterministic block per actual run; 8 columns; no score/game economy |
-| Social placement | Crew destination; each runner places and moves only their own earned Crew blocks |
-| Social comparisons | Weekly Miles, Longest Run, Consistency, Miles Built |
-
-## Current boundaries
-
-No:
-
-- public social network;
-- public profiles/discovery;
-- follower graph/DMs;
-- public leaderboard;
-- raw pace leaderboard;
-- GPS/live route recording;
-- route sharing in Crew;
-- HR/HR zones/Training Load sharing;
-- full cloud sync of personal AppState;
-- native iOS/Android app;
-- direct HealthKit;
-- Strava;
-- AI coaching/readiness;
-- automatic plan mutation from health data;
-- wellness UI;
-- Intervals writes;
-- Build XP/levels/coins/quests;
-- literal retro-device skin;
-- comments in initial Race Crew phases.
-
-## Hobby-to-public upgrade triggers
-
-Before STACK becomes public/open/commercial or starts onboarding strangers/material scale, deliberately revisit:
-
-- Intervals OAuth;
-- stronger account authentication;
-- email verification/recovery;
-- self-service account deletion;
-- operational backups/monitoring;
-- privacy/legal disclosures;
-- possible cloud sync.
-
-Do not allow private-hobby shortcuts to silently become public-product architecture.
+- the runner can understand today's next action quickly;
+- connected data materially reduces manual work without silently inventing plan relationships;
+- actual history remains trustworthy even outside one race plan;
+- Signals communicate useful longitudinal context without grading the runner;
+- Build makes accumulated training tangible;
+- Crew makes training with friends more engaging without becoming a public network or leaking private history;
+- social/backend failure never makes personal STACK unusable;
+- missing data is omitted rather than fabricated;
+- the code and product contracts remain understandable enough for small-team/agent-driven development.
 
 ## Authority
 
-Active Race Crew docs supersede older “architecture gate only” statements:
+This document describes the current product on `main`.
 
-- `docs/NEXT_PRODUCT_PROGRAM.md`
-- `docs/RACE_CREW.md`
-- `docs/RACE_CREW_IMPLEMENTATION.md`
-- `docs/RACE_CREW_SETUP.md`
-- `docs/RUN_DATA_SETUP.md`
-- `docs/DECISION_LOG_ADDENDUM.md`
+For deeper subsystem behavior, read the relevant current specialist contract. Historical NEXT/UI/Race Crew phase documents explain how the product got here but do not override current behavior when they conflict.
