@@ -1,0 +1,36 @@
+name: Supabase Migration Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "scripts/verify-supabase-migrations.mjs"
+      - "scripts/run-supabase-sql-tests.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/supabase-migration-gate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-migrations:
+    name: Fresh migration chain and SQL checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:verify:migrations
+      - run: npm run db:start
+      - run: npm run db:reset
+      - run: npm run db:verify:sql
+      - name: Stop local Supabase
+        if: always()
+        run: npm run db:stop
