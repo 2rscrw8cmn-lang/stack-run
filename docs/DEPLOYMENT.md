@@ -83,7 +83,7 @@ Rules:
 - Seed Crew/runs/Build/award test data only with those QA accounts.
 - Schema changes are proven against Preview before production application.
 - Do not hand-apply feature-branch migrations to Production for preview QA.
-- Migration promotion/reconciliation is governed by `docs/SUPABASE_MIGRATION_RUNBOOK.md` and Stabilization 1.04.
+- Migration promotion/reconciliation will be established by Stabilization 1.04 (#146). Until then, do not apply feature-branch schema changes to Production.
 
 ## Repeatable preview QA
 
@@ -122,7 +122,7 @@ STACK remains a standard Vite deployment:
 | Output directory | `dist` |
 | Install command | `npm ci` |
 
-The repository also contains narrowly scoped Vercel functions under `api/`. Their server-only credentials, where still required, must never be prefixed with `VITE_`.
+The repository also contains narrowly scoped Vercel functions under `api/`. The Crew invite preview reader applies the same deployment/marker/project-ref boundary as the browser client. If server-only `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` or `STACK_BACKEND_ENV` overrides are configured, they must use the same Production/Preview scoping shown above. Server-only secrets, where still required, must never be prefixed with `VITE_`.
 
 ## Privacy and persistence boundary
 

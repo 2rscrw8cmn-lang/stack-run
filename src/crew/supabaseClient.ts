@@ -1,12 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  checkSupabaseBoundary,
+  type SupabaseBackendIdentity,
+} from "./supabaseEnvironment";
 
-const PRODUCTION_SUPABASE_REF = "fgnecruhlybarcmljggi";
-const PREVIEW_SUPABASE_REF = "plpooikvofzytbpsbzki";
-
-export type SupabaseBackendIdentity = {
-  environment: StackBackendEnv;
-  projectRef: string;
-};
+export type { SupabaseBackendIdentity } from "./supabaseEnvironment";
 
 export type SupabaseAvailability =
   | { configured: false; reason: string; client: null; backend: null }
@@ -23,18 +21,6 @@ type SupabaseEnv = Pick<
 >;
 
 let cached: SupabaseAvailability | null = null;
-
-function projectRefFromUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".supabase.co")) {
-      return null;
-    }
-    return parsed.hostname.slice(0, -".supabase.co".length) || null;
-  } catch {
-    return null;
-  }
-}
 
 function blocked(reason: string): SupabaseAvailability {
   return {
@@ -53,41 +39,27 @@ function blocked(reason: string): SupabaseAvailability {
  */
 export function getSupabaseAvailability(
   env: SupabaseEnv = import.meta.env,
-  deploymentEnv: StackDeploymentEnv = __STACK_DEPLOYMENT_ENV__,
+  deploymentEnv: StackDeploymentEnv =
+    typeof __STACK_DEPLOYMENT_ENV__ === "undefined" ? "development" : __STACK_DEPLOYMENT_ENV__,
 ): SupabaseAvailability {
   if (env === import.meta.env && cached) return cached;
 
   const url = env.VITE_SUPABASE_URL?.trim();
   const publishableKey = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
-  const backendEnv = env.VITE_STACK_BACKEND_ENV?.trim() as StackBackendEnv | undefined;
+  const backendEnv = env.VITE_STACK_BACKEND_ENV?.trim();
 
   let availability: SupabaseAvailability;
   if (!url || !publishableKey || !backendEnv) {
     availability = blocked("Cloud STACK is not configured on this build.");
-  } else if (backendEnv !== "production" && backendEnv !== "preview") {
-    availability = blocked("Cloud STACK has an invalid backend environment marker.");
   } else {
-    const projectRef = projectRefFromUrl(url);
-    const expectedRef =
-      backendEnv === "production" ? PRODUCTION_SUPABASE_REF : PREVIEW_SUPABASE_REF;
-
-    if (!projectRef) {
-      availability = blocked("Cloud STACK has an invalid Supabase project URL.");
-    } else if (projectRef !== expectedRef) {
-      availability = blocked(
-        `Cloud STACK blocked a ${backendEnv} backend whose Supabase project did not match the approved ${backendEnv} project.`,
-      );
-    } else if (deploymentEnv === "production" && backendEnv !== "production") {
-      availability = blocked("Cloud STACK blocked a preview backend on a production deployment.");
-    } else if (deploymentEnv === "preview" && backendEnv !== "preview") {
-      availability = blocked("Cloud STACK blocked the production backend on a preview deployment.");
-    } else if (deploymentEnv === "development" && backendEnv === "production") {
-      availability = blocked("Cloud STACK blocks the production backend during local development.");
+    const boundary = checkSupabaseBoundary(url, backendEnv, deploymentEnv);
+    if (!boundary.allowed) {
+      availability = blocked(boundary.reason);
     } else {
       availability = {
         configured: true,
         reason: null,
-        backend: { environment: backendEnv, projectRef },
+        backend: boundary.backend,
         client: createClient(url, publishableKey, {
           auth: {
             persistSession: true,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CREW_EMBLEM, encodeCrewEmblem } from "../src/crew/emblem.js";
 import crewInviteHandler from "./crew-invite.js";
 import crewInviteImageHandler from "./og/crew-invite.js";
@@ -6,6 +6,7 @@ import {
   formatRace,
   formatRaceDetail,
   raceNameOf,
+  resolveInvitePreview,
   type InvitePreview,
 } from "./_crewInvitePreview.js";
 
@@ -52,6 +53,52 @@ function capture() {
 }
 
 describe("Crew invite preview metadata", () => {
+  it("refuses a production Supabase reader on a Vercel Preview", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    const result = await resolveInvitePreview(
+      TOKEN,
+      {
+        VERCEL_ENV: "preview",
+        STACK_BACKEND_ENV: "production",
+        SUPABASE_URL: "https://fgnecruhlybarcmljggi.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY: "sb_publishable_fake",
+      },
+      fetcher,
+    );
+    expect(result).toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("allows the Preview invite reader only against stack-run-preview", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            crew_id: base.crewId,
+            crew_name: base.crewName,
+            crew_type: base.crewType,
+            race_name: base.raceName,
+            race_date: base.raceDate,
+            race_distance_miles: base.raceDistanceMiles,
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const result = await resolveInvitePreview(
+      TOKEN,
+      {
+        VERCEL_ENV: "preview",
+        VITE_STACK_BACKEND_ENV: "preview",
+        VITE_SUPABASE_URL: "https://plpooikvofzytbpsbzki.supabase.co",
+        VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_fake",
+      },
+      fetcher,
+    );
+    expect(result).toMatchObject({ crewId: base.crewId, crewName: base.crewName });
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain("plpooikvofzytbpsbzki.supabase.co");
+  });
+
   it("keeps the race context for a Race Crew", () => {
     expect(raceNameOf(base)).toBe("Orlando Half Marathon");
     expect(formatRaceDetail(base)).toBe("Dec 5, 2026 · 13.1 mi");
