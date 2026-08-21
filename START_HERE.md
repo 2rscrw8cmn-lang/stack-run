@@ -47,6 +47,12 @@ For Runs:
 
 > **Overview is for understanding. History is for lookup. Detail is for investigation.**
 
+For presentation work, the product-wide rule is:
+
+> **Interface is quiet. Data is STACK.**
+
+`docs/DESIGN_SYSTEM.md` is the default design authority for new surfaces. Specialist visual contracts extend it with subsystem-specific rules; they should not create a parallel visual system.
+
 ## Required reading
 
 Read in this order for most work:
@@ -57,6 +63,8 @@ Read in this order for most work:
 4. `docs/ENGINEERING_STANDARDS.md`
 5. `docs/DESIGN_SYSTEM.md`
 6. the specialist contract(s) for the system being changed
+
+For UI/presentation work, read `docs/DESIGN_SYSTEM.md` before a specialist chart, Build, Crew, or feature visual contract. The specialist document owns exact subsystem behavior; the design system owns the shared shell, typography roles, surface hierarchy, controls, rows, accessibility, and interaction language.
 
 Specialist reading includes:
 
@@ -92,13 +100,15 @@ When current documents conflict, prefer:
 1. the explicitly approved GitHub issue/phase contract for the work being performed;
 2. `docs/PRODUCT_AND_SCOPE.md` for current product scope;
 3. specialist product/data/security contracts for the subsystem being changed;
-4. `docs/DESIGN_SYSTEM.md` and specialist visual contracts for presentation work;
+4. `docs/DESIGN_SYSTEM.md` for product-wide presentation defaults, then the relevant specialist visual contract for exact subsystem extensions;
 5. `docs/ENGINEERING_STANDARDS.md`;
 6. `docs/CURRENT_APPLICATION_STRUCTURE.md` for current implementation shape;
 7. `docs/DATA_AND_STORAGE.md` for current persistence behavior;
 8. accepted decision logs;
 9. historical phase/program docs for rationale only;
 10. existing code when documentation does not answer the question.
+
+If a specialist visual contract and `docs/DESIGN_SYSTEM.md` appear to contradict each other, do not silently choose the more convenient rule. Treat the discrepancy as something to resolve in the scoped issue.
 
 If code and a current contract disagree, do not silently choose one. Treat the discrepancy as something to resolve in the scoped issue.
 
