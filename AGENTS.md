@@ -1,289 +1,113 @@
-# AGENTS.md — STACK Next Repository Instructions
+# AGENTS.md — STACK Repository Instructions
 
-These instructions apply to every coding/research agent working on `feature/stack-next` or a child branch created from it.
+These instructions apply to every coding/research agent working on the current STACK repository.
 
 ## Branch context
 
-`main` is the current stable application.
+**`main` is the canonical production product branch.**
 
-`feature/stack-next` is the long-lived integration branch for the next product direction.
+STACK Next shipped to `main` through PR #136 on August 20, 2026. The former `feature/stack-next` integration branch and its child branches are historical implementation branches.
 
-STACK Next implementation branches must start from the latest `feature/stack-next` and target their pull requests back to `feature/stack-next`, **not `main`**.
+For normal new work:
 
-Do not merge STACK Next into `main` unless the owner explicitly unlocks and approves the release.
+- start from the latest `main`;
+- create one narrowly scoped issue branch;
+- target the pull request back to `main`;
+- do not work directly on `main`;
+- do not create new work from `feature/stack-next` or target PRs to it;
+- do not combine unrelated roadmap issues merely because they touch nearby files.
+
+If an issue explicitly defines a different dependency/stacking plan, follow that issue contract.
 
 ## Required reading before changing code
 
-Read in this order:
+Read:
 
 1. `START_HERE.md`
-2. `docs/STACK_NEXT.md`
-3. `docs/RUNS_PRODUCT_MODEL.md` when touching Runs, history presentation or Run Detail
-4. `docs/RUNS_VISUALIZATION_SYSTEM.md` when touching running charts/data presentation
-5. `docs/RUN_DETAIL_PRODUCT_SPEC.md` when touching Run Detail/source enrichment
-6. `docs/RUNS_REFRAME_IMPLEMENTATION.md` while the Runs reframe is active
-7. `docs/INTERVALS_DATA_STRATEGY.md`
-8. `docs/STACK_NEXT_IMPLEMENTATION.md`
-9. `docs/CONNECTED_DATA_FIELDS.md` for verified Intervals fields and source semantics
-10. `docs/INTERVALS_INTEGRATION.md` for current connected-data mechanics
-11. `docs/DATA_AND_STORAGE.md` for persistence behavior not superseded by STACK Next
-12. `docs/PRODUCT_AND_SCOPE.md` for the current-product baseline
-13. `docs/ENGINEERING_STANDARDS.md`
-14. `docs/CURRENT_APPLICATION_STRUCTURE.md`
-15. relevant Race Crew docs when touching Crew/auth/Supabase behavior
+2. the approved GitHub issue/phase contract for the work
+3. `docs/PRODUCT_AND_SCOPE.md`
+4. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+5. `docs/ENGINEERING_STANDARDS.md`
+6. `docs/DESIGN_SYSTEM.md` for UI/presentation work
+7. the specialist docs for the subsystem being changed
 
-`docs/STACK_NEXT_AGENT_PROMPT.md` is the historical NEXT-1 implementation contract. It is not the active prompt for later work.
+Important specialist docs include:
 
-Older UI phase, Race Crew program and plan-first documents are historical/current-behavior references only where they do not conflict with the STACK Next documents.
+- `docs/CONNECTED_DATA_FIELDS.md` and `docs/INTERVALS_INTEGRATION.md` for connected-data changes;
+- `docs/RUNS_PRODUCT_MODEL.md`, `docs/RUNS_VISUALIZATION_SYSTEM.md` and `docs/RUN_DETAIL_PRODUCT_SPEC.md` for Runs/Run Detail;
+- `docs/DATA_AND_STORAGE.md` and `docs/PERSONAL_ACCOUNT_SYNC.md` for persistence/account sync;
+- current Crew/security docs when touching Crew/auth/Supabase;
+- `docs/CREW_PROJECTION_CONTRACT.md` before touching `shared_runs`, a Crew CHECK constraint, or a value uploaded from the device to Crew;
+- `docs/DECISION_LOG_ADDENDUM.md` for accepted decisions that remain in force.
 
 ## Authority order
 
-When documents conflict on a STACK Next branch:
+When current sources conflict, prefer:
 
-1. `docs/STACK_NEXT.md`
-2. Runs-specific product docs for Runs/Run Detail work
-3. `docs/RUNS_REFRAME_IMPLEMENTATION.md` for the active Runs sequencing override
-4. `docs/INTERVALS_DATA_STRATEGY.md`
-5. `docs/STACK_NEXT_IMPLEMENTATION.md`
-6. `docs/CONNECTED_DATA_FIELDS.md` for exact verified source fields and semantics
-7. `docs/INTERVALS_INTEGRATION.md`
-8. `docs/DATA_AND_STORAGE.md`
-9. `docs/CREW_PROJECTION_CONTRACT.md` before touching `shared_runs`, any
-   Crew CHECK constraint, or any value the device uploads to Crew
-10. `docs/DECISION_LOG_ADDENDUM.md`
-11. `docs/ENGINEERING_STANDARDS.md`
-12. `docs/CURRENT_APPLICATION_STRUCTURE.md`
-13. `docs/PRODUCT_AND_SCOPE.md`
-14. other existing program/phase documents
-15. existing code
+1. the explicitly approved issue/phase contract for the current work;
+2. `docs/PRODUCT_AND_SCOPE.md`;
+3. specialist product/data/security contracts for the affected subsystem;
+4. `docs/DESIGN_SYSTEM.md` and specialist visual contracts for presentation work;
+5. `docs/ENGINEERING_STANDARDS.md`;
+6. `docs/CURRENT_APPLICATION_STRUCTURE.md`;
+7. `docs/DATA_AND_STORAGE.md`;
+8. accepted decision logs;
+9. historical phase/program docs for rationale only;
+10. existing code when the docs do not answer the question.
 
-The Runs-specific docs supersede the older Runs information hierarchy in `docs/ARCADE_DESIGN_PASS.md` where they conflict. The Performance Arcade visual language itself remains active.
+If the code contradicts a current contract, do not silently normalize the discrepancy. Resolve it within the issue or raise it explicitly.
 
-## STACK Next product direction
+## Historical STACK Next material
 
-The governing shift is:
+STACK Next is shipped, not an active branch program.
 
-> The runner and the runner's actual historical training are foundational. The training plan remains useful, but it is no longer the organizing center of the product.
+These files remain useful historical records:
 
-Preserve these principles:
+- `docs/STACK_NEXT.md`
+- `docs/STACK_NEXT_IMPLEMENTATION.md`
+- `docs/STACK_NEXT_AGENT_PROMPT.md`
+- `docs/STACK_NEXT_ACCEPTANCE_LOG.md`
+- individual NEXT phase briefs;
+- Runs R1–R4 implementation/review docs.
 
-- actual training history is first-class product data;
-- foundational data does not have to be exposed at primary-screen depth;
+They may contain branch names, draft status, sequencing or review instructions that were correct during development. Those details must not override the current `main` workflow.
+
+The product principles those phases established may still be active when they agree with current product/docs.
+
+## Current product invariants
+
+Preserve these unless the approved issue explicitly changes them:
+
+- actual training history is factual product data;
+- Plan is intent/context, not the authoritative record of whether the runner ran;
+- explicit linking describes the relationship between an actual run and planned intent;
 - Overview is for understanding, History for lookup, Detail for investigation;
-- the plan is intent/context, not the definition of the runner;
-- historical runs do not have to fit a planned workout;
-- derived runner facts must be traceable to source data and documented calculations;
 - missing data remains missing, never zero;
-- avoid opaque overall readiness/coaching scores;
+- derived runner facts must be traceable to source data and documented calculations;
+- no opaque overall readiness/coaching score;
 - no automatic plan mutation from health data;
-- Build remains a distinctive reward system;
-- Race Crew remains optional and receives only its approved safe projection.
-
-## Accepted STACK Next foundation
-
-### NEXT-0 — Direction + data contract
-
-Complete.
-
-### NEXT-1 — Historical Data Foundation
-
-Accepted and merged into `feature/stack-next` as PR #100.
-
-Do not replace the headless history layer without a concrete correctness issue.
-
-The deployed real-Intervals historical smoke test remains outstanding and is tracked in `docs/STACK_NEXT_ACCEPTANCE_LOG.md`. Until it runs:
-
-- do not promote source fields to `Verified` on fixture evidence;
-- do not change cadence source-unit semantics;
-- do not claim a real source behavior based only on QA data.
-
-### NEXT-2 — Runner History + Profile Foundation
-
-Accepted and merged as PR #102, including account-isolation follow-up PR #103.
-
-Rules later work must not quietly undo:
-
-- one physical run is one history row, reconciled on external activity id;
-- STACK-owned facts are overlaid at read time and never written into the source mirror;
-- historical runs need no acceptance to be history and earn no Build block;
-- coverage thresholds live in the domain layer, not JSX;
-- historical sync is event-driven, not polled, and cannot block the app;
-- missing optional metrics remain missing.
-
-### NEXT-3 — Training Signals v2
-
-Accepted and merged as PR #104.
-
-Six signal families:
-
-1. volume;
-2. frequency;
-3. long runs;
-4. workload;
-5. zone mix;
-6. plan context.
-
-Rules later work must not quietly undo:
-
-- formulas/thresholds/availability live in `src/signals/` and named domain constants;
-- current vs prior windows are equal 28-day windows;
-- connected-metric signals keep coverage and coverage-parity gates;
-- unavailable signals are absent;
-- Training Load never becomes readiness/recovery/fatigue/form;
-- no overall score;
-- signal direction is descriptive, not moral judgment.
-
-The Runs reframe may limit how many presentable signals appear on the overview, but that is presentation-only. It must not change the domain signal set or ordering.
-
-### NEXT-4 — Today / Home revision
-
-Accepted and merged as PR #105.
-
-Today answers *what matters now?* without hiding the scheduled run when one is genuinely due.
-
-Rules later work must not quietly undo:
-
-- decision logic lives in `src/features/today/todayModel.ts`;
-- Today does not recalculate history/signal formulas;
-- fixed-window claims require real history coverage;
-- at most one Training Signal appears on Today;
-- actuals lead intentions in This Week;
-- unknown/weak facts are omitted;
-- Today uses the existing shared history boundary and opens no second sync lifecycle;
-- scheduled completion/edit/delete, Run Found, manual fallback, sync retry, Build handoff and Crew access remain preserved.
-
-## Active work — Runs reframe prerequisite
-
-NEXT-5 is **paused, not cancelled**.
-
-The active work is the Runs reframe defined by:
-
-- `docs/RUNS_PRODUCT_MODEL.md`
-- `docs/RUNS_VISUALIZATION_SYSTEM.md`
-- `docs/RUN_DETAIL_PRODUCT_SPEC.md`
-- `docs/RUNS_REFRAME_IMPLEMENTATION.md`
-
-Sequence:
-
-```text
-R0  Product architecture + QA correction
-R1  Runs Overview
-R2  Full History archive
-R3  Run Detail enrichment / QA stream review
-R4  Integration review
-```
-
-### R0
-
-Documentation/QA correction only.
-
-Do not merge a new Runs UI as part of R0.
-
-PR #107 is prototype/reference work, not the implementation base. The month-grouped dense history treatment may be salvaged later into R2; its primary-screen hierarchy is superseded by `RUNS_PRODUCT_MODEL.md`.
-
-### R1 — Runs Overview
-
-Recommended branch:
-
-```text
-feature/runs-overview
-```
-
-Required order:
-
-1. current running snapshot;
-2. recent training visualization;
-3. up to four visual Training Signal summaries;
-4. approximately five recent runs;
-5. View all runs.
-
-Do not place a 25–50-row archive between the overview and Signals.
-
-Do not add `?demo=runs`; use the reusable QA Runner.
-
-### R2 — Full History
-
-Recommended branch:
-
-```text
-feature/runs-history
-```
-
-This is the complete chronology/lookup surface.
-
-Month grouping, dense rule-separated rows and progressive reveal from PR #107 may be salvaged if they fit this dedicated archive surface.
-
-Full History is not a dashboard and does not repeat overview Signals/charts.
-
-### R3 — Run Detail enrichment / QA stream review
-
-Recommended branch:
-
-```text
-feature/run-detail-enrichment
-```
-
-Important current-state fact: accepted/logged Intervals runs already use Run Detail 2.0 through `RunResultDetail`, including on-demand Pace / Heart Rate / Elevation / Cadence profile charts when recognized streams are returned.
-
-The QA Runner intentionally calls no Intervals endpoint, so its current synthetic runs do not supply those stream samples and the Run Profile may be absent in QA review.
-
-R3 should:
-
-- make one rich synthetic profile reviewable through the real production presentation components;
-- keep one aggregate-only run to prove honest omission;
-- investigate reusable on-demand source detail for historical-only Intervals runs;
-- avoid copy-paste divergence between logged and historical detail;
-- never weaken the no-credential/no-network QA boundary.
-
-Do not add route/maps, performance prediction, readiness or durable raw-stream storage.
-
-### Resume NEXT-5 only after R1–R3 acceptance
-
-NEXT-5 remains:
-
-> Keep the plan useful while removing the assumption that it defines the runner.
-
-Recommended branch later:
-
-```text
-feature/plan-next
-```
-
-PR target remains `feature/stack-next`.
-
-## QA Runner
-
-Use the preview-only synthetic QA Runner for normal feature review.
-
-Do not create new screen-specific `?demo=` modes unless the QA Runner genuinely cannot represent an exceptional state and the exception is documented.
-
-QA synthetic data must never:
-
-- use owner personal data;
-- read/store a real Intervals credential;
-- call Intervals;
-- leak into production/custom hosts;
-- upload private synthetic health detail to Crew beyond the existing approved projection.
+- Build remains a distinctive physical/emotional reward;
+- historical/source-only activity does not silently earn or backfill Personal Build blocks;
+- Crew remains optional and downstream of personal truth;
+- widening Crew/shared data requires an explicit privacy/data-contract decision.
 
 ## Connected-data source truth
 
-Apple Watch path remains:
+The common Apple path is:
 
 ```text
 Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
 
-Other supported sources may sync directly into Intervals.
-
-Manual logging remains a full fallback.
+Other supported sources may sync directly into Intervals. Manual logging remains a complete fallback.
 
 `docs/CONNECTED_DATA_FIELDS.md` is authoritative for exact field names, verified units and pipeline-specific semantics.
 
 Preserve the rule:
 
-> Source aggregates provide stated summary facts. Streams provide shape only.
+> **Source aggregates provide stated summary facts. Streams provide shape.**
 
-Do not recompute source summary values from streams when a trusted aggregate exists.
+Do not recompute trusted source summary values from streams when the aggregate exists.
 
 Examples:
 
@@ -292,111 +116,110 @@ Examples:
 - do not derive run pace by averaging instantaneous pace samples;
 - do not double cadence or invent cadence units.
 
-## Historical-data privacy discipline
+Real source behavior must be verified with the real pipeline before a field/semantic is promoted to `Verified`.
 
-Do not persist or commit by default:
+## Privacy, storage and secret discipline
+
+Never commit or persist by default:
 
 - raw Intervals payloads;
 - GPS routes or precise coordinates;
 - raw FIT files;
 - large per-sample streams;
 - real API keys or credentials;
+- Supabase secret/service-role keys in browser code;
 - private upstream notes without an approved product use.
 
-Persist normalized summaries needed for longitudinal analysis and source ids needed for dedupe/reconciliation.
+`VITE_` values are browser-public by definition; never put secrets there.
 
-## Existing systems to preserve unless the active subphase explicitly changes them
+UI components should not directly mutate persistence storage; use the current repositories/services.
 
-- React + TypeScript + Vite;
-- phone-first responsive behavior;
-- current local-first personal state;
-- manual logging fallback;
-- current connected-run import compatibility;
-- existing Build behavior;
-- current plan editing and links;
-- current Race Crew Supabase/Auth/RLS boundary;
-- runner-owned Crew Build placement;
-- current secret handling;
-- Performance Arcade visual language;
-- accessible names/focus and reduced-motion behavior.
+Tests and QA fixtures use synthetic/fake credentials/data only.
 
-Do not introduce a router, global-state framework, UI framework, canvas/WebGL/physics system or broader backend merely because STACK Next is a large program. Add infrastructure only when a scoped phase demonstrates the need.
-
-## Race Crew safety boundary
-
-When touching Crew or shared projections, preserve the existing privacy boundary.
-
-Never send complete personal AppState, raw RunLogs or private historical health/activity data to Crew/Supabase.
-
-Private by default includes:
-
-- Intervals API key/external ids;
-- raw source payloads;
-- GPS/routes/location;
-- exact start time;
-- HR/max HR;
-- HR zones;
-- Training Load;
-- wellness;
-- effort;
-- notes;
-- private calendar/availability.
-
-Race Crew changes require reading the current Race Crew implementation/security docs before modification.
+When touching personal sync or Crew projection, read the current specialist contract rather than relying on an old phase's field list. Current approved boundaries can evolve, but only deliberately and with corresponding RLS/schema/client tests.
 
 ## Crew upload discipline
 
-The Crew projection uploads a runner's whole history in one `upsert`, so one
-value the database refuses fails every run, in every crew, on every retry —
-and stays invisible, because personal STACK saves runs one at a time and is
-unaffected. Never send Crew a value it is constrained to refuse: mirror the
-constraint on the device, send `null` for a nullable column, and leave an
-unstorable run out of the batch rather than losing the batch. Read
-`docs/CREW_PROJECTION_CONTRACT.md` before adding a constrained Crew column.
+The Crew projection can upload a runner's history as a batch. A single database-rejected value must not be allowed to erase the rest of the batch's usefulness.
 
-## Database/RLS discipline
+Before adding or changing a constrained Crew column:
 
-## Storage and secret discipline
+- read `docs/CREW_PROJECTION_CONTRACT.md`;
+- mirror server constraints on the device where required;
+- omit/null unsafe optional values rather than knowingly sending a value the database will reject;
+- preserve per-run fallback/error visibility;
+- keep privacy projection fields explicit and reviewable.
 
-- UI components do not directly mutate localStorage; use repositories/services.
-- Tests use fake credentials and fixtures only.
-- Never commit or print real Intervals keys, Supabase secret keys, calendar secrets or raw private payloads.
-- `VITE_` values are browser-public by definition; do not place secrets there.
-- Intervals personal credentials remain sensitive and device-local under the existing architecture unless a later approved phase changes it.
+## Database / Supabase discipline
+
+Database changes require extra caution because production state outlives a code rollback.
+
+- Never weaken RLS merely to get a preview/test working.
+- Use forward corrective migrations for schema already applied somewhere; do not rewrite applied migration history casually.
+- Run the relevant transactional SQL verification where the environment supports it.
+- State clearly which database environment was exercised.
+- Do not assume a Vercel preview is isolated from production until the repository's environment-separation work proves it.
+
+Stabilization issues may tighten this workflow further; follow the current issue and docs if they supersede this section.
+
+## Design / interaction guardrails
+
+Preserve unless the issue explicitly changes them:
+
+- phone-first responsive behavior;
+- Performance Arcade / current STACK visual language;
+- `Interface is quiet. Data is STACK.`;
+- 44px interactive targets without forcing every visible control to look 44px tall;
+- accessible names, focus restoration and keyboard behavior;
+- Reduced Motion behavior when animation exists;
+- readable phone typography rather than shrinking critical labels to fit;
+- charts that prefer fewer/aggregated labels over microscopic type;
+- color as identity/selection/context, not hidden good/bad judgment.
+
+Do not introduce a router, global-state framework, UI framework, canvas/WebGL/physics system or broader backend merely because a feature is substantial. Add infrastructure only when the issue demonstrates a concrete need.
 
 ## Branch / PR rules
 
-- one subphase per child branch unless explicitly approved otherwise;
-- child branches start from current `feature/stack-next`;
-- child PRs target `feature/stack-next`;
-- no direct STACK Next merge to `main`;
-- keep PR scope narrow and reviewable;
-- periodically bring relevant `main` fixes into `feature/stack-next` to avoid unnecessary drift;
-- update documentation whenever architecture/data contracts change;
-- do not mark work complete with failing required checks.
+- one issue/phase per branch unless explicitly approved otherwise;
+- branch from current `main`;
+- PR back to `main`;
+- keep scope narrow and reviewable;
+- update documentation whenever architecture/data contracts/product rules change;
+- do not mark work complete with failing required checks;
+- record owner/device verification separately from automated verification when required;
+- do not claim a test was run when it was not.
 
 ## Required verification
 
-Before review of an implementation subphase:
+Before normal review:
 
 ```bash
 npm install
 npm run check
+git diff --check
 ```
 
-Run additional connected-data tests relevant to the phase.
+Add subsystem-specific verification as appropriate:
 
-Real Intervals validation is separate from automated checks and uses the owner's deployed connection. Never record real credentials, raw private payloads or precise location data in the repository.
+- real Intervals/device smoke tests for real source semantics;
+- SQL/RLS tests for Supabase changes;
+- 320px / ~390px / 430px / desktop review for material UI changes;
+- real iPhone Safari review for phone-critical interaction/readability changes;
+- keyboard and Reduced Motion review where applicable.
+
+Vercel deployment success is not a substitute for repository checks.
 
 ## Documentation after implementation
 
-Update as applicable:
+Update only the documents the issue materially changes, but do not let implementation outrun current docs.
 
-- `docs/RUNS_REFRAME_IMPLEMENTATION.md` while the reframe is active;
-- `docs/STACK_NEXT_IMPLEMENTATION.md` once the reframe sequencing is accepted/integrated;
+Typical current references:
+
 - `docs/CURRENT_APPLICATION_STRUCTURE.md` when architecture changes;
-- phase-status documentation;
-- `docs/CONNECTED_DATA_FIELDS.md` only when real verification establishes a new source fact;
-- README only when repo-level workflow/product state materially changes.
+- `docs/PRODUCT_AND_SCOPE.md` when product scope changes;
+- `docs/DATA_AND_STORAGE.md` for persistence changes;
+- `docs/DESIGN_SYSTEM.md` for product-wide presentation rules;
+- specialist Crew/Runs/Intervals contracts for those subsystems;
+- `docs/CONNECTED_DATA_FIELDS.md` only when real verification establishes a new source fact.
 
-Do not let implementation silently outrun the STACK Next documentation.
+Historical NEXT/Runs phase docs should normally remain historical rather than being reused as the active implementation prompt for new work.
