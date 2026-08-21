@@ -58,17 +58,20 @@ This guard is defense in depth. Correct Vercel environment scoping is still requ
 
 ## Non-secret backend check
 
-To prove which backend a deployment is using without exposing a secret:
+To prove which backend a deployment is using without exposing a secret, open:
 
-1. Open browser developer tools on the deployment.
-2. Open **Network**.
-3. Exercise a cloud-backed action such as account/session or Crew load.
-4. Inspect the request hostname.
+```text
+/api/backend-environment
+```
 
-Expected hostnames:
+The endpoint returns only deployment type, backend marker status and project ref. It never returns the Supabase URL or publishable key. Both `client` and `serverInvite` must report `ready`.
 
-- Production: `fgnecruhlybarcmljggi.supabase.co`
-- Preview: `plpooikvofzytbpsbzki.supabase.co`
+Expected project refs:
+
+- Production: `fgnecruhlybarcmljggi`
+- Preview: `plpooikvofzytbpsbzki`
+
+For an end-to-end confirmation, browser Network requests from a cloud-backed action should use the corresponding `*.supabase.co` hostname.
 
 A Preview request to the production hostname is a release blocker. With the application guard in place, that configuration should be blocked before a Supabase client is created.
 
