@@ -868,23 +868,6 @@
 
 .today-action__actions .button { width: 100%; }
 
-/* Correcting a run that is already recorded is never the thing to do next. */
-.today-action__quiet-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.today-action__quiet-actions button {
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-subtle);
-  font-size: var(--type-label);
-  cursor: pointer;
-}
-
-.today-action__quiet-actions button:hover { color: var(--text); }
 
 /* Run Found is a prompt now, so its facts are one line rather than a table. */
 .run-found__facts {

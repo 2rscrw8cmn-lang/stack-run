@@ -15,7 +15,6 @@ interface CompletedRunSummaryProps {
   placement?: BlockPlacement | null;
   /** The viewer's own Crew Build contribution for this run, while it is READY. */
   crewBlockRunId?: string | null;
-  onEditRun: () => void;
   onPlaceBlock: () => void;
   onPlaceCrewBlock: (sharedRunId: string) => void;
 }
@@ -32,16 +31,14 @@ interface CompletedRunSummaryProps {
  * Issue #152 finished the thought issue #120 started. A run that owes nothing
  * is not an action, so it stops being a card: the state collapses to one line
  * under Today's heading and gives the screen back to the week, the tower and
- * the crew. Correcting the run stays a quiet secondary affordance while the
- * card is still open for business; once it has collapsed, editing and history
- * belong to Runs, which is where the rest of the runner's record lives.
+ * the crew. Nothing here edits the run either — editing and history belong to
+ * Runs/Run Detail, where the rest of the runner's record lives.
  */
 export function CompletedRunSummary({
   workout,
   runLog,
   placement,
   crewBlockRunId = null,
-  onEditRun,
   onPlaceBlock,
   onPlaceCrewBlock,
 }: CompletedRunSummaryProps) {
@@ -95,11 +92,6 @@ export function CompletedRunSummary({
             Place Crew Block
           </Button>
         )}
-      </div>
-      <div className="today-action__quiet-actions">
-        <button type="button" onClick={onEditRun}>
-          Edit
-        </button>
       </div>
     </TodayActionCard>
   );

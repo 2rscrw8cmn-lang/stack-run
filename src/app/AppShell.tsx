@@ -236,7 +236,6 @@ export function AppShell({
               onTabChange("crew");
             }}
             onSaveRun={onSaveRun}
-            onDeleteRun={onDeleteRun}
             availability={availability}
             candidates={connectedSync.candidates}
             onReviewCandidate={(candidate) => openRunData({ candidate })}

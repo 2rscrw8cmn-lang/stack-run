@@ -95,12 +95,6 @@ describe("Today action card styling", () => {
     expect(Number(min)).toBeGreaterThanOrEqual(20);
   });
 
-  it("keeps the quiet correction a full-size target", () => {
-    expect(ruleBody(components, ".today-action__quiet-actions button {")).toMatch(
-      /min-height: 44px/,
-    );
-  });
-
   it("retires the card to one line when the run owes nothing", () => {
     const settled = ruleBody(css, ".today-settled {");
     expect(settled).toMatch(/padding: 9px 12px/);
@@ -128,5 +122,10 @@ describe("Today rules the revision replaced", () => {
     expect(components).not.toMatch(/today-workout-card/);
     expect(components).not.toMatch(/today-completed/);
     expect(components).not.toMatch(/completed-run-summary/);
+  });
+
+  /* Editing a recorded run left Today with the Edit control (issue #152). */
+  it("leaves no quiet-action styling behind on the action card", () => {
+    expect(components).not.toMatch(/today-action__quiet-actions/);
   });
 });

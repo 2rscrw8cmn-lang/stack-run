@@ -59,7 +59,6 @@ interface TodayScreenProps {
     values: ValidRunEntry,
     runLogId?: string,
   ) => void;
-  onDeleteRun?: (runLogId: string) => void;
   availability?: AvailabilityCalendar | null;
   candidates?: IntervalsCandidate[];
   /** Opens Run Data on this candidate's own review state. */
@@ -71,7 +70,12 @@ interface TodayScreenProps {
   onViewCrew?: () => void;
 }
 
-type Entry = { kind: "scheduled"; workout: Workout; runLog?: RunLog };
+/**
+ * The run entry Today opens. It only ever logs a run that has not been
+ * recorded yet — correcting or deleting one belongs to Runs/Run Detail
+ * (issue #152), so no entry here carries an existing run log.
+ */
+type Entry = { kind: "scheduled"; workout: Workout };
 
 /** Today — the decision surface. */
 export function TodayScreen({
@@ -86,7 +90,6 @@ export function TodayScreen({
   onStartPlacing = () => undefined,
   onStartCrewPlacing = () => undefined,
   onSaveRun = () => undefined,
-  onDeleteRun = () => undefined,
   availability = null,
   candidates = [],
   onReviewCandidate = () => undefined,
@@ -221,13 +224,6 @@ export function TodayScreen({
           workout={completed.workout}
           runLog={completed.runLog}
           placement={completedPlacement}
-          onEditRun={() =>
-            openEntry({
-              kind: "scheduled",
-              workout: completed.workout,
-              runLog: completed.runLog,
-            })
-          }
           crewBlockRunId={completedCrewBlockRunId}
           onPlaceBlock={() => {
             if (!isDemo) onStartPlacing(completed.runLog.id);
@@ -293,37 +289,20 @@ export function TodayScreen({
           key={entryVisit}
           isOpen={isEntryOpen}
           workout={entry.workout}
-          runLog={entry.runLog}
           today={effectiveToday}
           onClose={() => {
             setEntryOpen(false);
             setEntry(null);
           }}
-          onDelete={
-            entry.runLog
-              ? () => {
-                  if (isDemo) {
-                    setSaveAnnouncement("Demo data is read-only.");
-                  } else {
-                    onDeleteRun(entry.runLog!.id);
-                    setSaveAnnouncement("Run deleted.");
-                  }
-                  setEntryOpen(false);
-                }
-              : undefined
-          }
           onSave={(workout, values) => {
             if (isDemo) {
               setSaveAnnouncement("Demo data is read-only.");
               setEntryOpen(false);
               return;
             }
-            const wasLogged = entry.runLog !== undefined;
-            onSaveRun(workout, values, entry.runLog?.id);
+            onSaveRun(workout, values);
             setSaveAnnouncement(
-              wasLogged
-                ? "Run updated."
-                : `Run saved. You earned ${earnedBlockPhrase(values.activityType)}.`,
+              `Run saved. You earned ${earnedBlockPhrase(values.activityType)}.`,
             );
             setEntryOpen(false);
           }}

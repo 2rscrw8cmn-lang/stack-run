@@ -126,7 +126,6 @@ function crewWith(run: Partial<CrewSharedRun>): RaceCrewController {
 
 function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
   const onSaveRun = vi.fn();
-  const onDeleteRun = vi.fn();
   const onViewPlan = vi.fn();
   const onViewBuild = vi.fn();
   const onStartPlacing = vi.fn();
@@ -140,13 +139,11 @@ function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
       onViewBuild={onViewBuild}
       onStartPlacing={onStartPlacing}
       onSaveRun={onSaveRun}
-      onDeleteRun={onDeleteRun}
       {...props}
     />,
   );
   return {
     onSaveRun,
-    onDeleteRun,
     onViewPlan,
     onViewBuild,
     onStartPlacing,
@@ -385,6 +382,8 @@ describe("TodayScreen run entry", () => {
     await user.click(screen.getByRole("button", { name: "Save Run" }));
 
     expect(onSaveRun.mock.calls[0][0].id).toBe("workout-002");
+    // Today records runs; it never saves over one (issue #152).
+    expect(onSaveRun.mock.calls[0][2]).toBeUndefined();
     expect(
       screen.getByText("Run saved. You earned an Easy block."),
     ).toBeInTheDocument();
@@ -454,7 +453,6 @@ describe("TodayScreen earned block", () => {
     expect(
       screen.queryByText(/built into the tower/),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     expect(container.querySelector(".today-action")).toBeNull();
 
     // What is left says the run happened, and stops there.
@@ -514,27 +512,18 @@ describe("TodayScreen earned block", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("deletes a logged run after confirming", async () => {
-    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  /*
+   * Issue #152: Today logs a run and hands over the blocks it earned. Nothing
+   * on this screen corrects or deletes a recorded run — that is Runs/Run
+   * Detail's job, with the rest of the runner's record.
+   */
+  it("offers no way to edit or delete a run it has already recorded", () => {
+    renderToday({ runLogs: [completedEasyRun] });
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Delete Run" }));
-
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(onDeleteRun).toHaveBeenCalledWith("run-workout-002");
-    confirm.mockRestore();
-  });
-
-  it("keeps the run when the confirmation is declined", async () => {
-    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Delete Run" }));
-
-    expect(onDeleteRun).not.toHaveBeenCalled();
-    confirm.mockRestore();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete Run" }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers no delete on an entry that has not been saved yet", async () => {
@@ -546,20 +535,6 @@ describe("TodayScreen earned block", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("edits a completed run through the same form", async () => {
-    const { user, onSaveRun } = renderToday({ runLogs: [completedEasyRun] });
-
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
-
-    await user.clear(screen.getByLabelText(/Distance/));
-    await user.type(screen.getByLabelText(/Distance/), "2.6");
-    await user.click(screen.getByRole("button", { name: "Save Run" }));
-
-    expect(onSaveRun).toHaveBeenCalledTimes(1);
-    expect(onSaveRun.mock.calls[0][1]).toMatchObject({ distanceMiles: 2.6 });
-    expect(onSaveRun.mock.calls[0][2]).toBe("run-workout-002");
-  });
 });
 
 const candidate = {
