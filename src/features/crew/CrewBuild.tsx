@@ -163,8 +163,13 @@ export function CrewBuild({
   const placementPieceColor = placement
     ? placement.kind === "run"
       ? memberPieceColor(placement.run.userId, placement.run.accentColor)
-      : "#171d21"
+      : memberPieceColor(placement.member.userId, placement.member.accentColor)
     : "#171d21";
+  const placementTitle = placement
+    ? placement.kind === "run"
+      ? `${placement.run.crewBuildRow === null ? "Place" : "Move"} ${WORKOUT_TYPE_LABEL[placement.run.activityType]}`
+      : `${placement.award.crewBuildRow === null ? "Place" : "Move"} ${CREW_AWARD_LABEL[placement.award.awardType]}`
+    : "Place block";
 
   const { grab, trackDrag, release, cancelDrag } = useColumnDragPlacement({
     containerRef: towerRef,
@@ -197,26 +202,28 @@ export function CrewBuild({
         * where you are — and the oversized miles-built heading became four
         * even crew figures, none of them shouting.
         */}
-      <dl className="crew-build__stats" aria-label="Crew totals">
-        <div className="crew-build__stat crew-build__stat--miles">
-          <dd className="data-value">{formatMilesBuilt(totals.miles)}</dd>
-          <dt className="machine-label">Miles</dt>
-        </div>
-        <div className="crew-build__stat crew-build__stat--runs">
-          <dd className="data-value">{totals.runs}</dd>
-          <dt className="machine-label">Runs</dt>
-        </div>
-        <div className="crew-build__stat crew-build__stat--time">
-          <dd className="data-value">{formatTotalHoursMinutes(totals.durationSeconds)}</dd>
-          <dt className="machine-label">Hours</dt>
-        </div>
-        <div className="crew-build__stat crew-build__stat--runners">
-          <dd className="data-value">{totals.runners}</dd>
-          <dt className="machine-label">
-            {totals.runners === 1 ? "Runner" : "Runners"}
-          </dt>
-        </div>
-      </dl>
+      {!placement && (
+        <dl className="crew-build__stats" aria-label="Crew totals">
+          <div className="crew-build__stat crew-build__stat--miles">
+            <dd className="data-value">{formatMilesBuilt(totals.miles)}</dd>
+            <dt className="machine-label">Miles</dt>
+          </div>
+          <div className="crew-build__stat crew-build__stat--runs">
+            <dd className="data-value">{totals.runs}</dd>
+            <dt className="machine-label">Runs</dt>
+          </div>
+          <div className="crew-build__stat crew-build__stat--time">
+            <dd className="data-value">{formatTotalHoursMinutes(totals.durationSeconds)}</dd>
+            <dt className="machine-label">Hours</dt>
+          </div>
+          <div className="crew-build__stat crew-build__stat--runners">
+            <dd className="data-value">{totals.runners}</dd>
+            <dt className="machine-label">
+              {totals.runners === 1 ? "Runner" : "Runners"}
+            </dt>
+          </div>
+        </dl>
+      )}
 
       {available && firstReady && !placement && (
         <div className="crew-build__ready" role="status">
@@ -231,18 +238,6 @@ export function CrewBuild({
         </div>
       )}
 
-      {placement && (
-        <div className="crew-build__placement-lead">
-          <p className="machine-label">
-            {placement.kind === "award" ? "Place your Special Block" : "Place your block"}
-          </p>
-          <p className="data-value">
-            {placement.kind === "run" ? runIdentity(placement.run) : awardIdentity(placement.award)}
-          </p>
-          <p>Drag sideways or tap a spot. Your block will land where it fits.</p>
-        </div>
-      )}
-
       {!available ? (
         <p className="crew-build__unavailable">Crew Build unavailable.</p>
       ) : contributionCount === 0 && !placement ? (
@@ -253,6 +248,19 @@ export function CrewBuild({
         </div>
       ) : (
         <div className="crew-build__stage" style={stageStyle}>
+          {placement && (
+            <div className="crew-build__placement-context">
+              <div>
+                <p className="machine-label">
+                  {placement.kind === "award" ? "Special Block in hand" : "Block in hand"}
+                </p>
+                <p className="data-value">
+                  {placement.kind === "run" ? runIdentity(placement.run) : awardIdentity(placement.award)}
+                </p>
+              </div>
+              <p>Tap or drag to position</p>
+            </div>
+          )}
           <div className="crew-build__viewport">
             <div className="crew-build__sky" aria-hidden="true" />
             <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
@@ -357,6 +365,29 @@ export function CrewBuild({
             aria-hidden="true"
             data-impact={justPlaced ? placementImpact(justPlaced) : undefined}
           />
+          {placement && (
+            <PlacementBar
+              layout="field"
+              pieceColor={placementPieceColor}
+              width={placementFootprint?.width ?? 1}
+              height={placementFootprint?.height ?? 1}
+              title={placementTitle}
+              positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
+              showPositionLabel={false}
+              canStepBack={
+                !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
+              }
+              canStepForward={
+                !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) < placement.options.length - 1
+              }
+              onStep={placement.onStep}
+              onAutoPlace={placement.onAutoPlace}
+              onDrop={placement.onConfirm}
+              onCancel={placement.onCancel}
+              pending={placement.pending}
+              error={placement.error}
+            />
+          )}
           {!placement && (model.blocks.length === 0 || drawnCourses > MAX_VISIBLE_COURSES) && (
             <p className="crew-build__caption">
               {model.blocks.length === 0
@@ -365,31 +396,6 @@ export function CrewBuild({
             </p>
           )}
         </div>
-      )}
-
-      {placement && (
-        <PlacementBar
-          pieceColor={placementPieceColor}
-          width={placementFootprint?.width ?? 1}
-          height={placementFootprint?.height ?? 1}
-          title={placement.kind === "run"
-            ? `${placement.run.crewBuildRow === null ? "Place" : "Move"} ${WORKOUT_TYPE_LABEL[placement.run.activityType]}`
-            : `${placement.award.crewBuildRow === null ? "Place" : "Move"} ${CREW_AWARD_LABEL[placement.award.awardType]}`}
-          positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
-          showPositionLabel={false}
-          canStepBack={
-            !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
-          }
-          canStepForward={
-            !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) < placement.options.length - 1
-          }
-          onStep={placement.onStep}
-          onAutoPlace={placement.onAutoPlace}
-          onDrop={placement.onConfirm}
-          onCancel={placement.onCancel}
-          pending={placement.pending}
-          error={placement.error}
-        />
       )}
 
       {available && model.truncated && (
