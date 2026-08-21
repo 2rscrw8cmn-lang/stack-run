@@ -99,18 +99,29 @@ Project URL
 Publishable key
 ```
 
-Add these Vercel environment variables for Preview and Production:
+Add separately scoped Vercel environment variables. Production uses:
 
 ```text
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_STACK_BACKEND_ENV=production
+VITE_SUPABASE_URL=https://fgnecruhlybarcmljggi.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
+
+Preview uses:
+
+```text
+VITE_STACK_BACKEND_ENV=preview
+VITE_SUPABASE_URL=https://plpooikvofzytbpsbzki.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+Never configure one unscoped set for both deployment environments. See `docs/DEPLOYMENT.md` for the enforced environment contract.
 
 These values are public client configuration by design. Security comes from Supabase Auth + Row Level Security, not from hiding the publishable key.
 
 Do **not** add a `SUPABASE_SECRET_KEY` or legacy service-role key unless a later approved feature genuinely requires server-admin behavior.
 
-For local development, put the same two values in `.env.local`.
+For local cloud QA, put the three Preview values in `.env.local`. Local development refuses the production project.
 
 Never commit `.env.local`.
 
@@ -301,9 +312,9 @@ Before UI-18 implementation can be fully tested, the owner needs to have complet
 - [ ] Email/password provider enabled
 - [ ] Email confirmation disabled
 - [ ] Minimum password length set to 8
-- [ ] `VITE_SUPABASE_URL` added to Vercel Preview + Production
-- [ ] `VITE_SUPABASE_PUBLISHABLE_KEY` added to Vercel Preview + Production
-- [ ] Same variables available locally in `.env.local`
+- [ ] Production-scoped `VITE_STACK_BACKEND_ENV`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` point to `stack-run`
+- [ ] Preview-scoped `VITE_STACK_BACKEND_ENV`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` point to `stack-run-preview`
+- [ ] Preview variables are available locally in `.env.local` when cloud QA is needed
 - [ ] Existing Intervals personal API key available privately for the local-key migration test
 
 The SQL migration is created by the UI-18 implementation agent, not by hand before coding starts.
