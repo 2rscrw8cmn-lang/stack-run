@@ -408,6 +408,8 @@ Key rules:
 
 Member Build and Crew Build are deliberately different concepts: Member Build reproduces sanitized personal construction history; the communal tower is windowed by the Crew's Build start.
 
+While a runner is placing a Crew block, the tower becomes the primary interface: summary totals give way to a compact in-field block identity strip and placement dock, valid landings remain visible, and the selected landing carries the runner color. Tap, horizontal drag, arrow keys, Drop and Auto Place all continue to drive the existing placement domain and server RPCs; no construction geometry, ownership, collision, support or concurrency rule is duplicated in presentation code.
+
 ## 15. Special Blocks / awards
 
 Current award architecture is documented in `CREW_SPECIAL_BLOCKS.md`.

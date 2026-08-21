@@ -1086,3 +1086,25 @@ Verification: the production-shaped 3.1-mile bridge regression and a Special
 Block bridge regression live in `src/crew/crewBuild.test.ts` and
 `src/crew/crewBuildAwards.test.ts`. `npm run check` passes: 173 test files,
 2,105 tests, lint, TypeScript, and the production build.
+
+## Crew Build placement polish (issue #154)
+
+**Status:** Implemented as a presentation-only refinement; no product, placement
+domain, RPC or schema change.
+
+Implemented scope:
+- the tower is the primary placement surface, with Crew totals hidden only while
+  a block is in hand;
+- a compact in-field identity strip keeps the run or Special Block type and owner
+  visible without repeating the former instruction card;
+- valid landing positions read clearly and the selected candidate uses its owner
+  color;
+- Drop stays attached to the candidate in a lighter in-field dock, while tap,
+  sideways drag, keyboard arrows and Auto Place retain the same actions and
+  44px minimum targets;
+- the shared reduced-motion path and mixed run/Special Block placement remain
+  unchanged.
+
+Verification: focused Crew placement, style-contract and reduced-motion coverage;
+responsive browser review at 320px, 390px, 430px and desktop widths; keyboard
+focus review. Real iPhone Safari remains an owner acceptance check.

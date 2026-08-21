@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
@@ -48,6 +48,22 @@ function chosenLandingName(): string {
   const chosen = document.querySelector('.built-tower__slot[data-chosen="true"] button');
   if (!chosen) throw new Error("No landing slot is chosen.");
   return chosen.textContent ?? "";
+}
+
+/** jsdom has no layout; eight 40px columns give pointer placement a field. */
+function measureCrewTower() {
+  const tower = screen.getByRole("list", { name: "Choose a Crew Build position" });
+  vi.spyOn(tower, "getBoundingClientRect").mockReturnValue({
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    right: 320,
+    bottom: 320,
+    width: 320,
+    height: 320,
+    toJSON: () => ({}),
+  });
 }
 
 /** The four figures above the tower, in order: miles, runs, time, runners. */
@@ -1221,6 +1237,10 @@ describe("Shared Crew Build", () => {
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Crew totals")).not.toBeInTheDocument();
+    expect(screen.getByText("Block in hand")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Place Easy controls" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Auto Place" })).toBeInTheDocument();
     // Gravity already picked a landing — flush against the left edge of empty
     // ground — the same Auto Place default Personal Build uses, with no row
     // to choose.
@@ -1300,11 +1320,45 @@ describe("Shared Crew Build", () => {
     expect(slots).toHaveLength(7);
     expect(slots[0]).toHaveAccessibleName("Place Easy block in columns 1 through 2");
 
-    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    const moveRight = screen.getByRole("button", { name: "Move block right" });
+    moveRight.focus();
+    await user.keyboard("{Enter}");
     expect(chosenLandingName()).toBe("Place Easy block in columns 2 through 3");
     expect(screen.queryByText("Column 2")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Drop" }));
+    const drop = screen.getByRole("button", { name: "Drop" });
+    drop.focus();
+    await user.keyboard("{Enter}");
     expect(place).toHaveBeenCalledWith("ready-own", 0, 2);
+  });
+
+  it("keeps sideways drag-and-release as a complete placement path", async () => {
+    const place = vi.fn(async () => true);
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({
+      crewData: dashboard({ runs: [ready] }),
+      placeCrewBuildBlock: place,
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    measureCrewTower();
+    const chosen = screen.getByRole("button", {
+      name: "Place Easy block in columns 1 through 2",
+    });
+
+    act(() => {
+      fireEvent.pointerDown(chosen, { pointerId: 1, buttons: 1, clientX: 20 });
+    });
+    act(() => {
+      fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 1, clientX: 180 });
+    });
+    await act(async () => {
+      fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 180 });
+    });
+
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 5);
   });
 
   it("keeps a block READY, shows the specific server collision message, and recomputes a fresh landing to retry", async () => {
@@ -1368,8 +1422,11 @@ describe("Shared Crew Build", () => {
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(
-      screen.getByText("Drag sideways or tap a spot. Your block will land where it fits."),
+      screen.getByText("Tap or drag to position"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Drag sideways or tap a spot. Your block will land where it fits."),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/^Column \d+$/)).not.toBeInTheDocument();
     expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
   });
