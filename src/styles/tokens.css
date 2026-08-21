@@ -57,6 +57,43 @@
   --zone-7: #d270ff;
 
   /*
+   * Training Signal family accents (Stabilization 1.08).
+   *
+   * A signal is named by the kind of running it reads, so it wears that
+   * activity's hue as an identity marker: the accent says which signal this
+   * is, never whether the reading is good or bad. They are tokens of their own
+   * so a signal's identity can be adjusted without dragging `--easy` and
+   * `--intervals` — which still mean "this run was an easy run" everywhere
+   * else — along with it.
+   */
+  --signal-run-frequency: var(--easy);
+  --signal-long-run-progression: var(--long);
+  --signal-workload-trend: var(--intervals);
+  --signal-zone-distribution: var(--zone-2);
+  --signal-plan-completion: var(--simulation);
+
+  /*
+   * Crew Special Block award identities. `docs/CREW_SPECIAL_BLOCKS.md` is the
+   * authority for which award wears which colour; these tokens exist so the
+   * placed brick, the detail sheet and the ready panel cannot drift apart
+   * again — before 1.08 the ready panel gave Best Zone 2 a cyan mark and the
+   * brick gave it a red one, so the same award changed identity between two
+   * screens of the same feature.
+   *
+   * An award colour identifies which award this is. It is not a status: the
+   * red of Best Zone 2 is that award's mark, never a failure, and nothing here
+   * may be reused as danger/error treatment.
+   */
+  --award-miles: #39ff6a;
+  --award-zone2: #ff5a5f;
+  --award-pace: #35d6ff;
+  --award-runs: #ffb038;
+  --award-long-haul: #b6ff3a;
+  --award-steady: #2fe6c4;
+  --award-on-target: #ff5ac8;
+  --award-level-up: #9d7bff;
+
+  /*
    * Issue #137: the four Crew Build figures, each with its own colour.
    *
    * The colour is a delimiter, not a meaning. Four numbers set in a row read
@@ -114,6 +151,35 @@
   /* Context in an editor thumbnail: present enough to read as the rest of the
      runner, quiet enough that the option being chosen is the bright thing. */
   --runner-icon-ghost: #2a3640;
+
+  /*
+   * Stabilization 1.08 — the readable phone floor.
+   *
+   * STACK had accumulated 7–9px labels from several separate passes. Nothing
+   * user-facing sits below `--type-meta` any more, and the two tokens name the
+   * only two jobs small type is allowed to do:
+   *
+   *   --type-label  a label a runner reads to interpret a figure, a chart or
+   *                 the state of an action. 12px is the floor for those.
+   *   --type-meta   tertiary metadata — a date, a window, a unit suffix, a
+   *                 count that supports a figure already stated above it.
+   *                 Never the only carrier of something the runner must read.
+   *
+   * Uppercase machine labels are set in these too: tracking makes them read
+   * smaller than the same size in sentence case, not larger.
+   *
+   * The only text allowed below `--type-meta` is stamped into a Build object's
+   * face (`.placed-block__unit`, `.placed-block__manual`) — decoration whose
+   * facts the block's accessible name already states in full.
+   */
+  --type-label: 12px;
+  --type-meta: 11px;
+
+  /*
+   * The cool reading tone shared by compact fact lines in run rows. Its own
+   * token because two surfaces already used the same value for the same job.
+   */
+  --text-data: #b7d8ea;
 
   --radius-sm: 6px;
   --radius-md: 10px;

@@ -34,11 +34,15 @@ At phone widths (320–430 CSS px), use these as minimum targets unless a docume
 
 ### Axis / date labels
 
-- minimum: **12px**;
+- minimum: **12px rendered**;
 - preferred selected/current tick: **13–14px**;
 - no 8px or 9px date labels inside primary charts.
 
 Machine type may still be used, but not at a size that makes dates/values hard to read.
+
+**These are rendered sizes, and chart text is not written in pixels.** A `font-size` inside an SVG is in viewBox units, so it is multiplied by however much the chart is scaled to fit its column. A 320-unit chart is drawn about 288px wide on a 320px phone — 0.9× — so a tick has to ask for 13.5 units to arrive at 12px. Stabilization 1.08 found the value ticks sitting at 10 units and rendering at 9px while the source read as compliant. Check the scale before trusting a number in a stylesheet, and remember it cuts the other way too: a small ring drawn at twice its viewBox is already above the floor at 10 units.
+
+Labels at the ends of an axis must be clamped inside the plot. The first date otherwise runs under the value ticks and the last one off the right edge, which is a collision the density rules above do not catch because both labels are individually well spaced.
 
 ### Data labels
 

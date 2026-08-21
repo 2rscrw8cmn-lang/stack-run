@@ -187,8 +187,9 @@
   .bottom-nav__label {
     font-size: 11px;
   }
+  /* Five destinations buy their fit from tracking and padding. The label
+     itself stays on the 11px floor — a destination is not metadata. */
   .bottom-nav[data-destinations="5"] .bottom-nav__label {
-    font-size: 10px;
     letter-spacing: -0.01em;
   }
   .bottom-nav[data-destinations="5"] .bottom-nav__item {
@@ -580,7 +581,7 @@
 }
 
 .this-week__weekday {
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
   color: var(--text-subtle);
 }
@@ -948,7 +949,7 @@
   background: var(--surface-soft);
   color: var(--text-muted);
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 700;
   letter-spacing: 0.035em;
   text-transform: uppercase;
@@ -1418,6 +1419,13 @@ textarea.run-input {
   white-space: nowrap;
 }
 
+/*
+ * Stabilization 1.08 exception, one of two. Text stamped into a Build
+ * object's face is part of the object, not interface copy: the whole label is
+ * `aria-hidden` decoration of facts the block's accessible name already states
+ * in full, and the brick's width is its footprint in the tower, which no type
+ * size may push around. The unit stays subordinate to the mileage beside it.
+ */
 .placed-block__unit {
   font-size: 8px;
   font-weight: 700;
@@ -1915,7 +1923,7 @@ textarea.run-input {
   padding: 1px var(--space-2);
   border-radius: 999px;
   background: var(--surface-strong);
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -3540,9 +3548,15 @@ textarea.run-input {
   stroke-linejoin: round;
 }
 
+/*
+ * Chart type is measured in viewBox units, and a 320-unit chart is drawn about
+ * 288px wide on a 320px phone — a unit is worth 0.9px there. The x-axis was
+ * already sized for that (13.5 units ≈ 12px); the value ticks were left at 10
+ * and rendered at 9. 13.5 puts both axes on the same 12px phone floor.
+ */
 .chart__tick {
   fill: var(--text-subtle);
-  font-size: 10px;
+  font-size: 13.5px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -3695,7 +3709,7 @@ textarea.run-input {
   padding: 1px var(--space-2);
   border: 1px solid var(--border);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -3759,7 +3773,7 @@ textarea.run-input {
 
 .signal-facts dt {
   margin-bottom: var(--space-1);
-  font-size: 10px;
+  font-size: var(--type-label);
   line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -3898,9 +3912,15 @@ textarea.run-input {
   transform-origin: 56px 56px;
   font-variant-numeric: tabular-nums;
 }
+/*
+ * These three are SVG user units, not CSS pixels: the plot is a 112-unit
+ * viewBox drawn at 112px on the narrowest phone, so a unit is never worth more
+ * than a pixel there and 8 units really did render as 8px text. Sized against
+ * the same floor as the rest of STACK, and the baselines are spread to match.
+ */
 .donut__center-value { font-size: 14px; font-weight: 700; }
-.donut__center-label { font-size: 8px; fill: var(--text-subtle); }
-.donut__center-detail { font-size: 9px; fill: var(--text-muted); }
+.donut__center-label { font-size: 12px; fill: var(--text-subtle); }
+.donut__center-detail { font-size: 11px; fill: var(--text-muted); }
 
 .donut__legend {
   display: grid;
@@ -4094,7 +4114,7 @@ textarea.run-input {
 
 .accomplishment-moment__system {
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 700;
 }
 
@@ -4112,7 +4132,7 @@ textarea.run-input {
 
 .accomplishment-moment__label {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 .accomplishment-moment__value {
@@ -4206,7 +4226,7 @@ textarea.run-input {
 
 .signal-detail__section h3,
 .signal-facts dt {
-  font-size: 10px;
+  font-size: var(--type-label);
   letter-spacing: 0.09em;
   color: var(--text-muted);
 }
@@ -4311,6 +4331,9 @@ textarea.run-input {
   text-transform: uppercase;
 }
 
+/* The large plot is drawn at min(64vw, 240px) — 1.8× its viewBox on a 320px
+   phone — so these units buy more pixels than the compact ring's do: 10 here
+   measures about 18px on the narrowest screen STACK supports. */
 .donut--large .donut__center-value { font-size: 20px; }
 .donut--large .donut__center-label { font-size: 10px; }
 .donut--large .donut__center-detail { font-size: 11px; }
@@ -4602,7 +4625,7 @@ textarea.run-input {
 .runs-screen__instrument dt {
   margin-top: 5px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
   line-height: 1.2;
   letter-spacing: 0.065em;
 }
@@ -4638,7 +4661,7 @@ textarea.run-input {
   gap: 12px;
   margin-bottom: -8px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .plan-actual-chart,
@@ -4663,10 +4686,7 @@ textarea.run-input {
   stroke-width: 1;
 }
 
-.chart__tick--x {
-  font-size: 13.5px;
-}
-
+/* The selected date is the one label worth more than the axis floor. */
 .chart__tick--x-selected { font-size: 14.5px; }
 
 .plan-actual-chart__actual {
@@ -4684,7 +4704,7 @@ textarea.run-input {
 .plan-actual-chart__key {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -4710,7 +4730,7 @@ textarea.run-input {
 
 .signal-facts dt {
   min-height: 22px;
-  font-size: 7px;
+  font-size: var(--type-label);
 }
 
 .signal-facts dd {
@@ -4742,7 +4762,7 @@ textarea.run-input {
 
 .signal-detail__section h3 {
   color: var(--accent);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .signal-run-list {
@@ -4762,7 +4782,7 @@ textarea.run-input {
 .signal-run-list strong,
 .signal-run-list small {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 /* Run detail: the run is the hero; schedule context recedes. */
@@ -4786,12 +4806,12 @@ textarea.run-input {
 .run-detail__context p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 
 .run-detail__plan-line {
   color: var(--text-subtle);
-  font-size: 8px;
+  font-size: var(--type-meta);
 }
 
 .run-detail__context-tags {
@@ -4805,7 +4825,7 @@ textarea.run-input {
   padding: 3px 7px;
   border: 1px solid currentColor;
   border-radius: 3px;
-  font-size: 8px;
+  font-size: var(--type-label);
 }
 
 .run-detail__type[data-type="easy"] { color: var(--easy); }
@@ -4823,7 +4843,7 @@ textarea.run-input {
   border: 1px solid var(--border-strong);
   border-radius: 3px;
   color: var(--text-subtle);
-  font-size: 8px;
+  font-size: var(--type-label);
 }
 
 .run-detail__status-tag[data-status="plan"] {
@@ -4840,7 +4860,7 @@ textarea.run-input {
   flex-wrap: wrap;
   gap: 4px 14px;
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 
 .run-result-detail__primary,
@@ -4899,9 +4919,14 @@ textarea.run-input {
   letter-spacing: -0.055em;
 }
 
+/*
+ * The unit beside a figure. Sized absolutely rather than as a fraction of the
+ * value it follows: at 0.46em it rode the value's own clamp down to about 7px
+ * beside a secondary metric on a 320px phone.
+ */
 .run-result-detail__primary small,
 .run-result-detail__secondary small {
-  font-size: 0.46em;
+  font-size: var(--type-meta);
   letter-spacing: 0;
 }
 
@@ -4909,7 +4934,7 @@ textarea.run-input {
 .run-result-detail__secondary dt {
   margin-top: 6px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .run-result-detail__secondary {
@@ -4962,7 +4987,7 @@ textarea.run-input {
 .run-result-detail__intervals > h3 {
   margin: 0;
   color: var(--accent);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 .run-profile__selectors {
@@ -4991,7 +5016,7 @@ textarea.run-input {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--type-label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -5031,7 +5056,7 @@ textarea.run-input {
   justify-content: space-between;
   margin-top: 4px;
   color: var(--text-subtle);
-  font-size: 8px;
+  font-size: var(--type-label);
 }
 
 .run-profile-chart__facts > div {
@@ -5047,7 +5072,7 @@ textarea.run-input {
 .run-profile-chart__facts dt {
   margin-top: 2px;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-label);
 }
 
 .connect-to-plan {
@@ -5076,7 +5101,7 @@ textarea.run-input {
 .run-result-detail__interval-head {
   padding: 6px 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
   border-bottom: 1px solid var(--border);
 }
 
@@ -5084,7 +5109,7 @@ textarea.run-input {
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .run-result-detail__intervals li span {
@@ -5101,7 +5126,7 @@ textarea.run-input {
 .workout-detail > .workout-detail__result .workout-detail__result-title {
   color: var(--text-muted);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--type-label);
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
@@ -5130,7 +5155,7 @@ textarea.run-input {
 .race-context {
   margin: 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 
 .race-context__days { color: var(--accent); }
@@ -5149,13 +5174,13 @@ textarea.run-input {
 .today-workout-card__eyebrow,
 .run-found__eyebrow {
   color: var(--accent);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .today-workout-card__type {
   margin: 0 0 4px;
   color: var(--long);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 .today-workout-card__distance {
@@ -5167,7 +5192,7 @@ textarea.run-input {
 .today-workout-card__title {
   color: var(--accent);
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--type-label);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -5180,8 +5205,8 @@ textarea.run-input {
   padding: 14px;
 }
 
-.run-found__meta { margin: 8px 0 0; color: var(--text-muted); font-size: 9px; }
-.run-found__match { color: var(--accent); font-size: 9px; }
+.run-found__meta { margin: 8px 0 0; color: var(--text-muted); font-size: var(--type-meta); }
+.run-found__match { color: var(--accent); font-size: var(--type-meta); }
 
 /* Calmer history and schedule surfaces inherit the same edges. */
 
@@ -5200,7 +5225,7 @@ textarea.run-input {
 .run-row[data-type="race"] { border-left-color: var(--race); }
 .run-row__icon { border-radius: 5px; }
 .run-row__extra { border-radius: 3px; font-family: var(--font-data); }
-.run-row__facts { color: #b7d8ea; }
+.run-row__facts { color: var(--text-data); }
 
 .build-site__stage {
   position: relative;
@@ -5279,7 +5304,7 @@ textarea.run-input {
 .build-heading__label {
   margin: 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -5290,9 +5315,10 @@ textarea.run-input {
   gap: 2px;
 }
 
+/* Names the figure above it — `23.9` means nothing without it. */
 .build-heading__unit {
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--type-label);
   text-transform: uppercase;
 }
 
@@ -5366,7 +5392,7 @@ textarea.run-input {
 
 .crew-settings__note,
 .run-data-setup__privacy,
-.crew-settings__invite-link p { font-size: var(--text-sm); }
+.crew-settings__invite-link p { font-size: 14px; }
 
 .crew-settings__switch,
 .crew-settings__account-actions,
@@ -5475,7 +5501,7 @@ textarea.run-input {
   box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
 }
 
-.crew-invite-landing__brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-weight: 800; letter-spacing: .12em; }
+.crew-invite-landing__brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-data); font-weight: 800; letter-spacing: .12em; }
 .crew-invite-landing__identity { display: flex; align-items: center; gap: var(--space-5); }
 .crew-invite-landing__identity h1 { margin: 0 0 var(--space-2); font-size: clamp(30px, 9vw, 48px); line-height: .98; }
 .crew-invite-landing__identity p, .crew-invite-landing__status { margin: 0; color: var(--text-muted); line-height: 1.5; }
@@ -5660,13 +5686,13 @@ textarea.run-input {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: var(--text-sm);
+  font-size: 14px;
   cursor: pointer;
 }
 .crew-emblem-builder__random:hover { color: var(--text); }
 
 .crew-emblem-builder__row { display: grid; gap: 4px; min-width: 0; }
-.crew-emblem-builder__row .machine-label { margin: 0; font-size: 10px; }
+.crew-emblem-builder__row .machine-label { margin: 0; font-size: var(--type-label); }
 
 /*
  * A horizontal rail, not a grid. Thirty main marks in a fixed grid on a 320px
@@ -5843,13 +5869,13 @@ textarea.run-input {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: var(--text-sm);
+  font-size: 14px;
   cursor: pointer;
 }
 .runner-icon-builder__random:hover { color: var(--text); }
 
 .runner-icon-builder__row { display: grid; gap: 4px; }
-.runner-icon-builder__row .machine-label { margin: 0; font-size: 10px; }
+.runner-icon-builder__row .machine-label { margin: 0; font-size: var(--type-label); }
 /*
  * Six columns at every width, sized for 320px first: the whole library for a
  * part is one glance, never a carousel, and the columns line up across rows
@@ -5912,7 +5938,7 @@ textarea.run-input {
   background-color: var(--data-surface);
   color: var(--accent);
   font-family: var(--font-data);
-  font-size: 0.72rem;
+  font-size: var(--type-label);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -6075,7 +6101,7 @@ textarea.run-input {
   margin-top: 6px !important;
   color: var(--text-muted);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: 0.04em;
@@ -6085,7 +6111,7 @@ textarea.run-input {
 .crew-view__countdown {
   margin-top: 3px !important;
   color: var(--accent);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 .crew-view__countdown[data-kind="race-day"] { color: var(--race); }
 .crew-view__countdown[data-kind="complete"] { color: var(--text-subtle); }
@@ -6138,18 +6164,18 @@ textarea.run-input {
 }
 .crew-build__miles span {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: 0.08em;
 }
 .crew-build__totals {
   margin-top: 7px !important;
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 .crew-build__construction {
   margin-top: 4px !important;
   color: var(--accent);
-  font-size: 8px;
+  font-size: var(--type-meta);
 }
 .crew-build__ready {
   margin-top: 12px;
@@ -6162,7 +6188,7 @@ textarea.run-input {
   background: color-mix(in srgb, var(--accent) 6%, var(--surface-strong));
 }
 .crew-build__ready p { margin: 0; }
-.crew-build__ready > div > .machine-label { color: var(--accent); font-size: 8px; }
+.crew-build__ready > div > .machine-label { color: var(--accent); font-size: var(--type-label); }
 .crew-build__ready-run {
   margin-top: 4px !important;
   color: var(--text);
@@ -6436,7 +6462,7 @@ textarea.run-input {
 }
 
 .crew-comparison__heading p { margin: 0; color: var(--accent); }
-.crew-comparison__window { color: var(--text-subtle) !important; font-size: 8px; }
+.crew-comparison__window { color: var(--text-subtle) !important; font-size: var(--type-meta); }
 .crew-comparison > h3 {
   margin: 13px 0 0;
   color: var(--text);
@@ -6469,7 +6495,7 @@ textarea.run-input {
   background: color-mix(in srgb, var(--surface-strong) 70%, transparent);
   color: var(--text-muted);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--type-label);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -6553,7 +6579,7 @@ textarea.run-input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.crew-comparison__you { color: var(--accent); font-size: 8px; }
+.crew-comparison__you { color: var(--accent); font-size: var(--type-meta); }
 
 [data-member-color="green"] { --member-accent: var(--member-green); }
 [data-member-color="emerald"] { --member-accent: var(--member-emerald); }
@@ -6590,7 +6616,7 @@ textarea.run-input {
   white-space: nowrap;
 }
 .crew-comparison__reading .data-value { font-size: 15px; }
-.crew-comparison__reading .machine-label { color: var(--text-muted); font-size: 8px; }
+.crew-comparison__reading .machine-label { color: var(--text-muted); font-size: var(--type-meta); }
 .crew-comparison__bar {
   height: 7px;
   display: block;
@@ -6724,7 +6750,7 @@ textarea.run-input {
   font-size: 14px;
   font-weight: 700;
 }
-.crew-run-row__date { flex: 0 0 auto; color: var(--text-muted); font-size: 9px; }
+.crew-run-row__date { flex: 0 0 auto; color: var(--text-muted); font-size: var(--type-meta); }
 /* The activity word leads the meta line in its own colour — the text half of
    the same signal the left edge is carrying. */
 .crew-run-row__activity {
@@ -6733,7 +6759,7 @@ textarea.run-input {
 }
 .crew-run-row__facts {
   min-width: 0;
-  color: #b7d8ea;
+  color: var(--text-data);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -6770,7 +6796,7 @@ textarea.run-input {
   background: transparent;
   color: inherit;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--type-label);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6841,7 +6867,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   letter-spacing: -0.04em;
   white-space: nowrap;
 }
-.crew-run-detail__facts dt { margin-top: 5px; color: var(--text-muted); font-size: 8px; }
+.crew-run-detail__facts dt { margin-top: 5px; color: var(--text-muted); font-size: var(--type-label); }
 
 .crew-run-detail__props {
   display: grid;
@@ -6954,7 +6980,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .runs-screen__quick-stats dt {
   margin-top: 5px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-label);
   line-height: 1.2;
 }
 
@@ -7027,7 +7053,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .tour-coachmark__step {
   margin-bottom: 3px;
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .tour-coachmark h2 {
@@ -7095,11 +7121,11 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.crew-member-profile__you { color: var(--accent); font-size: 9px; }
+.crew-member-profile__you { color: var(--accent); font-size: var(--type-meta); }
 .crew-member-profile__role {
   margin: 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 /*
  * Two columns on a phone, four across once there is room for them (issue
@@ -7133,7 +7159,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .crew-member-profile__stats dt {
   margin-top: 3px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .crew-member-profile__award-list {
@@ -7174,12 +7200,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 }
 .crew-member-profile__award-text .machine-label {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 .crew-member-profile__award-result {
   flex: 0 0 auto;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 @media (min-width: 420px) {
@@ -7231,7 +7257,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .crew-view__race {
   margin-top: 4px !important;
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 .crew-view__race[data-kind="future"] { color: var(--text-muted); }
 .crew-view__race[data-kind="race-day"] { color: var(--race); }
@@ -7246,7 +7272,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   border: 0;
   background: transparent;
 }
-.crew-build__ready > div > .machine-label { font-size: 9px; }
+.crew-build__ready > div > .machine-label { font-size: var(--type-label); }
 .crew-build__stage { margin-top: 8px; }
 .crew-build__tower li[data-recent="true"] .placed-block__brick {
   filter: brightness(1.07) drop-shadow(0 0 6px color-mix(in srgb, var(--piece-color) 30%, transparent));
@@ -7321,7 +7347,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .today-crew-activity__body .machine-label {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -7380,7 +7406,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .prop-notifications__body strong { font-weight: 700; }
 .prop-notifications__body .machine-label {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-meta);
 }
 .prop-notifications__dismiss {
   display: inline-flex;
@@ -7491,7 +7517,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .runner-snapshot__unit {
   flex-shrink: 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 500;
   letter-spacing: 0.04em;
 }
@@ -7499,7 +7525,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .runner-snapshot__reading dt {
   margin-top: 5px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
   line-height: 1.2;
 }
 
@@ -7514,7 +7540,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   margin: 0;
   padding-left: 2px;
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-meta);
 }
 
 .runner-snapshot__status { color: var(--text-muted); }
@@ -7551,7 +7577,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .runner-volume__caption {
   margin: 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 .runs-screen__more {
@@ -7595,7 +7621,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   border-radius: var(--radius-sm);
   background: var(--surface-soft);
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 /* Enough of this metric to say something about. Colour is a second signal
@@ -7684,11 +7710,18 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   background: var(--signal-accent);
 }
 
-.signal-card[data-signal="run-frequency"] { --signal-accent: var(--easy); }
-.signal-card[data-signal="long-run-progression"] { --signal-accent: var(--long); }
-.signal-card[data-signal="workload-trend"] { --signal-accent: var(--intervals); }
-.signal-card[data-signal="zone-distribution"] { --signal-accent: var(--zone-2); }
-.signal-card[data-signal="plan-completion"] { --signal-accent: var(--simulation); }
+/*
+ * Each signal's family accent. Read through the `--signal-*` tokens rather
+ * than reaching for `--easy`/`--intervals` directly: a signal borrows the hue
+ * of the running it reads as an identity marker, and the token keeps that
+ * borrowing legible instead of implying the card is about an easy run. The
+ * accent never states whether a reading is good — the words do that.
+ */
+.signal-card[data-signal="run-frequency"] { --signal-accent: var(--signal-run-frequency); }
+.signal-card[data-signal="long-run-progression"] { --signal-accent: var(--signal-long-run-progression); }
+.signal-card[data-signal="workload-trend"] { --signal-accent: var(--signal-workload-trend); }
+.signal-card[data-signal="zone-distribution"] { --signal-accent: var(--signal-zone-distribution); }
+.signal-card[data-signal="plan-completion"] { --signal-accent: var(--signal-plan-completion); }
 
 .signal-card:hover { border-color: var(--border-strong); }
 
@@ -7734,7 +7767,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 
 .signal-card__window {
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: 0.075em;
 }
 
@@ -7784,7 +7817,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 .signal-periods dt,
 .signal-periods dd {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 .signal-periods dt { color: var(--text-muted); }
@@ -7805,7 +7838,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   gap: var(--space-3);
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 .zone-compare__row:last-child { border-bottom: 0; padding-bottom: 0; }
@@ -7919,7 +7952,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
    * decorative: muted instead of subtle, and given room to breathe.
    */
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
   letter-spacing: 0.1em;
 }
 
@@ -7973,7 +8006,8 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .crew-build--page .crew-build__stage { padding-inline: 6px; }
   .crew-build__stats { gap: 3px; }
   .crew-build__stat { padding: 6px 0 0; border-top-width: 2px; }
-  .crew-build__stats dt { margin-top: 4px; font-size: 8px; letter-spacing: 0.05em; }
+  /* Narrow phones buy the fit back from tracking, not from type size. */
+  .crew-build__stats dt { margin-top: 4px; letter-spacing: 0.05em; }
 }
 
 @media (min-width: 620px) {
@@ -7997,6 +8031,10 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
  * subordinate to the number it qualifies, and never an icon, a badge, a corner
  * treatment or a legend. A synced block is untouched, because syncing is the
  * norm and the exception is what earns a mark.
+ *
+ * Stabilization 1.08 exception, two of two: the same block-face reasoning as
+ * `.placed-block__unit`. One glyph, hidden from assistive technology, on an
+ * object whose width is fixed by the tower's geometry.
  */
 .placed-block__manual {
   margin-left: -1px;

@@ -84,48 +84,32 @@ Technical grids are local texture, never page wallpaper. Do not place visible gr
 
 Use CSS custom properties and semantic roles rather than one-off colors in components.
 
-The existing base tokens remain the default until Stabilization 1.08 establishes exact typography/color semantics:
+`src/styles/tokens.css` is the authority for every value. It carries the reasoning for each family beside the tokens themselves; this section defines what each family is allowed to *mean*, which is the part a component author has to get right.
 
-```css
-:root {
-  color-scheme: dark;
+Do not copy a value out of that file into a component, and do not create a new global token merely because one local component has an exception.
 
-  --bg: #071018;
-  --bg-elevated: #0c1620;
-  --surface: #111c26;
-  --surface-strong: #16222d;
-  --surface-soft: #0e1821;
+### Color semantics
 
-  --text: #f6f7f8;
-  --text-muted: #9ca7b1;
-  --text-subtle: #848e98;
+STACK runs several color systems at once on purpose. The rule that keeps them from turning into noise is not "use fewer colors" — it is that **each family answers exactly one question, and the same role never changes color between two surfaces**.
 
-  --border: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.15);
+| Family | Tokens | The question it answers | Not allowed to mean |
+| --- | --- | --- | --- |
+| STACK lime | `--accent`, `--selected-border`, `--selected-glow` | Is this the current, selected, or primary thing to act on? | Good, passing, healthy, earned |
+| Activity type | `--easy`, `--intervals`, `--simulation`, `--long`, `--race`, `--cross` | What kind of running was this? | Quality, effort, difficulty |
+| Runner / member identity | `--member-*`, and the Crew emblem palette | Whose is this? | Rank, order, performance |
+| HR zones | `--zone-1` … `--zone-7` | Which ordered zone is this? | Anything outside heart-rate intensity |
+| Training Signal family | `--signal-*` | Which signal am I reading? | Whether the reading is good or bad |
+| Crew Special Block awards | `--award-*` | Which award is this? | Status, success, failure |
+| Crew Build figures | `--crew-stat-*` | Which of the four figures is this number? | A scale or a ranking |
+| Danger | `--danger` | Is this destructive or an error? | Anything factual about running |
 
-  --accent: #b8f13b;
-  --accent-text: #0a1102;
+Rules that follow from the table:
 
-  --easy: #b8f13b;
-  --intervals: #4f9bff;
-  --simulation: #9b6dff;
-  --long: #ffc53d;
-  --race: #f6f7f8;
-  --danger: #ff6b6b;
-
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-}
-```
+- **Color locates and identifies. It does not judge.** A signal accent says *which* signal, not whether the runner is doing well; an award color says *which* award, not that the running behind it was good. A red award mark is that award's identity and is never read as failure.
+- **One role, one color, everywhere.** If a surface shows something the runner already met somewhere else — an award, an activity type, a member — it arrives in the color that thing already has. Two screens of the same feature must not disagree.
+- **Never the only channel.** Selected state, activity type, zone and ownership all need a second carrier: a label, a rule, a position, an icon, or a readout. `docs/RUNS_R2_CHART_SYSTEM.md` and the accessibility contract below hold this for charts.
+- **Borrowed hues stay borrowed deliberately.** A Training Signal wears the hue of the running it reads, through its own `--signal-*` token, so the borrowing is visible in the source. Do not reach for `--easy` or `--intervals` directly for something that is not an activity.
+- **Danger is a semantic accent, not a theme.** Red text and borders on the affected control; no full-screen error styling, and no award, zone or activity color reused for it.
 
 Workout identity remains:
 
@@ -133,11 +117,12 @@ Workout identity remains:
 - Intervals — blue;
 - Simulation — purple;
 - Long Run — yellow;
+- Cross Training — indigo;
 - Race — white/light neutral.
 
 Charts may add accessible semantic colors where the metric requires them, including ordered HR-zone colors. Color must never be the only carrier of meaning.
 
-Do not create a new global token merely because one local component has an exception.
+`src/styles/colorSemantics.test.ts` enforces the mechanical half of this: every award identity has one definition, no surface assigns an award a color of its own, signal accents read through `--signal-*`, and no text color literal is repeated across files.
 
 ## Typography
 
@@ -193,7 +178,7 @@ Use mono/tabular type for:
 
 Do not use monospace for paragraphs, notes, instructions, member names, normal sheet titles, settings, or generic navigation.
 
-### Scale and hierarchy
+### Type scale and the phone floor
 
 Approximate targets, using existing responsive tokens where possible:
 
@@ -204,9 +189,28 @@ Approximate targets, using existing responsive tokens where possible:
 | Secondary data | 16–22 px mono/tabular |
 | Body | 16 px sans |
 | Secondary text | 14 px sans |
-| Section label | 11–12 px sans, uppercase/tracked when useful |
-| Machine label | 10–12 px mono, uppercase/tracked |
-| Phone chart axis/date | 12 px minimum target; selected/current 13–14 px preferred |
+| Section label | 12–13 px sans, uppercase/tracked when useful |
+| Data / action label — `--type-label` | 12 px |
+| Tertiary metadata — `--type-meta` | 11 px |
+| Phone chart axis/date | 12 px minimum rendered; selected/current 13–14 px preferred |
+
+**Nothing user-facing goes below `--type-meta`.** Stabilization 1.08 removed the 7–9px labels STACK had collected and gave the two remaining small-type jobs names:
+
+- `--type-label` (12px) — a label a runner reads to *interpret* something: what a figure is, which activity a run was, what state an action is in, what a chart axis says. If a runner has to read it to understand the data, it is at least 12px.
+- `--type-meta` (11px) — genuinely tertiary support: a date, a window, a unit suffix, a count that qualifies a figure already stated above it. Never the only carrier of something the runner needs.
+
+Uppercase tracked machine labels are set in the same two sizes. Tracking makes a label read *smaller* than the same size in sentence case, so it does not buy room to go below the floor.
+
+Further rules:
+
+- Buy a tight fit back from tracking, padding, wrapping, or fewer labels — never from type size. A responsive override may reduce density; it may not drop below the floor.
+- Size small type absolutely. A fraction of a parent (`0.46em`) inherits that parent's responsive clamp and can land below the floor on a phone with nothing in the source reading below 10.
+- **Chart type is measured in viewBox units, not pixels.** A 320-unit chart drawn 288px wide on a 320px phone renders every label at 0.9× what the stylesheet says. Size chart text against the rendered result.
+- The 44px interaction floor is independent of visible type size. A 12px chip inside a 44px target is correct; a 44px-tall chip is not the way to reach it.
+
+The one documented exception is text stamped into a Build object's face — `.placed-block__unit` and `.placed-block__manual`. Those are `aria-hidden` decoration of facts the block's accessible name already states in full, on an object whose width is its footprint in the tower.
+
+`src/styles/typographyFloor.test.ts` enforces the floor, the exception list and the chart-scaling rule.
 
 The STACK wordmark is a lockup, not a page headline. No screen needs to repeat its tab name as the `h1`; lead with the thing the screen is about.
 

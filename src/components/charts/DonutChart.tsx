@@ -117,17 +117,17 @@ export function DonutChart({
               />
             ))}
             {centre.value && (
-              <text x="56" y={centre.detail ? 50 : 53} textAnchor="middle" className="donut__center-value">
+              <text x="56" y={centre.detail ? 48 : 53} textAnchor="middle" className="donut__center-value">
                 {centre.value}
               </text>
             )}
             {centre.name && (
-              <text x="56" y={centre.detail ? 62 : 68} textAnchor="middle" className="donut__center-label">
+              <text x="56" y={centre.detail ? 62 : 69} textAnchor="middle" className="donut__center-label">
                 {centre.name}
               </text>
             )}
             {centre.detail && (
-              <text x="56" y="74" textAnchor="middle" className="donut__center-detail">
+              <text x="56" y="75" textAnchor="middle" className="donut__center-detail">
                 {centre.detail}
               </text>
             )}

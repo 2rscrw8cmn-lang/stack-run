@@ -132,18 +132,28 @@ the award's colour. A member's profile lists the same block flat at row size, sm
 enough that depth faces would only muddy it.
 
 Approved award language (OUC Half v1 monoline set; the glyph paths live in
-`src/features/crew/AwardBrick.tsx`, the colours in `src/features/crew/awardBlock.css`):
+`src/features/crew/AwardBrick.tsx`, the colours in `src/styles/tokens.css`):
 
-| Award | Glyph colour | Glyph |
-| --- | --- | --- |
-| Most Miles | green `#39ff6a` | measured span between two rules |
-| Best Zone 2 | red `#ff5a5f` | heart with a controlled-effort trace |
-| Fastest Avg. Pace | cyan `#35d6ff` | stopwatch |
-| Most Runs | amber `#ffb038` | stacked mini bricks |
-| Long Haul | lime `#b6ff3a` | long structural span |
-| Steady | teal `#2fe6c4` | metronome |
-| On Target | magenta `#ff5ac8` | centred bullseye |
-| Level Up | purple `#9d7bff` | rising steps |
+| Award | Glyph colour | Token | Glyph |
+| --- | --- | --- | --- |
+| Most Miles | green `#39ff6a` | `--award-miles` | measured span between two rules |
+| Best Zone 2 | red `#ff5a5f` | `--award-zone2` | heart with a controlled-effort trace |
+| Fastest Avg. Pace | cyan `#35d6ff` | `--award-pace` | stopwatch |
+| Most Runs | amber `#ffb038` | `--award-runs` | stacked mini bricks |
+| Long Haul | lime `#b6ff3a` | `--award-long-haul` | long structural span |
+| Steady | teal `#2fe6c4` | `--award-steady` | metronome |
+| On Target | magenta `#ff5ac8` | `--award-on-target` | centred bullseye |
+| Level Up | purple `#9d7bff` | `--award-level-up` | rising steps |
+
+An award wears this colour on every surface that shows it — the placed brick, the
+detail sheet, a member's profile row and the ready panel that announces it. One table
+in `src/features/crew/awardBlock.css` resolves `--award-mark` from these tokens for all
+of them; no surface may assign an award a colour of its own. Stabilization 1.08 removed
+a second palette in the ready panel that had Best Zone 2 arriving cyan there and red on
+the brick it became.
+
+The colour identifies which award this is. It is never a status: red here is Best Zone
+2's mark, not a failure, and no award colour doubles as danger treatment.
 
 ## Safe Crew projection
 

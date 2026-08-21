@@ -1,14 +1,9 @@
-.crew-award-ready {
-  --award-mark: #d7ff3f;
-}
-
-.crew-award-ready[data-award="zone2"] { --award-mark: #35e6ff; }
-.crew-award-ready[data-award="pace"] { --award-mark: #ff7048; }
-.crew-award-ready[data-award="runs"] { --award-mark: #ffd94f; }
-.crew-award-ready[data-award="longHaul"] { --award-mark: #f1c66f; }
-.crew-award-ready[data-award="steady"] { --award-mark: #5aa7ff; }
-.crew-award-ready[data-award="onTarget"] { --award-mark: #ff58d4; }
-.crew-award-ready[data-award="levelUp"] { --award-mark: #b77aff; }
+/*
+ * The panel had its own award palette, which meant Best Zone 2 arrived cyan
+ * here and red on the brick it turns into. `awardBlock.css` — imported
+ * alongside this file by CrewAwardsPanel — now holds the one table every award
+ * surface reads; this file only spends `--award-mark`.
+ */
 
 .crew-award-ready {
   display: grid;
@@ -17,7 +12,7 @@
   gap: 12px;
   min-height: 74px;
   padding: 11px 12px;
-  border: 1px solid color-mix(in srgb, var(--award-mark) 38%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--award-mark) 38%, var(--border));
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--award-mark) 7%, transparent), transparent 34%),
     var(--surface);
@@ -44,13 +39,13 @@
 
 .crew-award-ready__copy h2 {
   margin-top: 2px;
-  font-size: .95rem;
+  font-size: 15px;
   line-height: 1.1;
 }
 
 .crew-award-ready__result {
   margin-top: 5px !important;
-  font-size: .76rem;
+  font-size: var(--type-label);
   opacity: .82;
 }
 

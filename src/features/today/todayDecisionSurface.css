@@ -14,7 +14,7 @@
    longer the second-loudest thing under the date. */
 .race-context {
   gap: 6px;
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: 0.07em;
 }
 
@@ -44,7 +44,7 @@
   gap: var(--space-2);
   margin: 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-label);
   letter-spacing: 0.09em;
 }
 
@@ -100,14 +100,14 @@
 
 .today-context__unit {
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: 0;
 }
 
 .today-context__label {
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-label);
   letter-spacing: 0.06em;
 }
 
@@ -136,14 +136,14 @@
 
 .this-week__unit {
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: 0;
 }
 
 .this-week__runs {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: 0.06em;
 }
 
@@ -156,14 +156,14 @@
 .this-week .this-week__count {
   justify-content: flex-start;
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: 0.06em;
 }
 
 .this-week .this-week__extra {
   padding: 1px 6px;
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 
 /* One observation
@@ -232,7 +232,7 @@
 }
 
 .build-preview .build-preview__count {
-  font-size: 9px;
+  font-size: var(--type-meta);
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }

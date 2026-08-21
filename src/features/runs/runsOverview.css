@@ -7,7 +7,7 @@
 
 .runs-screen .runs-screen__count {
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 600;
   letter-spacing: 0.075em;
 }
@@ -81,7 +81,7 @@
 
 .runs-screen .runner-snapshot__range {
   padding-left: 2px;
-  font-size: 9px;
+  font-size: var(--type-meta);
 }
 
 .runs-screen .runner-volume-section .section__title,
@@ -306,7 +306,7 @@
 
 .runs-screen__history-meta {
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
 }
 
@@ -320,6 +320,6 @@
   }
 
   .runs-screen .runner-snapshot__reading:not([data-lead="true"]) .runner-snapshot__unit {
-    font-size: 8px;
+    font-size: var(--type-meta);
   }
 }

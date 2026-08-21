@@ -129,15 +129,15 @@ describe("Crew Build primacy styling (issue #137)", () => {
 
   /*
    * The label is what names the figure above it, so it has to survive being
-   * read at a glance — `--text-subtle` at 8px did not.
+   * read at a glance — `--text-subtle` at 8px did not. Issue #150 moved the
+   * size onto the product-wide token for exactly this job, so the floor now
+   * moves with `--type-label` instead of with a number written here.
    */
   it("keeps the figure labels legible rather than decorative", () => {
     const label = ruleBody(".crew-build__stats dt {");
 
     expect(label).toMatch(/color:\s*var\(--text-muted\)/);
-    const size = /font-size:\s*(\d+)px/.exec(label);
-    expect(size, "no label font size").not.toBeNull();
-    expect(Number(size![1])).toBeGreaterThanOrEqual(9);
+    expect(label).toMatch(/font-size:\s*var\(--type-label\)/);
   });
 
   /*
