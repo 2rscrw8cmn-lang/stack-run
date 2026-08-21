@@ -93,6 +93,19 @@ Required at:
 - Existing valid storage
 - Corrupted storage
 
+## Pull requests and merge gate
+
+Normal work targets `main` through a pull request. Before merge:
+
+1. install from the lockfile with `npm ci`;
+2. run `npm run check`;
+3. run `git diff --check`;
+4. wait for the required **PR Validation / Install, lint, test, build** GitHub check to pass.
+
+Database changes additionally use the path-scoped **Supabase Migration Gate** and must pass it whenever it is triggered.
+
+Do not use direct pushes or administrator bypass as the normal development path. An urgent fix may use an explicit override only when the risk is understood and the validation gap is documented.
+
 ## Crew uploads
 
 - Never send Crew a value the database is constrained to refuse.

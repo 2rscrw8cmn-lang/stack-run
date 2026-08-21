@@ -140,12 +140,16 @@ Do not add a router, global-state framework, UI framework, canvas/WebGL/physics 
 
 ## Validation
 
-The normal repository validation is:
+Before opening or updating a PR, run the same clean-install validation used by CI:
 
 ```bash
-npm install
+npm ci
 npm run check
 git diff --check
 ```
+
+Every normal pull request into `main` must pass the required **PR Validation / Install, lint, test, build** check before merge. Database changes also run the path-scoped **Supabase Migration Gate** and must pass that specialist verification when it is triggered.
+
+Do not bypass failed checks for ordinary work. An urgent fix may use an explicit administrator override only when the risk is understood and the validation gap is documented; the normal path remains PR → green required checks → merge.
 
 Connected-data or database changes may require additional deployed/device/SQL verification defined by their specialist contracts. Never commit real credentials, raw private payloads, GPS coordinates or other sensitive data.
