@@ -88,7 +88,7 @@ Rules:
 - Do not hand-apply feature-branch migrations to Production for preview QA.
 - Follow `docs/SUPABASE_MIGRATIONS.md` for the required repository → local fresh build → Preview → Production path.
 - Preview migration history was reconciled to the 39 repository timestamps during Stabilization 1.04; a dry run must remain empty before a new migration is introduced.
-- Production history still has an explicit approval gate documented in `docs/SUPABASE_MIGRATION_AUDIT_2026-08-21.md`. Until that gate is resolved, do not run a production `db push` or history repair.
+- Production history was reconciled on 2026-08-21 after the explicit approval and equivalence proof documented in `docs/SUPABASE_MIGRATION_AUDIT_2026-08-21.md`. All 39 repository versions are recorded and the production dry run is empty.
 
 ## Repeatable preview QA
 

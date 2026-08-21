@@ -36,32 +36,38 @@ Repair performed:
 
 No reset, production data copy or production write was used.
 
-## Production — metadata write intentionally gated
+## Production — reconciled
 
 Project: `stack-run` (`fgnecruhlybarcmljggi`).
 
-Production records only:
+Before repair, Production recorded only:
 
 - `20260810212106_race_crew_foundation`
 - `20260810212506_race_crew_function_grants`
 
-The other 37 repository versions are absent from the ledger. A read-only production dry run therefore proposes replaying all 37.
+The other 37 repository versions were absent from the ledger. A read-only production dry run therefore proposed replaying all 37.
 
-Production matches the fresh reference for tables, columns, constraints, indexes, policies, triggers and all 308 application-role grants. Of 52 functions, exactly one has a material body difference:
+Before the approved repair, Production matched the fresh reference for tables, columns, constraints, indexes, policies, triggers and all 308 application-role grants. Of 52 functions, exactly one had a material body difference:
 
 ```text
 public.initialize_personal_stack(jsonb, jsonb, jsonb, jsonb)
 ```
 
-Migration `20260818130000_manual_heart_rate.sql` adds `manual_heart_rate` to the initializer's insert column/value lists. The production column, check constraint and generation-aware save RPC are present, but the initializer body does not persist that field. Marking all 37 versions applied would therefore claim equivalence that has not been proved.
+Migration `20260818130000_manual_heart_rate.sql` adds `manual_heart_rate` to the initializer's insert column/value lists. The production column, check constraint and generation-aware save RPC were present, but the initializer body did not persist that field. Marking all 37 versions applied at that point would have claimed equivalence that had not been proved.
 
-No production migration metadata was changed.
+### Approved repair
 
-### Required approval before production metadata repair
+On 2026-08-21 the owner approved option 1: reconcile the production initializer to the checked-in definition, verify equivalence, then repair the missing migration history.
 
-An owner must choose one of these in a separate, reviewed step:
+The repair was performed as follows:
 
-1. Authorize the narrowly scoped production function reconciliation to the checked-in `20260818130000` definition, run SQL check `0018`, re-run all fingerprints, then mark the 37 missing repository versions applied; or
-2. Preserve current production initializer behavior and approve a forward-only repository reconciliation that makes a fresh build intentionally match it, with the corresponding contract/test change.
+1. Replaced only `public.initialize_personal_stack(jsonb, jsonb, jsonb, jsonb)` with the immutable definition from `20260818130000_manual_heart_rate.sql`. This makes initial account import persist `manual_heart_rate`, matching the repository contract and the existing save RPC.
+2. Ran SQL check `0018_manual_heart_rate.sql` successfully in a rollback-only transaction against Production.
+3. Re-ran the catalog fingerprints against Preview:
+   - 124 columns, 100 constraints, 31 indexes, 24 policies, 13 triggers, 92 routine grants and 216 table grants matched exactly;
+   - all 52 review-normalized function definitions matched, with no missing functions.
+4. Inspected the Supabase security and performance advisors. Their findings were not changed or suppressed as part of this ledger repair.
+5. Used the supported `supabase migration repair` command to mark exactly the 37 missing repository versions applied. No migration SQL was replayed.
+6. Verified the Production migration list is one-to-one for all 39 repository versions and `supabase db push --project-ref fgnecruhlybarcmljggi --dry-run --skip-vault` reports `upToDate: true` with no migrations.
 
-Until that decision, do not run `db push` or `migration repair` against production. In particular, do not mark 36 versions applied while leaving `20260818130000` absent: Supabase would still attempt that missing historical migration later.
+No reset, production data copy, destructive operation or historical migration replay was used. Production migration tracking now represents the proved deployed schema.
