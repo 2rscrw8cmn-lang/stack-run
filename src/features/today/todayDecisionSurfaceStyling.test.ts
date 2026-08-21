@@ -72,6 +72,38 @@ describe("Today recent-training styling", () => {
   });
 });
 
+/*
+ * Issue #152 — the Today Action Card.
+ *
+ * The card is a product decision about how much of Today one run may occupy,
+ * so its geometry is asserted the same way the rest of this screen's is.
+ */
+describe("Today action card styling", () => {
+  it("gives both states one frame rather than two components", () => {
+    const frame = ruleBody(components, ".today-action {");
+    expect(frame).toMatch(/padding: 12px 14px/);
+    expect(frame).toMatch(/border-radius: 8px/);
+    // No per-state background: the state is the eyebrow and the lines, not a
+    // second surface colour.
+    expect(components).not.toMatch(/\.today-action\[data-state="[a-z]+"\] \{[^}]*background/);
+  });
+
+  it("keeps the value one figure rather than the old 40px distance", () => {
+    const value = ruleBody(components, ".today-action__value {");
+    const [, min, max] = /clamp\((\d+)px,[^,]+,\s*(\d+)px\)/.exec(value) ?? [];
+    expect(Number(max)).toBeLessThanOrEqual(28);
+    expect(Number(min)).toBeGreaterThanOrEqual(20);
+  });
+
+  it("retires the card to one line when the run owes nothing", () => {
+    const settled = ruleBody(css, ".today-settled {");
+    expect(settled).toMatch(/padding: 9px 12px/);
+    // A line on the screen, not another card: no `.card` class, no card padding.
+    expect(settled).not.toMatch(/padding: var\(--space-5\)/);
+    expect(ruleBody(css, ".today-settled__facts {")).toMatch(/font-size: 15px/);
+  });
+});
+
 describe("Today rules the revision replaced", () => {
   it("leaves no styling behind for the week's deleted actual-totals list", () => {
     expect(components).not.toMatch(/this-week__actuals/);
@@ -79,5 +111,21 @@ describe("Today rules the revision replaced", () => {
 
   it("leaves no rest-day card styling behind, now that rest is a note", () => {
     expect(components).not.toMatch(/today-workout-card--rest/);
+  });
+
+  /*
+   * Issue #152 replaced two card families with one, across three layers of
+   * arcade overrides. A rule left behind in any of them would re-inflate the
+   * card the moment someone reused the class.
+   */
+  it("leaves no styling behind for the two cards the action card replaced", () => {
+    expect(components).not.toMatch(/today-workout-card/);
+    expect(components).not.toMatch(/today-completed/);
+    expect(components).not.toMatch(/completed-run-summary/);
+  });
+
+  /* Editing a recorded run left Today with the Edit control (issue #152). */
+  it("leaves no quiet-action styling behind on the action card", () => {
+    expect(components).not.toMatch(/today-action__quiet-actions/);
   });
 });

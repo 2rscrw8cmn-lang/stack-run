@@ -739,32 +739,6 @@
   );
 }
 
-/* One vertical rhythm for every Today card, so no child needs ad-hoc margins. */
-.today-workout-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.today-workout-card__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--accent);
-}
-
-.today-workout-card__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-}
-
 .workout-color-block {
   flex-shrink: 0;
   width: 40px;
@@ -779,101 +753,121 @@
   );
 }
 
-.today-workout-card__distance {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 650;
-}
-
-.today-workout-card__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.today-workout-card__details {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-/* Actions sit one step further from the content they act on. */
-.today-workout-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-
-.today-workout-card__actions .button {
-  width: 100%;
-}
-
 /*
- * Today's completed state (issue #120): a confirmation line, not a card of
- * restated facts. It stays short by construction — a title row, one facts
- * line, and whichever block placements the run still owes.
+ * The Today Action Card (issue #152).
+ *
+ * One card language for the run Today is about: the scheduled workout before
+ * it happens, and what the run still owes after it does. The frame, the
+ * eyebrow and the single value are the same in both states, so the card reads
+ * as one object changing state rather than two components taking turns. Only
+ * the lines that are still true differ, which is what keeps it small.
  */
-.today-completed {
+.today-action {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: 12px 14px;
   border-radius: 8px;
   border-color: var(--border-strong);
-  background: #080f15;
 }
 
-.today-completed__title {
+/* The one rule on Today that marks the card as the thing to act on. */
+.today-action::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--accent);
+}
+
+.today-action__eyebrow {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin: 0;
   min-width: 0;
+  margin: 0;
   color: var(--accent);
-  font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--type-label);
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
-.today-completed__title > span {
+.today-action__eyebrow svg { flex: none; }
+
+/* The kind of run is context for the label, not a second announcement. */
+.today-action__separator,
+.today-action__kind { color: var(--text-muted); }
+
+.today-action__kind {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.today-completed__facts {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
+.today-action__reading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-.today-completed__actions {
+/* Activity identity, not a tile: a quarter of the area the block chip had. */
+.today-action .today-action__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+}
+
+.today-action__lines {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.today-action__value {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(22px, 6.5vw, 28px);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+/*
+ * The completed state's value is a line of facts rather than one figure, and
+ * the run already happened: it states what it has to and leaves the height to
+ * the block the run still owes.
+ */
+.today-action[data-state="complete"] .today-action__value {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.today-action__caption {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-label);
+}
+
+/* The instruction stays whole: it is what a runner reads before going out. */
+.today-action__details {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.today-action__actions {
   display: grid;
   gap: var(--space-2);
   margin-top: var(--space-1);
 }
 
-.today-completed__actions .button { width: 100%; }
+.today-action__actions .button { width: 100%; }
 
-/* Editing a run that is already recorded is never the thing to do next. */
-.today-completed__quiet-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.today-completed__quiet-actions button {
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-subtle);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.today-completed__quiet-actions button:hover { color: var(--text); }
 
 /* Run Found is a prompt now, so its facts are one line rather than a table. */
 .run-found__facts {
@@ -4166,14 +4160,12 @@ textarea.run-input {
   letter-spacing: 0.06em;
 }
 
-.today-workout-card,
 .run-found {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
 }
 
-.today-workout-card::before,
 .run-found::before {
   content: "";
   position: absolute;
@@ -4182,22 +4174,14 @@ textarea.run-input {
   background: var(--accent);
 }
 
-.today-workout-card__eyebrow,
 .run-found__eyebrow {
-  font-size: 11px;
+  font-size: var(--type-label);
   letter-spacing: 0.09em;
-}
-
-.today-workout-card__distance {
-  font-weight: 750;
-  letter-spacing: -0.045em;
 }
 
 .this-week__weekday,
 .run-found__facts dt,
-.run-found__facts dd,
-.completed-run-summary__stats dt,
-.completed-run-summary__stats dd {
+.run-found__facts dd {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums slashed-zero;
 }
@@ -5160,45 +5144,15 @@ textarea.run-input {
 
 .race-context__days { color: var(--accent); }
 
-.today-workout-card,
 .run-found {
   border-radius: 8px;
   border-color: var(--border-strong);
-  background: #080f15;
+  background: var(--surface-soft);
 }
 
-.today-workout-card {
-  padding: 16px;
-}
-
-.today-workout-card__eyebrow,
 .run-found__eyebrow {
   color: var(--accent);
   font-size: var(--type-label);
-}
-
-.today-workout-card__type {
-  margin: 0 0 4px;
-  color: var(--long);
-  font-size: var(--type-label);
-}
-
-.today-workout-card__distance {
-  color: var(--text);
-  font-size: clamp(30px, 9vw, 40px);
-  line-height: 1;
-}
-
-.today-workout-card__title {
-  color: var(--accent);
-  font-family: var(--font-data);
-  font-size: var(--type-label);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.today-workout-card__details {
-  color: var(--text);
 }
 
 .run-found {

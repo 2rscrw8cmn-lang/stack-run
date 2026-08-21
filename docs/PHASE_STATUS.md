@@ -1108,3 +1108,26 @@ Implemented scope:
 Verification: focused Crew placement, style-contract and reduced-motion coverage;
 responsive browser review at 320px, 390px, 430px and desktop widths; keyboard
 focus review. Real iPhone Safari remains an owner acceptance check.
+
+## Today Action Card (issue #152)
+
+**Status:** Implemented as Evolution 2.01; no product-model, data or schema change.
+
+Implemented scope:
+- one `TodayActionCard` frame with a scheduled and a completed state;
+- `todayActionReading` — the type, the target and the title each stated once;
+- completed state shows only the block placements the run still owes, each
+  disappearing independently (D-066);
+- the card retires to one confirmation line when nothing is owed;
+- no run editing on Today at all: correcting or deleting a recorded run is
+  Runs/Run Detail's job, so `Edit` and the delete path are gone from here;
+- three layers of `.today-workout-card` / `.today-completed` overrides replaced
+  by one `.today-action` definition.
+
+Verification: `src/features/today/todayActionReading.test.ts` covers the plan's
+real title conventions; `src/features/today/TodayScreen.test.tsx` covers both
+states, the independent placement actions and the collapse;
+`src/features/today/todayDecisionSurfaceStyling.test.ts` asserts the card's
+geometry and that nothing of the two replaced families — or of the retired
+Edit control — is left in the stylesheets. Reviewed at 320/390/430 in
+Chromium. `npm run check` passes.
