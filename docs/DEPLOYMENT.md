@@ -1,247 +1,145 @@
 # Deployment
 
-STACK is a Vite web app plus narrowly scoped Vercel serverless functions. There is no application database, no account system, and no server-side persistence of the user's training data: normalized STACK state remains in browser localStorage.
+STACK is a Vite web app deployed on Vercel with Supabase-backed account, personal-sync and Crew features. Browser-local state remains an offline/cache boundary; signed-in canonical personal state and Crew state use Supabase. Personal Intervals credentials remain device-local and are not stored in Supabase.
 
-Current/approved server routes:
+## Deployment environments
 
-- `api/calendar.ts` — reads an availability-calendar subscription when browser CORS blocks it.
-- `api/intervals.ts` — added by UI-8; read-only protected proxy for Intervals.icu activity/wellness data.
+STACK has two persistent Supabase projects with deliberately separate data and auth namespaces:
 
-## Vercel project settings
+| Deployment | Supabase project | Project ref | Data |
+|---|---|---|---|
+| Vercel Production | `stack-run` | `fgnecruhlybarcmljggi` | Real accounts and production data |
+| Vercel Preview | `stack-run-preview` | `plpooikvofzytbpsbzki` | Disposable QA accounts and data only |
+| Local cloud QA | `stack-run-preview` | `plpooikvofzytbpsbzki` | Disposable QA accounts and data only |
 
-The repository is a stock Vite project, so the defaults are correct:
+A Vercel Preview must never use `stack-run`. A Production deployment must never use `stack-run-preview`.
 
-| Setting | Value |
-|---|---|
-| Framework preset | Vite |
-| Build command | `npm run build` |
-| Output directory | `dist` |
-| Install command | `npm ci` |
-| Node | current supported 22.x+ |
+## Required public environment variables
 
-`vercel.json` should remain minimal and may set per-function duration/headers when the implementation needs them. Do not add broad rewrites or a second deployment service for Connected Training.
+Supabase project URLs and publishable keys are browser-visible configuration by design. RLS, grants and RPC permissions are the security boundary. Never use a Supabase service-role key in a `VITE_` variable.
 
-## Environment variables — Connected Training
+### Vercel Production scope
 
-UI-8 requires two server-side secrets.
-
-### `INTERVALS_API_KEY`
-
-The user's personal Intervals.icu API key.
-
-- Store in Vercel only.
-- Never commit it.
-- Never prefix it `VITE_`.
-- Never expose it to browser code.
-- Never paste it into PR text, issues, screenshots, docs or test fixtures.
-
-### `STACK_SYNC_TOKEN`
-
-A separate long random token that authorizes the owner's browser to call STACK's read-only Intervals proxy.
-
-Generate independently, for example:
-
-```bash
-openssl rand -hex 32
+```text
+VITE_STACK_BACKEND_ENV=production
+VITE_SUPABASE_URL=https://fgnecruhlybarcmljggi.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<production publishable key>
 ```
 
-or use a password manager to generate a long random value.
+### Vercel Preview scope
 
-- Store the canonical value in Vercel as `STACK_SYNC_TOKEN`.
-- After UI-8 exists, enter the same token once in STACK's `Run Data` connection sheet.
-- The browser sends it in `X-Stack-Sync-Token`.
-- Never put it in a URL/query string.
-- This is intentionally separate from the Intervals API key so it can be rotated without touching the upstream credential.
+```text
+VITE_STACK_BACKEND_ENV=preview
+VITE_SUPABASE_URL=https://plpooikvofzytbpsbzki.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<preview publishable key>
+```
 
-## Which Vercel environments
+Do not configure one unscoped set of Supabase variables for both Vercel environments.
 
-For normal personal use:
+## Hard backend guard
 
-- **Production:** both secrets required.
-- **Preview:** both secrets required only when the user wants real Intervals data tested on PR preview deployments. UI-8's real-data smoke test expects this.
-- **Development:** optional; use local environment configuration when actively testing the serverless route locally.
+`vite.config.ts` compiles Vercel's `VERCEL_ENV` into `__STACK_DEPLOYMENT_ENV__` as `production`, `preview` or `development`.
 
-A preview deployment is a different browser origin from production, so it has its own local STACK state and local connection token even when Vercel uses the same server environment secrets.
+`src/crew/supabaseClient.ts` then validates all three facts before creating a Supabase client:
+
+1. deployment environment,
+2. `VITE_STACK_BACKEND_ENV`, and
+3. the Supabase project ref parsed from `VITE_SUPABASE_URL`.
+
+Approved combinations are:
+
+- Production deployment + `production` marker + `fgnecruhlybarcmljggi`.
+- Preview deployment + `preview` marker + `plpooikvofzytbpsbzki`.
+- Local development + `preview` marker + `plpooikvofzytbpsbzki`.
+
+A mismatch fails closed: cloud/account/Crew infrastructure is unavailable for that build, while personal local STACK can still boot. Local development deliberately refuses the production backend.
+
+This guard is defense in depth. Correct Vercel environment scoping is still required; the app guard is not a substitute for infrastructure isolation.
+
+## Non-secret backend check
+
+To prove which backend a deployment is using without exposing a secret:
+
+1. Open browser developer tools on the deployment.
+2. Open **Network**.
+3. Exercise a cloud-backed action such as account/session or Crew load.
+4. Inspect the request hostname.
+
+Expected hostnames:
+
+- Production: `fgnecruhlybarcmljggi.supabase.co`
+- Preview: `plpooikvofzytbpsbzki.supabase.co`
+
+A Preview request to the production hostname is a release blocker. With the application guard in place, that configuration should be blocked before a Supabase client is created.
+
+## Preview database lifecycle
+
+`stack-run-preview` is a permanent, zero-production-data QA project. It was initialized by replaying the repository's Supabase migrations in order rather than copying the production database.
+
+Rules:
+
+- Never copy production users or rows into Preview.
+- Create dedicated QA accounts in Preview.
+- Seed Crew/runs/Build/award test data only with those QA accounts.
+- Schema changes are proven against Preview before production application.
+- Do not hand-apply feature-branch migrations to Production for preview QA.
+- Migration promotion/reconciliation is governed by `docs/SUPABASE_MIGRATION_RUNBOOK.md` and Stabilization 1.04.
+
+## Repeatable preview QA
+
+For a database-backed PR:
+
+1. Bring `stack-run-preview` to the PR's intended migration state.
+2. Confirm the Vercel Preview is scoped to the Preview variables above.
+3. Use Preview-only QA accounts.
+4. Exercise sign-in/personal sync, Crew join/invite, shared projection, Crew Build placement, Props and awards as relevant to the change.
+5. Confirm Network requests resolve only to `plpooikvofzytbpsbzki.supabase.co`.
+6. Confirm no production migration or production data write was required for the QA pass.
+7. Only after review/merge should an approved migration path promote schema changes to Production.
 
 ## Local development
 
-The repository already ignores `.env` / `.env.*` / `*.local`.
-
-For local Vercel/function testing, use an ignored file such as `.env.local`:
+Use an ignored `.env.local` when cloud-backed behavior is needed locally:
 
 ```text
-INTERVALS_API_KEY=...
-STACK_SYNC_TOKEN=...
+VITE_STACK_BACKEND_ENV=preview
+VITE_SUPABASE_URL=https://plpooikvofzytbpsbzki.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<preview publishable key>
 ```
 
-Do not create a committed `.env` containing real values.
+Local development is intentionally unable to connect to the known production Supabase project through the standard STACK client.
 
-An optional committed `.env.example` may name the variables with empty/example placeholders only.
+Without these variables, cloud-backed features are unavailable and the local/personal app can still boot.
 
-`npm run check` must pass with neither variable present; automated tests mock/inject configuration.
+## Vercel project settings
 
-## Why there are two connected-data secrets
+STACK remains a standard Vite deployment:
 
-Putting the Intervals personal API key into browser code would expose a powerful upstream credential.
+| Setting | Value |
+|---|---|
+| Framework | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Install command | `npm ci` |
 
-Hiding it behind an **unauthenticated** serverless proxy would still be unsafe: anybody who discovered the public deployment route could use STACK's server credential to read the owner's private training data.
+The repository also contains narrowly scoped Vercel functions under `api/`. Their server-only credentials, where still required, must never be prefixed with `VITE_`.
 
-Therefore:
+## Privacy and persistence boundary
 
-1. Intervals API key stays server-only.
-2. Public Vercel route requires the separate STACK sync token.
-3. Proxy is read-only and whitelists resources.
+- Signed-in personal training state is private to the owning Supabase account under self-only RLS.
+- Crew receives only the explicit shared projection contract; never upload a whole private run object by spread/default.
+- Production and Preview auth users are different users even when the same email is used for QA.
+- Preview browser storage is origin-scoped and separate from the production origin.
+- Personal Intervals API credentials remain device-local and are not synced to either Supabase project.
+- Production data must never be used as Preview seed data.
 
-This is a single-user architecture. If STACK becomes multi-user, redesign around Intervals.icu OAuth 2.0 rather than sharing these secrets.
+## Before calling a deployment good
 
-## Build contents
+At minimum:
 
-`npm run build` writes `dist/`. A release still contains the installable static app:
-
-```text
-dist/index.html
-dist/manifest.webmanifest
-dist/favicon.svg
-dist/apple-touch-icon.png
-dist/icon-192.png
-dist/icon-512.png
-dist/icon-maskable-512.png
-dist/assets/index-<hash>.css
-dist/assets/index-<hash>.js
-```
-
-Vercel separately deploys files under `api/` as serverless functions.
-
-## App metadata/icons
-
-Icons are committed and generated by:
-
-```bash
-node scripts/generate-icons.mjs
-```
-
-Normal builds do not need image tooling.
-
-## Existing availability-calendar serverless function
-
-`api/calendar.ts` remains the availability-calendar reader introduced before UI-7. It:
-
-- stores nothing;
-- accepts the calendar URL in a POST body;
-- requires https/public targets;
-- bounds redirects/size/time;
-- returns only calendar-looking content.
-
-Connected Training must not break this route.
-
-## Connected Intervals serverless function
-
-UI-8 adds:
-
-```text
-/api/intervals
-```
-
-See `docs/INTERVALS_INTEGRATION.md` for the exact contract.
-
-High-level deployment requirements:
-
-- server reads `INTERVALS_API_KEY` and `STACK_SYNC_TOKEN` from environment;
-- GET/read-only only;
-- require `X-Stack-Sync-Token`;
-- upstream Basic auth uses username `API_KEY` and password `INTERVALS_API_KEY`;
-- only whitelisted resource kinds;
-- no arbitrary upstream URL;
-- `Cache-Control: no-store`;
-- no payload/secret logging;
-- safe handling of upstream auth/rate-limit/server errors.
-
-Opening `/api/intervals?resource=status` in an ordinary browser without the sync-token header should **not** reveal private data; it should reject the request. Use the in-app connection test or an authorized local request to verify it.
-
-## Troubleshooting the Run Data connection
-
-The connection sheet reports what actually failed. Open **Run Data**, enter the token, tap **Test / Connect**, and read the message.
-
-| Message | Cause | Fix |
-|---|---|---|
-| `Run Data is not configured on the server. Set … in the Vercel project` | The named variable is missing from the environment this deployment was built for | Add it in Vercel → Settings → Environment Variables for **Production** (and Preview if testing a preview), then **redeploy** — a function only sees variables present at deploy time |
-| `That sync token was not accepted` | The entered token is not `STACK_SYNC_TOKEN` | Re-copy the value from Vercel. Leading/trailing whitespace on either side is tolerated; nothing else is |
-| `Intervals.icu rejected STACK's API key` | `INTERVALS_API_KEY` is wrong, revoked, or has whitespace inside it | Regenerate the personal API key in Intervals.icu and update the Vercel variable, then redeploy |
-| `this deployment has no /api/intervals reader` | The route 404s: the deployment predates UI-8, or `api/` was excluded from it | Redeploy the current branch and confirm the function is listed in the Vercel deployment |
-| `Intervals.icu refused that request (…)` | Upstream answered an unexpected status; the number is the upstream status | Check the Intervals.icu API status; a `404` here means the endpoint or activity id no longer resolves |
-| `Intervals.icu took too long to answer` / `could not be reached` | Upstream timeout or network failure | Retry; these are transient |
-| `Check this device's connection and try again` | The request never left the phone | Reconnect the device, then retry |
-
-Opening `/api/intervals` in a browser is the quickest way to separate a deployment problem from a token problem, and reveals nothing:
-
-- `503` with a `missing` field — the named secret is not set for this deployment;
-- `401` — deployed and configured, and the browser simply has no token header;
-- `404` — this deployment has no reader at all.
-
-Both secrets are read at request time, but Vercel binds environment variables per deployment: **changing either variable requires a redeploy**, not just a save.
-
-## Stored data and deployments
-
-Local storage remains scoped to browser **origin**, not deployment build.
-
-Deploying a new build to the same production domain preserves local state and migrations advance its schema.
-
-Consequences:
-
-- a Vercel preview cannot see production localStorage;
-- a custom domain cannot see data stored under a different `*.vercel.app` origin;
-- changing production domains still strands healthy local state unless a separate export/import capability is added.
-
-The training-state key remains:
-
-```text
-stack.app-state.v1
-```
-
-Connected UI-8 adds a separate browser key for the narrow proxy credential, recommended:
-
-```text
-stack.intervals.sync-token.v1
-```
-
-Forgetting that connection token must not delete training state.
-
-## Privacy notes
-
-After Connected Training, local state may contain heart rate/cadence/elevation/training-load metrics and later may contain wellness data.
-
-Deployment rules:
-
-- no analytics SDK added by this integration;
-- no production console logging of personal API responses;
-- no server persistence of training/wellness payloads;
-- no caching private proxy responses;
-- no health data in URL query values except non-sensitive bounded request selectors such as date range/activity id;
-- credentials only in environment/header storage paths described above.
-
-## Installing on iPhone
-
-Open the production URL in Safari and use **Share → Add to Home Screen**. The installed app and Safari tab on the same origin share the same local data.
-
-Connected sync still requires network access. STACK remains intentionally without a service worker until offline behavior is separately designed/tested.
-
-## UI-8 deployment smoke test
-
-After the UI-8 PR passes automated checks:
-
-1. Configure `INTERVALS_API_KEY` and `STACK_SYNC_TOKEN` for that Vercel Preview (or test production).
-2. Deploy.
-3. On the user's iPhone, open `Run Data`.
-4. Enter only the `STACK_SYNC_TOKEN`.
-5. Test connection.
-6. Run the initial 90-day backfill so the known June 10 HealthFit-originated activity is included.
-7. Verify the activity appears and update `docs/CONNECTED_DATA_FIELDS.md` with field presence/semantics, not raw personal data.
-8. Import/attach it.
-9. Refresh/reopen and sync again; confirm no duplicate.
-10. Inspect browser storage/source/network requests enough to confirm the Intervals API key never reached the client.
-11. Confirm `/api/intervals` refuses missing/wrong sync tokens.
-12. Confirm the existing availability-calendar route still works.
-
-## Before calling any deployment good
-
-Continue to use `docs/RELEASE_CHECKLIST.md` for the general phone smoke test, plus the active connected phase's real-data checklist.
+- `npm run check` passes in the validated code environment or CI.
+- Production deployment identifies the production Supabase ref.
+- Preview deployment identifies the preview Supabase ref.
+- Preview can exercise required cloud flows without production writes.
+- RLS remains enabled on all public STACK tables.
+- General phone/release smoke coverage in `docs/RELEASE_CHECKLIST.md` still passes.
