@@ -106,7 +106,7 @@
 .signal-card__reference small {
   color: var(--text-subtle);
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: var(--type-meta);
   font-weight: 500;
   letter-spacing: 0.065em;
   text-transform: uppercase;
@@ -132,7 +132,7 @@
 .signal-visual__label {
   color: var(--text-subtle);
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: var(--type-meta);
   letter-spacing: 0.06em;
 }
 
@@ -271,7 +271,7 @@
 
 .signal-result span {
   color: var(--text-subtle);
-  font-size: 8px;
+  font-size: var(--type-meta);
   letter-spacing: 0.07em;
 }
 
@@ -333,7 +333,7 @@
 
 .signal-reference dt {
   color: var(--text-subtle);
-  font-size: 9px;
+  font-size: var(--type-label);
 }
 
 .signal-reference dd {

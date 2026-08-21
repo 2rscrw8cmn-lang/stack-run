@@ -19,8 +19,11 @@ const componentsCss = readFileSync(
 describe("shared source-detail layout", () => {
   it("keeps the Run Profile selectors at the 44px interaction floor", () => {
     expect(componentsCss).toMatch(/\.run-profile__selector\s*\{[^}]*min-height: 44px/s);
-    // The visible chip stays small; the target around it does not.
-    expect(componentsCss).toMatch(/\.run-profile__selector > span\s*\{[^}]*font-size: 9px/s);
+    // The visible chip stays small; the target around it does not. Issue #150
+    // put the chip's label on the product-wide label size — small, still not 44px.
+    expect(componentsCss).toMatch(
+      /\.run-profile__selector > span\s*\{[^}]*font-size: var\(--type-label\)/s,
+    );
     expect(componentsCss).toMatch(
       /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*border-color: var\(--accent\)/s,
     );

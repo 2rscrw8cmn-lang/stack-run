@@ -4,13 +4,28 @@ const WIDTH = 320;
 const DEFAULT_PLOT_HEIGHT = 168;
 const COMPACT_PLOT_HEIGHT = 136;
 const X_AXIS_LABEL_SPACE = 24;
-const AXIS_GUTTER = 24;
+/**
+ * Room for the value ticks left of the plot. Stabilization 1.08 put those
+ * ticks on the same readable floor as the dates below, and a three-digit
+ * mileage at that size needs more than the 24 units the smaller type used.
+ */
+const AXIS_GUTTER = 32;
+/** The tick's right edge, a few units clear of the axis it labels. */
+const AXIS_TICK_X = AXIS_GUTTER - 6;
 /**
  * Never show more than about this many x-axis labels, however many weeks are
  * plotted. Six fitted on paper and collided on a phone — a short date is about
  * 48 viewBox units wide and six of them leave 49 between centres.
  */
 const MAX_X_LABELS = 4;
+/**
+ * One character of the axis type, in viewBox units: the ticks are set in the
+ * mono data face at 13.5 units, and Space Mono advances 0.6em. Enough to keep
+ * the first and last date inside the plot instead of letting one run under the
+ * value ticks and the other off the right edge, which is where they sat while
+ * the axis was sized by eye.
+ */
+const X_LABEL_CHAR = 13.5 * 0.6;
 
 export interface PlanActualColumn {
   key: string;
@@ -60,6 +75,11 @@ export function PlanActualColumns({
   // beneath the chart, so forcing it into the axis would only create the
   // collisions this density rule exists to prevent.
   const labelIndices = sparseTickIndices(columns.length, MAX_X_LABELS);
+  /** Nudge an end label inward rather than let it collide or clip. */
+  const labelX = (centre: number, label: string) => {
+    const half = (label.length * X_LABEL_CHAR) / 2;
+    return Math.min(Math.max(centre, AXIS_GUTTER + half), WIDTH - half);
+  };
 
   return (
     <div className={`plan-actual-chart technical-grid plan-actual-chart--${tone}${compact ? " plan-actual-chart--compact" : ""}`}>
@@ -75,7 +95,7 @@ export function PlanActualColumns({
             return (
               <g key={ratio}>
                 <line x1={AXIS_GUTTER} y1={tickY} x2={WIDTH} y2={tickY} className="chart__grid-line" />
-                <text x="18" y={tickY + 3} textAnchor="end" className="chart__tick">
+                <text x={AXIS_TICK_X} y={tickY + 4} textAnchor="end" className="chart__tick">
                   {Math.round(peak * ratio)}
                 </text>
               </g>
@@ -127,7 +147,7 @@ export function PlanActualColumns({
                 )}
                 {showLabel && (
                   <text
-                    x={x}
+                    x={labelX(x, column.shortLabel)}
                     y={plotHeight + 12}
                     textAnchor="middle"
                     className={

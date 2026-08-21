@@ -16,7 +16,7 @@ describe("R4 Runs integration styling", () => {
       /\.run-profile-chart__axis\s*\{[^}]*font-size: 12px/s,
     );
     expect(integrationCss).toMatch(
-      /\.run-profile-chart__facts dt\s*\{[^}]*font-size: 10px/s,
+      /\.run-profile-chart__facts dt\s*\{[^}]*font-size: var\(--type-label\)/s,
     );
   });
 

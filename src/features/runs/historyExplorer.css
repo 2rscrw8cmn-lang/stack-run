@@ -160,7 +160,7 @@
 .history-readout__metric {
   color: var(--text-subtle);
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--type-label);
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -489,7 +489,7 @@
 
 .history-explorer__runs-count {
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: var(--type-meta);
   font-weight: 600;
 }
 

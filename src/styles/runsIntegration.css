@@ -19,7 +19,7 @@
 
 /* Supporting labels may stay subordinate, but 8px is unnecessarily small. */
 .run-profile-chart__facts dt {
-  font-size: 10px;
+  font-size: var(--type-label);
 }
 
 /*

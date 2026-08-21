@@ -10,12 +10,27 @@
  */
 
 /*
- * Accent per award — the OUC Half v1 monoline icon set's own palette. Every
- * glow in this file is mixed from `--award-mark`, so a glyph and its light can
- * never drift apart.
+ * Accent per award — the OUC Half v1 monoline icon set's own palette, and one
+ * table for every surface that shows an award. Every glow in this file is
+ * mixed from `--award-mark`, so a glyph and its light can never drift apart;
+ * keying the table on the attribute rather than on each root means the placed
+ * brick, the detail sheet, the member profile glyph and the ready panel cannot
+ * disagree about which colour an award is, as the ready panel used to.
+ *
+ * The colour says which award this is. It is not a verdict on the running
+ * behind it: `zone2` is red because that is Best Zone 2's mark, and no award
+ * colour doubles as danger/error treatment anywhere in STACK.
  */
+[data-award] { --award-mark: var(--award-miles); }
+[data-award="zone2"] { --award-mark: var(--award-zone2); }
+[data-award="pace"] { --award-mark: var(--award-pace); }
+[data-award="runs"] { --award-mark: var(--award-runs); }
+[data-award="longHaul"] { --award-mark: var(--award-long-haul); }
+[data-award="steady"] { --award-mark: var(--award-steady); }
+[data-award="onTarget"] { --award-mark: var(--award-on-target); }
+[data-award="levelUp"] { --award-mark: var(--award-level-up); }
+
 .award-brick {
-  --award-mark: #39ff6a;
   /*
    * Frame thickness. A course is 26px (`--course-height`), so this is most of
    * the budget: 4px of frame each side leaves an 18px opening for the glyph.
@@ -26,14 +41,6 @@
   --award-recess: #05090b;
   --award-halo: color-mix(in srgb, var(--award-mark) 42%, transparent);
 }
-
-.award-brick[data-award="zone2"] { --award-mark: #ff5a5f; }
-.award-brick[data-award="pace"] { --award-mark: #35d6ff; }
-.award-brick[data-award="runs"] { --award-mark: #ffb038; }
-.award-brick[data-award="longHaul"] { --award-mark: #b6ff3a; }
-.award-brick[data-award="steady"] { --award-mark: #2fe6c4; }
-.award-brick[data-award="onTarget"] { --award-mark: #ff5ac8; }
-.award-brick[data-award="levelUp"] { --award-mark: #9d7bff; }
 
 /*
  * A placed award is lit from inside: the runner's frame catches a soft halo of
@@ -152,17 +159,7 @@
 .crew-award-detail {
   display: grid;
   gap: 16px;
-  /* The award's colour leads the sheet's own accents, not the app accent. */
-  --award-mark: #39ff6a;
 }
-
-.crew-award-detail[data-award="zone2"] { --award-mark: #ff5a5f; }
-.crew-award-detail[data-award="pace"] { --award-mark: #35d6ff; }
-.crew-award-detail[data-award="runs"] { --award-mark: #ffb038; }
-.crew-award-detail[data-award="longHaul"] { --award-mark: #b6ff3a; }
-.crew-award-detail[data-award="steady"] { --award-mark: #2fe6c4; }
-.crew-award-detail[data-award="onTarget"] { --award-mark: #ff5ac8; }
-.crew-award-detail[data-award="levelUp"] { --award-mark: #9d7bff; }
 
 .crew-award-detail__kind {
   margin: 0;
@@ -240,7 +237,7 @@
 
 .crew-award-detail__fact dt {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-label);
 }
 
 .crew-award-detail__fact dd {

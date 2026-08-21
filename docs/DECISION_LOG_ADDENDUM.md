@@ -736,3 +736,29 @@ The asterisk is the smallest mark that answers "did this actually get measured?"
 **Status**
 
 Approved. Closes issue #137, which incorporates issue #129. See `supabase/migrations/20260820170000_shared_run_source.sql`.
+
+## D-084 — STACK has one readable phone floor, and one color per semantic role
+
+**Decision**
+
+**Nothing user-facing is set below 11px, and a label a runner reads to interpret something is at least 12px.** The two jobs small type does are named as tokens — `--type-label` (12px) for a label that says what a figure is, which activity a run was, what state an action is in, or what a chart axis reads; `--type-meta` (11px) for genuinely tertiary support such as a date, a window, a unit suffix, or a count qualifying a figure stated above it. Stabilization 1.08 raised every 7–9px rule in the product to one of the two, and re-read the 10px rules against the same test: those that named a figure or an action went to `--type-label`, the rest to `--type-meta`. A tight layout buys its fit back from tracking, padding, wrapping or fewer labels — never from type size, so a responsive override may reduce density but may not drop below the floor.
+
+Three cases were invisible to a reading of the stylesheets and are recorded because they will recur:
+
+- **A fraction of a parent is not a size.** `.run-result-detail__primary small` was `0.46em`, which rode the value's own `clamp()` down to about 7px beside a secondary metric on a 320px phone while nothing in the source read below 10.
+- **Chart type is measured in viewBox units.** A 320-unit chart is drawn about 288px wide on a 320px phone, so the value ticks at 10 units rendered at 9px. The x-axis had already been fixed to 13.5 units for exactly this reason; the y-axis had not. Both axes now sit at 13.5, the axis gutter widens to hold a three-digit figure at that size, and the first and last date labels are clamped inside the plot instead of running under the value ticks and off the right edge.
+- **A dead token is a size, silently.** `font-size: var(--text-sm)` in three rules referred to a token that has never existed, so those elements inherited whatever their parent happened to be.
+
+The one exception is text stamped into a Build object's face — the unit after a brick's mileage and a manually logged block's asterisk. Both are `aria-hidden` decoration of facts the block's accessible name already states in full, on an object whose width is its footprint in the tower. D-083's `--crew-stat-*` labels move from 9px to `--type-label`; the coloured rule remains what delimits the four figures, exactly as that decision reasoned.
+
+**Each color family answers one question, and a role never changes color between two surfaces.** The families and their questions are recorded in `docs/DESIGN_SYSTEM.md` under "Color semantics": lime asks *is this current or selected*, activity color asks *what kind of running*, member color asks *whose*, zone color asks *which zone*, a signal accent asks *which signal*, an award mark asks *which award*, and danger asks *is this destructive*. Color locates and identifies; it does not judge. A red award mark is Best Zone 2's identity, not a verdict on the running that earned it.
+
+Two conflicts were resolved rather than documented. **Crew Special Block awards had two palettes**: the ready panel gave Best Zone 2 a cyan mark, Fastest Avg. Pace an orange one and Steady a blue one, while the brick that same award becomes — and `docs/CREW_SPECIAL_BLOCKS.md`, which is authoritative — used red, cyan and teal. The awards now resolve from one `--award-*` table keyed on `data-award`, which every award surface reads. **Training Signal accents aliased the activity palette directly**, so a signal card's tint was indistinguishable in the source from a claim about an easy run; they now read through `--signal-*` tokens that borrow the same hues deliberately and can move without repainting activity color.
+
+**Reason**
+
+Both halves of this are accumulation, not disagreement. Every 8px label was defensible on the surface that introduced it, and every second award palette looked right in the file it was written in; nothing in the build could see across surfaces to notice the result. The tokens and the two guard tests — `src/styles/typographyFloor.test.ts` and `src/styles/colorSemantics.test.ts` — exist so the next pass inherits the floor instead of re-deriving it.
+
+**Status**
+
+Approved. Closes issue #150, and implements the concrete cleanup Stabilization 1.07 (#149) recorded the system for. See `docs/DESIGN_SYSTEM.md` — "Color semantics" and "Type scale and the phone floor".
