@@ -86,7 +86,9 @@ Rules:
 - Seed Crew/runs/Build/award test data only with those QA accounts.
 - Schema changes are proven against Preview before production application.
 - Do not hand-apply feature-branch migrations to Production for preview QA.
-- Migration promotion/reconciliation will be established by Stabilization 1.04 (#146). Until then, do not apply feature-branch schema changes to Production.
+- Follow `docs/SUPABASE_MIGRATIONS.md` for the required repository → local fresh build → Preview → Production path.
+- Preview migration history was reconciled to the 39 repository timestamps during Stabilization 1.04; a dry run must remain empty before a new migration is introduced.
+- Production history was reconciled on 2026-08-21 after the explicit approval and equivalence proof documented in `docs/SUPABASE_MIGRATION_AUDIT_2026-08-21.md`. All 39 repository versions are recorded and the production dry run is empty.
 
 ## Repeatable preview QA
 
