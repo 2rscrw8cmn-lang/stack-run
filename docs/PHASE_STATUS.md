@@ -1087,6 +1087,28 @@ Block bridge regression live in `src/crew/crewBuild.test.ts` and
 `src/crew/crewBuildAwards.test.ts`. `npm run check` passes: 173 test files,
 2,105 tests, lint, TypeScript, and the production build.
 
+## Crew Build placement polish (issue #154)
+
+**Status:** Implemented as a presentation-only refinement; no product, placement
+domain, RPC or schema change.
+
+Implemented scope:
+- the tower is the primary placement surface, with Crew totals hidden only while
+  a block is in hand;
+- a compact in-field identity strip keeps the run or Special Block type and owner
+  visible without repeating the former instruction card;
+- valid landing positions read clearly and the selected candidate uses its owner
+  color;
+- Drop stays attached to the candidate in a lighter in-field dock, while tap,
+  sideways drag, keyboard arrows and Auto Place retain the same actions and
+  44px minimum targets;
+- the shared reduced-motion path and mixed run/Special Block placement remain
+  unchanged.
+
+Verification: focused Crew placement, style-contract and reduced-motion coverage;
+responsive browser review at 320px, 390px, 430px and desktop widths; keyboard
+focus review. Real iPhone Safari remains an owner acceptance check.
+
 ## Today Action Card (issue #152)
 
 **Status:** Implemented as Evolution 2.01; no product-model, data or schema change.
@@ -1096,8 +1118,9 @@ Implemented scope:
 - `todayActionReading` — the type, the target and the title each stated once;
 - completed state shows only the block placements the run still owes, each
   disappearing independently (D-066);
-- the card retires to one confirmation line when nothing is owed, with editing
-  and history left to Runs/Run Detail;
+- the card retires to one confirmation line when nothing is owed;
+- no run editing on Today at all: correcting or deleting a recorded run is
+  Runs/Run Detail's job, so `Edit` and the delete path are gone from here;
 - three layers of `.today-workout-card` / `.today-completed` overrides replaced
   by one `.today-action` definition.
 
@@ -1105,5 +1128,6 @@ Verification: `src/features/today/todayActionReading.test.ts` covers the plan's
 real title conventions; `src/features/today/TodayScreen.test.tsx` covers both
 states, the independent placement actions and the collapse;
 `src/features/today/todayDecisionSurfaceStyling.test.ts` asserts the card's
-geometry and that nothing of the two replaced families is left in the
-stylesheets. Reviewed at 320/390/430 in Chromium. `npm run check` passes.
+geometry and that nothing of the two replaced families — or of the retired
+Edit control — is left in the stylesheets. Reviewed at 320/390/430 in
+Chromium. `npm run check` passes.

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, WandSparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
@@ -28,6 +28,8 @@ interface PlacementBarProps {
   pending?: boolean;
   /** A server-rejected placement, shown under the controls. */
   error?: string | null;
+  /** Crew keeps the controls inside the construction field instead of opening a bottom sheet. */
+  layout?: "sheet" | "field";
 }
 
 /**
@@ -61,15 +63,74 @@ export function PlacementBar({
   onCancel,
   pending = false,
   error = null,
+  layout = "sheet",
 }: PlacementBarProps) {
+  const style = {
+    "--piece-color": pieceColor,
+  } as CSSProperties;
+
+  if (layout === "field") {
+    return (
+      <div
+        className="placement-bar placement-bar--field"
+        role="group"
+        aria-label={`${title} controls`}
+        style={style}
+      >
+        <div className="placement-bar__controls">
+          <IconButton
+            className="placement-bar__cancel"
+            label="Cancel placing"
+            title="Cancel placing"
+            icon={<X size={20} strokeWidth={1.8} />}
+            onClick={onCancel}
+            disabled={pending}
+          />
+          <IconButton
+            label="Move block left"
+            icon={<ChevronLeft size={22} strokeWidth={2} />}
+            disabled={!canStepBack || pending}
+            onClick={() => onStep(-1)}
+          />
+          <Button
+            className="placement-bar__drop"
+            onClick={onDrop}
+            disabled={positionLabel === null || pending}
+          >
+            {pending ? "Placing…" : "Drop"}
+          </Button>
+          <IconButton
+            label="Move block right"
+            icon={<ChevronRight size={22} strokeWidth={2} />}
+            disabled={!canStepForward || pending}
+            onClick={() => onStep(1)}
+          />
+          <IconButton
+            className="placement-bar__auto-icon"
+            label="Auto Place"
+            title="Auto Place"
+            icon={<WandSparkles size={19} strokeWidth={1.8} />}
+            onClick={onAutoPlace}
+            disabled={positionLabel === null || pending}
+          />
+        </div>
+
+        {error && (
+          <p className="placement-bar__error" role="status">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="placement-bar" role="group" aria-label="Place your block">
+    <div className="placement-bar" role="group" aria-label="Place your block" style={style}>
       <div className="placement-bar__block">
         <span
           className="placement-bar__chip"
           style={
             {
-              "--piece-color": pieceColor,
               "--piece-span": width,
               "--piece-height": height,
             } as CSSProperties

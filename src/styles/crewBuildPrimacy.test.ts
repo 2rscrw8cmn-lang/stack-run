@@ -198,6 +198,49 @@ describe("Crew Build primacy styling (issue #137)", () => {
   });
 });
 
+describe("Crew Build placement hierarchy (issue #154)", () => {
+  it("keeps the controls in the field instead of covering the tower with a sheet", () => {
+    const field = ruleBody(".placement-bar--field {");
+
+    expect(field).toMatch(/position:\s*relative/);
+    expect(field).toMatch(/background:\s*transparent/);
+    expect(field).toMatch(/box-shadow:\s*none/);
+    expect(field).not.toMatch(/position:\s*fixed/);
+  });
+
+  it("keeps every compact utility target at the 44px interaction floor", () => {
+    const controls = ruleBody(
+      ".placement-bar--field .placement-bar__controls .icon-button {",
+    );
+
+    expect(controls).toMatch(/min-width:\s*44px/);
+    expect(controls).toMatch(/min-height:\s*44px/);
+  });
+
+  it("makes valid landings legible and the candidate structurally stronger", () => {
+    const valid = ruleBody(
+      '.crew-build[data-placing="true"] .built-tower__slot-button {',
+    );
+    const chosen = ruleBody(
+      '.crew-build[data-placing="true"] .built-tower__slot[data-chosen="true"] .built-tower__slot-button {',
+    );
+
+    expect(valid).toMatch(/border-color:.*--accent/);
+    expect(valid).toMatch(/background:.*--accent/);
+    expect(chosen).toMatch(/border-width:\s*2px/);
+    expect(chosen).toMatch(/background:.*--piece-color/);
+    expect(chosen).toMatch(/box-shadow:/);
+  });
+
+  it("uses a quiet identity strip rather than another instruction panel", () => {
+    const context = ruleBody(".crew-build__placement-context {");
+
+    expect(context).toMatch(/border-bottom:\s*1px solid var\(--border-strong\)/);
+    expect(context).not.toMatch(/background:/);
+    expect(context).not.toMatch(/border-left:/);
+  });
+});
+
 describe("Manually logged block styling (issue #129)", () => {
   it("marks a manual block with a subordinate asterisk and nothing else", () => {
     const body = ruleBody(".placed-block__manual {");

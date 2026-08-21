@@ -191,7 +191,7 @@ The run Today is about — before and after it happens — is one component fami
 - `src/features/today/CompletedRunSummary.tsx` is its completed state: the run's facts and only the block placements the run still owes;
 - `src/features/today/todayActionReading.ts` decides what the card says, so the type, the target and the title are each stated once.
 
-Personal and Crew placement are independent (D-066), so each action appears only while that block is still owed. When neither is owed, the card retires to a single confirmation line and Today gives the space back; editing and history stay in Runs/Run Detail.
+Personal and Crew placement are independent (D-066), so each action appears only while that block is still owed. When neither is owed, the card retires to a single confirmation line and Today gives the space back. Nothing on Today edits or deletes a recorded run — that stays in Runs/Run Detail.
 
 ## 7. Runs
 
@@ -418,6 +418,8 @@ Key rules:
 - movement that would leave supported construction floating is rejected/healed according to server/domain rules.
 
 Member Build and Crew Build are deliberately different concepts: Member Build reproduces sanitized personal construction history; the communal tower is windowed by the Crew's Build start.
+
+While a runner is placing a Crew block, the tower becomes the primary interface: summary totals give way to a compact in-field block identity strip and placement dock, valid landings remain visible, and the selected landing carries the runner color. Tap, horizontal drag, arrow keys, Drop and Auto Place all continue to drive the existing placement domain and server RPCs; no construction geometry, ownership, collision, support or concurrency rule is duplicated in presentation code.
 
 ## 15. Special Blocks / awards
 
