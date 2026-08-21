@@ -2,100 +2,78 @@
 
 **Build your race.**
 
-STACK is a phone-first running app that connects actual training, race intent, a tactile Build system and optional Race Crew.
+STACK is a phone-first running app organized around the runner's actual training history, with race intent, a tactile Build system and optional Crew layered around that truth.
 
 ![STACK UI reference](reference/stack-ui-reference.png)
 
-## STACK Next branch
+## Current product status
 
-This branch is the long-lived integration branch for the next product direction:
+**`main` is the canonical, production product branch.**
 
-```text
-feature/stack-next
-```
+STACK Next shipped to `main` through PR #136 on August 20, 2026. The former `feature/stack-next` integration branch and its child-branch workflow are historical development infrastructure, not the place for new work.
 
-The major shift is:
+The product direction established by STACK Next remains active on `main`:
 
-> **The runner and the runner's actual historical training become the foundation. The plan remains useful, but it is no longer the organizing center of the application.**
+> **Actual history says what happened. Plan says what was intended. A link says how an actual run relates to that intent.**
 
-`main` remains the current stable STACK application until STACK Next is accepted as a whole.
+The runner and the runner's actual history are foundational. Plan remains useful race-specific intent, Build remains the tangible reward, and Crew remains optional and downstream of personal truth.
 
-Read these first on this branch:
+## Where new work starts
 
-```text
-docs/STACK_NEXT.md
-docs/INTERVALS_DATA_STRATEGY.md
-docs/STACK_NEXT_IMPLEMENTATION.md
-docs/STACK_NEXT_AGENT_PROMPT.md
-```
+Read `START_HERE.md` and `AGENTS.md` before changing code.
 
-Exact verified Intervals field names/semantics remain documented in:
+Normal work should:
 
-```text
-docs/CONNECTED_DATA_FIELDS.md
-```
+1. start from the latest `main`;
+2. use a narrowly scoped issue branch;
+3. keep one coherent issue/phase per branch unless an explicit dependency requires stacking;
+4. open a pull request back to `main`;
+5. pass the repository's required validation before merge.
 
-## Branch workflow
+Do **not** start new work from `feature/stack-next` or target new PRs to it.
 
-Do not develop the whole program directly on `feature/stack-next`.
+Current forward work is tracked as GitHub issues, including the **STACK 1.0 Stabilization 1.xx** and **STACK Evolution 2.xx** sequences.
 
-Treat it as the temporary integration branch for the new product:
+## Read first
+
+For current work, use this entry path:
 
 ```text
-main
-└── feature/stack-next
-    ├── feature/historical-data
-    ├── feature/runner-profile
-    ├── feature/training-signals-v2
-    ├── feature/today-next
-    ├── feature/plan-next
-    └── experiment/...
+START_HERE.md
+AGENTS.md
+docs/PRODUCT_AND_SCOPE.md
+docs/CURRENT_APPLICATION_STRUCTURE.md
+docs/ENGINEERING_STANDARDS.md
+docs/DESIGN_SYSTEM.md
 ```
 
-Each substantial STACK Next phase should:
+Then read the specialist contract for the system you are touching, for example:
 
-1. branch from the latest `feature/stack-next`;
-2. stay narrowly scoped;
-3. open its PR back into `feature/stack-next`;
-4. be tested/accepted there;
-5. merge into the integration branch;
-6. leave `main` untouched until the complete program is ready.
+- `docs/CONNECTED_DATA_FIELDS.md` and `docs/INTERVALS_INTEGRATION.md` for connected running data;
+- `docs/RUNS_PRODUCT_MODEL.md`, `docs/RUNS_VISUALIZATION_SYSTEM.md` and `docs/RUN_DETAIL_PRODUCT_SPEC.md` for Runs/Run Detail;
+- `docs/CREW_PROJECTION_CONTRACT.md` and current Crew/security docs for Crew uploads, awards or Supabase behavior;
+- `docs/DATA_AND_STORAGE.md` and `docs/PERSONAL_ACCOUNT_SYNC.md` for persistence/account sync.
 
-The first engineering child branch is expected to be:
+`docs/STACK_NEXT.md`, `docs/STACK_NEXT_IMPLEMENTATION.md`, `docs/STACK_NEXT_AGENT_PROMPT.md` and individual NEXT/Runs phase briefs remain historical implementation records. They are useful for rationale, but they do not define the current branch workflow.
 
-```text
-feature/historical-data
-```
+## Current application shape
 
-See `docs/STACK_NEXT_IMPLEMENTATION.md`.
+At a high level, STACK includes:
 
-## Current application baseline
+- **Today** — what matters now;
+- **Build** — the physical reward for runs recorded/accepted into STACK;
+- **Runs** — unified actual history, current-running context, Training Signals, History and Run Detail;
+- **Crew** — an optional social/shared Build destination for active Crew members;
+- **Plan** — upcoming and historical race intent, explicitly separate from actual history;
+- manual logging plus connected Intervals.icu data;
+- personal account synchronization and local resilience;
+- phone-first PWA-style behavior.
 
-The existing application remains the starting point, not throwaway work.
-
-STACK currently includes:
-
-- phone-first dark responsive UI;
-- Today, Build, Runs and Plan, plus conditional Crew for active crew members;
-- scheduled and extra runs;
-- manual logging fallback;
-- HealthFit → Intervals.icu connected run import;
-- user-confirmed scheduled matching / extra / attach behavior;
-- chronological actual run history;
-- Training Signals;
-- rich connected Run Detail;
-- deterministic 8-column Build tower, one block per actual run;
-- editable one-race plan and preferred run days;
-- optional Race Crew with Supabase Auth/Postgres/RLS;
-- runner-owned shared Crew Build placement;
-- browser-local personal persistence/recovery;
-- installable phone-first PWA-style experience.
-
-STACK Next should preserve working behavior until an explicit phase replaces it.
+The exact current product and architecture contracts live in the current docs above; do not infer current behavior from an old phase brief when they conflict.
 
 ## Connected running-data path
 
-Apple Watch:
+The common Apple path is:
 
 ```text
 Apple Watch
@@ -109,35 +87,13 @@ Intervals.icu
 STACK
 ```
 
-Other watches/services may connect directly to Intervals.icu and skip HealthFit.
+Other watches/services may connect to Intervals.icu directly. Manual logging remains a complete fallback.
 
-Manual logging remains a complete fallback.
-
-The STACK Next opportunity is to use Intervals for more than eliminating manual entry: historical actuals can establish meaningful runner context across months, not just the current race-plan window.
-
-## STACK Next data priorities
-
-High-value foundation data includes:
-
-- activity identity/date/type;
-- distance and duration;
-- pace derived from trusted run totals;
-- average/max HR and HR-zone duration when present;
-- source-reported elevation gain;
-- verified cadence convention;
-- Intervals training load;
-- structured intervals/laps when verified;
-- on-demand profile streams for run-detail shape.
-
-STACK should prefer derived longitudinal facts such as weekly volume, frequency, long-run progression and comparable-run trends over dumping every upstream field into the UI.
-
-Do not persist raw Intervals payloads, GPS routes, precise coordinates or large streams by default.
-
-See `docs/INTERVALS_DATA_STRATEGY.md`.
+`docs/CONNECTED_DATA_FIELDS.md` is authoritative for verified source fields, units and pipeline-specific semantics.
 
 ## Product boundaries
 
-STACK Next is not intended to become:
+STACK is not intended to become:
 
 - a live GPS/run tracker;
 - a Strava clone;
@@ -146,10 +102,9 @@ STACK Next is not intended to become:
 - an AI coach that autonomously rewrites training;
 - a medical/readiness product;
 - a route-mapping product;
-- a full cloud archive of personal health/activity data;
 - a game economy with XP/coins/quests.
 
-Build remains a distinctive emotional reward. Race Crew remains optional and receives only its approved safe projection.
+Prefer factual, traceable running context and meaningful omission over opaque scores or invented certainty.
 
 ## Technical baseline
 
@@ -158,12 +113,12 @@ Build remains a distinctive emotional reward. Race Crew remains optional and rec
 - Vite
 - Plain CSS/design tokens
 - Lucide React
-- Versioned browser localStorage for personal state
-- Supabase Auth/Postgres/RLS for Race Crew only
+- versioned local persistence/cache
+- Supabase Auth/Postgres/RLS for approved account/personal-sync and Crew systems
 - Vercel deployment
-- Existing direct/proxy Intervals connection modes
+- direct/proxy Intervals connection modes
 
-Do not add a router, global-state framework, UI framework, canvas/WebGL/physics engine or broader backend merely because STACK Next is a large program. Add infrastructure only when a phase demonstrates the need.
+Do not add a router, global-state framework, UI framework, canvas/WebGL/physics engine or broader backend merely because a feature is substantial. Add infrastructure only when the scoped issue demonstrates the need.
 
 ## Repository map
 
@@ -173,32 +128,24 @@ Do not add a router, global-state framework, UI framework, canvas/WebGL/physics 
 ├─ START_HERE.md
 ├─ README.md
 ├─ api/            narrow serverless readers
-├─ docs/           product, data, integration, QA and phase source of truth
+├─ docs/           product, data, design, integration, QA and historical phase records
 ├─ public/         manifest and app icons
 ├─ scripts/
 ├─ seed/
 ├─ src/
 ├─ reference/
-├─ supabase/       Race Crew database migrations/config where applicable
+├─ supabase/       database migrations/config/tests for approved Supabase systems
 └─ .github/
 ```
 
 ## Validation
 
-Automated phases must pass without real external credentials:
+The normal repository validation is:
 
 ```bash
+npm install
 npm run check
+git diff --check
 ```
 
-Connected-data phases should then define a separate deployed real-data smoke test using the owner's own Intervals connection without committing secrets or raw private payloads.
-
-## Where to start
-
-For STACK Next development:
-
-1. read `START_HERE.md`;
-2. read the four STACK Next docs above;
-3. use `docs/STACK_NEXT_AGENT_PROMPT.md` for NEXT-1;
-4. create the implementation branch from `feature/stack-next`;
-5. target the PR back to `feature/stack-next`, not `main`.
+Connected-data or database changes may require additional deployed/device/SQL verification defined by their specialist contracts. Never commit real credentials, raw private payloads, GPS coordinates or other sensitive data.
