@@ -1086,3 +1086,24 @@ Verification: the production-shaped 3.1-mile bridge regression and a Special
 Block bridge regression live in `src/crew/crewBuild.test.ts` and
 `src/crew/crewBuildAwards.test.ts`. `npm run check` passes: 173 test files,
 2,105 tests, lint, TypeScript, and the production build.
+
+## Today Action Card (issue #152)
+
+**Status:** Implemented as Evolution 2.01; no product-model, data or schema change.
+
+Implemented scope:
+- one `TodayActionCard` frame with a scheduled and a completed state;
+- `todayActionReading` — the type, the target and the title each stated once;
+- completed state shows only the block placements the run still owes, each
+  disappearing independently (D-066);
+- the card retires to one confirmation line when nothing is owed, with editing
+  and history left to Runs/Run Detail;
+- three layers of `.today-workout-card` / `.today-completed` overrides replaced
+  by one `.today-action` definition.
+
+Verification: `src/features/today/todayActionReading.test.ts` covers the plan's
+real title conventions; `src/features/today/TodayScreen.test.tsx` covers both
+states, the independent placement actions and the collapse;
+`src/features/today/todayDecisionSurfaceStyling.test.ts` asserts the card's
+geometry and that nothing of the two replaced families is left in the
+stylesheets. Reviewed at 320/390/430 in Chromium. `npm run check` passes.

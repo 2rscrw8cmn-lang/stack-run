@@ -181,6 +181,48 @@ describe("TodayScreen workout states", () => {
     ).toBeInTheDocument();
   });
 
+  /*
+   * Issue #152: the plan states the same fact three times — `easy`, the title
+   * `2 Miles`, and the target `2`. The card names the type once, leads with
+   * the target once, and keeps the instruction, which is the line a runner
+   * reads before going out.
+   */
+  it("states the scheduled run once rather than three times", () => {
+    const { container } = renderToday({ today: "2026-08-06" });
+
+    const card = container.querySelector(".today-action") as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(within(card).getAllByText("Easy")).toHaveLength(1);
+    expect(within(card).getByText("2 mi")).toBeInTheDocument();
+    expect(within(card).queryByText("2 Miles")).toBeNull();
+    expect(
+      within(card).getByText("Easy conversational effort."),
+    ).toBeInTheDocument();
+  });
+
+  /* `Long Run: 4 Miles` is the type and the target again, so neither repeats. */
+  it("drops a title that only restates the type and the target", () => {
+    const { container } = renderToday({ today: "2026-08-09" });
+
+    const card = container.querySelector(".today-action") as HTMLElement;
+    expect(within(card).getByText("Long Run")).toBeInTheDocument();
+    expect(within(card).getByText("4 mi")).toBeInTheDocument();
+    expect(within(card).queryByText(/Long Run: 4 Miles/)).toBeNull();
+  });
+
+  /* Both states of the same card, so Today has one action surface (#152). */
+  it("uses one card for the scheduled run and for what it still owes", () => {
+    const { container } = renderToday({ today: "2026-08-06" });
+    expect(
+      container.querySelector('.today-action[data-state="scheduled"]'),
+    ).not.toBeNull();
+
+    const completed = renderToday({ runLogs: [completedEasyRun] });
+    expect(
+      completed.container.querySelector('.today-action[data-state="complete"]'),
+    ).not.toBeNull();
+  });
+
   it("shows the rest-day state with no completion requirement", () => {
     renderToday({ today: "2026-08-05" });
 
@@ -392,8 +434,13 @@ describe("TodayScreen earned block", () => {
     expect(onStartPlacing).toHaveBeenCalledWith("run-workout-002");
   });
 
-  it("says nothing at all once the block is placed and nothing else is owed", () => {
-    renderToday({
+  /*
+   * Issue #152: a run that owes nothing is a fact, not an action, so the card
+   * retires. One line of confirmation is left, and editing goes back to Runs
+   * with the rest of the record.
+   */
+  it("collapses the card once the block is placed and nothing else is owed", () => {
+    const { container } = renderToday({
       runLogs: [completedEasyRun],
       blockPlacements: [placementFor("run-workout-002")],
     });
@@ -407,9 +454,12 @@ describe("TodayScreen earned block", () => {
     expect(
       screen.queryByText(/built into the tower/),
     ).not.toBeInTheDocument();
-    // The compact summary and its quiet Edit are all that remain.
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(container.querySelector(".today-action")).toBeNull();
+
+    // What is left says the run happened, and stops there.
+    expect(screen.getByText("Run complete")).toBeInTheDocument();
     expect(screen.getByText("2.1 mi · 20:30 · 9:46 /MI")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 
   /*

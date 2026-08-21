@@ -1,10 +1,13 @@
 import { Check } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPace } from "../../domain/runs";
 import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
+import { TodayActionCard } from "./TodayActionCard";
+import { todayActionReading } from "./todayActionReading";
 
 interface CompletedRunSummaryProps {
   workout: Workout;
@@ -18,15 +21,20 @@ interface CompletedRunSummaryProps {
 }
 
 /**
- * The completed state on Today, as short as the fact it reports (issue #120).
+ * The completed state of the Today Action Card — the same card as the
+ * scheduled workout, holding what the run still owes.
  *
- * Once the run exists, STACK already knows it happened and so does the runner;
- * a card restating the distance, the duration, the effort and the sentence
- * "your block is built into the tower" spent most of a screen confirming
- * something nobody doubted. What is left after logging is what has *not*
- * happened yet: the earned Personal block, and — independently — the Crew
- * Build contribution. Each action appears only while it is still owed, so a
- * fully settled run collapses to one line and a quiet Edit.
+ * Once the run exists, STACK already knows it happened and so does the runner.
+ * What is left is what has *not* happened yet: the earned Personal block, and
+ * — independently (D-066) — the Crew Build contribution. Each action appears
+ * only while it is still owed.
+ *
+ * Issue #152 finished the thought issue #120 started. A run that owes nothing
+ * is not an action, so it stops being a card: the state collapses to one line
+ * under Today's heading and gives the screen back to the week, the tower and
+ * the crew. Correcting the run stays a quiet secondary affordance while the
+ * card is still open for business; once it has collapsed, editing and history
+ * belong to Runs, which is where the rest of the runner's record lives.
  */
 export function CompletedRunSummary({
   workout,
@@ -43,32 +51,56 @@ export function CompletedRunSummary({
     formatDurationSeconds(runLog.durationSeconds),
     ...(pace ? [pace] : []),
   ].join(" · ");
+  const owesPersonalBlock = !placement;
+  const owesCrewBlock = Boolean(crewBlockRunId);
+
+  if (!owesPersonalBlock && !owesCrewBlock) {
+    return (
+      <p className="today-settled">
+        <Check size={14} strokeWidth={2.4} aria-hidden="true" />
+        <span className="today-settled__label machine-label">Run complete</span>
+        <span className="today-settled__facts data-value" aria-live="polite">
+          {facts}
+        </span>
+      </p>
+    );
+  }
 
   return (
-    <Card className="today-completed">
-      <p className="today-completed__title" aria-live="polite">
-        <Check size={15} strokeWidth={2.4} aria-hidden="true" />
-        <span>{workout.title}</span>
-      </p>
-      <p className="today-completed__facts data-value">{facts}</p>
-
-      {(!placement || crewBlockRunId) && (
-        <div className="today-completed__actions">
-          {!placement && <Button onClick={onPlaceBlock}>Place Personal Block</Button>}
-          {crewBlockRunId && (
-            <Button
-              variant={placement ? "primary" : "secondary"}
-              onClick={() => onPlaceCrewBlock(crewBlockRunId)}
-            >
-              Place Crew Block
-            </Button>
-          )}
-        </div>
-      )}
-
-      <div className="today-completed__quiet-actions">
-        <button type="button" onClick={onEditRun}>Edit</button>
+    <TodayActionCard
+      state="complete"
+      icon={<Check size={15} strokeWidth={2.4} />}
+      label="Run complete"
+      kind={WORKOUT_TYPE_LABEL[workout.type]}
+      mark={
+        <span
+          className="workout-color-block today-action__mark"
+          style={{ "--piece-color": `var(--${workout.build.colorKey})` } as CSSProperties}
+          aria-hidden="true"
+        />
+      }
+      value={facts}
+      caption={todayActionReading(workout).caption}
+      live
+    >
+      <div className="today-action__actions">
+        {owesPersonalBlock && (
+          <Button onClick={onPlaceBlock}>Place Personal Block</Button>
+        )}
+        {crewBlockRunId && (
+          <Button
+            variant={owesPersonalBlock ? "secondary" : "primary"}
+            onClick={() => onPlaceCrewBlock(crewBlockRunId)}
+          >
+            Place Crew Block
+          </Button>
+        )}
       </div>
-    </Card>
+      <div className="today-action__quiet-actions">
+        <button type="button" onClick={onEditRun}>
+          Edit
+        </button>
+      </div>
+    </TodayActionCard>
   );
 }

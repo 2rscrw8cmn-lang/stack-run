@@ -762,3 +762,27 @@ Both halves of this are accumulation, not disagreement. Every 8px label was defe
 **Status**
 
 Approved. Closes issue #150, and implements the concrete cleanup Stabilization 1.07 (#149) recorded the system for. See `docs/DESIGN_SYSTEM.md` — "Color semantics" and "Type scale and the phone floor".
+
+## D-085 — Today has one Action Card, and it retires when the run owes nothing
+
+**Decision**
+
+**The scheduled workout and the completed run are two states of one card, not two components.** `TodayActionCard` is the frame both states render into: an eyebrow that names the card and the kind of run once, an activity mark, one value, an optional caption, and whatever that state still needs underneath. `TodayWorkoutCard` supplies the scheduled state, `CompletedRunSummary` the completed one. They previously shared nothing but a screen, and looked it — one an oversized hero, the other a receipt.
+
+**Every fact is stated once.** The plan says the same thing up to three times: the type `long`, the title `Long Run: 4-5 Miles`, and the target `4-5`. `todayActionReading` resolves that into one value and at most one caption: the eyebrow carries the type, the value carries the target, and the title only earns a line when it says something neither of those did — a race's name, a simulation's shape. The instruction is not compressed away; it is the line a runner actually reads before going out, and it stays whole in the calmer register the rest of Today uses. What paid for the height instead was the repetition, the 40px distance and the 40px colour tile.
+
+**The completed state shows only what the run still owes.** `Place Personal Block` while the personal block is unplaced, `Place Crew Block` while the viewer has a READY Crew contribution, each disappearing independently as it is satisfied (D-066). **When neither is owed, the card retires.** A run that owes nothing is a fact, not an action, so the state collapses to a single confirmation line in the same register as a day that asks nothing, and Today gives the space back to the week, the tower and the crew.
+
+**Correcting a run is a secondary affordance while the card is open, and belongs to Runs once it is not.** `Edit` stays a quiet text control in the owed state, where the runner is already acting on that run and a mistyped distance is one tap from being fixed. It does not survive the collapse: run editing and history live in Runs/Run Detail with the rest of the record, and Today stops owning the run once it owes nothing. Manual logging is untouched — `Mark Complete` remains the scheduled state's action, as the fallback that keeps STACK honest when nothing synced.
+
+Two smaller corrections came with the merge. The workout card had accumulated three layers of overrides across `components.css`; the type label in the last of them was painted `var(--long)`, so every workout type's label rendered in long-run amber regardless of what kind of run it was. There is now one definition of the card. `.run-found` keeps its own frame and no longer shares a rule with a card it is not a state of.
+
+**Reason**
+
+Today is a decision surface. A card that is the same size whether it is asking for a run, waiting on a block, or reporting a fact from four hours ago is furniture, not a decision. Making the two states one component is what makes the retirement expressible at all: the card can shrink as the day resolves because it is one object changing state rather than two components taking turns.
+
+The redundancy went unnoticed for the same reason the 8px labels in D-084 did — each line was defensible where it was written, and nothing read them together. `todayActionReading` puts that reading in one tested place.
+
+**Status**
+
+Approved. Closes issue #152. Synced-run recognition lands in this same completed state (Evolution 2.02) and does not change its contract.

@@ -60,6 +60,45 @@
   line-height: 1.4;
 }
 
+/* A run that owes nothing
+   ------------------------------------------------------------------
+   Once the Personal and Crew blocks are standing, the completed run is a fact
+   rather than an action, so the Today Action Card retires to the same one-line
+   register as a day that asks nothing (issue #152). */
+
+.today-settled {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px var(--space-2);
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.today-settled svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.today-settled__label {
+  color: var(--text-muted);
+  font-size: var(--type-label);
+}
+
+.today-settled__facts {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Recent training
    ------------------------------------------------------------------
    Two or three facts, each with its own window. Not a KPI shelf: no borders

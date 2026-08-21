@@ -182,6 +182,17 @@ It can represent:
 
 Today does not recalculate Signals/history formulas independently and does not own a second connected-sync lifecycle.
 
+### The Today Action Card
+
+The run Today is about — before and after it happens — is one component family rather than two unrelated cards:
+
+- `src/features/today/TodayActionCard.tsx` is the shared frame: an eyebrow naming the card and the kind of run, an activity mark, one value, an optional caption, and whatever that state still needs;
+- `src/features/today/TodayWorkoutCard.tsx` is its scheduled state: target distance, instruction, and `Mark Complete` as the manual fallback;
+- `src/features/today/CompletedRunSummary.tsx` is its completed state: the run's facts and only the block placements the run still owes;
+- `src/features/today/todayActionReading.ts` decides what the card says, so the type, the target and the title are each stated once.
+
+Personal and Crew placement are independent (D-066), so each action appears only while that block is still owed. When neither is owed, the card retires to a single confirmation line and Today gives the space back; editing and history stay in Runs/Run Detail.
+
 ## 7. Runs
 
 Primary implementation:
