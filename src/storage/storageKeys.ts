@@ -12,6 +12,8 @@ export const CREW_DELETE_TOMBSTONES_STORAGE_KEY =
 export const ACTIVE_CREW_STORAGE_KEY = "stack.crew.active.v1";
 export const DISMISSED_PROP_NOTIFICATIONS_STORAGE_KEY =
   "stack.crew.props-dismissed.v1";
+/** Crew Week Recaps a runner has dismissed from Today, per account. */
+export const DISMISSED_CREW_RECAPS_STORAGE_KEY = "stack.crew.recap-dismissed.v1";
 
 const BACKUP_KEY_PREFIX = "stack.app-state.backup.";
 

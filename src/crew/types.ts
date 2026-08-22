@@ -207,6 +207,33 @@ export interface CrewBuildRun {
   crewBuildPlacedAt: string | null;
 }
 
+/**
+ * The only run facts the Crew Week Recap may consume.
+ *
+ * Narrower again than `CrewSharedRun`: heart rate (D-079), Props, the
+ * contributing runner's own local run id, `createdAt`/`updatedAt` and the
+ * runner's personal Build coordinates are all deliberately absent. A weekly
+ * story is told from what a Crew already shows each other — who ran, how far,
+ * for how long, on which day, and where that run stands in the shared tower.
+ *
+ * `runnerIcon` is present because the recap is about people rather than
+ * bricks: identity is the point of a beat that names a runner.
+ */
+export interface CrewWeekRecapRun {
+  id: string;
+  userId: string;
+  displayName: string;
+  accentColor: CrewMemberAccent | null;
+  runnerIcon: RunnerIcon;
+  localDate: string;
+  activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
+  distanceMiles: number;
+  durationSeconds: number;
+  /** Independent shared Crew Build placement; never personal placement. */
+  crewBuildRow: number | null;
+  crewBuildColumnStart: number | null;
+}
+
 /** One teammate's Props on one of the viewer's own shared runs. */
 export interface CrewPropNotification {
   id: string;

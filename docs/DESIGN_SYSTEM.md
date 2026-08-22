@@ -34,6 +34,7 @@ Key extensions:
 - `docs/RUN_DETAIL_PRODUCT_SPEC.md` — single-run presentation hierarchy;
 - `docs/BUILD_CONCEPT.md` — Build geometry, earning, placement, and object behavior;
 - `docs/CREW_SPECIAL_BLOCKS.md` — Special Block lifecycle and approved hollow-block treatment;
+- `docs/CREW_WEEK_RECAP.md` — the weekly Crew recap, and the recap presentation language later retrospectives reuse;
 - `docs/CURRENT_APPLICATION_STRUCTURE.md` — current implementation shape.
 
 Historical phase documents explain how the system evolved. They do not override this file unless a current issue explicitly re-approves a rule.

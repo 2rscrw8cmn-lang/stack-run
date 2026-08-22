@@ -178,7 +178,8 @@ It can represent:
 - up to one Training Signal;
 - upcoming plan intent;
 - Personal Build context;
-- small relevant Crew activity.
+- small relevant Crew activity;
+- a limited-time Crew Week Recap in the days after a Crew week closes.
 
 Today does not recalculate Signals/history formulas independently and does not own a second connected-sync lifecycle.
 
@@ -460,7 +461,22 @@ It operates on Crew-visible run identity and does not introduce comments/message
 
 Optimistic interaction is reconciled through the Crew controller/backend rather than treating client state as final authority.
 
-## 17. Cross Training
+## 17. Crew Week Recap
+
+Primary implementation:
+
+- `src/crew/weekRecap.ts` — the whole derivation;
+- `src/features/today/TodayCrewRecap.tsx` — Today's limited-time module and its gate;
+- `src/features/crew/CrewWeekRecapSheet.tsx` — the fuller frame-by-frame recap;
+- `src/storage/dismissedCrewRecapRepository.ts` — device-local, per-account dismissal.
+
+After a Monday–Sunday Crew week closes, the recap tells the Crew what it built that week. It is derived and never stored, so the same closed week produces the same recap on every device; a beat with no evidence is omitted rather than padded; and a week with no shared running has no recap at all.
+
+It reads a projection narrower again than the shared-run contract (`CrewWeekRecapRun`), and it reports Special Blocks only once they are standing in the Crew Build — D-080 keeps an unplaced award the winner's own placement prompt.
+
+The module sits below Today's action surface, ages out three days after the week closes, and can be dismissed. `docs/CREW_WEEK_RECAP.md` is the contract, including the recap presentation language later retrospectives reuse.
+
+## 18. Cross Training
 
 `cross` is a supported STACK activity type.
 
@@ -473,7 +489,7 @@ Current source-history asymmetry remains intentional/known:
 
 Do not widen this allowlist without updating downstream running-specific metrics and product semantics.
 
-## 18. Design and styling
+## 19. Design and styling
 
 The active visual direction is Performance Arcade.
 
@@ -494,7 +510,7 @@ The product generally uses:
 
 The design-system consolidation/cleanup is tracked separately in Stabilization 1.07/1.08; this architecture document does not redefine those visual contracts.
 
-## 19. Error and failure boundaries
+## 20. Error and failure boundaries
 
 Personal STACK is designed to remain usable when optional systems fail.
 
@@ -506,7 +522,7 @@ Examples:
 - App-level render faults are caught by `AppErrorBoundary`;
 - account/cloud conflicts use backup/reconciliation behavior rather than silent overwrite where possible.
 
-## 20. What is intentionally not in the architecture
+## 21. What is intentionally not in the architecture
 
 Current STACK does not include:
 
@@ -523,7 +539,7 @@ Current STACK does not include:
 
 Add infrastructure only when a scoped issue demonstrates a real requirement.
 
-## 21. Current source-of-truth map
+## 22. Current source-of-truth map
 
 Use these references for deeper work:
 
@@ -551,6 +567,7 @@ Use these references for deeper work:
 - `docs/CREW_PROJECTION_CONTRACT.md`
 - `docs/RACE_CREW_IMPLEMENTATION.md`
 - `docs/CREW_SPECIAL_BLOCKS.md`
+- `docs/CREW_WEEK_RECAP.md`
 - `docs/PERSONAL_ACCOUNT_SYNC.md` where canonical personal ids affect projection
 
 ### Engineering / design

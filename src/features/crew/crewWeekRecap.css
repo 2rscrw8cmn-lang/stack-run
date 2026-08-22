@@ -1,0 +1,260 @@
+/* Evolution 2.04 — Crew Week Recap.
+   Presentation only. Every figure on these surfaces is derived in
+   src/crew/weekRecap.ts and formatted by the existing domain formatters. */
+
+/* Today's module
+   ------------------------------------------------------------------
+   A limited-time payoff, sized like the other Today sections rather than like
+   a takeover. It earns one accent edge and one display figure; everything
+   else on it is the same quiet register as the rest of the screen. */
+
+.today-crew-recap {
+  display: grid;
+  gap: 7px;
+  padding: 12px 12px 13px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 8px;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent 48%),
+    var(--surface);
+}
+
+.today-crew-recap__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.today-crew-recap__head .machine-label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.today-crew-recap__mark {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+/* Pulled tight to the row so dismissing the module never costs it a line. */
+.today-crew-recap__dismiss {
+  margin: -6px -6px -6px 0;
+}
+
+.today-crew-recap__headline {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.today-crew-recap__headline .data-value {
+  font-size: 19px;
+  color: var(--accent);
+}
+
+.today-crew-recap__support {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.today-crew-recap__open {
+  justify-self: start;
+  min-height: 44px;
+  margin: -6px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.today-crew-recap__open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The fuller recap
+   ------------------------------------------------------------------
+   One frame at a time. The stage holds a fixed floor so stepping between
+   beats does not resize the sheet under the runner's thumb. */
+
+.crew-recap {
+  display: grid;
+  gap: 14px;
+}
+
+.crew-recap__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.crew-recap__identity p {
+  margin: 0;
+}
+
+.crew-recap__crew {
+  font-size: 15px;
+  font-weight: 620;
+}
+
+.crew-recap__stage {
+  display: grid;
+  align-content: start;
+  min-height: 240px;
+  padding: 16px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 80% at 12% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
+    var(--surface-soft);
+}
+
+.crew-recap__frame {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.crew-recap__eyebrow {
+  margin: 0;
+  color: var(--accent);
+}
+
+.crew-recap__figure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.crew-recap__figure[data-direction="down"] {
+  color: var(--text-data);
+}
+
+.crew-recap__unit {
+  color: var(--text-muted);
+}
+
+.crew-recap__line {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.crew-recap__runners {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crew-recap__runner {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid color-mix(in srgb, var(--member-accent, var(--border-strong)) 45%, var(--border));
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+/* The slice of the tower this week added
+   ------------------------------------------------------------------
+   Real columns and real courses, drawn bottom-up so the week reads as the
+   structure it is. `--brick-row` is already inverted by the component so the
+   lowest course lands on the grid's last row. */
+
+.crew-recap__slice {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(var(--slice-courses, 1), 14px);
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.crew-recap__brick {
+  grid-column: var(--brick-column) / span var(--brick-span);
+  grid-row: var(--brick-row) / span var(--brick-courses, 1);
+  border-radius: 2px;
+  background: var(--member-accent, var(--border-strong));
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .28);
+}
+
+/* Special Blocks
+   ------------------------------------------------------------------
+   The award's own colour from `awardBlock.css`, one mark per row. Which
+   award, not a verdict on the running behind it. */
+
+.crew-recap__awards {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crew-recap__awards li {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--award-mark) 36%, var(--border));
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.crew-recap__award-mark {
+  align-self: stretch;
+  background: var(--award-mark);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--award-mark) 34%, transparent);
+}
+
+.crew-recap__award-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.crew-recap__award-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.crew-recap__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.crew-recap__controls .button {
+  flex: none;
+}
+
+.crew-recap__progress {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* The narrowest supported width: the display figure gives up size first. */
+@media (max-width: 340px) {
+  .crew-recap__figure { font-size: 36px; }
+  .today-crew-recap__headline { font-size: 16px; }
+}

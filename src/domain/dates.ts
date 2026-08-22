@@ -9,6 +9,19 @@ export function parseLocalDate(dateString: string): Date {
   return new Date(Number(year), Number(month) - 1, Number(day));
 }
 
+/**
+ * Whether a value is a `YYYY-MM-DD` local date at all.
+ *
+ * The date helpers throw on anything else, which is right for STACK's own
+ * data: a malformed date there is a bug worth surfacing. It is the wrong
+ * answer for a value that arrived from outside — a Crew row read from
+ * Supabase, say — where a surface should quietly decline to render rather
+ * than take a screen down. This is the check for that case.
+ */
+export function isLocalDateString(value: unknown): value is string {
+  return typeof value === "string" && LOCAL_DATE_PATTERN.test(value);
+}
+
 export function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
