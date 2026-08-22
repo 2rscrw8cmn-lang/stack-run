@@ -20,6 +20,12 @@
     var(--surface);
 }
 
+/* Unmistakably not real, in the same register as Today's own demo banner. */
+.today-crew-recap__demo {
+  margin: 0;
+  color: var(--text-subtle);
+}
+
 .today-crew-recap__head {
   display: flex;
   align-items: center;

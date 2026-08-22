@@ -474,7 +474,9 @@ After a Monday–Sunday Crew week closes, the recap tells the Crew what it built
 
 It reads a projection narrower again than the shared-run contract (`CrewWeekRecapRun`), and it reports Special Blocks only once they are standing in the Crew Build — D-080 keeps an unplaced award the winner's own placement prompt.
 
-The module sits below Today's action surface, ages out three days after the week closes, and can be dismissed. `docs/CREW_WEEK_RECAP.md` is the contract, including the recap presentation language later retrospectives reuse.
+The module sits below Today's action surface, ages out three days after the week closes, and can be dismissed. `?demo=recap` / `?demo=recap-minimal` are preview-host-only owner-review overlays with their own fake crew, in the same shape as Today's existing `?demo=today`.
+
+The recap week is the same ISO Monday–Sunday week `finalize_crew_awards` uses, matched on the run's own local date. Recap totals count everything the Crew shared that week and are deliberately not the awards' narrower qualifying totals. `docs/CREW_WEEK_RECAP.md` is the contract, including the recap presentation language later retrospectives reuse.
 
 ## 18. Cross Training
 

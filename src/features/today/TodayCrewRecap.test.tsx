@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
 import type {
   CrewDashboardData,
@@ -104,6 +104,10 @@ describe("Today Crew Week Recap", () => {
     localStorage.clear();
   });
 
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
   it("states the closed week's headline facts and opens the fuller recap", async () => {
     const user = userEvent.setup();
     render(<TodayCrewRecap crew={controller(WEEK_RUNS)} today={MONDAY_AFTER} />);
@@ -165,6 +169,21 @@ describe("Today Crew Week Recap", () => {
     delete (crew.account!.crew as unknown as Record<string, unknown>).buildStartDate;
     render(<TodayCrewRecap crew={crew} today={MONDAY_AFTER} />);
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
+  });
+
+  it("renders the owner-review recap on a preview host with no crew at all", async () => {
+    const user = userEvent.setup();
+    // jsdom serves localhost, which is a preview review host.
+    window.history.replaceState({}, "", "/?demo=recap");
+
+    // Saturday, and no crew: neither would produce a live recap.
+    render(<TodayCrewRecap crew={null} today="2026-08-22" />);
+
+    expect(screen.getByText(/RECAP DEMO · FAKE CREW DATA/)).toBeInTheDocument();
+    expect(screen.getByText(/Crew Week Recap · Sep 7 – Sep 13/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Open the recap" }));
+    expect(within(screen.getByRole("dialog")).getByText("Together")).toBeInTheDocument();
   });
 
   it("shows nothing while shared runs are unavailable, rather than a recap missing runs", () => {

@@ -85,6 +85,35 @@ This is the part Evolution 2.05 reuses.
 - Dismissal is device-local, per account and per Crew week (`src/storage/dismissedCrewRecapRepository.ts`). Dismissing is a statement about this screen, not about the week: the Crew's shared facts are untouched and no crewmate learns of it.
 - The award read that feeds the `specialBlocks` beat happens only after the week, the Crew and the dismissal have all said yes, so Today never spends a round trip on a recap it will not show. It is failure-tolerant: an unavailable award read costs the recap that one beat, never the recap.
 
+## Relationship to Special Block weeks
+
+The recap and `finalize_crew_awards` use the **same week**, and that is deliberate rather than coincidental:
+
+| | Recap (`weekRecap.ts`) | Finalizer (`finalize_crew_awards`) |
+| --- | --- | --- |
+| Week shape | ISO Monday → Sunday | ISO Monday → Sunday (`v_week` … `v_week + 6`) |
+| Matched on | the run's own `localDate` | the run's own `local_date` |
+| Most recent week handled | `lastClosedCrewWeek(today)` | `current_date`'s Monday minus 7 |
+| Floor | the Crew's `buildStartDate` | `greatest(build_start_date's Monday, first Monday on/after awards_start_date)` |
+
+Two differences are real and intended:
+
+- **Whose clock.** The recap reads the *device's* local date; the finalizer reads the *database's* `current_date`. Near midnight on a Sunday these can disagree by a day. It degrades safely: the recap simply shows no `specialBlocks` beat until the awards exist, and an award has to be *placed* before the recap reports it anyway.
+- **The awards floor.** `awards_start_date` (D-080) floors award minting but not the recap. A Crew that predates the Special Blocks rollout gets recaps for weeks that have no awards — correctly, since those beats are omitted rather than invented.
+
+**Recap totals are not award qualifying totals, and must not be read as such.** The recap's `miles` / `runs` / time are *everything the Crew shared that week*. The awards deliberately qualify more narrowly — Most Miles and Most Runs both exclude `cross`, Most Runs needs ≥1 mi or ≥10 min, Fastest Avg. Pace needs ≥2 mi, Best Zone 2 needs a ≥30 min run with a synced Zone 2 scalar. A Crew whose week included Cross Training will therefore see recap miles above the Most Miles result, and that is both correct readings of two different questions.
+
+The recap also differs from the Crew screen's four figures above the tower (`crewTotals.ts`), which count only runs **placed** in the Build. The recap counts the week's running whether or not it has been built yet, and says so in its own Build beat.
+
+## Owner review
+
+The recap is on Today for three days a week, for a Crew that ran. That is right for the product and awkward to review, so `src/features/today/crewRecapDemo.ts` provides the same kind of in-memory overlay `?demo=today` already gives Today:
+
+- `?demo=recap` — a four-runner week with every beat present, including a won-but-unplaced Special Block that must **not** appear;
+- `?demo=recap-minimal` — one run, one runner, nothing placed, no previous week.
+
+Both are preview-host-only (localhost or a Vercel `-git-` branch preview), carry their own fake crew, roster, week and awards, never touch a real Crew or account, and never write to `localStorage`. The recap they show is produced by the real `crewWeekRecap` derivation — only the facts going in are invented — and the module renders the same card the live path does. The card carries a `RECAP DEMO · FAKE CREW DATA` banner.
+
 ## Sharing
 
 Deliberately not implemented. Evolution 2.04 states sharing is optional and only worth doing if it can be privacy-safe and visually strong; nothing here has been widened in anticipation of it.
@@ -95,3 +124,4 @@ Deliberately not implemented. Evolution 2.04 states sharing is optional and only
 - `src/features/today/TodayCrewRecap.test.tsx` — the Today window, dismissal persistence, and the cases that render nothing.
 - `src/features/crew/CrewWeekRecapSheet.test.tsx` — the frame sequence and the one-frame sparse recap.
 - `src/storage/dismissedCrewRecapRepository.test.ts` — per-account, per-week dismissal and corrupt-value tolerance.
+- `src/features/today/crewRecapDemo.test.ts` — the review overlay's host rule, its window, and both fixtures.

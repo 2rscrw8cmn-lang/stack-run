@@ -5,6 +5,7 @@ import { isLocalDateString } from "../../domain/dates";
 import { formatMilesBuilt } from "../../domain/distance";
 import { formatTotalHoursMinutes } from "../../domain/duration";
 import { formatWeekRange } from "../../domain/plan";
+import type { CrewEmblem } from "../../crew/emblem";
 import { useCrewAwards } from "../../crew/useCrewAwards";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import {
@@ -20,6 +21,7 @@ import {
   loadDismissedCrewRecapKeys,
 } from "../../storage/dismissedCrewRecapRepository";
 import { CrewWeekRecapSheet } from "../crew/CrewWeekRecapSheet";
+import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
 import "../crew/crewWeekRecap.css";
 
 /**
@@ -42,11 +44,11 @@ import "../crew/crewWeekRecap.css";
  */
 
 /**
- * Gate and data owner.
+ * Gate. Owner review first, then the live Crew.
  *
- * The award read only happens once the week, the crew and the dismissal have
- * all already said yes, which is why it lives in the inner component: Today
- * must not spend a Supabase round trip on a recap it is not going to show.
+ * `?demo=recap` is preview-host-only and carries its own fake crew, so it
+ * short-circuits before any real account, week or dismissal is consulted —
+ * see `crewRecapDemo.ts` for why the recap needs a review path at all.
  */
 export function TodayCrewRecap({
   crew,
@@ -55,6 +57,19 @@ export function TodayCrewRecap({
   crew: RaceCrewController | null;
   today: string;
 }) {
+  const demoVariant = crewRecapDemoVariant();
+  const demo = demoVariant ? crewRecapDemoData(demoVariant) : null;
+  if (demo) {
+    return (
+      <CrewRecapCard
+        recap={demo.recap}
+        emblem={demo.emblem}
+        crewName={demo.recap.crewName}
+        isDemo
+      />
+    );
+  }
+
   const viewerUserId = crew?.account?.profile.id;
   const activeCrew = crew?.account?.crew ?? null;
   const dashboard = crew?.crewData ?? null;
@@ -83,6 +98,13 @@ export function TodayCrewRecap({
   );
 }
 
+/**
+ * Data owner for the live path.
+ *
+ * The award read only happens once the week, the crew and the dismissal have
+ * all already said yes, which is why it lives in this inner component: Today
+ * must not spend a Supabase round trip on a recap it is not going to show.
+ */
 function CrewWeekRecapModule({
   crew,
   viewerUserId,
@@ -100,7 +122,6 @@ function CrewWeekRecapModule({
   const [dismissed, setDismissed] = useState(() =>
     loadDismissedCrewRecapKeys(viewerUserId).has(recapKey),
   );
-  const [isOpen, setOpen] = useState(false);
 
   // Additive and failure-tolerant, exactly as Crew treats it: a Crew whose
   // award schema or read is unavailable simply gets a recap with no Special
@@ -132,6 +153,43 @@ function CrewWeekRecapModule({
 
   if (!recap || dismissed) return null;
 
+  return (
+    <CrewRecapCard
+      recap={recap}
+      emblem={activeCrew.emblem}
+      crewName={activeCrew.name}
+      onDismiss={() => {
+        dismissCrewRecap(viewerUserId, recapKey);
+        setDismissed(true);
+      }}
+    />
+  );
+}
+
+/**
+ * The module itself.
+ *
+ * Presentation only, and identical for the live Crew and for owner review — a
+ * review path that renders a different card is not reviewing the product. The
+ * demo's dismissal stays in memory: there is no account to remember it for.
+ */
+function CrewRecapCard({
+  recap,
+  emblem,
+  crewName,
+  onDismiss,
+  isDemo = false,
+}: {
+  recap: CrewWeekRecap;
+  emblem: CrewEmblem;
+  crewName: string;
+  onDismiss?: () => void;
+  isDemo?: boolean;
+}) {
+  const [isOpen, setOpen] = useState(false);
+  const [demoDismissed, setDemoDismissed] = useState(false);
+  if (demoDismissed) return null;
+
   const { totals } = recap;
   const range = formatWeekRange(recap.weekStart, recap.weekEnd);
 
@@ -141,6 +199,12 @@ function CrewWeekRecapModule({
         className="today-crew-recap"
         aria-labelledby="today-crew-recap-title"
       >
+        {isDemo && (
+          <p className="today-crew-recap__demo machine-label">
+            RECAP DEMO · FAKE CREW DATA · REMOVE ?DEMO= TO RETURN
+          </p>
+        )}
+
         <div className="today-crew-recap__head">
           <span className="today-crew-recap__mark" aria-hidden="true">
             <Sparkles size={15} strokeWidth={2} />
@@ -150,15 +214,12 @@ function CrewWeekRecapModule({
             className="today-crew-recap__dismiss"
             label="Dismiss Crew Week Recap"
             icon={<X size={17} strokeWidth={1.9} />}
-            onClick={() => {
-              dismissCrewRecap(viewerUserId, recapKey);
-              setDismissed(true);
-            }}
+            onClick={() => (onDismiss ? onDismiss() : setDemoDismissed(true))}
           />
         </div>
 
         <h2 id="today-crew-recap-title" className="today-crew-recap__headline">
-          {activeCrew.name} ran{" "}
+          {crewName} ran{" "}
           <span className="data-value">{formatMilesBuilt(totals.miles)} mi</span>{" "}
           together
         </h2>
@@ -184,7 +245,7 @@ function CrewWeekRecapModule({
       {isOpen && (
         <CrewWeekRecapSheet
           recap={recap}
-          emblem={activeCrew.emblem}
+          emblem={emblem}
           isOpen
           onClose={() => setOpen(false)}
         />
