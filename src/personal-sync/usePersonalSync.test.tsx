@@ -1,9 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IntervalsCandidate } from "../connected/intervals";
 import { repackPlacements } from "../domain/placement";
-import type { BlockPlacement, RunLog } from "../domain/types";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import { acceptIntervalsRun } from "../storage/appStateRepository";
 import { loadIntervalsApiKey, saveIntervalsApiKey } from "../storage/intervalsCredentialRepository";
 import { createSeededAppState } from "../storage/migrations";
@@ -479,6 +480,55 @@ describe("personal sync lifecycle", () => {
     act(() => result.current.recordMutation(current, { ...current, runLogs: [afterResetRun] }));
     await waitFor(() => expect(cloud.saveRun).toHaveBeenCalledTimes(1));
     expect(cloud.saveRun.mock.calls[0][1]).toBe(2);
+  });
+
+  it("rewrites and syncs archived run links when the cloud canonicalizes a run id", async () => {
+    const legacy = manualRun("legacy-run");
+    const canonicalRun = { ...legacy, id: "canonical-run" };
+    const local = createSeededAppState();
+    local.runLogs = [legacy];
+    local.planHistory = [{
+      id: "archive-1",
+      plan: local.plan!,
+      raceSetup: local.raceSetup,
+      runLinks: { [legacy.id]: "workout-002" },
+      archivedAt: "2026-12-06T12:00:00.000Z",
+    }];
+    const initial = snapshot([legacy]);
+    const canonical = snapshot([canonicalRun]);
+    canonical.training.planHistory = [{
+      ...local.planHistory[0],
+      runLinks: { [canonicalRun.id]: "workout-002" },
+    }];
+    saveAccountAppState("user-a", local);
+    markInitialized("user-a", initial);
+    const outbox = emptyPersonalOutbox(1);
+    outbox.runs[legacy.id] = { kind: "upsert", expectedRevision: 1 };
+    outbox.generation = 1;
+    savePersonalOutbox("user-a", outbox);
+    cloud.load.mockResolvedValue(canonical);
+    cloud.saveRun.mockResolvedValue({
+      run: canonicalRun,
+      revision: 2,
+      deletedAt: null,
+      aliases: [legacy.id],
+    });
+    renderHook(() => {
+      const [currentState, setCurrentState] = useState<AppState>(local);
+      return usePersonalSync({
+        sessionStatus: "signed-in",
+        userId: "user-a",
+        state: currentState,
+        onReplaceState: setCurrentState,
+      });
+    });
+
+    await waitFor(() => expect(cloud.saveTraining).toHaveBeenCalled());
+    const training = cloud.saveTraining.mock.calls.at(-1)?.[3];
+    expect(training.planHistory[0].runLinks).toEqual({
+      [canonicalRun.id]: "workout-002",
+    });
+    expect(loadPersonalOutbox("user-a").runs[legacy.id]).toBeUndefined();
   });
 
   it("keeps the valid local cache visible when nested cloud training data is malformed", async () => {

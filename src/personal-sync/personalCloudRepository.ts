@@ -40,11 +40,47 @@ export class PersonalCloudConflictError extends Error {
   }
 }
 
-function errorMessage(error: { message?: string } | null): string | null {
+export class PersonalCloudUpgradeRequiredError extends Error {
+  constructor() {
+    super(
+      "Personal cloud is finishing an update. Your changes are safe on this device and will sync when it is ready.",
+    );
+    this.name = "PersonalCloudUpgradeRequiredError";
+  }
+}
+
+interface CloudError {
+  code?: string;
+  message?: string;
+}
+
+function errorMessage(error: CloudError | null): string | null {
   return error?.message ?? null;
 }
 
-function throwCloudError(error: { message?: string } | null): never {
+function missingPlanHistoryColumn(error: CloudError | null): boolean {
+  const message = errorMessage(error)?.toLowerCase() ?? "";
+  return (
+    (error?.code === "42703" || error?.code === "PGRST204") &&
+    message.includes("plan_history")
+  );
+}
+
+function missingOptionalPlanRpc(error: CloudError | null, rpc: string): boolean {
+  const message = errorMessage(error)?.toLowerCase() ?? "";
+  return (
+    (error?.code === "42883" || error?.code === "PGRST202") &&
+    message.includes(rpc.toLowerCase())
+  );
+}
+
+function assertLegacyTrainingCompatible(training: PersonalTrainingDocument): void {
+  if (training.plan === null || training.planHistory.length > 0) {
+    throw new PersonalCloudUpgradeRequiredError();
+  }
+}
+
+function throwCloudError(error: CloudError | null): never {
   const message = errorMessage(error) ?? "Personal data could not be saved.";
   if (message.includes("personal_training_revision_conflict")) {
     throw new PersonalCloudConflictError("training", message);
@@ -257,17 +293,20 @@ function isArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
   );
 }
 
-function parseTrainingRow(value: unknown): {
+function parseTrainingRow(value: unknown, legacy = false): {
   document: PersonalTrainingDocument;
   revision: number;
 } {
   const row = record(value);
   const rowRevision = revision(row?.revision);
+  const planHistory = legacy && row?.plan_history === undefined
+    ? []
+    : row?.plan_history;
   if (
     !row || !rowRevision || !isSettings(row.settings) ||
     (row.plan !== null && !isPlan(row.plan)) ||
-    !Array.isArray(row.plan_history) ||
-    row.plan_history.some((entry) => !isArchivedPlan(entry))
+    !Array.isArray(planHistory) ||
+    planHistory.some((entry) => !isArchivedPlan(entry))
   ) {
     throw new Error("Cloud training data is malformed.");
   }
@@ -300,7 +339,7 @@ function parseTrainingRow(value: unknown): {
     document: {
       settings: row.settings,
       plan: row.plan,
-      planHistory: row.plan_history,
+      planHistory,
       raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
       availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
       runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],
@@ -410,10 +449,18 @@ function parseIntervalsRow(value: unknown): {
 export async function loadPersonalCloudSnapshot(
   client: SupabaseClient,
 ): Promise<PersonalCloudSnapshot | null> {
-  const trainingResult = await client
+  let legacy = false;
+  let trainingResult = await client
     .from("personal_training_state")
     .select("settings,plan,plan_history,race_setup,availability,run_days,cross_training_days,revision,account_generation")
     .maybeSingle();
+  if (trainingResult.error && missingPlanHistoryColumn(trainingResult.error)) {
+    legacy = true;
+    trainingResult = await client
+      .from("personal_training_state")
+      .select("settings,plan,race_setup,availability,run_days,cross_training_days,revision,account_generation")
+      .maybeSingle();
+  }
   if (trainingResult.error) throw new Error(trainingResult.error.message);
   if (!trainingResult.data) return null;
 
@@ -429,7 +476,7 @@ export async function loadPersonalCloudSnapshot(
   if (buildResult.error) throw new Error(buildResult.error.message);
   if (intervalsResult.error) throw new Error(intervalsResult.error.message);
 
-  const training = parseTrainingRow(trainingResult.data);
+  const training = parseTrainingRow(trainingResult.data, legacy);
   const build = parseBuildRow(buildResult.data);
   const intervals = parseIntervalsRow(intervalsResult.data);
   const accountGeneration = revision(trainingResult.data.account_generation);
@@ -457,12 +504,21 @@ export async function initializePersonalCloud(
     intervals: PersonalIntervalsDocument;
   },
 ): Promise<void> {
-  const result = await client.rpc("initialize_personal_stack_v2", {
+  let result = await client.rpc("initialize_personal_stack_v2", {
     p_training: input.training,
     p_runs: input.runs,
     p_build_placements: input.placements,
     p_intervals: input.intervals,
   });
+  if (result.error && missingOptionalPlanRpc(result.error, "initialize_personal_stack_v2")) {
+    assertLegacyTrainingCompatible(input.training);
+    result = await client.rpc("initialize_personal_stack", {
+      p_training: input.training,
+      p_runs: input.runs,
+      p_build_placements: input.placements,
+      p_intervals: input.intervals,
+    });
+  }
   if (result.error) throwCloudError(result.error);
 }
 
@@ -472,11 +528,19 @@ export async function savePersonalTrainingDocument(
   expectedRevision: number,
   training: PersonalTrainingDocument,
 ): Promise<number> {
-  const result = await client.rpc("save_personal_training_state_v2", {
+  let result = await client.rpc("save_personal_training_state_v2", {
     p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_training: training,
   });
+  if (result.error && missingOptionalPlanRpc(result.error, "save_personal_training_state_v2")) {
+    assertLegacyTrainingCompatible(training);
+    result = await client.rpc("save_personal_training_state", {
+      p_expected_generation: accountGeneration,
+      p_expected_revision: expectedRevision,
+      p_training: training,
+    });
+  }
   if (result.error) throwCloudError(result.error);
   const next = revision(result.data);
   if (!next) throw new Error("Personal training save returned an invalid revision.");
@@ -566,11 +630,19 @@ export async function resetPersonalCloud(
   training: PersonalTrainingDocument,
   intervals: PersonalIntervalsDocument,
 ): Promise<number> {
-  const result = await client.rpc("reset_personal_stack_v2", {
+  let result = await client.rpc("reset_personal_stack_v2", {
     p_expected_generation: accountGeneration,
     p_training: training,
     p_intervals: intervals,
   });
+  if (result.error && missingOptionalPlanRpc(result.error, "reset_personal_stack_v2")) {
+    assertLegacyTrainingCompatible(training);
+    result = await client.rpc("reset_personal_stack", {
+      p_expected_generation: accountGeneration,
+      p_training: training,
+      p_intervals: intervals,
+    });
+  }
   if (result.error) throwCloudError(result.error);
   const next = revision(result.data);
   if (!next) throw new Error("Personal reset returned an invalid generation.");

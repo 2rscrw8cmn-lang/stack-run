@@ -13,6 +13,7 @@ export interface RunHistoryEntry {
   runLog: RunLog;
   /** Resolved from active or archived intent; null for a true extra run. */
   workout: Workout | null;
+  relationship: "active-plan" | "archived-plan" | "extra";
   isExtra: boolean;
 }
 
@@ -56,7 +57,12 @@ export function runHistory(
       const workout = archivedWorkout !== undefined
         ? archivedWorkout
         : runLog.workoutId ? (activeWorkouts.get(runLog.workoutId) ?? null) : null;
-      return { runLog, workout, isExtra: workout === null };
+      const relationship = archivedWorkout !== undefined
+        ? "archived-plan"
+        : workout
+          ? "active-plan"
+          : "extra";
+      return { runLog, workout, relationship, isExtra: workout === null };
     });
 }
 

@@ -58,14 +58,25 @@ beforeEach(() => localStorage.clear());
 
 describe("first-device canonicalization", () => {
   it("uploads one canonical run for a repeated Intervals activity and retains the old id as an alias", () => {
+    const seed = createSeededAppState();
     const result = canonicalizeFirstDevice(
       [imported("legacy-a"), imported("legacy-b")],
       [placement("legacy-b")],
+      [{
+        id: "archive-1",
+        plan: seed.plan!,
+        raceSetup: seed.raceSetup,
+        runLinks: { "legacy-b": "workout-002" },
+        archivedAt: "2026-12-06T12:00:00.000Z",
+      }],
     );
 
     expect(result.runs).toHaveLength(1);
     expect(result.runs[0]).toMatchObject({ id: "legacy-a", legacyAliases: ["legacy-b"] });
     expect(result.placements[0].runLogId).toBe("legacy-a");
+    expect(result.planHistory[0].runLinks).toEqual({
+      "legacy-a": "workout-002",
+    });
   });
 
   it("preserves two distinct manual activities that share a deterministic legacy id", () => {

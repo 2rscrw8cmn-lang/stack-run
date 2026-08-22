@@ -38,7 +38,8 @@ deleted merely because another plan starts.
 
 The active plan, its `raceSetup`, and its explicit run-to-workout links move to
 history together. Linked `RunLog` records then become unlinked from the active
-slot so reused generated workout ids cannot falsely complete a later plan.
+slot. Newly generated workout ids are also scoped to a unique plan instance,
+so even a stale device-side link cannot falsely complete a later plan.
 Each snapshot gets its own archive id while the plan's existing id remains
 intact inside the snapshot. Duplicate archive ids are rejected during runtime
 validation rather than silently merged.
@@ -120,6 +121,12 @@ current plan and receive an empty history. RLS and ownership do not widen.
 Older request payloads that omit `planHistory` do not erase an existing cloud
 history. Credentials, historical source mirrors and Crew-safe projection
 boundaries are unchanged.
+
+During the schema rollout, the client can hydrate the preceding cloud schema
+and use its v1 RPCs for an active plan with no archives. A no-plan or archived
+history write cannot be represented there, so the client keeps that mutation
+durably queued on the device and reports that cloud is finishing its update;
+it never drops history to force a legacy write.
 
 ## Verification contract
 

@@ -276,6 +276,30 @@ describe("Runs", () => {
     expect(screen.getByText("Run unlinked from the plan.")).toBeInTheDocument();
   });
 
+  it("keeps an archived plan relationship read-only in Run Detail", async () => {
+    const onUnlinkRun = vi.fn();
+    const archivedRun = run("archived", "2026-08-04");
+    const user = userEvent.setup();
+    renderRuns([archivedRun], {
+      planHistory: [{
+        id: "archive-1",
+        plan,
+        raceSetup: null,
+        runLinks: { [archivedRun.id]: "workout-002" },
+        archivedAt: "2026-12-06T12:00:00.000Z",
+      }],
+      onUnlinkRun,
+    });
+
+    await user.click(rows()[0]);
+
+    expect(screen.getByText("Plan")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Unlink from Plan" }),
+    ).not.toBeInTheDocument();
+    expect(onUnlinkRun).not.toHaveBeenCalled();
+  });
+
   it("deletes through the existing entry sheet and puts focus back on the list", async () => {
     const onDeleteRun = vi.fn();
     vi.spyOn(window, "confirm").mockReturnValue(true);

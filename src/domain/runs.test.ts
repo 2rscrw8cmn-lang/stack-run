@@ -65,6 +65,7 @@ describe("run history", () => {
     }]);
 
     expect(history[0].workout?.id).toBe("workout-002");
+    expect(history[0].relationship).toBe("archived-plan");
     expect(history[0].isExtra).toBe(false);
   });
 

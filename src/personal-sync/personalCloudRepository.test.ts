@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { createSeededAppState } from "../storage/migrations";
 import { loadAccountAppState, saveAccountAppState } from "../storage/personalSyncRepository";
 import {
+  initializePersonalCloud,
   loadPersonalCloudSnapshot,
   PersonalCloudConflictError,
+  PersonalCloudUpgradeRequiredError,
+  resetPersonalCloud,
   savePersonalBuildDocument,
   savePersonalRun,
   savePersonalTrainingDocument,
@@ -57,15 +60,41 @@ function rows(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function readClient(data: ReturnType<typeof rows>): SupabaseClient {
+function readClient(
+  data: ReturnType<typeof rows>,
+  options: { legacyTrainingSchema?: boolean } = {},
+): SupabaseClient {
   return {
     from: vi.fn((table: keyof typeof data) => {
+      let selection = "";
+      const result = () => {
+        if (
+          options.legacyTrainingSchema &&
+          table === "personal_training_state" &&
+          selection.includes("plan_history")
+        ) {
+          return {
+            data: null,
+            error: {
+              code: "42703",
+              message: "column personal_training_state.plan_history does not exist",
+            },
+          };
+        }
+        const value = data[table];
+        if (options.legacyTrainingSchema && table === "personal_training_state") {
+          const legacy = { ...(value as Record<string, unknown>) };
+          delete legacy.plan_history;
+          return { data: legacy, error: null };
+        }
+        return { data: value, error: null };
+      };
       const builder = {
-        select() { return builder; },
-        maybeSingle() { return Promise.resolve({ data: data[table], error: null }); },
-        single() { return Promise.resolve({ data: data[table], error: null }); },
+        select(columns: string) { selection = columns; return builder; },
+        maybeSingle() { return Promise.resolve(result()); },
+        single() { return Promise.resolve(result()); },
         then<TResult1>(onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null) {
-          return Promise.resolve({ data: data[table], error: null }).then(onfulfilled);
+          return Promise.resolve(result() as { data: unknown; error: null }).then(onfulfilled);
         },
       };
       return builder;
@@ -113,6 +142,15 @@ describe("personal cloud hydration", () => {
 
     expect(snapshot?.training.plan).toBeNull();
     expect(snapshot?.training.planHistory[0].plan.id).toBe("stack-ouc-half-2026");
+  });
+
+  it("hydrates the legacy cloud schema with an empty plan history", async () => {
+    const snapshot = await loadPersonalCloudSnapshot(
+      readClient(rows(), { legacyTrainingSchema: true }),
+    );
+
+    expect(snapshot?.training.plan?.id).toBe("stack-ouc-half-2026");
+    expect(snapshot?.training.planHistory).toEqual([]);
   });
 
   it("round-trips a hand-typed heart rate, and leaves it out when the column is absent", async () => {
@@ -222,5 +260,74 @@ describe("optimistic concurrency client", () => {
       4,
       [],
     )).rejects.toMatchObject({ kind: "generation" } satisfies Partial<PersonalCloudConflictError>);
+  });
+
+  it("falls back to legacy RPCs while the optional-plan migration rolls out", async () => {
+    const seed = createSeededAppState();
+    const rpc = vi.fn(async (name: string) =>
+      name.endsWith("_v2")
+        ? {
+            data: null,
+            error: { code: "PGRST202", message: `Could not find function public.${name}` },
+          }
+        : { data: name === "initialize_personal_stack" ? null : 2, error: null });
+    const client = { rpc } as unknown as SupabaseClient;
+    const training = {
+      settings: seed.settings,
+      plan: seed.plan,
+      planHistory: [],
+      raceSetup: seed.raceSetup,
+      availability: seed.availability,
+      runDays: seed.runDays,
+      crossTrainingDays: seed.crossTrainingDays,
+    };
+    const intervals = {
+      lastSuccessfulActivitySyncAt: null,
+      ignoredActivityIds: [],
+      pendingCandidates: [],
+    };
+
+    await initializePersonalCloud(client, {
+      training,
+      runs: [],
+      placements: [],
+      intervals,
+    });
+    await expect(savePersonalTrainingDocument(client, 1, 1, training))
+      .resolves.toBe(2);
+    await expect(resetPersonalCloud(client, 1, training, intervals))
+      .resolves.toBe(2);
+
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      "initialize_personal_stack_v2",
+      "initialize_personal_stack",
+      "save_personal_training_state_v2",
+      "save_personal_training_state",
+      "reset_personal_stack_v2",
+      "reset_personal_stack",
+    ]);
+  });
+
+  it("keeps optional-plan changes local instead of dropping them on a legacy cloud", async () => {
+    const seed = createSeededAppState();
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "PGRST202",
+        message: "Could not find function public.save_personal_training_state_v2",
+      },
+    });
+    const client = { rpc } as unknown as SupabaseClient;
+
+    await expect(savePersonalTrainingDocument(client, 1, 1, {
+      settings: seed.settings,
+      plan: null,
+      planHistory: [],
+      raceSetup: null,
+      availability: seed.availability,
+      runDays: seed.runDays,
+      crossTrainingDays: seed.crossTrainingDays,
+    })).rejects.toBeInstanceOf(PersonalCloudUpgradeRequiredError);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

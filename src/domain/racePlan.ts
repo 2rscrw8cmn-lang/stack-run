@@ -831,8 +831,15 @@ export function generateTrainingPlan(
     setup.startDate,
   );
 
+  // A workout relationship belongs to one plan instance, not merely to its
+  // ordinal slot. Two generated race plans can cover the same dates and both
+  // contain a "second workout"; unique plan-scoped ids prevent a stale link
+  // from the first plan from completing the second one after a partial sync.
+  const instanceId = globalThis.crypto.randomUUID();
+  const planId = `plan-${setup.distance}-${setup.date}-${instanceId}`;
   let sequence = 0;
-  const nextId = () => `workout-${String(++sequence).padStart(3, "0")}`;
+  const nextId = () =>
+    `${planId}-workout-${String(++sequence).padStart(3, "0")}`;
 
   // The biggest week scheduled so far, which is what the next one is measured
   // against. Nothing is compared to *last* week: a down week is a step back on
@@ -948,7 +955,7 @@ export function generateTrainingPlan(
 
   return {
     schemaVersion: 1,
-    id: `plan-${setup.distance}-${setup.date}`,
+    id: planId,
     name: `${setup.name} — ${RUNNER_LEVEL_LABEL[setup.level]} ${profile.label}`,
     race: {
       name: setup.name,

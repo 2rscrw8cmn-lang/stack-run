@@ -28,6 +28,13 @@ fields atomically. The v1 RPCs remain during rolling deployment and do not
 touch `plan_history`, so an older client cannot erase archives it does not
 understand.
 
+The schema-10 client is rolling-compatible in the other direction as well. It
+retries the legacy select/RPC surface when `plan_history` or a v2 RPC is not yet
+present. Only a non-null active plan with empty history is representable on
+that surface. Optional-plan changes remain in the durable outbox, with a clear
+upgrade-pending message, until schema 2 is available; they are never downgraded
+or cleared.
+
 It adds:
 
 - `personal_training_state`
