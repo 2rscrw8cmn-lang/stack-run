@@ -8,6 +8,7 @@ import {
   formatUpdatedAgo,
   isAfterLocalDate,
   isBeforeLocalDate,
+  isLocalDateString,
   isSameLocalDate,
   parseLocalDate,
 } from "./dates";
@@ -89,5 +90,16 @@ describe("formatUpdatedAgo", () => {
     expect(formatUpdatedAgo("2026-08-11T14:30:00Z", now)).toBe("Updated 30m ago");
     expect(formatUpdatedAgo("2026-08-11T12:00:00Z", now)).toBe("Updated 3h ago");
     expect(formatUpdatedAgo("2026-08-09T12:00:00Z", now)).toBe("Updated 2d ago");
+  });
+});
+
+describe("isLocalDateString", () => {
+  it("accepts a local date and rejects everything a date helper would throw on", () => {
+    expect(isLocalDateString("2026-08-10")).toBe(true);
+    expect(isLocalDateString("2026-8-10")).toBe(false);
+    expect(isLocalDateString("2026-08-10T00:00:00Z")).toBe(false);
+    expect(isLocalDateString(undefined)).toBe(false);
+    expect(isLocalDateString(null)).toBe(false);
+    expect(isLocalDateString(20260810)).toBe(false);
   });
 });

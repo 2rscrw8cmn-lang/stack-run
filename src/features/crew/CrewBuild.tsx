@@ -1,13 +1,8 @@
-import { Dumbbell } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
-import {
-  formatCompactMiles,
-  formatMiles,
-  formatMilesBuilt,
-} from "../../domain/distance";
+import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { formatTotalHoursMinutes } from "../../domain/duration";
 import { isManualRun } from "../../domain/runSource";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
@@ -28,7 +23,8 @@ import {
 import type { CrewBuildTotals } from "../../crew/crewTotals";
 import type { CrewBuildRun, CrewMember } from "../../crew/types";
 import { Button } from "../../components/ui/Button";
-import { Brick, type BrickFaceLabel } from "../build/Brick";
+import { Brick } from "../build/Brick";
+import { crewFaceLabel, memberPieceColor } from "./crewBrickFace";
 import { LandingSlot } from "../build/LandingSlot";
 import { PlacementBar } from "../build/PlacementBar";
 import { dropMarks, placementImpact } from "../build/placementDrop";
@@ -94,29 +90,7 @@ function awardBlockLabel(block: Extract<CrewBuildBlock, { kind: "award" }>, memb
   ].join(", ");
 }
 
-/**
- * The same rule Personal Build's own `faceLabel` follows, including issue
- * #129's asterisk: a hand-typed run's mileage carries one, a synced run's does
- * not, and RACE and Cross Training show no mileage for it to follow.
- */
-function faceLabel(
-  block: Pick<CrewBuildRunBlock, "activityType" | "distanceMiles" | "width" | "source">,
-): BrickFaceLabel {
-  if (block.activityType === "race") return { text: "RACE", unit: false };
-  if (block.activityType === "cross") return { icon: Dumbbell };
-  return {
-    text: formatCompactMiles(block.distanceMiles),
-    unit: block.width >= 3,
-    manual: isManualRun(block),
-  };
-}
 
-function memberPieceColor(
-  userId: string,
-  accentColor: Parameters<typeof crewMemberAccent>[1],
-): string {
-  return `var(--member-${crewMemberAccent(userId, accentColor)})`;
-}
 
 function runIdentity(run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "localDate">) {
   return `${WORKOUT_TYPE_LABEL[run.activityType]} · ${formatMiles(run.distanceMiles)} MI · ${formatDateLabel(run.localDate, { month: "short", day: "numeric" })}`;
@@ -324,7 +298,7 @@ export function CrewBuild({
                       {block.kind === "run" ? (
                         <Brick
                           pieceColor={memberPieceColor(block.userId, block.accentColor)}
-                          label={faceLabel(block)}
+                          label={crewFaceLabel(block)}
                           topFace={block.topFace}
                           rightFace={block.rightFace}
                         />

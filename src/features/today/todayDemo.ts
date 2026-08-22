@@ -22,8 +22,14 @@ interface TodayDemoLocation {
 
 export const TODAY_DEMO_DATE = "2026-09-17";
 
-/** Preview-only switch. A production/custom hostname can never enable fake data. */
-export function isTodayDemoEnabled(location?: TodayDemoLocation | null): boolean {
+/**
+ * The one host test every owner-review overlay shares.
+ *
+ * Local development, or a Vercel *branch* preview. A production or custom
+ * hostname can never enable fake data, and neither can a production Vercel
+ * alias, because those have no `-git-` segment.
+ */
+export function isPreviewReviewHost(location?: TodayDemoLocation | null): boolean {
   const current =
     location ?? (typeof window === "undefined" ? null : window.location);
   if (!current) return false;
@@ -32,11 +38,15 @@ export function isTodayDemoEnabled(location?: TodayDemoLocation | null): boolean
   const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
   const isVercelBranchPreview =
     hostname.endsWith(".vercel.app") && hostname.includes("-git-");
+  return isLocal || isVercelBranchPreview;
+}
 
-  return (
-    (isLocal || isVercelBranchPreview) &&
-    new URLSearchParams(current.search).get("demo") === "today"
-  );
+/** Preview-only switch. A production/custom hostname can never enable fake data. */
+export function isTodayDemoEnabled(location?: TodayDemoLocation | null): boolean {
+  const current =
+    location ?? (typeof window === "undefined" ? null : window.location);
+  if (!current || !isPreviewReviewHost(current)) return false;
+  return new URLSearchParams(current.search).get("demo") === "today";
 }
 
 /** Adds the connected-review state to the ordinary Today preview. */

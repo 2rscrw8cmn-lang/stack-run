@@ -367,6 +367,20 @@ Losing or clearing it only means the oldest membership opens first. A
 remembered crew the account has left, been removed from or that has been
 deleted resolves the same way, and the resolved crew is written back.
 
+Two other Crew preferences follow the same rule — device-local, per account,
+never server state, and never anybody else's business:
+
+```text
+stack.crew.props-dismissed.v1   Props swiped off the runner's own list
+stack.crew.recap-dismissed.v1   Crew Week Recaps dismissed from Today
+```
+
+Both are `{ "<user-id>": ["<key>", …] }` and both are bounded per account. A
+recap key is `<crew-id>:<week-start>`, so dismissing one Crew's week never
+touches another Crew's. Losing either value only means a cleared row or a
+dismissed recap reappears once; a recap ages off Today on its own within days
+of its week closing regardless.
+
 Projection is not scoped to the viewed crew. Each sync pass uploads this
 device's safe projection to **every** crew the account is in, each against
 that crew's own `build_start_date`, with independent freshness per crew; one

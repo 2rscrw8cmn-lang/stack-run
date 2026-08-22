@@ -40,6 +40,7 @@ import {
 import { selectTodayModel } from "./todayModel";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { TodayCrewActivity } from "./TodayCrewActivity";
+import { TodayCrewRecap } from "./TodayCrewRecap";
 import "./todayDecisionSurface.css";
 
 interface TodayScreenProps {
@@ -294,6 +295,15 @@ export function TodayScreen({
         pendingBlocks={build.pendingBlocks}
         onViewBuild={onViewBuild}
       />
+
+      {/*
+        Evolution 2.04. A closed Crew week's story leads the Crew part of
+        Today, below the workout, the run just logged and the Build — the
+        module is limited-time and ages out on its own, so it never becomes a
+        seventh permanent section. The demo runner has no crew and must never
+        reach a real one.
+      */}
+      <TodayCrewRecap crew={isDemo ? null : raceCrew} today={effectiveToday} />
 
       <TodayCrewActivity
         crew={isDemo ? null : raceCrew}

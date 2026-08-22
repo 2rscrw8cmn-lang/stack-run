@@ -48,7 +48,8 @@ It may surface:
 - at most one useful Training Signal;
 - upcoming plan intent;
 - Personal Build context;
-- small, relevant Crew activity when available.
+- small, relevant Crew activity when available;
+- a limited-time Crew Week Recap in the days after a Crew week closes.
 
 Today does not own a second analytics engine or a second connected-data lifecycle. It consumes the shared history, Signals, Plan, Build and Crew systems.
 
@@ -272,6 +273,19 @@ Special Blocks:
 - preserve the hollow-block visual system documented in `CREW_SPECIAL_BLOCKS.md`.
 
 `Steady` intentionally produces no Feature award until a verified pace-variability scalar exists; STACK does not fabricate a fallback.
+
+### Crew Week Recap
+
+After a Monday–Sunday Crew week closes, STACK tells the Crew what it built that week: a short celebratory story derived from facts the Crew already shares — miles, runs, time, who ran, the week's longest run, the slice of the Crew Build the week added, and any Special Block already standing in the tower.
+
+It is a story, not a second dashboard:
+
+- it is derived on demand and never stored, so two members of the same Crew see the same shared-week facts;
+- a beat with no evidence is omitted rather than padded or estimated, and a week with no shared running produces no recap;
+- it never ranks the roster, never scores anybody, and never announces an unplaced Special Block;
+- it appears on Today as a limited-time module below Today's action surface, can be dismissed, and ages out three days after the week closes.
+
+`docs/CREW_WEEK_RECAP.md` is the contract, including the recap presentation language later retrospectives reuse.
 
 ## Crew projection and privacy boundary
 

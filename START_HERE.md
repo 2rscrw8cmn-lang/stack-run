@@ -91,6 +91,10 @@ Read the current Crew/security docs relevant to the change. Before touching `sha
 
 - `docs/CREW_PROJECTION_CONTRACT.md`
 
+For the weekly Crew recap and the recap presentation language, read:
+
+- `docs/CREW_WEEK_RECAP.md`
+
 Also consult `docs/DECISION_LOG_ADDENDUM.md` for accepted Crew/product decisions that remain in force.
 
 ## Authority order

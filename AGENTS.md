@@ -38,6 +38,7 @@ Important specialist docs include:
 - `docs/DATA_AND_STORAGE.md` and `docs/PERSONAL_ACCOUNT_SYNC.md` for persistence/account sync;
 - current Crew/security docs when touching Crew/auth/Supabase;
 - `docs/CREW_PROJECTION_CONTRACT.md` before touching `shared_runs`, a Crew CHECK constraint, or a value uploaded from the device to Crew;
+- `docs/CREW_WEEK_RECAP.md` for the weekly Crew recap and the recap presentation language;
 - `docs/DECISION_LOG_ADDENDUM.md` for accepted decisions that remain in force.
 
 ## Authority order
