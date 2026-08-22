@@ -62,10 +62,10 @@ A week with no shared running returns `null`. A recap of zero miles is not a min
 | --- | --- | --- |
 | `longestRun` | the furthest single run | distance above zero |
 | `bestPace` | the fastest average pace | a non-Cross run of at least 2 miles — **the same qualifier `finalize_crew_awards` uses for Fastest Avg. Pace** |
-| `longestEffort` | the longest time on feet | any activity, and only when a *different* run holds it than `longestRun` — otherwise it is the same run wearing a second label |
-| `busiestDay` | the day the Crew was loudest | one day, strictly busiest, with more than one run on it |
+| `biggestCrewDay` | the day the Crew covered the most ground | one day, strictly biggest |
+| `mostActiveDay` | the day the Crew ran most often | one day, strictly busiest, with more than one run on it, **and a different day from `biggestCrewDay`** — when they are the same day, the biggest day's own line already carries its run count |
 
-`busiestDay` is crew-level on purpose: four individual bests in a row starts to read as a leaderboard, and one beat about the whole crew's loudest day keeps the page a story about the group.
+The last two are crew-level on purpose: four individual bests in a row starts to read as a leaderboard, and two beats about the whole crew's days keep the page a story about the group.
 
 **What this page cannot claim.** A "fastest mile" or a "best 5K" needs within-run data — splits, laps, a distance-over-time stream — that the Crew projection deliberately does not carry. That is the same limit which leaves D-080's `Steady` award unminted rather than fabricated from an average, and it applies here for the same reason: a 3.4-mile run's average pace is not a 5K time, and presenting it as one would be inventing a fact. If STACK ever projects verified splits to Crew, those two become derivable; until then they are absent rather than estimated.
 
@@ -88,9 +88,9 @@ This is the part Evolution 2.05 reuses.
 | Together | Split: emblem, week, mileage hero, a three-reading scoreboard and the participation row at the top; the week's real blocks standing on the floor, with the sheet's own sky between them |
 | Best Performances | One hero effort on an accent edge, then the rest as a rhythm of rows, each naming its runner |
 | Added to the Build | One centred group, tower drawn a size up, because here the tower is the subject rather than the payoff under a number |
-| Awards | The award objects carry it: hollow blocks at display size, name, result, winner |
-| Against Last Week | Two columns of plain CSS against a chart-rule field, with one restrained percentage reading |
-| Week Complete | The one page that centres itself, because a finish is not a reading |
+| Awards | The award objects carry it: hollow blocks at display size, name, result, winner. The count decides the arrangement — one is a centred hero, two a pair, three or four a 2×2, more tightens — rather than `auto-fit` deciding it from whatever width is going |
+| Against Last Week | The delta, then two columns of plain CSS against a chart-rule field, at a size that makes them the object of the page |
+| Week Complete | The one page that centres itself, because a finish is not a reading: emblem, title, the week's own figures, and the tower it built |
 
 **Participation is folded into the opening, never its own page.** A page whose only fact is "everyone ran" is a weak page, and it does not survive contact with a real roster. The row shows up to seven marks and then counts the rest (`+4`), so an eleven-person Crew reads as easily as a four-person one and neither needs a layout of its own.
 
@@ -98,7 +98,11 @@ This is the part Evolution 2.05 reuses.
 
 **Advanced by hand.** Nothing auto-plays. An auto-advancing story is a Reduced Motion problem, a screen-reader problem and a reading-speed problem at once, and the arcade language STACK speaks is a machine you operate rather than a video you watch. Position is a quiet rail of small blocks — the shape the product is made of — with `Frame n of m` in the live region for a screen reader, and quiet `Back` / `Next` steps either side of the primary action.
 
-**Each page has its own backdrop.** This is where the recap spends its extra personality budget — on page identity rather than decoration. Every one is a CSS gradient stack keyed off the current page, bled past the sheet's padding so a page gains an identity without gaining a box, masked to fade in at the top, and held at low alpha so the data stays the loudest thing on screen:
+**Each page has its own backdrop, and it is the whole panel.** The current page puts a modifier class on the sheet itself (`sheet--crew-recap--build`), and the backdrop is drawn by `.sheet__panel::after` — so a page's mood runs behind the title, the progress rail, the content and the actions at once. It is one designed object, not content laid over a decorative patch in the middle of the body.
+
+Two rules keep it from looking pasted on. **The canvas never visibly begins or ends** — intensity is controlled inside the gradients, never by masking the layer, because a mask that fades in at 26% draws a horizontal seam across the sheet. And **`::after`, not `::before`** — on a phone `.sheet__panel::before` is already the sheet's grab handle.
+
+Every treatment is a CSS gradient stack, held at low alpha so the data stays the loudest thing on screen:
 
 | Page | Treatment |
 | --- | --- |
@@ -110,6 +114,19 @@ This is the part Evolution 2.05 reuses.
 | Week Complete | a centred glow with a scatter of sparks, each spark a 2px radial stop rather than an element or an image |
 
 Nothing here is an asset. No PNG, no SVG illustration, no exported artwork — the whole set ships as gradients.
+
+**Each page owns its vertical composition.** The stage stretches and gets out of the way; it does not centre pages and let some opt out, which is how a tower ends up floating in the middle of a sheet instead of standing on something. Every page states three zones for itself:
+
+| Page | Top | Middle | Bottom |
+| --- | --- | --- | --- |
+| Together | total and the scoreboard | participation | the week's tower, on the floor |
+| Best Performances | hero effort | the rest | breathing space |
+| Added to the Build | the block count | air | the tower, just above the footer rule |
+| Awards | the heading | the awards, centred | breathing space |
+| Against Last Week | the delta | the columns, at a size worth looking at | their two figures |
+| Week Complete | emblem, title and the week's figures | — | the tower |
+
+**Say nothing the page already shows.** Three sentences an earlier pass used to explain its own visuals are gone, and `CrewWeekRecapSheet.test.tsx` keeps them gone: the Awards page no longer says the blocks are standing in the Crew Build, the comparison no longer reads its own delta back as a percentage, and the finish no longer congratulates anyone — it closes on the week's own figures instead. A recap of facts does not need a narrator.
 
 **Every visual is drawn by the app.** No artwork, no illustration, no generated image, no second tower renderer. The blocks are the real `Brick` / `AwardBrick` construction under the real member colours; the identity marks are the real `CrewEmblem` and `RunnerIcon`.
 
@@ -191,7 +208,7 @@ Deliberately not implemented. Evolution 2.04 states sharing is optional and only
 
 - `src/crew/weekRecap.test.ts` — the window, every beat's evidence rule, determinism across read order, the sparse-week minimum, and the field drop.
 - `src/features/today/TodayCrewRecap.test.tsx` — the Today window, dismissal persistence, and the cases that render nothing.
-- `src/features/crew/CrewWeekRecapSheet.test.tsx` — the six-page order, the per-page backdrops, the large-roster overflow row, and the pages a sparse week drops.
+- `src/features/crew/CrewWeekRecapSheet.test.tsx` — the six-page order, the page class the backdrop hangs off, the copy that must stay deleted, the large-roster overflow row, and the pages a sparse week drops.
 - `src/storage/dismissedCrewRecapRepository.test.ts` — per-account, per-week dismissal and corrupt-value tolerance.
 - `src/features/today/crewRecapDemo.test.ts` — the review overlay's host rule, its window, and both fixtures.
 

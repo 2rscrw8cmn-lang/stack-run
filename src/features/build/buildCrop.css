@@ -8,8 +8,15 @@
  * nothing and collapse every brick to a flat rectangle.
  */
 
+/*
+ * The tower reserves its own depth clearance (`.built-tower` pads by
+ * `--iso-rise` / `--iso-run`) and its eight columns are fluid, so a crop
+ * always fits the width it is given. Nothing here scrolls sideways: a hero
+ * graphic that pans is a graphic that did not fit.
+ */
 .build-crop {
   min-width: 0;
+  overflow: visible;
 }
 
 .build-crop[data-scale="hero"] {

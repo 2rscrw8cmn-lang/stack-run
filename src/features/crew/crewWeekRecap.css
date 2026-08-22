@@ -127,122 +127,115 @@
 
 /* The recap
    ------------------------------------------------------------------
-   The sheet is the canvas. There is no inner stage card and no page that is a
-   bordered rectangle around a number — hierarchy is type, space and objects.
-   Six pages, each with its own rhythm and its own backdrop. */
+   The sheet is the canvas — the whole sheet, not a box inside it. Six pages,
+   each owning its own vertical composition and its own backdrop. */
 
-.crew-recap {
+/*
+ * Page identity belongs to the panel.
+ *
+ * An earlier pass drew the backdrop inside `.sheet__body`, which meant it
+ * could only ever be a large rectangle under the content: it began below the
+ * title and ended above the footer, and the masks that faded it in and out
+ * drew visible horizontal seams across the sheet. Drawn here it runs behind
+ * the title, the progress rail, the content and the actions at once, and
+ * never visibly starts or stops — intensity is controlled inside the
+ * gradients rather than by cutting the canvas.
+ */
+.sheet--crew-recap .sheet__panel {
   position: relative;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 14px;
-  min-height: min(66dvh, 540px);
+  isolation: isolate;
 }
 
-.crew-recap > *:not(.crew-recap__backdrop) {
+/*
+ * `::after`, not `::before`: on a phone `.sheet__panel::before` is already the
+ * sheet's grab handle, and claiming it turned the handle into a stray grey bar
+ * halfway down the panel.
+ */
+.sheet--crew-recap .sheet__panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.sheet--crew-recap .sheet__header,
+.sheet--crew-recap .sheet__body {
   position: relative;
   z-index: 1;
 }
 
-/* Page backdrops
-   ------------------------------------------------------------------
-   The recap is allowed more personality than an ordinary STACK screen, and it
-   spends it here: one CSS treatment per page, bled past the sheet's own
-   padding so a page has identity without gaining a box. Every layer is a
-   gradient — nothing here needs an exported asset — and every one is masked
-   and held at low alpha so the data stays the loudest thing on screen. */
-
-.crew-recap__backdrop {
-  position: absolute;
-  /* Bled sideways; `.sheet__body` clips the overflow, so it reaches the edge. */
-  inset: -6px -20px -4px;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 10px;
-  /*
-   * Every page fades in from the top. Without it a backdrop starts on a hard
-   * line directly under the progress rail, which reads as a seam rather than
-   * as a field the page is standing in.
-   */
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 9%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 9%);
+/* The grab handle is a flex child of the panel; keep it above the backdrop. */
+.sheet--crew-recap .sheet__panel::before {
+  position: relative;
+  z-index: 1;
 }
 
 /* Together — the crew's own field: a technical grid under a soft lime rise. */
-.crew-recap__backdrop[data-page="together"] {
+.sheet--crew-recap--together .sheet__panel::after {
   background-image:
-    radial-gradient(120% 58% at 50% -8%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 64%),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 44px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 44px);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 9%, #000 46%, transparent 88%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 9%, #000 46%, transparent 88%);
+    radial-gradient(128% 56% at 50% -6%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 44px);
 }
 
 /* Best Performances — directional speed: angled streaks and a raking light. */
-.crew-recap__backdrop[data-page="performances"] {
+.sheet--crew-recap--performances .sheet__panel::after {
   background-image:
-    linear-gradient(198deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 44%),
-    repeating-linear-gradient(-24deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 24px);
-  -webkit-mask-image:
-    linear-gradient(202deg, #000 0%, #000 30%, transparent 76%),
-    linear-gradient(180deg, transparent 0%, #000 9%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(202deg, #000 0%, #000 30%, transparent 76%),
-    linear-gradient(180deg, transparent 0%, #000 9%);
-  mask-composite: intersect;
+    linear-gradient(198deg, color-mix(in srgb, var(--accent) 13%, transparent), transparent 52%),
+    repeating-linear-gradient(-24deg, rgba(255, 255, 255, 0.042) 0 2px, transparent 2px 26px);
 }
 
 /* Added to the Build — a blueprint field, and a floor for the tower to stand on. */
-.crew-recap__backdrop[data-page="build"] {
+.sheet--crew-recap--build .sheet__panel::after {
   background-image:
-    radial-gradient(86% 42% at 50% 104%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 72%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 26px),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 26px);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 100%);
+    radial-gradient(92% 40% at 50% 102%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 74%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.038) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.038) 0 1px, transparent 1px 26px);
 }
 
 /*
- * Awards — a display stage: two soft cones from above and a lit floor. The
- * light is neutral on purpose. Every award already owns a colour (D-080), and
- * a warm stage wash would be a second colour system arguing with it.
+ * Awards — a display stage: two cones falling the full height of the panel
+ * and a lit floor. The light is neutral on purpose. Every award already owns
+ * a colour (D-080), and a warm stage wash would be a second colour system
+ * arguing with it.
  */
-.crew-recap__backdrop[data-page="awards"] {
+.sheet--crew-recap--awards .sheet__panel::after {
   background-image:
-    radial-gradient(30% 78% at 26% -2%, rgba(255, 255, 255, 0.1), transparent 62%),
-    radial-gradient(30% 78% at 74% -2%, rgba(255, 255, 255, 0.1), transparent 62%),
-    radial-gradient(58% 26% at 50% 54%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%);
+    radial-gradient(26% 88% at 27% -12%, rgba(255, 255, 255, 0.11), transparent 66%),
+    radial-gradient(26% 88% at 73% -12%, rgba(255, 255, 255, 0.11), transparent 66%),
+    radial-gradient(56% 24% at 50% 58%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 74%);
 }
 
-/*
- * Against Last Week — a measurement field: chart rules to read the columns
- * against, and a rise under the bars themselves. An earlier version split the
- * page down the middle in two tones, which drew a hard vertical seam nowhere
- * near the two columns it was supposed to be about.
- */
-.crew-recap__backdrop[data-page="change"] {
+/* Against Last Week — a measurement field, and a rise under the columns. */
+.sheet--crew-recap--change .sheet__panel::after {
   background-image:
-    radial-gradient(52% 34% at 24% 76%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 72%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 30px);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 82%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 82%, transparent 100%);
+    radial-gradient(56% 34% at 26% 78%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 30px);
 }
 
 /*
  * Week Complete — the finale. A centred glow with a scatter of sparks around
- * it, each spark a 2px radial stop rather than an element or an image.
+ * it, each spark a radial stop rather than an element or an image.
  */
-.crew-recap__backdrop[data-page="complete"] {
+.sheet--crew-recap--complete .sheet__panel::after {
   background-image:
-    radial-gradient(2px 2px at 14% 26%, color-mix(in srgb, var(--accent) 70%, transparent), transparent 100%),
-    radial-gradient(2px 2px at 82% 20%, rgba(255, 255, 255, 0.5), transparent 100%),
-    radial-gradient(2px 2px at 30% 12%, rgba(255, 255, 255, 0.35), transparent 100%),
-    radial-gradient(3px 3px at 68% 38%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 100%),
-    radial-gradient(2px 2px at 90% 58%, rgba(255, 255, 255, 0.35), transparent 100%),
-    radial-gradient(2px 2px at 8% 60%, rgba(255, 255, 255, 0.3), transparent 100%),
-    radial-gradient(3px 3px at 46% 8%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 100%),
-    radial-gradient(56% 40% at 50% 32%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%);
+    radial-gradient(2px 2px at 14% 24%, color-mix(in srgb, var(--accent) 70%, transparent), transparent 100%),
+    radial-gradient(2px 2px at 84% 18%, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(2px 2px at 31% 11%, rgba(255, 255, 255, 0.32), transparent 100%),
+    radial-gradient(3px 3px at 70% 36%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 100%),
+    radial-gradient(2px 2px at 91% 56%, rgba(255, 255, 255, 0.32), transparent 100%),
+    radial-gradient(2px 2px at 8% 58%, rgba(255, 255, 255, 0.28), transparent 100%),
+    radial-gradient(2px 2px at 22% 78%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 100%),
+    radial-gradient(3px 3px at 47% 7%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 100%),
+    radial-gradient(60% 42% at 50% 34%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 72%);
+}
+
+.crew-recap {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  min-height: min(68dvh, 560px);
 }
 
 /* Position, in the shape the product is made of. */
@@ -272,27 +265,23 @@
 }
 
 /*
- * The stage centres an ordinary page, so a short one sits in the middle of the
- * sheet rather than clinging to the progress rail with a field of empty dark
- * under it. The two pages built around a tower opt out: their crop belongs at
- * the bottom, standing on the floor of the page.
+ * The stage hands its full height to the page and gets out of the way.
+ *
+ * It used to centre every page and let two of them opt out, which is how a
+ * tower ended up floating in the middle of the sheet instead of standing on
+ * something. Vertical composition is a decision each page makes for itself,
+ * below.
  */
 .crew-recap__stage {
   display: grid;
-  align-content: center;
-  min-width: 0;
-}
-
-.crew-recap__stage[data-page="together"] {
   align-content: stretch;
-}
-
-.crew-recap__stage[data-page="together"] .crew-recap__pane {
-  height: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 .crew-recap__pane {
   min-width: 0;
+  height: 100%;
   animation: crew-recap-enter 260ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
@@ -303,29 +292,64 @@
 
 .crew-recap__page {
   display: grid;
-  align-content: start;
-  gap: 10px;
+  height: 100%;
   min-width: 0;
 }
 
-/*
- * Together fills the stage: identity and the week's mileage at the top, the
- * tower standing on the floor with the sheet's own sky between them, exactly
- * as the Build screen stands a tower.
- */
+/* Page geometry
+   ------------------------------------------------------------------
+   Three zones each, stated per page rather than left to a shared `gap`. */
+
+/* Facts, then the crew, then the tower on the floor. */
 .crew-recap__page--together {
-  grid-template-rows: 1fr auto;
-  align-content: stretch;
-  height: 100%;
-  gap: 8px;
+  grid-template-rows: auto auto 1fr;
+  gap: 16px;
 }
 
-.crew-recap__page--build {
+.crew-recap__page--together .crew-recap__opening-crop {
+  align-self: end;
+  margin-bottom: 4px;
+}
+
+/* Hero effort, the rest, then breathing space. */
+.crew-recap__page--performances {
+  grid-template-rows: auto auto 1fr;
   gap: 14px;
 }
 
-.crew-recap__page--together > .crew-recap__group,
-.crew-recap__page--build > .crew-recap__group {
+/* The number, air, and the tower standing just above the footer rule. */
+.crew-recap__page--build {
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+}
+
+.crew-recap__page--build .crew-recap__build-crop {
+  grid-row: 3;
+  align-self: end;
+  margin-bottom: 18px;
+}
+
+/* Heading, then the awards centred in the space left over. */
+.crew-recap__page--awards {
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+}
+
+/* The delta, then the columns as the object of the page. */
+.crew-recap__page--change {
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+}
+
+/* Title above, tower below, both centred. */
+.crew-recap__page--complete {
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.crew-recap__lead {
   display: grid;
   align-content: start;
   gap: 8px;
@@ -394,24 +418,12 @@
   font-size: var(--type-label);
 }
 
-/* Sentences stay in the reading voice. */
-.crew-recap__note {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.crew-recap__note .data-value {
-  color: var(--text);
-}
-
 /* Scoreboard — three readings as one composition, hairlines between. */
 .crew-recap__scoreboard {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   padding-top: 11px;
   border-top: 1px solid var(--border);
 }
@@ -440,27 +452,26 @@
 
 /* Participation
    ------------------------------------------------------------------
-   Folded into the opening rather than given a page. Built to scale: the marks
+   A count in the machine voice and a row of marks. Built to scale: the marks
    wrap and then count the rest, so an eleven-person Crew reads like a
-   four-person one and neither needs a bespoke layout. */
+   four-person one and neither needs a layout of its own. */
 
 .crew-recap__participation {
   display: grid;
-  gap: 7px;
-  margin-top: 4px;
+  align-content: start;
+  gap: 8px;
 }
 
 .crew-recap__participation-line {
   margin: 0;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 560;
+  color: var(--text-muted);
+  font-size: var(--type-label);
 }
 
 .crew-recap__runner-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 7px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -506,14 +517,14 @@
 
 /* Best Performances
    ------------------------------------------------------------------
-   One hero effort, then the rest as a rhythm of rows. Each row carries an
-   accent edge in its own key so the page reads as four different questions
-   rather than one list. */
+   One hero effort, then a rhythm of rows: label left, reading right, one
+   short line underneath. */
 
 .crew-recap__hero-effort {
   display: grid;
-  gap: 7px;
-  padding: 12px 0 14px 14px;
+  align-content: start;
+  gap: 8px;
+  padding: 2px 0 0 14px;
   border-left: 2px solid var(--accent);
 }
 
@@ -523,7 +534,11 @@
   font-size: var(--type-label);
 }
 
-.crew-recap__effort-support {
+.crew-recap__effort-detail {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
   margin: 0;
   color: var(--text-subtle);
   font-size: var(--type-meta);
@@ -532,55 +547,48 @@
 .crew-recap__efforts {
   display: grid;
   gap: 0;
-  margin: 2px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
+  align-content: start;
 }
 
 .crew-recap__efforts li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-width: 0;
-  padding: 11px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px var(--space-3);
+  padding: 13px 0;
   border-top: 1px solid var(--border);
 }
 
-.crew-recap__effort-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-/* The secondary rows use the quiet label; the accent is the hero's alone. */
+/* The accent belongs to the hero; the rows carry the quiet label. */
 .crew-recap__efforts .crew-recap__effort-label {
   color: var(--text-muted);
+}
+
+.crew-recap__efforts .crew-recap__effort-detail {
+  grid-column: 1 / -1;
 }
 
 .crew-recap__effort-value {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 21px;
+  justify-self: end;
+  font-size: 22px;
   line-height: 1.05;
 }
 
 /* Build crops
    ------------------------------------------------------------------
-   The real tower, at recap size. `buildCrop.css` owns the construction; these
-   rules only place it on the page. */
+   The real tower, at recap size. `buildCrop.css` owns the construction and
+   reserves the depth clearance, so nothing here ever needs to scroll or clip. */
 
-.crew-recap__opening-crop,
-.crew-recap__build-crop,
-.crew-recap__finale-crop {
-  padding-bottom: 2px;
-  overflow-x: auto;
-}
-
-.crew-recap__opening-crop {
-  align-self: end;
-  margin-top: 10px;
+.build-crop.crew-recap__opening-crop {
+  --course-height: 29px;
+  --iso-run: 15px;
+  --iso-rise: 8px;
 }
 
 /*
@@ -589,25 +597,46 @@
  * `buildCrop.css`'s own `[data-scale]` rule, hence the doubled class.
  */
 .build-crop.crew-recap__build-crop {
-  --course-height: 34px;
-  --iso-run: 18px;
-  --iso-rise: 9px;
+  --course-height: 36px;
+  --iso-run: 19px;
+  --iso-rise: 10px;
+}
+
+.build-crop.crew-recap__finale-crop {
+  --course-height: 30px;
+  --iso-run: 16px;
+  --iso-rise: 8px;
+  width: min(100%, 340px);
 }
 
 /* Awards
    ------------------------------------------------------------------
    The award objects carry the page: hollow blocks at display size, with the
    runner's colour as the frame and the award's colour in the recess — the
-   existing two-channel rule, with nothing layered on top. */
+   existing two-channel rule, with nothing layered on top. The count decides
+   the arrangement, rather than the available width deciding it. */
 
 .crew-recap__awards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
-  gap: 22px 16px;
-  margin: 10px 0 4px;
+  align-content: center;
+  justify-content: center;
+  gap: 26px 18px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
+
+.crew-recap__awards[data-count="1"] { grid-template-columns: minmax(0, auto); }
+.crew-recap__awards[data-count="2"],
+.crew-recap__awards[data-count="3"],
+.crew-recap__awards[data-count="4"],
+.crew-recap__awards[data-count="5"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
+}
+
+/* Five or more tightens rather than sprawling. */
+.crew-recap__awards[data-count="5"] { gap: 18px 14px; }
 
 .crew-recap__awards li {
   display: grid;
@@ -617,18 +646,27 @@
 }
 
 .crew-recap__award-hero {
-  --iso-run: 24px;
-  --iso-rise: 12px;
-  --award-frame: 10px;
+  --iso-run: 30px;
+  --iso-rise: 15px;
+  --award-frame: 11px;
   position: relative;
-  width: 92px;
-  height: 50px;
-  margin: 12px 24px 10px 0;
+  width: 116px;
+  height: 62px;
+  margin: 15px 30px 12px 0;
 }
 
 .crew-recap__award-hero .award-brick__glyph {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+}
+
+.crew-recap__awards[data-count="5"] .crew-recap__award-hero {
+  --iso-run: 22px;
+  --iso-rise: 11px;
+  --award-frame: 9px;
+  width: 88px;
+  height: 48px;
+  margin: 11px 22px 8px 0;
 }
 
 .crew-recap__award-name {
@@ -638,99 +676,91 @@
 }
 
 .crew-recap__award-result {
-  margin: 0 0 4px;
-  font-size: 19px;
+  margin: 0 0 5px;
+  font-size: 20px;
 }
 
 /* Against last week
    ------------------------------------------------------------------
-   Two columns of plain CSS. Both rows share one column rhythm so a bar lines
-   up with its own figure, and the bar keeps its own width inside a column
-   sized by the wider label. */
+   The columns are the object of the page, not a footnote under the delta.
+   Both rows share one column rhythm so a bar lines up with its own figure. */
 
 .crew-recap__compare {
   display: grid;
-  gap: 8px;
-  margin: 6px 0 2px;
+  align-content: center;
+  gap: 10px;
+  min-height: 0;
 }
 
 .crew-recap__compare-bars,
 .crew-recap__compare-key {
-  grid-template-columns: repeat(2, minmax(58px, max-content));
-  gap: 22px;
+  grid-template-columns: repeat(2, minmax(90px, 120px));
+  justify-content: start;
+  gap: 28px;
 }
 
 .crew-recap__compare-bars {
   display: grid;
   align-items: end;
-  height: 78px;
+  height: clamp(148px, 24vh, 190px);
 }
 
 .crew-recap__compare-bars span {
   align-self: end;
-  width: 58px;
+  width: 100%;
   height: var(--bar, 0%);
-  min-height: 3px;
-  border-radius: 2px 2px 0 0;
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
   background: var(--border-strong);
 }
 
 .crew-recap__compare-bars span[data-week="current"] {
   background: var(--accent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .crew-recap__compare-key {
   display: grid;
   margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-strong);
 }
 
 .crew-recap__compare-key dd {
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
-  white-space: nowrap;
+  font-size: 20px;
 }
 
-.crew-recap__compare-key div[data-current="true"] dd {
-  color: var(--text);
-}
+.crew-recap__compare-key div[data-current="true"] dd { color: var(--text); }
 
 .crew-recap__compare-key dt {
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--text-subtle);
   font-size: var(--type-meta);
-  white-space: nowrap;
 }
 
 /* Week complete
    ------------------------------------------------------------------
-   The one page that centres itself, because a finish line is not a reading. */
-
-.crew-recap__page--complete {
-  justify-items: center;
-  gap: 18px;
-  text-align: center;
-}
+   The one page that centres itself, because a finish is not a reading. */
 
 .crew-recap__finale {
   display: grid;
+  align-content: center;
   justify-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.crew-recap__finale .crew-recap__note {
+.crew-recap__finale-facts {
+  margin: 0;
   color: var(--text-muted);
-}
-
-.crew-recap__finale-crop {
-  width: min(100%, 320px);
+  font-size: var(--type-label);
 }
 
 /* Controls
    ------------------------------------------------------------------
-   Quiet steps either side of the primary action. The progress rail above is
-   the position indicator; these are only the way through. */
+   Quiet steps either side of the action. The progress rail above is the
+   position indicator; these are only the way through. */
 
 .crew-recap__controls {
   display: flex;
@@ -777,7 +807,21 @@
 .crew-recap__controls .button {
   flex: none;
   width: auto;
-  min-width: 132px;
+  min-width: 136px;
+}
+
+/*
+ * `Done` is the one solid action in the recap.
+ *
+ * The Arcade pass made every primary button an outlined lime plate, which is
+ * right for a form's Save and wrong for the last frame of a story: the recap
+ * needs its finish to look finished. This is the only place in the feature
+ * that overrides it.
+ */
+.crew-recap__controls .button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -792,5 +836,7 @@
   .crew-recap__together { font-size: 12px; letter-spacing: 0.28em; }
   .crew-recap__scoreboard > div { padding: 0 6px; }
   .crew-recap__effort-value { font-size: 19px; }
+  .crew-recap__compare-bars,
+  .crew-recap__compare-key { grid-template-columns: repeat(2, minmax(74px, 100px)); gap: 20px; }
   .today-crew-recap__headline { font-size: 14px; }
 }

@@ -30,6 +30,7 @@ function recap(overrides: Partial<CrewWeekRecap> = {}): CrewWeekRecap {
           {
             kind: "longestRun",
             value: 12,
+            runCount: null,
             runner: DREW,
             localDate: "2026-08-12",
             activityType: "long",
@@ -38,14 +39,16 @@ function recap(overrides: Partial<CrewWeekRecap> = {}): CrewWeekRecap {
           {
             kind: "bestPace",
             value: 450,
+            runCount: null,
             runner: ZACK,
             localDate: "2026-08-13",
             activityType: "easy",
             runId: "quick",
           },
           {
-            kind: "busiestDay",
-            value: 3,
+            kind: "biggestCrewDay",
+            value: 9.5,
+            runCount: 3,
             runner: null,
             localDate: "2026-08-13",
             activityType: null,
@@ -67,7 +70,7 @@ function recap(overrides: Partial<CrewWeekRecap> = {}): CrewWeekRecap {
         kind: "specialBlocks",
         awards: [{ id: "award-1", awardType: "miles", resultValue: 21.4, winner: DREW }],
       },
-      { kind: "change", previousMiles: 10, deltaMiles: 11, percent: 110 },
+      { kind: "change", previousMiles: 10, deltaMiles: 11 },
     ],
     ...overrides,
   };
@@ -96,7 +99,7 @@ describe("Crew Week Recap sheet", () => {
     expect(within(dialog).getByText("TOGETHER")).toBeInTheDocument();
     expect(within(dialog).getByText("Aug 10 – Aug 16")).toBeInTheDocument();
     // Participation is folded in here rather than taking a page of its own.
-    expect(within(dialog).getByText("Everyone ran this week.")).toBeInTheDocument();
+    expect(within(dialog).getByText("FULL CREW · 2 / 2")).toBeInTheDocument();
     const scoreboard = within(dialog).getByText("On Your Feet").closest("dl")!;
     expect(within(scoreboard).getByText("3")).toBeInTheDocument();
     expect(within(scoreboard).getByText("3:20")).toBeInTheDocument();
@@ -109,18 +112,19 @@ describe("Crew Week Recap sheet", () => {
     expect(within(dialog).getByText("Best Performances")).toBeInTheDocument();
     expect(within(dialog).getByText("Longest Run")).toBeInTheDocument();
     expect(within(dialog).getByText("12")).toBeInTheDocument();
-    expect(within(dialog).getByText(/WEDNESDAY · LONG RUN/i)).toBeInTheDocument();
-    expect(within(dialog).getByText("Best Avg. Pace")).toBeInTheDocument();
+    expect(within(dialog).getByText("Wednesday")).toBeInTheDocument();
+    expect(within(dialog).getByText("Fastest Avg Pace")).toBeInTheDocument();
     expect(within(dialog).getByText("7:30 /MI")).toBeInTheDocument();
-    expect(within(dialog).getByText(/FROM 2 MI\+/)).toBeInTheDocument();
-    // The crew-level effort names a day, not a runner.
-    expect(within(dialog).getByText("Busiest Day")).toBeInTheDocument();
+    expect(within(dialog).getByText("2+ MI RUN")).toBeInTheDocument();
+    // The crew-level effort names a day and its run count, not a runner.
+    expect(within(dialog).getByText("Biggest Crew Day")).toBeInTheDocument();
+    expect(within(dialog).getByText(/THURSDAY · 3 RUNS/i)).toBeInTheDocument();
 
     // 3 — Added to the Build: the real tower crop.
     await user.click(next);
     expect(within(dialog).getByText("Added To The Build")).toBeInTheDocument();
     expect(within(dialog).getByText("+2")).toBeInTheDocument();
-    expect(within(dialog).getByText(/17.0 MI STANDING IN THE TOWER/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/17.0 MI BUILT/i)).toBeInTheDocument();
     expect(
       within(dialog).getByRole("img", { name: /2 blocks this week added 17.0 miles/ }),
     ).toBeInTheDocument();
@@ -131,41 +135,56 @@ describe("Crew Week Recap sheet", () => {
     expect(within(dialog).getByText("Most Miles")).toBeInTheDocument();
     expect(within(dialog).getByText("21.4 MI")).toBeInTheDocument();
 
-    // 5 — Against Last Week, with the percentage reading.
+    // 5 — Against Last Week: the delta, then the two weeks it compares.
     await user.click(next);
     expect(within(dialog).getByText("Against Last Week")).toBeInTheDocument();
     expect(within(dialog).getByText("+11.0")).toBeInTheDocument();
-    expect(within(dialog).getByText("110%")).toBeInTheDocument();
+    expect(within(dialog).getByText("Last Week")).toBeInTheDocument();
+    expect(within(dialog).getByText("This Week")).toBeInTheDocument();
 
-    // 6 — the finish.
+    // 6 — the finish, closing on the week's own figures rather than a compliment.
     await user.click(next);
     expect(within(dialog).getByText("WEEK COMPLETE")).toBeInTheDocument();
-    expect(within(dialog).getByText("Great work, Night Shift.")).toBeInTheDocument();
+    expect(within(dialog).getByText(/21.0 MI · 3 RUNS · 2 RUNNERS/)).toBeInTheDocument();
     expect(within(dialog).getByText("Page 6 of 6")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Done" })).toBeInTheDocument();
   });
 
-  it("gives every page its own backdrop", async () => {
+  it("carries page identity on the sheet itself, so the backdrop is the whole panel", async () => {
     const user = userEvent.setup();
     const dialog = open();
-    const backdrop = dialog.querySelector(".crew-recap__backdrop")!;
     const seen: string[] = [];
 
     for (;;) {
-      seen.push(backdrop.getAttribute("data-page")!);
+      // The class lives on the dialog, above `.sheet__header` and
+      // `.sheet__body` — not on a box inside the content.
+      seen.push(
+        [...dialog.classList].find((name) =>
+          name.startsWith("sheet--crew-recap--"),
+        )!,
+      );
       const next = within(dialog).queryByRole("button", { name: /^Next/ });
       if (!next) break;
       await user.click(next);
     }
 
     expect(seen).toEqual([
-      "together",
-      "performances",
-      "build",
-      "awards",
-      "change",
-      "complete",
+      "sheet--crew-recap--together",
+      "sheet--crew-recap--performances",
+      "sheet--crew-recap--build",
+      "sheet--crew-recap--awards",
+      "sheet--crew-recap--change",
+      "sheet--crew-recap--complete",
     ]);
+  });
+
+  it("says nothing the page already shows", () => {
+    const dialog = open();
+    // Three sentences an earlier pass used to explain visuals that speak for
+    // themselves. None of them belongs on a page of facts.
+    expect(within(dialog).queryByText(/where the whole crew can see them/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/more miles than last week/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/Great work/)).not.toBeInTheDocument();
   });
 
   it("steps back through the story it just told", async () => {
@@ -211,12 +230,13 @@ describe("Crew Week Recap sheet", () => {
       }),
     );
 
+    expect(within(dialog).getByText("FULL CREW · 11 / 11")).toBeInTheDocument();
     const row = within(dialog).getByRole("list", {
       name: "Everyone in the crew ran this week",
     });
-    // Seven marks and a count, never eleven marks and a broken line.
-    expect(within(row).getAllByRole("listitem")).toHaveLength(8);
-    expect(within(row).getByText("+4")).toBeInTheDocument();
+    // Six marks and a count, never eleven marks and a broken line.
+    expect(within(row).getAllByRole("listitem")).toHaveLength(7);
+    expect(within(row).getByText("+5")).toBeInTheDocument();
   });
 
   it("names the crew and the week it is recapping", () => {

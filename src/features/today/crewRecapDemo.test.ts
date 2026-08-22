@@ -51,8 +51,8 @@ describe("Crew Week Recap owner review", () => {
     expect(performances.items.map((item) => item.kind)).toEqual([
       "longestRun",
       "bestPace",
-      "longestEffort",
-      "busiestDay",
+      "biggestCrewDay",
+      "mostActiveDay",
     ]);
 
     const special = demo.recap.beats.find((beat) => beat.kind === "specialBlocks")!;

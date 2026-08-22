@@ -162,7 +162,6 @@ describe("crew week recap", () => {
       kind: "change",
       previousMiles: 10,
       deltaMiles: 11,
-      percent: 110,
     });
   });
 
@@ -218,15 +217,13 @@ describe("crew week recap", () => {
       run("a", "zack", "2026-08-12", { distanceMiles: 6, durationSeconds: 3000 }),
       run("b", "drew", "2026-08-13", { distanceMiles: 6, durationSeconds: 3000 }),
     ]);
-    const performances = beat(recap!.beats, "performances");
-    // Distance, pace and time on feet are all tied, and two days hold one run
-    // each, so there is nothing the week can honestly single out.
-    expect(performances).toBeUndefined();
+    // Distance and pace are tied, and the two days carry one run each, so
+    // there is nothing the week can honestly single out.
+    expect(beat(recap!.beats, "performances")).toBeUndefined();
   });
 
-  it("names the week's best efforts, and never the same run twice", () => {
+  it("names two runner efforts and two of the crew's own days", () => {
     const recap = recapOf([
-      // Longest run, and the longest time on feet with it.
       run("long", "drew", "2026-08-12", { distanceMiles: 12, durationSeconds: 6600, activityType: "long" }),
       // Fastest qualifying pace: 7:30 /mi.
       run("quick", "zack", "2026-08-13", { distanceMiles: 4, durationSeconds: 1800 }),
@@ -238,32 +235,53 @@ describe("crew week recap", () => {
     expect(items.map((item) => item.kind)).toEqual([
       "longestRun",
       "bestPace",
-      // No `longestEffort`: the longest session is the longest run already.
-      "busiestDay",
+      "biggestCrewDay",
+      "mostActiveDay",
     ]);
-    expect(items[1]).toMatchObject({ kind: "bestPace", value: 450, runId: "quick" });
-    // A crew-level beat belongs to no runner.
-    expect(items[2]).toMatchObject({ kind: "busiestDay", value: 3, runner: null });
-    expect(items[2].localDate).toBe("2026-08-13");
+    expect(items[1]).toMatchObject({ value: 450, runId: "quick" });
+    // Both day beats are crew facts: no runner, and their own run counts.
+    expect(items[2]).toMatchObject({
+      kind: "biggestCrewDay",
+      value: 12,
+      runner: null,
+      runCount: 1,
+      localDate: "2026-08-12",
+    });
+    expect(items[3]).toMatchObject({
+      kind: "mostActiveDay",
+      value: 3,
+      runner: null,
+      localDate: "2026-08-13",
+    });
   });
 
-  it("adds time on feet only when a different run holds it", () => {
-    const recap = recapOf([
-      run("long", "drew", "2026-08-12", { distanceMiles: 9, durationSeconds: 3600 }),
-      // A longer session that covered no ground: Cross Training.
-      run("ride", "zack", "2026-08-13", {
-        activityType: "cross",
-        distanceMiles: 0,
-        durationSeconds: 7200,
-      }),
+  it("adds the busiest day only when a different day holds it", () => {
+    // Thursday covers the most ground; Friday holds the most runs.
+    const split = recapOf([
+      run("big", "drew", "2026-08-13", { distanceMiles: 14, durationSeconds: 7000 }),
+      run("a", "zack", "2026-08-14", { distanceMiles: 3, durationSeconds: 1700 }),
+      run("b", "drew", "2026-08-14", { distanceMiles: 3, durationSeconds: 1750 }),
+      run("c", "zack", "2026-08-14", { distanceMiles: 2.5, durationSeconds: 1500 }),
     ]);
-    const items = beat(recap!.beats, "performances")!.items;
+    const items = beat(split!.beats, "performances")!.items;
     expect(items.map((item) => item.kind)).toEqual([
       "longestRun",
       "bestPace",
-      "longestEffort",
+      "biggestCrewDay",
+      "mostActiveDay",
     ]);
-    expect(items[2]).toMatchObject({ value: 7200, runId: "ride", activityType: "cross" });
+    expect(items[2].localDate).toBe("2026-08-13");
+    expect(items[3]).toMatchObject({ value: 3, localDate: "2026-08-14", runner: null });
+
+    // When one day is both, its own line already carries the run count.
+    const same = recapOf([
+      run("a", "zack", "2026-08-14", { distanceMiles: 6, durationSeconds: 3000 }),
+      run("b", "drew", "2026-08-14", { distanceMiles: 5, durationSeconds: 2600 }),
+      run("c", "zack", "2026-08-12", { distanceMiles: 3, durationSeconds: 1700 }),
+    ]);
+    expect(
+      beat(same!.beats, "performances")!.items.some((item) => item.kind === "mostActiveDay"),
+    ).toBe(false);
   });
 
   it("qualifies the best pace exactly as the Fastest Avg. Pace award does", () => {
@@ -284,23 +302,13 @@ describe("crew week recap", () => {
     expect(pace).toMatchObject({ runId: "long", value: 500 });
   });
 
-  it("claims a busiest day only when one day is strictly busiest and has more than one run", () => {
-    const twoEach = recapOf([
-      run("a", "zack", "2026-08-12", { distanceMiles: 3 }),
-      run("b", "drew", "2026-08-12", { distanceMiles: 4 }),
-      run("c", "zack", "2026-08-13", { distanceMiles: 5 }),
-      run("d", "drew", "2026-08-13", { distanceMiles: 6 }),
-    ]);
-    expect(
-      beat(twoEach!.beats, "performances")!.items.some((item) => item.kind === "busiestDay"),
-    ).toBe(false);
-
-    const oneEach = recapOf([
+  it("never claims a busiest day from a week of single-run days", () => {
+    const recap = recapOf([
       run("a", "zack", "2026-08-12", { distanceMiles: 3 }),
       run("b", "drew", "2026-08-13", { distanceMiles: 4 }),
     ]);
     expect(
-      beat(oneEach!.beats, "performances")!.items.some((item) => item.kind === "busiestDay"),
+      beat(recap!.beats, "performances")!.items.some((item) => item.kind === "mostActiveDay"),
     ).toBe(false);
   });
 
@@ -371,19 +379,6 @@ describe("crew week recap", () => {
   it("omits week-over-week when the previous week has no running to compare against", () => {
     const recap = recapOf([run("a", "zack", "2026-08-12")]);
     expect(beat(recap!.beats, "change")).toBeUndefined();
-  });
-
-  it("reports the delta as a percentage of the week it is measured against", () => {
-    const recap = recapOf([
-      run("a", "zack", "2026-08-12", { distanceMiles: 6 }),
-      run("prev", "zack", "2026-08-05", { distanceMiles: 8 }),
-    ]);
-    expect(beat(recap!.beats, "change")).toEqual({
-      kind: "change",
-      previousMiles: 8,
-      deltaMiles: -2,
-      percent: -25,
-    });
   });
 
   it("has nothing to say about a week that closed before the Crew's Build start", () => {
