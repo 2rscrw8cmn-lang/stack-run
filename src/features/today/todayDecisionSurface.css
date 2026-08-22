@@ -287,3 +287,35 @@
   .today-signal { padding: 9px 8px 9px 10px; }
   .today-signal__headline { font-size: 13px; }
 }
+.today-plan-prompt {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.today-plan-prompt span {
+  display: grid;
+  gap: 2px;
+}
+
+.today-plan-prompt strong,
+.today-plan-prompt small {
+  font: inherit;
+}
+
+.today-plan-prompt strong {
+  color: var(--text);
+}
+
+.today-plan-prompt small {
+  font-size: var(--type-meta);
+}

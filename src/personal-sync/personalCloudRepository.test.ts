@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import { loadAccountAppState, saveAccountAppState } from "../storage/personalSyncRepository";
 import {
   loadPersonalCloudSnapshot,
@@ -11,14 +11,16 @@ import {
 } from "./personalCloudRepository";
 
 function rows(overrides: Partial<Record<string, unknown>> = {}) {
-  const seed = createInitialAppState();
+  const seed = createSeededAppState();
   return {
     personal_training_state: {
       settings: seed.settings,
       plan: seed.plan,
+      plan_history: seed.planHistory,
       race_setup: seed.raceSetup,
       availability: seed.availability,
       run_days: seed.runDays,
+      cross_training_days: seed.crossTrainingDays,
       revision: 2,
       account_generation: 3,
     },
@@ -92,6 +94,27 @@ describe("personal cloud hydration", () => {
     });
   });
 
+  it("hydrates an account with no active plan and archived plan snapshots", async () => {
+    const archived = createSeededAppState();
+    const snapshot = await loadPersonalCloudSnapshot(readClient(rows({
+      personal_training_state: {
+        ...rows().personal_training_state,
+        plan: null,
+        race_setup: null,
+        plan_history: [{
+          id: "archive-1",
+          plan: archived.plan,
+          raceSetup: archived.raceSetup,
+          runLinks: {},
+          archivedAt: "2026-12-06T12:00:00.000Z",
+        }],
+      },
+    })));
+
+    expect(snapshot?.training.plan).toBeNull();
+    expect(snapshot?.training.planHistory[0].plan.id).toBe("stack-ouc-half-2026");
+  });
+
   it("round-trips a hand-typed heart rate, and leaves it out when the column is absent", async () => {
     const withManual = await loadPersonalCloudSnapshot(
       readClient(rows({
@@ -113,7 +136,7 @@ describe("personal cloud hydration", () => {
 
   it("rejects malformed cloud hydration and leaves a valid local cache intact", async () => {
     localStorage.clear();
-    const cached = structuredClone(createInitialAppState());
+    const cached = structuredClone(createSeededAppState());
     cached.plan.name = "Offline cache survives";
     saveAccountAppState("user-a", cached);
     const malformed = rows({
@@ -121,7 +144,7 @@ describe("personal cloud hydration", () => {
     });
 
     await expect(loadPersonalCloudSnapshot(readClient(malformed))).rejects.toThrow("malformed");
-    expect(loadAccountAppState("user-a")?.plan.name).toBe("Offline cache survives");
+    expect(loadAccountAppState("user-a")?.plan?.name).toBe("Offline cache survives");
   });
 
   it("rejects malformed nested plan, week, workout, race, and config data", async () => {
@@ -166,10 +189,11 @@ describe("optimistic concurrency client", () => {
   }
 
   it("classifies stale plan and Personal Build writes", async () => {
-    const seed = createInitialAppState();
+    const seed = createSeededAppState();
     await expect(savePersonalTrainingDocument(rpcClient("personal_training_revision_conflict"), 3, 1, {
       settings: seed.settings,
       plan: seed.plan,
+      planHistory: seed.planHistory,
       raceSetup: seed.raceSetup,
       availability: seed.availability,
       runDays: seed.runDays,

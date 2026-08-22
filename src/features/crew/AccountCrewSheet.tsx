@@ -176,7 +176,9 @@ function PersonalDataPanel({ sync }: { sync: PersonalSyncController }) {
               This device has {initialization.runCount} {initialization.runCount === 1 ? "run" : "runs"} and{" "}
               {initialization.blockCount} built {initialization.blockCount === 1 ? "block" : "blocks"}.
             </p>
-            <p className="crew-settings__note">{initialization.raceName}</p>
+            <p className="crew-settings__note">
+              {initialization.raceName ?? "No active race plan"}
+            </p>
           </div>
         </div>
         <p className="crew-settings__copy">

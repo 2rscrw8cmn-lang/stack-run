@@ -6,7 +6,7 @@ import { repackPlacements } from "../domain/placement";
 import type { BlockPlacement, RunLog } from "../domain/types";
 import { acceptIntervalsRun } from "../storage/appStateRepository";
 import { loadIntervalsApiKey, saveIntervalsApiKey } from "../storage/intervalsCredentialRepository";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import {
   emptyPersonalOutbox,
   loadPersonalOutbox,
@@ -116,12 +116,13 @@ function placed(runLogId: string, row: number, placedAt: string): BlockPlacement
 }
 
 function snapshot(runLogs: RunLog[] = [], accountGeneration = 1): PersonalCloudSnapshot {
-  const seed = createInitialAppState();
+  const seed = createSeededAppState();
   return {
     accountGeneration,
     training: {
       settings: seed.settings,
       plan: { ...seed.plan, name: "Canonical cloud plan" },
+      planHistory: seed.planHistory,
       raceSetup: seed.raceSetup,
       availability: seed.availability,
       runDays: seed.runDays,
@@ -171,7 +172,7 @@ beforeEach(() => {
 
 describe("personal sync lifecycle", () => {
   it("requires first-device confirmation, backs up, uploads without a credential, then rehydrates from the server", async () => {
-    const local = structuredClone(createInitialAppState());
+    const local = structuredClone(createSeededAppState());
     local.plan.name = "Device plan";
     cloud.load.mockResolvedValueOnce(null).mockResolvedValueOnce(snapshot());
     const onReplaceState = vi.fn();
@@ -211,7 +212,7 @@ describe("personal sync lifecycle", () => {
       .mockResolvedValueOnce(initialSnapshot)
       .mockResolvedValueOnce(canonicalWithAlias);
     cloud.saveRun.mockResolvedValue(canonicalWithAlias.runs[0]);
-    const local = structuredClone(createInitialAppState());
+    const local = structuredClone(createSeededAppState());
     local.runLogs = [legacy];
     const onReplaceState = vi.fn();
     saveIntervalsApiKey("second-device-key");
@@ -243,7 +244,7 @@ describe("personal sync lifecycle", () => {
     const canonical = snapshot([manualRun("run-canonical")]);
     expect(canonical.runs.every((item) => item.aliases.length === 0)).toBe(true);
     cloud.load.mockResolvedValue(canonical);
-    const local = structuredClone(createInitialAppState());
+    const local = structuredClone(createSeededAppState());
     const onReplaceState = vi.fn();
 
     const { result } = renderHook(() => usePersonalSync({
@@ -390,7 +391,7 @@ describe("personal sync lifecycle", () => {
     });
     await waitFor(() => expect(cloud.load).toHaveBeenCalledTimes(2));
 
-    const workoutId = local.plan.weeks[0].workouts.find((workout) => workout.type !== "rest")!.id;
+    const workoutId = local.plan!.weeks[0].workouts.find((workout) => workout.type !== "rest")!.id;
     const matched = acceptIntervalsRun(
       local,
       pendingCandidate,
@@ -439,7 +440,7 @@ describe("personal sync lifecycle", () => {
 
   it("backs up and discards a never-synced pre-reset run, then accepts post-reset work", async () => {
     const staleRun = manualRun("offline-before-reset");
-    const stale = { ...createInitialAppState(), runLogs: [staleRun] };
+    const stale = { ...createSeededAppState(), runLogs: [staleRun] };
     const canonical = snapshot([], 2);
     saveAccountAppState("user-a", stale);
     markInitialized("user-a", snapshot([], 1));
@@ -481,11 +482,11 @@ describe("personal sync lifecycle", () => {
   });
 
   it("keeps the valid local cache visible when nested cloud training data is malformed", async () => {
-    const local = createInitialAppState();
+    const local = createSeededAppState();
     local.plan.name = "Known-good local plan";
     const malformed = snapshot();
     malformed.training.plan = structuredClone(malformed.training.plan);
-    malformed.training.plan.weeks[0].workouts[0].build.span = "wide" as never;
+    malformed.training.plan!.weeks[0].workouts[0].build.span = "wide" as never;
     cloud.load.mockResolvedValue(malformed);
     const onReplaceState = vi.fn();
     const { result } = renderHook(() => usePersonalSync({

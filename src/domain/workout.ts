@@ -8,6 +8,7 @@ export const EFFORT_LABEL: Record<Effort, string> = {
 };
 
 export type TodayViewModel =
+  | { kind: "no-plan" }
   | { kind: "before-plan"; planStartDate: string }
   | { kind: "after-race" }
   | { kind: "rest"; workout: Workout }
@@ -42,10 +43,11 @@ export function findRunLogForWorkout(
  * even though the seed plan schedules a recovery rest day there.
  */
 export function selectTodayViewModel(
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   runLogs: RunLog[],
   today: string,
 ): TodayViewModel {
+  if (!plan) return { kind: "no-plan" };
   if (isBeforeLocalDate(today, plan.startDate)) {
     return { kind: "before-plan", planStartDate: plan.startDate };
   }

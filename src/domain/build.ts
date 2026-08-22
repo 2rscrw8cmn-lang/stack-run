@@ -14,6 +14,7 @@ import {
   voidsOf,
 } from "./placement";
 import type {
+  ArchivedTrainingPlan,
   BlockPlacement,
   RunActivityType,
   RunLog,
@@ -142,7 +143,7 @@ export interface BuildViewModel {
    * without drawing the opening it reads as a mistake.
    */
   voids: TowerVoid[];
-  activeWeekNumber: number;
+  activeWeekNumber: number | null;
 }
 
 function isScheduledRun(workout: Workout): boolean {
@@ -157,9 +158,9 @@ export function scheduledRuns(plan: TrainingPlan): Workout[] {
     .sort((a, b) => compareLocalDates(a.date, b.date));
 }
 
-export function workoutsById(plan: TrainingPlan): Map<string, Workout> {
+export function workoutsById(plan: TrainingPlan | null): Map<string, Workout> {
   return new Map(
-    plan.weeks.flatMap((week) => week.workouts).map((workout) => [workout.id, workout]),
+    (plan?.weeks ?? []).flatMap((week) => week.workouts).map((workout) => [workout.id, workout]),
   );
 }
 
@@ -248,10 +249,22 @@ export function activeWeekNumber(plan: TrainingPlan, today: string): number {
  * the plan — the plan cannot know about a run it never asked for.
  */
 export function earnedBlocks(
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   runLogs: RunLog[],
+  planHistory: readonly ArchivedTrainingPlan[] = [],
 ): EarnedBlock[] {
   const byId = workoutsById(plan);
+  const archivedWorkoutByRunId = new Map<string, Workout>();
+
+  for (const archived of planHistory) {
+    const archivedWorkouts = workoutsById(archived.plan);
+    for (const [runLogId, workoutId] of Object.entries(archived.runLinks)) {
+      const workout = archivedWorkouts.get(workoutId);
+      if (workout) {
+        archivedWorkoutByRunId.set(runLogId, workout);
+      }
+    }
+  }
 
   return [...runLogs]
     .sort(
@@ -261,7 +274,9 @@ export function earnedBlocks(
     )
     .map((runLog) => ({
       runLog,
-      workout: runLog.workoutId ? (byId.get(runLog.workoutId) ?? null) : null,
+      workout: runLog.workoutId
+        ? (byId.get(runLog.workoutId) ?? null)
+        : (archivedWorkoutByRunId.get(runLog.id) ?? null),
       footprint: footprintFor(runLog),
     }));
 }
@@ -294,12 +309,13 @@ export function findNewestPlacedRunLogId(
  * as a stack of cards.
  */
 export function selectBuildViewModel(
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   runLogs: RunLog[],
   placements: BlockPlacement[],
   today: string,
+  planHistory: readonly ArchivedTrainingPlan[] = [],
 ): BuildViewModel {
-  const earned = earnedBlocks(plan, runLogs);
+  const earned = earnedBlocks(plan, runLogs, planHistory);
   const earnedByRunLogId = new Map(
     earned.map((block) => [block.runLog.id, block]),
   );
@@ -351,6 +367,6 @@ export function selectBuildViewModel(
     blocks,
     courses,
     voids,
-    activeWeekNumber: activeWeekNumber(plan, today),
+    activeWeekNumber: plan ? activeWeekNumber(plan, today) : null,
   };
 }

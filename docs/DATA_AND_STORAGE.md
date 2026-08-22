@@ -23,26 +23,28 @@ Key:
 stack.app-state.v1
 ```
 
-Current schema: **9**.
+Current schema: **10**.
 
 UI components never read/write the AppState storage slot directly. Personal state mutations go through `src/storage/appStateRepository.ts`.
 
 Race Crew still reads only its narrow safe projection. Crew members and owners
 cannot read the private personal tables.
 
-## Current schema-9 shape
+## Current schema-10 shape
 
 Conceptually:
 
 ```ts
 export interface AppState {
-  schemaVersion: 9;
+  schemaVersion: 10;
   settings: AppSettings;
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory: ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
   availability: AvailabilityCalendar | null;
   runDays: Weekday[] | null;
+  crossTrainingDays: Weekday[] | null;
   raceSetup: RacePlanSetup | null;
   intervalsSync: IntervalsSyncState;
 }
@@ -323,7 +325,7 @@ Periods:
 - Weekly Miles: current Monday–Sunday week using actual local run dates;
 - Longest Run: trailing 28 days;
 - Consistency: most recent up-to-4 plan weeks through today, scheduled workouts only and never obligations before Crew membership;
-- Miles Built: current local active plan/Build actual miles.
+- Miles Built: current local Personal Build actual miles, independent of an active plan.
 
 Extras count actual miles but do not repair Consistency.
 

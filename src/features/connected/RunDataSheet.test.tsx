@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { IntervalsCandidate } from "../../connected/intervals";
 import type { RunLog } from "../../domain/types";
-import { createInitialAppState } from "../../storage/migrations";
+import { createSeededAppState } from "../../storage/migrations";
 import { RunDataSheet } from "./RunDataSheet";
 
-const state = createInitialAppState();
+const state = createSeededAppState();
 const workouts = state.plan.weeks.flatMap((week) => week.workouts);
 const firstRun = workouts.find((workout) => workout.type !== "rest")!;
 /** Five days past the run, so it is eligible but never a suggestion. */

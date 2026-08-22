@@ -260,7 +260,7 @@ export function projectSharedRuns(
  * baseline. So they are computed once per projection rather than per run.
  */
 export function projectSharedRunsFromState(
-  state: Pick<AppState, "plan" | "runLogs" | "blockPlacements">,
+  state: Pick<AppState, "plan" | "planHistory" | "runLogs" | "blockPlacements">,
 ): CrewSharedRunProjection[] {
   return projectSharedRuns(
     state.runLogs,
@@ -292,7 +292,7 @@ export function projectMemberSummary(
   const completedWorkoutIds = new Set(
     eligibleRuns.flatMap((run) => (run.workoutId ? [run.workoutId] : [])),
   );
-  const recentWeeks = state.plan.weeks
+  const recentWeeks = (state.plan?.weeks ?? [])
     .filter((week) => compareLocalDates(week.startDate, today) <= 0)
     .map((week) => ({
       week,

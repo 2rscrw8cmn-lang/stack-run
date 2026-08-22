@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
+import { createSeededAppState } from "../../storage/migrations";
 import { APP_STATE_STORAGE_KEY } from "../../storage/storageKeys";
 
 beforeEach(() => {
@@ -48,13 +49,13 @@ describe("unreadable stored state", () => {
     await user.click(screen.getByRole("button", { name: "Start Fresh" }));
     await user.click(screen.getByRole("button", { name: "Yes, Start Fresh" }));
 
-    // The app is running on the seed plan, and storage holds it.
+    // The app is running from a valid no-plan state, and storage holds it.
     expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute(
       "aria-current",
       "page",
     );
     const stored = JSON.parse(localStorage.getItem(APP_STATE_STORAGE_KEY) ?? "{}");
-    expect(stored.schemaVersion).toBe(9);
+    expect(stored.schemaVersion).toBe(10);
     expect(stored.runLogs).toEqual([]);
     // The damaged copy outlives the reset, so it is still recoverable.
     expect(backupKeys()).toHaveLength(1);
@@ -110,6 +111,7 @@ describe("a change that could not be saved", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-04T09:00:00"));
     const typing = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(createSeededAppState()));
 
     render(<App />);
 

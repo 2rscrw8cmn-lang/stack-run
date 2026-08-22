@@ -6,7 +6,7 @@ import { Section } from "../../components/ui/Section";
 import { earnedBlockPhrase } from "../../domain/build";
 import { formatDateLabel, todayLocalDate } from "../../domain/dates";
 import { runHistory, type RunHistoryEntry } from "../../domain/runs";
-import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
+import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
 import type { HistorySyncPhase } from "../../history/historySyncPolicy";
 import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
@@ -38,7 +38,8 @@ export const RECENT_RUN_COUNT = 3;
 export const RECENT_EXPANDED_RUN_COUNT = 10;
 
 interface RunsScreenProps {
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory?: readonly ArchivedTrainingPlan[];
   runLogs: RunLog[];
   /**
    * The unified actual history: STACK runs and connected history reconciled
@@ -90,6 +91,7 @@ interface RunsScreenProps {
  */
 export function RunsScreen({
   plan,
+  planHistory = [],
   runLogs,
   runnerRuns,
   historyPhase = "no-connection",
@@ -147,7 +149,7 @@ export function RunsScreen({
    */
   const returnToDetail = useRef(false);
 
-  const history = runHistory(plan, runLogs);
+  const history = runHistory(plan, runLogs, planHistory);
   const isSignalDemo = isSignalDemoEnabled();
   const actualRuns = runnerRuns ?? fallbackRunnerRuns(runLogs);
   const runs = isSignalDemo ? signalDemoRuns(today) : actualRuns;
@@ -433,12 +435,12 @@ export function RunsScreen({
       {selected && (
         <RunDetailSheet
           entry={selected}
-          plan={plan}
+          plan={plan ?? undefined}
           runLogs={runLogs}
           syncToken={syncToken}
           isOpen={isDetailOpen}
           onEditRun={() => openEntry(selected, true)}
-          onOpenConnectToPlan={onLinkRun ? openConnectToPlan : undefined}
+          onOpenConnectToPlan={plan && onLinkRun ? openConnectToPlan : undefined}
           onUnlinkRun={
             onUnlinkRun &&
             ((runLogId) => {
@@ -450,7 +452,7 @@ export function RunsScreen({
         />
       )}
 
-      {selected && onLinkRun && (
+      {selected && plan && onLinkRun && (
         <ConnectToPlanSheet
           runLog={selected.runLog}
           plan={plan}

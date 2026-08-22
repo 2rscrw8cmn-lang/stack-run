@@ -825,7 +825,7 @@ export function usePersonalSync({
       ? {
           runCount: state.runLogs.length,
           blockCount: state.blockPlacements.length,
-          raceName: state.raceSetup?.name ?? state.plan.race.name,
+          raceName: state.raceSetup?.name ?? state.plan?.race.name ?? null,
         }
       : null;
 

@@ -361,7 +361,8 @@ const SUGGESTION_WITHIN_DAYS = 2;
  * The one thing this does exclude is a workout another run already satisfies.
  * One scheduled workout links to at most one RunLog, and that stays true.
  */
-export function availableScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan, runLogs: readonly RunLog[]): Workout[] {
+export function availableScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan | null, runLogs: readonly RunLog[]): Workout[] {
+  if (!plan) return [];
   const matched = new Set(runLogs.flatMap((run) => run.workoutId ? [run.workoutId] : []));
   return plan.weeks
     .flatMap((week) => week.workouts)
@@ -379,7 +380,8 @@ export function availableScheduledMatches(candidate: IntervalsCandidate, plan: T
  * offers on the Run Found card. The full manual list is
  * `availableScheduledMatches`.
  */
-export function suggestScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan, runLogs: readonly RunLog[]): Workout[] {
+export function suggestScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan | null, runLogs: readonly RunLog[]): Workout[] {
+  if (!plan) return [];
   const matched = new Set(runLogs.flatMap((run) => run.workoutId ? [run.workoutId] : []));
   return plan.weeks.flatMap((week) => week.workouts).filter((workout) => workout.type !== "rest" && !matched.has(workout.id) && Math.abs(daysBetweenLocalDates(workout.date, candidate.completedDate)) <= SUGGESTION_WITHIN_DAYS).sort((a, b) => {
     const dateDiff = Math.abs(daysBetweenLocalDates(a.date, candidate.completedDate)) - Math.abs(daysBetweenLocalDates(b.date, candidate.completedDate));
@@ -413,7 +415,7 @@ export interface RunFound {
  */
 export function selectRunFound(
   candidates: readonly IntervalsCandidate[],
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   runLogs: readonly RunLog[],
   today: string,
   preferredWorkoutId: string | null = null,

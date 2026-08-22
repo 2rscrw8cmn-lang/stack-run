@@ -12,7 +12,7 @@ import {
   saveAppState,
   saveRunLog,
 } from "../storage/appStateRepository";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import { APP_STATE_STORAGE_KEY } from "../storage/storageKeys";
 import { fixtureActivities } from "./historicalFixtures";
 import { syncHistoricalActivities } from "./historicalSync";
@@ -46,10 +46,10 @@ function reader(activities: readonly Record<string, unknown>[]) {
 
 /** A device with a linked manual run, an accepted connected run, and blocks placed. */
 function establishedDevice(): { state: AppState; acceptedActivityId: string } {
-  let state = createInitialAppState();
+  let state: AppState = createSeededAppState();
   saveAppState(state);
 
-  const workout = state.plan.weeks
+  const workout = state.plan!.weeks
     .flatMap((week) => week.workouts)
     .find((item) => item.type !== "rest")!;
 
@@ -179,7 +179,7 @@ describe("the runner history read layer beside the existing product", () => {
 
   it("leaves the existing plan-relative Training Signals unchanged", async () => {
     const { state } = establishedDevice();
-    const signalsBefore = selectTrainingSignals(state.plan, state.runLogs, today);
+    const signalsBefore = selectTrainingSignals(state.plan!, state.runLogs, today);
 
     const result = await syncHistoricalActivities({
       connection, lookbackDays: 365, today,
@@ -188,11 +188,11 @@ describe("the runner history read layer beside the existing product", () => {
     unifiedRunnerHistory({ activities: result.activities, runLogs: state.runLogs });
 
     const after = loadAppState();
-    expect(selectTrainingSignals(after.plan, after.runLogs, today)).toEqual(signalsBefore);
+    expect(selectTrainingSignals(after.plan!, after.runLogs, today)).toEqual(signalsBefore);
   });
 
   it("gives a manual-only device a full snapshot from its own runs", () => {
-    let state = createInitialAppState();
+    let state: AppState = createSeededAppState();
     saveAppState(state);
     state = saveRunLog(state, {
       workoutId: null,
@@ -221,7 +221,7 @@ describe("the runner history read layer beside the existing product", () => {
     // Both count the same runs over the same Monday-start week. If they ever
     // disagree, one of the two screens is lying to the runner.
     const { state } = establishedDevice();
-    const signals = selectTrainingSignals(state.plan, state.runLogs, today);
+    const signals = selectTrainingSignals(state.plan!, state.runLogs, today);
     const currentWeek = signals.weeklyMileage.find((week) => week.isCurrentWeek)!;
     const snapshot = runnerSnapshot(unifiedRunnerHistory({ runLogs: state.runLogs }), today);
     const snapshotWeek = snapshot.weeks.find((week) => week.isCurrentWeek)!;

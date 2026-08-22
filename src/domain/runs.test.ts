@@ -53,6 +53,21 @@ describe("run history", () => {
     expect(history[0].workout).toBeNull();
   });
 
+  it("resolves an archived link without letting a reused workout id claim the run", () => {
+    const actual = run("archived-run", "2026-08-04");
+    const newer = { ...plan, id: "newer-plan", race: { ...plan.race, name: "Newer" } };
+    const history = runHistory(newer, [actual], [{
+      id: "old-archive",
+      plan,
+      raceSetup: null,
+      runLinks: { [actual.id]: "workout-002" },
+      archivedAt: "2026-12-06T12:00:00.000Z",
+    }]);
+
+    expect(history[0].workout?.id).toBe("workout-002");
+    expect(history[0].isExtra).toBe(false);
+  });
+
   it("orders two runs on one day by when they were recorded, then by id", () => {
     const morning = run("run-extra-2026-08-04", "2026-08-04", {
       createdAt: "2026-08-04T08:00:00Z",

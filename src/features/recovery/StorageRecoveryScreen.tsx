@@ -12,7 +12,7 @@ interface StorageRecoveryScreenProps {
   backupKey: string | null;
   /** Reads the backup's raw text so it can be saved off the device. */
   onReadBackup: (backupKey: string) => string | null;
-  /** Discards the unreadable state and starts from the seed plan. */
+  /** Discards the unreadable state and starts without an active plan. */
   onStartFresh: () => void;
   /** Carries on in memory, saving nothing. Only offered for unreadable storage. */
   onContinueAnyway: () => void;

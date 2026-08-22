@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { IntervalsCandidate } from "../connected/intervals";
 import type { BlockPlacement, RunLog } from "../domain/types";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import {
   appStateFromCloud,
   canonicalizeFirstDevice,
@@ -174,13 +174,14 @@ describe("canonical hydration and account-wide Intervals state", () => {
   });
 
   it("hydrates plan, run and Build from the canonical snapshot", () => {
-    const seed = createInitialAppState();
+    const seed = createSeededAppState();
     const canonicalRun = run("canonical");
     const snapshot: PersonalCloudSnapshot = {
       accountGeneration: 1,
       training: {
         settings: seed.settings,
         plan: { ...seed.plan, name: "Cloud plan" },
+        planHistory: seed.planHistory,
         raceSetup: seed.raceSetup,
         availability: seed.availability,
         runDays: seed.runDays,
@@ -194,13 +195,13 @@ describe("canonical hydration and account-wide Intervals state", () => {
       intervalsRevision: 1,
     };
     const hydrated = appStateFromCloud(snapshot);
-    expect(hydrated.plan.name).toBe("Cloud plan");
+    expect(hydrated.plan?.name).toBe("Cloud plan");
     expect(hydrated.runLogs).toEqual([canonicalRun]);
     expect(hydrated.blockPlacements).toEqual([placement("canonical")]);
   });
 
   it("unions ignored ids and unresolved candidates from two devices", () => {
-    const local = createInitialAppState();
+    const local = createSeededAppState();
     local.intervalsSync.ignoredActivityIds = ["ignored-local"];
     const merged = mergeIntervalsDocuments(
       {

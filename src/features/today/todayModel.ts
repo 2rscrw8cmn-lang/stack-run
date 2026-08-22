@@ -168,7 +168,7 @@ export function todayWeek(
 }
 
 export interface TodayModelInput {
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
   runLogs: readonly RunLog[];
   runs: readonly RunnerRun[];
   today: string;
@@ -180,7 +180,7 @@ export interface TodayModel {
   week: TodayWeek | null;
   signal: TrainingSignal | null;
   next: Workout | null;
-  raceDaysRemaining: number;
+  raceDaysRemaining: number | null;
 }
 
 /** Pure description of the Today screen. */
@@ -191,13 +191,15 @@ export function selectTodayModel({
   today,
 }: TodayModelInput): TodayModel {
   const immediate = selectTodayViewModel(plan, [...runLogs], today);
-  const planWeek = selectPlanWeekViewModel(
-    plan,
-    [...runLogs],
-    currentWeekNumber(plan, today),
-    today,
-  );
-  const week = todayWeek(runs, today, planWeek.isCurrentWeek ? planWeek : null);
+  const planWeek = plan
+    ? selectPlanWeekViewModel(
+      plan,
+      [...runLogs],
+      currentWeekNumber(plan, today),
+      today,
+    )
+    : null;
+  const week = todayWeek(runs, today, planWeek?.isCurrentWeek ? planWeek : null);
   const signal = selectTodaySignal(presentableRunnerSignals({ runs, today }));
 
   return {
@@ -205,7 +207,7 @@ export function selectTodayModel({
     context: todayContextReadings(runs, today, signal),
     week: week.runCount > 0 || week.plan !== null ? week : null,
     signal,
-    next: nextScheduledWorkout(plan, today),
-    raceDaysRemaining: daysBetweenLocalDates(today, plan.race.date),
+    next: plan ? nextScheduledWorkout(plan, today) : null,
+    raceDaysRemaining: plan ? daysBetweenLocalDates(today, plan.race.date) : null,
   };
 }

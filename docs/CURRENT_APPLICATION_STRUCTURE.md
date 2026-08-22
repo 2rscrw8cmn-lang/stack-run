@@ -41,12 +41,12 @@ There is no router framework. Primary navigation remains local application state
 
 ## 2. Personal state model
 
-Core accepted/owned personal state remains schema 9.
+Core accepted/owned personal state is schema 10.
 
 Conceptually, `AppState` includes:
 
 - settings;
-- one structurally active `TrainingPlan`;
+- zero or one active `TrainingPlan`, plus immutable archived plan snapshots;
 - accepted/manual `RunLog[]`;
 - Personal Build placements;
 - availability calendar;
@@ -67,7 +67,7 @@ Important distinction:
 
 Personal STACK works without an account.
 
-Schema-9 state is stored in browser local storage through repository/service boundaries rather than direct component writes.
+Schema-10 state is stored in browser local storage through repository/service boundaries rather than direct component writes.
 
 ### Signed in
 
@@ -288,7 +288,8 @@ Primary implementation:
 - `src/features/plan/planWeekContext.ts`
 - plan domain helpers.
 
-The current Plan architecture is still structurally one active `TrainingPlan`, but its product role changed.
+The current Plan architecture supports zero or one active `TrainingPlan` and a
+read-only `ArchivedTrainingPlan[]` history.
 
 Plan shows:
 
@@ -300,9 +301,10 @@ Actual history does not automatically satisfy a planned workout.
 
 A past unlinked workout is presented as `No linked run`, not as a factual claim that the runner did not run.
 
-Before-plan, current/future and post-race lifecycle presentation is handled without turning Plan into an adherence scorecard.
-
-A true no-active-plan data model is not implemented yet.
+Before-plan, current/future, post-race, and no-active-plan lifecycle
+presentation is handled without turning Plan into an adherence scorecard.
+Finishing or replacing a plan archives it; actual history and Personal Build
+continue across that boundary.
 
 ## 10. Personal Build
 

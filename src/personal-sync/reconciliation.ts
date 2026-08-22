@@ -252,9 +252,10 @@ export function appStateFromCloud(snapshot: PersonalCloudSnapshot): AppState {
     .map((item) => item.run);
   const activeIds = new Set(activeRuns.map((run) => run.id));
   return migrateAppState({
-    schemaVersion: 9,
+    schemaVersion: 10,
     settings: snapshot.training.settings,
     plan: snapshot.training.plan,
+    planHistory: snapshot.training.planHistory,
     raceSetup: snapshot.training.raceSetup,
     availability: snapshot.training.availability,
     runDays: snapshot.training.runDays,

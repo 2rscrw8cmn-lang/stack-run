@@ -14,10 +14,10 @@ export function WelcomeSheet({ isOpen, onGetStarted, onDismiss }: WelcomeSheetPr
     <Sheet title="STACK" isOpen={isOpen} onClose={onDismiss} className="welcome-sheet">
       <div className="welcome-intro">
         <StackMark size={40} />
-        <h2>Build your race.</h2>
+        <h2>Build your running.</h2>
         <p>
-          Your plan tells you what to run. Every run you record earns a block.
-          Build your training all the way to race day.
+          Every run becomes part of your history and earns a block. Add a race
+          plan when you want scheduled intent; STACK works before and between races.
         </p>
         <Button icon={<ArrowRight size={18} />} onClick={onGetStarted}>
           Get Started

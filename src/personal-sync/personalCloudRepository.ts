@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IntervalsCandidate } from "../connected/intervals";
 import type {
   AppSettings,
+  ArchivedTrainingPlan,
   BlockPlacement,
   Effort,
   ImportedRunMetrics,
@@ -240,13 +241,34 @@ function isPlan(value: unknown): value is TrainingPlan {
   );
 }
 
+function isArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
+  const candidate = record(value);
+  const runLinks = record(candidate?.runLinks);
+  return Boolean(
+    candidate &&
+    string(candidate.id) &&
+    isPlan(candidate.plan) &&
+    (candidate.raceSetup === null || record(candidate.raceSetup)) &&
+    runLinks && Object.entries(runLinks).every(([runId, workoutId]) =>
+      runId.length > 0 && string(workoutId)
+    ) &&
+    string(candidate.archivedAt) &&
+    Number.isFinite(Date.parse(String(candidate.archivedAt))),
+  );
+}
+
 function parseTrainingRow(value: unknown): {
   document: PersonalTrainingDocument;
   revision: number;
 } {
   const row = record(value);
   const rowRevision = revision(row?.revision);
-  if (!row || !rowRevision || !isSettings(row.settings) || !isPlan(row.plan)) {
+  if (
+    !row || !rowRevision || !isSettings(row.settings) ||
+    (row.plan !== null && !isPlan(row.plan)) ||
+    !Array.isArray(row.plan_history) ||
+    row.plan_history.some((entry) => !isArchivedPlan(entry))
+  ) {
     throw new Error("Cloud training data is malformed.");
   }
   if (
@@ -278,6 +300,7 @@ function parseTrainingRow(value: unknown): {
     document: {
       settings: row.settings,
       plan: row.plan,
+      planHistory: row.plan_history,
       raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
       availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
       runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],
@@ -389,7 +412,7 @@ export async function loadPersonalCloudSnapshot(
 ): Promise<PersonalCloudSnapshot | null> {
   const trainingResult = await client
     .from("personal_training_state")
-    .select("settings,plan,race_setup,availability,run_days,revision,account_generation")
+    .select("settings,plan,plan_history,race_setup,availability,run_days,cross_training_days,revision,account_generation")
     .maybeSingle();
   if (trainingResult.error) throw new Error(trainingResult.error.message);
   if (!trainingResult.data) return null;
@@ -434,7 +457,7 @@ export async function initializePersonalCloud(
     intervals: PersonalIntervalsDocument;
   },
 ): Promise<void> {
-  const result = await client.rpc("initialize_personal_stack", {
+  const result = await client.rpc("initialize_personal_stack_v2", {
     p_training: input.training,
     p_runs: input.runs,
     p_build_placements: input.placements,
@@ -449,7 +472,7 @@ export async function savePersonalTrainingDocument(
   expectedRevision: number,
   training: PersonalTrainingDocument,
 ): Promise<number> {
-  const result = await client.rpc("save_personal_training_state", {
+  const result = await client.rpc("save_personal_training_state_v2", {
     p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_training: training,
@@ -543,7 +566,7 @@ export async function resetPersonalCloud(
   training: PersonalTrainingDocument,
   intervals: PersonalIntervalsDocument,
 ): Promise<number> {
-  const result = await client.rpc("reset_personal_stack", {
+  const result = await client.rpc("reset_personal_stack_v2", {
     p_expected_generation: accountGeneration,
     p_training: training,
     p_intervals: intervals,

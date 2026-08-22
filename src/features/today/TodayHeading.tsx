@@ -4,9 +4,9 @@ import type { Race } from "../../domain/types";
 
 interface TodayHeadingProps {
   today: string;
-  race: Race;
+  race: Race | null;
   /** Signed: positive before race day, zero on it, negative once it has passed. */
-  daysRemaining: number;
+  daysRemaining: number | null;
 }
 
 /**
@@ -27,8 +27,9 @@ interface TodayHeadingProps {
  * but `Race day` printed every morning for the rest of the year is simply wrong.
  */
 export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) {
-  const countdown =
-    daysRemaining > 0
+  const countdown = daysRemaining === null
+    ? null
+    : daysRemaining > 0
       ? `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"}`
       : daysRemaining === 0
         ? "Race day"
@@ -46,7 +47,7 @@ export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) 
         </span>
       </h1>
 
-      <p className="race-context machine-label">
+      {race && <p className="race-context machine-label">
         <Flag size={13} strokeWidth={2} aria-hidden="true" />
         <span className="race-context__name">{race.name}</span>
         {countdown && (
@@ -65,7 +66,7 @@ export function TodayHeading({ today, race, daysRemaining }: TodayHeadingProps) 
             year: "numeric",
           })}.`}
         </span>
-      </p>
+      </p>}
     </div>
   );
 }

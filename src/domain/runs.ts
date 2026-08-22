@@ -1,6 +1,6 @@
 import { compareLocalDates } from "./dates";
 import { workoutsById } from "./build";
-import type { RunLog, TrainingPlan, Workout } from "./types";
+import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "./types";
 
 /**
  * One actual run, with the scheduled workout behind it when there was one.
@@ -11,7 +11,7 @@ import type { RunLog, TrainingPlan, Workout } from "./types";
  */
 export interface RunHistoryEntry {
   runLog: RunLog;
-  /** Null for an extra run — an activity the plan never asked for. */
+  /** Resolved from active or archived intent; null for a true extra run. */
   workout: Workout | null;
   isExtra: boolean;
 }
@@ -30,10 +30,19 @@ export interface RunHistoryEntry {
  * renders is worse than one whose same-day order is merely arbitrary.
  */
 export function runHistory(
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   runLogs: readonly RunLog[],
+  planHistory: readonly ArchivedTrainingPlan[] = [],
 ): RunHistoryEntry[] {
-  const byId = workoutsById(plan);
+  const activeWorkouts = workoutsById(plan);
+  const archivedLinks = new Map(
+    planHistory.flatMap((archive) =>
+      Object.entries(archive.runLinks).map(([runId, workoutId]) => [
+        runId,
+        workoutsById(archive.plan).get(workoutId) ?? null,
+      ] as const),
+    ),
+  );
 
   return [...runLogs]
     .sort(
@@ -42,11 +51,13 @@ export function runHistory(
         b.createdAt.localeCompare(a.createdAt) ||
         b.id.localeCompare(a.id),
     )
-    .map((runLog) => ({
-      runLog,
-      workout: runLog.workoutId ? (byId.get(runLog.workoutId) ?? null) : null,
-      isExtra: runLog.workoutId === null,
-    }));
+    .map((runLog) => {
+      const archivedWorkout = archivedLinks.get(runLog.id);
+      const workout = archivedWorkout !== undefined
+        ? archivedWorkout
+        : runLog.workoutId ? (activeWorkouts.get(runLog.workoutId) ?? null) : null;
+      return { runLog, workout, isExtra: workout === null };
+    });
 }
 
 /**

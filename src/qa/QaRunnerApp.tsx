@@ -212,6 +212,7 @@ export function QaRunnerApp() {
           </div>
         }
         plan={state.plan}
+        planHistory={state.planHistory}
         runLogs={state.runLogs}
         blockPlacements={state.blockPlacements}
         onSaveRun={saveRun}
@@ -220,6 +221,9 @@ export function QaRunnerApp() {
         onUnlinkRun={unlinkRun}
         onEditPlan={editPlan}
         onResetPlan={resetPlan}
+        onFinishPlan={() =>
+          setState((current) => ({ ...current, plan: null, raceSetup: null }))
+        }
         availability={state.availability}
         onSaveAvailability={(availability) =>
           setState((current) => ({ ...current, availability }))

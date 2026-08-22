@@ -17,7 +17,7 @@ import { SignalPeriods } from "./SignalDetailParts";
 interface SignalDetailSheetProps {
   signal: TrainingSignal | null;
   runs: readonly RunnerRun[];
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
   runLogs: RunLog[];
   today: string;
   isOpen: boolean;
@@ -74,7 +74,7 @@ export function SignalDetailSheet({
           {signal.family === "zone-distribution" && (
             <ZoneSignalDetail signal={signal} />
           )}
-          {signal.family === "plan-context" && (
+          {signal.family === "plan-context" && plan && (
             <PlanContextSignalDetail
               signal={signal}
               plan={plan}

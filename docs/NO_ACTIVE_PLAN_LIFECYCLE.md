@@ -23,8 +23,10 @@ interface AppState {
 }
 
 interface ArchivedTrainingPlan {
+  id: string;
   plan: TrainingPlan;
   raceSetup: RacePlanSetup | null;
+  runLinks: Record<string, string>;
   archivedAt: string;
 }
 ```
@@ -34,9 +36,12 @@ training toward a race. `planHistory` preserves previous intent as immutable,
 newest-first snapshots; it is not inferred from run history and it is never
 deleted merely because another plan starts.
 
-The active plan and its `raceSetup` move to history together. The archived
-plan's existing id remains its identity. Duplicate ids are rejected during
-runtime validation rather than silently merged.
+The active plan, its `raceSetup`, and its explicit run-to-workout links move to
+history together. Linked `RunLog` records then become unlinked from the active
+slot so reused generated workout ids cannot falsely complete a later plan.
+Each snapshot gets its own archive id while the plan's existing id remains
+intact inside the snapshot. Duplicate archive ids are rejected during runtime
+validation rather than silently merged.
 
 ## Transitions
 

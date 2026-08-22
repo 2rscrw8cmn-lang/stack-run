@@ -20,6 +20,14 @@ contributions a pre-DATA-1 device left under its own local run ids, which
 otherwise double Crew mileage and duplicate Recent Crew Runs. Authenticated
 writes continue exclusively through revision- and generation-enforcing RPCs.
 
+Evolution 2.06 also applies
+`20260822175155_optional_plan_lifecycle.sql`. It makes the active `plan`
+nullable, adds the durable `plan_history` JSON array, advances the cloud
+training schema to 2, and adds v2 initialize/save/reset RPCs that write both
+fields atomically. The v1 RPCs remain during rolling deployment and do not
+touch `plan_history`, so an older client cannot erase archives it does not
+understand.
+
 It adds:
 
 - `personal_training_state`
@@ -86,6 +94,10 @@ Use one real account in a desktop browser and real iPhone Safari.
     other device, then reconnect the stale device. Confirm its attempted state
     is backed up, the pre-reset run does not return, and a new run logged after
     the reset does sync.
+12. Finish an active race plan on one device and confirm the second device
+    enters the no-active-plan state with the prior plan readable in history.
+    Start the next plan and confirm both devices show it while existing runs,
+    Personal Build placements, and the archived plan remain unchanged.
 
 Do not remove the legacy Intervals proxy until its separate production iPhone
 Safari deprecation checklist is complete.

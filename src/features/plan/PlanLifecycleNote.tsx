@@ -9,6 +9,7 @@ interface PlanLifecycleNoteProps {
    * opens the same sheet Settings opens.
    */
   onSetUpNextRace?: () => void;
+  onFinishRacePlan?: () => void;
 }
 
 /**
@@ -27,6 +28,7 @@ interface PlanLifecycleNoteProps {
 export function PlanLifecycleNote({
   note,
   onSetUpNextRace,
+  onFinishRacePlan,
 }: PlanLifecycleNoteProps) {
   const Icon = note.lifecycle === "before-plan" ? CalendarPlus : Flag;
 
@@ -48,6 +50,16 @@ export function PlanLifecycleNote({
           onClick={onSetUpNextRace}
         >
           Set up next race
+          <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      )}
+      {onFinishRacePlan && (
+        <button
+          type="button"
+          className="plan-lifecycle__action plan-lifecycle__action--quiet"
+          onClick={onFinishRacePlan}
+        >
+          Finish race plan
           <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />
         </button>
       )}

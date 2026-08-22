@@ -113,14 +113,32 @@ export function levelUpPercent(
  * the runner's device; the server receives just four derived scalar scores.
  */
 export function crewAwardMetricsByRunId(
-  state: Pick<AppState, "plan" | "runLogs">,
+  state: Pick<AppState, "plan" | "planHistory" | "runLogs">,
 ): Map<string, CrewRunAwardMetrics> {
-  const workouts = new Map(
-    state.plan.weeks.flatMap((week) => week.workouts).map((workout) => [workout.id, workout] as const),
+  const activeWorkouts = new Map(
+    (state.plan?.weeks ?? [])
+      .flatMap((week) => week.workouts)
+      .map((workout) => [workout.id, workout] as const),
+  );
+  const archivedWorkoutsByRunId = new Map(
+    state.planHistory.flatMap((archive) => {
+      const workouts = new Map(
+        archive.plan.weeks
+          .flatMap((week) => week.workouts)
+          .map((workout) => [workout.id, workout] as const),
+      );
+      return Object.entries(archive.runLinks).map(([runId, workoutId]) => [
+        runId,
+        workouts.get(workoutId) ?? null,
+      ] as const);
+    }),
   );
   return new Map(
     state.runLogs.map((run) => {
-      const workout = run.workoutId ? workouts.get(run.workoutId) ?? null : null;
+      const archivedWorkout = archivedWorkoutsByRunId.get(run.id);
+      const workout = archivedWorkout !== undefined
+        ? archivedWorkout
+        : run.workoutId ? activeWorkouts.get(run.workoutId) ?? null : null;
       return [
         run.id,
         {
