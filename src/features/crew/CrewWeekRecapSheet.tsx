@@ -5,11 +5,13 @@ import { Sheet } from "../../components/ui/Sheet";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance";
-import { formatTotalHoursMinutes } from "../../domain/duration";
+import { formatDurationSeconds, formatTotalHoursMinutes } from "../../domain/duration";
 import { formatWeekRange } from "../../domain/plan";
+import { formatPaceSeconds } from "../../domain/runs";
 import { CREW_AWARD_LABEL, formatCrewAwardResult } from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
 import type {
+  CrewWeekPerformance,
   CrewWeekRecap,
   CrewWeekRecapAward,
   CrewWeekRecapBeat,
@@ -26,25 +28,27 @@ import "./crewWeekRecap.css";
 /**
  * The Crew Week Recap.
  *
- * Six compositions sharing one system, rather than one composition repeated six
- * times. The sheet itself is the canvas: there is no inner stage card, no card
- * inside a card, and no frame that is a bordered rectangle containing a number.
- * Each beat gets the shape its own fact deserves — a hero with the week's real
- * blocks under it, a scoreboard, a portrait, a piece of tower, two award
- * blocks, a comparison — and hierarchy comes from type, space and actual Crew
+ * Six pages sharing one system, each with its own job, rhythm and backdrop —
+ * not one composition repeated six times. The sheet itself is the canvas:
+ * there is no inner stage card and no page that is a bordered rectangle
+ * containing a number. Hierarchy comes from type, space and actual Crew
  * objects.
  *
  * Everything visible here is drawn by the app from the Crew's own data. The
  * blocks are the real `Brick`/`AwardBrick` construction under the real member
- * colours; the identity marks are the real `CrewEmblem` and `RunnerIcon`. No
- * artwork, no illustration, no second tower renderer.
+ * colours; the identity marks are the real `CrewEmblem` and `RunnerIcon`; the
+ * backdrops are CSS gradients keyed off the page. No artwork, no illustration,
+ * no second tower renderer, nothing that would need an asset exported to ship.
+ *
+ * The recap is allowed more personality than an ordinary STACK screen, and it
+ * spends that budget on page identity rather than on decoration: each backdrop
+ * says something about the page it is behind, and every one of them sits far
+ * enough back that the data stays the loudest thing on the screen.
  *
  * Nothing advances on its own. An auto-playing story is a Reduced Motion
- * problem, a screen-reader problem and a reading-speed problem at once, and the
- * arcade language STACK speaks is a machine you operate rather than a video you
- * watch.
+ * problem, a screen-reader problem and a reading-speed problem at once.
  *
- * The frames come from `crewWeekRecap`, so this component decides only how a
+ * The pages come from `crewWeekRecap`, so this component decides only how a
  * beat looks — never whether the Crew earned one.
  */
 
@@ -57,16 +61,66 @@ interface CrewWeekRecapSheetProps {
 
 type ChangeBeat = Extract<CrewWeekRecapBeat, { kind: "change" }>;
 type BuildBeat = Extract<CrewWeekRecapBeat, { kind: "build" }>;
+type ParticipationBeat = Extract<CrewWeekRecapBeat, { kind: "participation" }>;
+type PerformancesBeat = Extract<CrewWeekRecapBeat, { kind: "performances" }>;
+type AwardsBeat = Extract<CrewWeekRecapBeat, { kind: "specialBlocks" }>;
 
-type Frame =
-  | { kind: "totals" }
-  | { kind: "beat"; beat: Exclude<CrewWeekRecapBeat, ChangeBeat> }
-  | { kind: "closing"; change: ChangeBeat | null };
+/** Page identity. Drives the title, the backdrop, and the layout variant. */
+type Page =
+  | { kind: "together" }
+  | { kind: "performances"; beat: PerformancesBeat }
+  | { kind: "build"; beat: BuildBeat }
+  | { kind: "awards"; beat: AwardsBeat }
+  | { kind: "change"; beat: ChangeBeat }
+  | { kind: "complete" };
+
+/** How many runner marks the participation row shows before it counts the rest. */
+const RUNNER_ROW_LIMIT = 7;
+
+const PERFORMANCE_LABEL: Record<CrewWeekPerformance["kind"], string> = {
+  longestRun: "Longest Run",
+  bestPace: "Best Avg. Pace",
+  longestEffort: "Longest Time On Feet",
+  busiestDay: "Busiest Day",
+};
+
+/** The reading and its unit, kept apart so the unit can sit back at baseline. */
+function performanceReading(
+  performance: CrewWeekPerformance,
+): { value: string; unit: string | null } {
+  switch (performance.kind) {
+    case "longestRun":
+      return { value: formatMiles(performance.value), unit: "MI" };
+    case "bestPace":
+      // `formatPaceSeconds` already carries its own `/MI`.
+      return { value: formatPaceSeconds(performance.value), unit: null };
+    case "longestEffort":
+      return { value: formatDurationSeconds(performance.value), unit: null };
+    case "busiestDay":
+      return {
+        value: String(performance.value),
+        unit: performance.value === 1 ? "RUN" : "RUNS",
+      };
+  }
+}
+
+/** The qualifier or context under a reading, when there is one worth stating. */
+function performanceSupport(performance: CrewWeekPerformance): string {
+  const day = formatDateLabel(performance.localDate, { weekday: "long" });
+  if (performance.kind === "busiestDay") return day;
+  const type = performance.activityType
+    ? WORKOUT_TYPE_LABEL[performance.activityType]
+    : null;
+  // The same qualifier the Fastest Avg. Pace award uses, stated rather than
+  // assumed — a pace on a two-mile run is not the same claim as a pace on any run.
+  const qualifier = performance.kind === "bestPace" ? "FROM 2 MI+" : type;
+  return [day, qualifier].filter(Boolean).join(" · ");
+}
 
 /** The runner's own mark and name, in their own colour. Never a rank. */
 function Runner({
   runner,
-  size = 30,
+  size = 26,
   className,
 }: {
   runner: CrewWeekRecapRunner;
@@ -84,7 +138,6 @@ function Runner({
   );
 }
 
-/** The label above a frame's fact. One per frame, always in the machine voice. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <p className="crew-recap__eyebrow machine-label">{children}</p>;
 }
@@ -99,8 +152,8 @@ function Figure({
   size = "hero",
 }: {
   value: string;
-  unit?: string;
-  size?: "hero" | "mid";
+  unit?: string | null;
+  size?: "hero" | "mid" | "small";
 }) {
   return (
     <p className="crew-recap__figure data-value" data-size={size}>
@@ -110,22 +163,27 @@ function Figure({
   );
 }
 
-/* Frame 1 — the week, and what it built. */
-function TotalsFrame({
+/* Page 1 — Together. The crew, the week, and what it built. */
+function TogetherPage({
   recap,
   emblem,
+  participation,
   build,
 }: {
   recap: CrewWeekRecap;
   emblem: CrewEmblemModel;
+  participation: ParticipationBeat | null;
   build: BuildBeat | null;
 }) {
   const { totals } = recap;
+  const shown = participation?.runners.slice(0, RUNNER_ROW_LIMIT) ?? [];
+  const overflow = (participation?.runners.length ?? 0) - shown.length;
+
   return (
-    <div className="crew-recap__frame crew-recap__frame--opening">
+    <div className="crew-recap__page crew-recap__page--together">
       <div className="crew-recap__group">
         <div className="crew-recap__crest">
-          <CrewEmblem emblem={emblem} size={38} />
+          <CrewEmblem emblem={emblem} size={36} />
           <p className="machine-label">
             {formatWeekRange(recap.weekStart, recap.weekEnd)}
           </p>
@@ -134,134 +192,130 @@ function TotalsFrame({
         <Figure value={formatMilesBuilt(totals.miles)} unit="MI" />
         <p className="crew-recap__together">TOGETHER</p>
 
-        <p className="crew-recap__caption machine-label">
-          {totals.runs} {totals.runs === 1 ? "RUN" : "RUNS"} ·{" "}
-          {totals.activeRunners}{" "}
-          {totals.activeRunners === 1 ? "RUNNER" : "RUNNERS"} ·{" "}
-          {formatTotalHoursMinutes(totals.durationSeconds)}
-        </p>
+        {/* Three readings, one composition, divided by hairlines rather than boxed. */}
+        <dl className="crew-recap__scoreboard">
+          <div>
+            <dd className="data-value">{totals.runs}</dd>
+            <dt className="machine-label">Runs</dt>
+          </div>
+          <div>
+            <dd className="data-value">{totals.activeRunners}</dd>
+            <dt className="machine-label">Runners</dt>
+          </div>
+          <div>
+            <dd className="data-value">
+              {formatTotalHoursMinutes(totals.durationSeconds)}
+            </dd>
+            <dt className="machine-label">On Your Feet</dt>
+          </div>
+        </dl>
+
+        {/*
+          Participation, folded in rather than given a page of its own — and
+          built to scale: the marks are a wrapping row that counts the rest
+          once a crew outgrows one line, so an eleven-person Crew reads as
+          easily as a four-person one.
+        */}
+        {participation && (
+          <div className="crew-recap__participation">
+            <p className="crew-recap__participation-line">
+              {participation.everyoneRan
+                ? "Everyone ran this week."
+                : `${participation.activeRunners} of ${participation.rosterSize} ran this week.`}
+            </p>
+            <ul
+              className="crew-recap__runner-row"
+              aria-label={
+                participation.everyoneRan
+                  ? "Everyone in the crew ran this week"
+                  : `${participation.activeRunners} of ${participation.rosterSize} crew members ran this week`
+              }
+            >
+              {shown.map((runner) => (
+                <li
+                  key={runner.userId}
+                  data-member-color={crewMemberAccent(runner.userId, runner.accentColor)}
+                >
+                  <RunnerIcon icon={runner.runnerIcon} size={26} />
+                  <span className="visually-hidden">{runner.displayName}</span>
+                </li>
+              ))}
+              {overflow > 0 && (
+                <li className="crew-recap__runner-more machine-label">+{overflow}</li>
+              )}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/*
-        The week's own blocks, standing under the number. They are the payoff
-        rather than decoration: what makes this frame fun is that the shape is
-        the crew's real Build, not that a graphic was added to it.
+        The week's own blocks, standing on the floor of the page. What makes
+        this fun is that the shape is the crew's real Build, not that a graphic
+        was added to it.
       */}
       {build && <RecapBuildCrop beat={build} className="crew-recap__opening-crop" />}
     </div>
   );
 }
 
-/* Frame 2 — who showed up. A scoreboard, not three cards. */
-function ParticipationFrame({
-  beat,
-  totals,
-}: {
-  beat: Extract<CrewWeekRecapBeat, { kind: "participation" }>;
-  totals: CrewWeekRecap["totals"];
-}) {
+/* Page 2 — Best Performances. One hero, then the rest. */
+function PerformancesPage({ beat }: { beat: PerformancesBeat }) {
+  const [hero, ...rest] = beat.items;
+  const heroReading = performanceReading(hero);
+
   return (
-    <div className="crew-recap__frame">
-      <Eyebrow>{beat.everyoneRan ? "The Whole Crew" : "Who Ran"}</Eyebrow>
+    <div className="crew-recap__page">
+      <Eyebrow>Best Performances</Eyebrow>
 
-      {beat.everyoneRan ? (
-        <p className="crew-recap__headline">EVERYONE RAN</p>
-      ) : (
-        <Figure
-          value={String(beat.activeRunners)}
-          unit={`OF ${beat.rosterSize}`}
-          size="mid"
-        />
-      )}
+      <div className="crew-recap__hero-effort" data-performance={hero.kind}>
+        <p className="crew-recap__effort-label machine-label">
+          {PERFORMANCE_LABEL[hero.kind]}
+        </p>
+        <Figure value={heroReading.value} unit={heroReading.unit} size="mid" />
+        {hero.runner && <Runner runner={hero.runner} size={30} />}
+        <p className="crew-recap__effort-support machine-label">
+          {performanceSupport(hero)}
+        </p>
+      </div>
 
-      <ul className="crew-recap__runners" aria-label="Runners this week">
-        {beat.runners.map((runner) => (
-          <li key={runner.userId}>
-            <Runner runner={runner} size={34} />
-          </li>
-        ))}
-      </ul>
-
-      {/* Three readings, one composition, divided by hairlines rather than boxed. */}
-      <dl className="crew-recap__scoreboard">
-        <div>
-          <dd className="data-value">{totals.runs}</dd>
-          <dt className="machine-label">Runs</dt>
-        </div>
-        <div>
-          <dd className="data-value">{totals.activeRunners}</dd>
-          <dt className="machine-label">Runners</dt>
-        </div>
-        <div>
-          <dd className="data-value">
-            {formatTotalHoursMinutes(totals.durationSeconds)}
-          </dd>
-          <dt className="machine-label">On Your Feet</dt>
-        </div>
-      </dl>
-    </div>
-  );
-}
-
-/* Frame 3 — the week's longest run, as a portrait. */
-function LongestRunFrame({
-  beat,
-  award,
-}: {
-  beat: Extract<CrewWeekRecapBeat, { kind: "longestRun" }>;
-  award: CrewWeekRecapAward | null;
-}) {
-  return (
-    <div className="crew-recap__frame">
-      <Eyebrow>Longest Run</Eyebrow>
-      <Figure value={formatMiles(beat.distanceMiles)} unit="MI" />
-
-      <Runner runner={beat.runner} size={44} className="crew-recap__runner--lead" />
-
-      <p className="crew-recap__caption machine-label">
-        {WORKOUT_TYPE_LABEL[beat.activityType]} ·{" "}
-        {formatDateLabel(beat.localDate, { weekday: "long" })}
-      </p>
-
-      {/*
-        Only when the Crew's own award data actually ties a standing Special
-        Block to this run's runner. The block is the existing hollow award
-        object at portrait size — no invented trophy, no second badge.
-      */}
-      {award && (
-        <div className="crew-recap__award-tie" data-award={award.awardType}>
-          <span
-            className="crew-recap__award-hero"
-            style={{
-              ["--piece-color" as string]: `var(--member-${crewMemberAccent(
-                beat.runner.userId,
-                beat.runner.accentColor,
-              )})`,
-            }}
-          >
-            <AwardBrick
-              awardType={award.awardType}
-              pieceColor={`var(--member-${crewMemberAccent(
-                beat.runner.userId,
-                beat.runner.accentColor,
-              )})`}
-              topFace={[true]}
-              rightFace={[true]}
-            />
-          </span>
-          <p className="machine-label">
-            {CREW_AWARD_LABEL[award.awardType]} Special Block
-          </p>
-        </div>
+      {rest.length > 0 && (
+        <ul className="crew-recap__efforts">
+          {rest.map((performance) => {
+            const reading = performanceReading(performance);
+            return (
+              <li key={performance.kind} data-performance={performance.kind}>
+                <span className="crew-recap__effort-copy">
+                  <span className="crew-recap__effort-label machine-label">
+                    {PERFORMANCE_LABEL[performance.kind]}
+                  </span>
+                  <span className="crew-recap__effort-value data-value">
+                    {reading.value}
+                    {reading.unit && (
+                      <span className="crew-recap__unit machine-label">
+                        {reading.unit}
+                      </span>
+                    )}
+                  </span>
+                  <span className="crew-recap__effort-support machine-label">
+                    {performanceSupport(performance)}
+                  </span>
+                </span>
+                {performance.runner && (
+                  <Runner runner={performance.runner} size={24} />
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
 }
 
-/* Frame 4 — the most STACK-specific frame: a real piece of the Crew Build. */
-function BuildFrame({ beat }: { beat: BuildBeat }) {
+/* Page 3 — the most STACK-specific page: a real piece of the Crew Build. */
+function BuildPage({ beat }: { beat: BuildBeat }) {
   return (
-    <div className="crew-recap__frame crew-recap__frame--build">
+    <div className="crew-recap__page crew-recap__page--build">
       <div className="crew-recap__group">
         <Eyebrow>Added To The Build</Eyebrow>
         <Figure
@@ -277,20 +331,14 @@ function BuildFrame({ beat }: { beat: BuildBeat }) {
   );
 }
 
-/* Frame 5 — the awards, carried by the award blocks themselves. */
-function SpecialBlocksFrame({
-  beat,
-}: {
-  beat: Extract<CrewWeekRecapBeat, { kind: "specialBlocks" }>;
-}) {
+/* Page 4 — Awards, carried by the award blocks themselves. */
+function AwardsPage({ beat }: { beat: AwardsBeat }) {
   return (
-    <div className="crew-recap__frame">
-      <Eyebrow>
-        {beat.awards.length === 1 ? "Special Block" : "Special Blocks"}
-      </Eyebrow>
+    <div className="crew-recap__page">
+      <Eyebrow>Awards</Eyebrow>
 
       <ul className="crew-recap__awards">
-        {beat.awards.map((award) => {
+        {beat.awards.map((award: CrewWeekRecapAward) => {
           const pieceColor = award.winner
             ? `var(--member-${crewMemberAccent(
               award.winner.userId,
@@ -310,81 +358,104 @@ function SpecialBlocksFrame({
               <p className="crew-recap__award-name">
                 {CREW_AWARD_LABEL[award.awardType]}
               </p>
-              <p className="crew-recap__award-winner">
-                {award.winner?.displayName ?? "Crew member"}
-              </p>
               <p className="crew-recap__award-result data-value">
                 {formatCrewAwardResult(award.awardType, award.resultValue)}
               </p>
+              {award.winner && <Runner runner={award.winner} size={22} />}
             </li>
           );
         })}
       </ul>
 
       <p className="crew-recap__note">
-        Standing in the Crew Build, where the whole crew can see them.
+        Earned this week and standing in the Crew Build, where the whole crew
+        can see them.
       </p>
     </div>
   );
 }
 
-/* Frame 6 — the comparison, then the close. */
-function ClosingFrame({
-  change,
+/* Page 5 — against last week. */
+function ChangePage({
+  beat,
+  miles,
+}: {
+  beat: ChangeBeat;
+  miles: number;
+}) {
+  const peak = Math.max(beat.previousMiles, miles, 0.01);
+  return (
+    <div className="crew-recap__page">
+      <Eyebrow>Against Last Week</Eyebrow>
+      <Figure
+        value={`${beat.deltaMiles > 0 ? "+" : ""}${formatMilesBuilt(beat.deltaMiles)}`}
+        unit="MI"
+        size="mid"
+      />
+
+      {/*
+        Two columns, plain CSS. Height is the reading; each column's own figure
+        sits under it in text, so height is never the only channel.
+      */}
+      <div className="crew-recap__compare">
+        <div className="crew-recap__compare-bars" aria-hidden="true">
+          <span
+            data-week="previous"
+            style={{ ["--bar" as string]: `${(beat.previousMiles / peak) * 100}%` }}
+          />
+          <span
+            data-week="current"
+            style={{ ["--bar" as string]: `${(miles / peak) * 100}%` }}
+          />
+        </div>
+        <dl className="crew-recap__compare-key">
+          <div>
+            <dd className="data-value">{formatMilesBuilt(beat.previousMiles)} MI</dd>
+            <dt>last week</dt>
+          </div>
+          <div data-current="true">
+            <dd className="data-value">{formatMilesBuilt(miles)} MI</dd>
+            <dt>this week</dt>
+          </div>
+        </dl>
+      </div>
+
+      {/* One restrained factual reading of the delta, never a verdict on it. */}
+      {beat.percent !== 0 && (
+        <p className="crew-recap__note">
+          That is{" "}
+          <span className="data-value">{Math.abs(beat.percent)}%</span>{" "}
+          {beat.percent > 0 ? "more" : "fewer"} miles than last week.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* Page 6 — the finish. */
+function CompletePage({
   recap,
   emblem,
+  build,
 }: {
-  change: ChangeBeat | null;
   recap: CrewWeekRecap;
   emblem: CrewEmblemModel;
+  build: BuildBeat | null;
 }) {
-  const thisWeek = recap.totals.miles;
-  const peak = change ? Math.max(change.previousMiles, thisWeek, 0.01) : 0;
   return (
-    <div className="crew-recap__frame crew-recap__frame--closing">
-      {change && (
-        <>
-          <Eyebrow>Against Last Week</Eyebrow>
-          <Figure
-            value={`${change.deltaMiles > 0 ? "+" : ""}${formatMilesBuilt(change.deltaMiles)}`}
-            unit="MI"
-            size="mid"
-          />
-          {/*
-            Two columns, plain CSS. Height is the reading; the label beside each
-            bar carries the same fact in text, so the bars are never the only
-            channel.
-          */}
-          <div className="crew-recap__compare">
-            <div className="crew-recap__compare-bars" aria-hidden="true">
-              <span
-                data-week="previous"
-                style={{ ["--bar" as string]: `${(change.previousMiles / peak) * 100}%` }}
-              />
-              <span
-                data-week="current"
-                style={{ ["--bar" as string]: `${(thisWeek / peak) * 100}%` }}
-              />
-            </div>
-            <dl className="crew-recap__compare-key">
-              <div>
-                <dd className="data-value">{formatMilesBuilt(change.previousMiles)} MI</dd>
-                <dt>last week</dt>
-              </div>
-              <div data-current="true">
-                <dd className="data-value">{formatMilesBuilt(thisWeek)} MI</dd>
-                <dt>this week</dt>
-              </div>
-            </dl>
-          </div>
-        </>
-      )}
-
-      <div className="crew-recap__sign-off">
-        <CrewEmblem emblem={emblem} size={44} />
+    <div className="crew-recap__page crew-recap__page--complete">
+      <div className="crew-recap__finale">
+        <CrewEmblem emblem={emblem} size={54} />
         <p className="crew-recap__headline">WEEK COMPLETE</p>
-        <p className="crew-recap__note">Nice work, {recap.crewName}.</p>
+        <p className="crew-recap__note">Great work, {recap.crewName}.</p>
       </div>
+      {build && (
+        <RecapBuildCrop
+          beat={build}
+          className="crew-recap__finale-crop"
+          animateSettle={false}
+        />
+      )}
     </div>
   );
 }
@@ -395,56 +466,45 @@ export function CrewWeekRecapSheet({
   isOpen,
   onClose,
 }: CrewWeekRecapSheetProps) {
+  const beat = <K extends CrewWeekRecapBeat["kind"]>(kind: K) =>
+    (recap.beats.find((item) => item.kind === kind) ?? null) as
+    | Extract<CrewWeekRecapBeat, { kind: K }>
+    | null;
+
+  const participation = beat("participation");
+  const build = beat("build");
+
   /**
-   * The story, with week-over-week folded into the close rather than standing
-   * as its own frame: a comparison is how the week ended, not a separate beat,
-   * and the recap should not end on a chart.
+   * The story. Participation and the totals share the opening page rather than
+   * each taking one — a page whose only fact is "everyone ran" is a weak page,
+   * and it does not scale to a Crew of eleven. Every other page exists only if
+   * its beat does, so a quiet week is a shorter recap rather than a padded one.
    */
-  const frames = useMemo<Frame[]>(() => {
-    const change =
-      (recap.beats.find((beat) => beat.kind === "change") as ChangeBeat | undefined) ??
-      null;
+  const pages = useMemo<Page[]>(() => {
+    const performances = recap.beats.find((item) => item.kind === "performances");
+    const awards = recap.beats.find((item) => item.kind === "specialBlocks");
+    const change = recap.beats.find((item) => item.kind === "change");
     return [
-      { kind: "totals" },
-      ...recap.beats
-        .filter((beat): beat is Exclude<CrewWeekRecapBeat, ChangeBeat> => beat.kind !== "change")
-        .map((beat) => ({ kind: "beat", beat }) as Frame),
-      { kind: "closing", change },
+      { kind: "together" } as Page,
+      ...(performances ? [{ kind: "performances", beat: performances } as Page] : []),
+      ...(build ? [{ kind: "build", beat: build } as Page] : []),
+      ...(awards ? [{ kind: "awards", beat: awards } as Page] : []),
+      ...(change ? [{ kind: "change", beat: change } as Page] : []),
+      { kind: "complete" } as Page,
     ];
-  }, [recap]);
-
-  const build =
-    (recap.beats.find((beat) => beat.kind === "build") as BuildBeat | undefined) ?? null;
+  }, [recap, build]);
 
   /**
-   * The Special Block the longest run earned, when the Crew's data actually
-   * says so: a placed Long Haul block whose winner is the runner of that run.
-   * Anything less is a coincidence, and the frame shows nothing.
-   */
-  const longestRunAward = useMemo<CrewWeekRecapAward | null>(() => {
-    const longest = recap.beats.find((beat) => beat.kind === "longestRun");
-    const special = recap.beats.find((beat) => beat.kind === "specialBlocks");
-    if (!longest || !special) return null;
-    return (
-      special.awards.find(
-        (award) =>
-          award.awardType === "longHaul" &&
-          award.winner?.userId === longest.runner.userId,
-      ) ?? null
-    );
-  }, [recap]);
-
-  /**
-   * Which frame the runner is on. Held here rather than synchronized to
+   * Which page the runner is on. Held here rather than synchronized to
    * `isOpen`, because the recap is mounted for the visit: closing it unmounts
-   * the component, so the next visit already starts on the first frame with no
+   * the component, so the next visit already starts on the first page with no
    * effect reaching in to reset anything.
    */
   const [index, setIndex] = useState(0);
 
-  const position = Math.min(index, frames.length - 1);
-  const current = frames[position];
-  const isLast = position >= frames.length - 1;
+  const position = Math.min(index, pages.length - 1);
+  const current = pages[position];
+  const isLast = position >= pages.length - 1;
 
   return (
     <Sheet
@@ -455,66 +515,56 @@ export function CrewWeekRecapSheet({
     >
       <div className="crew-recap">
         {/*
+          The page's own backdrop. Absolutely positioned and bled past the
+          sheet's padding, so each page has an identity of its own without any
+          page gaining a box. Decorative and inert.
+        */}
+        <div
+          className="crew-recap__backdrop"
+          data-page={current.kind}
+          aria-hidden="true"
+        />
+
+        {/*
           Position, quietly. Small blocks rather than dots, because that is the
           shape this product is made of. Decorative: the live region below
           announces the same thing in words.
         */}
         <ol className="crew-recap__progress" aria-hidden="true">
-          {frames.map((frame, step) => (
+          {pages.map((page, step) => (
             <li
-              key={`${frame.kind}-${step}`}
+              key={`${page.kind}-${step}`}
               data-state={step === position ? "current" : step < position ? "done" : "ahead"}
             />
           ))}
         </ol>
 
         {/*
-          One live region for the whole story. Each frame replaces the last, so
-          a screen reader hears the beat it moved to rather than the whole
-          recap again. `key` restarts the frame's entrance.
+          One live region for the whole story. Each page replaces the last, so
+          a screen reader hears the page it moved to rather than the whole
+          recap again. `key` restarts the page's entrance.
         */}
-        {/*
-          Which composition this is. The two frames built around a tower stand
-          their crop on the floor of the stage; an ordinary beat sits centred
-          in it, so a short frame is not left clinging to the progress rail.
-        */}
-        <div
-          className="crew-recap__stage"
-          data-frame={
-            current.kind === "beat"
-              ? current.beat.kind
-              : // A week with nothing standing in the tower has no crop to put
-              // on the floor, so its opening centres like an ordinary beat
-              // rather than leaving two thirds of the sheet empty under it.
-              current.kind === "totals" && build
-                ? "totals"
-                : current.kind === "totals"
-                  ? "totals-bare"
-                  : current.kind
-          }
-          aria-live="polite"
-        >
+        <div className="crew-recap__stage" data-page={current.kind} aria-live="polite">
           <p className="visually-hidden">
-            Frame {position + 1} of {frames.length}
+            Page {position + 1} of {pages.length}
           </p>
           <div className="crew-recap__pane" key={position}>
-            {current.kind === "totals" && (
-              <TotalsFrame recap={recap} emblem={emblem} build={build} />
+            {current.kind === "together" && (
+              <TogetherPage
+                recap={recap}
+                emblem={emblem}
+                participation={participation}
+                build={build}
+              />
             )}
-            {current.kind === "beat" && current.beat.kind === "participation" && (
-              <ParticipationFrame beat={current.beat} totals={recap.totals} />
+            {current.kind === "performances" && <PerformancesPage beat={current.beat} />}
+            {current.kind === "build" && <BuildPage beat={current.beat} />}
+            {current.kind === "awards" && <AwardsPage beat={current.beat} />}
+            {current.kind === "change" && (
+              <ChangePage beat={current.beat} miles={recap.totals.miles} />
             )}
-            {current.kind === "beat" && current.beat.kind === "longestRun" && (
-              <LongestRunFrame beat={current.beat} award={longestRunAward} />
-            )}
-            {current.kind === "beat" && current.beat.kind === "build" && (
-              <BuildFrame beat={current.beat} />
-            )}
-            {current.kind === "beat" && current.beat.kind === "specialBlocks" && (
-              <SpecialBlocksFrame beat={current.beat} />
-            )}
-            {current.kind === "closing" && (
-              <ClosingFrame change={current.change} recap={recap} emblem={emblem} />
+            {current.kind === "complete" && (
+              <CompletePage recap={recap} emblem={emblem} build={build} />
             )}
           </div>
         </div>
@@ -538,9 +588,7 @@ export function CrewWeekRecapSheet({
             <button
               type="button"
               className="crew-recap__step crew-recap__step--next"
-              onClick={() =>
-                setIndex((step) => Math.min(frames.length - 1, step + 1))
-              }
+              onClick={() => setIndex((step) => Math.min(pages.length - 1, step + 1))}
             >
               Next
               <ChevronRight size={16} strokeWidth={2.2} aria-hidden="true" />

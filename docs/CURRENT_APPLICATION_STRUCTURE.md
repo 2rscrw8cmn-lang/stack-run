@@ -467,7 +467,7 @@ Primary implementation:
 
 - `src/crew/weekRecap.ts` — the whole derivation;
 - `src/features/today/TodayCrewRecap.tsx` — Today's limited-time module and its gate;
-- `src/features/crew/CrewWeekRecapSheet.tsx` — the fuller frame-by-frame recap;
+- `src/features/crew/CrewWeekRecapSheet.tsx` — the fuller six-page recap, each page with its own layout and CSS backdrop;
 - `src/features/build/BuildCrop.tsx` — a read-only piece of tower, shared with any surface that shows built blocks without placing them;
 - `src/features/crew/crewBrickFace.ts` — the Crew brick's face label and member colour, extracted from `CrewBuild` so a crop cannot disagree with the tower;
 - `src/storage/dismissedCrewRecapRepository.ts` — device-local, per-account dismissal.

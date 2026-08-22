@@ -51,8 +51,18 @@ const ICONS = [
   { head: 3, face: 1, body: 2, flair: 1, background: 0 },
   { head: 0, face: 3, body: 0, flair: 2, background: 3 },
   { head: 2, face: 0, body: 3, flair: 0, background: 1 },
+  { head: 4, face: 1, body: 1, flair: 3, background: 2 },
+  { head: 1, face: 4, body: 2, flair: 0, background: 0 },
+  { head: 3, face: 2, body: 3, flair: 1, background: 3 },
+  { head: 0, face: 0, body: 0, flair: 2, background: 1 },
+  { head: 2, face: 3, body: 1, flair: 3, background: 0 },
 ];
 
+/**
+ * Nine runners, so the review overlay exercises the layouts a four-person
+ * fixture never would: the participation row overflowing into `+N`, and a week
+ * with enough runs for the performance page to have something to choose from.
+ */
 const ROSTER: readonly {
   userId: string;
   displayName: string;
@@ -62,6 +72,11 @@ const ROSTER: readonly {
   { userId: "demo-2", displayName: "Priya", accentColor: "magenta" },
   { userId: "demo-3", displayName: "Marcus", accentColor: "mint" },
   { userId: "demo-4", displayName: "Elena", accentColor: "vermilion" },
+  { userId: "demo-5", displayName: "Tomas", accentColor: "turquoise" },
+  { userId: "demo-6", displayName: "Ada", accentColor: "fuchsia" },
+  { userId: "demo-7", displayName: "Ruth", accentColor: "jade" },
+  { userId: "demo-8", displayName: "Kofi", accentColor: "orchid" },
+  { userId: "demo-9", displayName: "Sam", accentColor: "rust" },
 ];
 
 function members(count: number): CrewMember[] {
@@ -152,7 +167,14 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       crewBuildRow: 6,
       crewBuildColumnStart: 7,
     }),
-    run("w5", 0, "2026-09-11", {
+    // Wednesday is the crew's busiest day: three runs on it.
+    run("w5", 4, "2026-09-09", {
+      activityType: "easy",
+      distanceMiles: 3.1,
+      durationSeconds: 1720,
+      source: "intervals",
+    }),
+    run("w6", 0, "2026-09-11", {
       activityType: "easy",
       distanceMiles: 4.6,
       durationSeconds: 2760,
@@ -160,7 +182,14 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       crewBuildRow: 7,
       crewBuildColumnStart: 1,
     }),
-    run("w6", 1, "2026-09-12", {
+    // The fastest qualifying pace of the week: 7:47 /mi over 3.2 miles.
+    run("w7", 5, "2026-09-11", {
+      activityType: "easy",
+      distanceMiles: 3.2,
+      durationSeconds: 1494,
+      source: "intervals",
+    }),
+    run("w8", 1, "2026-09-12", {
       activityType: "long",
       distanceMiles: 13.1,
       durationSeconds: 7440,
@@ -169,11 +198,30 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       crewBuildColumnStart: 1,
     }),
     // Earned, not yet placed: it counts in the week's totals and not in the
-    // tower, which is exactly the distinction the Build beat draws.
-    run("w7", 2, "2026-09-13", {
+    // tower, which is exactly the distinction the Build page draws.
+    run("w9", 2, "2026-09-13", {
       activityType: "easy",
       distanceMiles: 4.4,
       durationSeconds: 2460,
+      source: "intervals",
+    }),
+    run("w10", 6, "2026-09-10", {
+      activityType: "easy",
+      distanceMiles: 5.2,
+      durationSeconds: 2940,
+      source: "intervals",
+    }),
+    run("w11", 7, "2026-09-12", {
+      activityType: "simulation",
+      distanceMiles: 7.4,
+      durationSeconds: 3660,
+      source: "intervals",
+    }),
+    // A long ride: the week's longest time on feet without being its longest run.
+    run("w12", 8, "2026-09-13", {
+      activityType: "cross",
+      distanceMiles: 0,
+      durationSeconds: 8100,
       source: "intervals",
     }),
     // The week before, so week-over-week has something defensible to say.
@@ -213,7 +261,7 @@ export interface CrewRecapDemo {
 export function crewRecapDemoData(
   variant: CrewRecapDemoVariant,
 ): CrewRecapDemo | null {
-  const roster = members(variant === "minimal" ? 3 : 4);
+  const roster = members(variant === "minimal" ? 3 : ROSTER.length);
   const recap = crewWeekRecap({
     crewId: "demo-crew",
     crewName: variant === "minimal" ? "Slow Week RC" : "Night Shift",

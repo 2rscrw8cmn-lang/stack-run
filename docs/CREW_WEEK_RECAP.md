@@ -47,12 +47,27 @@ The story after it, in editorial order, with what each beat requires:
 | Beat | Exists when | Notes |
 | --- | --- | --- |
 | `participation` | at least one roster member ran | `everyoneRan` is claimed only when every current member ran, and never for a Crew of one |
-| `longestRun` | one run is strictly longest | a tie omits the beat rather than choosing between two runners |
+| `performances` | at least one standout effort survives its tie rule | see below |
 | `build` | at least one of this week's runs is standing in the Crew Build | membership is the run's **local date**, not its placement time, so both members compute the same slice |
 | `specialBlocks` | an award for that week is **placed** in the tower | see below |
 | `change` | the previous week is inside the Build window and has running in it | signed mile delta; zero is a real answer |
 
 A week with no shared running returns `null`. A recap of zero miles is not a minimal story — it is a dashboard reporting an empty cell.
+
+### Best performances, and the line they cannot cross
+
+`performances` carries the week's standout efforts in editorial order. Each is a different question, and each survives only if one run answers it outright — a tie has no answer that is not a choice between two runners, so a tie omits the item.
+
+| Kind | The question | Qualifier |
+| --- | --- | --- |
+| `longestRun` | the furthest single run | distance above zero |
+| `bestPace` | the fastest average pace | a non-Cross run of at least 2 miles — **the same qualifier `finalize_crew_awards` uses for Fastest Avg. Pace** |
+| `longestEffort` | the longest time on feet | any activity, and only when a *different* run holds it than `longestRun` — otherwise it is the same run wearing a second label |
+| `busiestDay` | the day the Crew was loudest | one day, strictly busiest, with more than one run on it |
+
+`busiestDay` is crew-level on purpose: four individual bests in a row starts to read as a leaderboard, and one beat about the whole crew's loudest day keeps the page a story about the group.
+
+**What this page cannot claim.** A "fastest mile" or a "best 5K" needs within-run data — splits, laps, a distance-over-time stream — that the Crew projection deliberately does not carry. That is the same limit which leaves D-080's `Steady` award unminted rather than fabricated from an average, and it applies here for the same reason: a 3.4-mile run's average pace is not a 5K time, and presenting it as one would be inventing a fact. If STACK ever projects verified splits to Crew, those two become derivable; until then they are absent rather than estimated.
 
 ### Special Blocks
 
@@ -66,20 +81,35 @@ This is the part Evolution 2.05 reuses.
 
 **The sheet is the canvas.** There is no inner stage card, no card inside a card, and no frame that is a bordered rectangle containing a number. Hierarchy comes from type, space and actual Crew objects. Bordered containers are reserved for the two places that earn one: the Today module, and a single hairline separating the controls.
 
-**Six compositions, one system — not one composition six times.** Each beat gets the shape its own fact deserves, and no two frames are built the same way:
+**Six pages, one system — not one composition six times.** Each page gets the shape its own facts deserve, and no two are built the same way:
 
-| Frame | Composition |
+| Page | Composition |
 | --- | --- |
-| The week | Split: emblem, week and the mileage hero at the top; the week's real blocks standing on the floor of the frame, with the sheet's own sky between them — the way the Build screen stands a tower |
-| The crew showed up | Typographic: `EVERYONE RAN` when it is true, the runners as their own marks, then three readings divided by hairlines rather than boxed into three cards |
-| Longest run | Portrait: one figure, one runner at size, and — only when the Crew's data ties them — the Special Block that run earned |
+| Together | Split: emblem, week, mileage hero, a three-reading scoreboard and the participation row at the top; the week's real blocks standing on the floor, with the sheet's own sky between them |
+| Best Performances | One hero effort on an accent edge, then the rest as a rhythm of rows, each naming its runner |
 | Added to the Build | One centred group, tower drawn a size up, because here the tower is the subject rather than the payoff under a number |
-| Special Blocks | The award objects carry the frame: hollow blocks at portrait size, name, winner, result |
-| Finish | The week-over-week comparison, then the sign-off and `Done` |
+| Awards | The award objects carry it: hollow blocks at display size, name, result, winner |
+| Against Last Week | Two columns of plain CSS against a chart-rule field, with one restrained percentage reading |
+| Week Complete | The one page that centres itself, because a finish is not a reading |
+
+**Participation is folded into the opening, never its own page.** A page whose only fact is "everyone ran" is a weak page, and it does not survive contact with a real roster. The row shows up to seven marks and then counts the rest (`+4`), so an eleven-person Crew reads as easily as a four-person one and neither needs a layout of its own.
 
 **One fact per frame.** An eyebrow naming the beat, one figure at display size, and the smallest amount of supporting text that makes the figure mean something.
 
 **Advanced by hand.** Nothing auto-plays. An auto-advancing story is a Reduced Motion problem, a screen-reader problem and a reading-speed problem at once, and the arcade language STACK speaks is a machine you operate rather than a video you watch. Position is a quiet rail of small blocks — the shape the product is made of — with `Frame n of m` in the live region for a screen reader, and quiet `Back` / `Next` steps either side of the primary action.
+
+**Each page has its own backdrop.** This is where the recap spends its extra personality budget — on page identity rather than decoration. Every one is a CSS gradient stack keyed off the current page, bled past the sheet's padding so a page gains an identity without gaining a box, masked to fade in at the top, and held at low alpha so the data stays the loudest thing on screen:
+
+| Page | Treatment |
+| --- | --- |
+| Together | technical grid under a soft lime rise |
+| Best Performances | angled speed streaks and a raking light |
+| Added to the Build | blueprint field with a lit floor for the tower to stand on |
+| Awards | two soft cones from above and a lit floor — neutral light, because every award already owns a colour and a warm wash would be a second colour system arguing with it |
+| Against Last Week | chart rules to read the columns against, and a rise under the bars |
+| Week Complete | a centred glow with a scatter of sparks, each spark a 2px radial stop rather than an element or an image |
+
+Nothing here is an asset. No PNG, no SVG illustration, no exported artwork — the whole set ships as gradients.
 
 **Every visual is drawn by the app.** No artwork, no illustration, no generated image, no second tower renderer. The blocks are the real `Brick` / `AwardBrick` construction under the real member colours; the identity marks are the real `CrewEmblem` and `RunnerIcon`.
 
@@ -106,7 +136,7 @@ The recap introduces no geometry of its own. Two extractions carry the Build lan
 - It is limited-time by construction: the recap window above, a real recap, and no dismissal.
 - It is a **teaser, not a second dashboard card**: one header line, one sentence, one compact machine line, and a bottom row pairing the way in with a small crop of the week's real blocks. The crop is the first thing to give way — it is hidden below 360px so the copy never loses a line.
 - It states the week's headline facts itself. A module that says only "your recap is ready" is a notification wearing a card's clothes.
-- `View recap →` opens the fuller frame-by-frame recap, replayable for as long as the module is on Today.
+- `View recap →` opens the fuller page-by-page recap, replayable for as long as the module is on Today.
 - Dismissal is device-local, per account and per Crew week (`src/storage/dismissedCrewRecapRepository.ts`). Dismissing is a statement about this screen, not about the week: the Crew's shared facts are untouched and no crewmate learns of it.
 - The award read that feeds the `specialBlocks` beat happens only after the week, the Crew and the dismissal have all said yes, so Today never spends a round trip on a recap it will not show. It is failure-tolerant: an unavailable award read costs the recap that one beat, never the recap.
 
@@ -149,6 +179,10 @@ The recap is on Today for three days a week, for a Crew that ran. That is right 
 
 Both are preview-host-only (localhost or a Vercel `-git-` branch preview), carry their own fake crew, roster, week and awards, never touch a real Crew or account, and never write to `localStorage`. The recap they show is produced by the real `crewWeekRecap` derivation — only the facts going in are invented — and the module renders the same card the live path does. The card carries a `RECAP DEMO · FAKE CREW DATA` banner.
 
+## Naming
+
+The recap page is titled **Awards**. The underlying object keeps its product name — a **Special Block** is still what D-080 defines, still what the Crew screen offers a winner, and still what the tower holds. "Awards" is the page's title only, because that is what the page is about: what the Crew won this week, rather than the block mechanic behind it.
+
 ## Sharing
 
 Deliberately not implemented. Evolution 2.04 states sharing is optional and only worth doing if it can be privacy-safe and visually strong; nothing here has been widened in anticipation of it.
@@ -157,7 +191,7 @@ Deliberately not implemented. Evolution 2.04 states sharing is optional and only
 
 - `src/crew/weekRecap.test.ts` — the window, every beat's evidence rule, determinism across read order, the sparse-week minimum, and the field drop.
 - `src/features/today/TodayCrewRecap.test.tsx` — the Today window, dismissal persistence, and the cases that render nothing.
-- `src/features/crew/CrewWeekRecapSheet.test.tsx` — the frame sequence and the one-frame sparse recap.
+- `src/features/crew/CrewWeekRecapSheet.test.tsx` — the six-page order, the per-page backdrops, the large-roster overflow row, and the pages a sparse week drops.
 - `src/storage/dismissedCrewRecapRepository.test.ts` — per-account, per-week dismissal and corrupt-value tolerance.
 - `src/features/today/crewRecapDemo.test.ts` — the review overlay's host rule, its window, and both fixtures.
 

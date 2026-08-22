@@ -35,14 +35,25 @@ describe("Crew Week Recap owner review", () => {
     const demo = crewRecapDemoData("full")!;
     expect(demo.recap.beats.map((beat) => beat.kind)).toEqual([
       "participation",
-      "longestRun",
+      "performances",
       "build",
       "specialBlocks",
       "change",
     ]);
 
     const participation = demo.recap.beats.find((beat) => beat.kind === "participation")!;
-    expect(participation).toMatchObject({ everyoneRan: true, rosterSize: 4 });
+    // Nine runners, so the review overlay exercises the overflow row a
+    // four-person fixture never would.
+    expect(participation).toMatchObject({ everyoneRan: true, rosterSize: 9 });
+
+    // Every performance kind the page can show, including the crew-level one.
+    const performances = demo.recap.beats.find((beat) => beat.kind === "performances")!;
+    expect(performances.items.map((item) => item.kind)).toEqual([
+      "longestRun",
+      "bestPace",
+      "longestEffort",
+      "busiestDay",
+    ]);
 
     const special = demo.recap.beats.find((beat) => beat.kind === "specialBlocks")!;
     // The fixture includes a won-but-unplaced Fastest Avg. Pace block (D-080).
@@ -59,7 +70,7 @@ describe("Crew Week Recap owner review", () => {
     });
     expect(demo.recap.beats.map((beat) => beat.kind)).toEqual([
       "participation",
-      "longestRun",
+      "performances",
     ]);
   });
 });

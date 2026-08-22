@@ -107,6 +107,40 @@ export interface CrewWeekRecapTotals {
   activeRunners: number;
 }
 
+/**
+ * The standout efforts of a week.
+ *
+ * Each kind is a different question, and each is answerable from the shared
+ * run contract alone — distance, duration, activity type and the day. Nothing
+ * here needs a split, a stream or a lap, which is the line that decides what
+ * this page can honestly claim: a "fastest mile" or a "best 5K" would need
+ * within-run data Crew deliberately does not carry, the same limit that
+ * leaves D-080's `Steady` award unminted.
+ *
+ * `busiestDay` is the crew-level one on purpose. A page of four individual
+ * bests starts to read as a leaderboard; one beat about the whole crew's
+ * loudest day keeps it a story about the group.
+ */
+export type CrewWeekPerformanceKind =
+  | "longestRun"
+  | "bestPace"
+  | "longestEffort"
+  | "busiestDay";
+
+export interface CrewWeekPerformance {
+  kind: CrewWeekPerformanceKind;
+  /**
+   * In the kind's own unit: miles, seconds per mile, seconds, or a count of
+   * runs. The presentation layer formats it; nothing here is pre-formatted.
+   */
+  value: number;
+  /** Null for a crew-level performance, which belongs to no single runner. */
+  runner: CrewWeekRecapRunner | null;
+  localDate: string;
+  activityType: RunActivityType | null;
+  runId: string | null;
+}
+
 export type CrewWeekRecapBeat =
   | {
     kind: "participation";
@@ -118,12 +152,9 @@ export type CrewWeekRecapBeat =
     runners: CrewWeekRecapRunner[];
   }
   | {
-    kind: "longestRun";
-    runId: string;
-    distanceMiles: number;
-    activityType: RunActivityType;
-    localDate: string;
-    runner: CrewWeekRecapRunner;
+    kind: "performances";
+    /** Hero first, then the rest in a fixed editorial order. Never empty. */
+    items: CrewWeekPerformance[];
   }
   | {
     kind: "build";
@@ -143,6 +174,11 @@ export type CrewWeekRecapBeat =
     previousMiles: number;
     /** This week minus last week. Signed; zero is a real answer. */
     deltaMiles: number;
+    /**
+     * The delta as a percentage of last week, rounded. Signed, and only when
+     * last week has mileage to be a percentage of.
+     */
+    percent: number;
   };
 
 export interface CrewWeekRecap {
@@ -296,35 +332,128 @@ function participationBeat(
 }
 
 /**
- * The longest single run of the week.
+ * The single best run by one measure, or nothing.
  *
- * Only claimed when one run is actually longest. A tie has no answer that is
- * not a choice between two runners, and the recap celebrates the Crew rather
- * than ranking it, so a tie omits the beat instead of picking.
+ * A tie has no answer that is not a choice between two runners, and the recap
+ * celebrates the Crew rather than ranking it, so a tie omits the beat instead
+ * of picking. `better` returns true when the candidate beats the incumbent.
  */
-function longestRunBeat(
-  weekRuns: readonly CrewWeekRecapRun[],
-): CrewWeekRecapBeat | null {
-  let longest: CrewWeekRecapRun | null = null;
+function bestRun(
+  runs: readonly CrewWeekRecapRun[],
+  qualifies: (run: CrewWeekRecapRun) => boolean,
+  measure: (run: CrewWeekRecapRun) => number,
+  better: (candidate: number, incumbent: number) => boolean,
+): { run: CrewWeekRecapRun; value: number } | null {
+  let best: { run: CrewWeekRecapRun; value: number } | null = null;
   let tied = false;
-  for (const run of weekRuns) {
-    if (!(run.distanceMiles > 0)) continue;
-    if (longest === null || run.distanceMiles > longest.distanceMiles) {
-      longest = run;
+  for (const run of runs) {
+    if (!qualifies(run)) continue;
+    const value = measure(run);
+    if (!Number.isFinite(value)) continue;
+    if (best === null || better(value, best.value)) {
+      best = { run, value };
       tied = false;
-    } else if (run.distanceMiles === longest.distanceMiles) {
+    } else if (value === best.value) {
       tied = true;
     }
   }
-  if (!longest || tied) return null;
+  return best && !tied ? best : null;
+}
+
+function performanceOf(
+  kind: CrewWeekPerformanceKind,
+  best: { run: CrewWeekRecapRun; value: number },
+): CrewWeekPerformance {
   return {
-    kind: "longestRun",
-    runId: longest.id,
-    distanceMiles: longest.distanceMiles,
-    activityType: longest.activityType,
-    localDate: longest.localDate,
-    runner: runnerOf(longest),
+    kind,
+    value: best.value,
+    runner: runnerOf(best.run),
+    localDate: best.run.localDate,
+    activityType: best.run.activityType,
+    runId: best.run.id,
   };
+}
+
+/**
+ * The day the Crew was loudest.
+ *
+ * Only claimed for a day with more than one run on it — "busiest day, one run"
+ * is not a fact about a week — and only when one day is strictly busiest.
+ */
+function busiestDay(
+  runs: readonly CrewWeekRecapRun[],
+): CrewWeekPerformance | null {
+  const byDay = new Map<string, number>();
+  for (const run of runs) {
+    byDay.set(run.localDate, (byDay.get(run.localDate) ?? 0) + 1);
+  }
+  let busiest: { localDate: string; count: number } | null = null;
+  let tied = false;
+  for (const [localDate, count] of [...byDay].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (busiest === null || count > busiest.count) {
+      busiest = { localDate, count };
+      tied = false;
+    } else if (count === busiest.count) {
+      tied = true;
+    }
+  }
+  if (!busiest || tied || busiest.count < 2) return null;
+  return {
+    kind: "busiestDay",
+    value: busiest.count,
+    runner: null,
+    localDate: busiest.localDate,
+    activityType: null,
+    runId: null,
+  };
+}
+
+/**
+ * The week's standout efforts, in editorial order.
+ *
+ * Each one is omitted when its evidence is missing or tied, so a quiet week
+ * produces a short page rather than a padded one, and the page disappears
+ * entirely when nothing stands out. Two rules keep it from repeating itself:
+ * the pace measure uses the same qualifier the Fastest Avg. Pace award uses
+ * (a non-Cross run of at least two miles), and the longest *effort* appears
+ * only when it is a different run from the longest *distance* — otherwise it
+ * is the same run wearing a second label.
+ */
+function performancesBeat(
+  weekRuns: readonly CrewWeekRecapRun[],
+): CrewWeekRecapBeat | null {
+  const longest = bestRun(
+    weekRuns,
+    (run) => run.distanceMiles > 0,
+    (run) => run.distanceMiles,
+    (candidate, incumbent) => candidate > incumbent,
+  );
+  const pace = bestRun(
+    weekRuns,
+    (run) =>
+      run.activityType !== "cross" &&
+      run.distanceMiles >= 2 &&
+      run.durationSeconds > 0,
+    (run) => run.durationSeconds / run.distanceMiles,
+    (candidate, incumbent) => candidate < incumbent,
+  );
+  const effort = bestRun(
+    weekRuns,
+    (run) => run.durationSeconds > 0,
+    (run) => run.durationSeconds,
+    (candidate, incumbent) => candidate > incumbent,
+  );
+
+  const items: CrewWeekPerformance[] = [];
+  if (longest) items.push(performanceOf("longestRun", longest));
+  if (pace) items.push(performanceOf("bestPace", pace));
+  if (effort && effort.run.id !== longest?.run.id) {
+    items.push(performanceOf("longestEffort", effort));
+  }
+  const busiest = busiestDay(weekRuns);
+  if (busiest) items.push(busiest);
+
+  return items.length > 0 ? { kind: "performances", items } : null;
 }
 
 /**
@@ -440,10 +569,12 @@ function changeBeat(
   );
   if (!(previousMiles > 0)) return null;
 
+  const deltaMiles = roundMiles(miles - previousMiles);
   return {
     kind: "change",
     previousMiles,
-    deltaMiles: roundMiles(miles - previousMiles),
+    deltaMiles,
+    percent: Math.round((deltaMiles / previousMiles) * 100),
   };
 }
 
@@ -480,7 +611,7 @@ export function crewWeekRecap(input: CrewWeekRecapInput): CrewWeekRecap | null {
 
   const beats = [
     participationBeat(input.members, ranUserIds),
-    longestRunBeat(weekRuns),
+    performancesBeat(weekRuns),
     buildBeat(weekRuns),
     specialBlocksBeat(input.awards ?? [], week, runnerById),
     changeBeat(input.runs, week, input.buildStartDate, miles),
