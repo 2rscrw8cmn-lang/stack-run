@@ -5,8 +5,15 @@ import {
   mondayOfLocalDate,
 } from "../domain/dates";
 import type { BlockHeight, BlockWidth } from "../domain/footprint";
-import type { RunActivityType } from "../domain/types";
+import type { RunActivityType, RunSource } from "../domain/types";
 import type { CrewAwardBlockRecord, CrewAwardType } from "./awards";
+import {
+  faceVisibilityOf,
+  occupiedCellsOf,
+  topOf,
+  voidsOf,
+  type GridVoid,
+} from "../domain/placement";
 import { crewBuildFootprint, CREW_BUILD_COLUMNS } from "./crewBuild";
 import type { CrewMemberAccent } from "./memberAccent";
 import type { RunnerIcon } from "./runnerIcon";
@@ -71,6 +78,10 @@ export interface CrewWeekRecapSliceBlock {
   userId: string;
   accentColor: CrewMemberAccent | null;
   activityType: RunActivityType;
+  /** Stamped on the brick face, exactly as the shared tower stamps it. */
+  distanceMiles: number;
+  /** Issue #129: a hand-logged brick keeps its asterisk in the crop too. */
+  source: RunSource | null;
   /** The tower's own footprint for this run, so the slice is the real shape. */
   width: BlockWidth;
   height: BlockHeight;
@@ -181,6 +192,7 @@ export function crewWeekRecapRunsFrom(
     activityType: run.activityType,
     distanceMiles: run.distanceMiles,
     durationSeconds: run.durationSeconds,
+    source: run.source ?? null,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,
   }));
@@ -342,6 +354,8 @@ function buildBeat(
         userId: run.userId,
         accentColor: run.accentColor,
         activityType: run.activityType,
+        distanceMiles: run.distanceMiles,
+        source: run.source ?? null,
         width,
         height,
         columnStart: run.crewBuildColumnStart!,
@@ -490,4 +504,46 @@ export function crewWeekRecap(input: CrewWeekRecapInput): CrewWeekRecap | null {
 /** Stable identity for one Crew's one week — what a dismissal remembers. */
 export function crewWeekRecapKey(crewId: string, weekStart: string): string {
   return `${crewId}:${weekStart}`;
+}
+
+export interface CrewWeekRecapFacedBlock extends CrewWeekRecapSliceBlock {
+  /**
+   * Visible faces, computed with the same neighbour-aware culling Personal,
+   * Crew and Member Build all use, so the week's crop reads as one physical
+   * structure rather than a row of flat rectangles.
+   */
+  topFace: boolean[];
+  rightFace: boolean[];
+  /** Paint order — see `PlacedBlock.depth` in Personal Build for why. */
+  depth: number;
+}
+
+export interface CrewWeekRecapTower {
+  blocks: CrewWeekRecapFacedBlock[];
+  /** Openings the crop spans, drawn so a bridging block is not left floating. */
+  voids: GridVoid[];
+  courses: number;
+}
+
+/**
+ * The build beat's 3D geometry, added as a separate step.
+ *
+ * `crewWeekRecap` stays a statement of facts about a week; this turns the
+ * rectangles it reports into the faces a tower is drawn from. Kept apart for
+ * the same reason `faceCulledMiniBuildTower` is: the beat's tested shape does
+ * not have to grow fields that only one renderer needs, and the facts stay
+ * comparable between two members without any drawing in the way.
+ */
+export function faceCulledRecapSlice(
+  beat: Extract<CrewWeekRecapBeat, { kind: "build" }>,
+): CrewWeekRecapTower {
+  const filled = occupiedCellsOf(beat.slice);
+  return {
+    blocks: beat.slice.map((block) => {
+      const { topFace, rightFace } = faceVisibilityOf(block, filled);
+      return { ...block, topFace, rightFace, depth: topOf(block) };
+    }),
+    voids: voidsOf(beat.slice, filled),
+    courses: beat.courses,
+  };
 }

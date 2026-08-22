@@ -468,6 +468,8 @@ Primary implementation:
 - `src/crew/weekRecap.ts` — the whole derivation;
 - `src/features/today/TodayCrewRecap.tsx` — Today's limited-time module and its gate;
 - `src/features/crew/CrewWeekRecapSheet.tsx` — the fuller frame-by-frame recap;
+- `src/features/build/BuildCrop.tsx` — a read-only piece of tower, shared with any surface that shows built blocks without placing them;
+- `src/features/crew/crewBrickFace.ts` — the Crew brick's face label and member colour, extracted from `CrewBuild` so a crop cannot disagree with the tower;
 - `src/storage/dismissedCrewRecapRepository.ts` — device-local, per-account dismissal.
 
 After a Monday–Sunday Crew week closes, the recap tells the Crew what it built that week. It is derived and never stored, so the same closed week produces the same recap on every device; a beat with no evidence is omitted rather than padded; and a week with no shared running has no recap at all.

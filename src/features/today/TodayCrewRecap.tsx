@@ -1,11 +1,10 @@
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { IconButton } from "../../components/ui/IconButton";
 import { isLocalDateString } from "../../domain/dates";
 import { formatMilesBuilt } from "../../domain/distance";
-import { formatTotalHoursMinutes } from "../../domain/duration";
 import { formatWeekRange } from "../../domain/plan";
-import type { CrewEmblem } from "../../crew/emblem";
+import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
 import { useCrewAwards } from "../../crew/useCrewAwards";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import {
@@ -15,12 +14,15 @@ import {
   isCrewRecapCurrent,
   lastClosedCrewWeek,
   type CrewWeekRecap,
+  type CrewWeekRecapBeat,
 } from "../../crew/weekRecap";
 import {
   dismissCrewRecap,
   loadDismissedCrewRecapKeys,
 } from "../../storage/dismissedCrewRecapRepository";
+import { CrewEmblem } from "../crew/CrewEmblem";
 import { CrewWeekRecapSheet } from "../crew/CrewWeekRecapSheet";
+import { RecapBuildCrop } from "../crew/RecapBuildCrop";
 import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
 import "../crew/crewWeekRecap.css";
 
@@ -169,9 +171,12 @@ function CrewWeekRecapModule({
 /**
  * The module itself.
  *
- * Presentation only, and identical for the live Crew and for owner review — a
- * review path that renders a different card is not reviewing the product. The
- * demo's dismissal stays in memory: there is no account to remember it for.
+ * A teaser, and deliberately small: one line of copy, one compact machine
+ * line, a way in, and a crop of the week's own blocks. It is the same card for
+ * the live Crew and for owner review — a review path that renders a different
+ * card is not reviewing the product.
+ *
+ * The demo's dismissal stays in memory: there is no account to remember it for.
  */
 function CrewRecapCard({
   recap,
@@ -181,7 +186,7 @@ function CrewRecapCard({
   isDemo = false,
 }: {
   recap: CrewWeekRecap;
-  emblem: CrewEmblem;
+  emblem: CrewEmblemModel;
   crewName: string;
   onDismiss?: () => void;
   isDemo?: boolean;
@@ -192,6 +197,10 @@ function CrewRecapCard({
 
   const { totals } = recap;
   const range = formatWeekRange(recap.weekStart, recap.weekEnd);
+  const build =
+    (recap.beats.find((beat) => beat.kind === "build") as
+      | Extract<CrewWeekRecapBeat, { kind: "build" }>
+      | undefined) ?? null;
 
   return (
     <>
@@ -201,14 +210,16 @@ function CrewRecapCard({
       >
         {isDemo && (
           <p className="today-crew-recap__demo machine-label">
-            RECAP DEMO · FAKE CREW DATA · REMOVE ?DEMO= TO RETURN
+            RECAP DEMO · FAKE CREW DATA
           </p>
         )}
 
         <div className="today-crew-recap__head">
-          <span className="today-crew-recap__mark" aria-hidden="true">
-            <Sparkles size={15} strokeWidth={2} />
-          </span>
+          <CrewEmblem
+            className="today-crew-recap__emblem"
+            emblem={emblem}
+            size={19}
+          />
           <p className="machine-label">Crew Week Recap · {range}</p>
           <IconButton
             className="today-crew-recap__dismiss"
@@ -219,27 +230,46 @@ function CrewRecapCard({
         </div>
 
         <h2 id="today-crew-recap-title" className="today-crew-recap__headline">
-          {crewName} ran{" "}
+          {crewName} built{" "}
           <span className="data-value">{formatMilesBuilt(totals.miles)} mi</span>{" "}
-          together
+          together.
         </h2>
 
         <p className="today-crew-recap__support machine-label">
           {totals.runs} {totals.runs === 1 ? "RUN" : "RUNS"} ·{" "}
-          {formatTotalHoursMinutes(totals.durationSeconds)} ·{" "}
           {totals.activeRunners}{" "}
           {totals.activeRunners === 1 ? "RUNNER" : "RUNNERS"}
+          {build
+            ? ` · +${build.blocksPlaced} ${build.blocksPlaced === 1 ? "BLOCK" : "BLOCKS"}`
+            : ""}
         </p>
 
-        <button
-          type="button"
-          className="today-crew-recap__open"
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          onClick={() => setOpen(true)}
-        >
-          Open the recap
-        </button>
+        <div className="today-crew-recap__body">
+          <button
+            type="button"
+            className="today-crew-recap__open"
+            aria-haspopup="dialog"
+            aria-expanded={isOpen}
+            onClick={() => setOpen(true)}
+          >
+            View recap →
+          </button>
+
+          {/*
+            A crop of the week's real blocks, at teaser scale. It says what the
+            recap is about faster than another sentence would, and it is the
+            Crew's own Build rather than an illustration of one. It shares the
+            row with the way in, which is the shortest line the module has.
+          */}
+          {build && (
+            <RecapBuildCrop
+              beat={build}
+              scale="teaser"
+              className="today-crew-recap__crop"
+              animateSettle={false}
+            />
+          )}
+        </div>
       </section>
 
       {isOpen && (

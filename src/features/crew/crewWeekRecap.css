@@ -1,74 +1,108 @@
 /* Evolution 2.04 — Crew Week Recap.
    Presentation only. Every figure on these surfaces is derived in
-   src/crew/weekRecap.ts and formatted by the existing domain formatters. */
+   src/crew/weekRecap.ts and formatted by the existing domain formatters, and
+   every object drawn here is a real STACK component: Brick, AwardBrick,
+   CrewEmblem, RunnerIcon. No artwork, no illustration, no second renderer. */
 
 /* Today's module
    ------------------------------------------------------------------
-   A limited-time payoff, sized like the other Today sections rather than like
-   a takeover. It earns one accent edge and one display figure; everything
-   else on it is the same quiet register as the rest of the screen. */
+   A teaser, not a second dashboard card. One accent edge, one line of copy, a
+   compact machine line, a way in — and a small crop of the week's real blocks
+   to say what the recap is about faster than a sentence can. Today's workout
+   and the blocks it owes stay above it and stay louder. */
 
 .today-crew-recap {
   display: grid;
   gap: 7px;
-  padding: 12px 12px 13px;
+  padding: 10px 12px 11px;
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
   border-radius: 8px;
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent 48%),
-    var(--surface);
+  background: var(--surface);
 }
 
 /* Unmistakably not real, in the same register as Today's own demo banner. */
 .today-crew-recap__demo {
   margin: 0;
   color: var(--text-subtle);
+  font-size: var(--type-meta);
 }
 
 .today-crew-recap__head {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 7px;
+  min-width: 0;
 }
 
+/*
+ * Allowed to wrap rather than truncate. A clipped "SEP 7 …" tells the runner
+ * less than a second line does, and at 320px the label needs one.
+ */
 .today-crew-recap__head .machine-label {
   flex: 1;
   min-width: 0;
   margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.35;
 }
 
-.today-crew-recap__mark {
-  display: inline-flex;
-  color: var(--accent);
+.today-crew-recap__emblem {
+  flex: none;
 }
 
-/* Pulled tight to the row so dismissing the module never costs it a line. */
+/* Pulled tight to the row so dismissing never costs the module a line. */
 .today-crew-recap__dismiss {
-  margin: -6px -6px -6px 0;
+  flex: none;
+  margin: -8px -8px -8px 0;
+}
+
+/*
+ * The copy keeps the full width so neither line wraps; the crop shares the
+ * bottom row with the way in, which is the shortest line the module has. The
+ * crop is the part that gives way first on a narrow phone.
+ */
+.today-crew-recap__body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .today-crew-recap__headline {
   margin: 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .today-crew-recap__headline .data-value {
-  font-size: 19px;
+  font-size: 17px;
   color: var(--accent);
 }
 
 .today-crew-recap__support {
+  min-width: 0;
   margin: 0;
   color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
+/*
+ * The tower is eight fluid columns, so a crop with no width of its own
+ * collapses to a sliver in a flex row. This is the width the teaser gives it.
+ */
+.today-crew-recap__crop {
+  flex: none;
+  width: 92px;
 }
 
 .today-crew-recap__open {
-  justify-self: start;
+  flex: none;
   min-height: 44px;
-  margin: -6px 0;
+  margin: -6px 0 -8px;
   padding: 0;
   border: 0;
   background: none;
@@ -84,47 +118,129 @@
   outline-offset: 3px;
 }
 
-/* The fuller recap
+/* Narrow phones give the crop up before the copy gives up a line. */
+@media (max-width: 359px) {
+  .today-crew-recap__crop {
+    display: none;
+  }
+}
+
+/* The recap
    ------------------------------------------------------------------
-   One frame at a time. The stage holds a fixed floor so stepping between
-   beats does not resize the sheet under the runner's thumb. */
+   The sheet is the canvas. There is no inner stage card and no frame that is a
+   bordered rectangle around a number — hierarchy is type, space and objects. */
 
 .crew-recap {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
+  min-height: min(64dvh, 520px);
 }
 
-.crew-recap__identity {
+/* Position, in the shape the product is made of. */
+.crew-recap__progress {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.crew-recap__identity p {
+  gap: 5px;
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.crew-recap__crew {
-  font-size: 15px;
-  font-weight: 620;
+.crew-recap__progress li {
+  width: 16px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--border-strong);
+  transition: background-color 180ms ease, width 180ms ease;
 }
 
+.crew-recap__progress li[data-state="done"] {
+  background: color-mix(in srgb, var(--accent) 42%, var(--border-strong));
+}
+
+.crew-recap__progress li[data-state="current"] {
+  width: 26px;
+  background: var(--accent);
+}
+
+/*
+ * The stage centres an ordinary frame, so a short beat sits in the middle of
+ * the sheet rather than clinging to the progress rail with a field of empty
+ * dark under it. The two frames built around a tower opt out below: their crop
+ * belongs at the bottom, standing on the floor of the frame.
+ */
 .crew-recap__stage {
   display: grid;
-  align-content: start;
-  min-height: 240px;
-  padding: 16px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background:
-    radial-gradient(120% 80% at 12% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
-    var(--surface-soft);
+  align-content: center;
+  min-width: 0;
+}
+
+.crew-recap__pane {
+  min-width: 0;
+  animation: crew-recap-enter 260ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes crew-recap-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .crew-recap__frame {
   display: grid;
-  gap: 10px;
   align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+/*
+ * The two frames built around a tower fill the stage and stand their crop on
+ * its floor: everything above it stays one group at the top, and the crop
+ * takes the rest. An ordinary beat stays centred (see `.crew-recap__stage`).
+ */
+/*
+ * The opening is the only frame that splits: identity and the week's mileage
+ * at the top, the tower standing on the floor with the sheet's own sky
+ * between them, exactly as the Build screen stands a tower. The Build frame
+ * keeps its tower and its heading as one centred group instead, so the two
+ * tower frames are not the same picture twice.
+ */
+.crew-recap__stage[data-frame="totals"] {
+  align-content: stretch;
+}
+
+.crew-recap__stage[data-frame="totals"] .crew-recap__pane {
+  height: 100%;
+}
+
+.crew-recap__frame--opening {
+  grid-template-rows: 1fr auto;
+  align-content: stretch;
+  height: 100%;
+  gap: 8px;
+}
+
+.crew-recap__frame--build {
+  gap: 14px;
+}
+
+.crew-recap__frame--opening > .crew-recap__group,
+.crew-recap__frame--build > .crew-recap__group {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.crew-recap__crest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.crew-recap__crest .machine-label {
+  margin: 0;
+  color: var(--text-muted);
 }
 
 .crew-recap__eyebrow {
@@ -132,35 +248,75 @@
   color: var(--accent);
 }
 
+/* The fact, at the size a fact deserves. */
 .crew-recap__figure {
   display: flex;
   align-items: baseline;
   gap: 8px;
   margin: 0;
-  font-size: 44px;
-  line-height: 1;
+  line-height: 0.92;
 }
 
-.crew-recap__figure[data-direction="down"] {
-  color: var(--text-data);
+.crew-recap__figure[data-size="hero"] {
+  font-size: clamp(52px, 17vw, 76px);
+}
+
+.crew-recap__figure[data-size="mid"] {
+  font-size: clamp(38px, 12vw, 52px);
 }
 
 .crew-recap__unit {
+  align-self: baseline;
   color: var(--text-muted);
+  font-size: var(--type-label);
 }
 
-.crew-recap__line {
+.crew-recap__figure[data-size="hero"] .crew-recap__unit {
+  font-size: 15px;
+}
+
+/* A word used as a fact: tracked wide, quiet colour, never a heading. */
+.crew-recap__together {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 15px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+.crew-recap__headline {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: clamp(26px, 8.5vw, 34px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.crew-recap__caption {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-label);
+}
+
+/* Sentences stay in the reading voice. */
+.crew-recap__note {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
 
+/* Runners
+   ------------------------------------------------------------------
+   Identity, never rank. The mark and the name; the colour is the member's own
+   and the name is sans, as identity text is everywhere else in STACK. */
+
 .crew-recap__runners {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin: 0;
+  margin: 2px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -168,99 +324,307 @@
 .crew-recap__runner {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 10px 4px 4px;
-  border: 1px solid color-mix(in srgb, var(--member-accent, var(--border-strong)) 45%, var(--border));
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: 13px;
+  gap: 8px;
+  min-width: 0;
 }
 
-/* The slice of the tower this week added
+.crew-recap__runner-name {
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.crew-recap__runner--lead .crew-recap__runner-name {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+/*
+ * The runner's colour, carried on a hairline under the mark rather than as a
+ * chip around it: the icon is already theirs, and a pill would make four
+ * runners read as four buttons.
+ */
+.crew-recap__runner .runner-icon {
+  flex: none;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--member-accent, var(--border-strong));
+}
+
+/* Scoreboard
    ------------------------------------------------------------------
-   Real columns and real courses, drawn bottom-up so the week reads as the
-   structure it is. `--brick-row` is already inverted by the component so the
-   lowest course lands on the grid's last row. */
+   Three readings as one composition. Hairlines between, not boxes around. */
 
-.crew-recap__slice {
+.crew-recap__scoreboard {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(var(--slice-courses, 1), 14px);
-  gap: 2px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 6px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
-.crew-recap__brick {
-  grid-column: var(--brick-column) / span var(--brick-span);
-  grid-row: var(--brick-row) / span var(--brick-courses, 1);
-  border-radius: 2px;
-  background: var(--member-accent, var(--border-strong));
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .28);
+.crew-recap__scoreboard > div {
+  padding: 0 10px;
+  border-left: 1px solid var(--border);
+}
+
+.crew-recap__scoreboard > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.crew-recap__scoreboard dd {
+  margin: 0;
+  font-size: clamp(22px, 7vw, 28px);
+  line-height: 1;
+}
+
+.crew-recap__scoreboard dt {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
+/* Build crops
+   ------------------------------------------------------------------
+   The real tower, at recap size. `buildCrop.css` owns the construction; these
+   rules only place it in the frame. */
+
+.crew-recap__opening-crop,
+.crew-recap__build-crop {
+  padding-bottom: 2px;
+  overflow-x: auto;
+}
+
+.crew-recap__opening-crop {
+  align-self: end;
+  margin-top: 10px;
+}
+
+/*
+ * The Build frame is where the tower is the subject rather than the payoff
+ * under a number, so it is drawn a size up. Specificity has to beat
+ * `buildCrop.css`'s own `[data-scale]` rule, hence the doubled class.
+ */
+.build-crop.crew-recap__build-crop {
+  --course-height: 34px;
+  --iso-run: 18px;
+  --iso-rise: 9px;
 }
 
 /* Special Blocks
    ------------------------------------------------------------------
-   The award's own colour from `awardBlock.css`, one mark per row. Which
-   award, not a verdict on the running behind it. */
+   The blocks carry the frame. One hollow award object each, at portrait size,
+   with the runner's colour as the frame and the award's colour in the recess —
+   the existing two-channel rule, with nothing layered on top. */
 
 .crew-recap__awards {
   display: grid;
-  gap: var(--space-2);
-  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 20px 14px;
+  margin: 6px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .crew-recap__awards li {
   display: grid;
-  grid-template-columns: 4px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--award-mark) 36%, var(--border));
-  border-radius: 6px;
-  background: var(--surface);
-}
-
-.crew-recap__award-mark {
-  align-self: stretch;
-  background: var(--award-mark);
-  box-shadow: 0 0 9px color-mix(in srgb, var(--award-mark) 34%, transparent);
-}
-
-.crew-recap__award-copy {
-  display: grid;
+  justify-items: start;
   gap: 2px;
   min-width: 0;
 }
 
-.crew-recap__award-name {
-  font-size: 14px;
-  font-weight: 600;
+.crew-recap__award-hero {
+  --iso-run: 22px;
+  --iso-rise: 11px;
+  --award-frame: 9px;
+  position: relative;
+  width: 84px;
+  height: 46px;
+  margin: 11px 22px 8px 0;
 }
+
+.crew-recap__award-hero .award-brick__glyph {
+  width: 26px;
+  height: 26px;
+}
+
+.crew-recap__award-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 620;
+}
+
+.crew-recap__award-winner {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.crew-recap__award-result {
+  margin: 3px 0 0;
+  font-size: 17px;
+}
+
+/* The Special Block a longest run earned, beside that run. */
+.crew-recap__award-tie {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.crew-recap__award-tie .machine-label {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Week over week
+   ------------------------------------------------------------------
+   Two columns of plain CSS. The bars are a reading aid; each one's own figure
+   sits under it in text, so height is never the only channel. */
+
+.crew-recap__compare {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/*
+ * Both rows share one column rhythm so a bar lines up with its own figure.
+ * The column is as wide as the widest of the two, and the bar keeps its own
+ * width inside it rather than stretching to match a long label.
+ */
+.crew-recap__compare-bars,
+.crew-recap__compare-key {
+  grid-template-columns: repeat(2, minmax(40px, max-content));
+  gap: 18px;
+}
+
+.crew-recap__compare-bars {
+  display: grid;
+  align-items: end;
+  height: 52px;
+}
+
+.crew-recap__compare-bars span {
+  width: 40px;
+  height: var(--bar, 0%);
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--border-strong);
+  align-self: end;
+}
+
+.crew-recap__compare-bars span[data-week="current"] {
+  background: var(--accent);
+}
+
+.crew-recap__compare-key {
+  display: grid;
+  margin: 0;
+}
+
+.crew-recap__compare-key dd {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.crew-recap__compare-key div[data-current="true"] dd {
+  color: var(--text);
+}
+
+.crew-recap__compare-key dt {
+  margin-top: 2px;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  white-space: nowrap;
+}
+
+/* The close */
+.crew-recap__sign-off {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.crew-recap__frame--closing .crew-recap__sign-off:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Controls
+   ------------------------------------------------------------------
+   Quiet steps either side of the primary action. The progress rail above is
+   the position indicator; these are only the way through. */
 
 .crew-recap__controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
+.crew-recap__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.crew-recap__step--next {
+  color: var(--text);
+}
+
+.crew-recap__step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.crew-recap__step:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/*
+ * `.button--primary` is full-width by default (components.css) because most
+ * of its callers are the single action at the foot of a sheet. Here it shares
+ * a row with the step back, so it takes its own width.
+ */
 .crew-recap__controls .button {
   flex: none;
+  width: auto;
+  min-width: 132px;
 }
 
-.crew-recap__progress {
-  margin: 0;
-  color: var(--text-muted);
+@media (prefers-reduced-motion: reduce) {
+  .crew-recap__pane { animation: none; }
+  .crew-recap__progress li { transition: none; }
 }
 
-/* The narrowest supported width: the display figure gives up size first. */
+/* The narrowest supported width: the figure gives up size, nothing gives up
+   readability. */
 @media (max-width: 340px) {
-  .crew-recap__figure { font-size: 36px; }
-  .today-crew-recap__headline { font-size: 16px; }
+  .crew-recap__figure[data-size="hero"] { font-size: 46px; }
+  .crew-recap__together { font-size: 13px; letter-spacing: 0.3em; }
+  .crew-recap__scoreboard > div { padding: 0 6px; }
+  .today-crew-recap__headline { font-size: 14px; }
 }

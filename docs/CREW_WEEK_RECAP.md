@@ -64,26 +64,61 @@ So the recap reports only awards for that week that are already **standing in th
 
 This is the part Evolution 2.05 reuses.
 
-**One fact per frame.** An eyebrow that names the beat, one figure at display size, and the smallest amount of supporting text that makes the figure mean something. A frame is never a row of KPI cards.
+**The sheet is the canvas.** There is no inner stage card, no card inside a card, and no frame that is a bordered rectangle containing a number. Hierarchy comes from type, space and actual Crew objects. Bordered containers are reserved for the two places that earn one: the Today module, and a single hairline separating the controls.
 
-**Advanced by hand.** Nothing auto-plays. An auto-advancing story is a Reduced Motion problem, a screen-reader problem and a reading-speed problem at once, and the arcade language STACK speaks is a machine you operate rather than a video you watch. Back / Next / Done, a `1 / n` position, and one `aria-live` stage so a screen reader hears the beat that was moved to.
+**Six compositions, one system — not one composition six times.** Each beat gets the shape its own fact deserves, and no two frames are built the same way:
 
-**Identity is the Crew's.** The Crew emblem and name head the recap; runners appear as their own Runner Icon and member accent. Colour identifies — whose run, which award — and never judges.
+| Frame | Composition |
+| --- | --- |
+| The week | Split: emblem, week and the mileage hero at the top; the week's real blocks standing on the floor of the frame, with the sheet's own sky between them — the way the Build screen stands a tower |
+| The crew showed up | Typographic: `EVERYONE RAN` when it is true, the runners as their own marks, then three readings divided by hairlines rather than boxed into three cards |
+| Longest run | Portrait: one figure, one runner at size, and — only when the Crew's data ties them — the Special Block that run earned |
+| Added to the Build | One centred group, tower drawn a size up, because here the tower is the subject rather than the payoff under a number |
+| Special Blocks | The award objects carry the frame: hollow blocks at portrait size, name, winner, result |
+| Finish | The week-over-week comparison, then the sign-off and `Done` |
 
-**Celebrate the group, not the ranking.** The beats name a runner only where the Crew already names one: the week's longest run, and a Special Block that is already standing. There is no ordering of the roster anywhere in the recap.
+**One fact per frame.** An eyebrow naming the beat, one figure at display size, and the smallest amount of supporting text that makes the figure mean something.
 
-**The slice is real.** The Crew Build frame draws this week's blocks in their true tower columns and courses, rebased on the lowest course the week reached, in each runner's own accent. It is decorative (`aria-hidden`) because the same facts are stated in text above it.
+**Advanced by hand.** Nothing auto-plays. An auto-advancing story is a Reduced Motion problem, a screen-reader problem and a reading-speed problem at once, and the arcade language STACK speaks is a machine you operate rather than a video you watch. Position is a quiet rail of small blocks — the shape the product is made of — with `Frame n of m` in the live region for a screen reader, and quiet `Back` / `Next` steps either side of the primary action.
+
+**Every visual is drawn by the app.** No artwork, no illustration, no generated image, no second tower renderer. The blocks are the real `Brick` / `AwardBrick` construction under the real member colours; the identity marks are the real `CrewEmblem` and `RunnerIcon`.
+
+**Identity is the Crew's.** Runners appear as their own Runner Icon with their member accent carried on a hairline under the mark, and their name in the reading voice. Colour identifies — whose run, which award — and never judges. No frame ranks the roster; the beats name a runner only where the Crew already names one.
+
+**Two voices, as everywhere else.** Mono for facts — mileage, counts, time, deltas, dates as metadata, machine labels. Sans for the sheet title, the Crew name, member names, sentences and actions. Nothing below the phone type floor.
+
+### Reused components
+
+The recap introduces no geometry of its own. Two extractions carry the Build language into it:
+
+- `src/features/build/BuildCrop.tsx` — a **read-only piece of tower**. Personal and Crew Build each own an *interactive* tower (placement, drag, selection, landing slots, skyline, ground). A surface that only needs to show built blocks needs none of that, and copying the geometry into a local stylesheet is how a second, drifting renderer gets built by accident. `BuildCrop` is the presentation half alone: the same `built-tower` grid, the same `placed-block` positioning, the same `Brick` / `AwardBrick` faces, the same voids, at a `hero` or `teaser` scale.
+- `src/features/crew/crewBrickFace.ts` — `crewFaceLabel` and `memberPieceColor`, lifted out of `CrewBuild` so the shared tower and any crop of it cannot disagree about a block. Both are load-bearing product rules rather than styling: the asterisk is issue #129's hand-logged marker, and the colour is the only channel that says whose block this is.
+
+`faceCulledRecapSlice` in `weekRecap.ts` adds the neighbour-aware face culling, as `faceCulledMiniBuildTower` does for Member Build — kept separate from `crewWeekRecap` so the beat's tested shape never grows fields only a renderer needs.
+
+**The slice is real.** The Crew Build frames draw this week's blocks in their true tower columns, widths, heights and member colours, rebased on the lowest course the week reached, with the cells other weeks occupy drawn as recesses. It is `aria-hidden` behind a single accessible label, because the same facts are stated in text above it and a masonry crop has no reading order worth announcing.
 
 ## Today integration
 
 `src/features/today/TodayCrewRecap.tsx`.
 
-- The module renders **below Today's action surface**. The workout, the run just logged and the blocks it still owes stay first; last week's story is a payoff on the way down.
+- The module renders **below Today's action surface**. The workout, the run just logged and the blocks it still owes stay first and stay louder; last week's story is a payoff on the way down.
 - It is limited-time by construction: the recap window above, a real recap, and no dismissal.
+- It is a **teaser, not a second dashboard card**: one header line, one sentence, one compact machine line, and a bottom row pairing the way in with a small crop of the week's real blocks. The crop is the first thing to give way — it is hidden below 360px so the copy never loses a line.
 - It states the week's headline facts itself. A module that says only "your recap is ready" is a notification wearing a card's clothes.
-- `Open the recap` opens the fuller frame-by-frame recap, replayable for as long as the module is on Today.
+- `View recap →` opens the fuller frame-by-frame recap, replayable for as long as the module is on Today.
 - Dismissal is device-local, per account and per Crew week (`src/storage/dismissedCrewRecapRepository.ts`). Dismissing is a statement about this screen, not about the week: the Crew's shared facts are untouched and no crewmate learns of it.
 - The award read that feeds the `specialBlocks` beat happens only after the week, the Crew and the dismissal have all said yes, so Today never spends a round trip on a recap it will not show. It is failure-tolerant: an unavailable award read costs the recap that one beat, never the recap.
+
+## Motion
+
+Small, factual, and always optional:
+
+- a frame's content fades and rises 8px on arrival;
+- the blocks of a crop settle in, lowest course first, on the recap frames;
+- the progress rail's current segment widens into place.
+
+No confetti, no bouncing, no falling physics, no rotation, no ambient animation, no autoplay. Every rule above is dropped under `prefers-reduced-motion: reduce`.
 
 ## Relationship to Special Block weeks
 
@@ -125,3 +160,5 @@ Deliberately not implemented. Evolution 2.04 states sharing is optional and only
 - `src/features/crew/CrewWeekRecapSheet.test.tsx` — the frame sequence and the one-frame sparse recap.
 - `src/storage/dismissedCrewRecapRepository.test.ts` — per-account, per-week dismissal and corrupt-value tolerance.
 - `src/features/today/crewRecapDemo.test.ts` — the review overlay's host rule, its window, and both fixtures.
+
+Reviewed in a real browser at 320px, ~390px, 430px and desktop via the owner-review overlay. Real iPhone Safari review remains owner verification.

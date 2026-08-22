@@ -336,6 +336,7 @@ describe("crewWeekRecapRunsFrom", () => {
         activityType: "easy",
         distanceMiles: 4,
         durationSeconds: 2000,
+        source: "intervals",
         crewBuildRow: 5,
         crewBuildColumnStart: 2,
       },

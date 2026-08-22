@@ -80,7 +80,7 @@ function run(
   memberIndex: number,
   localDate: string,
   fields: Pick<CrewWeekRecapRun, "activityType" | "distanceMiles" | "durationSeconds"> &
-    Partial<Pick<CrewWeekRecapRun, "crewBuildRow" | "crewBuildColumnStart">>,
+    Partial<Pick<CrewWeekRecapRun, "crewBuildRow" | "crewBuildColumnStart" | "source">>,
 ): CrewWeekRecapRun {
   const entry = ROSTER[memberIndex];
   return {
@@ -110,16 +110,19 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
         activityType: "easy",
         distanceMiles: 3.1,
         durationSeconds: 1755,
+        source: "intervals",
       }),
     ];
   }
 
   return [
-    // The recapped week.
+    // The recapped week, laid out as the tower would really pack it: three
+    // courses, no empty course, every block resting on something.
     run("w1", 0, "2026-09-07", {
       activityType: "easy",
       distanceMiles: 4.2,
       durationSeconds: 2280,
+      source: "intervals",
       crewBuildRow: 6,
       crewBuildColumnStart: 1,
     }),
@@ -127,57 +130,70 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       activityType: "intervals",
       distanceMiles: 6.1,
       durationSeconds: 3120,
+      source: "intervals",
       crewBuildRow: 6,
       crewBuildColumnStart: 3,
     }),
-    run("w3", 2, "2026-09-09", {
-      activityType: "easy",
-      distanceMiles: 3.5,
-      durationSeconds: 1980,
-      crewBuildRow: 6,
-      crewBuildColumnStart: 6,
-    }),
-    run("w4", 3, "2026-09-10", {
+    run("w3", 3, "2026-09-09", {
       activityType: "cross",
       distanceMiles: 0,
       durationSeconds: 2700,
+      source: "intervals",
+      crewBuildRow: 6,
+      crewBuildColumnStart: 6,
+    }),
+    // The one hand-logged run of the week, so its brick carries issue #129's
+    // asterisk and the rest do not.
+    run("w4", 2, "2026-09-09", {
+      activityType: "easy",
+      distanceMiles: 3.5,
+      durationSeconds: 1980,
+      source: "manual",
       crewBuildRow: 6,
       crewBuildColumnStart: 7,
     }),
     run("w5", 0, "2026-09-11", {
       activityType: "easy",
-      distanceMiles: 5,
+      distanceMiles: 4.6,
       durationSeconds: 2760,
-      crewBuildRow: 8,
+      source: "intervals",
+      crewBuildRow: 7,
       crewBuildColumnStart: 1,
     }),
     run("w6", 1, "2026-09-12", {
       activityType: "long",
       distanceMiles: 13.1,
       durationSeconds: 7440,
+      source: "intervals",
       crewBuildRow: 8,
-      crewBuildColumnStart: 3,
+      crewBuildColumnStart: 1,
     }),
+    // Earned, not yet placed: it counts in the week's totals and not in the
+    // tower, which is exactly the distinction the Build beat draws.
     run("w7", 2, "2026-09-13", {
       activityType: "easy",
       distanceMiles: 4.4,
       durationSeconds: 2460,
+      source: "intervals",
     }),
     // The week before, so week-over-week has something defensible to say.
     run("p1", 0, "2026-09-02", {
       activityType: "easy",
       distanceMiles: 4,
       durationSeconds: 2220,
+      source: "intervals",
     }),
     run("p2", 1, "2026-09-04", {
       activityType: "long",
       distanceMiles: 10.5,
       durationSeconds: 6000,
+      source: "intervals",
     }),
     run("p3", 3, "2026-09-05", {
       activityType: "easy",
       distanceMiles: 3.2,
       durationSeconds: 1860,
+      source: "intervals",
     }),
   ];
 }

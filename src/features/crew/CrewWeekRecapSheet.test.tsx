@@ -38,8 +38,8 @@ function recap(overrides: Partial<CrewWeekRecap> = {}): CrewWeekRecap {
         milesPlaced: 17,
         courses: 2,
         slice: [
-          { id: "a", userId: "zack", accentColor: null, activityType: "easy", width: 2, height: 1, columnStart: 1, row: 0 },
-          { id: "b", userId: "drew", accentColor: null, activityType: "long", width: 3, height: 1, columnStart: 3, row: 1 },
+          { id: "a", userId: "zack", accentColor: null, activityType: "easy", distanceMiles: 4.2, source: "intervals", width: 2, height: 1, columnStart: 1, row: 0 },
+          { id: "b", userId: "drew", accentColor: null, activityType: "long", distanceMiles: 13.1, source: null, width: 3, height: 1, columnStart: 3, row: 1 },
         ],
       },
       {
@@ -69,35 +69,49 @@ describe("Crew Week Recap sheet", () => {
     const user = userEvent.setup();
     const dialog = open();
 
-    expect(within(dialog).getByText("1 / 6")).toBeInTheDocument();
-    expect(within(dialog).getByText("Together")).toBeInTheDocument();
+    expect(within(dialog).getByText("Frame 1 of 6")).toBeInTheDocument();
+    // The opening leads with the week's mileage and the week it belongs to.
     expect(within(dialog).getByText("21.0")).toBeInTheDocument();
+    expect(within(dialog).getByText("TOGETHER")).toBeInTheDocument();
+    expect(within(dialog).getByText("Aug 10 – Aug 16")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /Back/ })).toBeDisabled();
 
     const next = within(dialog).getByRole("button", { name: /Next/ });
     await user.click(next);
-    expect(within(dialog).getByText("Everyone Ran")).toBeInTheDocument();
-    expect(within(dialog).getByText("Nobody sat this week out.")).toBeInTheDocument();
+    expect(within(dialog).getByText("EVERYONE RAN")).toBeInTheDocument();
+    // The scoreboard is one composition of three readings, not three cards.
+    const scoreboard = within(dialog).getByText("On Your Feet").closest("dl")!;
+    expect(within(scoreboard).getByText("3")).toBeInTheDocument();
+    expect(within(scoreboard).getByText("2")).toBeInTheDocument();
+    expect(within(scoreboard).getByText("3:20")).toBeInTheDocument();
 
     await user.click(next);
     expect(within(dialog).getByText("Longest Run")).toBeInTheDocument();
-    expect(within(dialog).getByText(/Long Run · Wednesday/)).toBeInTheDocument();
+    expect(within(dialog).getByText("12")).toBeInTheDocument();
+    expect(within(dialog).getByText(/LONG RUN · WEDNESDAY/i)).toBeInTheDocument();
 
     await user.click(next);
     expect(within(dialog).getByText("Added To The Build")).toBeInTheDocument();
+    expect(within(dialog).getByText("+2")).toBeInTheDocument();
+    expect(within(dialog).getByText(/17.0 MI STANDING IN THE TOWER/i)).toBeInTheDocument();
+    // The crop is the real tower construction, not a local bar chart.
     expect(
-      within(dialog).getByText("17.0 mi of this week is standing in the tower."),
+      within(dialog).getByRole("img", { name: /2 blocks this week added 17.0 miles/ }),
     ).toBeInTheDocument();
 
     await user.click(next);
     expect(within(dialog).getByText("Special Block")).toBeInTheDocument();
     expect(within(dialog).getByText("Most Miles")).toBeInTheDocument();
-    expect(within(dialog).getByText(/Drew · 21.4 MI/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Drew")).toBeInTheDocument();
+    expect(within(dialog).getByText("21.4 MI")).toBeInTheDocument();
 
+    // Week over week closes the recap rather than standing as its own frame.
     await user.click(next);
     expect(within(dialog).getByText("Against Last Week")).toBeInTheDocument();
     expect(within(dialog).getByText("+11.0")).toBeInTheDocument();
-    expect(within(dialog).getByText("6 / 6")).toBeInTheDocument();
+    expect(within(dialog).getByText("WEEK COMPLETE")).toBeInTheDocument();
+    expect(within(dialog).getByText("Nice work, Night Shift.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Frame 6 of 6")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Done" })).toBeInTheDocument();
   });
 
@@ -106,8 +120,8 @@ describe("Crew Week Recap sheet", () => {
     const dialog = open();
     await user.click(within(dialog).getByRole("button", { name: /Next/ }));
     await user.click(within(dialog).getByRole("button", { name: /Back/ }));
-    expect(within(dialog).getByText("Together")).toBeInTheDocument();
-    expect(within(dialog).getByText("1 / 6")).toBeInTheDocument();
+    expect(within(dialog).getByText("TOGETHER")).toBeInTheDocument();
+    expect(within(dialog).getByText("Frame 1 of 6")).toBeInTheDocument();
   });
 
   it("is a one-frame recap when a sparse week supports only the totals", () => {
@@ -117,14 +131,70 @@ describe("Crew Week Recap sheet", () => {
         beats: [],
       }),
     );
-    expect(within(dialog).getByText("1 / 1")).toBeInTheDocument();
-    expect(within(dialog).getByText("1 run · 0:30 on your feet · 1 runner")).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Done" })).toBeInTheDocument();
+    // Totals plus the close — no beat has evidence, so no beat gets a frame.
+    expect(within(dialog).getByText("Frame 1 of 2")).toBeInTheDocument();
+    expect(within(dialog).getByText("3.1")).toBeInTheDocument();
+    expect(within(dialog).getByText(/1 RUN · 1 RUNNER · 0:30/)).toBeInTheDocument();
+    expect(within(dialog).queryByText("Added To The Build")).not.toBeInTheDocument();
   });
 
   it("names the crew and the week it is recapping", () => {
     const dialog = open();
     expect(within(dialog).getByText("Night Shift · Week Recap")).toBeInTheDocument();
     expect(within(dialog).getByText("Aug 10 – Aug 16")).toBeInTheDocument();
+  });
+
+  it("ties a Special Block to the longest run only when the same runner won it", async () => {
+    const user = userEvent.setup();
+    const dialog = open(
+      recap({
+        beats: [
+          {
+            kind: "longestRun",
+            runId: "b",
+            distanceMiles: 13.1,
+            activityType: "long",
+            localDate: "2026-08-12",
+            runner: DREW,
+          },
+          {
+            kind: "specialBlocks",
+            awards: [
+              { id: "a1", awardType: "longHaul", resultValue: 13.1, winner: DREW },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await user.click(within(dialog).getByRole("button", { name: /Next/ }));
+    expect(within(dialog).getByText("Long Haul Special Block")).toBeInTheDocument();
+  });
+
+  it("shows no Special Block beside a longest run somebody else's award", async () => {
+    const user = userEvent.setup();
+    const dialog = open(
+      recap({
+        beats: [
+          {
+            kind: "longestRun",
+            runId: "b",
+            distanceMiles: 13.1,
+            activityType: "long",
+            localDate: "2026-08-12",
+            runner: DREW,
+          },
+          {
+            kind: "specialBlocks",
+            awards: [
+              { id: "a1", awardType: "longHaul", resultValue: 9.4, winner: ZACK },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await user.click(within(dialog).getByRole("button", { name: /Next/ }));
+    expect(within(dialog).queryByText(/Special Block$/)).not.toBeInTheDocument();
   });
 });

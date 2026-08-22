@@ -115,11 +115,16 @@ describe("Today Crew Week Recap", () => {
     const module = screen.getByRole("heading", { level: 2 }).closest("section")!;
     expect(within(module).getByText(/Crew Week Recap · Aug 10 – Aug 16/)).toBeInTheDocument();
     expect(within(module).getByText("21.0 mi")).toBeInTheDocument();
-    expect(within(module).getByText(/3 RUNS · 3:20 · 2 RUNNERS/)).toBeInTheDocument();
+    // Compact machine line, including what the week added to the tower.
+    expect(within(module).getByText(/3 RUNS · 2 RUNNERS · \+1 BLOCK/)).toBeInTheDocument();
+    // The teaser shows the week's own blocks rather than an illustration.
+    expect(
+      within(module).getByRole("img", { name: /1 block this week added 12.0 miles/ }),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Open the recap" }));
+    await user.click(screen.getByRole("button", { name: "View recap →" }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("Together")).toBeInTheDocument();
+    expect(within(dialog).getByText("TOGETHER")).toBeInTheDocument();
     expect(within(dialog).getByText("Night Shift · Week Recap")).toBeInTheDocument();
   });
 
@@ -182,8 +187,8 @@ describe("Today Crew Week Recap", () => {
     expect(screen.getByText(/RECAP DEMO · FAKE CREW DATA/)).toBeInTheDocument();
     expect(screen.getByText(/Crew Week Recap · Sep 7 – Sep 13/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Open the recap" }));
-    expect(within(screen.getByRole("dialog")).getByText("Together")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View recap →" }));
+    expect(within(screen.getByRole("dialog")).getByText("TOGETHER")).toBeInTheDocument();
   });
 
   it("shows nothing while shared runs are unavailable, rather than a recap missing runs", () => {

@@ -229,6 +229,12 @@ export interface CrewWeekRecapRun {
   activityType: "easy" | "intervals" | "simulation" | "long" | "race" | "cross";
   distanceMiles: number;
   durationSeconds: number;
+  /**
+   * Issue #129: the one fact behind a hand-logged block's asterisk. Present
+   * because the recap draws the week's real bricks — a run marked manual in the
+   * shared tower cannot come back unmarked in a crop of that same tower.
+   */
+  source?: RunSource | null;
   /** Independent shared Crew Build placement; never personal placement. */
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
