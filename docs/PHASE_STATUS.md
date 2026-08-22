@@ -1131,3 +1131,27 @@ states, the independent placement actions and the collapse;
 geometry and that nothing of the two replaced families — or of the retired
 Edit control — is left in the stylesheets. Reviewed at 320/390/430 in
 Chromium. `npm run check` passes.
+
+## Today connected completion recognition (issue #153)
+
+**Status:** Implemented as Evolution 2.02; no matching-rule, persistence or
+schema change.
+
+Implemented scope:
+- a synced candidate suggested for the workout due now replaces `Mark Complete`
+  as the single Today Action Card;
+- `Review Run` opens the existing Run Data review, whose explicit Match, Extra,
+  Attach and Ignore semantics remain authoritative;
+- acceptance writes the same `RunLog` and plan link as Run Data, after which
+  Today derives Evolution 2.01's completed/placement state from normal AppState;
+- recent unrelated candidates do not displace a scheduled or completed action;
+  unmatched candidates may lead Today only when no workout action is due;
+- selection prefers the due workout's suggestion and defensively drops a stale
+  candidate whose Intervals activity id is already owned by a run;
+- account-synced pending candidates remain reviewable on a device without its
+  own Intervals credential, and dismissing review does not settle the queue.
+
+Verification: focused matching, Today, Run Data review and connected-sync tests
+cover suggested match, Extra, already-accepted source identity, late sync,
+dismissal persistence and credential-free cross-device review. The four focused
+files pass individually with a single Vitest worker.

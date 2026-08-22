@@ -69,7 +69,12 @@ export function RunDataSheet(props: Props) {
   const [connectionMode, setConnectionMode] = useState<IntervalsConnection["mode"] | null>(
     initialConnection?.mode ?? null,
   );
-  const [setupOpen, setSetupOpen] = useState(!initialConnection);
+  // A canonical pending review can arrive from another device without this
+  // device having a credential. It is already normalized personal state, so
+  // review it directly; a connection is needed only to fetch something new.
+  const [setupOpen, setSetupOpen] = useState(
+    !initialConnection && !props.initialReview,
+  );
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   // Opened from Today with a run already chosen, or opened cold from Settings.
@@ -114,6 +119,7 @@ export function RunDataSheet(props: Props) {
   function settle(candidate: IntervalsCandidate) {
     props.onSettle(candidate.externalId);
     setSelected(null);
+    if (!connected) setSetupOpen(true);
   }
 
   function finish() {

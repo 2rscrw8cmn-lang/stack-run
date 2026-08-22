@@ -19,7 +19,7 @@ import type {
 } from "../../domain/types";
 import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
 import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals";
-import { RunFoundCard } from "../connected/RunFoundCard";
+import { RunFoundCard } from "./RunFoundCard";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
 import { BuildPreview } from "./BuildPreview";
@@ -31,7 +31,12 @@ import { TodayHeading } from "./TodayHeading";
 import { TodayNote } from "./TodayNote";
 import { TodaySignalNote } from "./TodaySignalNote";
 import { TodayWorkoutCard } from "./TodayWorkoutCard";
-import { isTodayDemoEnabled, todayDemoData } from "./todayDemo";
+import {
+  isTodayDemoEnabled,
+  isTodayFoundDemoEnabled,
+  todayDemoData,
+  todayFoundDemoCandidate,
+} from "./todayDemo";
 import { selectTodayModel } from "./todayModel";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { TodayCrewActivity } from "./TodayCrewActivity";
@@ -110,6 +115,7 @@ export function TodayScreen({
    * callback. This keeps Vercel phone review useful without touching real data.
    */
   const isDemo = isTodayDemoEnabled();
+  const isFoundDemo = isTodayFoundDemoEnabled();
   const demo = isDemo ? todayDemoData() : null;
   const effectivePlan = demo?.plan ?? plan;
   const effectiveRunLogs = demo?.runLogs ?? runLogs;
@@ -131,8 +137,22 @@ export function TodayScreen({
   });
   const { immediate } = model;
   const found = isDemo
-    ? null
-    : selectRunFound(candidates, effectivePlan, effectiveRunLogs, effectiveToday);
+    ? isFoundDemo
+      ? selectRunFound(
+        [todayFoundDemoCandidate(effectivePlan)],
+        effectivePlan,
+        effectiveRunLogs,
+        effectiveToday,
+        immediate.kind === "run" ? immediate.workout.id : null,
+      )
+      : null
+    : selectRunFound(
+      candidates,
+      effectivePlan,
+      effectiveRunLogs,
+      effectiveToday,
+      immediate.kind === "run" ? immediate.workout.id : null,
+    );
   const build = selectBuildViewModel(
     effectivePlan,
     effectiveRunLogs,
@@ -156,6 +176,14 @@ export function TodayScreen({
       completed.runLog.id,
     )
     : null;
+  // A suggested match for the workout due now replaces its manual fallback.
+  // An unrelated candidate must not displace that workout; Run Data keeps it.
+  // With no scheduled/completed action, the recent candidate may lead Today.
+  const actionFound = completed
+    ? null
+    : immediate.kind === "run"
+      ? found?.workout?.id === immediate.workout.id ? found : null
+      : found;
 
   function openEntry(next: Entry) {
     setEntry(next);
@@ -173,7 +201,7 @@ export function TodayScreen({
 
       {isDemo && (
         <p className="today-screen__demo-banner machine-label">
-          TODAY DEMO · FAKE PREVIEW DATA · REMOVE ?DEMO=TODAY TO RETURN
+          {isFoundDemo ? "TODAY FOUND DEMO" : "TODAY DEMO"} · FAKE PREVIEW DATA · REMOVE ?DEMO=TODAY TO RETURN
         </p>
       )}
 
@@ -210,12 +238,22 @@ export function TodayScreen({
         </TodayNote>
       )}
 
-      {immediate.kind === "run" && (
+      {immediate.kind === "run" && !actionFound && (
         <TodayWorkoutCard
           workout={immediate.workout}
           onMarkComplete={() =>
             openEntry({ kind: "scheduled", workout: immediate.workout })
           }
+        />
+      )}
+
+      {actionFound && (
+        <RunFoundCard
+          found={actionFound}
+          today={effectiveToday}
+          onReview={() => {
+            if (!isDemo) onReviewCandidate(actionFound.candidate);
+          }}
         />
       )}
 
@@ -231,14 +269,6 @@ export function TodayScreen({
           onPlaceCrewBlock={(sharedRunId) => {
             if (!isDemo) onStartCrewPlacing(sharedRunId);
           }}
-        />
-      )}
-
-      {found && (
-        <RunFoundCard
-          found={found}
-          today={effectiveToday}
-          onReview={() => onReviewCandidate(found.candidate)}
         />
       )}
 

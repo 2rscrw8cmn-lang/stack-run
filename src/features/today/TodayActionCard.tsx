@@ -3,7 +3,7 @@ import { Card } from "../../components/ui/Card";
 
 interface TodayActionCardProps {
   /** Which state of the same card this is. Presentation only. */
-  state: "scheduled" | "complete";
+  state: "scheduled" | "found" | "complete";
   /** Decorative: the eyebrow names the kind of run in text. */
   icon: ReactNode;
   /** What the card is: `Today’s workout`, `Run complete`. */
@@ -27,14 +27,13 @@ interface TodayActionCardProps {
 
 /**
  * The Today Action Card: one card language for the run Today is about, before
- * and after it happens (issue #152).
+ * and after it happens (issues #152 and #153).
  *
- * Today only ever has one of these on screen. Before the run it holds the
- * scheduled workout and the way to log it; after the run it holds what the run
- * still owes. They were two unrelated components, and looked it — an oversized
- * workout card and a receipt. The frame is the same in both states so the card
- * reads as the same object changing state, and every state pays for its own
- * height: an eyebrow, one value, and only the lines that are still true.
+ * Today only ever has one of these on screen. Before the run it holds either
+ * the scheduled workout or the synced run that may satisfy it; after explicit
+ * acceptance it holds what the run still owes. The frame is the same in every
+ * state so the card reads as one object changing state, and every state pays
+ * for its own height: an eyebrow, one value, and only the lines still true.
  */
 export function TodayActionCard({
   state,

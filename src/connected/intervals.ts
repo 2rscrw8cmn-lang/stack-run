@@ -416,14 +416,28 @@ export function selectRunFound(
   plan: TrainingPlan,
   runLogs: readonly RunLog[],
   today: string,
+  preferredWorkoutId: string | null = null,
 ): RunFound | null {
+  const importedActivityIds = new Set(
+    runLogs.flatMap((run) =>
+      run.externalSource?.provider === "intervals"
+        ? [run.externalSource.activityId]
+        : [],
+    ),
+  );
   const recent = candidates
     .filter((candidate) => {
       const age = daysBetweenLocalDates(candidate.completedDate, today);
-      return age >= 0 && age <= RUN_FOUND_WITHIN_DAYS;
+      return (
+        age >= 0 &&
+        age <= RUN_FOUND_WITHIN_DAYS &&
+        !importedActivityIds.has(candidate.externalId)
+      );
     })
     .map((candidate) => ({ candidate, workout: suggestScheduledMatches(candidate, plan, runLogs)[0] ?? null }))
     .sort((a, b) =>
+      Number(Boolean(preferredWorkoutId && b.workout?.id === preferredWorkoutId)) -
+      Number(Boolean(preferredWorkoutId && a.workout?.id === preferredWorkoutId)) ||
       b.candidate.completedDate.localeCompare(a.candidate.completedDate) ||
       Number(Boolean(b.workout)) - Number(Boolean(a.workout)) ||
       a.candidate.externalId.localeCompare(b.candidate.externalId));

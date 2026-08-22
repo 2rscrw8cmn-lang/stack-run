@@ -113,6 +113,32 @@ describe("useConnectedSync", () => {
     await act(async () => { window.dispatchEvent(new Event("focus")); });
     expect(read).not.toHaveBeenCalled();
   });
+
+  it("shows an account-synced pending candidate without a connection on this device", async () => {
+    const pending = {
+      externalId: "cloud-pending",
+      sourceType: "Run",
+      completedDate: "2026-08-09",
+      distanceMiles: 3.11,
+      durationSeconds: 1500,
+      sourceUpdatedAt: null,
+      metrics: {},
+      inferredActivityType: "easy" as const,
+    };
+    const pendingSeed = [pending];
+    const read = vi.fn(reader(() => []));
+    const { result } = renderHook(() => useConnectedSync({
+      token: null,
+      state: stateWith(),
+      accountId: "runner-1",
+      pendingSeed,
+      onSynced: vi.fn(),
+      read,
+    }));
+
+    await waitFor(() => expect(ids(result)).toEqual(["cloud-pending"]));
+    expect(read).not.toHaveBeenCalled();
+  });
 });
 
 /**

@@ -550,22 +550,28 @@ const candidate = {
 
 describe("TodayScreen run found", () => {
   /*
-   * Issue #120: a prompt, not the import workflow. Pace, heart rate, the
-   * extra-run decision and the ignore control all belong to Run Data now.
+   * Issue #153: a likely completion becomes the one Today Action Card. It is
+   * still a prompt, not the import workflow: the decision remains in Run Data.
    */
-  it("names the synced run and what it looks like, and nothing more", () => {
-    renderToday({ candidates: [candidate] });
+  it("replaces the manual completion card with the suggested synced run", () => {
+    const { container } = renderToday({ candidates: [candidate] });
 
     expect(screen.getByText("Run found")).toBeInTheDocument();
     expect(screen.getByText("2.15 mi · 20:30")).toBeInTheDocument();
     expect(screen.getByText(/^Looks like /)).toBeInTheDocument();
+    expect(
+      container.querySelectorAll('.today-action[data-state="found"]'),
+    ).toHaveLength(1);
+    expect(container.querySelectorAll(".today-action")).toHaveLength(1);
+    expect(screen.queryByText("Today’s workout")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Mark Complete" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("9:32 /MI")).not.toBeInTheDocument();
     expect(screen.queryByText(/bpm/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Extra Run" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Not now" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ignore this run" })).not.toBeInTheDocument();
-    // Whatever sync found, the day's workout is still the thing on screen.
-    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
   });
 
   it("continues into the existing review rather than importing behind the user", async () => {
@@ -574,6 +580,50 @@ describe("TodayScreen run found", () => {
 
     await user.click(screen.getByRole("button", { name: "Review Run →" }));
     expect(onReviewCandidate).toHaveBeenCalledWith(candidate);
+  });
+
+  it("promotes a late sync without reopening Today", () => {
+    const props = {
+      plan,
+      runLogs: [] as RunLog[],
+      today: "2026-08-04",
+      onViewPlan: vi.fn(),
+      onSaveRun: vi.fn(),
+    };
+    const { container, rerender } = render(<TodayScreen {...props} />);
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+
+    rerender(<TodayScreen {...props} candidates={[candidate]} />);
+
+    expect(screen.getByText("Run found")).toBeInTheDocument();
+    expect(screen.queryByText("Today’s workout")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".today-action")).toHaveLength(1);
+  });
+
+  it("keeps an unmatched run as an explicit Extra review when no workout is due", async () => {
+    const extraCandidate = { ...candidate, completedDate: "2026-07-15" };
+    const onReviewCandidate = vi.fn();
+    const { user } = renderToday({
+      today: "2026-07-15",
+      candidates: [extraCandidate],
+      onReviewCandidate,
+    });
+
+    expect(screen.getByText("Run found")).toBeInTheDocument();
+    expect(screen.getByText("Wed, Jul 15")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark Complete" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review Run →" }));
+    expect(onReviewCandidate).toHaveBeenCalledWith(extraCandidate);
+  });
+
+  it("does not let an unrelated candidate displace today's scheduled workout", () => {
+    renderToday({
+      candidates: [{ ...candidate, completedDate: "2026-08-01" }],
+    });
+
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark Complete" })).toBeInTheDocument();
+    expect(screen.queryByText("Run found")).not.toBeInTheDocument();
   });
 
   it("leaves an older synced run to Run Data rather than putting it on Today", () => {

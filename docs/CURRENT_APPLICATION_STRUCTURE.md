@@ -188,10 +188,13 @@ The run Today is about — before and after it happens — is one component fami
 
 - `src/features/today/TodayActionCard.tsx` is the shared frame: an eyebrow naming the card and the kind of run, an activity mark, one value, an optional caption, and whatever that state still needs;
 - `src/features/today/TodayWorkoutCard.tsx` is its scheduled state: target distance, instruction, and `Mark Complete` as the manual fallback;
+- `src/features/today/RunFoundCard.tsx` is its connected-review state: when the existing suggestion rules associate a pending candidate with the workout due now, it replaces the manual fallback and opens the shared Run Data review flow;
 - `src/features/today/CompletedRunSummary.tsx` is its completed state: the run's facts and only the block placements the run still owes;
 - `src/features/today/todayActionReading.ts` decides what the card says, so the type, the target and the title are each stated once.
 
 Personal and Crew placement are independent (D-066), so each action appears only while that block is still owed. When neither is owed, the card retires to a single confirmation line and Today gives the space back. Nothing on Today edits or deletes a recorded run — that stays in Runs/Run Detail.
+
+Today still owns no connected lifecycle or import path. It selects from the shared persisted candidate queue, prefers a suggestion for the workout currently due, and hands the candidate to `RunDataSheet`. Match, Extra, Attach, Ignore, effort and notes retain the existing explicit review semantics. An unrelated candidate does not displace a scheduled or completed action, while a recent unmatched candidate may lead Today when no workout action is due. Source activity identity is checked again at selection time so a stale pending snapshot cannot re-offer an already accepted/attached run.
 
 ## 7. Runs
 
