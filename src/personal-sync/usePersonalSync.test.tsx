@@ -1,12 +1,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IntervalsCandidate } from "../connected/intervals";
 import { repackPlacements } from "../domain/placement";
-import type { BlockPlacement, RunLog } from "../domain/types";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import { acceptIntervalsRun } from "../storage/appStateRepository";
 import { loadIntervalsApiKey, saveIntervalsApiKey } from "../storage/intervalsCredentialRepository";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import {
   emptyPersonalOutbox,
   loadPersonalOutbox,
@@ -116,12 +117,13 @@ function placed(runLogId: string, row: number, placedAt: string): BlockPlacement
 }
 
 function snapshot(runLogs: RunLog[] = [], accountGeneration = 1): PersonalCloudSnapshot {
-  const seed = createInitialAppState();
+  const seed = createSeededAppState();
   return {
     accountGeneration,
     training: {
       settings: seed.settings,
       plan: { ...seed.plan, name: "Canonical cloud plan" },
+      planHistory: seed.planHistory,
       raceSetup: seed.raceSetup,
       availability: seed.availability,
       runDays: seed.runDays,
@@ -171,7 +173,7 @@ beforeEach(() => {
 
 describe("personal sync lifecycle", () => {
   it("requires first-device confirmation, backs up, uploads without a credential, then rehydrates from the server", async () => {
-    const local = structuredClone(createInitialAppState());
+    const local = structuredClone(createSeededAppState());
     local.plan.name = "Device plan";
     cloud.load.mockResolvedValueOnce(null).mockResolvedValueOnce(snapshot());
     const onReplaceState = vi.fn();
@@ -211,7 +213,7 @@ describe("personal sync lifecycle", () => {
       .mockResolvedValueOnce(initialSnapshot)
       .mockResolvedValueOnce(canonicalWithAlias);
     cloud.saveRun.mockResolvedValue(canonicalWithAlias.runs[0]);
-    const local = structuredClone(createInitialAppState());
+    const local = structuredClone(createSeededAppState());
     local.runLogs = [legacy];
     const onReplaceState = vi.fn();
     saveIntervalsApiKey("second-device-key");
@@ -243,7 +245,7 @@ describe("personal sync lifecycle", () => {
     const canonical = snapshot([manualRun("run-canonical")]);
     expect(canonical.runs.every((item) => item.aliases.length === 0)).toBe(true);
     cloud.load.mockResolvedValue(canonical);
-    const local = structuredClone(createInitialAppState());
+    const local = structuredClone(createSeededAppState());
     const onReplaceState = vi.fn();
 
     const { result } = renderHook(() => usePersonalSync({
@@ -390,7 +392,7 @@ describe("personal sync lifecycle", () => {
     });
     await waitFor(() => expect(cloud.load).toHaveBeenCalledTimes(2));
 
-    const workoutId = local.plan.weeks[0].workouts.find((workout) => workout.type !== "rest")!.id;
+    const workoutId = local.plan!.weeks[0].workouts.find((workout) => workout.type !== "rest")!.id;
     const matched = acceptIntervalsRun(
       local,
       pendingCandidate,
@@ -439,7 +441,7 @@ describe("personal sync lifecycle", () => {
 
   it("backs up and discards a never-synced pre-reset run, then accepts post-reset work", async () => {
     const staleRun = manualRun("offline-before-reset");
-    const stale = { ...createInitialAppState(), runLogs: [staleRun] };
+    const stale = { ...createSeededAppState(), runLogs: [staleRun] };
     const canonical = snapshot([], 2);
     saveAccountAppState("user-a", stale);
     markInitialized("user-a", snapshot([], 1));
@@ -480,12 +482,61 @@ describe("personal sync lifecycle", () => {
     expect(cloud.saveRun.mock.calls[0][1]).toBe(2);
   });
 
+  it("rewrites and syncs archived run links when the cloud canonicalizes a run id", async () => {
+    const legacy = manualRun("legacy-run");
+    const canonicalRun = { ...legacy, id: "canonical-run" };
+    const local = createSeededAppState();
+    local.runLogs = [legacy];
+    local.planHistory = [{
+      id: "archive-1",
+      plan: local.plan!,
+      raceSetup: local.raceSetup,
+      runLinks: { [legacy.id]: "workout-002" },
+      archivedAt: "2026-12-06T12:00:00.000Z",
+    }];
+    const initial = snapshot([legacy]);
+    const canonical = snapshot([canonicalRun]);
+    canonical.training.planHistory = [{
+      ...local.planHistory[0],
+      runLinks: { [canonicalRun.id]: "workout-002" },
+    }];
+    saveAccountAppState("user-a", local);
+    markInitialized("user-a", initial);
+    const outbox = emptyPersonalOutbox(1);
+    outbox.runs[legacy.id] = { kind: "upsert", expectedRevision: 1 };
+    outbox.generation = 1;
+    savePersonalOutbox("user-a", outbox);
+    cloud.load.mockResolvedValue(canonical);
+    cloud.saveRun.mockResolvedValue({
+      run: canonicalRun,
+      revision: 2,
+      deletedAt: null,
+      aliases: [legacy.id],
+    });
+    renderHook(() => {
+      const [currentState, setCurrentState] = useState<AppState>(local);
+      return usePersonalSync({
+        sessionStatus: "signed-in",
+        userId: "user-a",
+        state: currentState,
+        onReplaceState: setCurrentState,
+      });
+    });
+
+    await waitFor(() => expect(cloud.saveTraining).toHaveBeenCalled());
+    const training = cloud.saveTraining.mock.calls.at(-1)?.[3];
+    expect(training.planHistory[0].runLinks).toEqual({
+      [canonicalRun.id]: "workout-002",
+    });
+    expect(loadPersonalOutbox("user-a").runs[legacy.id]).toBeUndefined();
+  });
+
   it("keeps the valid local cache visible when nested cloud training data is malformed", async () => {
-    const local = createInitialAppState();
+    const local = createSeededAppState();
     local.plan.name = "Known-good local plan";
     const malformed = snapshot();
     malformed.training.plan = structuredClone(malformed.training.plan);
-    malformed.training.plan.weeks[0].workouts[0].build.span = "wide" as never;
+    malformed.training.plan!.weeks[0].workouts[0].build.span = "wide" as never;
     cloud.load.mockResolvedValue(malformed);
     const onReplaceState = vi.fn();
     const { result } = renderHook(() => usePersonalSync({

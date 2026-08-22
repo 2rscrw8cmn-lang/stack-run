@@ -572,7 +572,7 @@ function backgroundActivities(today: string): HistoricalActivity[] {
 export function createQaRunnerAppState(
   today: string,
   lifecycle: QaPlanLifecycle = "active",
-): AppState {
+): AppState & { plan: TrainingPlan } {
   const plan = shiftedPlan(today, lifecycle);
   const runLogs = [...planRunLogs(plan, today), ...reviewRunLogs(today)];
   const initial = createInitialAppState();

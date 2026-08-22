@@ -7,7 +7,7 @@ import type { AvailabilityCalendar } from "../domain/availability";
 import { todayLocalDate } from "../domain/dates";
 import type { RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
-import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
+import type { ArchivedTrainingPlan, BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
 import type { PlacementRequest } from "../features/build/BuildScreen";
 import { PlanScreen } from "../features/plan/PlanScreen";
@@ -37,7 +37,8 @@ interface AppShellProps {
   onReplayTour: () => void;
   /** Something the whole app needs to say, shown under the brand bar. */
   notice?: ReactNode;
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory: readonly ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
   onSaveRun: (
@@ -54,6 +55,7 @@ interface AppShellProps {
   /** Persists an edited plan, and restores the seed. */
   onEditPlan: (plan: TrainingPlan) => void;
   onResetPlan: () => void;
+  onFinishPlan: () => void;
   /** Days the user cannot run, imported from a calendar. */
   availability: AvailabilityCalendar | null;
   onSaveAvailability: (calendar: AvailabilityCalendar | null) => void;
@@ -89,6 +91,7 @@ export function AppShell({
   onReplayTour,
   notice,
   plan,
+  planHistory,
   runLogs,
   blockPlacements,
   onSaveRun,
@@ -97,6 +100,7 @@ export function AppShell({
   onUnlinkRun,
   onEditPlan,
   onResetPlan,
+  onFinishPlan,
   availability,
   onSaveAvailability,
   runDays,
@@ -249,6 +253,7 @@ export function AppShell({
         {activeTab === "build" && (
           <BuildScreen
             plan={plan}
+            planHistory={planHistory}
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onSaveRun={onSaveRun}
@@ -262,6 +267,7 @@ export function AppShell({
         {activeTab === "runs" && (
           <RunsScreen
             plan={plan}
+            planHistory={planHistory}
             runLogs={runLogs}
             runnerRuns={runnerHistory?.runs}
             historyPhase={runnerHistory?.phase}
@@ -284,6 +290,7 @@ export function AppShell({
         {activeTab === "plan" && (
           <PlanScreen
             plan={plan}
+            planHistory={planHistory}
             runLogs={runLogs}
             runnerRuns={runnerHistory?.runs}
             onSaveRun={onSaveRun}
@@ -294,6 +301,7 @@ export function AppShell({
             runDays={runDays}
             crossTrainingDays={crossTrainingDays}
             onGeneratePlan={onGeneratePlan}
+            onFinishPlan={onFinishPlan}
             syncToken={intervalsConnection}
           />
         )}
@@ -354,7 +362,7 @@ export function AppShell({
         }}
         crew={raceCrew}
         personalSync={personalSync}
-        localRace={plan.race}
+        localRace={plan?.race ?? null}
       />
       <RunDataSheet
         key={runDataVisit}

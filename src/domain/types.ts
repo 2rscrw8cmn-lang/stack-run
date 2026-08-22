@@ -81,6 +81,16 @@ export interface TrainingPlan {
   notes: string[];
 }
 
+/** Immutable race intent retained after it stops being the active plan. */
+export interface ArchivedTrainingPlan {
+  id: string;
+  plan: TrainingPlan;
+  raceSetup: RacePlanSetup | null;
+  /** Explicit run-to-workout relationships captured when this plan ended. */
+  runLinks: Record<string, string>;
+  archivedAt: string;
+}
+
 /**
  * One actual run. It may satisfy a scheduled workout or stand on its own: an
  * extra run is a real activity that the plan never asked for, so it earns a
@@ -151,9 +161,12 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 9;
+  schemaVersion: 10;
   settings: AppSettings;
-  plan: TrainingPlan;
+  /** The runner's one active race plan, or null while running between races. */
+  plan: TrainingPlan | null;
+  /** Previous race intent, newest first and never inferred from actual runs. */
+  planHistory: ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
   /**

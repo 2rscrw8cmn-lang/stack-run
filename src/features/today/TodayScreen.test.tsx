@@ -153,6 +153,18 @@ function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
 }
 
 describe("TodayScreen race context", () => {
+  it("keeps Today useful without inventing a race or rest day", async () => {
+    const { onViewPlan, user } = renderToday({ plan: null });
+
+    expect(screen.queryByText("OUC Half Marathon")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rest Day")).not.toBeInTheDocument();
+    expect(screen.getByText("Running without a race plan")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your Build" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Set up a race plan" }));
+    expect(onViewPlan).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the race as a compact line rather than a countdown hero", () => {
     renderToday({ today: "2026-08-04" });
 

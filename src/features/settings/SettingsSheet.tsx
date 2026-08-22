@@ -45,7 +45,7 @@ interface SettingsSheetProps {
    * below reopens this one — going back is a state this component decides.
    */
   onOpenChange: (isOpen: boolean) => void;
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
   runLogs: RunLog[];
   blockPlacements?: BlockPlacement[];
   today: string;
@@ -226,8 +226,8 @@ export function SettingsSheet({
   }
 
   const blocked = blockedDates(availability);
-  const shape = runDays ?? currentRunDays(plan);
-  const crossShape = crossTrainingDays ?? currentCrossTrainingDays(plan);
+  const shape = runDays ?? (plan ? currentRunDays(plan) : []);
+  const crossShape = crossTrainingDays ?? (plan ? currentCrossTrainingDays(plan) : []);
 
   return (
     <>
@@ -243,10 +243,12 @@ export function SettingsSheet({
               <SettingsRow
                 Icon={Flag}
                 label="Race"
-                value={`${raceSetup?.name ?? plan.race.name} · ${formatDateLabel(plan.race.date)}`}
+                value={plan
+                  ? `${raceSetup?.name ?? plan.race.name} · ${formatDateLabel(plan.race.date)}`
+                  : "No active race"}
                 onClick={() => openChild("race")}
               />
-              <SettingsRow
+              {plan && <SettingsRow
                 Icon={CalendarCheck}
                 label="Run Days"
                 value={
@@ -255,13 +257,13 @@ export function SettingsSheet({
                     : `${weekdayList(shape)} · from the plan`
                 }
                 onClick={() => openChild("run-days")}
-              />
-              <SettingsRow
+              />}
+              {plan && <SettingsRow
                 Icon={Dumbbell}
                 label="Cross Training Days"
                 value={crossShape.length ? weekdayList(crossShape) : "None"}
                 onClick={() => openChild("cross-training-days")}
-              />
+              />}
               <SettingsRow
                 Icon={CalendarClock}
                 label="Availability"
@@ -316,12 +318,12 @@ export function SettingsSheet({
               <SettingsRow
                 Icon={Compass}
                 label="App Tour"
-                value="Plan · Run · Build"
+                value="Runs · Build · Plan · Today"
                 onClick={onReplayTour}
               />
               <SettingsRow
                 Icon={RotateCcw}
-                label="Reset Plan"
+                label="Reset STACK"
                 value="Erases every recorded run and block"
                 onClick={() => openChild("reset")}
                 danger
@@ -355,7 +357,7 @@ export function SettingsSheet({
         />
       )}
 
-      {child === "run-days" && (
+      {child === "run-days" && plan && (
         <RunDaysSheet
           key={visit}
           plan={plan}
@@ -377,7 +379,7 @@ export function SettingsSheet({
         />
       )}
 
-      {child === "cross-training-days" && (
+      {child === "cross-training-days" && plan && (
         <CrossTrainingDaysSheet
           key={visit}
           plan={plan}

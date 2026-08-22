@@ -1,4 +1,4 @@
-import { CalendarDays } from "lucide-react";
+import { ArrowLeft, CalendarDays, CalendarPlus, History } from "lucide-react";
 import { useState } from "react";
 import {
   blockedDates,
@@ -30,10 +30,12 @@ import {
 import type { RacePlanSetup } from "../../domain/racePlan";
 import type { Weekday } from "../../domain/runDays";
 import type {
+  ArchivedTrainingPlan,
   RunLog,
   TrainingPlan,
   Workout,
 } from "../../domain/types";
+import { Button } from "../../components/ui/Button";
 import type { IntervalsConnection } from "../../connected/intervals";
 import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
 import { ConflictReviewSheet } from "../availability/ConflictReviewSheet";
@@ -54,7 +56,8 @@ import { WorkoutRow } from "./WorkoutRow";
 import "./planNext.css";
 
 interface PlanScreenProps {
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory?: readonly ArchivedTrainingPlan[];
   runLogs: RunLog[];
   /**
    * The runner's unified actual history. Plan reads it for viewed-week context
@@ -88,6 +91,7 @@ interface PlanScreenProps {
   /** The days the runner cross-trains, so a rebuilt plan keeps them. */
   crossTrainingDays?: Weekday[] | null;
   onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
+  onFinishPlan?: () => void;
   syncToken?: IntervalsConnection | string | null;
 }
 
@@ -113,6 +117,7 @@ type Secondary =
  */
 export function PlanScreen({
   plan,
+  planHistory = [],
   runLogs,
   runnerRuns,
   today = todayLocalDate(),
@@ -124,10 +129,11 @@ export function PlanScreen({
   runDays = null,
   crossTrainingDays = null,
   onGeneratePlan,
+  onFinishPlan,
   syncToken,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
-    currentWeekNumber(plan, today),
+    plan ? currentWeekNumber(plan, today) : 1,
   );
   const [detailWorkoutId, setDetailWorkoutId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
@@ -137,13 +143,89 @@ export function PlanScreen({
   // from whatever the previous visit left in it.
   const [secondaryVisit, setSecondaryVisit] = useState(0);
   const [announcement, setAnnouncement] = useState("");
+  const [historyPlanId, setHistoryPlanId] = useState<string | null>(null);
+  const [isSetupOpen, setSetupOpen] = useState(false);
 
-  const week = selectPlanWeekViewModel(plan, runLogs, weekNumber, today);
-  const lifecycle = planLifecycle(plan, today);
-  const lifecycleNote = planLifecycleNote(plan, today);
+  const archivedPlan = planHistory.find((entry) => entry.id === historyPlanId) ?? null;
+  const shownPlan = archivedPlan?.plan ?? plan;
+  const isHistorical = archivedPlan !== null;
+
+  if (!shownPlan) {
+    return (
+      <div className="plan-screen plan-screen--empty">
+        <section className="plan-empty">
+          <CalendarPlus size={26} strokeWidth={1.6} aria-hidden="true" />
+          <h1>No active race plan</h1>
+          <p>
+            Keep running, logging and building. Set up a race when you want
+            scheduled intent alongside your actual history.
+          </p>
+          {onGeneratePlan && (
+            <Button onClick={() => setSetupOpen(true)}>Set Up Next Race</Button>
+          )}
+        </section>
+
+        {planHistory.length > 0 && (
+          <section className="plan-history" aria-labelledby="plan-history-title">
+            <h2 id="plan-history-title">
+              <History size={15} strokeWidth={1.8} aria-hidden="true" />
+              Race plan history
+            </h2>
+            <ul>
+              {planHistory.map((entry) => (
+                <li key={entry.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryPlanId(entry.id);
+                      setWeekNumber(currentWeekNumber(entry.plan, today));
+                    }}
+                  >
+                    <span>{entry.plan.race.name}</span>
+                    <small>
+                      {formatDateLabel(entry.plan.race.date)} · {entry.plan.weeks.length} weeks
+                    </small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {onGeneratePlan && (
+          <RaceSetupSheet
+            plan={null}
+            setup={null}
+            runDays={runDays}
+            crossTrainingDays={crossTrainingDays}
+            runLogs={runLogs}
+            today={today}
+            isOpen={isSetupOpen}
+            onClose={() => setSetupOpen(false)}
+            onGenerate={(setup, generated) => {
+              onGeneratePlan(setup, generated);
+              setSetupOpen(false);
+              setHistoryPlanId(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+  const viewPlan: TrainingPlan = shownPlan;
+  const viewRunLogs = archivedPlan
+    ? runLogs.map((run) => ({
+        ...run,
+        workoutId: archivedPlan.runLinks[run.id] ?? null,
+      }))
+    : runLogs;
+
+  const week = selectPlanWeekViewModel(viewPlan, viewRunLogs, weekNumber, today);
+  const lifecycle = planLifecycle(viewPlan, today);
+  const lifecycleNote = planLifecycleNote(viewPlan, today);
   // The week Plan opens on: this week while training runs, otherwise the first
   // or last week of the plan. It is where the shortcut returns to.
-  const anchorWeekNumber = currentWeekNumber(plan, today);
+  const anchorWeekNumber = currentWeekNumber(viewPlan, today);
   const actualRuns = runnerRuns ?? unifiedRunnerHistory({ runLogs });
   const actual = planWeekActualContext(actualRuns, week.startDate, week.endDate);
   const intent = planWeekIntentContext(week);
@@ -151,9 +233,11 @@ export function PlanScreen({
   // rather than presenting absence-of-future-data as a runner fact.
   const showActual = !isBeforeLocalDate(today, week.startDate);
   const blocked = blockedDates(availability);
-  const conflicts = findAvailabilityConflicts(plan, availability, runLogs, today);
+  const conflicts = isHistorical
+    ? []
+    : findAvailabilityConflicts(viewPlan, availability, viewRunLogs, today);
   const satisfiedWorkoutIds = new Set(
-    runLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
+    viewRunLogs.flatMap((runLog) => (runLog.workoutId ? [runLog.workoutId] : [])),
   );
 
   const detailDay =
@@ -171,7 +255,7 @@ export function PlanScreen({
    * clamped against the new plan's own bounds, or a longer plan lands on the
    * old one's last week.
    */
-  function goToWeek(next: number, into: TrainingPlan = plan) {
+  function goToWeek(next: number, into: TrainingPlan = viewPlan) {
     setDetailOpen(false);
     setDetailWorkoutId(null);
     setSecondaryOpen(false);
@@ -237,6 +321,7 @@ export function PlanScreen({
   }
 
   function planActionsFor(workout: Workout, isCompleted: boolean) {
+    if (isHistorical) return {};
     if (isRaceWorkout(workout)) {
       return {};
     }
@@ -255,7 +340,7 @@ export function PlanScreen({
         ? undefined
         : () =>
             applyPlanEdit(
-              () => changeToRest(plan, workout.id, satisfiedWorkoutIds),
+              () => changeToRest(viewPlan, workout.id, satisfiedWorkoutIds),
               `${formatDateLabel(workout.date)} is now a rest day.`,
             ),
     };
@@ -263,9 +348,19 @@ export function PlanScreen({
 
   return (
     <div className="plan-screen">
+      {isHistorical && (
+        <button
+          type="button"
+          className="plan-history__back"
+          onClick={() => setHistoryPlanId(null)}
+        >
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
+          Race plan history
+        </button>
+      )}
       <WeekLead
         week={week}
-        totalWeeks={plan.weeks.length}
+        totalWeeks={viewPlan.weeks.length}
         lifecycle={lifecycle}
         actual={actual}
         intent={intent}
@@ -279,11 +374,43 @@ export function PlanScreen({
         <PlanLifecycleNote
           note={lifecycleNote}
           onSetUpNextRace={
-            lifecycleNote.lifecycle === "after-race" && onGeneratePlan
+            !isHistorical && lifecycleNote.lifecycle === "after-race" && onGeneratePlan
               ? () => openSecondary({ kind: "race-setup" })
               : undefined
           }
+          onFinishRacePlan={
+            !isHistorical && lifecycleNote.lifecycle === "after-race" && onFinishPlan
+              ? onFinishPlan
+              : undefined
+          }
         />
+      )}
+
+      {!isHistorical && planHistory.length > 0 && (
+        <section className="plan-history" aria-labelledby="plan-history-title">
+          <h2 id="plan-history-title">
+            <History size={15} strokeWidth={1.8} aria-hidden="true" />
+            Race plan history
+          </h2>
+          <ul>
+            {planHistory.map((entry) => (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistoryPlanId(entry.id);
+                    setWeekNumber(currentWeekNumber(entry.plan, today));
+                  }}
+                >
+                  <span>{entry.plan.race.name}</span>
+                  <small>
+                    {formatDateLabel(entry.plan.race.date)} · {entry.plan.weeks.length} weeks
+                  </small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {conflicts.length > 0 && (
@@ -339,7 +466,7 @@ export function PlanScreen({
             setDetailWorkoutId(null);
           }}
           onLogRun={
-            detailDay.canLogRun
+            !isHistorical && detailDay.canLogRun
               ? () =>
                   openSecondary({
                     kind: "run-entry",
@@ -348,7 +475,7 @@ export function PlanScreen({
               : undefined
           }
           onEditRun={
-            detailDay.runLog
+            !isHistorical && detailDay.runLog
               ? () =>
                   openSecondary({
                     kind: "run-entry",
@@ -407,8 +534,8 @@ export function PlanScreen({
             applyPlanEdit(
               () =>
                 isRest
-                  ? addPlannedRun(plan, workout.id, values)
-                  : editPlannedRun(plan, workout.id, values),
+                  ? addPlannedRun(viewPlan, workout.id, values)
+                  : editPlannedRun(viewPlan, workout.id, values),
               isRest
                 ? `${values.title} planned for ${formatDateLabel(workout.date)}.`
                 : `${formatDateLabel(workout.date)} updated.`,
@@ -420,14 +547,14 @@ export function PlanScreen({
       {secondary?.kind === "move-workout" && secondaryDay && (
         <MoveWorkoutSheet
           key={secondaryVisit}
-          plan={plan}
+          plan={viewPlan}
           workout={secondaryDay.workout}
           isOpen={isSecondaryOpen}
           onClose={closeSecondary}
           onMove={(toDate) => {
             const workout = secondaryDay.workout;
             applyPlanEdit(
-              () => moveWorkout(plan, workout.id, toDate),
+              () => moveWorkout(viewPlan, workout.id, toDate),
               `${workout.title} moved to ${formatDateLabel(toDate)}.`,
             );
           }}
@@ -437,7 +564,7 @@ export function PlanScreen({
       {secondary?.kind === "race-setup" && onGeneratePlan && (
         <RaceSetupSheet
           key={secondaryVisit}
-          plan={plan}
+          plan={viewPlan}
           setup={raceSetup}
           runDays={runDays}
           crossTrainingDays={crossTrainingDays}
@@ -465,9 +592,9 @@ export function PlanScreen({
           isOpen={isSecondaryOpen}
           onClose={closeSecondary}
           onMove={(workoutId, toDate) => {
-            const workout = findWorkout(plan, workoutId);
+            const workout = findWorkout(viewPlan, workoutId);
             applyPlanEdit(
-              () => moveWorkout(plan, workoutId, toDate),
+              () => moveWorkout(viewPlan, workoutId, toDate),
               `${workout?.title ?? "Workout"} moved to ${formatDateLabel(toDate)}.`,
               { close: false },
             );

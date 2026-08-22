@@ -97,6 +97,22 @@ describe("planStartDate", () => {
 });
 
 describe("a plan that starts when the runner says", () => {
+  it("scopes workout relationships to a unique plan instance", () => {
+    const setup = setupFor();
+    const first = generateTrainingPlan(setup, { today: "2026-08-10" });
+    const replacement = generateTrainingPlan(setup, { today: "2026-08-10" });
+    const firstWorkoutIds = new Set(
+      first.weeks.flatMap((week) => week.workouts.map((workout) => workout.id)),
+    );
+
+    expect(replacement.id).not.toBe(first.id);
+    expect(
+      replacement.weeks
+        .flatMap((week) => week.workouts)
+        .some((workout) => firstWorkoutIds.has(workout.id)),
+    ).toBe(false);
+  });
+
   it("begins on the chosen Monday and still ends on race day", () => {
     const plan = generateTrainingPlan(
       setupFor({ startDate: "2026-09-07" }),

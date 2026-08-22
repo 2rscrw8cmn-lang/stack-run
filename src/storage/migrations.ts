@@ -3,6 +3,7 @@ import { repackPlacements } from "../domain/placement";
 import type {
   AppSettings,
   AppState,
+  ArchivedTrainingPlan,
   BlockPlacement,
   Effort,
   RunActivityType,
@@ -11,7 +12,7 @@ import type {
 } from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -135,6 +136,19 @@ function validTrainingPlan(value: unknown): boolean {
   });
 }
 
+function validArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
+  const archived = object(value);
+  const runLinks = object(archived?.runLinks);
+  return archived !== null &&
+    typeof archived.id === "string" && archived.id.length > 0 &&
+    validTrainingPlan(archived.plan) && validRaceSetup(archived.raceSetup) &&
+    runLinks !== null && Object.entries(runLinks).every(([runId, workoutId]) =>
+      runId.length > 0 && typeof workoutId === "string" && workoutId.length > 0
+    ) &&
+    typeof archived.archivedAt === "string" &&
+    Number.isFinite(Date.parse(archived.archivedAt));
+}
+
 function validRaceSetup(value: unknown): boolean {
   if (value === null) return true;
   const setup = object(value);
@@ -160,10 +174,16 @@ function validAvailability(value: unknown): boolean {
     });
 }
 
-/** Runtime validation shared by schema-9 storage and canonical cloud hydration. */
+/** Runtime validation shared by schema-10 storage and canonical cloud hydration. */
 export function validateCurrentAppState(state: AppState): AppState {
+  const archiveIds = new Set(state.planHistory?.map((entry) => entry.id));
   if (state.settings?.units !== "miles" || state.settings.theme !== "dark" ||
-      !validTrainingPlan(state.plan) || !validRaceSetup(state.raceSetup) ||
+      (state.plan !== null && !validTrainingPlan(state.plan)) ||
+      !Array.isArray(state.planHistory) ||
+      state.planHistory.some((entry) => !validArchivedPlan(entry)) ||
+      archiveIds.size !== state.planHistory.length ||
+      !validRaceSetup(state.raceSetup) ||
+      (state.plan === null && state.raceSetup !== null) ||
       !validAvailability(state.availability) ||
       (state.runDays !== null && (!Array.isArray(state.runDays) ||
         state.runDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6))) ||
@@ -184,7 +204,8 @@ export function createInitialAppState(): AppState {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     settings: { units: "miles", theme: "dark" },
-    plan: loadSeedPlan(),
+    plan: null,
+    planHistory: [],
     runLogs: [],
     blockPlacements: [],
     availability: null,
@@ -193,6 +214,11 @@ export function createInitialAppState(): AppState {
     raceSetup: null,
     intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
   };
+}
+
+/** Seeded state for compatibility fixtures and the owner-only QA runner. */
+export function createSeededAppState(): AppState & { plan: TrainingPlan } {
+  return { ...createInitialAppState(), plan: loadSeedPlan() };
 }
 
 /**
@@ -259,7 +285,7 @@ function upgradePlacements(
 
 /**
  * Migrates a parsed but untrusted value into the current AppState shape.
- * Missing storage produces a fresh state from the seed plan. Any schemaVersion
+ * Missing storage produces a fresh state without an active plan. Any schemaVersion
  * newer than this build understands is a recoverable error so the caller can
  * offer a reset instead of silently discarding user data.
  *
@@ -292,6 +318,7 @@ export function migrateAppState(input: unknown): AppState {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       settings: legacy.settings,
       plan: legacy.plan,
+      planHistory: [],
       runLogs,
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
       availability: null,
@@ -312,6 +339,7 @@ export function migrateAppState(input: unknown): AppState {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       blockPlacements: candidate.blockPlacements ?? [],
+      planHistory: [],
       availability: null,
       runDays: null,
       crossTrainingDays: null,
@@ -330,6 +358,7 @@ export function migrateAppState(input: unknown): AppState {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       blockPlacements: candidate.blockPlacements ?? [],
+      planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: null,
       crossTrainingDays: null,
@@ -348,6 +377,7 @@ export function migrateAppState(input: unknown): AppState {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       blockPlacements: candidate.blockPlacements ?? [],
+      planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
       crossTrainingDays: null,
@@ -361,11 +391,21 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      planHistory: [],
       runLogs: legacy.runLogs.map((runLog) => ({ ...runLog, source: "manual", externalSource: null, importedMetrics: null })),
       // Schema 8 predates the Cross Training day preference.
       crossTrainingDays: (legacy as unknown as AppState).crossTrainingDays ?? null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
     };
+  }
+
+  /** Schema 9 structurally required one active plan and had no history. */
+  if (candidate.schemaVersion === 9) {
+    return validateCurrentAppState({
+      ...(candidate as unknown as Omit<AppState, "schemaVersion" | "planHistory">),
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      planHistory: [],
+    });
   }
 
   if (candidate.schemaVersion === CURRENT_SCHEMA_VERSION) {
@@ -374,6 +414,7 @@ export function migrateAppState(input: unknown): AppState {
       // A payload written by an older build of this phase, or hand edited,
       // may still be missing these.
       blockPlacements: candidate.blockPlacements ?? [],
+      planHistory: (candidate as unknown as AppState).planHistory ?? [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
       crossTrainingDays: (candidate as unknown as AppState).crossTrainingDays ?? null,

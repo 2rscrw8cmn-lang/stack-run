@@ -13,7 +13,7 @@ import {
   loadPendingIntervalsCandidates,
   savePendingIntervalsCandidates,
 } from "../storage/intervalsPendingRepository";
-import { createInitialAppState } from "../storage/migrations";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations";
 import { APP_STATE_STORAGE_KEY, INTERVALS_PENDING_STORAGE_KEY } from "../storage/storageKeys";
 import { footprintFor } from "../domain/footprint";
 import type { AppState } from "../domain/types";
@@ -47,10 +47,10 @@ function reader(activities: readonly Record<string, unknown>[]) {
  * workout, an accepted connected run, and a Build block placed for each.
  */
 function establishedDevice(): { state: AppState; acceptedActivityId: string } {
-  let state = createInitialAppState();
+  let state: AppState = createSeededAppState();
   saveAppState(state);
 
-  const workout = state.plan.weeks
+  const workout = state.plan!.weeks
     .flatMap((week) => week.workouts)
     .find((item) => item.type !== "rest")!;
 

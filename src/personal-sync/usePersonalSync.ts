@@ -47,6 +47,7 @@ import {
   mergeMissingRunPlacements,
   reconcileLegacyRuns,
   repairCanonicalPlacements,
+  rewritePlanHistoryRunIds,
   rewritePlacementRunIds,
 } from "./reconciliation";
 import {
@@ -109,10 +110,14 @@ function rekeyRunInState(
   const placements = rewritePlacementRunIds(state.blockPlacements, {
     [fromId]: canonical.id,
   });
+  const planHistory = rewritePlanHistoryRunIds(state.planHistory, {
+    [fromId]: canonical.id,
+  });
   return {
     ...state,
     runLogs: [...withoutCanonical, canonical],
     blockPlacements: placements,
+    planHistory,
   };
 }
 
@@ -342,12 +347,31 @@ export function usePersonalSync({
                 savePersonalOutbox(activeUserId, concurrentOutbox);
               }
               if (saved.run.id !== currentRun.id) {
+                const beforeRekey = latest.current.state;
                 const next = rekeyRunInState(
-                  latest.current.state,
+                  beforeRekey,
                   currentRun.id,
                   saved.run,
                 );
+                const historyChanged = jsonChanged(
+                  next.planHistory,
+                  beforeRekey.planHistory,
+                );
                 replaceForAccount(activeUserId, next, latest.current.pendingCandidates);
+                if (historyChanged) {
+                  const rekeyOutbox = loadPersonalOutbox(activeUserId);
+                  // The run save above has completed. Preserve a genuinely
+                  // concurrent edit, but do not replay this completed mutation
+                  // merely to persist the archived relationship's new key.
+                  if (rekeyOutbox.generation === startedGeneration) {
+                    delete rekeyOutbox.runs[currentRun.id];
+                  }
+                  rekeyOutbox.training = true;
+                  rekeyOutbox.generation += 1;
+                  rekeyOutbox.updatedAt = new Date().toISOString();
+                  savePersonalOutbox(activeUserId, rekeyOutbox);
+                  queueFollowUp = true;
+                }
               }
               await reconcileCrewRunIdentity(
                 availability.client!,
@@ -661,9 +685,13 @@ export function usePersonalSync({
       const canonicalized = canonicalizeFirstDevice(
         current.runLogs,
         current.blockPlacements,
+        current.planHistory,
       );
       await initializePersonalCloud(availability.client, {
-        training: trainingDocumentFrom(current),
+        training: {
+          ...trainingDocumentFrom(current),
+          planHistory: canonicalized.planHistory,
+        },
         runs: canonicalized.runs,
         placements: canonicalized.placements,
         intervals: intervalsDocumentFrom(current, pending),
@@ -825,7 +853,7 @@ export function usePersonalSync({
       ? {
           runCount: state.runLogs.length,
           blockCount: state.blockPlacements.length,
-          raceName: state.raceSetup?.name ?? state.plan.race.name,
+          raceName: state.raceSetup?.name ?? state.plan?.race.name ?? null,
         }
       : null;
 

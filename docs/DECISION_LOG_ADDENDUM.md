@@ -786,3 +786,41 @@ The redundancy went unnoticed for the same reason the 8px labels in D-084 did â€
 **Status**
 
 Approved. Closes issue #152. Synced-run recognition lands in this same completed state (Evolution 2.02) and does not change its contract.
+
+## D-086 â€” Plan is optional intent with explicit active/history lifecycle
+
+**Decision**
+
+Schema 10 makes `AppState.plan` nullable and adds immutable historical plan
+snapshots. A new runner starts without an active plan; an existing schema-9
+runner keeps the current plan active during migration. Finishing a post-race
+plan or explicitly generating its replacement archives the current plan. Date
+passage alone never mutates lifecycle.
+
+Actual history, Personal Build, connected data and eligible Crew behavior do
+not depend on an active plan. Build continues across races and is never reset
+or archived as a Plan side effect. Plan Context disappears naturally without
+active intent, while linked runs may still resolve the archived workout that
+describes their historical relationship.
+
+Plan's no-active state offers Race Setup and read-only historical plans. Today
+omits scheduled/rest/countdown claims and offers only a quiet route to setup.
+Race Crew metadata remains Crew-owned context and never creates a personal
+plan.
+
+Signed-in canonical storage carries nullable active plan and plan history
+atomically in `personal_training_state`; the change does not widen RLS or the
+Crew projection boundary.
+
+**Reason**
+
+Actual history is foundational product data and Plan is optional intent. A
+structurally mandatory plan made the product misdescribe ordinary running
+between races and made starting another race feel compulsory. An explicit
+active/history lifecycle preserves old intent without letting it dominate the
+runner's current day.
+
+**Status**
+
+Approved for Evolution 2.06 / issue #157. The complete lifecycle, persistence
+and verification contract is `docs/NO_ACTIVE_PLAN_LIFECYCLE.md`.

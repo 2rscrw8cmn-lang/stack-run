@@ -124,7 +124,8 @@ Do not recompute trusted summary facts from streams merely because stream sample
 
 Plan is race-specific intent, not the authoritative record of whether the runner ran.
 
-The current product still structurally carries one active `TrainingPlan`, while preserving past weeks as historical intent.
+The current product carries zero or one active `TrainingPlan`. Completed or
+replaced plans are immutable historical intent snapshots in `planHistory`.
 
 Plan separates:
 
@@ -136,7 +137,10 @@ A past workout with no explicit linked run is **No linked run**, not a judgmenta
 
 Actual historical activity does not automatically satisfy a planned workout. Existing explicit matching/linking rules remain authoritative.
 
-A first-class no-active-plan lifecycle is not implemented yet; that is a future product decision rather than something this document should imply already exists.
+Without an active plan, STACK still records actual history, earns and places
+Personal Build blocks, shows runner signals, and supports optional Crew. Today
+does not invent a rest day or race countdown. Plan offers a quiet race-setup
+path and read-only access to prior plans.
 
 ## Personal Build
 
@@ -385,7 +389,6 @@ Do not add infrastructure or product breadth merely because an upstream API make
 
 The following are known product boundaries, not undocumented surprises:
 
-- no first-class `no active plan` state yet;
 - source-only Cross Training history asymmetry;
 - the legacy Intervals proxy path still exists alongside the verified direct local-key path;
 - Crew `Steady` award awaits a verified pace-variability source;

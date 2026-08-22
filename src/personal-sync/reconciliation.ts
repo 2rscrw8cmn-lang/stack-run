@@ -1,6 +1,11 @@
 import { mergeCandidates, unresolvedCandidates, type IntervalsCandidate } from "../connected/intervals";
 import { InvalidPlacementError, assertPlacementFits, repackPlacements } from "../domain/placement";
-import type { AppState, BlockPlacement, RunLog } from "../domain/types";
+import type {
+  AppState,
+  ArchivedTrainingPlan,
+  BlockPlacement,
+  RunLog,
+} from "../domain/types";
 import { createRunLogId } from "../storage/appStateRepository";
 import { migrateAppState } from "../storage/migrations";
 import type {
@@ -41,6 +46,7 @@ export interface LegacyRunReconciliation {
 export interface FirstDeviceCanonicalization {
   runs: PersonalInitializationRun[];
   placements: BlockPlacement[];
+  planHistory: ArchivedTrainingPlan[];
 }
 
 /**
@@ -50,6 +56,7 @@ export interface FirstDeviceCanonicalization {
 export function canonicalizeFirstDevice(
   localRuns: readonly RunLog[],
   placements: readonly BlockPlacement[],
+  planHistory: readonly ArchivedTrainingPlan[] = [],
 ): FirstDeviceCanonicalization {
   const runs: PersonalInitializationRun[] = [];
   const byExternal = new Map<string, PersonalInitializationRun>();
@@ -83,7 +90,11 @@ export function canonicalizeFirstDevice(
     if (key) byExternal.set(key, candidate);
   }
 
-  return { runs, placements: rewritePlacementRunIds(placements, aliases) };
+  return {
+    runs,
+    placements: rewritePlacementRunIds(placements, aliases),
+    planHistory: rewritePlanHistoryRunIds(planHistory, aliases),
+  };
 }
 
 /**
@@ -185,6 +196,23 @@ export function rewritePlacementRunIds(
   });
 }
 
+/** Keeps archived intent attached when cloud identity replaces a local run id. */
+export function rewritePlanHistoryRunIds(
+  planHistory: readonly ArchivedTrainingPlan[],
+  aliases: Readonly<Record<string, string>>,
+): ArchivedTrainingPlan[] {
+  return planHistory.map((archive) => {
+    const runLinks: Record<string, string> = {};
+    for (const [runLogId, workoutId] of Object.entries(archive.runLinks)) {
+      const canonicalId = aliases[runLogId] ?? runLogId;
+      // Duplicate imported activities collapse to one canonical fact. Keep the
+      // first relationship just as first-device run canonicalization does.
+      if (!(canonicalId in runLinks)) runLinks[canonicalId] = workoutId;
+    }
+    return { ...archive, runLinks };
+  });
+}
+
 /**
  * Adds exact legacy positions only for genuinely missing runs. Established
  * canonical construction never moves. An incompatible local block remains
@@ -252,9 +280,10 @@ export function appStateFromCloud(snapshot: PersonalCloudSnapshot): AppState {
     .map((item) => item.run);
   const activeIds = new Set(activeRuns.map((run) => run.id));
   return migrateAppState({
-    schemaVersion: 9,
+    schemaVersion: 10,
     settings: snapshot.training.settings,
     plan: snapshot.training.plan,
+    planHistory: snapshot.training.planHistory,
     raceSetup: snapshot.training.raceSetup,
     availability: snapshot.training.availability,
     runDays: snapshot.training.runDays,

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { createInitialAppState } from "../storage/migrations";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations";
 import type { RunLog } from "../domain/types";
 import {
   projectMemberSummary,
@@ -628,7 +628,7 @@ describe("Race Crew projection", () => {
   });
 
   it("calculates the approved factual summary and excludes extras from consistency", () => {
-    const state = createInitialAppState();
+    const state = createSeededAppState();
     const due = state.plan.weeks
       .flatMap((week) => week.workouts)
       .find((workout) => workout.type !== "rest")!;

@@ -3,6 +3,7 @@ import { GRID_COLUMNS, lastColumnOf, topOf } from "../domain/placement";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 import {
   createInitialAppState,
+  createSeededAppState,
   CURRENT_SCHEMA_VERSION,
   InvalidAppStateError,
   migrateAppState,
@@ -70,12 +71,13 @@ function occupiedCells(
 }
 
 describe("migrateAppState", () => {
-  it("builds a fresh state from the seed plan when there is nothing stored", () => {
+  it("builds a fresh state with no active plan when there is nothing stored", () => {
     const state = migrateAppState(null);
     expect(state.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(state.runLogs).toEqual([]);
     expect(state.blockPlacements).toEqual([]);
-    expect(state.plan.id).toBe("stack-ouc-half-2026");
+    expect(state.plan).toBeNull();
+    expect(state.planHistory).toEqual([]);
   });
 
   it("accepts a valid current-version state", () => {
@@ -84,7 +86,7 @@ describe("migrateAppState", () => {
   });
 
   it("rejects malformed nested current-version training configuration", () => {
-    const malformed = structuredClone(createInitialAppState());
+    const malformed = structuredClone(createSeededAppState());
     malformed.plan.weeks[0].workouts[0].build.span = "wide" as never;
     expect(() => migrateAppState(malformed)).toThrow(InvalidAppStateError);
   });
@@ -110,11 +112,28 @@ describe("migrateAppState", () => {
   });
 });
 
+describe("migrateAppState from version 9", () => {
+  it("keeps the existing plan active and starts with empty plan history", () => {
+    const seeded = createSeededAppState();
+    const version9: Record<string, unknown> = {
+      ...seeded,
+      schemaVersion: 9,
+    };
+    delete version9.planHistory;
+
+    const migrated = migrateAppState(version9);
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.plan).toEqual(seeded.plan);
+    expect(migrated.planHistory).toEqual([]);
+  });
+});
+
 describe("migrateAppState from version 4", () => {
   it("keeps every run's values, timestamps, and scheduled link", () => {
     const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
 
-    expect(migrated.schemaVersion).toBe(9);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(migrated.availability).toBeNull();
     expect(migrated.runLogs).toHaveLength(2);
     expect(migrated.runLogs[0]).toMatchObject({
@@ -265,7 +284,7 @@ describe("migrateAppState from version 5", () => {
 
     const migrated = migrateAppState(version5);
 
-    expect(migrated.schemaVersion).toBe(9);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(migrated.availability).toBeNull();
     expect(migrated.runLogs).toHaveLength(1);
     expect(migrated.plan).toEqual(version5.plan);

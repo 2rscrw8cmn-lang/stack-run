@@ -12,7 +12,12 @@ import {
   placementOptions,
   type PlacementOption,
 } from "../../domain/placement";
-import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
+import type {
+  ArchivedTrainingPlan,
+  BlockPlacement,
+  RunLog,
+  TrainingPlan,
+} from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
@@ -47,7 +52,8 @@ export interface PlacementRequest {
 }
 
 interface BuildScreenProps {
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory?: readonly ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
   onPlaceBlock: (request: PlacementRequest) => void;
@@ -71,6 +77,7 @@ interface BuildScreenProps {
 
 export function BuildScreen({
   plan,
+  planHistory = [],
   runLogs,
   blockPlacements,
   onPlaceBlock,
@@ -100,8 +107,14 @@ export function BuildScreen({
     return () => clearTimeout(timer);
   }, [payoff]);
 
-  const viewModel = selectBuildViewModel(plan, runLogs, blockPlacements, today);
-  const allEarned = earnedBlocks(plan, runLogs);
+  const viewModel = selectBuildViewModel(
+    plan,
+    runLogs,
+    blockPlacements,
+    today,
+    planHistory,
+  );
+  const allEarned = earnedBlocks(plan, runLogs, planHistory);
 
   const placingBlock =
     allEarned.find((block) => block.runLog.id === placingRunLogId) ?? null;

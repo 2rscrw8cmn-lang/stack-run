@@ -12,6 +12,7 @@ import {
   saveAvailability,
   savePlan,
   saveGeneratedPlan,
+  finishActivePlan,
   saveRunDays,
   saveCrossTrainingDays,
   saveRunLog,
@@ -83,9 +84,9 @@ function readBootState(): BootState {
 }
 
 const CORE_TOUR: ReadonlyArray<{ tab: TabId; title: string; copy: string }> = [
-  { tab: "plan", title: "Plan", copy: "See what should happen, one training week at a time." },
   { tab: "runs", title: "Runs", copy: "See what actually happened. Log runs here or connect Run Data." },
   { tab: "build", title: "Build", copy: "Every run you record earns a block. Place it to build your race." },
+  { tab: "plan", title: "Plan", copy: "Race intent is optional. Set up a race when you want a schedule." },
   { tab: "today", title: "Today", copy: "Start here for today's workout and what matters now." },
 ];
 
@@ -227,7 +228,7 @@ export function App() {
 
   // A newly recorded run may cross a factual threshold. Compare the run-log
   // transition in memory, show the facts briefly, and never write a badge or
-  // replay marker into schema 9.
+  // replay marker into persisted state.
   useEffect(() => {
     if (!appState) return;
     const prior = previousRunLogs.current;
@@ -331,7 +332,7 @@ export function App() {
     return (
       <CrewInviteLanding
         crew={raceCrew}
-        localRace={boot.state.plan.race}
+        localRace={boot.state.plan?.race ?? null}
         onOpenCrew={() => setActiveTab("crew")}
       />
     );
@@ -370,6 +371,7 @@ export function App() {
         </>
       ) : undefined}
       plan={boot.state.plan}
+      planHistory={boot.state.planHistory}
       runLogs={boot.state.runLogs}
       blockPlacements={boot.state.blockPlacements}
       onSaveRun={(workout, values: ValidRunEntry, runLogId?: string) =>
@@ -420,6 +422,7 @@ export function App() {
       onGeneratePlan={(setup, plan) =>
         setAppState((current) => saveGeneratedPlan(current, setup, plan))
       }
+      onFinishPlan={() => setAppState((current) => finishActivePlan(current))}
       runDays={boot.state.runDays}
       onSaveRunDays={(runDays, plan) =>
         setAppState((current) => saveRunDays(current, runDays, plan))

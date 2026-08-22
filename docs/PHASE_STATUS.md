@@ -24,7 +24,20 @@
 | 11 | Training Trends foundation | Complete | First trend foundation. |
 | 12 | Wellness / Recovery Context | Deferred / intentionally skipped | Not active. |
 
-Current personal AppState: **schema 9**.
+Current personal AppState: **schema 10**.
+
+## Evolution 2.06 — No Active Plan (issue #157)
+
+Status: **Implemented / PR review and owner device QA pending.**
+
+- `AppState.plan` is nullable and finished/replaced plan intent is retained in
+  immutable `planHistory` snapshots.
+- Fresh runners begin without a race plan; existing schema-9 runners migrate
+  with their current plan still active.
+- Today, Runs, Build, signals, onboarding, Settings, and Crew continue to work
+  without an active plan. Plan offers setup plus read-only plan history.
+- Personal cloud training schema 2 stores nullable plan and history atomically
+  through authenticated v2 RPCs while preserving rolling-client compatibility.
 
 ## DATA-1 — Personal Account Sync / Multi-Device (issue #50)
 

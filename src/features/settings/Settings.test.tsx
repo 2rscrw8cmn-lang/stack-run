@@ -150,7 +150,7 @@ describe("resetting the plan", () => {
       onResetPlan,
     });
 
-    await user.click(screen.getByRole("button", { name: /^Reset Plan/ }));
+    await user.click(screen.getByRole("button", { name: /^Reset STACK/ }));
     const sheet = screen.getByRole("dialog");
     expect(within(sheet).getByText("1 recorded run")).toBeInTheDocument();
 
@@ -168,12 +168,12 @@ describe("resetting the plan", () => {
     const onResetPlan = vi.fn();
     const { user } = renderSettings({ onResetPlan });
 
-    await user.click(screen.getByRole("button", { name: /^Reset Plan/ }));
+    await user.click(screen.getByRole("button", { name: /^Reset STACK/ }));
     await user.click(screen.getByRole("button", { name: "Keep My Data" }));
 
     expect(onResetPlan).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("button", { name: /^Reset Plan Erases/ }),
+      screen.getByRole("button", { name: /^Reset STACK Erases/ }),
     ).toBeInTheDocument();
   });
 });

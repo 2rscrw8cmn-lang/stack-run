@@ -55,6 +55,47 @@ function weekHeading() {
   return screen.getByRole("heading", { level: 1 });
 }
 
+describe("PlanScreen without an active plan", () => {
+  it("offers setup and opens an archived plan read-only", async () => {
+    const archive = {
+      id: "archive-ouc",
+      plan,
+      raceSetup: null,
+      runLinks: {},
+      archivedAt: "2026-12-06T12:00:00.000Z",
+    };
+    const { user } = renderPlan({
+      plan: null,
+      planHistory: [archive],
+      onGeneratePlan: vi.fn(),
+    });
+
+    expect(weekHeading()).toHaveTextContent("No active race plan");
+    expect(screen.getByRole("button", { name: "Set Up Next Race" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /OUC Half Marathon/ }));
+
+    expect(weekHeading()).toHaveTextContent("Week 1 of 18");
+    expect(screen.getByRole("button", { name: "Race plan history" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Tuesday, August 4/ }));
+    expect(screen.queryByRole("button", { name: "Log Run" })).not.toBeInTheDocument();
+  });
+
+  it("keeps archived plans readable while a newer plan is active", async () => {
+    const { user } = renderPlan({
+      planHistory: [{
+        id: "archive-old",
+        plan: { ...plan, id: "old-plan", race: { ...plan.race, name: "Earlier Race" } },
+        raceSetup: null,
+        runLinks: {},
+        archivedAt: "2026-01-01T12:00:00.000Z",
+      }],
+    });
+
+    await user.click(screen.getByRole("button", { name: /Earlier Race/ }));
+    expect(screen.getByRole("button", { name: "Race plan history" })).toBeInTheDocument();
+  });
+});
+
 describe("PlanScreen week navigation", () => {
   it("opens on the week containing today", () => {
     renderPlan({ today: "2026-08-12" });

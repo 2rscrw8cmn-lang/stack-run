@@ -15,7 +15,7 @@ import {
   saveAppState,
   saveRunLog,
 } from "../storage/appStateRepository";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import {
   APP_STATE_STORAGE_KEY,
   HISTORY_SYNC_STATE_STORAGE_KEY,
@@ -48,10 +48,10 @@ function reader(activities: readonly Record<string, unknown>[]) {
 
 /** A device with a linked manual run, an accepted connected run, and blocks placed. */
 function establishedDevice(): AppState {
-  let state = createInitialAppState();
+  let state: AppState = createSeededAppState();
   saveAppState(state);
 
-  const workout = state.plan.weeks
+  const workout = state.plan!.weeks
     .flatMap((week) => week.workouts)
     .find((item) => item.type !== "rest")!;
 
@@ -219,7 +219,7 @@ describe("Training Signals v2 beside the existing product", () => {
 
   it("leaves the plan-relative domain calculation itself unchanged", async () => {
     const state = establishedDevice();
-    const planSignalsBefore = selectTrainingSignals(state.plan, state.runLogs, today);
+    const planSignalsBefore = selectTrainingSignals(state.plan!, state.runLogs, today);
 
     const result = await syncHistoricalActivities({
       connection,
@@ -238,7 +238,7 @@ describe("Training Signals v2 beside the existing product", () => {
     });
 
     const after = loadAppState();
-    expect(selectTrainingSignals(after.plan, after.runLogs, today)).toEqual(
+    expect(selectTrainingSignals(after.plan!, after.runLogs, today)).toEqual(
       planSignalsBefore,
     );
   });

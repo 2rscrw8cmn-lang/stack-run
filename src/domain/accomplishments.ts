@@ -27,21 +27,18 @@ function meaningfulMilestonesThrough(miles: number): number[] {
  * to replay and therefore cannot turn a moment into a badge collection.
  */
 export function accomplishmentsForAddedRuns(
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   previousRunLogs: readonly RunLog[],
   addedRunLogs: readonly RunLog[],
 ): AccomplishmentMoment[] {
   if (addedRunLogs.length === 0) return [];
 
   const moments: AccomplishmentMoment[] = [];
-  const priorPlanRuns = previousRunLogs.filter(
-    (run) =>
-      run.completedDate >= plan.startDate && run.completedDate <= plan.endDate,
-  );
-  const addedPlanRuns = addedRunLogs.filter(
-    (run) =>
-      run.completedDate >= plan.startDate && run.completedDate <= plan.endDate,
-  );
+  const inPlan = (run: RunLog) =>
+    plan === null ||
+    (run.completedDate >= plan.startDate && run.completedDate <= plan.endDate);
+  const priorPlanRuns = previousRunLogs.filter(inPlan);
+  const addedPlanRuns = addedRunLogs.filter(inPlan);
   const longestAdded = addedPlanRuns.reduce<RunLog | null>(
     (longest, run) =>
       longest === null || run.distanceMiles > longest.distanceMiles ? run : longest,

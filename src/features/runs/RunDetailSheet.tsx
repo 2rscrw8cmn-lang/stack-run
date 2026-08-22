@@ -102,7 +102,7 @@ export function RunDetailSheet({
               Connect to Plan
             </Button>
           )}
-          {workout && onUnlinkRun && (
+          {entry.relationship === "active-plan" && onUnlinkRun && (
             <Button variant="ghost" onClick={() => onUnlinkRun(runLog.id)}>
               Unlink from Plan
             </Button>

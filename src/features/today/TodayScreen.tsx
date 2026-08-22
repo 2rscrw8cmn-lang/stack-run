@@ -44,7 +44,7 @@ import { TodayCrewRecap } from "./TodayCrewRecap";
 import "./todayDecisionSurface.css";
 
 interface TodayScreenProps {
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
   runLogs: RunLog[];
   /** Unified actual history owned by the application. */
   runnerRuns?: RunnerRun[];
@@ -140,7 +140,7 @@ export function TodayScreen({
   const found = isDemo
     ? isFoundDemo
       ? selectRunFound(
-        [todayFoundDemoCandidate(effectivePlan)],
+        [todayFoundDemoCandidate(effectivePlan!)],
         effectivePlan,
         effectiveRunLogs,
         effectiveToday,
@@ -196,7 +196,7 @@ export function TodayScreen({
     <div className="today-screen">
       <TodayHeading
         today={effectiveToday}
-        race={effectivePlan.race}
+        race={effectivePlan?.race ?? null}
         daysRemaining={model.raceDaysRemaining}
       />
 
@@ -274,6 +274,21 @@ export function TodayScreen({
       )}
 
       <TodayContext readings={model.context} />
+
+      {immediate.kind === "no-plan" && (
+        <button
+          type="button"
+          className="today-plan-prompt"
+          aria-label="Set up a race plan"
+          onClick={onViewPlan}
+        >
+          <CalendarPlus size={16} strokeWidth={1.8} aria-hidden="true" />
+          <span>
+            <strong>Running without a race plan</strong>
+            <small>Set up a race when you are ready.</small>
+          </span>
+        </button>
+      )}
 
       {model.week && (
         <ThisWeekStrip

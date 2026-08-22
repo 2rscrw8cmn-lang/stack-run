@@ -29,7 +29,7 @@ import type { RunLog, TrainingPlan } from "../../domain/types";
 
 interface RaceSetupSheetProps {
   /** The current plan, for what regenerating would cost. */
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
   setup: RacePlanSetup | null;
   runDays: Weekday[] | null;
   crossTrainingDays: Weekday[] | null;
@@ -61,8 +61,8 @@ export function RaceSetupSheet({
   onClose,
   onGenerate,
 }: RaceSetupSheetProps) {
-  const [name, setName] = useState(setup?.name ?? plan.race.name);
-  const [date, setDate] = useState(setup?.date ?? plan.race.date);
+  const [name, setName] = useState(setup?.name ?? plan?.race.name ?? "");
+  const [date, setDate] = useState(setup?.date ?? plan?.race.date ?? "");
   const [distance, setDistance] = useState<RaceDistance>(
     setup?.distance ?? "half",
   );
@@ -70,7 +70,7 @@ export function RaceSetupSheet({
   // level it is written at, and defaulting to the lowest one silently strips
   // the speed work out of a plan that has some.
   const [level, setLevel] = useState<RunnerLevel>(
-    setup?.level ?? inferRunnerLevel(plan, setup?.distance ?? "half"),
+    setup?.level ?? (plan ? inferRunnerLevel(plan, setup?.distance ?? "half") : "novice"),
   );
   /**
    * Null while the runner has not said, so the suggested start keeps following
@@ -121,7 +121,9 @@ export function RaceSetupSheet({
    * being chosen would keep. Rebuilding a plan with speed work in it at a
    * level that has none is a real loss and it used to happen silently.
    */
-  const existing = countQualitySessions(plan);
+  const existing = plan
+    ? countQualitySessions(plan)
+    : { intervals: 0, simulation: 0 };
   const existingQuality = existing.intervals + existing.simulation;
   const keeps = profile.levels[level].quality;
   const losesIntervals = existing.intervals > 0 && keeps < 1;

@@ -11,7 +11,7 @@ import {
   saveRunLog,
 } from "../../storage/appStateRepository";
 import { loadPendingIntervalsCandidates } from "../../storage/intervalsPendingRepository";
-import { createInitialAppState } from "../../storage/migrations";
+import { createSeededAppState } from "../../storage/migrations";
 import { RunDataSheet } from "./RunDataSheet";
 import { useConnectedSync } from "./useConnectedSync";
 
@@ -41,9 +41,9 @@ const activity = {
 
 /** A plan with the run's neighbours already run, so nothing is suggested. */
 function startingState(): AppState {
-  let state = createInitialAppState();
+  let state: AppState = createSeededAppState();
   for (const workoutId of NEARBY_WORKOUTS) {
-    const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.id === workoutId)!;
+    const workout = state.plan!.weeks.flatMap((week) => week.workouts).find((item) => item.id === workoutId)!;
     state = saveRunLog(state, { workoutId, completedDate: workout.date, activityType: "easy", distanceMiles: 2, durationSeconds: 1200, effort: "solid", notes: "" });
   }
   return state;
@@ -123,7 +123,7 @@ describe("an old synced run stays reviewable and matchable", () => {
     expect(imported.activityType).toBe("long");
     expect(imported.distanceMiles).toBe(4);
 
-    const week = selectPlanWeekViewModel(stored.plan, stored.runLogs, 1, RUN_DATE);
+    const week = selectPlanWeekViewModel(stored.plan!, stored.runLogs, 1, RUN_DATE);
     expect(week.days.find((day) => day.workout.id === TRUE_WORKOUT)?.status).toBe("completed");
     expect(week.days.filter((day) => day.status === "completed")).toHaveLength(3);
 
