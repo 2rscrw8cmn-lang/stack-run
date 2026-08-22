@@ -284,7 +284,23 @@ export function usePersonalSync({
       try {
         if (!hasPersonalOutboxWork(started)) {
           const snapshot = await loadPersonalCloudSnapshot(availability.client!);
-          if (snapshot) await adoptSnapshot(activeUserId, snapshot);
+          if (!snapshot) return;
+          // A run can be confirmed while this pull is in flight. Adopting the
+          // snapshot that started before that confirmation would erase both the
+          // new RunLog/workout link and the pending-candidate removal, then clear
+          // their outbox entries. Keep the local mutation authoritative and let
+          // the normal follow-up pass push it against the revision we just read.
+          const concurrentOutbox = loadPersonalOutbox(activeUserId);
+          if (
+            concurrentOutbox.generation !== startedGeneration ||
+            hasPersonalOutboxWork(concurrentOutbox)
+          ) {
+            savePersonalMetadata(activeUserId, metadataFromSnapshot(snapshot));
+            setStatus("offline-pending");
+            queueFollowUp = true;
+            return;
+          }
+          await adoptSnapshot(activeUserId, snapshot);
           return;
         }
         if (started.reset) {

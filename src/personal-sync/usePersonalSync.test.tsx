@@ -1,8 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { IntervalsCandidate } from "../connected/intervals";
 import { repackPlacements } from "../domain/placement";
 import type { BlockPlacement, RunLog } from "../domain/types";
+import { acceptIntervalsRun } from "../storage/appStateRepository";
 import { loadIntervalsApiKey, saveIntervalsApiKey } from "../storage/intervalsCredentialRepository";
 import { createInitialAppState } from "../storage/migrations";
 import {
@@ -64,6 +66,17 @@ vi.mock("./personalCloudRepository", async () => {
 import { usePersonalSync } from "./usePersonalSync";
 
 const at = "2026-08-10T12:00:00.000Z";
+
+const pendingCandidate: IntervalsCandidate = {
+  externalId: "activity-42",
+  sourceType: "Run",
+  completedDate: "2026-08-10",
+  distanceMiles: 8,
+  durationSeconds: 4200,
+  sourceUpdatedAt: null,
+  metrics: { averageHeartRate: 150 },
+  inferredActivityType: "long",
+};
 
 function importedRun(id: string): RunLog {
   return {
@@ -350,6 +363,78 @@ describe("personal sync lifecycle", () => {
       1,
       runB,
     ]);
+  });
+
+  it("does not let a stale pull undo a confirmed Intervals workout match", async () => {
+    const initial = snapshot();
+    initial.intervals.pendingCandidates = [pendingCandidate];
+    markInitialized("user-a", initial);
+    let finishStalePull!: (value: PersonalCloudSnapshot) => void;
+    cloud.load
+      .mockResolvedValueOnce(initial)
+      .mockImplementationOnce(() => new Promise((resolve) => { finishStalePull = resolve; }));
+    const onReplaceState = vi.fn();
+    const local = appStateFromCloud(initial);
+    const { result, rerender } = renderHook(({ currentState }) => usePersonalSync({
+      sessionStatus: "signed-in",
+      userId: "user-a",
+      state: currentState,
+      onReplaceState,
+    }), { initialProps: { currentState: local } });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.pendingCandidates).toEqual([pendingCandidate]);
+
+    let pull!: Promise<void>;
+    act(() => {
+      pull = result.current.syncNow();
+    });
+    await waitFor(() => expect(cloud.load).toHaveBeenCalledTimes(2));
+
+    const workoutId = local.plan.weeks[0].workouts.find((workout) => workout.type !== "rest")!.id;
+    const matched = acceptIntervalsRun(
+      local,
+      pendingCandidate,
+      workoutId,
+      "long",
+      "solid",
+      "",
+    );
+    const matchedRun = matched.runLogs.find(
+      (run) => run.externalSource?.activityId === pendingCandidate.externalId,
+    )!;
+    const canonical = {
+      ...initial,
+      runs: [{ run: matchedRun, revision: 1, deletedAt: null, aliases: [] }],
+      intervals: { ...initial.intervals, pendingCandidates: [] },
+      intervalsRevision: 2,
+    } satisfies PersonalCloudSnapshot;
+    cloud.saveRun.mockResolvedValue(canonical.runs[0]);
+    cloud.load.mockResolvedValue(canonical);
+    act(() => {
+      result.current.recordMutation(local, matched);
+      result.current.recordPendingCandidates([]);
+    });
+    rerender({ currentState: matched });
+
+    await act(async () => finishStalePull(initial));
+    await pull;
+
+    await waitFor(() => expect(cloud.saveRun).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      0,
+      expect.objectContaining({
+        id: matchedRun.id,
+        workoutId,
+        externalSource: expect.objectContaining({ activityId: pendingCandidate.externalId }),
+      }),
+    ));
+    await waitFor(() => expect(onReplaceState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        runLogs: [expect.objectContaining({ id: matchedRun.id, workoutId })],
+      }),
+    ));
+    expect(result.current.pendingCandidates).toEqual([]);
   });
 
   it("backs up and discards a never-synced pre-reset run, then accepts post-reset work", async () => {
