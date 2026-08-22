@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { selectTodayModel } from "./todayModel";
 import {
   isTodayDemoEnabled,
+  isTodayFoundDemoEnabled,
   todayDemoData,
+  todayFoundDemoCandidate,
   TODAY_DEMO_DATE,
 } from "./todayDemo";
 
@@ -51,6 +53,19 @@ describe("Today preview demo", () => {
     expect(model.next).not.toBeNull();
     expect(demo.blockPlacements.length).toBeGreaterThan(0);
     expect(demo.blockPlacements.length).toBeLessThan(demo.runLogs.length);
+  });
+
+  it("offers an explicit connected-review preview state", () => {
+    const location = {
+      hostname: "localhost",
+      search: "?demo=today&state=found",
+    };
+    const demo = todayDemoData();
+    const candidate = todayFoundDemoCandidate(demo.plan);
+
+    expect(isTodayFoundDemoEnabled(location)).toBe(true);
+    expect(candidate.completedDate).toBe(TODAY_DEMO_DATE);
+    expect(candidate.externalId).toBe("demo-today-found");
   });
 
   it("creates only in-memory values and no storage contract", () => {

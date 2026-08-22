@@ -53,6 +53,43 @@ describe("Intervals normalization", () => {
     expect(found?.candidate.externalId).toBe("matched");
     expect(found?.workout?.id).toBe(workout.id);
   });
+  it("lets Today prefer the candidate suggested for the workout due now", () => {
+    const state = createInitialAppState();
+    const workouts = state.plan.weeks
+      .flatMap((week) => week.workouts)
+      .filter((item) => item.type !== "rest");
+    const preferredWorkout = workouts[0];
+    const newerWorkout = workouts[1];
+    const preferred = candidateFor("preferred", preferredWorkout.date);
+    const newer = candidateFor("newer", newerWorkout.date);
+
+    const found = selectRunFound(
+      [newer, preferred],
+      state.plan,
+      [],
+      newerWorkout.date,
+      preferredWorkout.id,
+    );
+
+    expect(found?.candidate.externalId).toBe("preferred");
+    expect(found?.workout?.id).toBe(preferredWorkout.id);
+  });
+  it("never offers a stale candidate whose source activity is already accepted", () => {
+    const state = createInitialAppState();
+    const workout = state.plan.weeks
+      .flatMap((week) => week.workouts)
+      .find((item) => item.type !== "rest")!;
+    const candidate = candidateFor("accepted", workout.date);
+
+    expect(
+      selectRunFound(
+        [candidate],
+        state.plan,
+        [importedRun("accepted")],
+        workout.date,
+      ),
+    ).toBeNull();
+  });
   it("leaves a stale candidate to Run Data rather than to Today", () => {
     const state = createInitialAppState();
     const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;

@@ -34,13 +34,14 @@ function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
   const onImport = vi.fn();
   const onSettle = vi.fn();
   const onIgnore = vi.fn();
+  const onClose = vi.fn();
   const onSync = vi.fn();
   const onFindOlderRuns = vi.fn<() => Promise<number | null>>(async () => 0);
   const user = userEvent.setup();
   render(
     <RunDataSheet
       isOpen
-      onClose={vi.fn()}
+      onClose={onClose}
       state={state}
       initialToken="token"
       candidates={[candidate]}
@@ -58,7 +59,7 @@ function renderSheet(props: Partial<Parameters<typeof RunDataSheet>[0]> = {}) {
       {...props}
     />,
   );
-  return { user, onImport, onSettle, onIgnore, onSync, onFindOlderRuns };
+  return { user, onClose, onImport, onSettle, onIgnore, onSync, onFindOlderRuns };
 }
 
 describe("RunDataSheet", () => {
@@ -153,6 +154,35 @@ describe("RunDataSheet", () => {
 
     expect(screen.getByText("Review synced run")).toBeInTheDocument();
     expect(screen.queryByText("Runs to Review")).not.toBeInTheDocument();
+  });
+
+  it("reviews an account-synced candidate without requiring a connection on this device", async () => {
+    const { user, onImport, onSettle } = renderSheet({
+      initialToken: null,
+      connection: null,
+      initialReview: { candidate },
+    });
+
+    expect(screen.getByText("Review synced run")).toBeInTheDocument();
+    expect(screen.queryByText("Connect your runs")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm Match" }));
+
+    expect(onImport).toHaveBeenCalled();
+    expect(onSettle).toHaveBeenCalledWith(candidate.externalId);
+    expect(screen.getByText("Connect your runs")).toBeInTheDocument();
+  });
+
+  it("keeps a Today review pending when the sheet is dismissed", async () => {
+    const { user, onClose, onSettle, onIgnore, onImport } = renderSheet({
+      initialReview: { candidate },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onSettle).not.toHaveBeenCalled();
+    expect(onIgnore).not.toHaveBeenCalled();
+    expect(onImport).not.toHaveBeenCalled();
   });
 
   it("settles the reviewed run and returns to the remaining candidates", async () => {

@@ -682,26 +682,6 @@
   cursor: pointer;
 }
 
-/* Run found */
-
-.run-found__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.run-found__match {
-  margin: var(--space-3) 0 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 /* Build preview */
 
 .build-preview__count {
@@ -756,11 +736,9 @@
 /*
  * The Today Action Card (issue #152).
  *
- * One card language for the run Today is about: the scheduled workout before
- * it happens, and what the run still owes after it does. The frame, the
- * eyebrow and the single value are the same in both states, so the card reads
- * as one object changing state rather than two components taking turns. Only
- * the lines that are still true differ, which is what keeps it small.
+ * One card language for the run Today is about: the scheduled workout, a synced
+ * run awaiting review, and what the accepted run still owes. The frame, eyebrow
+ * and single value stay constant so the card reads as one object changing state.
  */
 .today-action {
   position: relative;
@@ -839,6 +817,7 @@
  * the run already happened: it states what it has to and leaves the height to
  * the block the run still owes.
  */
+.today-action[data-state="found"] .today-action__value,
 .today-action[data-state="complete"] .today-action__value {
   font-size: 15px;
   font-weight: 700;
@@ -867,17 +846,6 @@
 }
 
 .today-action__actions .button { width: 100%; }
-
-
-/* Run Found is a prompt now, so its facts are one line rather than a table. */
-.run-found__facts {
-  margin: 8px 0 0;
-  color: var(--text);
-  font-size: clamp(16px, 5vw, 20px);
-  font-weight: 700;
-}
-
-.run-found .button { width: 100%; margin-top: var(--space-3); }
 
 /* Complete Run */
 
@@ -4160,28 +4128,7 @@ textarea.run-input {
   letter-spacing: 0.06em;
 }
 
-.run-found {
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-}
-
-.run-found::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: var(--accent);
-}
-
-.run-found__eyebrow {
-  font-size: var(--type-label);
-  letter-spacing: 0.09em;
-}
-
-.this-week__weekday,
-.run-found__facts dt,
-.run-found__facts dd {
+.this-week__weekday {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums slashed-zero;
 }
@@ -5143,24 +5090,6 @@ textarea.run-input {
 }
 
 .race-context__days { color: var(--accent); }
-
-.run-found {
-  border-radius: 8px;
-  border-color: var(--border-strong);
-  background: var(--surface-soft);
-}
-
-.run-found__eyebrow {
-  color: var(--accent);
-  font-size: var(--type-label);
-}
-
-.run-found {
-  padding: 14px;
-}
-
-.run-found__meta { margin: 8px 0 0; color: var(--text-muted); font-size: var(--type-meta); }
-.run-found__match { color: var(--accent); font-size: var(--type-meta); }
 
 /* Calmer history and schedule surfaces inherit the same edges. */
 

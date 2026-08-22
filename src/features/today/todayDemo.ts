@@ -12,6 +12,7 @@ import {
   type RunnerRun,
 } from "../../history/runnerRun";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
+import type { IntervalsCandidate } from "../../connected/intervals";
 import { signalDemoRuns } from "../signals/signalDemo";
 
 interface TodayDemoLocation {
@@ -36,6 +37,15 @@ export function isTodayDemoEnabled(location?: TodayDemoLocation | null): boolean
     (isLocal || isVercelBranchPreview) &&
     new URLSearchParams(current.search).get("demo") === "today"
   );
+}
+
+/** Adds the connected-review state to the ordinary Today preview. */
+export function isTodayFoundDemoEnabled(
+  location?: TodayDemoLocation | null,
+): boolean {
+  const current = location ?? (typeof window === "undefined" ? null : window.location);
+  if (!current || !isTodayDemoEnabled(current)) return false;
+  return new URLSearchParams(current.search).get("state") === "found";
 }
 
 export interface TodayDemoData {
@@ -112,5 +122,24 @@ export function todayDemoData(): TodayDemoData {
     blockPlacements,
     runnerRuns,
     today: TODAY_DEMO_DATE,
+  };
+}
+
+/** One synthetic normalized candidate for visual review; never persisted. */
+export function todayFoundDemoCandidate(plan: TrainingPlan): IntervalsCandidate {
+  const workout = plan.weeks
+    .flatMap((week) => week.workouts)
+    .find((item) => item.date === TODAY_DEMO_DATE && item.type !== "rest");
+  if (!workout) throw new Error("Today demo has no scheduled run to review.");
+  const distanceMiles = demoDistance(workout, 0);
+  return {
+    externalId: "demo-today-found",
+    sourceType: "Run",
+    completedDate: TODAY_DEMO_DATE,
+    distanceMiles,
+    durationSeconds: Math.round(distanceMiles * 9.6 * 60),
+    sourceUpdatedAt: null,
+    metrics: { averageHeartRate: 148 },
+    inferredActivityType: "easy",
   };
 }
