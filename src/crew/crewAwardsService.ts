@@ -9,6 +9,7 @@ import {
   type CrewAwardBlockRecord,
   type CrewAwardType,
 } from "./awards";
+import { isCrewAwardFinalizationSafe } from "./weekRollover";
 
 interface AwardLoadResult {
   available: boolean;
@@ -64,13 +65,17 @@ function missingAwardSchema(message: string): boolean {
 
 export async function loadCrewAwards(
   client: SupabaseClient,
-  input: { crewId: string },
+  input: { crewId: string; now?: Date },
 ): Promise<AwardLoadResult> {
   try {
     // Award scores arrive with the runner's own projection upload
-    // (`projectSharedRunsFromState`), so this only finalizes and reads.
-    const finalized = await client.rpc("finalize_crew_awards", { p_crew_id: input.crewId });
-    if (finalized.error) throw new Error(finalized.error.message);
+    // (`projectSharedRunsFromState`). Finalization stays on-demand, but the
+    // Monday 06:00 ET gate prevents Supabase's UTC `current_date` from minting
+    // the just-finished week on Sunday evening or too early Monday morning.
+    if (isCrewAwardFinalizationSafe(input.now ?? new Date())) {
+      const finalized = await client.rpc("finalize_crew_awards", { p_crew_id: input.crewId });
+      if (finalized.error) throw new Error(finalized.error.message);
+    }
 
     const awardResult = await client
       .from("crew_award_blocks")
