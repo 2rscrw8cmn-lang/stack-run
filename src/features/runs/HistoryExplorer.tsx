@@ -5,7 +5,7 @@ import { defaultSelectedIndex } from "../../components/charts/chartDefaultSelect
 import { sparseTickIndices } from "../../components/charts/chartTickDensity";
 import { formatDateLabel } from "../../domain/dates";
 import { formatRunsMiles } from "../../domain/distance";
-import type { RunnerRun } from "../../history/runnerRun";
+import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";
 import { RunnerRunRow } from "./RunnerRunRow";
 import {
   HISTORY_METRIC_IDS,
@@ -14,7 +14,6 @@ import {
   aggregateHistoryZones,
   createHistoryBuckets,
   defaultHistoryRange,
-  earliestKnownDate,
   earliestRunningDate,
   historyChartKind,
   readHistoryRange,
@@ -94,7 +93,6 @@ export function HistoryExplorer({ runs, today, onBack, onOpenRun }: HistoryExplo
     headingRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const earliest = earliestKnownDate(runs, today);
   const earliestRunning = earliestRunningDate(runs, today);
   const range = resolveHistoryDateRange(runs, today, rangeId);
   const rangedRuns = runsInHistoryRange(runs, range);
@@ -524,7 +522,7 @@ function ZoneComposition({ mix }: { mix: HistoryZoneMix }) {
 }
 
 function metricAvailability(runs: readonly RunnerRun[]): Record<HistoryMetricId, boolean> {
-  const running = runs.filter((run) => run.stack?.activityType !== "cross" && run.sourceType !== "HighIntensityIntervalTraining");
+  const running = runningRunnerRuns(runs);
   return {
     miles: true,
     runs: true,
