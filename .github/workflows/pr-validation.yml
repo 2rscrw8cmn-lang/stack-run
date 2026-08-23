@@ -30,6 +30,9 @@ jobs:
           cache: npm
       - name: Clean install
         run: npm ci
+      - name: Issue 169 audit detail
+        if: github.head_ref == 'fix/169-brace-expansion-audit'
+        run: npm audit --json || true
       - name: Repository check
         run: npm run check
       - name: Whitespace integrity
