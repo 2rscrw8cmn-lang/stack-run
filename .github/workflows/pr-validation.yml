@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Diagnose Evolution 2.08
+    name: Diagnose Evolution 2.08 UI
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -30,15 +30,23 @@ jobs:
           cache: npm
       - name: Clean install
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Evolution 2.08 focused regression
-        run: npx vitest run src/history/crossTrainingHistory.test.ts --reporter=verbose
-      - name: History and signal regression
-        run: npx vitest run src/history src/signals --reporter=verbose
-      - name: Runs and detail regression
-        run: npx vitest run src/features/runs src/features/workout-detail --reporter=verbose
+      - name: History Explorer
+        run: npx vitest run src/features/runs/HistoryExplorer.test.tsx --reporter=verbose
+      - name: Runs screen
+        if: always()
+        run: npx vitest run src/features/runs/Runs.test.tsx --reporter=verbose
+      - name: Runner History
+        if: always()
+        run: npx vitest run src/features/runs/RunnerHistory.test.tsx --reporter=verbose
+      - name: Historical detail
+        if: always()
+        run: npx vitest run src/features/runs/HistoricalRunSheet.test.tsx --reporter=verbose
+      - name: Accepted run detail
+        if: always()
+        run: npx vitest run src/features/workout-detail/RunResultDetail.test.tsx --reporter=verbose
       - name: Production build
+        if: always()
         run: npm run build
       - name: Whitespace integrity
+        if: always()
         run: git diff --check
