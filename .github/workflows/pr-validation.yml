@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,213 +36,23 @@ jobs:
         shell: bash
         run: |
           python <<'PY'
-          from pathlib import Path
+          import subprocess
 
-          def replace(path, old, new, count=1):
-              p = Path(path)
-              text = p.read_text()
-              actual = text.count(old)
-              if actual < count:
-                  raise RuntimeError(f"{path}: expected at least {count} occurrence(s), found {actual}: {old[:80]!r}")
-              text = text.replace(old, new, count)
-              p.write_text(text)
-
-          # Historical normalization: verified HIIT joins the mirror and may be zero-distance.
-          replace(
-              "src/history/historicalActivity.ts",
-              'import { VERIFIED_RUNNING_TYPES } from "../connected/intervals";',
-              'import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals";',
+          previous = subprocess.check_output(
+              ["git", "show", "HEAD^:.github/workflows/pr-validation.yml"],
+              text=True,
           )
-          replace(
-              "src/history/historicalActivity.ts",
-              ' * One historical running activity, as the source stated it.',
-              ' * One historical activity in STACK\'s approved actual-history set, as the source stated it.',
-          )
-          replace(
-              "src/history/historicalActivity.ts",
-              '  const sourceType = typeof source.type === "string" ? source.type : "";\n  if (!VERIFIED_RUNNING_TYPES.has(sourceType)) return "not-running";\n  const startDateLocal = localDateOf(source.start_date_local);\n  if (!startDateLocal) return "no-local-date";\n  const distanceMeters = positive(source.distance);\n  if (!distanceMeters) return "no-distance";',
-              '  const sourceType = typeof source.type === "string" ? source.type : "";\n  const isRunning = VERIFIED_RUNNING_TYPES.has(sourceType);\n  const isCrossTraining = VERIFIED_CROSS_TRAINING_TYPES.has(sourceType);\n  if (!isRunning && !isCrossTraining) return "not-running";\n  const startDateLocal = localDateOf(source.start_date_local);\n  if (!startDateLocal) return "no-local-date";\n\n  // Running has a distance validity floor because mileage, pace and Build sizing\n  // depend on it. Verified Cross Training does not: the real HIIT source type\n  // legitimately arrives with no distance, so zero is an explicit non-distance\n  // activity value rather than invented running mileage.\n  let distanceMeters: number;\n  if (isRunning) {\n    const runningDistance = positive(source.distance);\n    if (!runningDistance) return "no-distance";\n    distanceMeters = runningDistance;\n  } else if (source.distance === undefined || source.distance === null) {\n    distanceMeters = 0;\n  } else if (typeof source.distance === "number" && Number.isFinite(source.distance) && source.distance >= 0) {\n    distanceMeters = source.distance;\n  } else {\n    return "no-distance";\n  }',
-          )
-          replace(
-              "src/history/historicalActivity.ts",
-              ' * verified running type, a readable local date, positive distance and a\n * positive duration — so a historical record and an importable candidate agree\n * about what counts as a run.',
-              ' * verified running or Cross Training type, a readable local date and a\n * positive duration. Running still requires positive distance; verified Cross\n * Training deliberately does not, matching the connected import contract.',
-          )
+          marker = "          python <<'PY'\n"
+          start = previous.index(marker) + len(marker)
+          end = previous.index("\n          PY", start)
+          script = previous[start:end]
 
-          # Persistence accepts only the same verified type set and preserves zero-distance HIIT.
-          replace(
-              "src/storage/historicalActivityRepository.ts",
-              'import type { HistoricalActivity } from "../history/historicalActivity";',
-              'import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals";\nimport type { HistoricalActivity } from "../history/historicalActivity";',
-          )
-          replace(
-              "src/storage/historicalActivityRepository.ts",
-              'function isStoredActivity(value: unknown): value is HistoricalActivity {\n  if (!value || typeof value !== "object" || Array.isArray(value)) return false;\n  const activity = value as Partial<HistoricalActivity>;\n  return (',
-              'function isStoredActivity(value: unknown): value is HistoricalActivity {\n  if (!value || typeof value !== "object" || Array.isArray(value)) return false;\n  const activity = value as Partial<HistoricalActivity>;\n  const sourceType = typeof activity.sourceType === "string" ? activity.sourceType : "";\n  const isRunning = VERIFIED_RUNNING_TYPES.has(sourceType);\n  const isCrossTraining = VERIFIED_CROSS_TRAINING_TYPES.has(sourceType);\n  return (',
-          )
-          replace(
-              "src/storage/historicalActivityRepository.ts",
-              '    typeof activity.sourceType === "string" &&\n    typeof activity.distanceMeters === "number" &&\n    Number.isFinite(activity.distanceMeters) &&\n    activity.distanceMeters > 0 &&',
-              '    (isRunning || isCrossTraining) &&\n    typeof activity.distanceMeters === "number" &&\n    Number.isFinite(activity.distanceMeters) &&\n    (isRunning ? activity.distanceMeters > 0 : activity.distanceMeters >= 0) &&',
-          )
-
-          # Unified history gets one explicit activity-kind boundary.
-          replace(
-              "src/history/runnerRun.ts",
-              'import { historicalDistanceMiles, historicalDurationSeconds } from "./historicalMeasures";',
-              'import { VERIFIED_CROSS_TRAINING_TYPES } from "../connected/intervals";\nimport { historicalDistanceMiles, historicalDurationSeconds } from "./historicalMeasures";',
-          )
-          replace(
-              "src/history/runnerRun.ts",
-              'export type RunnerRunOrigin = "stack-run-log" | "historical-activity";\n',
-              'export type RunnerRunOrigin = "stack-run-log" | "historical-activity";\nexport type RunnerActivityKind = "running" | "cross-training";\n',
-          )
-          replace(
-              "src/history/runnerRun.ts",
-              '/** The rows inside an inclusive local-date range, order preserved. */\nexport function runnerRunsBetween(',
-              '/**\n * The product meaning of one actual-history row. STACK-owned classification\n * wins when present; historical-only source activity uses only source types\n * verified through the real pipeline.\n */\nexport function runnerRunActivityKind(run: RunnerRun): RunnerActivityKind {\n  if (run.stack) return run.stack.activityType === "cross" ? "cross-training" : "running";\n  return run.sourceType !== null && VERIFIED_CROSS_TRAINING_TYPES.has(run.sourceType)\n    ? "cross-training"\n    : "running";\n}\n\nexport function isRunningRunnerRun(run: RunnerRun): boolean {\n  return runnerRunActivityKind(run) === "running";\n}\n\nexport function runningRunnerRuns(runs: readonly RunnerRun[]): RunnerRun[] {\n  return runs.filter(isRunningRunnerRun);\n}\n\n/** The rows inside an inclusive local-date range, order preserved. */\nexport function runnerRunsBetween(',
-          )
-          replace(
-              "src/history/runnerRun.ts",
-              'export function runnerRunsBetween(\n  runs: readonly RunnerRun[],\n  oldest: string,\n  newest: string,\n): RunnerRun[] {\n  return runs.filter((run) => run.date >= oldest && run.date <= newest);\n}\n',
-              'export function runnerRunsBetween(\n  runs: readonly RunnerRun[],\n  oldest: string,\n  newest: string,\n): RunnerRun[] {\n  return runs.filter((run) => run.date >= oldest && run.date <= newest);\n}\n\n/** Running-only date selection for every running metric and Signal. */\nexport function runningRunsBetween(\n  runs: readonly RunnerRun[],\n  oldest: string,\n  newest: string,\n): RunnerRun[] {\n  return runnerRunsBetween(runs, oldest, newest).filter(isRunningRunnerRun);\n}\n',
-          )
-          replace(
-              "src/history/runnerRun.ts",
-              'export function runnerHistoryRange(runs: readonly RunnerRun[]): RunnerHistoryRange {\n  const dates = runs.map((run) => run.date).sort();\n  return {\n    totalRuns: runs.length,',
-              'export function runnerHistoryRange(runs: readonly RunnerRun[]): RunnerHistoryRange {\n  const running = runningRunnerRuns(runs);\n  const dates = running.map((run) => run.date).sort();\n  return {\n    totalRuns: running.length,',
-          )
-          replace(
-              "src/history/runnerRun.ts",
-              '    historicalOnlyRuns: runs.filter((run) => run.origin === "historical-activity").length,\n    reconciledRuns: runs.filter((run) => run.isReconciled).length,',
-              '    historicalOnlyRuns: running.filter((run) => run.origin === "historical-activity").length,\n    reconciledRuns: running.filter((run) => run.isReconciled).length,',
-          )
-
-          # Every existing running calculation selects running rows at its domain boundary.
-          replace("src/history/runnerVolume.ts", 'import { runnerRunsBetween, type RunnerRun } from "./runnerRun";', 'import { runningRunsBetween, type RunnerRun } from "./runnerRun";')
-          replace("src/history/runnerVolume.ts", 'const weekRuns = runnerRunsBetween(runs, startDate, countedThroughDate);', 'const weekRuns = runningRunsBetween(runs, startDate, countedThroughDate);')
-          replace("src/history/runnerVolume.ts", 'const windowRuns = runnerRunsBetween(runs, startDate, endDate);', 'const windowRuns = runningRunsBetween(runs, startDate, endDate);')
-
-          replace("src/history/runnerFrequency.ts", 'import { runnerRunsBetween, type RunnerRun } from "./runnerRun";', 'import { runningRunsBetween, type RunnerRun } from "./runnerRun";')
-          replace("src/history/runnerFrequency.ts", 'const windowRuns = runnerRunsBetween(runs, startDate, today);', 'const windowRuns = runningRunsBetween(runs, startDate, today);')
-          replace("src/history/runnerFrequency.ts", 'const windowRuns = runnerRunsBetween(runs, startDate, endDate);', 'const windowRuns = runningRunsBetween(runs, startDate, endDate);')
-
-          replace("src/history/runnerLongRuns.ts", 'import { runnerRunsBetween, type RunnerRun } from "./runnerRun";', 'import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun";')
-          replace("src/history/runnerLongRuns.ts", 'export function longestRun(runs: readonly RunnerRun[]): RunnerRun | null {\n  let longest: RunnerRun | null = null;\n  // Ascending by date so a strict `>` keeps the first of equal distances.\n  for (const run of [...runs].sort', 'export function longestRun(runs: readonly RunnerRun[]): RunnerRun | null {\n  let longest: RunnerRun | null = null;\n  // Ascending by date so a strict `>` keeps the first of equal distances.\n  for (const run of runningRunnerRuns(runs).sort')
-          replace("src/history/runnerLongRuns.ts", 'const run = longestRun(runnerRunsBetween(runs, startDate, endDate));', 'const run = longestRun(runningRunsBetween(runs, startDate, endDate));')
-
-          replace("src/history/runnerCoverage.ts", 'import { runnerRunsBetween, type RunnerRun } from "./runnerRun";', 'import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun";')
-          replace("src/history/runnerCoverage.ts", '  const present = runs.filter(METRIC_VALUE[metric]).length;\n  const total = runs.length;', '  const running = runningRunnerRuns(runs);\n  const present = running.filter(METRIC_VALUE[metric]).length;\n  const total = running.length;')
-          replace("src/history/runnerCoverage.ts", 'const windowRuns = runnerRunsBetween(runs, startDate, today);', 'const windowRuns = runningRunsBetween(runs, startDate, today);')
-
-          replace("src/signals/workloadSignal.ts", 'import { runnerRunsBetween, type RunnerRun } from "../history/runnerRun";', 'import { runningRunsBetween, type RunnerRun } from "../history/runnerRun";')
-          replace("src/signals/workloadSignal.ts", 'const currentRuns = runnerRunsBetween(', 'const currentRuns = runningRunsBetween(')
-          replace("src/signals/workloadSignal.ts", 'const baselineRuns = runnerRunsBetween(', 'const baselineRuns = runningRunsBetween(')
-
-          replace("src/signals/zoneSignal.ts", 'import { runnerRunsBetween, type RunnerRun } from "../history/runnerRun";', 'import { runningRunsBetween, type RunnerRun } from "../history/runnerRun";')
-          replace("src/signals/zoneSignal.ts", 'const currentRuns = runnerRunsBetween(', 'const currentRuns = runningRunsBetween(')
-          replace("src/signals/zoneSignal.ts", 'const baselineRuns = runnerRunsBetween(', 'const baselineRuns = runningRunsBetween(')
-
-          # History is a mixed factual archive; its analytics remain running-only.
-          replace("src/features/runs/historyExplorerModel.ts", 'import type { RunnerRun } from "../../history/runnerRun";', 'import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";')
-          replace(
-              "src/features/runs/historyExplorerModel.ts",
-              'export function earliestKnownDate(\n  runs: readonly RunnerRun[],\n  today: string,\n): string | null {\n  return (\n    runs\n      .map((run) => run.date)\n      .filter((date) => date <= today)\n      .sort()[0] ?? null\n  );\n}\n',
-              'export function earliestKnownDate(\n  runs: readonly RunnerRun[],\n  today: string,\n): string | null {\n  return (\n    runs\n      .map((run) => run.date)\n      .filter((date) => date <= today)\n      .sort()[0] ?? null\n  );\n}\n\n/** Earliest running row, used only for running-metric comparison coverage. */\nexport function earliestRunningDate(\n  runs: readonly RunnerRun[],\n  today: string,\n): string | null {\n  return earliestKnownDate(runningRunnerRuns(runs), today);\n}\n',
-          )
-          replace("src/features/runs/historyExplorerModel.ts", 'const earliest = earliestKnownDate(runs, today);\n  if (earliest && earliest <= requestedRangeStart("3m", today)) return "3m";', 'const earliest = earliestRunningDate(runs, today);\n  if (earliest && earliest <= requestedRangeStart("3m", today)) return "3m";')
-          replace(
-              "src/features/runs/historyExplorerModel.ts",
-              'export function summarizeHistoryMetric(\n  runs: readonly RunnerRun[],\n  metric: Exclude<HistoryMetricId, "zones">,\n): HistoryMetricSummary {\n  if (metric === "runs") {\n    return { metric, value: runs.length, coveredRuns: runs.length, totalRuns: runs.length };\n  }\n  if (metric === "miles") {\n    return {\n      metric,\n      value: sum(runs.map((run) => run.distanceMiles)),\n      coveredRuns: runs.length,\n      totalRuns: runs.length,\n    };\n  }\n  const values = runs.flatMap((run) => {',
-              'export function summarizeHistoryMetric(\n  runs: readonly RunnerRun[],\n  metric: Exclude<HistoryMetricId, "zones">,\n): HistoryMetricSummary {\n  const running = runningRunnerRuns(runs);\n  if (metric === "runs") {\n    return { metric, value: running.length, coveredRuns: running.length, totalRuns: running.length };\n  }\n  if (metric === "miles") {\n    return {\n      metric,\n      value: sum(running.map((run) => run.distanceMiles)),\n      coveredRuns: running.length,\n      totalRuns: running.length,\n    };\n  }\n  const values = running.flatMap((run) => {',
-          )
-          replace("src/features/runs/historyExplorerModel.ts", '    totalRuns: runs.length,\n  };\n}\n\n/**\n * The selected range', '    totalRuns: running.length,\n  };\n}\n\n/**\n * The selected range')
-          replace("src/features/runs/historyExplorerModel.ts", '    runCount: rangedRuns.length,', '    runCount: summary.totalRuns,')
-          replace(
-              "src/features/runs/historyExplorerModel.ts",
-              'export function aggregateHistoryZones(runs: readonly RunnerRun[]): HistoryZoneMix {\n  const covered = runs.filter(',
-              'export function aggregateHistoryZones(runs: readonly RunnerRun[]): HistoryZoneMix {\n  const running = runningRunnerRuns(runs);\n  const covered = running.filter(',
-          )
-          replace("src/features/runs/historyExplorerModel.ts", '    totalRuns: runs.length,\n    lowerZoneShare:', '    totalRuns: running.length,\n    lowerZoneShare:')
-
-          replace("src/features/runs/HistoryExplorer.tsx", '  earliestKnownDate,\n  historyChartKind,', '  earliestKnownDate,\n  earliestRunningDate,\n  historyChartKind,')
-          replace("src/features/runs/HistoryExplorer.tsx", '  const earliest = earliestKnownDate(runs, today);\n  const range = resolveHistoryDateRange', '  const earliest = earliestKnownDate(runs, today);\n  const earliestRunning = earliestRunningDate(runs, today);\n  const range = resolveHistoryDateRange')
-          replace("src/features/runs/HistoryExplorer.tsx", 'metric === "zones" ? null : readHistoryRange(runs, range, metric, earliest);', 'metric === "zones" ? null : readHistoryRange(runs, range, metric, earliestRunning);')
-          replace("src/features/runs/HistoryExplorer.tsx", '<h2 id="history-runs-title">Runs in period</h2>', '<h2 id="history-runs-title">Activities in period</h2>')
-          replace("src/features/runs/HistoryExplorer.tsx", '{listedRuns.length} {listedRuns.length === 1 ? "RUN" : "RUNS"}', '{listedRuns.length} {listedRuns.length === 1 ? "ACTIVITY" : "ACTIVITIES"}')
-          replace("src/features/runs/HistoryExplorer.tsx", 'No runs recorded in this period.', 'No activities recorded in this period.')
-          replace("src/features/runs/HistoryExplorer.tsx", 'function metricAvailability(runs: readonly RunnerRun[]): Record<HistoryMetricId, boolean> {\n  return {', 'function metricAvailability(runs: readonly RunnerRun[]): Record<HistoryMetricId, boolean> {\n  const running = runs.filter((run) => run.stack?.activityType !== "cross" && run.sourceType !== "HighIntensityIntervalTraining");\n  return {')
-          replace("src/features/runs/HistoryExplorer.tsx", 'time: runs.some((run) => run.durationSeconds !== null),', 'time: running.some((run) => run.durationSeconds !== null),')
-          replace("src/features/runs/HistoryExplorer.tsx", 'load: runs.some((run) => run.trainingLoad !== null),', 'load: running.some((run) => run.trainingLoad !== null),')
-          replace("src/features/runs/HistoryExplorer.tsx", 'gain: runs.some((run) => run.elevationGainFeet !== null),', 'gain: running.some((run) => run.elevationGainFeet !== null),')
-          replace("src/features/runs/HistoryExplorer.tsx", 'zones: runs.some((run) => run.hrZoneSeconds !== null),', 'zones: running.some((run) => run.hrZoneSeconds !== null),')
-
-          # Quiet, truthful mixed-history presentation.
-          replace("src/features/runs/RunnerRunRow.tsx", 'import type { RunnerRun } from "../../history/runnerRun";', 'import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun";')
-          replace(
-              "src/features/runs/RunnerRunRow.tsx",
-              '  const stack = run.stack;\n  const type = stack ? WORKOUT_TYPE_LABEL[stack.activityType] : run.sourceName ?? "Run";\n  const distance = `${formatRunsMiles(run.distanceMiles)} mi`;',
-              '  const stack = run.stack;\n  const activityKind = runnerRunActivityKind(run);\n  const historicalCross = !stack && activityKind === "cross-training";\n  const type = stack\n    ? WORKOUT_TYPE_LABEL[stack.activityType]\n    : run.sourceName ?? (historicalCross ? "Cross Training" : "Run");\n  const distance = run.distanceMiles > 0 ? `${formatRunsMiles(run.distanceMiles)} mi` : null;',
-          )
-          replace("src/features/runs/RunnerRunRow.tsx", '        data-type={stack?.activityType ?? "history"}', '        data-type={stack?.activityType ?? (historicalCross ? "cross" : "history")}')
-          replace("src/features/runs/RunnerRunRow.tsx", '        <span className="run-row__icon" data-type={stack?.activityType ?? "history"}>\n          {stack ? (\n            <ActivityIcon type={stack.activityType} size={20} />\n          ) : (\n            <Activity size={20} strokeWidth={1.8} />\n          )}', '        <span className="run-row__icon" data-type={stack?.activityType ?? (historicalCross ? "cross" : "history")}>\n          {stack ? (\n            <ActivityIcon type={stack.activityType} size={20} />\n          ) : historicalCross ? (\n            <ActivityIcon type="cross" size={20} />\n          ) : (\n            <Activity size={20} strokeWidth={1.8} />\n          )}')
-          replace("src/features/runs/RunnerRunRow.tsx", '<span className="run-row__distance">{distance}</span>', '{distance && <span className="run-row__distance">{distance}</span>}')
-
-          replace("src/features/runs/HistoricalRunSheet.tsx", 'import type { RunnerRun } from "../../history/runnerRun";', 'import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun";')
-          replace("src/features/runs/HistoricalRunSheet.tsx", '<Sheet className="sheet--run-detail" title="Run Detail" isOpen={isOpen} onClose={onClose}>', '<Sheet\n      className="sheet--run-detail"\n      title={run && runnerRunActivityKind(run) === "cross-training" ? "Cross Training Detail" : "Run Detail"}\n      isOpen={isOpen}\n      onClose={onClose}\n    >')
-          replace("src/features/runs/HistoricalRunSheet.tsx", 'This run came from your connected history. It is not logged in STACK, so it\n        has no effort, notes, plan link or block.', 'This activity came from your connected history. It is not logged in STACK, so it\n        has no effort, notes, plan link or block.')
-
-          replace("src/features/workout-detail/SourceRunDetail.tsx", '  const primaryCount = 1 +\n    (facts.durationSeconds !== null ? 1 : 0) +', '  const primaryCount = (facts.distanceMiles > 0 ? 1 : 0) +\n    (facts.durationSeconds !== null ? 1 : 0) +')
-          replace("src/features/workout-detail/SourceRunDetail.tsx", 'aria-label="Primary run results">\n        <div>\n          <dd className="data-value">{formatMiles(facts.distanceMiles)} mi</dd>\n          <dt className="machine-label">Distance</dt>\n        </div>', 'aria-label="Primary activity results">\n        {facts.distanceMiles > 0 && (\n          <div>\n            <dd className="data-value">{formatMiles(facts.distanceMiles)} mi</dd>\n            <dt className="machine-label">Distance</dt>\n          </div>\n        )}')
-
-          replace("src/features/runs/RunsScreen.tsx", 'import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";', 'import { runningRunnerRuns, unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";')
-          replace("src/features/runs/RunsScreen.tsx", '  const snapshot = runnerSnapshot(runs, today);\n  const signals = presentableRunnerSignals({ runs, today, plan, runLogs });', '  const runningRuns = runningRunnerRuns(runs);\n  const snapshot = runnerSnapshot(runningRuns, today);\n  const signals = presentableRunnerSignals({ runs: runningRuns, today, plan, runLogs });')
-          replace("src/features/runs/RunsScreen.tsx", '            {runs.length === 0\n              ? "No runs yet"\n              : `${runs.length} ${runs.length === 1 ? "run" : "runs"}`}', '            {runningRuns.length === 0\n              ? "No runs yet"\n              : `${runningRuns.length} ${runningRuns.length === 1 ? "run" : "runs"}`}')
-          replace("src/features/runs/RunsScreen.tsx", '        {runs.length > 0 && (\n          <RunnerSnapshot', '        {runningRuns.length > 0 && (\n          <RunnerSnapshot')
-          replace("src/features/runs/RunsScreen.tsx", '            hasHistory={runs.length > 0}', '            hasHistory={runningRuns.length > 0}')
-          replace("src/features/runs/RunsScreen.tsx", '            title="Recent Runs"', '            title="Recent Activity"')
-
-          # Engineering coverage remains a useful mixed-source diagnostic, but mileage stays running-only.
-          replace("src/history/historicalCoverage.ts", 'import { historicalDistanceMiles } from "./historicalMeasures";', 'import { VERIFIED_RUNNING_TYPES } from "../connected/intervals";\nimport { historicalDistanceMiles } from "./historicalMeasures";')
-          replace("src/history/historicalCoverage.ts", 'totalMiles: activities.reduce((total, activity) => total + historicalDistanceMiles(activity), 0),', 'totalMiles: activities\n      .filter((activity) => VERIFIED_RUNNING_TYPES.has(activity.sourceType))\n      .reduce((total, activity) => total + historicalDistanceMiles(activity), 0),')
-
-          # Current contracts: bounded Option B, with explicit running-only analytics.
-          replace(
-              "docs/PRODUCT_AND_SCOPE.md",
-              'A known current asymmetry remains: the historical source mirror is intentionally restricted to verified running types, so a source-only Cross Training activity may not join unified historical history while an accepted/logged Cross Training activity can exist in STACK.\n\nDo not silently widen the history allowlist without deciding how non-running activity should affect running-specific volume, pace, long-run and Signal calculations. This is tracked as an explicit future product decision.',
-              'Unified actual history includes approved Cross Training from the connected source when the source activity type has been verified on the real pipeline. The current verified mapping is `HighIntensityIntervalTraining` → Cross Training; STACK does not guess cycling, swimming, strength or other source aliases. Zero-distance Cross Training is valid.\n\nRuns chronology can therefore show a source-only Cross Training session whether or not it was accepted into STACK. Running-specific interpretation remains running-only: mileage, run frequency, pace, long-run calculations, History metrics and Training Signals exclude Cross Training. Historical-only Cross Training never earns a Personal Build block and does not widen the Crew projection.',
-          )
-          replace("docs/PRODUCT_AND_SCOPE.md", '- source-only Cross Training history asymmetry;\n', '')
-
-          replace(
-              "docs/CURRENT_APPLICATION_STRUCTURE.md",
-              'The historical mirror stores an explicit allowlist of normalized source facts, not raw payloads, routes or streams.',
-              'The historical mirror stores an explicit allowlist of normalized source facts, not raw payloads, routes or streams. The source-type allowlist is equally explicit: verified `Run` activities and the verified `HighIntensityIntervalTraining` Cross Training type are currently admitted; unverified sport aliases are not guessed.',
-          )
-          replace(
-              "docs/CURRENT_APPLICATION_STRUCTURE.md",
-              'Historical-only activities:\n\n- are real history;\n- need no acceptance to appear in Runs;\n- do not automatically earn Personal Build blocks;\n- may open source-enriched detail on demand when stable source identity and connection are available.',
-              'Historical-only activities:\n\n- are real history, including approved verified Cross Training;\n- need no acceptance to appear in Runs chronology;\n- do not automatically earn Personal Build blocks;\n- may open source-enriched detail on demand when stable source identity and connection are available.\n\n`RunnerRun` is intentionally broader than running analytics. One activity-kind boundary classifies each row as running or Cross Training. The running snapshot, mileage/frequency/long-run calculations, History metrics and Training Signals select running rows before calculating, so a non-running distance, duration, Training Load or HR-zone record cannot contaminate running facts.',
-          )
-
-          replace(
-              "docs/RUNS_PRODUCT_MODEL.md",
-              'The complete chronological archive still matters, but it is a drill-down. A single run still matters, but it is another drill-down. The primary Runs destination should help a runner understand current training quickly.',
-              'The complete chronological archive still matters, but it is a drill-down. It may include approved verified Cross Training because actual history answers what training happened. A single activity still matters, but it is another drill-down. The primary Runs destination remains a running interpretation surface: its snapshot, charts, History metrics and Training Signals are running-only, while mixed actual activity is visible in chronology.',
-          )
-
-          replace(
-              "docs/PHASE_STATUS.md",
-              'Current personal AppState: **schema 10**.\n',
-              'Current personal AppState: **schema 10**.\n\n## Evolution 2.08 — Cross Training actual history (issue #159)\n\nStatus: **Implemented / PR review pending.**\n\n- Unified actual history admits source-only Cross Training only for verified source types; currently `HighIntensityIntervalTraining`.\n- Cross Training can be zero-distance and dedupes against an accepted `RunLog` by the same Intervals source id.\n- Running snapshot, History metrics and Training Signals filter to running rows before calculation, preventing non-running distance/time/load/zones from becoming running facts.\n- Historical-only Cross Training remains factual history only: no Personal Build backfill and no Crew privacy-boundary expansion.\n',
-          )
-
-          # Focused regression suite for issue #159.
-          test = Path("src/history/crossTrainingHistory.test.ts")
-          test.write_text('''import { describe, expect, it } from "vitest";\nimport { normalizeHistoricalActivity, type HistoricalActivity } from "./historicalActivity";\nimport { summarizeHistoricalCoverage } from "./historicalCoverage";\nimport { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";\nimport {\n  runnerRunActivityKind,\n  runnerHistoryRange,\n  unifiedRunnerHistory,\n} from "./runnerRun";\nimport { trailingVolume } from "./runnerVolume";\nimport { runFrequencyInRange } from "./runnerFrequency";\nimport { longestRunInRange } from "./runnerLongRuns";\nimport { metricCoverage } from "./runnerCoverage";\nimport { aggregateHistoryZones, summarizeHistoryMetric } from "../features/runs/historyExplorerModel";\n\nconst seenAt = "2026-08-23T12:00:00.000Z";\n\nfunction historicalCross(\n  sourceId: string,\n  date: string,\n  { distance = 0, load = 90 }: { distance?: number; load?: number } = {},\n): HistoricalActivity {\n  const result = normalizeHistoricalActivity(\n    {\n      id: sourceId,\n      type: "HighIntensityIntervalTraining",\n      name: "HIIT",\n      start_date_local: `${date}T07:00:00`,\n      distance,\n      moving_time: 1_800,\n      average_heartrate: 140,\n      icu_hr_zone_times: [300, 600, 600, 300],\n      icu_training_load: load,\n    },\n    { seenAt },\n  );\n  if (typeof result === "string") throw new Error(`expected Cross Training, got ${result}`);\n  return result;\n}\n\ndescribe("Evolution 2.08 Cross Training actual history", () => {\n  it("admits the verified HIIT source type without inventing distance", () => {\n    const cross = historicalCross("hiit-1", "2026-08-20");\n    expect(cross.sourceType).toBe("HighIntensityIntervalTraining");\n    expect(cross.distanceMeters).toBe(0);\n    expect(cross.movingTimeSeconds).toBe(1_800);\n\n    expect(\n      normalizeHistoricalActivity(\n        {\n          id: "ride-1",\n          type: "Ride",\n          start_date_local: "2026-08-20T07:00:00",\n          distance: 20_000,\n          moving_time: 2_000,\n        },\n        { seenAt },\n      ),\n    ).toBe("not-running");\n  });\n\n  it("puts manual, accepted and source-only Cross Training into one factual chronology", () => {\n    const sourceOnly = historicalCross("hiit-source", "2026-08-21");\n    const rows = unifiedRunnerHistory({\n      activities: [historicalRun("run-source", "2026-08-20"), sourceOnly],\n      runLogs: [\n        stackRun("manual-cross", "2026-08-22", {\n          activityType: "cross",\n          distanceMiles: 0,\n          durationSeconds: 1_200,\n        }),\n      ],\n    });\n\n    expect(rows.map(runnerRunActivityKind)).toEqual(["cross-training", "cross-training", "running"]);\n    expect(rows.map((row) => row.date)).toEqual(["2026-08-22", "2026-08-21", "2026-08-20"]);\n    expect(runnerHistoryRange(rows).totalRuns).toBe(1);\n  });\n\n  it("dedupes an accepted Intervals Cross Training activity against its historical mirror", () => {\n    const rows = unifiedRunnerHistory({\n      activities: [historicalCross("hiit-accepted", "2026-08-20")],\n      runLogs: [\n        acceptedRun("log-cross", "2026-08-20", "hiit-accepted", {\n          activityType: "cross",\n          distanceMiles: 0,\n          durationSeconds: 1_800,\n        }),\n      ],\n    });\n\n    expect(rows).toHaveLength(1);\n    expect(rows[0].isReconciled).toBe(true);\n    expect(rows[0].stack?.activityType).toBe("cross");\n    expect(runnerRunActivityKind(rows[0])).toBe("cross-training");\n  });\n\n  it("keeps Cross Training out of running mileage, frequency, long-run and coverage facts", () => {\n    const rows = unifiedRunnerHistory({\n      activities: [\n        historicalRun("run-1", "2026-08-20", {\n          miles: 5,\n          durationSeconds: 3_000,\n          trainingLoad: 50,\n          hrZoneSeconds: [600, 1_200, 900, 300],\n        }),\n        // Deliberately absurd source distance/load: neither may leak into running analytics.\n        historicalCross("hiit-1", "2026-08-21", { distance: 80_000, load: 999 }),\n      ],\n    });\n\n    expect(trailingVolume(rows, "2026-08-23", 7)).toMatchObject({ miles: 5, runCount: 1 });\n    expect(runFrequencyInRange(rows, "2026-08-17", "2026-08-23").runCount).toBe(1);\n    expect(longestRunInRange(rows, "2026-08-17", "2026-08-23").miles).toBe(5);\n    expect(metricCoverage(rows, "trainingLoad")).toMatchObject({ present: 1, total: 1 });\n  });\n\n  it("keeps History metrics running-only while leaving mixed chronology intact", () => {\n    const running = historicalRun("run-1", "2026-08-20", {\n      miles: 5,\n      durationSeconds: 3_000,\n      trainingLoad: 50,\n      hrZoneSeconds: [600, 1_200, 900, 300],\n    });\n    const cross = historicalCross("hiit-1", "2026-08-21", { distance: 80_000, load: 999 });\n    const rows = unifiedRunnerHistory({ activities: [running, cross] });\n\n    expect(rows).toHaveLength(2);\n    expect(summarizeHistoryMetric(rows, "runs")).toMatchObject({ value: 1, totalRuns: 1 });\n    expect(summarizeHistoryMetric(rows, "miles").value).toBeCloseTo(5, 5);\n    expect(summarizeHistoryMetric(rows, "load")).toMatchObject({ value: 50, coveredRuns: 1, totalRuns: 1 });\n    expect(aggregateHistoryZones(rows)).toMatchObject({ coveredRuns: 1, totalRuns: 1 });\n  });\n\n  it("reports historical mileage from running only even when Cross Training carries distance", () => {\n    const coverage = summarizeHistoricalCoverage([\n      historicalRun("run-1", "2026-08-20", { miles: 5 }),\n      historicalCross("hiit-1", "2026-08-21", { distance: 80_000 }),\n    ]);\n\n    expect(coverage.total).toBe(2);\n    expect(coverage.sourceTypes).toEqual(["HighIntensityIntervalTraining", "Run"]);\n    expect(coverage.totalMiles).toBeCloseTo(5, 5);\n  });\n});\n''')
-
-          if not Path(".git").exists():
-              raise RuntimeError("repository checkout missing")
+          old = '''          replace("src/features/runs/HistoryExplorer.tsx", 'zones: runs.some((run) => run.hrZoneSeconds !== null),', 'zones: running.some((run) => run.hrZoneSeconds !== null),')'''
+          new = '''          replace(\n              "src/features/runs/HistoryExplorer.tsx",\n              'zones: runs.some(\\n      (run) => run.hrZoneSeconds !== null && run.hrZoneSeconds.some((seconds) => seconds > 0),\\n    ),',\n              'zones: running.some(\\n      (run) => run.hrZoneSeconds !== null && run.hrZoneSeconds.some((seconds) => seconds > 0),\\n    ),',\n          )'''
+          if old not in script:
+              raise RuntimeError("expected prior History zones matcher not found")
+          script = script.replace(old, new, 1)
+          exec(compile(script, "evolution159_patch", "exec"))
           PY
 
           if git diff --quiet -- . ':!.github/workflows/pr-validation.yml'; then
