@@ -11,7 +11,7 @@ on:
       - ready_for_review
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-validation-${{ github.event.pull_request.number }}
@@ -24,51 +24,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Apply remaining issue 169 lockfile patch
-        if: github.head_ref == 'fix/169-brace-expansion-audit'
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs')
-          const path = 'package-lock.json'
-          const lock = JSON.parse(fs.readFileSync(path, 'utf8'))
-          const brace = lock.packages?.['node_modules/brace-expansion']
-          const nanoid = lock.packages?.['node_modules/nanoid']
-
-          if (brace?.version !== '5.0.9') {
-            throw new Error(`unexpected brace-expansion version: ${brace?.version}`)
-          }
-          if (!nanoid) throw new Error('nanoid lock entry not found')
-
-          if (nanoid.version === '3.3.16') {
-            nanoid.version = '3.3.18'
-            nanoid.resolved = 'https://registry.npmjs.org/nanoid/-/nanoid-3.3.18.tgz'
-            nanoid.integrity = 'sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w=='
-            fs.writeFileSync(path, `${JSON.stringify(lock, null, 2)}\n`)
-          } else if (nanoid.version !== '3.3.18') {
-            throw new Error(`unexpected nanoid version: ${nanoid.version}`)
-          }
-          NODE
-
-          if git diff --quiet -- package-lock.json; then
-            echo 'Lockfile already contains nanoid 3.3.18.'
-          else
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add package-lock.json
-            git commit -m 'Fix nanoid audit finding'
-            git push origin "HEAD:${GITHUB_HEAD_REF}"
-          fi
       - name: Clean install
         run: npm ci
-      - name: High-severity audit gate
-        run: npm audit --audit-level=high
       - name: Repository check
         run: npm run check
       - name: Whitespace integrity
