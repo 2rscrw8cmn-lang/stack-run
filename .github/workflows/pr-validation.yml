@@ -11,7 +11,7 @@ on:
       - ready_for_review
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-validation-${{ github.event.pull_request.number }}
@@ -19,53 +19,26 @@ concurrency:
 
 jobs:
   validate:
-    name: Install, lint, test, build
+    name: Diagnose Evolution 2.08
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Correct Evolution 2.08 History boundary
-        if: github.head_ref == 'evolution/159-cross-training-history'
-        shell: bash
-        run: |
-          python <<'PY'
-          from pathlib import Path
-
-          path = Path("src/features/runs/HistoryExplorer.tsx")
-          text = path.read_text()
-          text = text.replace("  earliestKnownDate,\n", "", 1)
-          text = text.replace(
-              'import type { RunnerRun } from "../../history/runnerRun";',
-              'import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";',
-              1,
-          )
-          text = text.replace("  const earliest = earliestKnownDate(runs, today);\n", "", 1)
-          text = text.replace(
-              '  const running = runs.filter((run) => run.stack?.activityType !== "cross" && run.sourceType !== "HighIntensityIntervalTraining");',
-              '  const running = runningRunnerRuns(runs);',
-              1,
-          )
-          path.write_text(text)
-          PY
-
-          if git diff --quiet -- src/features/runs/HistoryExplorer.tsx; then
-            echo 'History boundary correction already applied.'
-          else
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/features/runs/HistoryExplorer.tsx
-            git commit -m 'Use running history boundary in History Explorer'
-            git push origin "HEAD:${GITHUB_HEAD_REF}"
-          fi
       - name: Clean install
         run: npm ci
-      - name: Repository check
-        run: npm run check
+      - name: Lint
+        run: npm run lint
+      - name: Evolution 2.08 focused regression
+        run: npx vitest run src/history/crossTrainingHistory.test.ts --reporter=verbose
+      - name: History and signal regression
+        run: npx vitest run src/history src/signals --reporter=verbose
+      - name: Runs and detail regression
+        run: npx vitest run src/features/runs src/features/workout-detail --reporter=verbose
+      - name: Production build
+        run: npm run build
       - name: Whitespace integrity
         run: git diff --check
