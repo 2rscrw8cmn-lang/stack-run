@@ -14,6 +14,7 @@ const ICON = { head: 0, face: 0, body: 0, flair: 0, background: 0 };
 
 /** Monday of the week after the recapped Monday–Sunday week (Aug 10–16). */
 const MONDAY_AFTER = "2026-08-17";
+const MONDAY_AFTER_ROLLOVER = new Date("2026-08-17T10:00:00Z");
 
 function member(userId: string, displayName: string): CrewMember {
   return {
@@ -110,7 +111,13 @@ describe("Today Crew Week Recap", () => {
 
   it("states the closed week's headline facts and opens the fuller recap", async () => {
     const user = userEvent.setup();
-    render(<TodayCrewRecap crew={controller(WEEK_RUNS)} today={MONDAY_AFTER} />);
+    render(
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
+      />,
+    );
 
     const module = screen.getByRole("heading", { level: 2 }).closest("section")!;
     expect(within(module).getByText(/Crew Week Recap · Aug 10 – Aug 16/)).toBeInTheDocument();
@@ -128,30 +135,76 @@ describe("Today Crew Week Recap", () => {
     expect(within(dialog).getByText("Night Shift · Week Recap")).toBeInTheDocument();
   });
 
-  it("stays off Today until the week has closed, and ages out after three days", () => {
+  it("holds the Monday recap until 06:00 Eastern", () => {
     const { rerender } = render(
-      <TodayCrewRecap crew={controller(WEEK_RUNS)} today="2026-08-16" />,
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today={MONDAY_AFTER}
+        now={new Date("2026-08-17T09:59:59Z")}
+      />,
     );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
 
-    rerender(<TodayCrewRecap crew={controller(WEEK_RUNS)} today="2026-08-19" />);
+    rerender(
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
+      />,
+    );
+    expect(screen.getByText(/Crew Week Recap/)).toBeInTheDocument();
+  });
+
+  it("stays off Today until the week has closed, and ages out after three days", () => {
+    const { rerender } = render(
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today="2026-08-16"
+        now={new Date("2026-08-16T16:00:00Z")}
+      />,
+    );
+    expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
+
+    rerender(
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today="2026-08-19"
+        now={new Date("2026-08-19T16:00:00Z")}
+      />,
+    );
     expect(screen.getByText(/Crew Week Recap/)).toBeInTheDocument();
 
-    rerender(<TodayCrewRecap crew={controller(WEEK_RUNS)} today="2026-08-20" />);
+    rerender(
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today="2026-08-20"
+        now={new Date("2026-08-20T16:00:00Z")}
+      />,
+    );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
   });
 
   it("can be dismissed, and stays dismissed for that crew's week", async () => {
     const user = userEvent.setup();
     const { unmount } = render(
-      <TodayCrewRecap crew={controller(WEEK_RUNS)} today={MONDAY_AFTER} />,
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Dismiss Crew Week Recap" }));
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
 
     unmount();
-    render(<TodayCrewRecap crew={controller(WEEK_RUNS)} today="2026-08-18" />);
+    render(
+      <TodayCrewRecap
+        crew={controller(WEEK_RUNS)}
+        today="2026-08-18"
+        now={new Date("2026-08-18T16:00:00Z")}
+      />,
+    );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
   });
 
@@ -160,11 +213,18 @@ describe("Today Crew Week Recap", () => {
       <TodayCrewRecap
         crew={controller([run("late", "zack", MONDAY_AFTER)])}
         today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
       />,
     );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
 
-    rerender(<TodayCrewRecap crew={null} today={MONDAY_AFTER} />);
+    rerender(
+      <TodayCrewRecap
+        crew={null}
+        today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
+      />,
+    );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
   });
 
@@ -172,7 +232,9 @@ describe("Today Crew Week Recap", () => {
     const crew = controller(WEEK_RUNS);
     // The one field the week has to be windowed against.
     delete (crew.account!.crew as unknown as Record<string, unknown>).buildStartDate;
-    render(<TodayCrewRecap crew={crew} today={MONDAY_AFTER} />);
+    render(
+      <TodayCrewRecap crew={crew} today={MONDAY_AFTER} now={MONDAY_AFTER_ROLLOVER} />,
+    );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
   });
 
@@ -196,6 +258,7 @@ describe("Today Crew Week Recap", () => {
       <TodayCrewRecap
         crew={controller(WEEK_RUNS, { sharedRunsAvailable: false })}
         today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
       />,
     );
     expect(screen.queryByText(/Crew Week Recap/)).not.toBeInTheDocument();
