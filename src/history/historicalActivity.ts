@@ -1,7 +1,7 @@
-import { VERIFIED_RUNNING_TYPES } from "../connected/intervals";
+import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals";
 
 /**
- * One historical running activity, as the source stated it.
+ * One historical activity in STACK's approved actual-history set, as the source stated it.
  *
  * This is STACK Next's first-class record of what the runner actually did, and
  * it is deliberately **not** a `RunLog`. A `RunLog` is a STACK activity: it
@@ -153,9 +153,9 @@ interface NormalizeOptions {
  * `docs/INTERVALS_DATA_STRATEGY.md`, or a reason it cannot be one.
  *
  * The validity floor matches the existing connected-run import contract — a
- * verified running type, a readable local date, positive distance and a
- * positive duration — so a historical record and an importable candidate agree
- * about what counts as a run. Everything past that floor is optional and
+ * verified running or Cross Training type, a readable local date and a
+ * positive duration. Running still requires positive distance; verified Cross
+ * Training deliberately does not, matching the connected import contract. Everything past that floor is optional and
  * stays null when absent.
  */
 export function normalizeHistoricalActivity(
@@ -169,11 +169,28 @@ export function normalizeHistoricalActivity(
     typeof source.id === "string" || typeof source.id === "number" ? String(source.id).trim() : "";
   if (!sourceId) return "no-source-id";
   const sourceType = typeof source.type === "string" ? source.type : "";
-  if (!VERIFIED_RUNNING_TYPES.has(sourceType)) return "not-running";
+  const isRunning = VERIFIED_RUNNING_TYPES.has(sourceType);
+  const isCrossTraining = VERIFIED_CROSS_TRAINING_TYPES.has(sourceType);
+  if (!isRunning && !isCrossTraining) return "not-running";
   const startDateLocal = localDateOf(source.start_date_local);
   if (!startDateLocal) return "no-local-date";
-  const distanceMeters = positive(source.distance);
-  if (!distanceMeters) return "no-distance";
+
+  // Running has a distance validity floor because mileage, pace and Build sizing
+  // depend on it. Verified Cross Training does not: the real HIIT source type
+  // legitimately arrives with no distance, so zero is an explicit non-distance
+  // activity value rather than invented running mileage.
+  let distanceMeters: number;
+  if (isRunning) {
+    const runningDistance = positive(source.distance);
+    if (!runningDistance) return "no-distance";
+    distanceMeters = runningDistance;
+  } else if (source.distance === undefined || source.distance === null) {
+    distanceMeters = 0;
+  } else if (typeof source.distance === "number" && Number.isFinite(source.distance) && source.distance >= 0) {
+    distanceMeters = source.distance;
+  } else {
+    return "no-distance";
+  }
   const movingTimeSeconds = positive(source.moving_time);
   const elapsedTimeSeconds = positive(source.elapsed_time);
   if (!movingTimeSeconds && !elapsedTimeSeconds) return "no-duration";

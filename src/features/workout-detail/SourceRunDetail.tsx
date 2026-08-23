@@ -274,7 +274,7 @@ export function SourceRunDetail({
     facts.trainingLoad !== null ||
     summaryCadence !== null;
 
-  const primaryCount = 1 +
+  const primaryCount = (facts.distanceMiles > 0 ? 1 : 0) +
     (facts.durationSeconds !== null ? 1 : 0) +
     (facts.paceSecondsPerMile !== null ? 1 : 0);
 
@@ -282,11 +282,13 @@ export function SourceRunDetail({
     <div className="run-result-detail">
       {meta}
 
-      <dl className="run-result-detail__primary" data-count={primaryCount} aria-label="Primary run results">
-        <div>
-          <dd className="data-value">{formatMiles(facts.distanceMiles)} mi</dd>
-          <dt className="machine-label">Distance</dt>
-        </div>
+      <dl className="run-result-detail__primary" data-count={primaryCount} aria-label="Primary activity results">
+        {facts.distanceMiles > 0 && (
+          <div>
+            <dd className="data-value">{formatMiles(facts.distanceMiles)} mi</dd>
+            <dt className="machine-label">Distance</dt>
+          </div>
+        )}
         {facts.durationSeconds !== null && (
           <div>
             <dd className="data-value">{formatDurationSeconds(facts.durationSeconds)}</dd>

@@ -136,7 +136,7 @@ Key implementation areas:
 - `src/storage/historySyncStateRepository.ts`
 - `src/features/runs/useRunnerHistory.ts`
 
-The historical mirror stores an explicit allowlist of normalized source facts, not raw payloads, routes or streams.
+The historical mirror stores an explicit allowlist of normalized source facts, not raw payloads, routes or streams. The source-type allowlist is equally explicit: verified `Run` activities and the verified `HighIntensityIntervalTraining` Cross Training type are currently admitted; unverified sport aliases are not guessed.
 
 Current default lookback is long enough to establish meaningful history (365 days in the current strategy), with event-driven sync rather than constant polling.
 
@@ -153,10 +153,12 @@ The source mirror is never rewritten with plan links, effort, notes or Build sta
 
 Historical-only activities:
 
-- are real history;
-- need no acceptance to appear in Runs;
+- are real history, including approved verified Cross Training;
+- need no acceptance to appear in Runs chronology;
 - do not automatically earn Personal Build blocks;
 - may open source-enriched detail on demand when stable source identity and connection are available.
+
+`RunnerRun` is intentionally broader than running analytics. One activity-kind boundary classifies each row as running or Cross Training. The running snapshot, mileage/frequency/long-run calculations, History metrics and Training Signals select running rows before calculating, so a non-running distance, duration, Training Load or HR-zone record cannot contaminate running facts.
 
 ## 6. Today
 

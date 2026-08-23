@@ -3,7 +3,7 @@ import {
   daysBetweenLocalDates,
   mondayOfLocalDate,
 } from "../domain/dates";
-import { runnerRunsBetween, type RunnerRun } from "./runnerRun";
+import { runningRunsBetween, type RunnerRun } from "./runnerRun";
 
 /**
  * How much running there has actually been, over windows that say what they are.
@@ -85,7 +85,7 @@ export function weeklyVolume(
     const endDate = addDaysToLocalDate(startDate, 6);
     const isCurrentWeek = startDate <= today && today <= endDate;
     const countedThroughDate = isCurrentWeek ? today : endDate;
-    const weekRuns = runnerRunsBetween(runs, startDate, countedThroughDate);
+    const weekRuns = runningRunsBetween(runs, startDate, countedThroughDate);
     return {
       key: startDate,
       startDate,
@@ -135,7 +135,7 @@ export function volumeInRange(
   startDate: string,
   endDate: string,
 ): VolumeInRange {
-  const windowRuns = runnerRunsBetween(runs, startDate, endDate);
+  const windowRuns = runningRunsBetween(runs, startDate, endDate);
   return {
     days: Math.max(0, daysBetweenLocalDates(startDate, endDate)) + 1,
     startDate,

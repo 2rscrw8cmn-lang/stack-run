@@ -5,7 +5,7 @@ import {
   mondayOfLocalDate,
   parseLocalDate,
 } from "../../domain/dates";
-import type { RunnerRun } from "../../history/runnerRun";
+import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";
 
 export const HISTORY_RANGE_IDS = ["4w", "3m", "6m", "ytd", "1y", "all"] as const;
 export type HistoryRangeId = (typeof HISTORY_RANGE_IDS)[number];
@@ -138,7 +138,7 @@ export function defaultHistoryRange(
   runs: readonly RunnerRun[],
   today: string,
 ): Extract<HistoryRangeId, "4w" | "3m"> {
-  const earliest = earliestKnownDate(runs, today);
+  const earliest = earliestRunningDate(runs, today);
   if (earliest && earliest <= requestedRangeStart("3m", today)) return "3m";
   return "4w";
 }
@@ -153,6 +153,14 @@ export function earliestKnownDate(
       .filter((date) => date <= today)
       .sort()[0] ?? null
   );
+}
+
+/** Earliest running row, used only for running-metric comparison coverage. */
+export function earliestRunningDate(
+  runs: readonly RunnerRun[],
+  today: string,
+): string | null {
+  return earliestKnownDate(runningRunnerRuns(runs), today);
 }
 
 /**
@@ -305,18 +313,19 @@ export function summarizeHistoryMetric(
   runs: readonly RunnerRun[],
   metric: Exclude<HistoryMetricId, "zones">,
 ): HistoryMetricSummary {
+  const running = runningRunnerRuns(runs);
   if (metric === "runs") {
-    return { metric, value: runs.length, coveredRuns: runs.length, totalRuns: runs.length };
+    return { metric, value: running.length, coveredRuns: running.length, totalRuns: running.length };
   }
   if (metric === "miles") {
     return {
       metric,
-      value: sum(runs.map((run) => run.distanceMiles)),
-      coveredRuns: runs.length,
-      totalRuns: runs.length,
+      value: sum(running.map((run) => run.distanceMiles)),
+      coveredRuns: running.length,
+      totalRuns: running.length,
     };
   }
-  const values = runs.flatMap((run) => {
+  const values = running.flatMap((run) => {
     const value = optionalMetricValue(run, metric);
     return value === null ? [] : [value];
   });
@@ -324,7 +333,7 @@ export function summarizeHistoryMetric(
     metric,
     value: values.length ? sum(values) : null,
     coveredRuns: values.length,
-    totalRuns: runs.length,
+    totalRuns: running.length,
   };
 }
 
@@ -358,7 +367,7 @@ export function readHistoryRange(
     startDate: range.startDate,
     endDate: range.endDate,
     days,
-    runCount: rangedRuns.length,
+    runCount: summary.totalRuns,
     priorValue: prior?.value ?? null,
     perWeek:
       summary.value === null || days < TRAILING_WEEK_DAYS
@@ -378,7 +387,8 @@ export function aggregateHistoryMetric(
 }
 
 export function aggregateHistoryZones(runs: readonly RunnerRun[]): HistoryZoneMix {
-  const covered = runs.filter(
+  const running = runningRunnerRuns(runs);
+  const covered = running.filter(
     (run) => run.hrZoneSeconds !== null && run.hrZoneSeconds.some((seconds) => seconds > 0),
   );
   const zoneCount = covered.reduce(
@@ -398,7 +408,7 @@ export function aggregateHistoryZones(runs: readonly RunnerRun[]): HistoryZoneMi
     })),
     totalSeconds,
     coveredRuns: covered.length,
-    totalRuns: runs.length,
+    totalRuns: running.length,
     lowerZoneShare:
       totalSeconds > 0 && totals.length >= 2
         ? (totals[0] + totals[1]) / totalSeconds

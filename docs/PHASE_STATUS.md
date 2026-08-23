@@ -26,6 +26,15 @@
 
 Current personal AppState: **schema 10**.
 
+## Evolution 2.08 — Cross Training actual history (issue #159)
+
+Status: **Implemented / PR review pending.**
+
+- Unified actual history admits source-only Cross Training only for verified source types; currently `HighIntensityIntervalTraining`.
+- Cross Training can be zero-distance and dedupes against an accepted `RunLog` by the same Intervals source id.
+- Running snapshot, History metrics and Training Signals filter to running rows before calculation, preventing non-running distance/time/load/zones from becoming running facts.
+- Historical-only Cross Training remains factual history only: no Personal Build backfill and no Crew privacy-boundary expansion.
+
 ## Evolution 2.06 — No Active Plan (issue #157)
 
 Status: **Implemented / PR review and owner device QA pending.**

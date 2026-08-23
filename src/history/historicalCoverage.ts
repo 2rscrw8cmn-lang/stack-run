@@ -1,3 +1,4 @@
+import { VERIFIED_RUNNING_TYPES } from "../connected/intervals";
 import { historicalDistanceMiles } from "./historicalMeasures";
 import type { HistoricalActivity, HistoricalRejection } from "./historicalActivity";
 
@@ -59,7 +60,9 @@ export function summarizeHistoricalCoverage(
     earliestDate: dates[0] ?? null,
     latestDate: dates[dates.length - 1] ?? null,
     activeDays: new Set(dates).size,
-    totalMiles: activities.reduce((total, activity) => total + historicalDistanceMiles(activity), 0),
+    totalMiles: activities
+      .filter((activity) => VERIFIED_RUNNING_TYPES.has(activity.sourceType))
+      .reduce((total, activity) => total + historicalDistanceMiles(activity), 0),
     sourceTypes: [...new Set(activities.map((activity) => activity.sourceType))].sort(),
     fields: OPTIONAL_FIELDS.map(({ field, present }) => {
       const count = activities.filter(present).length;

@@ -1,3 +1,4 @@
+import { VERIFIED_CROSS_TRAINING_TYPES } from "../connected/intervals";
 import { historicalDistanceMiles, historicalDurationSeconds } from "./historicalMeasures";
 import type { HistoricalActivity } from "./historicalActivity";
 import type {
@@ -50,6 +51,7 @@ import type {
  */
 
 export type RunnerRunOrigin = "stack-run-log" | "historical-activity";
+export type RunnerActivityKind = "running" | "cross-training";
 
 /** What STACK holds about this run because a person decided it. */
 export interface RunnerStackFacts {
@@ -263,6 +265,26 @@ export function unifiedRunnerHistory({
   return rows.sort(compareRunnerRuns);
 }
 
+/**
+ * The product meaning of one actual-history row. STACK-owned classification
+ * wins when present; historical-only source activity uses only source types
+ * verified through the real pipeline.
+ */
+export function runnerRunActivityKind(run: RunnerRun): RunnerActivityKind {
+  if (run.stack) return run.stack.activityType === "cross" ? "cross-training" : "running";
+  return run.sourceType !== null && VERIFIED_CROSS_TRAINING_TYPES.has(run.sourceType)
+    ? "cross-training"
+    : "running";
+}
+
+export function isRunningRunnerRun(run: RunnerRun): boolean {
+  return runnerRunActivityKind(run) === "running";
+}
+
+export function runningRunnerRuns(runs: readonly RunnerRun[]): RunnerRun[] {
+  return runs.filter(isRunningRunnerRun);
+}
+
 /** The rows inside an inclusive local-date range, order preserved. */
 export function runnerRunsBetween(
   runs: readonly RunnerRun[],
@@ -270,6 +292,15 @@ export function runnerRunsBetween(
   newest: string,
 ): RunnerRun[] {
   return runs.filter((run) => run.date >= oldest && run.date <= newest);
+}
+
+/** Running-only date selection for every running metric and Signal. */
+export function runningRunsBetween(
+  runs: readonly RunnerRun[],
+  oldest: string,
+  newest: string,
+): RunnerRun[] {
+  return runnerRunsBetween(runs, oldest, newest).filter(isRunningRunnerRun);
 }
 
 /**
@@ -290,12 +321,13 @@ export interface RunnerHistoryRange {
 }
 
 export function runnerHistoryRange(runs: readonly RunnerRun[]): RunnerHistoryRange {
-  const dates = runs.map((run) => run.date).sort();
+  const running = runningRunnerRuns(runs);
+  const dates = running.map((run) => run.date).sort();
   return {
-    totalRuns: runs.length,
+    totalRuns: running.length,
     earliestDate: dates[0] ?? null,
     latestDate: dates[dates.length - 1] ?? null,
-    historicalOnlyRuns: runs.filter((run) => run.origin === "historical-activity").length,
-    reconciledRuns: runs.filter((run) => run.isReconciled).length,
+    historicalOnlyRuns: running.filter((run) => run.origin === "historical-activity").length,
+    reconciledRuns: running.filter((run) => run.isReconciled).length,
   };
 }

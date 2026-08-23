@@ -9,7 +9,7 @@ Historical activity is foundational product data, but complete history is not th
 
 > **Runs should answer: “How has my running been going?”**
 
-The complete chronological archive still matters, but it is a drill-down. A single run still matters, but it is another drill-down. The primary Runs destination should help a runner understand current training quickly.
+The complete chronological archive still matters, but it is a drill-down. It may include approved verified Cross Training because actual history answers what training happened. A single activity still matters, but it is another drill-down. The primary Runs destination remains a running interpretation surface: its snapshot, charts, History metrics and Training Signals are running-only, while mixed actual activity is visible in chronology.
 
 This refines, rather than replaces, `docs/STACK_NEXT.md`: actual history remains the source of truth. The change is how that truth is progressively disclosed.
 

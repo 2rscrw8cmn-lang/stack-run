@@ -3,7 +3,7 @@ import type { SourceConnection } from "../../connected/sourceDetail";
 import { formatDateLabel } from "../../domain/dates";
 import { SourceRunDetail } from "../workout-detail/SourceRunDetail";
 import { sourceRunFactsFromRunnerRun } from "../workout-detail/sourceRunFacts";
-import type { RunnerRun } from "../../history/runnerRun";
+import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun";
 
 interface HistoricalRunSheetProps {
   run: RunnerRun | null;
@@ -44,7 +44,12 @@ interface HistoricalRunSheetProps {
  */
 export function HistoricalRunSheet({ run, connection, isOpen, onClose }: HistoricalRunSheetProps) {
   return (
-    <Sheet className="sheet--run-detail" title="Run Detail" isOpen={isOpen} onClose={onClose}>
+    <Sheet
+      className="sheet--run-detail"
+      title={run && runnerRunActivityKind(run) === "cross-training" ? "Cross Training Detail" : "Run Detail"}
+      isOpen={isOpen}
+      onClose={onClose}
+    >
       {run && <HistoricalRunBody run={run} connection={connection} />}
     </Sheet>
   );
@@ -80,7 +85,7 @@ function HistoricalRunBody({ run, connection }: { run: RunnerRun; connection: So
       />
 
       <p className="historical-run__note">
-        This run came from your connected history. It is not logged in STACK, so it
+        This activity came from your connected history. It is not logged in STACK, so it
         has no effort, notes, plan link or block.
       </p>
     </div>
