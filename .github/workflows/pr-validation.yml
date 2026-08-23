@@ -26,43 +26,41 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-          fetch-depth: 3
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Apply Evolution 2.08 Cross Training history patch
+      - name: Correct Evolution 2.08 History boundary
         if: github.head_ref == 'evolution/159-cross-training-history'
         shell: bash
         run: |
           python <<'PY'
-          import subprocess
-          import textwrap
+          from pathlib import Path
 
-          previous = subprocess.check_output(
-              ["git", "show", "HEAD^^:.github/workflows/pr-validation.yml"],
-              text=True,
+          path = Path("src/features/runs/HistoryExplorer.tsx")
+          text = path.read_text()
+          text = text.replace("  earliestKnownDate,\n", "", 1)
+          text = text.replace(
+              'import type { RunnerRun } from "../../history/runnerRun";',
+              'import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";',
+              1,
           )
-          marker = "          python <<'PY'\n"
-          start = previous.index(marker) + len(marker)
-          end = previous.index("\n          PY", start)
-          script = textwrap.dedent(previous[start:end])
-
-          old = '''replace("src/features/runs/HistoryExplorer.tsx", 'zones: runs.some((run) => run.hrZoneSeconds !== null),', 'zones: running.some((run) => run.hrZoneSeconds !== null),')'''
-          new = '''replace(\n    "src/features/runs/HistoryExplorer.tsx",\n    'zones: runs.some(\\n      (run) => run.hrZoneSeconds !== null && run.hrZoneSeconds.some((seconds) => seconds > 0),\\n    ),',\n    'zones: running.some(\\n      (run) => run.hrZoneSeconds !== null && run.hrZoneSeconds.some((seconds) => seconds > 0),\\n    ),',\n)'''
-          if old not in script:
-              raise RuntimeError("expected prior History zones matcher not found")
-          script = script.replace(old, new, 1)
-          exec(compile(script, "evolution159_patch", "exec"))
+          text = text.replace("  const earliest = earliestKnownDate(runs, today);\n", "", 1)
+          text = text.replace(
+              '  const running = runs.filter((run) => run.stack?.activityType !== "cross" && run.sourceType !== "HighIntensityIntervalTraining");',
+              '  const running = runningRunnerRuns(runs);',
+              1,
+          )
+          path.write_text(text)
           PY
 
-          if git diff --quiet -- . ':!.github/workflows/pr-validation.yml'; then
-            echo 'Evolution 2.08 patch already applied.'
+          if git diff --quiet -- src/features/runs/HistoryExplorer.tsx; then
+            echo 'History boundary correction already applied.'
           else
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src docs
-            git commit -m 'Implement Cross Training actual history semantics'
+            git add src/features/runs/HistoryExplorer.tsx
+            git commit -m 'Use running history boundary in History Explorer'
             git push origin "HEAD:${GITHUB_HEAD_REF}"
           fi
       - name: Clean install
