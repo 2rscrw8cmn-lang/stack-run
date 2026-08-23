@@ -11,7 +11,7 @@ on:
       - ready_for_review
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-validation-${{ github.event.pull_request.number }}
@@ -19,90 +19,18 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate Evolution 2.08 UI assertions
+    name: Install, lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Update intentional mixed-history copy assertions
-        if: github.head_ref == 'evolution/159-cross-training-history'
-        shell: bash
-        run: |
-          python <<'PY'
-          from pathlib import Path
-
-          def replace_all(path: str, old: str, new: str, expected: int):
-              p = Path(path)
-              text = p.read_text()
-              actual = text.count(old)
-              if actual != expected:
-                  raise RuntimeError(f"{path}: expected {expected} x {old!r}, found {actual}")
-              p.write_text(text.replace(old, new))
-
-          replace_all(
-              "src/features/runs/HistoryExplorer.test.tsx",
-              "names the list Runs in period and covers the whole selected range",
-              "names the mixed activity list and covers the whole selected range",
-              1,
-          )
-          replace_all(
-              "src/features/runs/HistoryExplorer.test.tsx",
-              'heading", { name: "Runs in period"',
-              'heading", { name: "Activities in period"',
-              1,
-          )
-          replace_all(
-              "src/features/runs/HistoryExplorer.test.tsx",
-              'expect(count).toMatch(/^\\d+ RUNS?$/);',
-              'expect(count).toMatch(/^\\d+ ACTIVIT(?:Y|IES)$/);',
-              1,
-          )
-          replace_all(
-              "src/features/runs/Runs.test.tsx",
-              'heading", { name: "Recent Runs"',
-              'heading", { name: "Recent Activity"',
-              1,
-          )
-          replace_all(
-              "src/features/runs/RunnerHistory.test.tsx",
-              'name: "Recent Runs"',
-              'name: "Recent Activity"',
-              2,
-          )
-          replace_all(
-              "src/features/runs/RunnerHistory.test.tsx",
-              '["Recent Training", "Training Signals", "Recent Runs"]',
-              '["Recent Training", "Training Signals", "Recent Activity"]',
-              1,
-          )
-          PY
-
-          if git diff --quiet -- src/features/runs/*.test.tsx; then
-            echo 'UI assertions already current.'
-          else
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/features/runs/HistoryExplorer.test.tsx src/features/runs/Runs.test.tsx src/features/runs/RunnerHistory.test.tsx
-            git commit -m 'Update mixed-history UI assertions'
-            git push origin "HEAD:${GITHUB_HEAD_REF}"
-          fi
       - name: Clean install
         run: npm ci
-      - name: History Explorer
-        run: npx vitest run src/features/runs/HistoryExplorer.test.tsx --reporter=verbose
-      - name: Runs screen
-        run: npx vitest run src/features/runs/Runs.test.tsx --reporter=verbose
-      - name: Runner History
-        run: npx vitest run src/features/runs/RunnerHistory.test.tsx --reporter=verbose
-      - name: Evolution 2.08 focused regression
-        run: npx vitest run src/history/crossTrainingHistory.test.ts --reporter=verbose
-      - name: Production build
-        run: npm run build
+      - name: Repository check
+        run: npm run check
       - name: Whitespace integrity
         run: git diff --check
