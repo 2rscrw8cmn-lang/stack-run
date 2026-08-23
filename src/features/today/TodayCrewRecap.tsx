@@ -7,6 +7,7 @@ import { formatWeekRange } from "../../domain/plan";
 import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
 import { useCrewAwards } from "../../crew/useCrewAwards";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
+import { isCrewRecapReleaseOpen } from "../../crew/weekRollover";
 import {
   crewWeekRecap,
   crewWeekRecapKey,
@@ -55,9 +56,11 @@ import "../crew/crewWeekRecap.css";
 export function TodayCrewRecap({
   crew,
   today,
+  now = new Date(),
 }: {
   crew: RaceCrewController | null;
   today: string;
+  now?: Date;
 }) {
   const demoVariant = crewRecapDemoVariant();
   const demo = demoVariant ? crewRecapDemoData(demoVariant) : null;
@@ -85,7 +88,8 @@ export function TodayCrewRecap({
     // than deriving one from a date it does not have.
     !isLocalDateString(activeCrew.buildStartDate) ||
     !dashboard?.sharedRunsAvailable ||
-    !isCrewRecapCurrent(week, today)
+    !isCrewRecapCurrent(week, today) ||
+    !isCrewRecapReleaseOpen(now)
   ) {
     return null;
   }
