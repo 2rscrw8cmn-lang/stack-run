@@ -353,7 +353,7 @@ describe("Runs Overview and History Explorer boundary", () => {
     await user.click(screen.getByRole("button", { name: /^History\./ }));
     expect(screen.getByRole("heading", { name: "History", level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Full History" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Recent Runs" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Recent Activity" })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: /Not logged in STACK/ })[0]);
     expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
@@ -361,7 +361,7 @@ describe("Runs Overview and History Explorer boundary", () => {
     expect(screen.getByRole("heading", { name: "History", level: 1 })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back to Runs" }));
-    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent Activity" })).toBeInTheDocument();
   });
 
   /**
@@ -410,7 +410,7 @@ describe("Runs hierarchy", () => {
     const sections = [...document.querySelectorAll(".section__title")].map(
       (title) => title.textContent,
     );
-    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Runs"]);
+    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Activity"]);
     // Two runs in one week is not a 28-day comparison, so the history signals
     // are absent rather than guessed at; plan context still has something.
     expect(document.querySelectorAll(".signal-cards.section .signal-card")).toHaveLength(1);
