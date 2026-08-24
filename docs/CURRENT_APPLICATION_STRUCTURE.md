@@ -582,6 +582,7 @@ Use these references for deeper work:
 - this document
 - `docs/DATA_AND_STORAGE.md`
 - `docs/PERSONAL_ACCOUNT_SYNC.md`
+- `docs/EXTERNAL_TRAINING_INTEGRATION.md`
 
 ### Connected data
 - `docs/CONNECTED_DATA_FIELDS.md`
@@ -612,3 +613,33 @@ Use these references for deeper work:
 - individual `NEXT*`, `RUNS_R*`, UI/Race Crew phase documents
 
 Historical records remain valuable for rationale. They do not supersede the current product/architecture references above when describing what is now on `main`.
+
+## 23. External training context (Evolution 2.10A)
+
+The first external-assistant integration boundary is an authenticated,
+provider-neutral read only:
+
+- `public.read_external_training_context(date)` assembles the current session's
+  narrow account-cloud context as a `SECURITY INVOKER` function;
+- `src/integrations/externalTrainingContext.ts` defines and fail-closed parses
+  schema version 1;
+- the RPC accepts a runner-local as-of date but no user/subject id;
+- existing personal-table RLS and Crew membership RLS remain authoritative;
+- Crew rows are additionally restricted to the caller's own projected runs.
+
+The context includes active/no-plan state, current/future workouts, up to 100
+canonical accepted runs over 90 local dates, Personal Build lifecycle, and the
+caller's own authorized Crew contribution lifecycle. It explicitly excludes
+raw source payloads/identity, credentials, notes, effort, teammate facts and
+Build geometry.
+
+Historical-only source activity is not silently lost behind a completeness
+claim: the response marks coverage partial because the historical mirror is
+device-local and not available to an account-cloud read. No new source-history
+storage was added.
+
+There is no app-shell caller, external OAuth/transport, plan mutation, model
+call or assistant UI in this slice. Those remain later issues under #177, so an
+integration outage cannot affect ordinary STACK behavior.
+
+See `docs/EXTERNAL_TRAINING_INTEGRATION.md`.

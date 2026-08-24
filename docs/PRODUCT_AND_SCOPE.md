@@ -348,6 +348,28 @@ Unified actual history includes approved Cross Training from the connected sourc
 
 Runs chronology can therefore show a source-only Cross Training session whether or not it was accepted into STACK. Running-specific interpretation remains running-only: mileage, run frequency, pace, long-run calculations, History metrics and Training Signals exclude Cross Training. Historical-only Cross Training never earns a Personal Build block and does not widen the Crew projection.
 
+## External training integration
+
+The first Evolution 2.10 boundary is read-only. A signed-in runner's chosen
+external assistant may eventually receive a provider-neutral snapshot of that
+runner's active plan, current/future workouts, bounded canonical accepted-run
+history, Personal Build lifecycle and already-authorized self Crew
+contributions. STACK performs no model inference and carries no model API key.
+
+The read is bound to the authenticated account and accepts no subject user id.
+It does not expose another runner's data, raw provider payloads, credentials,
+GPS/routes, notes, effort, exact source identity or Build geometry. Because the
+normalized historical source mirror remains device-local, remote history
+explicitly reports that source-only activities are not included rather than
+claiming completeness.
+
+This boundary grants no mutation authority. External auth/scopes/transport,
+baseline/current plan truth, atomic future-plan adjustments, audit/undo and UI
+provenance remain separate later slices. Signed-out/local-only STACK and normal
+signed-in use have no runtime dependency on the integration.
+
+See `EXTERNAL_TRAINING_INTEGRATION.md`.
+
 ## Persistence boundaries
 
 Current persistence is deliberately split by responsibility:
