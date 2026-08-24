@@ -1,5 +1,11 @@
 import { footprintFor } from "../domain/footprint";
 import { repackPlacements } from "../domain/placement";
+import {
+  isPlanBaselineOrigin,
+  isPlanRevision,
+  isRaceGoal,
+  NO_RACE_GOAL,
+} from "../domain/planTruth";
 import type {
   AppSettings,
   AppState,
@@ -12,7 +18,7 @@ import type {
 } from "../domain/types";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -141,7 +147,13 @@ function validArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
   const runLinks = object(archived?.runLinks);
   return archived !== null &&
     typeof archived.id === "string" && archived.id.length > 0 &&
-    validTrainingPlan(archived.plan) && validRaceSetup(archived.raceSetup) &&
+    validTrainingPlan(archived.plan) &&
+    validTrainingPlan(archived.baselinePlan) &&
+    object(archived.plan)?.id === object(archived.baselinePlan)?.id &&
+    isPlanBaselineOrigin(archived.baselineOrigin) &&
+    isRaceGoal(archived.raceGoal) &&
+    isPlanRevision(archived.finalRevision) &&
+    validRaceSetup(archived.raceSetup) &&
     runLinks !== null && Object.entries(runLinks).every(([runId, workoutId]) =>
       runId.length > 0 && typeof workoutId === "string" && workoutId.length > 0
     ) &&
@@ -179,6 +191,18 @@ export function validateCurrentAppState(state: AppState): AppState {
   const archiveIds = new Set(state.planHistory?.map((entry) => entry.id));
   if (state.settings?.units !== "miles" || state.settings.theme !== "dark" ||
       (state.plan !== null && !validTrainingPlan(state.plan)) ||
+      (state.planBaseline !== null && !validTrainingPlan(state.planBaseline)) ||
+      (state.plan === null && (
+        state.planBaseline !== null || state.planRevision !== null ||
+        state.planBaselineOrigin !== null || state.raceGoal !== null
+      )) ||
+      (state.plan !== null && (
+        state.planBaseline === null ||
+        object(state.plan)?.id !== object(state.planBaseline)?.id ||
+        !isPlanRevision(state.planRevision) ||
+        !isPlanBaselineOrigin(state.planBaselineOrigin) ||
+        !isRaceGoal(state.raceGoal)
+      )) ||
       !Array.isArray(state.planHistory) ||
       state.planHistory.some((entry) => !validArchivedPlan(entry)) ||
       archiveIds.size !== state.planHistory.length ||
@@ -205,6 +229,10 @@ export function createInitialAppState(): AppState {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     settings: { units: "miles", theme: "dark" },
     plan: null,
+    planBaseline: null,
+    planRevision: null,
+    planBaselineOrigin: null,
+    raceGoal: null,
     planHistory: [],
     runLogs: [],
     blockPlacements: [],
@@ -218,7 +246,15 @@ export function createInitialAppState(): AppState {
 
 /** Seeded state for compatibility fixtures and the owner-only QA runner. */
 export function createSeededAppState(): AppState & { plan: TrainingPlan } {
-  return { ...createInitialAppState(), plan: loadSeedPlan() };
+  const plan = loadSeedPlan();
+  return {
+    ...createInitialAppState(),
+    plan,
+    planBaseline: plan,
+    planRevision: 1,
+    planBaselineOrigin: "created",
+    raceGoal: NO_RACE_GOAL,
+  };
 }
 
 /**
@@ -283,6 +319,34 @@ function upgradePlacements(
   return repackPlacements(carried);
 }
 
+function adoptedPlanTruth(plan: TrainingPlan | null) {
+  return plan === null
+    ? {
+      planBaseline: null,
+      planRevision: null,
+      planBaselineOrigin: null,
+      raceGoal: null,
+    } as const
+    : {
+      planBaseline: plan,
+      planRevision: 1,
+      planBaselineOrigin: "adopted-current" as const,
+      raceGoal: NO_RACE_GOAL,
+    };
+}
+
+function upgradeArchivedPlan(
+  archived: Omit<ArchivedTrainingPlan, "baselinePlan" | "baselineOrigin" | "raceGoal" | "finalRevision">,
+): ArchivedTrainingPlan {
+  return {
+    ...archived,
+    baselinePlan: archived.plan,
+    baselineOrigin: "adopted-current",
+    raceGoal: NO_RACE_GOAL,
+    finalRevision: 1,
+  };
+}
+
 /**
  * Migrates a parsed but untrusted value into the current AppState shape.
  * Missing storage produces a fresh state without an active plan. Any schemaVersion
@@ -318,6 +382,7 @@ export function migrateAppState(input: unknown): AppState {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       settings: legacy.settings,
       plan: legacy.plan,
+      ...adoptedPlanTruth(legacy.plan),
       planHistory: [],
       runLogs,
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
@@ -338,6 +403,7 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      ...adoptedPlanTruth((candidate as unknown as AppState).plan),
       blockPlacements: candidate.blockPlacements ?? [],
       planHistory: [],
       availability: null,
@@ -357,6 +423,7 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      ...adoptedPlanTruth((candidate as unknown as AppState).plan),
       blockPlacements: candidate.blockPlacements ?? [],
       planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
@@ -376,6 +443,7 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      ...adoptedPlanTruth((candidate as unknown as AppState).plan),
       blockPlacements: candidate.blockPlacements ?? [],
       planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
@@ -391,6 +459,7 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      ...adoptedPlanTruth(legacy.plan),
       planHistory: [],
       runLogs: legacy.runLogs.map((runLog) => ({ ...runLog, source: "manual", externalSource: null, importedMetrics: null })),
       // Schema 8 predates the Cross Training day preference.
@@ -404,7 +473,29 @@ export function migrateAppState(input: unknown): AppState {
     return validateCurrentAppState({
       ...(candidate as unknown as Omit<AppState, "schemaVersion" | "planHistory">),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      ...adoptedPlanTruth((candidate as unknown as AppState).plan),
       planHistory: [],
+    });
+  }
+
+  /** Schema 10 had active/archive lifecycle but no durable baseline or goal. */
+  if (candidate.schemaVersion === 10) {
+    const legacy = candidate as unknown as Omit<
+      AppState,
+      "schemaVersion" | "planBaseline" | "planRevision" |
+      "planBaselineOrigin" | "raceGoal" | "planHistory"
+    > & {
+      schemaVersion: 10;
+      planHistory: Array<Omit<
+        ArchivedTrainingPlan,
+        "baselinePlan" | "baselineOrigin" | "raceGoal" | "finalRevision"
+      >>;
+    };
+    return validateCurrentAppState({
+      ...legacy,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      ...adoptedPlanTruth(legacy.plan),
+      planHistory: (legacy.planHistory ?? []).map(upgradeArchivedPlan),
     });
   }
 

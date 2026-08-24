@@ -35,6 +35,20 @@ that surface. Optional-plan changes remain in the durable outbox, with a clear
 upgrade-pending message, until schema 2 is available; they are never downgraded
 or cleared.
 
+Evolution 2.10B also applies
+`20260824184205_structured_plan_truth.sql`. It advances the private training
+row to cloud schema 3 with a frozen plan baseline, positive current revision,
+baseline origin, and structured race goal. Existing active plans and archives
+are adopted at revision 1 using their current visible schedule; no prior intent
+is invented. Authenticated v3 initialize/save/reset RPCs write the full truth.
+The schema-11 client falls back through v2 and v1 only when its state is exactly
+representable there, otherwise the outbox keeps the mutation pending.
+
+Rolling v1/v2 writers remain callable. A database trigger maintains schema 3,
+anchors a newly seen legacy plan, advances revisions for legacy edits, and
+enriches a v2 archive with its baseline/goal/revision before clearing active
+truth. This compatibility does not widen RLS or grant browser table writes.
+
 It adds:
 
 - `personal_training_state`
@@ -105,6 +119,11 @@ Use one real account in a desktop browser and real iPhone Safari.
     enters the no-active-plan state with the prior plan readable in history.
     Start the next plan and confirm both devices show it while existing runs,
     Personal Build placements, and the archived plan remain unchanged.
+13. On one device, edit an active plan and confirm the second device receives
+    the new current schedule while its frozen baseline stays unchanged and the
+    revision advances. Finish the plan and confirm its archive retains the
+    baseline, final revision and structured race goal while actual runs remain
+    unchanged.
 
 Do not remove the legacy Intervals proxy until its separate production iPhone
 Safari deprecation checklist is complete.

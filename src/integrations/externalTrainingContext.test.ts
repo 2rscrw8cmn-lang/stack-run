@@ -7,7 +7,7 @@ import {
 
 function contextFixture(): unknown {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     subject: "authenticated-user",
     asOfDate: "2026-08-24",
     accountStatus: "initialized",
@@ -19,7 +19,22 @@ function contextFixture(): unknown {
         startDate: "2026-08-01",
         endDate: "2026-10-04",
         race: { name: "Fall Half", date: "2026-10-04", distanceMiles: 13.1 },
+        revision: 3,
+        baselineOrigin: "created",
+        raceGoal: { type: "target-finish-time", targetSeconds: 7200 },
       },
+      baselineWorkouts: [
+        {
+          id: "workout-1",
+          date: "2026-08-24",
+          weekNumber: 4,
+          phase: "Build",
+          type: "easy",
+          title: "Easy 5",
+          targetDistanceMiles: "5",
+          details: "Original prescription",
+        },
+      ],
       currentAndFutureWorkouts: [
         {
           id: "workout-1",
@@ -102,7 +117,7 @@ describe("external training context", () => {
     fixture.recentHistory.coverage.historicalSourceMirrorIncluded = true;
 
     expect(() => parseExternalTrainingContext(fixture)).toThrow(
-      "External training context did not match schema version 1.",
+      "External training context did not match schema version 2.",
     );
   });
 
@@ -114,7 +129,7 @@ describe("external training context", () => {
       subject: "authenticated-user",
       asOfDate: "2026-08-24",
     });
-    expect(rpc).toHaveBeenCalledWith("read_external_training_context", {
+    expect(rpc).toHaveBeenCalledWith("read_external_training_context_v2", {
       p_as_of_date: "2026-08-24",
     });
   });

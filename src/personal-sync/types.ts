@@ -8,6 +8,10 @@ import type {
 export interface PersonalTrainingDocument {
   settings: AppState["settings"];
   plan: AppState["plan"];
+  planBaseline: AppState["planBaseline"];
+  planRevision: AppState["planRevision"];
+  planBaselineOrigin: AppState["planBaselineOrigin"];
+  raceGoal: AppState["raceGoal"];
   planHistory: AppState["planHistory"];
   raceSetup: AppState["raceSetup"];
   availability: AppState["availability"];
@@ -115,6 +119,10 @@ export function trainingDocumentFrom(state: AppState): PersonalTrainingDocument 
   return {
     settings: state.settings,
     plan: state.plan,
+    planBaseline: state.planBaseline,
+    planRevision: state.planRevision,
+    planBaselineOrigin: state.planBaselineOrigin,
+    raceGoal: state.raceGoal,
     planHistory: state.planHistory,
     raceSetup: state.raceSetup,
     availability: state.availability,

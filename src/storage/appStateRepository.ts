@@ -8,12 +8,14 @@ import {
 } from "../domain/placement";
 import type { AvailabilityCalendar } from "../domain/availability";
 import { relinkRunLogs, type RacePlanSetup } from "../domain/racePlan";
+import { currentPlanWithRevision, NO_RACE_GOAL } from "../domain/planTruth";
 import type { Weekday } from "../domain/runDays";
 import type {
   AppState,
   ArchivedTrainingPlan,
   BlockPlacement,
   RunLog,
+  RaceGoal,
   TrainingPlan,
 } from "../domain/types";
 import type { IntervalsCandidate } from "../connected/intervals";
@@ -400,7 +402,7 @@ export function placeBlock(
  * workout is edited or moved.
  */
 export function savePlan(state: AppState, plan: TrainingPlan): AppState {
-  const next: AppState = { ...state, plan };
+  const next = currentPlanWithRevision(state, plan);
   saveAppState(next);
   return next;
 }
@@ -586,7 +588,7 @@ export function saveRunDays(
   runDays: Weekday[],
   plan: TrainingPlan,
 ): AppState {
-  const next: AppState = { ...state, runDays, plan };
+  const next: AppState = { ...currentPlanWithRevision(state, plan), runDays };
   saveAppState(next);
   return next;
 }
@@ -601,7 +603,10 @@ export function saveCrossTrainingDays(
   crossTrainingDays: Weekday[],
   plan: TrainingPlan,
 ): AppState {
-  const next: AppState = { ...state, crossTrainingDays, plan };
+  const next: AppState = {
+    ...currentPlanWithRevision(state, plan),
+    crossTrainingDays,
+  };
   saveAppState(next);
   return next;
 }
@@ -619,6 +624,7 @@ export function saveGeneratedPlan(
   setup: RacePlanSetup,
   plan: TrainingPlan,
   archivedAt = new Date().toISOString(),
+  raceGoal: RaceGoal = NO_RACE_GOAL,
 ): AppState {
   const extraIds = new Set(
     state.runLogs.flatMap((run) => run.workoutId === null ? [run.id] : []),
@@ -629,13 +635,28 @@ export function saveGeneratedPlan(
     relinkRunLogs(extras, plan).runLogs.map((run) => [run.id, run]),
   );
   const runLogs = archived.runLogs.map((run) => relinkedExtras.get(run.id) ?? run);
-  const next: AppState = { ...archived, plan, raceSetup: setup, runLogs };
+  const next: AppState = {
+    ...archived,
+    plan,
+    planBaseline: plan,
+    planRevision: 1,
+    planBaselineOrigin: "created",
+    raceGoal,
+    raceSetup: setup,
+    runLogs,
+  };
   saveAppState(next);
   return next;
 }
 
 function archiveActivePlan(state: AppState, archivedAt: string): AppState {
   if (!state.plan) return state;
+  if (
+    !state.planBaseline || !state.planRevision ||
+    !state.planBaselineOrigin || !state.raceGoal
+  ) {
+    throw new Error("An active plan must have durable baseline truth before archive.");
+  }
   let id = `${state.plan.id}:${archivedAt}`;
   let suffix = 1;
   const ids = new Set(state.planHistory.map((entry) => entry.id));
@@ -643,6 +664,10 @@ function archiveActivePlan(state: AppState, archivedAt: string): AppState {
   const archived: ArchivedTrainingPlan = {
     id,
     plan: state.plan,
+    baselinePlan: state.planBaseline,
+    baselineOrigin: state.planBaselineOrigin,
+    raceGoal: state.raceGoal,
+    finalRevision: state.planRevision,
     raceSetup: state.raceSetup,
     runLinks: Object.fromEntries(
       state.runLogs.flatMap((run) => run.workoutId ? [[run.id, run.workoutId]] : []),
@@ -652,6 +677,10 @@ function archiveActivePlan(state: AppState, archivedAt: string): AppState {
   return {
     ...state,
     plan: null,
+    planBaseline: null,
+    planRevision: null,
+    planBaselineOrigin: null,
+    raceGoal: null,
     planHistory: [archived, ...state.planHistory],
     runLogs: state.runLogs.map((run) =>
       run.workoutId === null ? run : { ...run, workoutId: null }

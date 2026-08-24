@@ -19,6 +19,14 @@ function rows(overrides: Partial<Record<string, unknown>> = {}) {
     personal_training_state: {
       settings: seed.settings,
       plan: seed.plan,
+      planBaseline: seed.planBaseline,
+      planRevision: seed.planRevision,
+      planBaselineOrigin: seed.planBaselineOrigin,
+      raceGoal: seed.raceGoal,
+      plan_baseline: seed.planBaseline,
+      plan_revision: seed.planRevision,
+      plan_baseline_origin: seed.planBaselineOrigin,
+      race_goal: seed.raceGoal,
       plan_history: seed.planHistory,
       race_setup: seed.raceSetup,
       availability: seed.availability,
@@ -129,10 +137,18 @@ describe("personal cloud hydration", () => {
       personal_training_state: {
         ...rows().personal_training_state,
         plan: null,
+        plan_baseline: null,
+        plan_revision: null,
+        plan_baseline_origin: null,
+        race_goal: null,
         race_setup: null,
         plan_history: [{
           id: "archive-1",
           plan: archived.plan,
+          baselinePlan: archived.planBaseline,
+          baselineOrigin: archived.planBaselineOrigin,
+          raceGoal: archived.raceGoal,
+          finalRevision: archived.planRevision,
           raceSetup: archived.raceSetup,
           runLinks: {},
           archivedAt: "2026-12-06T12:00:00.000Z",
@@ -231,6 +247,10 @@ describe("optimistic concurrency client", () => {
     await expect(savePersonalTrainingDocument(rpcClient("personal_training_revision_conflict"), 3, 1, {
       settings: seed.settings,
       plan: seed.plan,
+      planBaseline: seed.planBaseline,
+      planRevision: seed.planRevision,
+      planBaselineOrigin: seed.planBaselineOrigin,
+      raceGoal: seed.raceGoal,
       planHistory: seed.planHistory,
       raceSetup: seed.raceSetup,
       availability: seed.availability,
@@ -265,7 +285,7 @@ describe("optimistic concurrency client", () => {
   it("falls back to legacy RPCs while the optional-plan migration rolls out", async () => {
     const seed = createSeededAppState();
     const rpc = vi.fn(async (name: string) =>
-      name.endsWith("_v2")
+      name.endsWith("_v2") || name.endsWith("_v3")
         ? {
             data: null,
             error: { code: "PGRST202", message: `Could not find function public.${name}` },
@@ -275,6 +295,10 @@ describe("optimistic concurrency client", () => {
     const training = {
       settings: seed.settings,
       plan: seed.plan,
+      planBaseline: seed.plan,
+      planRevision: 1,
+      planBaselineOrigin: "adopted-current" as const,
+      raceGoal: { type: "none" as const },
       planHistory: [],
       raceSetup: seed.raceSetup,
       availability: seed.availability,
@@ -299,10 +323,13 @@ describe("optimistic concurrency client", () => {
       .resolves.toBe(2);
 
     expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      "initialize_personal_stack_v3",
       "initialize_personal_stack_v2",
       "initialize_personal_stack",
+      "save_personal_training_state_v3",
       "save_personal_training_state_v2",
       "save_personal_training_state",
+      "reset_personal_stack_v3",
       "reset_personal_stack_v2",
       "reset_personal_stack",
     ]);
@@ -310,24 +337,28 @@ describe("optimistic concurrency client", () => {
 
   it("keeps optional-plan changes local instead of dropping them on a legacy cloud", async () => {
     const seed = createSeededAppState();
-    const rpc = vi.fn().mockResolvedValue({
+    const rpc = vi.fn(async (name: string) => ({
       data: null,
       error: {
         code: "PGRST202",
-        message: "Could not find function public.save_personal_training_state_v2",
+        message: `Could not find function public.${name}`,
       },
-    });
+    }));
     const client = { rpc } as unknown as SupabaseClient;
 
     await expect(savePersonalTrainingDocument(client, 1, 1, {
       settings: seed.settings,
       plan: null,
+      planBaseline: null,
+      planRevision: null,
+      planBaselineOrigin: null,
+      raceGoal: null,
       planHistory: [],
       raceSetup: null,
       availability: seed.availability,
       runDays: seed.runDays,
       crossTrainingDays: seed.crossTrainingDays,
     })).rejects.toBeInstanceOf(PersonalCloudUpgradeRequiredError);
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledTimes(2);
   });
 });

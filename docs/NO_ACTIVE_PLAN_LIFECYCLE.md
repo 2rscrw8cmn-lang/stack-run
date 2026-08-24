@@ -12,12 +12,16 @@ is not the condition for STACK to understand or reward a runner.
 
 ## State model
 
-Schema 10 makes the lifecycle explicit:
+Schema 11 makes the lifecycle and plan truth explicit:
 
 ```ts
 interface AppState {
-  schemaVersion: 10;
+  schemaVersion: 11;
   plan: TrainingPlan | null;
+  planBaseline: TrainingPlan | null;
+  planRevision: number | null;
+  planBaselineOrigin: PlanBaselineOrigin | null;
+  raceGoal: RaceGoal | null;
   planHistory: ArchivedTrainingPlan[];
   // existing personal state remains unchanged
 }
@@ -25,6 +29,10 @@ interface AppState {
 interface ArchivedTrainingPlan {
   id: string;
   plan: TrainingPlan;
+  baselinePlan: TrainingPlan;
+  baselineOrigin: PlanBaselineOrigin;
+  raceGoal: RaceGoal;
+  finalRevision: number;
   raceSetup: RacePlanSetup | null;
   runLinks: Record<string, string>;
   archivedAt: string;
@@ -36,10 +44,11 @@ training toward a race. `planHistory` preserves previous intent as immutable,
 newest-first snapshots; it is not inferred from run history and it is never
 deleted merely because another plan starts.
 
-The active plan, its `raceSetup`, and its explicit run-to-workout links move to
-history together. Linked `RunLog` records then become unlinked from the active
-slot. Newly generated workout ids are also scoped to a unique plan instance,
-so even a stale device-side link cannot falsely complete a later plan.
+The active plan, its frozen baseline/origin, structured race goal, final
+revision, `raceSetup`, and explicit run-to-workout links move to history
+together. Linked `RunLog` records then become unlinked from the active slot.
+Newly generated workout ids are also scoped to a unique plan instance, so even
+a stale device-side link cannot falsely complete a later plan.
 Each snapshot gets its own archive id while the plan's existing id remains
 intact inside the snapshot. Duplicate archive ids are rejected during runtime
 validation rather than silently merged.
@@ -110,8 +119,9 @@ hidden or disabled when no plan exists; Race Setup remains available.
 
 ## Persistence and compatibility
 
-Signed-out state migrates forward from schema 9 to schema 10 without changing
-the active plan.
+Signed-out state migrates forward to schema 11 without changing the visible
+active plan. Schema-10 plans and archives adopt their current schedule as the
+baseline at revision 1 rather than claiming an unavailable original version.
 
 Signed-in canonical storage makes `personal_training_state.plan` nullable and
 adds a validated `plan_history` JSON array. Initialization, revisioned saves
@@ -133,7 +143,7 @@ it never drops history to force a legacy write.
 Automated coverage must prove:
 
 - schema-9 local state migrates with its active plan intact;
-- a fresh schema-10 runner has no active plan;
+- a fresh schema-11 runner has no active plan or dangling plan-truth fields;
 - finish/replace transitions archive once and preserve runs/Build;
 - no-plan Today, Runs, Build and Plan render without fabricated plan facts;
 - personal cloud parsing and round-trip support null active plan plus history;
