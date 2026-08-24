@@ -232,7 +232,7 @@ export function CrewScreen({
           </div>
         </header>
         {/* The real notification, which resolves the same demo fixture itself. */}
-        <CrewRecapNotification crew={null} />
+        <CrewRecapNotification crew={null} awards={crewAwards} />
       </div>
     );
   }
@@ -622,7 +622,11 @@ export function CrewScreen({
         * a notification a runner has to scroll past the Build to find is a
         * notification they will not see.
         */}
-      <CrewRecapNotification crew={activeCrew} today={today} />
+      <CrewRecapNotification
+        crew={activeCrew}
+        awards={crewAwards}
+        today={today}
+      />
 
       <PropNotifications
         notifications={activeCrew.visiblePropNotifications}

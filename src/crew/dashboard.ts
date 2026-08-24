@@ -16,6 +16,24 @@ import {
   isCrewEligibleLocalDate,
 } from "./projection";
 
+/**
+ * The shared-run columns every deployment has, and the ones a deployment might
+ * not have yet.
+ *
+ * Adding a column to a `select` makes the whole read fail on a database the
+ * migration has not reached — and a failed shared-run read costs the Crew its
+ * tower, its recent activity and its Props, not one footnote. Code and schema
+ * roll out separately (a Vercel deploy is not a migration), so the read asks
+ * for the optional columns and, if that is refused, asks again without them.
+ *
+ * Prefer this over adding a column to `SHARED_RUN_COLUMNS`: a value worth
+ * degrading to `null` belongs in `OPTIONAL_SHARED_RUN_COLUMNS`.
+ */
+const SHARED_RUN_COLUMNS =
+  "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate";
+/** Issue #186: the recap's Fastest 5K, and the first column read this way. */
+const OPTIONAL_SHARED_RUN_COLUMNS = ["best_5k_seconds"] as const;
+
 const RECENT_RUN_LIMIT = 20;
 const MEMBER_BUILD_RUNS_PER_MEMBER = 128;
 const MAX_SHARED_RUN_READ = 1280;
@@ -146,7 +164,17 @@ export async function loadCrewDashboard(
     Math.max(RECENT_RUN_LIMIT, userIds.length * MEMBER_BUILD_RUNS_PER_MEMBER),
   );
 
-  const [profileResult, summaryResult, runResult] = await Promise.all([
+  const readSharedRuns = (columns: string) =>
+    client
+      .from("shared_runs")
+      .select(columns)
+      .eq("crew_id", crewId)
+      .in("user_id", userIds)
+      .order("local_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(sharedRunReadLimit);
+
+  const [profileResult, summaryResult, firstRunResult] = await Promise.all([
     client.from("profiles").select("id,display_name,accent_color,runner_icon").in("id", userIds),
     client
       .from("crew_member_summaries")
@@ -155,17 +183,15 @@ export async function loadCrewDashboard(
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds),
-    client
-      .from("shared_runs")
-      .select(
-        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate,best_5k_seconds",
-      )
-      .eq("crew_id", crewId)
-      .in("user_id", userIds)
-      .order("local_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(sharedRunReadLimit),
+    readSharedRuns([SHARED_RUN_COLUMNS, ...OPTIONAL_SHARED_RUN_COLUMNS].join(",")),
   ]);
+
+  // One retry, without the optional columns, so a database this build's
+  // migrations have not reached yet costs the Crew a footnote instead of every
+  // shared run. Only ever reached on failure, so the normal path stays one read.
+  const runResult = firstRunResult.error
+    ? await readSharedRuns(SHARED_RUN_COLUMNS)
+    : firstRunResult;
 
   if (profileResult.error) throw new Error(profileResult.error.message);
   if (summaryResult.error) throw new Error(summaryResult.error.message);

@@ -13,6 +13,8 @@ function fakeClient(
   calls: QueryCall[],
   failingTable?: string,
   sharedRunOverrides: Record<string, unknown> = {},
+  /** Refuses any select naming this column, as a database missing it would. */
+  missingColumn?: string,
 ): SupabaseClient {
   const data: Record<string, unknown[]> = {
     crew_members: [
@@ -63,8 +65,10 @@ function fakeClient(
 
   return {
     from: vi.fn((table: string) => {
+      let selected = "";
       const builder = {
         select(columns: string) {
+          selected = columns;
           calls.push({ table, operation: "select", value: columns });
           return builder;
         },
@@ -87,10 +91,32 @@ function fakeClient(
         then<TResult1 = { data: unknown[]; error: { message: string } | null }>(
           onfulfilled?: ((value: { data: unknown[]; error: { message: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
         ) {
-          return Promise.resolve({
-            data: data[table] ?? [],
-            error: table === failingTable ? { message: `${table} unavailable` } : null,
-          }).then(onfulfilled);
+          const askedForMissing =
+            missingColumn !== undefined &&
+            calls.some(
+              (call) =>
+                call.table === table &&
+                call.operation === "select" &&
+                String(call.value).includes(missingColumn),
+            ) &&
+            String(selected).includes(missingColumn);
+          const error = askedForMissing
+            ? { message: `column shared_runs.${missingColumn} does not exist` }
+            : table === failingTable
+              ? { message: `${table} unavailable` }
+              : null;
+          // A database without the column does not return it either, so the
+          // fallback read has to work from rows that genuinely lack it.
+          const rows = error ? [] : data[table] ?? [];
+          const served =
+            missingColumn === undefined || error
+              ? rows
+              : rows.map((item) => {
+                const copy = { ...(item as Record<string, unknown>) };
+                delete copy[missingColumn];
+                return copy;
+              });
+          return Promise.resolve({ data: served, error }).then(onfulfilled);
         },
       };
       return builder;
@@ -239,6 +265,36 @@ describe("Crew dashboard query", () => {
       expect(loaded.runs[0].best5kSeconds, String(best_5k_seconds)).toBeNull();
       expect(loaded.sharedRunsAvailable).toBe(true);
     }
+  });
+
+  /**
+   * Issue #186 shipped `best_5k_seconds` in this select, and a Vercel deploy is
+   * not a migration. On a database the migration had not reached, naming the
+   * column failed the whole read — which costs the Crew its tower, its recent
+   * activity and its Props, for one optional footnote.
+   */
+  it("falls back to the columns every database has when an optional one is missing", async () => {
+    const calls: QueryCall[] = [];
+    const loaded = await loadCrewDashboard(
+      fakeClient(calls, undefined, {}, "best_5k_seconds"),
+      "crew-1",
+      "user-1",
+      "2026-08-01",
+    );
+
+    const selects = calls
+      .filter((call) => call.table === "shared_runs" && call.operation === "select")
+      .map((call) => String(call.value));
+    expect(selects).toHaveLength(2);
+    expect(selects[0]).toContain("best_5k_seconds");
+    expect(selects[1]).not.toContain("best_5k_seconds");
+
+    // The crew keeps everything else: only the 5K is missing.
+    expect(loaded.sharedRunsAvailable).toBe(true);
+    expect(loaded.runs).toHaveLength(1);
+    expect(loaded.runs[0].distanceMiles).toBe(6.1);
+    expect(loaded.runs[0].best5kSeconds).toBeNull();
+    expect(loaded.crewBuildRuns).toHaveLength(1);
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {

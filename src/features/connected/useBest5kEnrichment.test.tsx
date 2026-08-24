@@ -124,10 +124,60 @@ describe("best 5K enrichment pass", () => {
     await waitFor(() =>
       expect(loadBest5kProbes("user-1").size).toBe(BEST_5K_PASS_LIMIT),
     );
-    // A pass that found nothing changes no state, so nothing re-triggers it:
-    // the remaining history waits for the next visit rather than draining the
+    // The remaining history waits for the next visit rather than draining the
     // rate limit now.
     expect(fetchBestEfforts).toHaveBeenCalledTimes(BEST_5K_PASS_LIMIT);
+  });
+
+  /**
+   * The regression this hook actually shipped. Re-arming on "how many runs are
+   * left" meant a pass that found six 5Ks started the next one immediately, and
+   * every one of those state writes changes `projectionFingerprint` — which
+   * re-uploads the runner's whole history to every crew and invalidates the Crew
+   * dashboard. A season of history became a burst of full-history uploads, and
+   * the Crew screen flashed between "Loading crew data…" and its data.
+   *
+   * A pass that finds results must therefore NOT start another one. The next
+   * pass waits for the next foreground event.
+   */
+  it("does not chain a second pass after a successful one", async () => {
+    const found = new Set<string>();
+    const fetchBestEfforts = vi.fn(async (activityId: string) => {
+      found.add(activityId);
+      return { best5kSeconds: 1290 };
+    });
+    const runLogs = Array.from({ length: 40 }, (_, index) =>
+      run(index, { completedDate: "2026-09-14" }),
+    );
+
+    const { rerender } = renderHook(
+      (props: { runLogs: readonly RunLog[] }) =>
+        useBest5kEnrichment({
+          connection: CONNECTION,
+          runLogs: props.runLogs,
+          accountId: "user-1",
+          onBest5kFound: vi.fn(),
+          today: TODAY,
+          fetchBestEfforts,
+        }),
+      { initialProps: { runLogs } },
+    );
+
+    await waitFor(() => expect(fetchBestEfforts).toHaveBeenCalledTimes(BEST_5K_PASS_LIMIT));
+
+    // Exactly what a stored 5K does to this hook's parent: a new run-log array
+    // on every subsequent render. None of it may start another pass.
+    for (let render = 0; render < 5; render += 1) {
+      rerender({ runLogs: [...runLogs] });
+      await Promise.resolve();
+    }
+    expect(fetchBestEfforts).toHaveBeenCalledTimes(BEST_5K_PASS_LIMIT);
+
+    // A return to the front is the one thing that does start the next pass.
+    window.dispatchEvent(new Event("focus"));
+    await waitFor(() =>
+      expect(fetchBestEfforts).toHaveBeenCalledTimes(BEST_5K_PASS_LIMIT * 2),
+    );
   });
 
   it("leaves a failed request unsettled, so a later pass can try again", async () => {
