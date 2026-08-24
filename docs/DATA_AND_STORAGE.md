@@ -283,6 +283,20 @@ Account session and personal AppState are independent:
 
 ## Race Crew server storage
 
+### External training-context read (Evolution 2.10A)
+
+`public.read_external_training_context(date)` is a read-only projection over
+the existing canonical personal and Crew tables. It creates no table, cache,
+source-history archive or assistant record.
+
+The function accepts no user id, runs as `SECURITY INVOKER`, and binds every
+personal and Crew row to `auth.uid()`. It returns a bounded allowlist rather
+than a personal row/document spread. The device-local historical activity
+repository is unavailable to this account-cloud read and is reported as such;
+it is not copied to Supabase for assistant reasoning.
+
+See `EXTERNAL_TRAINING_INTEGRATION.md` for the exact semantic contract.
+
 Supabase stores only the social identity and narrow crew-safe projection.
 
 Foundation tables:

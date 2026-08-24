@@ -26,6 +26,28 @@
 
 Current personal AppState: **schema 10**.
 
+## Evolution 2.10A — External training context (issue #178)
+
+Status: **Implemented / PR review pending.**
+
+- Added a versioned provider-neutral read contract for the authenticated
+  runner's active/no-plan state, current/future workouts, bounded recent
+  accepted-run history, Personal Build lifecycle and authorized self Crew
+  contributions.
+- The `SECURITY INVOKER` RPC accepts no subject user id, retains current RLS,
+  grants execute only to `authenticated`, and exposes no teammate facts, raw
+  payloads, credentials, upstream activity ids, notes, effort or Build
+  geometry.
+- Account-cloud history is explicitly `partial`: historical-only source rows
+  remain device-local and are not newly persisted for assistant reasoning.
+- No external auth/transport, model call, plan mutation, adjustment ledger or
+  assistant UI exists in this slice. Those remain issues #179–#183.
+- Transactional verification `0027_external_training_context_read.sql` proves
+  cross-user isolation, anonymous denial and truthful missing states; the
+  typed adapter fails closed on schema drift.
+
+See `docs/EXTERNAL_TRAINING_INTEGRATION.md`.
+
 ## Evolution 2.08 — Cross Training actual history (issue #159)
 
 Status: **Implemented / PR review pending.**
