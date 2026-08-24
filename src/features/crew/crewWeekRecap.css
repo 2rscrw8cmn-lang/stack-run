@@ -4,6 +4,120 @@
    every object drawn here is a real STACK component: Brick, AwardBrick,
    CrewEmblem, RunnerIcon. No artwork, no illustration, no second renderer. */
 
+/* Crew's notification
+   ------------------------------------------------------------------
+   Evolution 2.1. The recap's discovery surface on the Crew screen, in the
+   Props notification family rather than in a second Crew alert pattern: one
+   row under the header, an unread edge, a swipe or a Clear button, and no
+   panel around it. The row's own metrics are Props' — this only states what
+   is different about it (a wider mark, and two lines of its own copy). */
+
+.crew-recap-notification.section {
+  gap: 7px;
+  padding-top: 10px;
+  border-top-color: var(--border-strong);
+}
+
+/* Unmistakably not real, in the same register as Today's own demo banner. */
+.crew-recap-notification__demo {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+}
+
+.crew-recap-notification__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crew-recap-notification__list > li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 6px 6px;
+  border-left: 2px solid transparent;
+  /* See `.prop-notifications__list > li`: this is what keeps the page free to
+     scroll until a drag has proven itself horizontal. */
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+}
+
+.crew-recap-notification__list > li[data-unread="true"] {
+  border-left-color: var(--accent);
+}
+
+.crew-recap-notification__list > li[data-exiting="true"] {
+  opacity: 0;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+/* The whole two-line body is the way in: two hit areas to one recap is two
+   ways to the same place. */
+.crew-recap-notification__open {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crew-recap-notification__open .machine-label {
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
+.crew-recap-notification__facts {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.crew-recap-notification__open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.crew-recap-notification__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+
+.crew-recap-notification__dismiss:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.crew-recap-notification__dismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crew-recap-notification__list > li[data-exiting="true"] { transition: none; }
+}
+
 /* Today's module
    ------------------------------------------------------------------
    A teaser, not a second dashboard card. One accent edge, one line of copy, a
@@ -215,10 +329,13 @@
 }
 
 /*
- * Week Complete — the finale. A centred glow with a scatter of sparks around
- * it, each spark a radial stop rather than an element or an image.
+ * New Week Live — the handoff. A centred glow with a scatter of sparks around
+ * it, each spark a radial stop rather than an element or an image. The mood
+ * survived Evolution 2.1 even though the page's job changed: a week opening is
+ * as much a moment as a week closing, and it is the one page here looking
+ * forward rather than reporting.
  */
-.sheet--crew-recap--complete .sheet__panel::after {
+.sheet--crew-recap--nextWeek .sheet__panel::after {
   background-image:
     radial-gradient(2px 2px at 14% 24%, color-mix(in srgb, var(--accent) 70%, transparent), transparent 100%),
     radial-gradient(2px 2px at 84% 18%, rgba(255, 255, 255, 0.5), transparent 100%),
@@ -341,9 +458,13 @@
   gap: 10px;
 }
 
-/* Title above, tower below, both centred. */
-.crew-recap__page--complete {
-  grid-template-rows: 1fr auto;
+/*
+ * The one page that centres itself, because a handoff is not a reading. It has
+ * no second zone at all now: the tower it used to repeat is page three's, and
+ * the totals it used to restate are page one's.
+ */
+.crew-recap__page--next-week {
+  grid-template-rows: 1fr;
   justify-items: center;
   gap: 18px;
   text-align: center;
@@ -602,13 +723,6 @@
   --iso-rise: 10px;
 }
 
-.build-crop.crew-recap__finale-crop {
-  --course-height: 30px;
-  --iso-run: 16px;
-  --iso-rise: 8px;
-  width: min(100%, 340px);
-}
-
 /* Awards
    ------------------------------------------------------------------
    The award objects carry the page: hollow blocks at display size, with the
@@ -740,9 +854,9 @@
   font-size: var(--type-meta);
 }
 
-/* Week complete
+/* New week
    ------------------------------------------------------------------
-   The one page that centres itself, because a finish is not a reading. */
+   The handoff into the week already being run. */
 
 .crew-recap__finale {
   display: grid;

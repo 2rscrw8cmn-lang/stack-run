@@ -20,6 +20,7 @@ import {
   acceptIntervalsRun,
   attachIntervalsRun,
   saveIntervalsSync,
+  recordImportedBest5k,
   ignoreIntervalsActivity,
   clearIgnoredIntervalsActivities,
   unlinkRunLogFromWorkout,
@@ -33,6 +34,7 @@ import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
 import { useConnectedSync } from "../features/connected/useConnectedSync";
+import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
 import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
 import { useRaceCrew } from "../crew/useRaceCrew";
@@ -279,6 +281,25 @@ export function App() {
     accountId: raceCrew.userId ?? null,
     pendingSeed: personalSync.pendingCandidates,
     onPendingChanged: personalSync.recordPendingCandidates,
+  });
+
+  /**
+   * Source-verified best 5K times for runs already imported.
+   *
+   * Deliberately downstream of the sync above and of nothing else: the pass is
+   * bounded, silent and optional, and a run with no 5K is a complete run. See
+   * `src/connected/best5k.ts` for why this is not folded into ordinary sync.
+   */
+  const recordBest5k = useCallback(
+    (secondsByRunLogId: ReadonlyMap<string, number>) =>
+      setAppState((current) => recordImportedBest5k(current, secondsByRunLogId)),
+    [setAppState],
+  );
+  useBest5kEnrichment({
+    connection: intervalsConnection,
+    runLogs: appState?.runLogs ?? NO_RUN_LOGS,
+    accountId: raceCrew.userId ?? null,
+    onBest5kFound: recordBest5k,
   });
 
   /**

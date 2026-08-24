@@ -60,6 +60,8 @@ import { CrewAwardsPanel } from "./CrewAwardsPanel";
 import { CrewBuild, type CrewBuildPlacementMode } from "./CrewBuild";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
+import { CrewRecapNotification } from "./CrewRecapNotification";
+import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
 import { PropNotifications } from "./PropNotifications";
@@ -196,6 +198,44 @@ export function CrewScreen({
       void markPropsSeen();
     }
   }, [crewStatus, currentCrewId, markPropsSeen]);
+
+  /*
+   * Owner review, before any access state can get in the way.
+   *
+   * The live notification needs a signed-in Crew, a closed week with real
+   * shared running in it, and the Monday–Wednesday window — so on a Thursday,
+   * or from a fresh preview browser, the surface cannot be looked at. This is
+   * the same preview-host-only overlay `?demo=recap` already gives Today,
+   * rendering the real notification and the real sheet against the fake crew in
+   * `crewRecapDemo.ts`. It reads no account, no Supabase and no localStorage,
+   * and it replaces the screen rather than sitting alongside the real one, so
+   * nothing on it is a real Crew's data.
+   */
+  const recapDemo = crewRecapDemoVariant();
+  const recapDemoData = recapDemo ? crewRecapDemoData(recapDemo) : null;
+  if (recapDemoData) {
+    return (
+      <div className="crew-view">
+        <header className="crew-view__lead">
+          <div className="crew-view__lead-row">
+            <CrewEmblem
+              className="crew-view__emblem"
+              emblem={recapDemoData.emblem}
+              size={46}
+            />
+            <div className="crew-view__identity">
+              <h1 className="crew-view__name data-value">
+                {recapDemoData.recap.crewName}
+              </h1>
+              <p className="crew-view__race machine-label">RECAP DEMO</p>
+            </div>
+          </div>
+        </header>
+        {/* The real notification, which resolves the same demo fixture itself. */}
+        <CrewRecapNotification crew={null} />
+      </div>
+    );
+  }
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -574,6 +614,15 @@ export function CrewScreen({
           </div>
         </div>
       </header>
+
+      {/*
+        * Issue #186: last week's recap, in the same place and the same
+        * notification family as Props. Above Props because it is the weekly
+        * moment and they are a running feed, and both above the tower because
+        * a notification a runner has to scroll past the Build to find is a
+        * notification they will not see.
+        */}
+      <CrewRecapNotification crew={activeCrew} today={today} />
 
       <PropNotifications
         notifications={activeCrew.visiblePropNotifications}

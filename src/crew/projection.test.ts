@@ -38,6 +38,7 @@ const privateRun: RunLog = {
     maxHeartRate: 176,
     trainingLoad: 88,
     hrZoneSeconds: [100, 200],
+    best5kSeconds: 1290,
   },
 };
 
@@ -141,6 +142,7 @@ describe("Race Crew projection", () => {
       awardTargetPercent: null,
       awardLevelUpPercent: null,
       awardSteadySeconds: null,
+      best5kSeconds: 1290,
     });
     expect(Object.keys(projected).sort()).toEqual(
       [
@@ -150,6 +152,7 @@ describe("Race Crew projection", () => {
         "awardSteadySeconds",
         "awardTargetPercent",
         "awardZone2Percent",
+        "best5kSeconds",
         "buildColumnStart",
         "buildHeight",
         "buildRow",
@@ -165,8 +168,10 @@ describe("Race Crew projection", () => {
     );
     // Average/max HR are the one deliberate exception, per D-079; the four
     // award_* scores are derived scalars per D-080 — a number computed from HR
-    // zones is not the zones; and `source` is one of two words naming where the
-    // run came from, per issue #129, never the connection behind it. Everything
+    // zones is not the zones; `best5kSeconds` is the source's own answer for
+    // one 5,000 m window, per issue #186, never the curve it came from; and
+    // `source` is one of two words naming where the run came from, per issue
+    // #129, never the connection behind it. Everything
     // genuinely private (training load, the raw HR-zone array, the external
     // activity id, effort, notes, exact placement time) stays out.
     expect(JSON.stringify(projected)).not.toMatch(
@@ -338,6 +343,7 @@ describe("Race Crew projection", () => {
       award_target_percent: null,
       award_level_up_percent: null,
       award_steady_seconds: null,
+      best_5k_seconds: 1290,
       build_row: 2,
       build_column_start: 3,
       build_width: 4,
@@ -712,6 +718,44 @@ describe("Crew values stay inside what Crew can store", () => {
     }
   });
 
+  /*
+   * Issue #186. `shared_runs_best_5k_seconds_check` bounds this to 600-21600.
+   * Unlike a heart rate, nothing on this device produced the number: it is
+   * whatever the source's pace curve answered, through a normalizer whose
+   * response shape is still `Expected` rather than `Verified`. A value in
+   * minutes, in milliseconds, or from a misread shape would land here and take
+   * the runner's whole upsert down with it.
+   */
+  it("omits a best 5K the server would refuse", () => {
+    for (const bad of [0, 21.5, 599, 21601, 1_290_000, -1290, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const [projected] = projectSharedRuns([
+        { ...base, importedMetrics: { best5kSeconds: bad } },
+      ]);
+      expect(projected.best5kSeconds, `best 5K ${bad} must not be sent`).toBeNull();
+    }
+    // A manual run, and a synced run whose source was never asked, both share
+    // nothing here — which is the ordinary case, not an error.
+    expect(projectSharedRuns([base])[0].best5kSeconds).toBeNull();
+    expect(
+      projectSharedRuns([{ ...base, importedMetrics: { averageHeartRate: 148 } }])[0]
+        .best5kSeconds,
+    ).toBeNull();
+  });
+
+  it("shares a best 5K the server accepts, including the boundaries", () => {
+    for (const good of [600, 1290, 21600]) {
+      const [projected] = projectSharedRuns([
+        { ...base, importedMetrics: { best5kSeconds: good } },
+      ]);
+      expect(projected.best5kSeconds, `best 5K ${good} must be shared`).toBe(good);
+    }
+    // Rounded to the integer column, never truncated to a different second.
+    expect(
+      projectSharedRuns([{ ...base, importedMetrics: { best5kSeconds: 1290.6 } }])[0]
+        .best5kSeconds,
+    ).toBe(1291);
+  });
+
   it("still shares a heart rate the server accepts, including the boundaries", () => {
     for (const good of [30, 142, 250]) {
       const [projected] = projectSharedRuns([{ ...base, manualHeartRate: good }]);
@@ -796,6 +840,7 @@ describe("A run Crew cannot store does not cost the rest", () => {
     averageHeartRate: null, maxHeartRate: null, manualHeartRate: null,
     awardZone2Percent: null, awardTargetPercent: null,
     awardLevelUpPercent: null, awardSteadySeconds: null,
+    best5kSeconds: null,
   };
 
   it("accepts an ordinary run", () => {

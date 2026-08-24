@@ -1,22 +1,28 @@
 import { DEFAULT_CREW_EMBLEM, type CrewEmblem } from "../../crew/emblem";
 import type { CrewMember, CrewWeekRecapRun } from "../../crew/types";
 import { crewWeekRecap, type CrewWeekRecap } from "../../crew/weekRecap";
-import { isPreviewReviewHost } from "./todayDemo";
+import { isPreviewReviewHost } from "../today/todayDemo";
 
 /**
  * Owner review for the Crew Week Recap.
  *
- * The recap is only on Today for three days after a Crew week closes, and only
- * for a Crew that actually ran that week. That is correct product behaviour and
- * a genuinely awkward thing to review: on any other day of the week, or from an
- * account with no crewmates, there is nothing to look at.
+ * The recap exists for three days after a Crew week closes, and only for a Crew
+ * that actually ran that week. That is correct product behaviour and a genuinely
+ * awkward thing to review: on any other day of the week, or from an account with
+ * no crewmates, there is nothing to look at. Waiting for a real Monday 06:00 ET
+ * with the right Crew data in place is not a review process.
  *
  * This is the same in-memory overlay `?demo=today` already provides, aimed at
  * the recap. It is preview-host-only, it carries its own fake crew, roster,
- * week and awards, and it never reads or writes a real Crew, a real account or
- * localStorage. Its recap is produced by the real `crewWeekRecap` derivation,
- * so what the reviewer sees is the shipping code's output — only the facts
- * going in are invented.
+ * week and awards, and it never reads or writes a real Crew, a real account,
+ * localStorage, Supabase or Intervals. Its recap is produced by the real
+ * `crewWeekRecap` derivation and rendered by the real notification, card and
+ * sheet — only the facts going in are invented. A review path with its own
+ * renderer is not reviewing the product.
+ *
+ * Two surfaces read it, which is why it lives here rather than under
+ * `features/today`: `?demo=recap` shows Today's teaser and the Crew screen's
+ * notification, from the one fixture.
  */
 
 interface DemoLocation {
@@ -95,7 +101,12 @@ function run(
   memberIndex: number,
   localDate: string,
   fields: Pick<CrewWeekRecapRun, "activityType" | "distanceMiles" | "durationSeconds"> &
-    Partial<Pick<CrewWeekRecapRun, "crewBuildRow" | "crewBuildColumnStart" | "source">>,
+    Partial<
+      Pick<
+        CrewWeekRecapRun,
+        "crewBuildRow" | "crewBuildColumnStart" | "source" | "best5kSeconds"
+      >
+    >,
 ): CrewWeekRecapRun {
   const entry = ROSTER[memberIndex];
   return {
@@ -107,6 +118,7 @@ function run(
     localDate,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    best5kSeconds: null,
     ...fields,
   };
 }
@@ -121,6 +133,9 @@ function run(
 function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
   if (variant === "minimal") {
     return [
+      // No `best5kSeconds`, deliberately: the sparse fixture is what proves a
+      // week with no verified 5K omits the beat rather than estimating one
+      // from a run that happens to be 3.1 miles long.
       run("m1", 0, "2026-09-09", {
         activityType: "easy",
         distanceMiles: 3.1,
@@ -141,11 +156,15 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       crewBuildRow: 6,
       crewBuildColumnStart: 1,
     }),
+    // A representative source-verified 5K: 20:55 inside an interval session.
+    // Faster than the week's best average pace, which is the point — a 5K
+    // effort is not a whole run's average, and the page shows both.
     run("w2", 1, "2026-09-08", {
       activityType: "intervals",
       distanceMiles: 6.1,
       durationSeconds: 3120,
       source: "intervals",
+      best5kSeconds: 1255,
       crewBuildRow: 6,
       crewBuildColumnStart: 3,
     }),
@@ -194,6 +213,9 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       distanceMiles: 13.1,
       durationSeconds: 7440,
       source: "intervals",
+      // A second verified 5K, slower than w2's, so the fixture exercises the
+      // selection rather than only the presentation.
+      best5kSeconds: 1418,
       crewBuildRow: 8,
       crewBuildColumnStart: 1,
     }),

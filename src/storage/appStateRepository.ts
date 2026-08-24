@@ -499,6 +499,49 @@ export function attachIntervalsRun(state: AppState, candidate: IntervalsCandidat
   return saveRunLog(state, { ...existing, id: existing.id, completedDate: candidate.completedDate, distanceMiles: candidate.distanceMiles, durationSeconds: candidate.durationSeconds, source: "intervals", externalSource: { provider: "intervals", activityId: candidate.externalId, sourceUpdatedAt: candidate.sourceUpdatedAt, importedAt: new Date().toISOString() }, importedMetrics: Object.keys(candidate.metrics).length ? candidate.metrics : null });
 }
 
+/**
+ * Records source-verified best 5K times against runs that already exist.
+ *
+ * Additive and narrow on purpose: it writes one field of `importedMetrics` on
+ * the named runs and touches nothing else — not the distance, not the duration,
+ * not `updatedAt` on a run that did not change. A 5K arriving days after the
+ * import is new information about the same run, not an edit of it.
+ *
+ * Returns the state unchanged when nothing new was learned, so a pass that
+ * found no 5K costs no write and no re-render.
+ */
+export function recordImportedBest5k(
+  state: AppState,
+  secondsByRunLogId: ReadonlyMap<string, number>,
+): AppState {
+  const changed = state.runLogs.filter(
+    (run) =>
+      secondsByRunLogId.has(run.id) &&
+      run.importedMetrics?.best5kSeconds !== secondsByRunLogId.get(run.id),
+  );
+  if (changed.length === 0) return state;
+
+  const changedIds = new Set(changed.map((run) => run.id));
+  const now = new Date().toISOString();
+  const next: AppState = {
+    ...state,
+    runLogs: state.runLogs.map((run) =>
+      changedIds.has(run.id)
+        ? {
+            ...run,
+            importedMetrics: {
+              ...(run.importedMetrics ?? {}),
+              best5kSeconds: secondsByRunLogId.get(run.id)!,
+            },
+            updatedAt: now,
+          }
+        : run,
+    ),
+  };
+  saveAppState(next);
+  return next;
+}
+
 export function saveIntervalsSync(state: AppState, syncedAt: string): AppState {
   const next = { ...state, intervalsSync: { ...state.intervalsSync, lastSuccessfulActivitySyncAt: syncedAt } };
   saveAppState(next); return next;

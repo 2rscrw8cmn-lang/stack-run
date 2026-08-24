@@ -149,6 +149,14 @@ export interface CrewSharedRun {
   maxHeartRate?: number | null;
   /** Hand-typed, from `RunLog.manualHeartRate` — see its fallback rule in `CrewRunDetailSheet`. */
   manualHeartRate?: number | null;
+  /**
+   * Issue #186: the fastest continuous 5,000 m effort inside this run, in
+   * seconds, exactly as the contributing runner's connected source reported
+   * it. The one performance scalar Crew gains for the recap's Fastest 5K, and
+   * the whole of what crosses that boundary — no pace curve, no stream, no
+   * route. Absent or null on the ordinary majority of runs.
+   */
+  best5kSeconds?: number | null;
   propsCount: number;
   viewerHasPropped: boolean;
 }
@@ -235,6 +243,17 @@ export interface CrewWeekRecapRun {
    * shared tower cannot come back unmarked in a crop of that same tower.
    */
   source?: RunSource | null;
+  /**
+   * Issue #186: the one performance scalar approved for the recap's Fastest
+   * 5K, carried here for exactly that beat.
+   *
+   * It is on this deliberately narrow contract for the same reason
+   * `runnerIcon` is: the story names it. The line the recap could not cross
+   * before was within-run data — a "fastest mile" or a 5K reconstructed from a
+   * whole-run average. This does not cross it. Nothing within-run reaches Crew;
+   * one number the source itself already computed does, and only that number.
+   */
+  best5kSeconds?: number | null;
   /** Independent shared Crew Build placement; never personal placement. */
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;

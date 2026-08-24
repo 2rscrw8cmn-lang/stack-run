@@ -9,7 +9,11 @@ interface QueryCall {
   value: unknown;
 }
 
-function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
+function fakeClient(
+  calls: QueryCall[],
+  failingTable?: string,
+  sharedRunOverrides: Record<string, unknown> = {},
+): SupabaseClient {
   const data: Record<string, unknown[]> = {
     crew_members: [
       { user_id: "user-1", role: "owner", joined_at: "2026-08-01T00:00:00Z" },
@@ -47,6 +51,8 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         average_heart_rate: 148,
         max_heart_rate: 171,
         manual_heart_rate: null,
+        best_5k_seconds: 1290,
+        ...sharedRunOverrides,
       },
     ],
     crew_reactions: [
@@ -110,11 +116,14 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
+      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate,best_5k_seconds",
     );
-    // Heart rate is the one deliberate exception, per D-079, and `source` is
-    // the two-word origin issue #129 needs to mark a manual block; everything
-    // else private (training load, effort, notes, route, GPS) stays out.
+    // Heart rate is the one deliberate exception, per D-079; `source` is the
+    // two-word origin issue #129 needs to mark a manual block; and
+    // `best_5k_seconds` is the single approved performance scalar issue #186
+    // adds — the source's own answer for one 5,000 m window, never the curve
+    // it came from. Everything else private (training load, effort, notes,
+    // route, GPS) stays out.
     expect(String(runSelect?.value)).not.toMatch(/load|effort|note|route|gps|external/i);
     const reactionSelect = calls.find(
       (call) => call.table === "crew_reactions" && call.operation === "select",
@@ -156,6 +165,7 @@ describe("Crew dashboard query", () => {
       averageHeartRate: 148,
       maxHeartRate: 171,
       manualHeartRate: null,
+      best5kSeconds: 1290,
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -210,6 +220,25 @@ describe("Crew dashboard query", () => {
       },
     ]);
     expect(loaded.sharedRunsTruncated).toBe(false);
+  });
+
+  /**
+   * Issue #186. A crew whose database has not yet gained the column reports
+   * nothing, an older row carries nothing, and a value outside the bounds the
+   * column is constrained to is not a 5K. All three are the same answer here —
+   * no 5K — and none of them is worth failing the whole crew read over.
+   */
+  it("reads a missing or unusable best 5K as no 5K, never as zero", async () => {
+    for (const best_5k_seconds of [undefined, null, 0, -1290, 21601, "fast", Number.NaN]) {
+      const loaded = await loadCrewDashboard(
+        fakeClient([], undefined, { best_5k_seconds }),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+      );
+      expect(loaded.runs[0].best5kSeconds, String(best_5k_seconds)).toBeNull();
+      expect(loaded.sharedRunsAvailable).toBe(true);
+    }
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {

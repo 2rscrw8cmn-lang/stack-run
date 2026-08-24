@@ -179,6 +179,7 @@ describe("Crew never sees the source mirror", () => {
           "awardSteadySeconds",
           "awardTargetPercent",
           "awardZone2Percent",
+          "best5kSeconds",
           "buildColumnStart",
           "buildHeight",
           "buildRow",
