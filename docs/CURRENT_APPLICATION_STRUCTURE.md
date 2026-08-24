@@ -131,10 +131,10 @@ A run's **fastest 5K** cannot be computed from what STACK stores: the average pa
 
 - `src/connected/intervals.ts` — the pace-curve request and `normalizeIntervalsBestEfforts`, which recognizes the documented response shapes and yields no 5K for anything else. Status is `Expected`, not `Verified`: see `docs/CONNECTED_DATA_FIELDS.md`.
 - `src/connected/best5k.ts` — which runs are worth asking about, and the bounds of one pass.
-- `src/features/connected/useBest5kEnrichment.ts` — the pass itself, kept out of ordinary sync because it answers a question about runs already imported.
+- `src/features/connected/useBest5kEnrichment.ts` — the pass itself, kept out of ordinary sync because it answers a question about runs already imported. One pass per foreground event, never chained: each stored 5K changes `projectionFingerprint`, so a chain of passes becomes a burst of full-history Crew uploads.
 - `src/storage/best5kProbeRepository.ts` — which activities have already been asked, so a settled answer (including "no 5K", the common one) is never asked again.
 
-Three rules hold it: the value is always the source's own answer and never STACK's arithmetic; the pass is bounded in what it asks and how often; and a run with no 5K is a complete run, so nothing about the feature is required for STACK to work.
+Three rules hold it: the value is always the source's own answer and never STACK's arithmetic; the pass is bounded in what it asks *and* in how often it may run; and a run with no 5K is a complete run, so nothing about the feature is required for STACK to work.
 
 ## 5. Historical activity mirror and unified runner history
 
@@ -378,6 +378,8 @@ Current projected run facts include validated combinations of:
 - average/max/manual heart rate under D-079;
 - derived award scalars used by Special Block finalization;
 - `best_5k_seconds`, the source-verified fastest 5,000 m effort, for the Crew Week Recap's Fastest 5K (issue #186). One bounded scalar the source itself computed — never the pace curve, stream or payload it came from.
+
+The Crew dashboard reads this column defensively: a select naming it is retried without it, so a database this build's migrations have not reached costs the Crew one footnote rather than every shared run. Nullable additions belong in `OPTIONAL_SHARED_RUN_COLUMNS`.
 
 The projection intentionally does not send raw:
 

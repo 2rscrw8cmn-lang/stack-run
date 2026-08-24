@@ -5,8 +5,9 @@ import { useSwipeToDismiss } from "../../components/ui/useSwipeToDismiss";
 import { isLocalDateString, todayLocalDate } from "../../domain/dates";
 import { formatMilesBuilt } from "../../domain/distance";
 import { formatWeekRange } from "../../domain/plan";
+import type { CrewAwardBlockRecord } from "../../crew/awards";
 import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
-import { useCrewAwards } from "../../crew/useCrewAwards";
+import type { CrewAwardsController } from "../../crew/useCrewAwards";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { isCrewRecapReleaseOpen } from "../../crew/weekRollover";
 import {
@@ -48,7 +49,18 @@ import "./crewWeekRecap.css";
  * Both surfaces derive the same `CrewWeekRecap` from the same shared data and
  * share one acknowledgement record, so Today and Crew cannot disagree about
  * the week or about what the runner has already done with it.
+ *
+ * Awards arrive as a prop rather than from a `useCrewAwards` of this module's
+ * own. The Crew screen already holds that read, and `loadCrewAwards` begins by
+ * calling `finalize_crew_awards` — a write RPC. A second hook here meant two
+ * concurrent finalizations of the same crew on every Crew visit inside the
+ * recap window, which is not a duplicated read but a duplicated write.
  */
+
+/** Exactly what this module needs from the Crew screen's existing award read. */
+export type CrewRecapAwards = Pick<CrewAwardsController, "available" | "blocks">;
+
+const NO_AWARDS: readonly CrewAwardBlockRecord[] = [];
 
 /**
  * Gate. Owner review first, then the live Crew.
@@ -61,10 +73,13 @@ import "./crewWeekRecap.css";
  */
 export function CrewRecapNotification({
   crew,
+  awards,
   today = todayLocalDate(),
   now = new Date(),
 }: {
   crew: RaceCrewController | null;
+  /** The Crew screen's own award read. Never a second one — see above. */
+  awards: CrewRecapAwards;
   today?: string;
   now?: Date;
 }) {
@@ -96,6 +111,7 @@ export function CrewRecapNotification({
     <CrewRecapNotificationModule
       key={crewWeekRecapKey(activeCrew.id, week.weekStart)}
       crew={crew!}
+      awards={awards}
       viewerUserId={viewerUserId}
       today={today}
     />
@@ -105,17 +121,19 @@ export function CrewRecapNotification({
 /**
  * Data owner for the live path.
  *
- * The Crew screen has already read the awards it renders in the tower, so this
- * costs no extra round trip — `useCrewAwards` is the same cached read. It is
- * failure-tolerant the same way Today's is: an unavailable award read costs the
- * recap its Special Blocks page, never the notification.
+ * It spends no request of its own: the awards come from the Crew screen's read
+ * and the runs from the dashboard the screen already loaded. It is
+ * failure-tolerant the same way Today's is — an unavailable award read costs
+ * the recap its Special Blocks page, never the notification.
  */
 function CrewRecapNotificationModule({
   crew,
+  awards,
   viewerUserId,
   today,
 }: {
   crew: RaceCrewController;
+  awards: CrewRecapAwards;
   viewerUserId: string;
   today: string;
 }) {
@@ -131,8 +149,6 @@ function CrewRecapNotificationModule({
     loadSeenCrewRecapKeys(viewerUserId).has(recapKey),
   );
 
-  const awards = useCrewAwards({ crewId: activeCrew.id, viewerUserId });
-
   const recap = useMemo<CrewWeekRecap | null>(
     () =>
       crewWeekRecap({
@@ -141,7 +157,7 @@ function CrewRecapNotificationModule({
         buildStartDate: activeCrew.buildStartDate,
         members: dashboard.members,
         runs: crewWeekRecapRunsFrom(dashboard.runs),
-        awards: awards.available ? awards.blocks : [],
+        awards: awards.available ? awards.blocks : NO_AWARDS,
         week,
       }),
     [

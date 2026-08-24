@@ -7,6 +7,13 @@ import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { loadSeenCrewRecapKeys } from "../../storage/crewRecapAcknowledgementRepository";
 import { CrewRecapNotification } from "./CrewRecapNotification";
 
+/**
+ * The Crew screen's own award read, handed in. This module never opens one of
+ * its own: `loadCrewAwards` starts with the `finalize_crew_awards` write RPC,
+ * so a second hook would finalize the same crew twice per visit.
+ */
+const NO_AWARDS = { available: true, blocks: [] };
+
 const ICON = { head: 0, face: 0, body: 0, flair: 0, background: 0 };
 
 /** Monday of the week after the recapped Monday–Sunday week (Aug 10–16). */
@@ -102,6 +109,7 @@ function notification(
   return render(
     <CrewRecapNotification
       crew={controller(props.runs ?? WEEK_RUNS)}
+      awards={NO_AWARDS}
       today={props.today ?? MONDAY_AFTER}
       now={props.now ?? MONDAY_AFTER_ROLLOVER}
     />,
@@ -174,7 +182,12 @@ describe("Crew Week Recap notification", () => {
   it("clears for good when the runner clears it, and mutates no Crew fact", async () => {
     const crew = controller(WEEK_RUNS);
     const { unmount } = render(
-      <CrewRecapNotification crew={crew} today={MONDAY_AFTER} now={MONDAY_AFTER_ROLLOVER} />,
+      <CrewRecapNotification
+        crew={crew}
+        awards={NO_AWARDS}
+        today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
+      />,
     );
 
     await clearRow();
@@ -218,6 +231,7 @@ describe("Crew Week Recap notification", () => {
     render(
       <CrewRecapNotification
         crew={controller(WEEK_RUNS, { sharedRunsAvailable: false })}
+        awards={NO_AWARDS}
         today={MONDAY_AFTER}
         now={MONDAY_AFTER_ROLLOVER}
       />,
@@ -236,7 +250,7 @@ describe("Crew Week Recap notification", () => {
     window.history.replaceState({}, "", "/?demo=recap");
 
     // Saturday, and no crew: neither would produce a live recap.
-    render(<CrewRecapNotification crew={null} today="2026-08-22" />);
+    render(<CrewRecapNotification crew={null} awards={NO_AWARDS} today="2026-08-22" />);
 
     expect(screen.getByText(/RECAP DEMO · FAKE CREW DATA/)).toBeInTheDocument();
     expect(screen.getByText(/WEEK RECAP · Sep 7 – Sep 13/)).toBeInTheDocument();
@@ -262,7 +276,14 @@ describe("Crew Week Recap notification", () => {
   });
 
   it("renders nothing without a signed-in crew", () => {
-    render(<CrewRecapNotification crew={null} today={MONDAY_AFTER} now={MONDAY_AFTER_ROLLOVER} />);
+    render(
+      <CrewRecapNotification
+        crew={null}
+        awards={NO_AWARDS}
+        today={MONDAY_AFTER}
+        now={MONDAY_AFTER_ROLLOVER}
+      />,
+    );
     expect(screen.queryByText(/WEEK RECAP/)).not.toBeInTheDocument();
   });
 });
