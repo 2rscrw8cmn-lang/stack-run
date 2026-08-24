@@ -24,6 +24,12 @@ import {
   updateRunnerIcon,
   type CrewDetailsInput,
 } from "./crewService";
+import {
+  createExternalApiToken as createExternalApiTokenRecord,
+  listExternalApiTokens,
+  revokeExternalApiToken as revokeExternalApiTokenRecord,
+  type ExternalApiTokenSummary,
+} from "./externalApiTokenService";
 import type { CrewMemberAccent } from "./memberAccent";
 import { unreadPropNotifications } from "./notifications";
 import type { RunnerIcon } from "./runnerIcon";
@@ -119,6 +125,8 @@ export interface RaceCrewController {
   visiblePropNotifications: readonly CrewPropNotification[];
   crewBuildPlacementPending: boolean;
   crewBuildPlacementError: string | null;
+  /** This account's own #178 external assistant tokens, loaded on request. */
+  externalApiTokens: ExternalApiTokenSummary[] | null;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -149,6 +157,10 @@ export interface RaceCrewController {
   placeCrewBuildBlock: (runId: string, row: number, columnStart: number) => Promise<boolean>;
   clearCrewBuildPlacementError: () => void;
   clearMessage: () => void;
+  refreshExternalApiTokens: () => Promise<void>;
+  /** Returns the raw token, shown exactly once — nothing can read it back afterward. */
+  createExternalApiToken: (label: string) => Promise<string>;
+  revokeExternalApiToken: (tokenId: string) => Promise<void>;
 }
 
 function messageOf(error: unknown): string {
@@ -176,6 +188,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       : null,
   );
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
+  const [externalApiTokens, setExternalApiTokens] = useState<ExternalApiTokenSummary[] | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
   const [projectionWaitingForPersonal, setProjectionWaitingForPersonal] =
     useState(false);
@@ -820,6 +833,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     visiblePropNotifications,
     crewBuildPlacementPending,
     crewBuildPlacementError,
+    externalApiTokens,
     createAccount: (input) => operate(async () => {
       if (!availability.configured) return;
       const nextUser = await createStackAccount(availability.client, input);
@@ -952,6 +966,32 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       const invite = await resetCrewInvite(availability.client, account.crew.id);
       setLatestInviteUrl(invite.url);
     }, "Invite link reset. The previous link no longer works."),
+    refreshExternalApiTokens: () => operate(async () => {
+      if (!availability.configured) return;
+      setExternalApiTokens(await listExternalApiTokens(availability.client));
+    }),
+    createExternalApiToken: async (label) => {
+      if (!availability.configured) throw new Error("Race Crew is not configured.");
+      setBusy(true);
+      setError(null);
+      setMessage(null);
+      try {
+        const created = await createExternalApiTokenRecord(availability.client, label);
+        setExternalApiTokens(await listExternalApiTokens(availability.client));
+        setMessage("Token created. Copy it now — it will not be shown again.");
+        return created.token;
+      } catch (reason) {
+        setError(messageOf(reason));
+        throw reason;
+      } finally {
+        setBusy(false);
+      }
+    },
+    revokeExternalApiToken: (tokenId) => operate(async () => {
+      if (!availability.configured) return;
+      await revokeExternalApiTokenRecord(availability.client, tokenId);
+      setExternalApiTokens(await listExternalApiTokens(availability.client));
+    }, "Token revoked."),
     joinPendingInvite: () => operate(async () => {
       if (!availability.configured || !pendingInvite || !user) return;
       const joinedCrewId = await redeemCrewInvite(availability.client, pendingInvite.token);

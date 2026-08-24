@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Copy,
   Database,
+  KeyRound,
   LogIn,
   LogOut,
   Pencil,
@@ -67,7 +68,8 @@ type View =
   | "crew"
   | "edit"
   | "emblem"
-  | "delete";
+  | "delete"
+  | "external-tokens";
 
 function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: string }) {
   return (
@@ -841,10 +843,12 @@ function AccountProfilePanel({
   crew,
   onBack,
   onEditIcon,
+  onOpenExternalTokens,
 }: {
   crew: RaceCrewController;
   onBack: () => void;
   onEditIcon: () => void;
+  onOpenExternalTokens: () => void;
 }) {
   const [displayName, setDisplayName] = useState(
     crew.account?.profile.displayName ?? "",
@@ -895,6 +899,20 @@ function AccountProfilePanel({
           busy={crew.busy}
           onPick={(accentColor) => void crew.saveAccentColor(accentColor)}
         />
+        <button
+          type="button"
+          className="crew-settings__icon-row"
+          onClick={onOpenExternalTokens}
+        >
+          <span className="crew-settings__icon-row-glyph" aria-hidden="true">
+            <KeyRound size={20} strokeWidth={1.9} />
+          </span>
+          <span className="crew-settings__icon-row-body">
+            <strong>External Assistant Access</strong>
+            <small>Let an assistant you choose read your training data</small>
+          </span>
+          <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+        </button>
       </section>
     </>
   );
@@ -945,6 +963,123 @@ function RunnerIconPanel({ crew, onBack }: { crew: RaceCrewController; onBack: (
   );
 }
 
+function tokenDateLabel(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.valueOf())
+    ? iso
+    : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/**
+ * #178's token management: one revocable personal credential per external
+ * assistant a runner chooses to connect. The raw value is shown exactly
+ * once, right after creation — `external_api_tokens` never lets it, or even
+ * its hash, be read back afterward, so this screen has no "reveal" affordance
+ * for an existing row, only for the one just minted.
+ */
+function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; onBack: () => void }) {
+  const [label, setLabel] = useState("");
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const tokens = crew.externalApiTokens;
+
+  useEffect(() => {
+    void crew.refreshExternalApiTokens();
+    // Runs once per visit to this panel — refreshExternalApiTokens is stable
+    // across the controller's lifetime, and re-running on every render would
+    // fight the optimistic list update after create/revoke below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function createToken(): Promise<void> {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    const token = await crew.createExternalApiToken(trimmed);
+    setRevealedToken(token);
+    setCopied(false);
+    setLabel("");
+  }
+
+  return (
+    <>
+      <BackButton onClick={onBack} label="Back to Edit Profile" />
+      <section className="crew-settings__section">
+        <p className="crew-settings__copy">
+          Connect an external assistant — ChatGPT, for example — so it can read your plan, recent runs and Build progress and help you adjust what's ahead. STACK never sends your data anywhere on its own: a token only works once you hand it to something you chose.
+        </p>
+
+        {revealedToken && (
+          <div className="crew-settings__invite-link">
+            <label htmlFor="external-api-token-value">New token — copy it now</label>
+            <input id="external-api-token-value" className="run-input" readOnly value={revealedToken} />
+            <Button
+              variant="secondary"
+              icon={<Copy size={18} />}
+              onClick={() => {
+                void navigator.clipboard.writeText(revealedToken);
+                setCopied(true);
+              }}
+            >
+              {copied ? "Copied" : "Copy Token"}
+            </Button>
+            <p>This is the only time STACK will show this token. Once you leave this screen, it cannot be read back.</p>
+          </div>
+        )}
+
+        <FormField label="Name this connection">
+          <input
+            className="run-input"
+            value={label}
+            maxLength={80}
+            placeholder="e.g. ChatGPT"
+            onChange={(event) => setLabel(event.target.value)}
+          />
+        </FormField>
+        <Button
+          variant="secondary"
+          icon={<KeyRound size={18} />}
+          disabled={!label.trim()}
+          isLoading={crew.busy}
+          onClick={() => void createToken()}
+        >
+          Create Token
+        </Button>
+
+        {tokens && tokens.length > 0 && (
+          <ul className="crew-settings__external-tokens">
+            {tokens.map((token) => (
+              <li key={token.id} className="crew-settings__external-token-row">
+                <span className="crew-settings__external-token-body">
+                  <strong>{token.label}</strong>
+                  <small>
+                    {token.revokedAt
+                      ? `Revoked ${tokenDateLabel(token.revokedAt)}`
+                      : token.lastUsedAt
+                        ? `Last used ${tokenDateLabel(token.lastUsedAt)}`
+                        : `Created ${tokenDateLabel(token.createdAt)} · never used`}
+                  </small>
+                </span>
+                {!token.revokedAt && (
+                  <Button
+                    variant="danger"
+                    disabled={crew.busy}
+                    onClick={() => void crew.revokeExternalApiToken(token.id)}
+                  >
+                    Revoke
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {tokens && tokens.length === 0 && (
+          <p className="crew-settings__copy">No external assistant is connected yet.</p>
+        )}
+      </section>
+    </>
+  );
+}
+
 function sheetTitle(view: View): string {
   switch (view) {
     case "profile":
@@ -963,6 +1098,8 @@ function sheetTitle(view: View): string {
       return "Edit Emblem";
     case "delete":
       return "Delete Crew";
+    case "external-tokens":
+      return "External Assistant Access";
     default:
       return "Account & Crew";
   }
@@ -1024,11 +1161,16 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
             crew={crew}
             onBack={() => setView("main")}
             onEditIcon={() => setView("icon")}
+            onOpenExternalTokens={() => setView("external-tokens")}
           />
         )}
 
         {visibleView === "icon" && (
           <RunnerIconPanel crew={crew} onBack={() => setView("profile")} />
+        )}
+
+        {visibleView === "external-tokens" && (
+          <ExternalApiTokensPanel crew={crew} onBack={() => setView("profile")} />
         )}
 
         {visibleView === "join" && (

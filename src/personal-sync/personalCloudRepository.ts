@@ -173,7 +173,7 @@ function parseMetrics(value: unknown): ImportedRunMetrics | null {
   return result;
 }
 
-function parseRunRow(value: unknown): PersonalCloudRun {
+export function parseRunRow(value: unknown): PersonalCloudRun {
   const row = record(value);
   if (!row) throw new Error("Cloud run data is malformed.");
   const id = string(row.run_id);
@@ -294,7 +294,7 @@ function isArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
   );
 }
 
-function parseTrainingRow(value: unknown, legacy = false): {
+export function parseTrainingRow(value: unknown, legacy = false): {
   document: PersonalTrainingDocument;
   revision: number;
 } {
@@ -375,7 +375,7 @@ function parsePlacement(value: unknown): BlockPlacement | null {
     : null;
 }
 
-function parseBuildRow(value: unknown): { placements: BlockPlacement[]; revision: number } {
+export function parseBuildRow(value: unknown): { placements: BlockPlacement[]; revision: number } {
   const row = record(value);
   const rowRevision = revision(row?.revision);
   if (!row || !rowRevision || !Array.isArray(row.placements)) {
@@ -418,7 +418,7 @@ function parseCandidate(value: unknown): IntervalsCandidate | null {
   };
 }
 
-function parseIntervalsRow(value: unknown): {
+export function parseIntervalsRow(value: unknown): {
   document: PersonalIntervalsDocument;
   revision: number;
 } {
