@@ -214,12 +214,12 @@ describe("crew week recap", () => {
       run("a", "zack", "2026-08-12", { distanceMiles: 6, durationSeconds: 3000 }),
       run("b", "drew", "2026-08-13", { distanceMiles: 6, durationSeconds: 3000 }),
     ]);
-    // Distance and pace are tied, and the two days carry one run each, so
-    // there is nothing the week can honestly single out.
+    // Distance, pace, weekly totals and the two days all tie, so there is
+    // nothing the week can honestly single out.
     expect(beat(recap!.beats, "performances")).toBeUndefined();
   });
 
-  it("leads with the facts the opening page did not already show", () => {
+  it("shows every qualifying performance instead of stopping at four", () => {
     const recap = recapOf([
       run("long", "drew", "2026-08-12", { distanceMiles: 12, durationSeconds: 6600, activityType: "long" }),
       // Fastest qualifying pace: 7:30 /mi. Also the week's fastest verified 5K.
@@ -233,72 +233,107 @@ describe("crew week recap", () => {
     ]);
     const items = beat(recap!.beats, "performances")!.items;
 
-    // Evolution 2.1's editorial order: the two facts a glance at the totals
-    // cannot give you, then the distance, then one crew-level day.
     expect(items.map((item) => item.kind)).toEqual([
       "best5k",
       "bestPace",
       "longestRun",
+      "mostMiles",
+      "mostTimeRunning",
       "biggestCrewDay",
+      "mostRunnersDay",
     ]);
     expect(items[0]).toMatchObject({ value: 1290, runId: "quick" });
     expect(items[1]).toMatchObject({ value: 450, runId: "quick" });
-    // The day beat is a crew fact: no runner, and its own run count.
-    expect(items[3]).toMatchObject({
-      kind: "biggestCrewDay",
+    expect(items.find((item) => item.kind === "mostMiles")).toMatchObject({
+      value: 14.5,
+      runner: { displayName: "Drew" },
+      localDate: null,
+    });
+    expect(items.find((item) => item.kind === "mostTimeRunning")).toMatchObject({
+      value: 8100,
+      runner: { displayName: "Drew" },
+      localDate: null,
+    });
+    expect(items.find((item) => item.kind === "biggestCrewDay")).toMatchObject({
       value: 12,
       runner: null,
       runCount: 1,
       localDate: "2026-08-12",
     });
+    expect(items.find((item) => item.kind === "mostRunnersDay")).toMatchObject({
+      value: 2,
+      runner: null,
+      localDate: "2026-08-13",
+    });
   });
 
-  it("shows one crew-level day fact, not two", () => {
-    // Wednesday covers the most ground; Thursday holds the most runs. Before
-    // Evolution 2.1 both appeared; now the busiest day is the fallback that
-    // fills a slot only when an earlier candidate has no evidence.
+  it("adds competitive weekly totals without inventing a winner on ties", () => {
+    const recap = recapOf([
+      run("z1", "zack", "2026-08-11", { distanceMiles: 4, durationSeconds: 2400 }),
+      run("z2", "zack", "2026-08-13", { distanceMiles: 4, durationSeconds: 2300 }),
+      run("z3", "zack", "2026-08-15", { distanceMiles: 2, durationSeconds: 1400 }),
+      run("d1", "drew", "2026-08-12", { distanceMiles: 9, durationSeconds: 5200 }),
+      run("d2", "drew", "2026-08-14", { distanceMiles: 5, durationSeconds: 3200 }),
+    ]);
+    const items = beat(recap!.beats, "performances")!.items;
+
+    expect(items.find((item) => item.kind === "mostMiles")).toMatchObject({
+      value: 14,
+      runner: { displayName: "Drew" },
+    });
+    expect(items.find((item) => item.kind === "mostRuns")).toMatchObject({
+      value: 3,
+      runner: { displayName: "Zack" },
+    });
+    expect(items.find((item) => item.kind === "mostTimeRunning")).toMatchObject({
+      value: 8400,
+      runner: { displayName: "Drew" },
+    });
+  });
+
+  it("compares each runner with their own prior-week mileage", () => {
+    const recap = recapOf([
+      run("z-now", "zack", "2026-08-12", { distanceMiles: 12, durationSeconds: 6000 }),
+      run("d-now", "drew", "2026-08-13", { distanceMiles: 15, durationSeconds: 7600 }),
+      run("z-prev", "zack", "2026-08-05", { distanceMiles: 5, durationSeconds: 2500 }),
+      run("d-prev", "drew", "2026-08-06", { distanceMiles: 12, durationSeconds: 6200 }),
+    ]);
+    expect(
+      beat(recap!.beats, "performances")!.items.find(
+        (item) => item.kind === "biggestMileageIncrease",
+      ),
+    ).toMatchObject({
+      value: 7,
+      runner: { displayName: "Zack" },
+      localDate: null,
+    });
+  });
+
+  it("keeps crew-day facts alongside the individual competition", () => {
     const recap = recapOf([
       run("big", "drew", "2026-08-12", { distanceMiles: 14, durationSeconds: 7000, best5kSeconds: 1400 }),
       run("a", "zack", "2026-08-13", { distanceMiles: 3, durationSeconds: 1700 }),
       run("b", "drew", "2026-08-13", { distanceMiles: 3, durationSeconds: 1750 }),
       run("c", "zack", "2026-08-13", { distanceMiles: 2.5, durationSeconds: 1500 }),
     ]);
-    expect(beat(recap!.beats, "performances")!.items.map((item) => item.kind)).toEqual([
-      "best5k",
-      "bestPace",
-      "longestRun",
-      "biggestCrewDay",
-    ]);
+    const kinds = beat(recap!.beats, "performances")!.items.map((item) => item.kind);
+    expect(kinds).toContain("biggestCrewDay");
+    expect(kinds).toContain("mostRunnersDay");
+    expect(kinds).not.toContain("mostActiveDay");
   });
 
-  it("adds the busiest day only when a different day holds it", () => {
-    // Thursday covers the most ground; Friday holds the most runs. With no
-    // verified 5K in the week there is a fourth slot for the busiest day.
-    const split = recapOf([
-      run("big", "drew", "2026-08-13", { distanceMiles: 14, durationSeconds: 7000 }),
-      run("a", "zack", "2026-08-14", { distanceMiles: 3, durationSeconds: 1700 }),
-      run("b", "drew", "2026-08-14", { distanceMiles: 3, durationSeconds: 1750 }),
-      run("c", "zack", "2026-08-14", { distanceMiles: 2.5, durationSeconds: 1500 }),
-    ]);
-    const items = beat(split!.beats, "performances")!.items;
-    expect(items.map((item) => item.kind)).toEqual([
-      "bestPace",
-      "longestRun",
-      "biggestCrewDay",
-      "mostActiveDay",
-    ]);
-    expect(items[2].localDate).toBe("2026-08-13");
-    expect(items[3]).toMatchObject({ value: 3, localDate: "2026-08-14", runner: null });
-
-    // When one day is both, its own line already carries the run count.
-    const same = recapOf([
-      run("a", "zack", "2026-08-14", { distanceMiles: 6, durationSeconds: 3000 }),
-      run("b", "drew", "2026-08-14", { distanceMiles: 5, durationSeconds: 2600 }),
-      run("c", "zack", "2026-08-12", { distanceMiles: 3, durationSeconds: 1700 }),
+  it("names the day with the most distinct runners, not the most raw activities", () => {
+    const recap = recapOf([
+      // Zack runs twice Thursday; that is still one runner.
+      run("za", "zack", "2026-08-13", { distanceMiles: 5, durationSeconds: 2500 }),
+      run("zb", "zack", "2026-08-13", { distanceMiles: 2, durationSeconds: 1200 }),
+      // Two different runners show up Friday.
+      run("zc", "zack", "2026-08-14", { distanceMiles: 3, durationSeconds: 1700 }),
+      run("d", "drew", "2026-08-14", { distanceMiles: 3, durationSeconds: 1750 }),
     ]);
     expect(
-      beat(same!.beats, "performances")!.items.some((item) => item.kind === "mostActiveDay"),
-    ).toBe(false);
+      beat(recap!.beats, "performances")!.items.find((item) => item.kind === "mostRunnersDay"),
+    ).toMatchObject({ value: 2, localDate: "2026-08-14", runner: null });
   });
 
   it("qualifies the best pace exactly as the Fastest Avg. Pace award does", () => {
@@ -319,13 +354,13 @@ describe("crew week recap", () => {
     expect(pace).toMatchObject({ runId: "long", value: 500 });
   });
 
-  it("never claims a busiest day from a week of single-run days", () => {
+  it("never claims a most-runners day from single-run days", () => {
     const recap = recapOf([
       run("a", "zack", "2026-08-12", { distanceMiles: 3 }),
       run("b", "drew", "2026-08-13", { distanceMiles: 4 }),
     ]);
     expect(
-      beat(recap!.beats, "performances")!.items.some((item) => item.kind === "mostActiveDay"),
+      beat(recap!.beats, "performances")!.items.some((item) => item.kind === "mostRunnersDay"),
     ).toBe(false);
   });
 
@@ -531,6 +566,8 @@ describe("the week's fastest 5K", () => {
     expect(items.map((item) => item.kind)).toEqual([
       "bestPace",
       "longestRun",
+      "mostMiles",
+      "mostTimeRunning",
       "biggestCrewDay",
     ]);
   });
