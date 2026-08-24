@@ -93,10 +93,27 @@ export interface TrainingPlan {
   notes: string[];
 }
 
+/** A race outcome the runner chose. External assistants may read but not edit it. */
+export type RaceGoal =
+  | { type: "none" }
+  | { type: "finish" }
+  | { type: "target-finish-time"; targetSeconds: number }
+  | { type: "target-pace"; secondsPerMile: number };
+
+/** How STACK obtained the frozen baseline for a plan. */
+export type PlanBaselineOrigin = "created" | "adopted-current";
+
 /** Immutable race intent retained after it stops being the active plan. */
 export interface ArchivedTrainingPlan {
   id: string;
+  /** The final current schedule when the plan left the active slot. */
   plan: TrainingPlan;
+  /** The schedule before any tracked adaptation. */
+  baselinePlan: TrainingPlan;
+  baselineOrigin: PlanBaselineOrigin;
+  raceGoal: RaceGoal;
+  /** Last positive revision of the current schedule. */
+  finalRevision: number;
   raceSetup: RacePlanSetup | null;
   /** Explicit run-to-workout relationships captured when this plan ended. */
   runLinks: Record<string, string>;
@@ -173,10 +190,18 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 10;
+  schemaVersion: 11;
   settings: AppSettings;
   /** The runner's one active race plan, or null while running between races. */
   plan: TrainingPlan | null;
+  /** Frozen starting intent for the active plan; null only when no plan is active. */
+  planBaseline: TrainingPlan | null;
+  /** Positive current-plan revision used by later stale-write protection. */
+  planRevision: number | null;
+  /** Whether the baseline was created here or anchored from an existing plan. */
+  planBaselineOrigin: PlanBaselineOrigin | null;
+  /** Explicit race outcome for the active plan; null only without an active plan. */
+  raceGoal: RaceGoal | null;
   /** Previous race intent, newest first and never inferred from actual runs. */
   planHistory: ArchivedTrainingPlan[];
   runLogs: RunLog[];

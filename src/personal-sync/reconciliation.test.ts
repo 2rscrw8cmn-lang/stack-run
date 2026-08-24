@@ -65,6 +65,10 @@ describe("first-device canonicalization", () => {
       [{
         id: "archive-1",
         plan: seed.plan!,
+        baselinePlan: seed.plan!,
+        baselineOrigin: "created",
+        raceGoal: { type: "none" },
+        finalRevision: 1,
         raceSetup: seed.raceSetup,
         runLinks: { "legacy-b": "workout-002" },
         archivedAt: "2026-12-06T12:00:00.000Z",
@@ -192,6 +196,10 @@ describe("canonical hydration and account-wide Intervals state", () => {
       training: {
         settings: seed.settings,
         plan: { ...seed.plan, name: "Cloud plan" },
+        planBaseline: seed.planBaseline,
+        planRevision: 2,
+        planBaselineOrigin: seed.planBaselineOrigin,
+        raceGoal: seed.raceGoal,
         planHistory: seed.planHistory,
         raceSetup: seed.raceSetup,
         availability: seed.availability,

@@ -156,6 +156,10 @@ describe("earnedBlocks", () => {
     const archivedPlan: ArchivedTrainingPlan = {
       id: "archive-1",
       plan,
+      baselinePlan: plan,
+      baselineOrigin: "created",
+      raceGoal: { type: "none" },
+      finalRevision: 1,
       raceSetup: null,
       runLinks: { [runLog.id]: "workout-002" },
       archivedAt: "2026-12-07T12:00:00.000Z",

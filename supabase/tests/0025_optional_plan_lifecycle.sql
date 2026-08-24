@@ -37,7 +37,8 @@ begin
     where user_id = auth.uid()
       and plan is null
       and plan_history = '[]'::jsonb
-      and cloud_schema_version = 2
+      -- The current trigger upgrades rolling v2 writes to cloud schema 3.
+      and cloud_schema_version = 3
   ) then
     raise exception 'no-plan initialization did not round-trip';
   end if;

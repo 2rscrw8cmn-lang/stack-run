@@ -1,8 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isLocalDateString } from "../domain/dates";
-import type { RunActivityType, RunSource, WorkoutType } from "../domain/types";
+import type {
+  RaceGoal,
+  RunActivityType,
+  RunSource,
+  WorkoutType,
+} from "../domain/types";
 
-export const EXTERNAL_TRAINING_CONTEXT_SCHEMA_VERSION = 1 as const;
+export const EXTERNAL_TRAINING_CONTEXT_SCHEMA_VERSION = 2 as const;
 
 export type ExternalPlanStatus =
   | "active"
@@ -30,11 +35,15 @@ export interface ExternalActivePlan {
     date: string;
     distanceMiles: number;
   };
+  revision: number;
+  baselineOrigin: "created" | "adopted-current";
+  raceGoal: RaceGoal;
 }
 
 export interface ExternalTrainingPlanContext {
   status: ExternalPlanStatus;
   activePlan: ExternalActivePlan | null;
+  baselineWorkouts: ExternalTrainingWorkout[];
   currentAndFutureWorkouts: ExternalTrainingWorkout[];
 }
 
@@ -178,6 +187,12 @@ function parseActivePlan(value: unknown): ExternalActivePlan | null {
   const raceName = string(race.name);
   const raceDate = string(race.date);
   const distanceMiles = number(race.distanceMiles);
+  const revision = number(item.revision);
+  const baselineOrigin = oneOf(item.baselineOrigin, [
+    "created",
+    "adopted-current",
+  ] as const);
+  const raceGoal = parseRaceGoal(item.raceGoal);
   if (
     !id ||
     !name ||
@@ -188,7 +203,8 @@ function parseActivePlan(value: unknown): ExternalActivePlan | null {
     !raceName ||
     !raceDate ||
     !isLocalDateString(raceDate) ||
-    distanceMiles === null
+    distanceMiles === null || revision === null || !Number.isInteger(revision) ||
+    revision < 1 || !baselineOrigin || !raceGoal
   ) {
     return null;
   }
@@ -198,25 +214,52 @@ function parseActivePlan(value: unknown): ExternalActivePlan | null {
     startDate,
     endDate,
     race: { name: raceName, date: raceDate, distanceMiles },
+    revision,
+    baselineOrigin,
+    raceGoal,
   };
+}
+
+function parseRaceGoal(value: unknown): RaceGoal | null {
+  const goal = record(value);
+  if (!goal) return null;
+  const keys = Object.keys(goal);
+  if ((goal.type === "none" || goal.type === "finish") && keys.length === 1) {
+    return { type: goal.type };
+  }
+  if (goal.type === "target-finish-time" && keys.length === 2) {
+    const targetSeconds = number(goal.targetSeconds);
+    return targetSeconds !== null && Number.isSafeInteger(targetSeconds) && targetSeconds > 0
+      ? { type: "target-finish-time", targetSeconds } : null;
+  }
+  if (goal.type === "target-pace" && keys.length === 2) {
+    const secondsPerMile = number(goal.secondsPerMile);
+    return secondsPerMile !== null && Number.isSafeInteger(secondsPerMile) && secondsPerMile > 0
+      ? { type: "target-pace", secondsPerMile } : null;
+  }
+  return null;
 }
 
 function parsePlan(value: unknown): ExternalTrainingPlanContext | null {
   const item = record(value);
-  if (!item || !Array.isArray(item.currentAndFutureWorkouts)) return null;
+  if (!item || !Array.isArray(item.baselineWorkouts) ||
+      !Array.isArray(item.currentAndFutureWorkouts)) return null;
   const status = oneOf(item.status, [
     "active",
     "no-active-plan",
     "account-not-initialized",
   ] as const);
   const workouts = item.currentAndFutureWorkouts.map(parseWorkout);
-  if (!status || workouts.some((workout) => workout === null)) return null;
+  const baselineWorkouts = item.baselineWorkouts.map(parseWorkout);
+  if (!status || workouts.some((workout) => workout === null) ||
+      baselineWorkouts.some((workout) => workout === null)) return null;
   const activePlan = item.activePlan === null ? null : parseActivePlan(item.activePlan);
   if (item.activePlan !== null && activePlan === null) return null;
   if ((status === "active") !== (activePlan !== null)) return null;
   return {
     status,
     activePlan,
+    baselineWorkouts: baselineWorkouts as ExternalTrainingWorkout[],
     currentAndFutureWorkouts: workouts as ExternalTrainingWorkout[],
   };
 }
@@ -342,7 +385,7 @@ export function parseExternalTrainingContext(value: unknown): ExternalTrainingCo
     !Array.isArray(adjustmentHistory.entries) ||
     adjustmentHistory.entries.length !== 0
   ) {
-    throw new Error("External training context did not match schema version 1.");
+    throw new Error("External training context did not match schema version 2.");
   }
   const status = oneOf(recentHistory.status, ["available", "empty"] as const);
   const accountStatus = oneOf(context.accountStatus, ["initialized", "not-initialized"] as const);
@@ -370,7 +413,7 @@ export function parseExternalTrainingContext(value: unknown): ExternalTrainingCo
     runs.some((run) => run === null) ||
     (status === "empty") !== (runs.length === 0)
   ) {
-    throw new Error("External training context did not match schema version 1.");
+    throw new Error("External training context did not match schema version 2.");
   }
   return {
     schemaVersion: EXTERNAL_TRAINING_CONTEXT_SCHEMA_VERSION,
@@ -407,7 +450,7 @@ export async function readExternalTrainingContext(
   if (!isLocalDateString(asOfDate)) {
     throw new Error("External training context requires a valid local as-of date.");
   }
-  const { data, error } = await client.rpc("read_external_training_context", {
+  const { data, error } = await client.rpc("read_external_training_context_v2", {
     p_as_of_date: asOfDate,
   });
   if (error) throw new Error(error.message);

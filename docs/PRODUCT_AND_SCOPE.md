@@ -126,6 +126,14 @@ Plan is race-specific intent, not the authoritative record of whether the runner
 
 The current product carries zero or one active `TrainingPlan`. Completed or
 replaced plans are immutable historical intent snapshots in `planHistory`.
+For an active plan, STACK retains the frozen baseline, the current editable
+schedule, a positive current revision, and the baseline's origin. Existing
+plans adopted during migration use their current visible schedule as the
+baseline rather than inventing a prior version.
+
+Race intent is structured as one explicit goal: no performance goal, finish,
+target finish time, or target pace. The goal is not inferred from workouts or
+actual history, and an external assistant has read-only access to it.
 
 Plan separates:
 
@@ -192,7 +200,7 @@ Personal use remains available while signed out.
 
 ### Signed out
 
-- schema-9 personal AppState is local browser state;
+- schema-11 personal AppState is local browser state;
 - no account is required for the core personal product.
 
 ### Signed in
@@ -350,11 +358,12 @@ Runs chronology can therefore show a source-only Cross Training session whether 
 
 ## External training integration
 
-The first Evolution 2.10 boundary is read-only. A signed-in runner's chosen
+The Evolution 2.10 boundary is read-only. A signed-in runner's chosen
 external assistant may eventually receive a provider-neutral snapshot of that
-runner's active plan, current/future workouts, bounded canonical accepted-run
-history, Personal Build lifecycle and already-authorized self Crew
-contributions. STACK performs no model inference and carries no model API key.
+runner's active plan, frozen baseline and current/future workouts, plan
+revision and structured race goal, bounded canonical accepted-run history,
+Personal Build lifecycle and already-authorized self Crew contributions. STACK
+performs no model inference and carries no model API key.
 
 The read is bound to the authenticated account and accepts no subject user id.
 It does not expose another runner's data, raw provider payloads, credentials,
@@ -364,9 +373,9 @@ explicitly reports that source-only activities are not included rather than
 claiming completeness.
 
 This boundary grants no mutation authority. External auth/scopes/transport,
-baseline/current plan truth, atomic future-plan adjustments, audit/undo and UI
-provenance remain separate later slices. Signed-out/local-only STACK and normal
-signed-in use have no runtime dependency on the integration.
+atomic future-plan adjustments, audit/undo and UI provenance remain separate
+later slices. Signed-out/local-only STACK and normal signed-in use have no
+runtime dependency on the integration.
 
 See `EXTERNAL_TRAINING_INTEGRATION.md`.
 
@@ -374,7 +383,7 @@ See `EXTERNAL_TRAINING_INTEGRATION.md`.
 
 Current persistence is deliberately split by responsibility:
 
-- **AppState/cache** — schema-9 personal configuration, plan, accepted runs and placement state;
+- **AppState/cache** — schema-11 personal configuration, plan truth, accepted runs and placement state;
 - **private account tables** — canonical signed-in personal training/runs/Build/Intervals review state;
 - **historical activity repository** — normalized source history outside AppState;
 - **pending Intervals repository** — unresolved source-review queue outside AppState;

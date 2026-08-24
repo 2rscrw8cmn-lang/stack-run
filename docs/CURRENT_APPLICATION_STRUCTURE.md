@@ -41,12 +41,13 @@ There is no router framework. Primary navigation remains local application state
 
 ## 2. Personal state model
 
-Core accepted/owned personal state is schema 10.
+Core accepted/owned personal state is schema 11.
 
 Conceptually, `AppState` includes:
 
 - settings;
-- zero or one active `TrainingPlan`, plus immutable archived plan snapshots;
+- zero or one active `TrainingPlan`, its frozen baseline/revision/origin/goal,
+  plus immutable archived plan snapshots;
 - accepted/manual `RunLog[]`;
 - Personal Build placements;
 - availability calendar;
@@ -303,6 +304,13 @@ Primary implementation:
 
 The current Plan architecture supports zero or one active `TrainingPlan` and a
 read-only `ArchivedTrainingPlan[]` history.
+
+Active intent has four durable companions: immutable `planBaseline`, positive
+`planRevision`, `planBaselineOrigin`, and structured `raceGoal`. Plan edits
+replace only the current schedule and advance its revision. Finishing or
+replacing a plan moves the final schedule plus baseline, origin, goal and final
+revision into the immutable archive. `RunLog[]` remains the separate factual
+actual layer.
 
 Plan shows:
 
@@ -614,20 +622,21 @@ Use these references for deeper work:
 
 Historical records remain valuable for rationale. They do not supersede the current product/architecture references above when describing what is now on `main`.
 
-## 23. External training context (Evolution 2.10A)
+## 23. External training context (Evolution 2.10A–B)
 
 The first external-assistant integration boundary is an authenticated,
 provider-neutral read only:
 
-- `public.read_external_training_context(date)` assembles the current session's
-  narrow account-cloud context as a `SECURITY INVOKER` function;
+- `public.read_external_training_context_v2(date)` assembles the current
+  session's narrow account-cloud context as a `SECURITY INVOKER` function;
 - `src/integrations/externalTrainingContext.ts` defines and fail-closed parses
-  schema version 1;
+  schema version 2;
 - the RPC accepts a runner-local as-of date but no user/subject id;
 - existing personal-table RLS and Crew membership RLS remain authoritative;
 - Crew rows are additionally restricted to the caller's own projected runs.
 
-The context includes active/no-plan state, current/future workouts, up to 100
+The context includes active/no-plan state, active revision, baseline origin,
+structured race goal, frozen-baseline and current/future workouts, up to 100
 canonical accepted runs over 90 local dates, Personal Build lifecycle, and the
 caller's own authorized Crew contribution lifecycle. It explicitly excludes
 raw source payloads/identity, credentials, notes, effort, teammate facts and
@@ -640,6 +649,8 @@ storage was added.
 
 There is no app-shell caller, external OAuth/transport, plan mutation, model
 call or assistant UI in this slice. Those remain later issues under #177, so an
-integration outage cannot affect ordinary STACK behavior.
+integration outage cannot affect ordinary STACK behavior. The previous v1 read
+and v1/v2 personal-sync writers remain available for rolling clients; database
+triggers preserve schema-3 plan truth when those clients write.
 
 See `docs/EXTERNAL_TRAINING_INTEGRATION.md`.

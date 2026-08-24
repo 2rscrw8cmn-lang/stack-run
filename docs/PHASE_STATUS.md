@@ -24,11 +24,29 @@
 | 11 | Training Trends foundation | Complete | First trend foundation. |
 | 12 | Wellness / Recovery Context | Deferred / intentionally skipped | Not active. |
 
-Current personal AppState: **schema 10**.
+Current personal AppState: **schema 11**.
+
+## Evolution 2.10B — Structured plan truth (issue #179)
+
+Status: **Implemented / PR review pending.**
+
+- Active intent now carries a frozen baseline, current schedule, positive
+  revision, baseline origin and structured race goal (`none`, `finish`, target
+  finish time, or target pace); factual `RunLog` history remains separate.
+- Local schema 11 and private cloud schema 3 adopt existing visible plans and
+  archives at revision 1 without fabricating a prior schedule.
+- Plan edits advance only current truth. Finish/replace archives baseline,
+  goal and final revision while preserving actual history and Personal Build.
+- The authenticated external context is schema 2 and reads baseline/current
+  workouts, revision and goal without adding mutation authority.
+- Transactional verification proves v1/v2 rolling-client preservation,
+  cross-account isolation, anonymous denial and unchanged factual runs.
+
+See `docs/PLAN_TRUTH.md` and `docs/EXTERNAL_TRAINING_INTEGRATION.md`.
 
 ## Evolution 2.10A — External training context (issue #178)
 
-Status: **Implemented / PR review pending.**
+Status: **Merged into the Evolution 2.10 integration branch.**
 
 - Added a versioned provider-neutral read contract for the authenticated
   runner's active/no-plan state, current/future workouts, bounded recent
@@ -41,7 +59,8 @@ Status: **Implemented / PR review pending.**
 - Account-cloud history is explicitly `partial`: historical-only source rows
   remain device-local and are not newly persisted for assistant reasoning.
 - No external auth/transport, model call, plan mutation, adjustment ledger or
-  assistant UI exists in this slice. Those remain issues #179–#183.
+  assistant UI exists in this slice. Those remain issues #180–#183 after the
+  structured truth foundation in #179.
 - Transactional verification `0027_external_training_context_read.sql` proves
   cross-user isolation, anonymous denial and truthful missing states; the
   typed adapter fails closed on schema drift.

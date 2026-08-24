@@ -11,6 +11,12 @@ import type {
   RunSource,
   TrainingPlan,
 } from "../domain/types";
+import {
+  isPlanBaselineOrigin,
+  isPlanRevision,
+  isRaceGoal,
+  NO_RACE_GOAL,
+} from "../domain/planTruth";
 import type {
   PersonalCloudRun,
   PersonalCloudSnapshot,
@@ -66,6 +72,15 @@ function missingPlanHistoryColumn(error: CloudError | null): boolean {
   );
 }
 
+function missingPlanTruthColumn(error: CloudError | null): boolean {
+  const message = errorMessage(error)?.toLowerCase() ?? "";
+  return (
+    (error?.code === "42703" || error?.code === "PGRST204") &&
+    ["plan_baseline", "plan_revision", "plan_baseline_origin", "race_goal"]
+      .some((column) => message.includes(column))
+  );
+}
+
 function missingOptionalPlanRpc(error: CloudError | null, rpc: string): boolean {
   const message = errorMessage(error)?.toLowerCase() ?? "";
   return (
@@ -76,6 +91,18 @@ function missingOptionalPlanRpc(error: CloudError | null, rpc: string): boolean 
 
 function assertLegacyTrainingCompatible(training: PersonalTrainingDocument): void {
   if (training.plan === null || training.planHistory.length > 0) {
+    throw new PersonalCloudUpgradeRequiredError();
+  }
+}
+
+function assertPlanTruthV2Compatible(training: PersonalTrainingDocument): void {
+  if (training.plan === null) return;
+  if (
+    training.planRevision !== 1 ||
+    training.planBaselineOrigin !== "adopted-current" ||
+    training.raceGoal?.type !== "none" ||
+    JSON.stringify(training.planBaseline) !== JSON.stringify(training.plan)
+  ) {
     throw new PersonalCloudUpgradeRequiredError();
   }
 }
@@ -285,6 +312,11 @@ function isArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
     candidate &&
     string(candidate.id) &&
     isPlan(candidate.plan) &&
+    isPlan(candidate.baselinePlan) &&
+    record(candidate.plan)?.id === record(candidate.baselinePlan)?.id &&
+    isPlanBaselineOrigin(candidate.baselineOrigin) &&
+    isRaceGoal(candidate.raceGoal) &&
+    isPlanRevision(candidate.finalRevision) &&
     (candidate.raceSetup === null || record(candidate.raceSetup)) &&
     runLinks && Object.entries(runLinks).every(([runId, workoutId]) =>
       runId.length > 0 && string(workoutId)
@@ -294,20 +326,56 @@ function isArchivedPlan(value: unknown): value is ArchivedTrainingPlan {
   );
 }
 
-function parseTrainingRow(value: unknown, legacy = false): {
+function upgradeArchivedPlan(value: unknown): ArchivedTrainingPlan | null {
+  if (isArchivedPlan(value)) return value;
+  const candidate = record(value);
+  const runLinks = record(candidate?.runLinks);
+  if (!candidate || !string(candidate.id) || !isPlan(candidate.plan) ||
+      (candidate.raceSetup !== null && !record(candidate.raceSetup)) ||
+      !runLinks || Object.entries(runLinks).some(([runId, workoutId]) =>
+        runId.length === 0 || !string(workoutId)
+      ) || !string(candidate.archivedAt) ||
+      !Number.isFinite(Date.parse(String(candidate.archivedAt)))) return null;
+  return {
+    id: candidate.id as string,
+    plan: candidate.plan,
+    baselinePlan: candidate.plan,
+    baselineOrigin: "adopted-current",
+    raceGoal: NO_RACE_GOAL,
+    finalRevision: 1,
+    raceSetup: (candidate.raceSetup ?? null) as ArchivedTrainingPlan["raceSetup"],
+    runLinks: runLinks as Record<string, string>,
+    archivedAt: candidate.archivedAt as string,
+  };
+}
+
+function parseTrainingRow(value: unknown, cloudSchema: 1 | 2 | 3 = 3): {
   document: PersonalTrainingDocument;
   revision: number;
 } {
   const row = record(value);
   const rowRevision = revision(row?.revision);
-  const planHistory = legacy && row?.plan_history === undefined
-    ? []
-    : row?.plan_history;
+  const rawPlanHistory = cloudSchema === 1 && row?.plan_history === undefined
+    ? [] : row?.plan_history;
+  const planHistory = Array.isArray(rawPlanHistory)
+    ? rawPlanHistory.map(upgradeArchivedPlan) : null;
+  const plan = row?.plan;
+  const legacyPlanTruth = cloudSchema < 3;
+  const planBaseline = legacyPlanTruth ? plan : row?.plan_baseline;
+  const planRevision = legacyPlanTruth ? (plan === null ? null : 1) : row?.plan_revision;
+  const planBaselineOrigin = legacyPlanTruth
+    ? (plan === null ? null : "adopted-current") : row?.plan_baseline_origin;
+  const raceGoal = legacyPlanTruth ? (plan === null ? null : NO_RACE_GOAL) : row?.race_goal;
   if (
     !row || !rowRevision || !isSettings(row.settings) ||
-    (row.plan !== null && !isPlan(row.plan)) ||
-    !Array.isArray(planHistory) ||
-    planHistory.some((entry) => !isArchivedPlan(entry))
+    (plan !== null && !isPlan(plan)) ||
+    !planHistory || planHistory.some((entry) => entry === null) ||
+    (plan === null && (planBaseline !== null || planRevision !== null ||
+      planBaselineOrigin !== null || raceGoal !== null)) ||
+    (plan !== null && (!isPlan(planBaseline) ||
+      record(plan)?.id !== record(planBaseline)?.id ||
+      !isPlanRevision(planRevision) ||
+      !isPlanBaselineOrigin(planBaselineOrigin) || !isRaceGoal(raceGoal)))
   ) {
     throw new Error("Cloud training data is malformed.");
   }
@@ -339,8 +407,13 @@ function parseTrainingRow(value: unknown, legacy = false): {
     revision: rowRevision,
     document: {
       settings: row.settings,
-      plan: row.plan,
-      planHistory,
+      plan: plan as PersonalTrainingDocument["plan"],
+      planBaseline: planBaseline as PersonalTrainingDocument["planBaseline"],
+      planRevision: planRevision as PersonalTrainingDocument["planRevision"],
+      planBaselineOrigin:
+        planBaselineOrigin as PersonalTrainingDocument["planBaselineOrigin"],
+      raceGoal: raceGoal as PersonalTrainingDocument["raceGoal"],
+      planHistory: planHistory as ArchivedTrainingPlan[],
       raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
       availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
       runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],
@@ -450,13 +523,20 @@ function parseIntervalsRow(value: unknown): {
 export async function loadPersonalCloudSnapshot(
   client: SupabaseClient,
 ): Promise<PersonalCloudSnapshot | null> {
-  let legacy = false;
+  let cloudSchema: 1 | 2 | 3 = 3;
   let trainingResult = await client
     .from("personal_training_state")
-    .select("settings,plan,plan_history,race_setup,availability,run_days,cross_training_days,revision,account_generation")
+    .select("settings,plan,plan_baseline,plan_revision,plan_baseline_origin,race_goal,plan_history,race_setup,availability,run_days,cross_training_days,revision,account_generation")
     .maybeSingle();
+  if (trainingResult.error && missingPlanTruthColumn(trainingResult.error)) {
+    cloudSchema = 2;
+    trainingResult = await client
+      .from("personal_training_state")
+      .select("settings,plan,plan_history,race_setup,availability,run_days,cross_training_days,revision,account_generation")
+      .maybeSingle();
+  }
   if (trainingResult.error && missingPlanHistoryColumn(trainingResult.error)) {
-    legacy = true;
+    cloudSchema = 1;
     trainingResult = await client
       .from("personal_training_state")
       .select("settings,plan,race_setup,availability,run_days,cross_training_days,revision,account_generation")
@@ -477,7 +557,7 @@ export async function loadPersonalCloudSnapshot(
   if (buildResult.error) throw new Error(buildResult.error.message);
   if (intervalsResult.error) throw new Error(intervalsResult.error.message);
 
-  const training = parseTrainingRow(trainingResult.data, legacy);
+  const training = parseTrainingRow(trainingResult.data, cloudSchema);
   const build = parseBuildRow(buildResult.data);
   const intervals = parseIntervalsRow(intervalsResult.data);
   const accountGeneration = revision(trainingResult.data.account_generation);
@@ -505,12 +585,21 @@ export async function initializePersonalCloud(
     intervals: PersonalIntervalsDocument;
   },
 ): Promise<void> {
-  let result = await client.rpc("initialize_personal_stack_v2", {
+  let result = await client.rpc("initialize_personal_stack_v3", {
     p_training: input.training,
     p_runs: input.runs,
     p_build_placements: input.placements,
     p_intervals: input.intervals,
   });
+  if (result.error && missingOptionalPlanRpc(result.error, "initialize_personal_stack_v3")) {
+    assertPlanTruthV2Compatible(input.training);
+    result = await client.rpc("initialize_personal_stack_v2", {
+      p_training: input.training,
+      p_runs: input.runs,
+      p_build_placements: input.placements,
+      p_intervals: input.intervals,
+    });
+  }
   if (result.error && missingOptionalPlanRpc(result.error, "initialize_personal_stack_v2")) {
     assertLegacyTrainingCompatible(input.training);
     result = await client.rpc("initialize_personal_stack", {
@@ -529,11 +618,19 @@ export async function savePersonalTrainingDocument(
   expectedRevision: number,
   training: PersonalTrainingDocument,
 ): Promise<number> {
-  let result = await client.rpc("save_personal_training_state_v2", {
+  let result = await client.rpc("save_personal_training_state_v3", {
     p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
     p_training: training,
   });
+  if (result.error && missingOptionalPlanRpc(result.error, "save_personal_training_state_v3")) {
+    assertPlanTruthV2Compatible(training);
+    result = await client.rpc("save_personal_training_state_v2", {
+      p_expected_generation: accountGeneration,
+      p_expected_revision: expectedRevision,
+      p_training: training,
+    });
+  }
   if (result.error && missingOptionalPlanRpc(result.error, "save_personal_training_state_v2")) {
     assertLegacyTrainingCompatible(training);
     result = await client.rpc("save_personal_training_state", {
@@ -631,11 +728,19 @@ export async function resetPersonalCloud(
   training: PersonalTrainingDocument,
   intervals: PersonalIntervalsDocument,
 ): Promise<number> {
-  let result = await client.rpc("reset_personal_stack_v2", {
+  let result = await client.rpc("reset_personal_stack_v3", {
     p_expected_generation: accountGeneration,
     p_training: training,
     p_intervals: intervals,
   });
+  if (result.error && missingOptionalPlanRpc(result.error, "reset_personal_stack_v3")) {
+    assertPlanTruthV2Compatible(training);
+    result = await client.rpc("reset_personal_stack_v2", {
+      p_expected_generation: accountGeneration,
+      p_training: training,
+      p_intervals: intervals,
+    });
+  }
   if (result.error && missingOptionalPlanRpc(result.error, "reset_personal_stack_v2")) {
     assertLegacyTrainingCompatible(training);
     result = await client.rpc("reset_personal_stack", {

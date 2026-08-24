@@ -4,9 +4,9 @@
 
 Issue #50 / DATA-1 supersedes the former signed-in local-only boundary.
 
-- Signed out, STACK remains a versioned schema-9 JSON object in browser
+- Signed out, STACK remains a versioned schema-11 JSON object in browser
   `localStorage` at `stack.app-state.v1`.
-- Signed in, the account's private Supabase rows are canonical and schema-9 is
+- Signed in, the account's private Supabase rows are canonical and schema-11 is
   an account-scoped cache/offline working copy at
   `stack.app-state.account.v1.<user-id>`.
 - Cloud storage is normalized into `personal_training_state`,
@@ -23,22 +23,26 @@ Key:
 stack.app-state.v1
 ```
 
-Current schema: **10**.
+Current schema: **11**.
 
 UI components never read/write the AppState storage slot directly. Personal state mutations go through `src/storage/appStateRepository.ts`.
 
 Race Crew still reads only its narrow safe projection. Crew members and owners
 cannot read the private personal tables.
 
-## Current schema-10 shape
+## Current schema-11 shape
 
 Conceptually:
 
 ```ts
 export interface AppState {
-  schemaVersion: 10;
+  schemaVersion: 11;
   settings: AppSettings;
   plan: TrainingPlan | null;
+  planBaseline: TrainingPlan | null;
+  planRevision: number | null;
+  planBaselineOrigin: "created" | "adopted-current" | null;
+  raceGoal: RaceGoal | null;
   planHistory: ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
@@ -51,6 +55,13 @@ export interface AppState {
 ```
 
 RunLog remains the one actual-activity model.
+
+The active plan lifecycle keeps `plan`, `planBaseline`, `planRevision`,
+`planBaselineOrigin`, and `raceGoal` all present or all null. Baselines never
+change during ordinary plan edits; current edits advance the positive revision.
+Schema-10 migration anchors the visible current plan as an
+`adopted-current` baseline and uses revision 1, including for archived plans,
+so no unavailable historical version is fabricated.
 
 ```ts
 export interface RunLog {
@@ -283,9 +294,15 @@ Account session and personal AppState are independent:
 
 ## Race Crew server storage
 
-### External training-context read (Evolution 2.10A)
+### Plan truth and external training-context read (Evolution 2.10A–B)
 
-`public.read_external_training_context(date)` is a read-only projection over
+`personal_training_state` cloud schema 3 adds `plan_baseline`,
+`plan_revision`, `plan_baseline_origin`, and `race_goal`. The v3
+initialize/save/reset RPCs write them with the current plan. A forward trigger
+upgrades existing rows and preserves this truth for rolling v1/v2 clients;
+legacy archive entries are enriched before active truth is cleared.
+
+`public.read_external_training_context_v2(date)` is a read-only projection over
 the existing canonical personal and Crew tables. It creates no table, cache,
 source-history archive or assistant record.
 
@@ -565,7 +582,7 @@ There is **no AppState migration** required simply because Supabase accounts arr
 
 On the current owner's device:
 
-1. existing schema-9 AppState stays exactly where it is;
+1. existing schema-11 AppState stays exactly where it is;
 2. user creates/signs into optional STACK account;
 3. user creates/joins a crew;
 4. safe projection is derived from local state;

@@ -432,13 +432,17 @@ describe("savePlan", () => {
     const state = createSeededAppState();
     const edited = moveWorkout(state.plan, "workout-002", "2026-08-05");
 
-    savePlan(state, edited);
+    const saved = savePlan(state, edited);
 
     const reloaded = loadAppState();
     const moved = reloaded.plan!.weeks[0].workouts.find(
       (workout) => workout.id === "workout-002",
     );
     expect(moved?.date).toBe("2026-08-05");
+    expect(saved.planRevision).toBe(2);
+    expect(saved.planBaseline).toEqual(state.plan);
+    expect(saved.planBaseline).not.toEqual(saved.plan);
+    expect(saved.planBaselineOrigin).toBe("created");
   });
 
   it("leaves runs and placements attached to the workouts they name", () => {
@@ -512,9 +516,17 @@ describe("finishActivePlan", () => {
     const finished = finishActivePlan(state);
 
     expect(finished.plan).toBeNull();
+    expect(finished.planBaseline).toBeNull();
+    expect(finished.planRevision).toBeNull();
+    expect(finished.planBaselineOrigin).toBeNull();
+    expect(finished.raceGoal).toBeNull();
     expect(finished.raceSetup).toBeNull();
     expect(finished.planHistory).toHaveLength(1);
     expect(finished.planHistory[0].plan.id).toBe("stack-ouc-half-2026");
+    expect(finished.planHistory[0].baselinePlan).toEqual(state.planBaseline);
+    expect(finished.planHistory[0].baselineOrigin).toBe("created");
+    expect(finished.planHistory[0].raceGoal).toEqual({ type: "none" });
+    expect(finished.planHistory[0].finalRevision).toBe(1);
     expect(finished.planHistory[0].runLinks).toEqual({ [runId]: "workout-002" });
     expect(finished.runLogs).toEqual([
       { ...state.runLogs[0], workoutId: null },
@@ -532,13 +544,26 @@ describe("saveGeneratedPlan", () => {
 
     const next = saveGeneratedPlan(
       state,
-      { name: "Replacement", date: "2027-05-01", distance: "half", level: "novice" },
+      {
+        name: "Replacement",
+        date: "2027-05-01",
+        distance: "half",
+        level: "novice",
+      },
       replacement,
       "2026-12-06T12:00:00.000Z",
+      { type: "target-finish-time", targetSeconds: 7_200 },
     );
 
     expect(next.runLogs[0].workoutId).toBeNull();
     expect(next.planHistory[0].runLinks).toEqual({ [runId]: "workout-002" });
+    expect(next.planBaseline).toEqual(replacement);
+    expect(next.planRevision).toBe(1);
+    expect(next.planBaselineOrigin).toBe("created");
+    expect(next.raceGoal).toEqual({
+      type: "target-finish-time",
+      targetSeconds: 7_200,
+    });
   });
 });
 

@@ -129,6 +129,46 @@ describe("migrateAppState from version 9", () => {
   });
 });
 
+describe("migrateAppState from version 10", () => {
+  it("adopts current and archived plans without changing their visible schedule", () => {
+    const seeded = createSeededAppState();
+    const archivedAt = "2026-08-23T12:00:00.000Z";
+    const version10: Record<string, unknown> = {
+      ...seeded,
+      schemaVersion: 10,
+      planHistory: [
+        {
+          id: "archived-plan-1",
+          plan: seeded.plan,
+          raceSetup: seeded.raceSetup,
+          runLinks: {},
+          archivedAt,
+        },
+      ],
+    };
+    delete version10.planBaseline;
+    delete version10.planRevision;
+    delete version10.planBaselineOrigin;
+    delete version10.raceGoal;
+
+    const migrated = migrateAppState(version10);
+
+    expect(migrated.plan).toEqual(seeded.plan);
+    expect(migrated.planBaseline).toEqual(seeded.plan);
+    expect(migrated.planRevision).toBe(1);
+    expect(migrated.planBaselineOrigin).toBe("adopted-current");
+    expect(migrated.raceGoal).toEqual({ type: "none" });
+    expect(migrated.planHistory[0]).toMatchObject({
+      plan: seeded.plan,
+      baselinePlan: seeded.plan,
+      baselineOrigin: "adopted-current",
+      raceGoal: { type: "none" },
+      finalRevision: 1,
+      archivedAt,
+    });
+  });
+});
+
 describe("migrateAppState from version 4", () => {
   it("keeps every run's values, timestamps, and scheduled link", () => {
     const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));

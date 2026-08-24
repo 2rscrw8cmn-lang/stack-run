@@ -887,3 +887,46 @@ checklist are in `docs/CONNECTED_DATA_FIELDS.md`; the storage rule is
 Outstanding owner verification: the pace-curve response shape has not yet been
 checked against a real Intervals-connected run, and until it is, the field stays
 `Expected`.
+
+## D-088 — Plan truth is baseline, current intent, and separate actual history
+
+**Decision**
+
+An active plan owns a frozen baseline schedule, an editable current schedule,
+a positive current revision, a baseline origin, and one structured runner goal.
+The goal is explicitly `none`, `finish`, target finish time in positive integer
+seconds, or target pace in positive integer seconds per mile. It is never
+inferred from workouts or results.
+
+Current-plan edits advance the revision and do not mutate the baseline.
+Finishing or replacing a plan archives the final current schedule together with
+the baseline, origin, goal and final revision. Actual `RunLog` history and
+Personal Build remain separate factual state and are not rewritten by either
+transition.
+
+When an existing plan predates this model, STACK freezes its current visible
+schedule as an `adopted-current` baseline at revision 1 with goal `none`. It
+does not fabricate a version it never stored. The same rule upgrades historical
+plan snapshots.
+
+The provider-neutral external context may read this bounded truth but receives
+no plan or race-goal mutation authority in Evolution 2.10B.
+
+**Reason**
+
+Future adjustment and undo need a stable answer to "what changed from what?"
+without treating planned intent as evidence that a run happened. A durable
+baseline and monotonic revision make that comparison explicit. Structured goals
+remove ambiguous free text while keeping the runner, not an assistant, as the
+owner of race intent.
+
+Migration provenance is part of truthfulness: calling an inherited current
+schedule the original baseline would overstate what STACK knows. The explicit
+`adopted-current` origin preserves continuity and makes that limitation
+inspectable.
+
+**Status**
+
+Approved for Evolution 2.10B / issue #179. The complete contract is
+`docs/PLAN_TRUTH.md`; the read boundary is
+`docs/EXTERNAL_TRAINING_INTEGRATION.md`.

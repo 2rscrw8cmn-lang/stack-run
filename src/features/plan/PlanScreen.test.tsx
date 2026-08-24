@@ -60,6 +60,10 @@ describe("PlanScreen without an active plan", () => {
     const archive = {
       id: "archive-ouc",
       plan,
+      baselinePlan: plan,
+      baselineOrigin: "created" as const,
+      raceGoal: { type: "none" as const },
+      finalRevision: 1,
       raceSetup: null,
       runLinks: {},
       archivedAt: "2026-12-06T12:00:00.000Z",
@@ -85,6 +89,10 @@ describe("PlanScreen without an active plan", () => {
       planHistory: [{
         id: "archive-old",
         plan: { ...plan, id: "old-plan", race: { ...plan.race, name: "Earlier Race" } },
+        baselinePlan: { ...plan, id: "old-plan", race: { ...plan.race, name: "Earlier Race" } },
+        baselineOrigin: "created",
+        raceGoal: { type: "none" },
+        finalRevision: 1,
         raceSetup: null,
         runLinks: {},
         archivedAt: "2026-01-01T12:00:00.000Z",

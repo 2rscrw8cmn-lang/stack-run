@@ -123,6 +123,10 @@ function snapshot(runLogs: RunLog[] = [], accountGeneration = 1): PersonalCloudS
     training: {
       settings: seed.settings,
       plan: { ...seed.plan, name: "Canonical cloud plan" },
+      planBaseline: seed.planBaseline,
+      planRevision: 2,
+      planBaselineOrigin: seed.planBaselineOrigin,
+      raceGoal: seed.raceGoal,
       planHistory: seed.planHistory,
       raceSetup: seed.raceSetup,
       availability: seed.availability,
@@ -490,6 +494,10 @@ describe("personal sync lifecycle", () => {
     local.planHistory = [{
       id: "archive-1",
       plan: local.plan!,
+      baselinePlan: local.planBaseline!,
+      baselineOrigin: local.planBaselineOrigin!,
+      raceGoal: local.raceGoal!,
+      finalRevision: local.planRevision!,
       raceSetup: local.raceSetup,
       runLinks: { [legacy.id]: "workout-002" },
       archivedAt: "2026-12-06T12:00:00.000Z",
