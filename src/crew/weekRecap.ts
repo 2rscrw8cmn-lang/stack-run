@@ -285,7 +285,8 @@ function crewDays(runs: readonly CrewWeekRecapRun[]): CrewDay[] {
       runs: 0,
       runnerIds: new Set<string>(),
     };
-    day.miles += run.distanceMiles;
+    // Cross Training carries no meaningful distance (see footprint.ts).
+    if (run.activityType !== "cross") day.miles += run.distanceMiles;
     day.runs += 1;
     day.runnerIds.add(run.userId);
     byDay.set(run.localDate, day);
@@ -348,7 +349,8 @@ function runnerWeeks(runs: readonly CrewWeekRecapRun[]): RunnerWeek[] {
       runs: 0,
       durationSeconds: 0,
     };
-    current.miles += Math.max(0, run.distanceMiles);
+    // Cross Training carries no meaningful distance (see footprint.ts).
+    if (run.activityType !== "cross") current.miles += Math.max(0, run.distanceMiles);
     current.runs += 1;
     current.durationSeconds += Math.max(0, run.durationSeconds);
     byRunner.set(run.userId, current);
@@ -422,7 +424,7 @@ function performancesBeat(
   );
   const longest = bestRun(
     weekRuns,
-    (run) => run.distanceMiles > 0,
+    (run) => run.activityType !== "cross" && run.distanceMiles > 0,
     (run) => run.distanceMiles,
     (candidate, incumbent) => candidate > incumbent,
   );
@@ -521,8 +523,12 @@ function buildBeat(
   return {
     kind: "build",
     blocksPlaced: placed.length,
+    // Cross Training carries no meaningful distance (see footprint.ts), so a
+    // synced ride never inflates the week's built mileage.
     milesPlaced: roundMiles(
-      placed.reduce((total, run) => total + run.distanceMiles, 0),
+      placed
+        .filter((run) => run.activityType !== "cross")
+        .reduce((total, run) => total + run.distanceMiles, 0),
     ),
     courses: slice.reduce(
       (highest, block) => Math.max(highest, block.row + block.height),
@@ -570,7 +576,9 @@ function changeBeat(
   if (previousRuns.length === 0) return null;
 
   const previousMiles = roundMiles(
-    previousRuns.reduce((total, run) => total + run.distanceMiles, 0),
+    previousRuns
+      .filter((run) => run.activityType !== "cross")
+      .reduce((total, run) => total + run.distanceMiles, 0),
   );
   if (!(previousMiles > 0)) return null;
 
@@ -589,7 +597,9 @@ export function crewWeekRecap(input: CrewWeekRecapInput): CrewWeekRecap | null {
   if (weekRuns.length === 0) return null;
 
   const miles = roundMiles(
-    weekRuns.reduce((total, run) => total + run.distanceMiles, 0),
+    weekRuns
+      .filter((run) => run.activityType !== "cross")
+      .reduce((total, run) => total + run.distanceMiles, 0),
   );
   const durationSeconds = weekRuns.reduce(
     (total, run) => total + Math.max(0, run.durationSeconds),

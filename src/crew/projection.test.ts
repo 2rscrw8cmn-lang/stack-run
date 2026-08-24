@@ -299,6 +299,7 @@ describe("Race Crew projection", () => {
       serverRuns: [{
         local_run_id: privateRun.id,
         local_date: privateRun.completedDate,
+        activity_type: privateRun.activityType,
         distance_miles: privateRun.distanceMiles,
       }],
     });
@@ -363,8 +364,8 @@ describe("Race Crew projection", () => {
     // The QA case: one canonical 4.03 mi run, two stored `shared_runs` rows.
     const duplicated = { ...privateRun, id: "run-canonical", distanceMiles: 4.03 };
     const serverRuns = [
-      { local_run_id: "legacy-device-run", local_date: "2026-08-10", distance_miles: 4.03 },
-      { local_run_id: "run-canonical", local_date: "2026-08-10", distance_miles: 4.03 },
+      { local_run_id: "legacy-device-run", local_date: "2026-08-10", activity_type: "long", distance_miles: 4.03 },
+      { local_run_id: "run-canonical", local_date: "2026-08-10", activity_type: "long", distance_miles: 4.03 },
     ];
     const calls: ProjectionCall[] = [];
     const client = fakeProjectionClient({
@@ -414,6 +415,7 @@ describe("Race Crew projection", () => {
     const serverRuns = ["a", "b", "c"].map((id, index) => ({
       local_run_id: id,
       local_date: `2026-08-${10 + index}`,
+      activity_type: "long",
       distance_miles: index + 3,
     }));
 
@@ -567,13 +569,25 @@ describe("Race Crew projection", () => {
 
   it("derives decreasing time-window metrics from the cloud run union", () => {
     expect(projectServerBackedSummary([
-      { localRunId: "old", localDate: "2026-07-01", distanceMiles: 20 },
-      { localRunId: "current", localDate: "2026-08-12", distanceMiles: 4 },
+      { localRunId: "old", localDate: "2026-07-01", activityType: "long", distanceMiles: 20 },
+      { localRunId: "current", localDate: "2026-08-12", activityType: "easy", distanceMiles: 4 },
     ], "2026-08-12")).toEqual({
       weekStart: "2026-08-10",
       weeklyMiles: 4,
       longestRun28dMiles: 4,
       milesBuilt: 24,
+    });
+  });
+
+  it("excludes Cross Training distance from every cloud-derived mileage total", () => {
+    expect(projectServerBackedSummary([
+      { localRunId: "run", localDate: "2026-08-12", activityType: "easy", distanceMiles: 4 },
+      { localRunId: "ride", localDate: "2026-08-12", activityType: "cross", distanceMiles: 20 },
+    ], "2026-08-12")).toEqual({
+      weekStart: "2026-08-10",
+      weeklyMiles: 4,
+      longestRun28dMiles: 4,
+      milesBuilt: 4,
     });
   });
 
@@ -656,6 +670,31 @@ describe("Race Crew projection", () => {
     expect(summary.milesBuilt).toBe(11);
     expect(summary.weeklyMiles).toBe(11);
     expect(summary.longestRun28dMiles).toBe(8);
+  });
+
+  it("keeps a Cross Training session's real distance out of every mileage total, but still counts it toward consistency", () => {
+    const state = createSeededAppState();
+    const due = state.plan.weeks
+      .flatMap((week) => week.workouts)
+      .find((workout) => workout.type !== "rest")!;
+    // A synced ride: real logged miles, same as the Crew screen bug report.
+    const ride = {
+      ...privateRun,
+      id: "local-run-ride",
+      workoutId: due.id,
+      completedDate: due.date,
+      activityType: "cross" as const,
+      distanceMiles: 20,
+    };
+    const summary = projectMemberSummary(
+      { ...state, runLogs: [ride] },
+      due.date,
+    );
+
+    expect(summary.consistencyCompleted).toBe(1);
+    expect(summary.milesBuilt).toBe(0);
+    expect(summary.weeklyMiles).toBe(0);
+    expect(summary.longestRun28dMiles).toBe(0);
   });
 });
 

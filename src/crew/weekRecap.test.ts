@@ -162,6 +162,40 @@ describe("crew week recap", () => {
     });
   });
 
+  it("keeps a Cross Training ride's real distance out of every mileage total in the recap", () => {
+    const recap = recapOf([
+      run("run", "zack", "2026-08-10", { distanceMiles: 5, durationSeconds: 2700 }),
+      // A synced ride: real logged miles, same shape as the Crew screen bug report.
+      run("ride", "drew", "2026-08-12", {
+        distanceMiles: 20,
+        durationSeconds: 5940,
+        activityType: "cross",
+        crewBuildRow: 4,
+        crewBuildColumnStart: 1,
+      }),
+      // Last week, for the change beat - also a ride, so it must not count either.
+      run("prev-ride", "zack", "2026-08-05", {
+        distanceMiles: 15,
+        activityType: "cross",
+      }),
+    ]);
+
+    expect(recap).not.toBeNull();
+    // Only the 5-mile run counts; the 20-mile ride does not widen the total.
+    expect(recap!.totals.miles).toBe(5);
+    expect(beat(recap!.beats, "build")).toMatchObject({
+      blocksPlaced: 1,
+      milesPlaced: 0,
+    });
+    // The prior week's ride does not count either, so there is no real
+    // baseline to compare against.
+    expect(beat(recap!.beats, "change")).toBeUndefined();
+    const longestRun = beat(recap!.beats, "performances")?.items.find(
+      (item) => item.kind === "longestRun",
+    );
+    expect(longestRun).toMatchObject({ runId: "run", value: 5 });
+  });
+
   it("is deterministic: the same week produces the same recap for both members", () => {
     const runs = [
       run("a", "zack", "2026-08-10", { crewBuildRow: 2, crewBuildColumnStart: 3 }),

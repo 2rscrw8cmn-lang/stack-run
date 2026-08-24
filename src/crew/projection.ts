@@ -66,7 +66,13 @@ export interface CrewMemberSummaryProjection {
 interface ServerSharedRunFact {
   localRunId: string;
   localDate: string;
+  activityType: RunActivityType;
   distanceMiles: number;
+}
+
+/** Cross Training carries no meaningful distance; see `footprintFor`. */
+function isMileageActivity(activityType: RunActivityType): boolean {
+  return activityType !== "cross";
 }
 
 export function isCrewEligibleLocalDate(
@@ -316,10 +322,15 @@ export function projectMemberSummary(
       buildStartDate === undefined ||
       isCrewEligibleLocalDate(run.completedDate, buildStartDate),
   );
-  const weeklyRuns = eligibleRuns.filter((run) =>
+  // Cross Training carries no meaningful distance (a synced ride's mileage
+  // isn't comparable to a run's — see footprint.ts), so it never contributes
+  // to a mileage total. It still counts toward consistency below: completing
+  // a scheduled Cross Training workout is real, even if its miles aren't.
+  const mileageRuns = eligibleRuns.filter((run) => isMileageActivity(run.activityType));
+  const weeklyRuns = mileageRuns.filter((run) =>
     inRange(run.completedDate, weekStart, weekEnd),
   );
-  const trailingRuns = eligibleRuns.filter((run) =>
+  const trailingRuns = mileageRuns.filter((run) =>
     inRange(run.completedDate, trailingStart, today),
   );
 
@@ -365,7 +376,7 @@ export function projectMemberSummary(
     consistencyCompleted,
     consistencyDue,
     milesBuilt: roundMiles(
-      eligibleRuns.reduce((total, run) => total + run.distanceMiles, 0),
+      mileageRuns.reduce((total, run) => total + run.distanceMiles, 0),
     ),
   };
 }
@@ -392,14 +403,16 @@ function serverSharedRunFactsFrom(data: unknown): ServerSharedRunFact[] {
     const row = value as Record<string, unknown>;
     const localRunId = row.local_run_id;
     const localDate = row.local_date;
+    const activityType = row.activity_type;
     const distanceMiles =
       typeof row.distance_miles === "number"
         ? row.distance_miles
         : Number(row.distance_miles);
     return typeof localRunId === "string" &&
       typeof localDate === "string" &&
+      CREW_ACTIVITY_TYPES.includes(activityType as RunActivityType) &&
       Number.isFinite(distanceMiles)
-      ? [{ localRunId, localDate, distanceMiles }]
+      ? [{ localRunId, localDate, activityType: activityType as RunActivityType, distanceMiles }]
       : [];
   });
 }
@@ -442,20 +455,21 @@ export function projectServerBackedSummary(
   const weekStart = mondayOfLocalDate(today);
   const weekEnd = addDaysToLocalDate(weekStart, 6);
   const trailingStart = addDaysToLocalDate(today, -27);
+  const mileageRuns = runs.filter((run) => isMileageActivity(run.activityType));
   return {
     weekStart,
     weeklyMiles: roundMiles(
-      runs
+      mileageRuns
         .filter((run) => inRange(run.localDate, weekStart, weekEnd))
         .reduce((total, run) => total + run.distanceMiles, 0),
     ),
     longestRun28dMiles: roundMiles(
-      runs
+      mileageRuns
         .filter((run) => inRange(run.localDate, trailingStart, today))
         .reduce((longest, run) => Math.max(longest, run.distanceMiles), 0),
     ),
     milesBuilt: roundMiles(
-      runs.reduce((total, run) => total + run.distanceMiles, 0),
+      mileageRuns.reduce((total, run) => total + run.distanceMiles, 0),
     ),
   };
 }
@@ -616,7 +630,7 @@ export async function syncCrewProjection(
 
   const serverRuns = await client
     .from("shared_runs")
-    .select("local_run_id,local_date,distance_miles")
+    .select("local_run_id,local_date,activity_type,distance_miles")
     .eq("crew_id", input.crewId)
     .eq("user_id", input.userId);
   if (serverRuns.error) throw new Error(serverRuns.error.message);
