@@ -5,6 +5,7 @@ import {
 } from "../../crew/awards";
 import type { CrewBuildReadyAward } from "../../crew/crewBuild";
 import { Button } from "../../components/ui/Button";
+import "./awardBlock.css";
 import "./crewAwardsPanel.css";
 
 interface CrewAwardsPanelProps {

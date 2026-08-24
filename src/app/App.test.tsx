@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
-import { createInitialAppState } from "../storage/migrations";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations";
 
 const COMPLETED_ONBOARDING = JSON.stringify({
   version: 1,
@@ -17,6 +17,7 @@ const COMPLETED_ONBOARDING = JSON.stringify({
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem("stack.onboarding.v1", COMPLETED_ONBOARDING);
+  localStorage.setItem("stack.app-state.v1", JSON.stringify(createSeededAppState()));
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(new Date("2026-08-04T09:00:00"));
 });
@@ -43,18 +44,18 @@ async function logTodaysRun(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("App", () => {
-  it("welcomes a brand-new user, then teaches Plan before the rest of the app", async () => {
+  it("welcomes a brand-new user, then teaches actual Runs before optional Plan", async () => {
     localStorage.clear();
     const user = setupUser();
     render(<App />);
 
     const welcome = screen.getByRole("dialog", { name: "STACK" });
-    expect(within(welcome).getByText("Build your race.")).toBeInTheDocument();
-    expect(within(welcome).getByText(/Every completed run earns a block/)).toBeInTheDocument();
+    expect(within(welcome).getByText("Build your running.")).toBeInTheDocument();
+    expect(within(welcome).getByText(/Add a race plan when you want scheduled intent/)).toBeInTheDocument();
 
     await user.click(within(welcome).getByRole("button", { name: "Get Started" }));
-    expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("dialog", { name: "Plan" })).toHaveTextContent("1 of 4");
+    expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("dialog", { name: "Runs" })).toHaveTextContent("1 of 4");
   });
 
   it("does not force an existing local user through first-run onboarding", async () => {
@@ -77,9 +78,9 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Settings" }));
     await user.click(screen.getByRole("button", { name: /^App Tour/ }));
-    expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Runs" })).toHaveAttribute("aria-current", "page");
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Plan" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Runs" })).not.toBeInTheDocument();
   });
 
   it("shows the real Today screen, seeded from the training plan, by default", () => {
@@ -127,7 +128,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Previous week" }));
     await user.click(
       screen.getByRole("button", {
-        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Missed",
+        name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, No linked run",
       }),
     );
     await user.click(screen.getByRole("button", { name: "Log Run" }));
@@ -141,7 +142,7 @@ describe("App", () => {
         name: "Tuesday, August 4, 2 Miles, Easy, 2 mi, Completed",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 plan runs linked")).toBeInTheDocument();
 
     // The log is dated by the workout it belongs to, not by the entry time.
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
@@ -152,7 +153,7 @@ describe("App", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Plan" }));
     await user.click(screen.getByRole("button", { name: "Previous week" }));
-    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 plan runs linked")).toBeInTheDocument();
   });
 
   it("earns a block on save and keeps it pending until it is placed", async () => {
@@ -204,11 +205,11 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Mark Complete" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/0 of 4 runs/)).toBeInTheDocument();
+    expect(screen.getByText(/0 of 4 scheduled/)).toBeInTheDocument();
     expect(screen.getByText("+1 extra")).toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
-    expect(stored.schemaVersion).toBe(9);
+    expect(stored.schemaVersion).toBe(10);
     expect(stored.runLogs).toHaveLength(1);
     expect(stored.runLogs[0].workoutId).toBeNull();
     expect(stored.runLogs[0].activityType).toBe("intervals");
@@ -277,7 +278,7 @@ describe("App", () => {
     ).not.toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
-    expect(stored.schemaVersion).toBe(9);
+    expect(stored.schemaVersion).toBe(10);
     expect(stored.runLogs[0].activityType).toBe("easy");
     expect(stored.blockPlacements[0].runLogId).toBe("run-workout-002");
     expect(stored.blockPlacements[0].columnStart).toBeLessThanOrEqual(8);
@@ -311,16 +312,16 @@ describe("App", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Monday, August 3, 6 x 400m, Intervals, 5 mi, Missed",
+        name: "Monday, August 3, 6 x 400m, Intervals, 5 mi, No linked run",
       }),
     ).toBeInTheDocument();
     // The week now schedules five runs rather than four.
-    expect(screen.getByText("0 of 5 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("0 of 5 plan runs linked")).toBeInTheDocument();
 
     unmount();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    expect(screen.getByText("0 of 5 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("0 of 5 plan runs linked")).toBeInTheDocument();
   });
 
   it("resets everything back to the seed after two confirmations", async () => {
@@ -332,7 +333,7 @@ describe("App", () => {
     // Reset lives in Settings, reached from the header gear rather than from
     // the foot of the Plan screen.
     await user.click(screen.getByRole("button", { name: "Settings" }));
-    await user.click(screen.getByRole("button", { name: /^Reset Plan/ }));
+    await user.click(screen.getByRole("button", { name: /^Reset STACK/ }));
 
     const sheet = screen.getByRole("dialog");
     await user.click(within(sheet).getByRole("button", { name: "Reset Plan" }));
@@ -340,7 +341,7 @@ describe("App", () => {
       within(sheet).getByRole("button", { name: "Yes, Erase Everything" }),
     );
 
-    expect(screen.getByText("0 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("No active race plan")).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
     expect(stored.runLogs).toEqual([]);
     expect(stored.blockPlacements).toEqual([]);
@@ -364,7 +365,7 @@ describe("App", () => {
     ).getAllByRole("button");
     expect(placed).toHaveLength(1);
     expect(placed[0]).toHaveAccessibleName(
-      "Tuesday, August 4, Easy, 2.1 miles, week 1, course 0, column 1",
+      "Tuesday, August 4, Easy, 2.1 miles, manual entry, week 1, course 0, column 1",
     );
     expect(
       screen.queryByRole("list", { name: "Blocks ready to place" }),
@@ -431,8 +432,14 @@ describe("App", () => {
     await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Runs" }));
 
-    expect(screen.getByLabelText("Running history summary")).toHaveTextContent("1run");
-    expect(screen.getByText("2.1 miles run")).toBeInTheDocument();
+    expect(screen.getByText("1 run")).toBeInTheDocument();
+    // The snapshot reads the same run through the unified history, so a run
+    // logged on Today reaches the runner-level numbers with no import step.
+    expect(
+      screen.getByRole("button", {
+        name: /Runner snapshot\. 2\.1 miles over the last 28 days\. 2\.1 miles over the last 7 days/,
+      }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
         name: "Easy. Tuesday, August 4. 2.1 mi, 20:30, 9:46 /MI",
@@ -455,7 +462,7 @@ describe("App", () => {
     // The day is still complete: editing what happened never edits the plan,
     // and never quietly turns a scheduled run into an extra one.
     await user.click(screen.getByRole("button", { name: "Plan" }));
-    expect(screen.getByText("1 of 4 runs complete")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 plan runs linked")).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem("stack.app-state.v1") ?? "{}");
     expect(stored.runLogs).toHaveLength(1);
     expect(stored.runLogs[0].workoutId).toBe("workout-002");

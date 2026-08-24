@@ -1,339 +1,226 @@
 # AGENTS.md — STACK Repository Instructions
 
-These instructions apply to every coding/research agent working in this repository.
+These instructions apply to every coding/research agent working on the current STACK repository.
+
+## Branch context
+
+**`main` is the canonical production product branch.**
+
+STACK Next shipped to `main` through PR #136 on August 20, 2026. The former `feature/stack-next` integration branch and its child branches are historical implementation branches.
+
+For normal new work:
+
+- start from the latest `main`;
+- create one narrowly scoped issue branch;
+- target the pull request back to `main`;
+- do not work directly on `main`;
+- do not create new work from `feature/stack-next` or target PRs to it;
+- do not combine unrelated roadmap issues merely because they touch nearby files.
+
+If an issue explicitly defines a different dependency/stacking plan, follow that issue contract.
 
 ## Required reading before changing code
 
-Read in this order:
+Read:
 
 1. `START_HERE.md`
-2. `docs/PRODUCT_AND_SCOPE.md`
-3. `docs/NEXT_PRODUCT_PROGRAM.md`
-4. `docs/RACE_CREW.md`
-5. `docs/RACE_CREW_IMPLEMENTATION.md`
-6. `docs/RACE_CREW_SETUP.md`
-7. `docs/RUN_DATA_SETUP.md`
-8. `docs/DATA_AND_STORAGE.md`
-9. `docs/INTERVALS_INTEGRATION.md` for existing personal import behavior
-10. `docs/CONNECTED_DATA_FIELDS.md` for verified imported metrics
-11. `docs/DECISION_LOG_ADDENDUM.md`
-12. `docs/ENGINEERING_STANDARDS.md`
-13. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+2. the approved GitHub issue/phase contract for the work
+3. `docs/PRODUCT_AND_SCOPE.md`
+4. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+5. `docs/ENGINEERING_STANDARDS.md`
+6. `docs/DESIGN_SYSTEM.md` for UI/presentation work
+7. the specialist docs for the subsystem being changed
 
-Older Trends/Arcade/original phase docs are historical/current-behavior references where they do not conflict with the active Race Crew docs.
+Important specialist docs include:
 
-## Current product decisions
+- `docs/CONNECTED_DATA_FIELDS.md` and `docs/INTERVALS_INTEGRATION.md` for connected-data changes;
+- `docs/RUNS_PRODUCT_MODEL.md`, `docs/RUNS_VISUALIZATION_SYSTEM.md` and `docs/RUN_DETAIL_PRODUCT_SPEC.md` for Runs/Run Detail;
+- `docs/DATA_AND_STORAGE.md` and `docs/PERSONAL_ACCOUNT_SYNC.md` for persistence/account sync;
+- current Crew/security docs when touching Crew/auth/Supabase;
+- `docs/CREW_PROJECTION_CONTRACT.md` before touching `shared_runs`, a Crew CHECK constraint, or a value uploaded from the device to Crew;
+- `docs/CREW_WEEK_RECAP.md` for the weekly Crew recap and the recap presentation language;
+- `docs/DECISION_LOG_ADDENDUM.md` for accepted decisions that remain in force.
 
-- Product: `STACK`
-- Tagline: `Build your race.`
-- Phone-first responsive web app; dark only
-- Persistent destinations: Today / Build / Runs / Plan, plus Crew for a signed-in active crew member (D-065)
-- Settings: top-right icon-only gear
-- One active race/plan per personal device/user
-- Personal plan is manually editable; never auto-adapt from health data
-- Scheduled and extra runs are first-class actual activities
-- Every actual run earns one Build block
-- Runs is personal history + Training Signals only; Race Crew is its own conditional destination since UI-21
-- Build remains deterministic 8-column object-first trophy/toy
-- Wellness / Recovery remains deferred
-- Performance Arcade design language from UI-17 is current
-- React + TypeScript + Vite + plain CSS + Lucide
-- `@supabase/supabase-js` is approved for UI-18
-- No router/global state/UI framework/Tailwind/canvas/WebGL/physics library without a new decision
+## Authority order
 
-## Current implementation phase
+When current sources conflict, prefer:
 
-UI-18 through UI-21 are complete and owner-accepted. **UI-21 — Crew Destination + Shared Crew Build** and its runner-owned placement correction merged in PR #38. The deployed migration/RLS verification, two-account QA, and 320px/390px/desktop/real iPhone Safari visual review passed on 2026-08-11.
+1. the explicitly approved issue/phase contract for the current work;
+2. `docs/PRODUCT_AND_SCOPE.md`;
+3. specialist product/data/security contracts for the affected subsystem;
+4. `docs/DESIGN_SYSTEM.md` and specialist visual contracts for presentation work;
+5. `docs/ENGINEERING_STANDARDS.md`;
+6. `docs/CURRENT_APPLICATION_STRUCTURE.md`;
+7. `docs/DATA_AND_STORAGE.md`;
+8. accepted decision logs;
+9. historical phase/program docs for rationale only;
+10. existing code when the docs do not answer the question.
 
-**UI-22 — Final Product Polish + Onboarding** is the final planned product phase and is in review. It is a consistency and introduction pass only: compact Runs hierarchy, normalized controls/copy/formatting/sheets, 320px-through-desktop QA, and lightweight local onboarding for genuinely new users. Existing AppState users must migrate quietly; App Tour remains replayable from Settings. No UI-23 is planned. See `docs/PHASE_STATUS.md` and D-067.
+If the code contradicts a current contract, do not silently normalize the discrepancy. Resolve it within the issue or raise it explicitly.
 
-The sections below record the locked UI-18 architecture, which still governs auth, projection, RLS and secret handling. Where an older Race Crew product boundary conflicts with a later decision, `docs/DECISION_LOG_ADDENDUM.md` wins.
+## Historical STACK Next material
 
-## UI-18 locked architecture
+STACK Next is shipped, not an active branch program.
 
-Race Crew v1 is for approximately ten known friends.
+These files remain useful historical records:
 
-### Supabase
+- `docs/STACK_NEXT.md`
+- `docs/STACK_NEXT_IMPLEMENTATION.md`
+- `docs/STACK_NEXT_AGENT_PROMPT.md`
+- `docs/STACK_NEXT_ACCEPTANCE_LOG.md`
+- individual NEXT phase briefs;
+- Runs R1–R4 implementation/review docs.
 
-Use:
+They may contain branch names, draft status, sequencing or review instructions that were correct during development. Those details must not override the current `main` workflow.
 
-- Supabase Auth;
-- Postgres;
-- Row Level Security;
-- `@supabase/supabase-js`.
+The product principles those phases established may still be active when they agree with current product/docs.
 
-Browser client variables:
+## Current product invariants
 
-```text
-VITE_SUPABASE_URL
-VITE_SUPABASE_PUBLISHABLE_KEY
-```
+Preserve these unless the approved issue explicitly changes them:
 
-These are public client configuration.
+- actual training history is factual product data;
+- Plan is intent/context, not the authoritative record of whether the runner ran;
+- explicit linking describes the relationship between an actual run and planned intent;
+- Overview is for understanding, History for lookup, Detail for investigation;
+- missing data remains missing, never zero;
+- derived runner facts must be traceable to source data and documented calculations;
+- no opaque overall readiness/coaching score;
+- no automatic plan mutation from health data;
+- Build remains a distinctive physical/emotional reward;
+- historical/source-only activity does not silently earn or backfill Personal Build blocks;
+- Crew remains optional and downstream of personal truth;
+- widening Crew/shared data requires an explicit privacy/data-contract decision.
 
-Never expose a Supabase secret/service-role key to browser code.
+## Connected-data source truth
 
-Personal STACK must remain usable when Supabase is absent/unavailable/signed out.
-
-### Account auth
-
-Normal account login:
-
-```text
-email + exactly 8 numeric digits presented as STACK PIN
-```
-
-Rules:
-
-- validate PIN with `/^\d{8}$/`;
-- use normal Supabase password auth underneath;
-- STACK never persists raw PIN;
-- no magic-link login;
-- owner intentionally disables email confirmation for hobby release;
-- no self-service forgot-PIN feature required in UI-18.
-
-This is an intentional private-hobby tradeoff, not a public-product auth standard.
-
-### Personal AppState
-
-Remain local schema 9.
-
-Do not upload/cloud-sync full:
-
-- plan;
-- RunLogs;
-- imported metrics;
-- Build placements;
-- availability calendar;
-- AppState backup.
-
-Account identity and crew sharing are separate from local personal persistence.
-
-### Intervals hobby multi-user mode
-
-Apple Watch data path remains:
+The common Apple path is:
 
 ```text
 Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
 
-Other device/services may skip HealthFit when already connected directly to Intervals.
+Other supported sources may sync directly into Intervals. Manual logging remains a complete fallback.
 
-For UI-18 new-user hobby mode:
+`docs/CONNECTED_DATA_FIELDS.md` is authoritative for exact field names, verified units and pipeline-specific semantics.
 
-- every runner uses their own personal Intervals API key;
-- store it only on that runner's browser/device in a dedicated repository outside AppState;
-- suggested slot: `stack.intervals.api-key.v1`;
-- never send it to Supabase;
-- never include in backup/export;
-- never log/render it after save;
-- direct client uses Intervals `/api/v1/` Basic auth with literal username `API_KEY`;
-- keep current owner Vercel proxy working during migration;
-- verify direct browser/CORS behavior on real iPhone Safari before deprecating proxy.
+Preserve the rule:
 
-Intervals officially recommends OAuth for apps intended for multiple users. The owner has deliberately accepted personal keys for this private hobby group. Do not generalize this shortcut to a public/open/commercial product.
+> **Source aggregates provide stated summary facts. Streams provide shape.**
 
-### Run Data onboarding
+Do not recompute trusted source summary values from streams when the aggregate exists.
 
-Implement `docs/RUN_DATA_SETUP.md` as an understandable in-app setup flow.
+Examples:
 
-Apple Watch users must understand why HealthFit + Intervals exist.
+- do not recompute elevation gain from altitude samples;
+- do not recompute average/max HR from stream samples;
+- do not derive run pace by averaging instantaneous pace samples;
+- do not double cadence or invent cadence units.
 
-Do not assume friends know the pipeline.
+Real source behavior must be verified with the real pipeline before a field/semantic is promoted to `Verified`.
 
-### Crew safe projection
+## Privacy, storage and secret discipline
 
-Never serialize/upload a complete `RunLog` or `AppState`.
+Never commit or persist by default:
 
-Shared run is limited to:
+- raw Intervals payloads;
+- GPS routes or precise coordinates;
+- raw FIT files;
+- large per-sample streams;
+- real API keys or credentials;
+- Supabase secret/service-role keys in browser code;
+- private upstream notes without an approved product use.
 
-- local STACK run id for sync identity;
-- local date;
-- STACK activity type;
-- distance;
-- duration.
+`VITE_` values are browser-public by definition; never put secrets there.
 
-Pace derives from distance/duration.
+UI components should not directly mutate persistence storage; use the current repositories/services.
 
-Approved member summary:
+Tests and QA fixtures use synthetic/fake credentials/data only.
 
-- current-week miles;
-- trailing-28-day longest run;
-- recent-up-to-4-plan-week scheduled consistency completed/due;
-- miles built.
+When touching personal sync or Crew projection, read the current specialist contract rather than relying on an old phase's field list. Current approved boundaries can evolve, but only deliberately and with corresponding RLS/schema/client tests.
 
-Never send to Crew/Supabase:
+## Crew upload discipline
 
-- Intervals API key;
-- Intervals activity id;
-- raw source payload;
-- GPS/routes/location;
-- exact start time;
-- HR/max HR;
-- HR zones;
-- Training Load;
-- wellness;
-- effort;
-- notes;
-- private calendar/availability.
+The Crew projection can upload a runner's history as a batch. A single database-rejected value must not be allowed to erase the rest of the batch's usefulness.
 
-## Database/RLS discipline
+Before adding or changing a constrained Crew column:
 
-UI-18 must add a reproducible migration, expected under:
+- read `docs/CREW_PROJECTION_CONTRACT.md`;
+- mirror server constraints on the device where required;
+- omit/null unsafe optional values rather than knowingly sending a value the database will reject;
+- preserve per-run fallback/error visibility;
+- keep privacy projection fields explicit and reviewable.
 
-```text
-supabase/migrations/
-```
+## Database / Supabase discipline
 
-Foundation tables:
+Database changes require extra caution because production state outlives a code rollback.
 
-- profiles
-- crews
-- crew_members
-- crew_invites
-- shared_runs
-- crew_member_summaries
+- Never weaken RLS merely to get a preview/test working.
+- Use forward corrective migrations for schema already applied somewhere; do not rewrite applied migration history casually.
+- Run the relevant transactional SQL verification where the environment supports it.
+- State clearly which database environment was exercised.
+- Do not assume a Vercel preview is isolated from production until the repository's environment-separation work proves it.
 
-Every exposed table has RLS.
+Stabilization issues may tighten this workflow further; follow the current issue and docs if they supersede this section.
 
-Required authorization:
+## Design / interaction guardrails
 
-- non-member cannot enumerate/read a crew;
-- active member can read safe rows for their crew;
-- user mutates only own projections;
-- owner controls invites/removal/crew metadata;
-- member may leave;
-- expired/revoked invite cannot join;
-- avoid recursive RLS; use carefully scoped security-definer membership helpers if needed;
-- index membership/user columns used by policies.
+Preserve unless the issue explicitly changes them:
 
-No browser service-role key.
+- phone-first responsive behavior;
+- Performance Arcade / current STACK visual language;
+- `Interface is quiet. Data is STACK.`;
+- 44px interactive targets without forcing every visible control to look 44px tall;
+- accessible names, focus restoration and keyboard behavior;
+- Reduced Motion behavior when animation exists;
+- readable phone typography rather than shrinking critical labels to fit;
+- charts that prefer fewer/aggregated labels over microscopic type;
+- color as identity/selection/context, not hidden good/bad judgment.
 
-## Invite discipline
+Do not introduce a router, global-state framework, UI framework, canvas/WebGL/physics system or broader backend merely because a feature is substantial. Add infrastructure only when the issue demonstrates a concrete need.
 
-Private invite only.
+## Branch / PR rules
 
-Preferred:
-
-```text
-https://<host>/#join=<raw-token>
-```
-
-Use high entropy (recommended 32 random bytes/base64url), DB stores hash only, default expiration 14 days, owner revocable.
-
-Fragment is preferred so raw token is not normally sent to request/access logs.
-
-No router is required just to parse this fragment.
-
-## Race Crew product boundaries
-
-- Race Crew was `YOU | CREW` inside Runs through UI-20; UI-21 superseded that with a conditional Crew destination (D-065).
-- Invite-only, race-centered.
-- No public discovery/follower graph/DMs.
-- UI-19 comparisons: Weekly Miles, Longest Run, Consistency, Miles Built.
-- No raw pace leaderboard.
-- Crew-safe run detail is separate from private personal Run Detail.
-- Props later; comments separately reviewable.
-- Mini Builds are UI-20 Member Builds; the collective Crew Build arrived in UI-21, with runner-owned placement persisted in independent Crew coordinates (D-066).
-
-## UI-18 scope boundary
-
-UI-18 includes foundation only:
-
-- Supabase/auth;
-- Account & Crew settings;
-- crew create/join/leave/invite/remove;
-- migration/RLS;
-- local Intervals key connection mode;
-- setup wizard;
-- safe projection service;
-- owner no-loss adoption.
-
-UI-18 does **not** include:
-
-- `YOU | CREW` feed/comparison screen;
-- recent crew run UI;
-- crew-safe detail UI;
-- reactions;
-- mini Builds;
-- comments;
-- full personal cloud sync;
-- Intervals OAuth;
-- public social features.
-
-## Existing personal connected-data rules remain
-
-Preserve:
-
-- manual logging fallback;
-- stale-aware sync behavior;
-- no continuous polling;
-- user-confirmed matching;
-- imported run dedupe by source id;
-- accepted imported run is local snapshot;
-- missing metrics omitted, never zeroed;
-- connected data never edits the plan automatically.
-
-Do not rewrite the personal run model for Race Crew.
-
-## UI discipline
-
-- usable at 320 CSS px;
-- Performance Arcade remains current design language;
-- no emoji as interface icons;
-- use Lucide;
-- accessible names/focus;
-- reduced motion;
-- personal app should not be blocked by social errors.
-
-## Data/secret discipline
-
-- UI components do not directly mutate localStorage; use repositories.
-- Tests use fake credentials only.
-- Never commit/print real Intervals keys, Supabase secret keys, calendar secrets or raw private payloads.
-- `VITE_` variables are public by definition; only Supabase URL/publishable key belong there.
-- The Intervals personal key is sensitive even though it is intentionally device-local in hobby mode.
-
-## Branch/PR rules
-
-- one phase per branch;
-- no direct commits to main unless owner explicitly asks;
-- keep PR scoped;
-- update `docs/CURRENT_APPLICATION_STRUCTURE.md` and `docs/PHASE_STATUS.md` after implementation;
-- include setup/migration instructions in PR;
-- do not mark complete with failing security/acceptance checks.
+- one issue/phase per branch unless explicitly approved otherwise;
+- branch from current `main`;
+- PR back to `main`;
+- keep scope narrow and reviewable;
+- update documentation whenever architecture/data contracts/product rules change;
+- do not mark work complete with failing required checks;
+- record owner/device verification separately from automated verification when required;
+- do not claim a test was run when it was not.
 
 ## Required verification
 
-Before UI-18 review:
+Before normal review:
 
 ```bash
 npm install
 npm run check
+git diff --check
 ```
 
-Also verify:
+Add subsystem-specific verification as appropriate:
 
-- two-user/two-crew RLS isolation;
-- invite revoke/expiry;
-- leave/remove access loss;
-- safe projection contains no private fields;
-- signed-out personal app works;
-- real owner local AppState survives sign-in;
-- direct Intervals connection on real iPhone Safari before proxy deprecation.
+- real Intervals/device smoke tests for real source semantics;
+- SQL/RLS tests for Supabase changes;
+- 320px / ~390px / 430px / desktop review for material UI changes;
+- real iPhone Safari review for phone-critical interaction/readability changes;
+- keyboard and Reduced Motion review where applicable.
 
-## Required PR summary
+Vercel deployment success is not a substitute for repository checks.
 
-State:
+## Documentation after implementation
 
-- phase implemented;
-- Supabase migration/RLS added;
-- auth flow;
-- local Intervals credential flow;
-- safe projection fields;
-- tests/security checks;
-- manual two-user test status;
-- current owner migration status;
-- dependencies;
-- known limitations;
-- confirmation no UI-19/UI-20 scope was added.
+Update only the documents the issue materially changes, but do not let implementation outrun current docs.
+
+Typical current references:
+
+- `docs/CURRENT_APPLICATION_STRUCTURE.md` when architecture changes;
+- `docs/PRODUCT_AND_SCOPE.md` when product scope changes;
+- `docs/DATA_AND_STORAGE.md` for persistence changes;
+- `docs/DESIGN_SYSTEM.md` for product-wide presentation rules;
+- specialist Crew/Runs/Intervals contracts for those subsystems;
+- `docs/CONNECTED_DATA_FIELDS.md` only when real verification establishes a new source fact.
+
+Historical NEXT/Runs phase docs should normally remain historical rather than being reused as the active implementation prompt for new work.

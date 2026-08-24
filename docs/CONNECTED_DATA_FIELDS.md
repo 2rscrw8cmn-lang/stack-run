@@ -121,6 +121,7 @@ UI-8 may not ship import until the first six concepts above are understood well 
 | Training load | `icu_training_load` | Verified | UI-9 | Intervals-derived; labelled plainly as Training Load. |
 | HR zone times | `icu_hr_zone_times` | Verified | UI-9 | Seven entries, seconds, zone 1 first. Zeroes are real; STACK shows every zone rather than guessing which are meaningful. |
 | Average speed | `average_speed` | Expected | Deferred | STACK derives pace from distance/duration; use only if needed for diagnostics. |
+| Fastest 5K | `pace-curve` 5,000 m best effort | Expected | Evolution 2.1 | Not an activity-summary field: a separate endpoint, requested only by the bounded enrichment pass. See "Best-effort times (pace curve)". |
 | Perceived exertion / Apple effort | source-dependent | Expected | Deferred | Do not map into Rough/Solid/Great until actual semantics are verified. |
 
 ## Interval / lap metrics
@@ -160,32 +161,48 @@ sheet is open — never during ordinary sync, and never persisted beyond the
 open sheet's component state:
 
 ```text
-GET /api/v1/activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth,cadence
+GET /api/v1/activity/{id}/streams.json?types=time,heartrate,altitude,velocity_smooth,cadence
 ```
+
+### Real-source path verified on iPhone, August 18, 2026
+
+During R3 / PR #122, the owner connected Intervals on the Vercel preview
+hostname and reopened a real Intervals-backed personal run in iPhone Safari.
+The production direct local-key stream request completed and STACK rendered a
+real Run Profile through `normalizeIntervalsRunProfile` and the production
+Run Profile components.
+
+The earlier apparent failure was not a source or normalizer failure. The
+Intervals API key is intentionally stored in account-scoped browser
+`localStorage`, so the preview hostname had no source reader until Intervals
+was connected on that browser/domain. Once connected, the same real run
+rendered the Run Profile successfully.
+
+This verifies the **direct local-key transport path and payload compatibility
+with the current normalizer**. It does not, by itself, promote every individual
+stream's units/semantics: those remain `Expected` until each metric is
+explicitly spot-checked against source truth. No raw stream values, route data,
+GPS, credential material or complete source payload are recorded here.
 
 | STACK concept | Intervals candidate | Status | UI phase | Notes |
 |---|---|---|---|---|
-| Elapsed-time axis | `time` stream | Expected | UI-23 | Seconds from run start. Required; the profile is not shown at all without it. Also supplies the `0:00 → duration` x-axis. |
-| Heart rate over time | `heartrate` stream | Expected | UI-23 | bpm per sample. Shape only — the stated Avg/Max come from the verified summary aggregates. |
-| Elevation over time | `altitude` stream | Expected | UI-23 | Meters per sample; converted to feet. The only series whose own low/high are stated, because those are properties of the series. Total gain is **not** derived from it. |
-| Pace over time | derived from `velocity_smooth` stream | Expected | UI-23 | Metres/second, an unambiguous unit; STACK derives seconds-per-mile rather than trusting an assumed-unit `pace` field. Shape only — the stated pace is the run's own. |
-| Cadence over time | `cadence` stream | Expected | UI-23 | Verbatim, per the verified convention above. A zero sample is a stop, so it is treated as absent and drawn as a gap. |
+| Elapsed-time axis | `time` stream | Expected | UI-23 | Required by the normalizer and therefore present in at least one real payload that produced a Run Profile, but exact units/sample semantics have not been separately recorded. |
+| Heart rate over time | `heartrate` stream | Expected | UI-23 | bpm per sample. Shape only — the stated Avg/Max come from the verified summary aggregates. Still needs an explicit source spot-check before promotion. |
+| Elevation over time | `altitude` stream | Expected | UI-23 | Meters per sample; converted to feet. The only series whose own low/high are stated, because those are properties of the series. Total gain is **not** derived from it. Still needs explicit source spot-check. |
+| Pace over time | derived from `velocity_smooth` stream | Expected | UI-23 | Metres/second under the candidate contract; STACK derives seconds-per-mile rather than trusting an assumed-unit `pace` field. Shape only — the stated pace is the run's own. Still needs explicit source spot-check. |
+| Cadence over time | `cadence` stream | Expected | UI-23 | Verbatim, per the verified aggregate convention above. A zero sample is a stop, so it is treated as absent and drawn as a gap. Stream convention still needs explicit source spot-check. |
 
-**The per-sample stream shapes remain `Expected`, not `Verified`.** The August
-13 review verified the *summary aggregates* this feature states — pace, average
-and max HR, elevation gain, cadence — but it did not capture the streams
-payload itself, and this repository has no network path to Intervals.icu to
-check it (the same "cannot be performed in the secret-free repository
-environment" limitation recorded elsewhere in this file). The endpoint and
-field names follow Intervals.icu's documented streams contract, the way every
-other candidate here started.
+The R3 owner-device test establishes that the real Intervals response is
+recognized well enough to produce a profile; QA is no longer the only evidence
+that the path works. The individual rows above remain `Expected` because the
+review did not record each stream's source values/units separately, and this
+catalog deliberately does not infer semantics merely because a chart rendered.
 
-`normalizeIntervalsRunProfile` in `src/connected/intervals.ts` is written
-defensively for that reason: a shape it does not recognize resolves to `null`
-rather than a guess, and Run Detail simply shows no Run Profile section — the
-same as a run with no profile data. Because no stated number depends on the
-streams, an unverified stream shape can cost a chart but can never produce a
-wrong figure.
+`normalizeIntervalsRunProfile` in `src/connected/intervals.ts` remains
+defensive: a shape it does not recognize resolves to `null` rather than a guess,
+and Run Detail simply shows no Run Profile section — the same as a run with no
+profile data. Because no stated summary number depends on the streams, a missing
+or unrecognized stream can cost a chart but cannot manufacture a run fact.
 
 ### Streams give shape; aggregates give numbers
 
@@ -212,6 +229,48 @@ One display-only exception, which changes no value: the pace chart scales its
 visible y-axis to the bulk of the series (Tukey IQR fences) so a handful of
 near-stops cannot flatten the rest into a flat line. Outlying samples are kept,
 clamped to the edge of the visible window, and still counted everywhere else.
+
+## Best-effort times (pace curve)
+
+The Crew Week Recap's **Fastest 5K** (issue #186) needs the time of a real, continuous 5,000 m window inside a run. STACK cannot compute that from what it stores — a whole run's average pace is not a 5K time — and it deliberately does not reconstruct one from `velocity_smooth`. Intervals already runs a pace curve over its own activities and reports best-effort times, so STACK asks it for the 5,000 m answer and stores that:
+
+```text
+GET /api/v1/activity/{id}/pace-curve?distances=5000
+```
+
+The distance is fixed by both the client and the `/api/intervals` reader, so neither a crafted request nor a later caller can widen this into a whole-curve read.
+
+| STACK concept | Intervals candidate | Status | UI phase | Notes |
+|---|---|---|---|---|
+| Fastest 5K | `pace-curve` 5,000 m best effort | Expected | Evolution 2.1 | Seconds. Read as either parallel `distances` / `secs` arrays or a list of `{ distance, secs }` points; **not yet verified against a real connected run.** |
+
+### Source behaviour STACK adopts
+
+Intervals' best-effort calculation requires an actual ≥ 5,000 m window in the activity. It does not fabricate a 5K from a 4.99 km run.
+
+That is the right truth rule for STACK too, and it is enforced twice:
+
+- `normalizeIntervalsBestEfforts` matches the 5,000 m point **exactly** (`Math.round(distance) === 5000`) and never interpolates between ladder points;
+- the enrichment pass will not spend a request on a run below `BEST_5K_MIN_MILES` — 5,000 m converted to miles and rounded **up**, because STACK's stored mileage is two decimals and a run stored as `3.10` may really have been 4,988 m.
+
+A result outside 600–21,600 s is refused rather than shown: the floor sits comfortably under the world record (about 12:35) and the ceiling well past a walked 5K, so a value outside them is a unit mismatch or a corrupt row rather than a run.
+
+### Why this row is `Expected`
+
+The endpoint and field names follow Intervals.icu's documented pace-curve contract. **The exact response shape has not been checked against a real HealthFit-originated activity on a connected account.** Following the same discipline as the Run Profile streams above, the normalizer is written so that any shape it does not recognize yields **no 5K** rather than a guess, and no run fact anywhere in STACK depends on it — a missing 5K costs a recap beat and nothing else.
+
+Because this value is projected to Crew, the device also bounds it before upload (`crewSafeBest5kSeconds`), so an unverified source value can never reach the `shared_runs` CHECK and take a runner's whole projection down with it. See `docs/CREW_PROJECTION_CONTRACT.md`.
+
+### Promotion checklist
+
+- [ ] `GET /activity/{id}/pace-curve?distances=5000` is confirmed reachable on a real owner run through the direct local-key path.
+- [ ] The legacy `/api/intervals?resource=activity-pace-curve` proxy path is separately confirmed, if that connection mode remains supported.
+- [ ] The exact response shape (array vs. parallel arrays, the distance and seconds key names, the unit of `secs`) is recorded here.
+- [ ] The returned 5K is compared against Intervals' own visible Best Effort for that same activity and agrees within rounding.
+- [ ] A real activity **below** 5 km is confirmed to return no 5,000 m point — not a scaled or interpolated one.
+- [ ] A real activity with no pace curve at all is confirmed to yield no 5K and no error.
+
+No raw pace curve, stream, route or credential material is recorded here, and none is persisted anywhere in STACK: only the single derived scalar is stored.
 
 ## Wellness fields
 
@@ -302,16 +361,18 @@ UI-8 field discovery is complete when:
 
 ## UI-23 discovery: Run Profile streams
 
-The August 13 review verified the summary aggregates Run Detail *states*. The
-per-sample stream shapes behind the *lines* are still outstanding. Complete
-before promoting the Run Profile streams rows above to `Verified`:
+R3 established that a real owner Intervals activity can be fetched through the
+direct local-key path and normalized into the production Run Profile. Complete
+the remaining source-semantic checks before promoting the individual stream rows
+above to `Verified`:
 
-- [ ] `GET /activity/{id}/streams?types=time,heartrate,altitude,velocity_smooth,cadence` is confirmed reachable through the deployed `/api/intervals` proxy and the direct local-key path.
-- [ ] The response shape (array of `{type, data}` descriptors vs. a map) is recorded here.
-- [ ] `time` stream presence/units is confirmed on a real HealthFit-originated run.
-- [ ] `heartrate` stream presence is confirmed and spot-checked against the run's known average HR.
-- [ ] `altitude` stream presence/unit is confirmed, and its low/high span is checked against the ~72–113 ft the August 13 review saw.
-- [ ] `velocity_smooth` presence/unit is confirmed and the derived pace is spot-checked against the run's known average pace.
-- [ ] `cadence` stream presence is confirmed, and its values are checked to sit around the same 79 the summary field reports — **not** around 158. A doubled stream against an undoubled summary would be the clearest possible signal that the convention differs between the two, and must be recorded here before either is displayed differently.
+- [x] Direct local-key `GET /activity/{id}/streams.json?types=time,heartrate,altitude,velocity_smooth,cadence` is confirmed reachable on a real owner run.
+- [ ] The deployed `/api/intervals` proxy stream path is separately confirmed on a real owner run if that legacy connection mode remains supported.
+- [x] The returned payload is compatible with the current normalizer and produced a real Run Profile. Exact raw response shape is intentionally not stored here.
+- [ ] `time` stream presence/units are explicitly recorded on a real HealthFit-originated run.
+- [ ] `heartrate` stream presence is explicitly spot-checked against the run's known average HR.
+- [ ] `altitude` stream presence/unit is explicitly recorded, and its low/high span is checked against source truth.
+- [ ] `velocity_smooth` presence/unit is explicitly recorded and the derived pace is spot-checked against the run's known average pace.
+- [ ] `cadence` stream presence is explicitly checked against the verified undoubled source convention.
 - [ ] A run genuinely lacking streams (e.g. an older or manually uploaded activity) is confirmed to render with no Run Profile section rather than an error.
-- [ ] A run whose stream drops out mid-activity is confirmed to render a visible gap rather than a line drawn across it.
+- [ ] A real run whose stream drops out mid-activity is confirmed to render a visible gap rather than a line drawn across it.

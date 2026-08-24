@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
@@ -38,6 +38,42 @@ function summary(
   };
 }
 
+/**
+ * Crew placement no longer prints "Column N" — the runner does not choose a
+ * numbered grid column. The chosen landing is still observable through the
+ * slot the tower marks as chosen, which keeps the column in its accessible
+ * name for exactly this purpose.
+ */
+function chosenLandingName(): string {
+  const chosen = document.querySelector('.built-tower__slot[data-chosen="true"] button');
+  if (!chosen) throw new Error("No landing slot is chosen.");
+  return chosen.textContent ?? "";
+}
+
+/** jsdom has no layout; eight 40px columns give pointer placement a field. */
+function measureCrewTower() {
+  const tower = screen.getByRole("list", { name: "Choose a Crew Build position" });
+  vi.spyOn(tower, "getBoundingClientRect").mockReturnValue({
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    right: 320,
+    bottom: 320,
+    width: 320,
+    height: 320,
+    toJSON: () => ({}),
+  });
+}
+
+/** The four figures above the tower, in order: miles, runs, time, runners. */
+function crewTotals(): string[] {
+  return Array.from(
+    document.querySelectorAll(".crew-build__stats dd"),
+    (value) => value.textContent ?? "",
+  );
+}
+
 function sharedRun(
   id: string,
   userId: string,
@@ -55,6 +91,10 @@ function sharedRun(
     activityType: "easy",
     distanceMiles: 4,
     durationSeconds: 2352,
+    // Syncing is the norm, so it is what an unqualified fixture run is. The
+    // manual case — issue #129's asterisk — is opted into by the tests that
+    // are about it.
+    source: "intervals",
     createdAt: `${localDate}T14:00:00Z`,
     updatedAt: `${localDate}T14:00:00Z`,
     buildRow: 0,
@@ -113,7 +153,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, source, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
@@ -122,6 +162,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       activityType,
       distanceMiles,
       durationSeconds,
+      source,
       createdAt,
       crewBuildRow,
       crewBuildColumnStart,
@@ -203,6 +244,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     pendingInvite: null,
     latestInviteUrl: null,
     projectionError: null,
+    projectionWaitingForPersonal: false,
     crewData: dashboard(),
     crewDataStatus: "ready",
     crewDataError: null,
@@ -229,6 +271,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     removeMember: action,
     deleteRunContribution: action,
     refreshCrewData: action,
+    notePersonalSyncReady: action,
     toggleProps: action,
     markPropsSeen: action,
     dismissPropNotification: vi.fn(),
@@ -411,6 +454,7 @@ describe("Crew comparisons and runs", () => {
               activityType: soloRun.activityType,
               distanceMiles: soloRun.distanceMiles,
               durationSeconds: soloRun.durationSeconds,
+              source: soloRun.source,
               createdAt: soloRun.createdAt,
               crewBuildRow: soloRun.crewBuildRow,
               crewBuildColumnStart: soloRun.crewBuildColumnStart,
@@ -421,7 +465,7 @@ describe("Crew comparisons and runs", () => {
       }),
     );
 
-    expect(screen.getByText("miles built").parentElement).toHaveTextContent(/^5\.5/);
+    expect(crewTotals()).toEqual(["5.5", "1", "0:39", "1"]);
     expect(screen.queryByText("1 run · 1 runner")).not.toBeInTheDocument();
     expect(screen.getByText("Invite your crew to build together.")).toBeInTheDocument();
   });
@@ -871,18 +915,47 @@ describe("Shared Crew Build", () => {
     return controller({ crewData: dashboard({ runs: buildRuns, ...overrides }) });
   }
 
-  it("leads with physically placed miles while keeping secondary totals hidden", () => {
+  /*
+   * Issue #137: the tower is the page. The `CREW BUILD` label and the
+   * oversized miles-built heading above it are gone — the tab already says
+   * where you are — and in their place is one compact row of four crew
+   * figures, none of them competing with the structure below.
+   */
+  it("leads with four crew totals instead of a label and an oversized heading", () => {
     openCrew(crewWithBuild());
 
-    expect(screen.getByText("Crew Build")).toBeInTheDocument();
-    expect(screen.getByText("17.0")).toBeInTheDocument();
-    expect(screen.getByText("miles built")).toBeInTheDocument();
-    expect(screen.queryByText("3 runs · 3 runners")).not.toBeInTheDocument();
+    expect(screen.queryByText("Crew Build")).not.toBeInTheDocument();
+    expect(screen.queryByText("miles built")).not.toBeInTheDocument();
+    // 4 + 8 + 5 miles, three runs, 3 × 39:12 of running, all three placed, and
+    // a roster of three.
+    expect(crewTotals()).toEqual(["17.0", "3", "1:57", "3"]);
+    expect(
+      Array.from(
+        document.querySelectorAll(".crew-build__stats dt"),
+        (label) => label.textContent,
+      ),
+    ).toEqual(["Miles", "Runs", "Hours", "Runners"]);
     expect(
       within(screen.getByRole("list", { name: "Crew Build blocks" })).getAllByRole(
         "listitem",
       ),
     ).toHaveLength(3);
+  });
+
+  /*
+   * The old treatment nested the tower inside a second, larger lime frame.
+   * Only the field is framed now, and quietly: the blocks are the colour on
+   * this page.
+   */
+  it("frames only the build field, and not with the accent", () => {
+    openCrew(crewWithBuild());
+
+    const section = document.querySelector(".crew-build");
+    expect(section).not.toHaveClass("technical-grid");
+    expect(section).toHaveClass("crew-build--page");
+    expect(
+      screen.getByRole("list", { name: "Crew Build blocks" }).closest(".crew-build__stage"),
+    ).toBeInTheDocument();
   });
 
   it("draws every member's run into one tower in contribution order", () => {
@@ -950,6 +1023,55 @@ describe("Shared Crew Build", () => {
       expect(mark).toHaveAttribute("aria-hidden", "true");
       expect(entry).toHaveAttribute("data-member-color");
     }
+  });
+
+  /*
+   * Issue #129 on the shared tower: the same single asterisk Personal Build
+   * uses, on the same brick primitive, for a run somebody typed in by hand.
+   * A synced block is untouched, and Crew Run Detail names the source either
+   * way.
+   */
+  it("marks a hand-logged crew block and names its source in Run Detail", async () => {
+    const manual = sharedRun("manual", "zack", "2026-08-05", {
+      distanceMiles: 4,
+      source: "manual",
+      crewBuildRow: 0,
+      crewBuildColumnStart: 1,
+    });
+    const synced = sharedRun("synced", "drew", "2026-08-06", {
+      activityType: "long",
+      distanceMiles: 8,
+      source: "intervals",
+      crewBuildRow: 0,
+      crewBuildColumnStart: 3,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [manual, synced] }) }));
+
+    const tower = screen.getByRole("list", { name: "Crew Build blocks" });
+    expect(
+      Array.from(
+        tower.querySelectorAll(".placed-block__label"),
+        (face) => face.textContent,
+      ),
+    ).toEqual(["4*", "8MI"]);
+    // The asterisk is decoration; the name says it in words.
+    const manualBlock = screen.getByRole("button", {
+      name: "Zack, Easy, 4 miles, manual entry, August 5",
+    });
+    expect(
+      screen.getByRole("button", { name: "Drew, Long Run, 8 miles, August 6" }),
+    ).toBeInTheDocument();
+
+    await user.click(manualBlock);
+    expect(
+      within(screen.getByRole("dialog", { name: "Run Detail" })).getByText("Manual entry"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    await user.click(screen.getByRole("button", { name: "Drew, Long Run, 8 miles, August 6" }));
+    expect(
+      within(screen.getByRole("dialog", { name: "Run Detail" })).getByText("Intervals.icu"),
+    ).toBeInTheDocument();
   });
 
   it("names each block for a screen reader without exposing its decoration", () => {
@@ -1085,7 +1207,11 @@ describe("Shared Crew Build", () => {
     expect(screen.queryByText("Long Run · 8 MI · Aug 8")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Build Now" })).toBeInTheDocument();
     expect(screen.queryByText("0 built · 3 ready")).not.toBeInTheDocument();
-    expect(screen.getByText("0.0")).toBeInTheDocument();
+    // The totals describe the tower, so three READY runs that nobody has
+    // placed yet add nothing to Miles, Runs or Time. Runners is the roster and
+    // reports all three members regardless — it is a fact about the crew, not
+    // about what has been built.
+    expect(crewTotals()).toEqual(["0.0", "0", "0:00", "3"]);
   });
 
   it("does not offer a placement action for another runner's READY block", () => {
@@ -1111,10 +1237,15 @@ describe("Shared Crew Build", () => {
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Crew totals")).not.toBeInTheDocument();
+    expect(screen.getByText("Block in hand")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Place Easy controls" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Auto Place" })).toBeInTheDocument();
     // Gravity already picked a landing — flush against the left edge of empty
     // ground — the same Auto Place default Personal Build uses, with no row
     // to choose.
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
+    expect(screen.queryByText("Column 1")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
     expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
@@ -1189,10 +1320,45 @@ describe("Shared Crew Build", () => {
     expect(slots).toHaveLength(7);
     expect(slots[0]).toHaveAccessibleName("Place Easy block in columns 1 through 2");
 
-    await user.click(screen.getByRole("button", { name: "Move block right" }));
-    expect(screen.getByText("Column 2")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Drop" }));
+    const moveRight = screen.getByRole("button", { name: "Move block right" });
+    moveRight.focus();
+    await user.keyboard("{Enter}");
+    expect(chosenLandingName()).toBe("Place Easy block in columns 2 through 3");
+    expect(screen.queryByText("Column 2")).not.toBeInTheDocument();
+    const drop = screen.getByRole("button", { name: "Drop" });
+    drop.focus();
+    await user.keyboard("{Enter}");
     expect(place).toHaveBeenCalledWith("ready-own", 0, 2);
+  });
+
+  it("keeps sideways drag-and-release as a complete placement path", async () => {
+    const place = vi.fn(async () => true);
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({
+      crewData: dashboard({ runs: [ready] }),
+      placeCrewBuildBlock: place,
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    measureCrewTower();
+    const chosen = screen.getByRole("button", {
+      name: "Place Easy block in columns 1 through 2",
+    });
+
+    act(() => {
+      fireEvent.pointerDown(chosen, { pointerId: 1, buttons: 1, clientX: 20 });
+    });
+    act(() => {
+      fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 1, clientX: 180 });
+    });
+    await act(async () => {
+      fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 180 });
+    });
+
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 5);
   });
 
   it("keeps a block READY, shows the specific server collision message, and recomputes a fresh landing to retry", async () => {
@@ -1212,8 +1378,57 @@ describe("Shared Crew Build", () => {
     // The block stays in hand with a freshly recomputed gravity landing —
     // "refresh, recompute, retry" per issue #65 — rather than stranded with
     // nothing to drop.
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
     expect(screen.queryByText("1 built · 0 ready")).not.toBeInTheDocument();
+  });
+
+  /*
+   * Issue #128: joining can finish before this device owns the account's
+   * canonical personal cache, and the runs held back by that are exactly the
+   * ones the runner came to Crew to see. The wait is stated where they are
+   * looking, instead of the tower silently omitting them.
+   */
+  it("says when Crew sharing is waiting on personal STACK", async () => {
+    openCrew(controller({
+      crewData: dashboard({ runs: [] }),
+      projectionWaitingForPersonal: true,
+    }));
+
+    expect(
+      screen.getByText(
+        "Your runs reach the crew as soon as personal STACK finishes syncing on this device.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about personal sync once the handoff is done", async () => {
+    openCrew(controller({ crewData: dashboard({ runs: [] }) }));
+
+    expect(screen.queryByText(/personal STACK finishes syncing/)).not.toBeInTheDocument();
+  });
+
+  /*
+   * Issue #128: the eight-column grid is a placement mechanic, not something
+   * the runner is choosing between. Crew placement says where the block will
+   * go in plain terms and keeps the column where it is genuinely needed — the
+   * landing slots' accessible names.
+   */
+  it("places without teaching numbered-column language", async () => {
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [ready] }) }));
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    expect(
+      screen.getByText("Tap or drag to position"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Drag sideways or tap a spot. Your block will land where it fits."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Column \d+$/)).not.toBeInTheDocument();
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
   });
 
   it("offers Move Block only for the current runner's placed Crew block", async () => {
@@ -1362,7 +1577,9 @@ describe("Switching between crews", () => {
 
   it("shows the viewed crew's own emblem beside its name", () => {
     openCrew(inTwoCrews());
-    expect(document.querySelectorAll(".crew-emblem")).toHaveLength(1);
+    // Scoped to the header: issue #186's recap notification carries the same
+    // emblem, deliberately, and it is not part of the crew's identity line.
+    expect(document.querySelectorAll(".crew-view__lead .crew-emblem")).toHaveLength(1);
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canPlaceCrewAwardBlock,
   crewAwardLandingOptions,
   deriveCrewBuildWithAwards,
 } from "./crewBuild";
@@ -84,7 +85,7 @@ describe("Crew Special Blocks in the shared tower", () => {
     expect(model.readyAwardCount).toBe(2);
   });
 
-  it("computes award gravity options against both award and run rectangles", () => {
+  it("computes the lowest valid award options against both award and run rectangles", () => {
     const model = deriveCrewBuildWithAwards(
       [run("base", { crewBuildRow: 0, crewBuildColumnStart: 1 })],
       [award("other", { crewBuildRow: 0, crewBuildColumnStart: 3 })],
@@ -95,5 +96,34 @@ describe("Crew Special Blocks in the shared tower", () => {
     expect(options).toHaveLength(7);
     expect(options.find((option) => option.columnStart === 1)?.row).toBe(1);
     expect(options.find((option) => option.columnStart === 7)?.row).toBe(0);
+  });
+
+  it("lets a Special Block fill the lowest valid cavity beneath a wider Special Block", () => {
+    const model = deriveCrewBuildWithAwards(
+      [
+        run("left-support", {
+          distanceMiles: 2.9,
+          activityType: "intervals",
+          crewBuildRow: 0,
+          crewBuildColumnStart: 1,
+        }),
+        run("cavity-support", {
+          distanceMiles: 3,
+          crewBuildRow: 0,
+          crewBuildColumnStart: 2,
+        }),
+      ],
+      [award("bridge", {
+        awardType: "longHaul",
+        crewBuildRow: 2,
+        crewBuildColumnStart: 1,
+      })],
+    );
+    const moving = award("moving", { awardType: "miles" });
+    const option = crewAwardLandingOptions(moving, model.blocks)
+      .find((candidate) => candidate.columnStart === 2);
+
+    expect(option).toMatchObject({ row: 1, columnStart: 2, columnEnd: 3 });
+    expect(canPlaceCrewAwardBlock(moving, option!, model.blocks)).toBe(true);
   });
 });

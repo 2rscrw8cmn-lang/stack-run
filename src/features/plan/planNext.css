@@ -1,0 +1,230 @@
+/*
+ * NEXT-5 Plan role revision.
+ *
+ * Plan is intent beside actual history, not an adherence dashboard. The week
+ * lead therefore uses two quiet readings instead of a completion hero/progress
+ * bar: schedule intent first, actual runner history beside it, and explicit
+ * link state below as relationship metadata.
+ *
+ * Interface is quiet, data is STACK: the readings are separated by hairlines
+ * and typography rather than by cards, tints or scoring colour.
+ */
+
+.week-lead__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--border);
+}
+
+/* A week that has not happened has one reading, not an empty second cell. */
+.week-lead__summary[data-readings="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.week-lead__reading {
+  min-width: 0;
+  padding: 11px 10px 10px;
+  background: var(--bg);
+}
+
+.week-lead__reading-value,
+.week-lead__reading-meta {
+  margin: 0;
+}
+
+.week-lead__reading-value {
+  color: var(--text);
+  font-family: var(--font-data);
+  font-size: clamp(14px, 4.1vw, 17px);
+  font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Actual running is the runner's own fact, so it carries the accent. Planned
+   intent stays in text colour: neither one is the good or the bad number. */
+.week-lead__reading[data-kind="actual"] .week-lead__reading-value {
+  color: var(--accent);
+}
+
+.week-lead__reading-meta {
+  margin-top: 4px;
+  color: var(--text-subtle);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.week-lead__relationship {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.week-lead__linked {
+  min-width: 0;
+  color: var(--text-subtle);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.week-lead__relationship .week-lead__now {
+  margin-left: auto;
+}
+
+.week-lead__relationship .week-lead__shortcut {
+  min-height: 44px;
+  padding-inline: var(--space-2);
+}
+
+/* Where the plan is in its own life: before it starts, or after the race.
+   One line of type, no container, no countdown, no progress. */
+
+.plan-lifecycle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-lifecycle__headline,
+.plan-lifecycle__detail {
+  margin: 0;
+}
+
+.plan-lifecycle__headline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.plan-lifecycle__headline svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.plan-lifecycle__detail {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-lifecycle__action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-lifecycle__action svg {
+  flex-shrink: 0;
+}
+
+@media (max-width: 340px) {
+  .week-lead__summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .week-lead__reading {
+    padding-inline: 8px;
+  }
+}
+
+.plan-empty {
+  display: grid;
+  gap: 12px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-empty > svg {
+  color: var(--accent);
+}
+
+.plan-empty h1,
+.plan-empty p,
+.plan-history h2 {
+  margin: 0;
+}
+
+.plan-empty h1 {
+  font-size: 22px;
+}
+
+.plan-empty p {
+  max-width: 34rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.plan-history {
+  padding-top: 22px;
+}
+
+.plan-history h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.plan-history ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-history li + li {
+  border-top: 1px solid var(--border);
+}
+
+.plan-history li button,
+.plan-history__back {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.plan-history li button {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+}
+
+.plan-history li small {
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: var(--type-meta);
+}
+
+.plan-history__back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  color: var(--text-muted);
+}
+
+.plan-lifecycle__action--quiet {
+  color: var(--text-muted);
+}

@@ -72,6 +72,8 @@ src/
 │  ├─ today/
 │  │  ├─ TodayScreen.tsx
 │  │  ├─ RaceSummaryCard.tsx
+│  │  ├─ TodayActionCard.tsx
+│  │  ├─ CompletedRunSummary.tsx
 │  │  └─ TodayWorkoutCard.tsx
 │  ├─ run-entry/
 │  │  ├─ CompleteRunSheet.tsx

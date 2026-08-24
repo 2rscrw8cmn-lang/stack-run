@@ -48,6 +48,7 @@ import { crewMemberAccent } from "../../crew/memberAccent";
 import { deriveCrewMiniBuild } from "../../crew/miniBuild";
 import { viewerFirstMembers } from "../../crew/memberOrder";
 import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
+import { crewBuildTotals } from "../../crew/crewTotals";
 import type { CrewBuildRun } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import { useCrewAwards } from "../../crew/useCrewAwards";
@@ -59,6 +60,8 @@ import { CrewAwardsPanel } from "./CrewAwardsPanel";
 import { CrewBuild, type CrewBuildPlacementMode } from "./CrewBuild";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
+import { CrewRecapNotification } from "./CrewRecapNotification";
+import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
 import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
 import { CrewRunRow } from "./CrewRunRow";
 import { PropNotifications } from "./PropNotifications";
@@ -82,6 +85,17 @@ type MetricDescriptor = {
   Icon: LucideIcon;
 };
 
+/*
+ * One comparison set for both crew types.
+ *
+ * NEXT-6 renamed the plan-link comparison (`Consistency` → `Plan Runs Linked`)
+ * because presenting a plan-link ratio as a quality of the runner was the
+ * reading NEXT-3 ranked last on Runs and NEXT-5 refused as Plan's headline.
+ * Main had already gone further and removed the metric outright, replacing the
+ * Race/Club split with Avg Pace and Awards — measures that need no training
+ * plan and so serve both crew types. The removal satisfies the rename's whole
+ * intent, so the removal stands.
+ */
 const METRICS: MetricDescriptor[] = [
   { id: "weekly-miles", shortLabel: "Miles", window: "This week", Icon: BarChart3 },
   { id: "longest-run", shortLabel: "Long", window: "Trailing 28 days", Icon: Mountain },
@@ -184,6 +198,44 @@ export function CrewScreen({
       void markPropsSeen();
     }
   }, [crewStatus, currentCrewId, markPropsSeen]);
+
+  /*
+   * Owner review, before any access state can get in the way.
+   *
+   * The live notification needs a signed-in Crew, a closed week with real
+   * shared running in it, and the Monday–Wednesday window — so on a Thursday,
+   * or from a fresh preview browser, the surface cannot be looked at. This is
+   * the same preview-host-only overlay `?demo=recap` already gives Today,
+   * rendering the real notification and the real sheet against the fake crew in
+   * `crewRecapDemo.ts`. It reads no account, no Supabase and no localStorage,
+   * and it replaces the screen rather than sitting alongside the real one, so
+   * nothing on it is a real Crew's data.
+   */
+  const recapDemo = crewRecapDemoVariant();
+  const recapDemoData = recapDemo ? crewRecapDemoData(recapDemo) : null;
+  if (recapDemoData) {
+    return (
+      <div className="crew-view">
+        <header className="crew-view__lead">
+          <div className="crew-view__lead-row">
+            <CrewEmblem
+              className="crew-view__emblem"
+              emblem={recapDemoData.emblem}
+              size={46}
+            />
+            <div className="crew-view__identity">
+              <h1 className="crew-view__name data-value">
+                {recapDemoData.recap.crewName}
+              </h1>
+              <p className="crew-view__race machine-label">RECAP DEMO</p>
+            </div>
+          </div>
+        </header>
+        {/* The real notification, which resolves the same demo fixture itself. */}
+        <CrewRecapNotification crew={null} awards={crewAwards} />
+      </div>
+    );
+  }
 
   if (crew && (!crew.configured || crew.status === "unconfigured")) {
     return (
@@ -310,6 +362,7 @@ export function CrewScreen({
   const railMembers = viewerFirstMembers(members, currentUserId);
   const bestDisplayedValue = comparisonBest(activeMetric, comparisonRows);
   const isRaceCrew = currentCrew.crewType === "race";
+
   const raceLine = isRaceCrew ? crewRaceLine(currentCrew) : "";
   const countdown = isRaceCrew && currentCrew.raceDate
     ? raceCountdown(currentCrew.raceDate, today)
@@ -321,6 +374,18 @@ export function CrewScreen({
     ...crewBuild,
     truncated: crewBuild.truncated || dashboardData.sharedRunsTruncated,
   };
+  /*
+   * Issue #137: the four figures above the tower. `crewBuildRuns` is already
+   * the Crew-windowed set the tower itself is derived from, and passing the
+   * placed blocks alongside it keeps Miles, Runs and Time describing the
+   * structure on screen rather than the wider pool it is drawn from. Runners
+   * is the roster, so it holds steady while the other three grow.
+   */
+  const buildTotals = crewBuildTotals(
+    dashboardData.crewBuildRuns,
+    crewBuild.blocks,
+    members.length,
+  );
   const viewerReadyRuns = build.viewerReadyRuns;
   const viewerReadyAwards = build.viewerReadyAwards;
 
@@ -550,6 +615,19 @@ export function CrewScreen({
         </div>
       </header>
 
+      {/*
+        * Issue #186: last week's recap, in the same place and the same
+        * notification family as Props. Above Props because it is the weekly
+        * moment and they are a running feed, and both above the tower because
+        * a notification a runner has to scroll past the Build to find is a
+        * notification they will not see.
+        */}
+      <CrewRecapNotification
+        crew={activeCrew}
+        awards={crewAwards}
+        today={today}
+      />
+
       <PropNotifications
         notifications={activeCrew.visiblePropNotifications}
         propsSeenAt={activeCrew.account?.profile.propsSeenAt ?? new Date(0).toISOString()}
@@ -589,8 +667,21 @@ export function CrewScreen({
         </Sheet>
       )}
 
+      {/*
+        * Issue #128: a runner whose personal cache is still being adopted has
+        * eligible runs that genuinely have not reached the crew yet. Say so
+        * where they are looking for their READY blocks, rather than showing a
+        * tower that silently omits them.
+        */}
+      {activeCrew.projectionWaitingForPersonal && (
+        <p className="crew-view__waiting" role="status">
+          Your runs reach the crew as soon as personal STACK finishes syncing on this device.
+        </p>
+      )}
+
       <CrewBuild
         model={build}
+        totals={buildTotals}
         members={railMembers}
         available={dashboardData.sharedRunsAvailable}
         justPlacedRunId={justPlacedId}

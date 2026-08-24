@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, WandSparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
@@ -12,6 +12,12 @@ interface PlacementBarProps {
   title: string;
   /** e.g. "Column 3", or null when nothing fits. */
   positionLabel: string | null;
+  /**
+   * Whether the readout names the column. Personal Build does; Crew Build
+   * keeps the coordinate for its controls and the landing slots' accessible
+   * names, but a numbered grid column is not something a runner picks.
+   */
+  showPositionLabel?: boolean;
   canStepBack: boolean;
   canStepForward: boolean;
   onStep: (direction: -1 | 1) => void;
@@ -22,6 +28,8 @@ interface PlacementBarProps {
   pending?: boolean;
   /** A server-rejected placement, shown under the controls. */
   error?: string | null;
+  /** Crew keeps the controls inside the construction field instead of opening a bottom sheet. */
+  layout?: "sheet" | "field";
 }
 
 /**
@@ -31,9 +39,10 @@ interface PlacementBarProps {
  * and keyboard path: step the block along with the arrows, see it in
  * position, and commit with `Drop`. Both paths are complete on their own.
  *
- * The readout names the column and stops there. The course it will land on is
- * gravity's answer rather than a choice, and saying it turned this into a
- * packing readout.
+ * Where the readout names the column it stops there. The course it will land
+ * on is gravity's answer rather than a choice, and saying it turned this into
+ * a packing readout. The "no room left" state is always shown: that one is
+ * about the tower, not about the grid.
  *
  * Generic over which tower it belongs to, so Personal and Crew Build share
  * one placement control rather than a bar apiece — Crew layers a pending
@@ -45,6 +54,7 @@ export function PlacementBar({
   height,
   title,
   positionLabel,
+  showPositionLabel = true,
   canStepBack,
   canStepForward,
   onStep,
@@ -53,15 +63,74 @@ export function PlacementBar({
   onCancel,
   pending = false,
   error = null,
+  layout = "sheet",
 }: PlacementBarProps) {
+  const style = {
+    "--piece-color": pieceColor,
+  } as CSSProperties;
+
+  if (layout === "field") {
+    return (
+      <div
+        className="placement-bar placement-bar--field"
+        role="group"
+        aria-label={`${title} controls`}
+        style={style}
+      >
+        <div className="placement-bar__controls">
+          <IconButton
+            className="placement-bar__cancel"
+            label="Cancel placing"
+            title="Cancel placing"
+            icon={<X size={20} strokeWidth={1.8} />}
+            onClick={onCancel}
+            disabled={pending}
+          />
+          <IconButton
+            label="Move block left"
+            icon={<ChevronLeft size={22} strokeWidth={2} />}
+            disabled={!canStepBack || pending}
+            onClick={() => onStep(-1)}
+          />
+          <Button
+            className="placement-bar__drop"
+            onClick={onDrop}
+            disabled={positionLabel === null || pending}
+          >
+            {pending ? "Placing…" : "Drop"}
+          </Button>
+          <IconButton
+            label="Move block right"
+            icon={<ChevronRight size={22} strokeWidth={2} />}
+            disabled={!canStepForward || pending}
+            onClick={() => onStep(1)}
+          />
+          <IconButton
+            className="placement-bar__auto-icon"
+            label="Auto Place"
+            title="Auto Place"
+            icon={<WandSparkles size={19} strokeWidth={1.8} />}
+            onClick={onAutoPlace}
+            disabled={positionLabel === null || pending}
+          />
+        </div>
+
+        {error && (
+          <p className="placement-bar__error" role="status">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="placement-bar" role="group" aria-label="Place your block">
+    <div className="placement-bar" role="group" aria-label="Place your block" style={style}>
       <div className="placement-bar__block">
         <span
           className="placement-bar__chip"
           style={
             {
-              "--piece-color": pieceColor,
               "--piece-span": width,
               "--piece-height": height,
             } as CSSProperties
@@ -70,9 +139,11 @@ export function PlacementBar({
         />
         <div className="placement-bar__detail">
           <p className="placement-bar__title">{title}</p>
-          <p className="placement-bar__position">
-            {positionLabel ?? "No room left in the tower"}
-          </p>
+          {(showPositionLabel || positionLabel === null) && (
+            <p className="placement-bar__position">
+              {positionLabel ?? "No room left in the tower"}
+            </p>
+          )}
         </div>
         <IconButton
           label="Cancel placing"

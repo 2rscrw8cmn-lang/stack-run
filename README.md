@@ -2,29 +2,78 @@
 
 **Build your race.**
 
-STACK is a phone-first running-plan app that turns completed runs into a growing block structure. It keeps one active race/plan simple: know what to run, record what actually happened, see whether training is accumulating, and place the block.
+STACK is a phone-first running app organized around the runner's actual training history, with race intent, a tactile Build system and optional Crew layered around that truth.
 
 ![STACK UI reference](reference/stack-ui-reference.png)
 
-## Current product
+## Current product status
 
-The original UI-0 through UI-7 program is implemented.
+**`main` is the canonical, production product branch.**
 
-STACK currently includes:
+STACK Next shipped to `main` through PR #136 on August 20, 2026. The former `feature/stack-next` integration branch and its child-branch workflow are historical development infrastructure, not the place for new work.
 
-- three persistent tabs: **Today**, **Build**, **Plan**, plus a **Settings** sheet in the bottom bar that is not a fourth destination;
-- scheduled and extra runs;
-- editable actual run date, distance, duration, effort/type and notes;
-- deterministic 8-column Build tower, one block per actual run;
-- editable/generated one-race plan, with a start date the runner can choose;
-- preferred run-day reshaping;
-- optional availability-calendar conflict proposals;
-- browser-local persistence/recovery;
-- installable dark phone-first PWA-style experience (without offline service worker).
+The product direction established by STACK Next remains active on `main`:
 
-## Next program — Connected Training
+> **Actual history says what happened. Plan says what was intended. A link says how an actual run relates to that intent.**
 
-The approved running-data path is:
+The runner and the runner's actual history are foundational. Plan remains useful race-specific intent, Build remains the tangible reward, and Crew remains optional and downstream of personal truth.
+
+## Where new work starts
+
+Read `START_HERE.md` and `AGENTS.md` before changing code.
+
+Normal work should:
+
+1. start from the latest `main`;
+2. use a narrowly scoped issue branch;
+3. keep one coherent issue/phase per branch unless an explicit dependency requires stacking;
+4. open a pull request back to `main`;
+5. pass the repository's required validation before merge.
+
+Do **not** start new work from `feature/stack-next` or target new PRs to it.
+
+Current forward work is tracked as GitHub issues, including the **STACK 1.0 Stabilization 1.xx** and **STACK Evolution 2.xx** sequences.
+
+## Read first
+
+For current work, use this entry path:
+
+```text
+START_HERE.md
+AGENTS.md
+docs/PRODUCT_AND_SCOPE.md
+docs/CURRENT_APPLICATION_STRUCTURE.md
+docs/ENGINEERING_STANDARDS.md
+docs/DESIGN_SYSTEM.md
+```
+
+Then read the specialist contract for the system you are touching, for example:
+
+- `docs/CONNECTED_DATA_FIELDS.md` and `docs/INTERVALS_INTEGRATION.md` for connected running data;
+- `docs/RUNS_PRODUCT_MODEL.md`, `docs/RUNS_VISUALIZATION_SYSTEM.md` and `docs/RUN_DETAIL_PRODUCT_SPEC.md` for Runs/Run Detail;
+- `docs/CREW_PROJECTION_CONTRACT.md` and current Crew/security docs for Crew uploads, awards or Supabase behavior;
+- `docs/DATA_AND_STORAGE.md` and `docs/PERSONAL_ACCOUNT_SYNC.md` for persistence/account sync.
+
+`docs/STACK_NEXT.md`, `docs/STACK_NEXT_IMPLEMENTATION.md`, `docs/STACK_NEXT_AGENT_PROMPT.md` and individual NEXT/Runs phase briefs remain historical implementation records. They are useful for rationale, but they do not define the current branch workflow.
+
+## Current application shape
+
+At a high level, STACK includes:
+
+- **Today** — what matters now;
+- **Build** — the physical reward for runs recorded/accepted into STACK;
+- **Runs** — unified actual history, current-running context, Training Signals, History and Run Detail;
+- **Crew** — an optional social/shared Build destination for active Crew members;
+- **Plan** — upcoming and historical race intent, explicitly separate from actual history;
+- manual logging plus connected Intervals.icu data;
+- personal account synchronization and local resilience;
+- phone-first PWA-style behavior.
+
+The exact current product and architecture contracts live in the current docs above; do not infer current behavior from an old phase brief when they conflict.
+
+## Connected running-data path
+
+The common Apple path is:
 
 ```text
 Apple Watch
@@ -38,81 +87,38 @@ Intervals.icu
 STACK
 ```
 
-The goal is to eliminate retyping objective run data while preserving the product loop:
+Other watches/services may connect to Intervals.icu directly. Manual logging remains a complete fallback.
 
-> See the run → run → confirm/record it → earn a block → place it → see the build grow.
-
-Manual logging remains a complete fallback.
-
-Connected phases add:
-
-- secure read-only Intervals.icu activity sync;
-- planned-match / extra-run confirmation;
-- attachment of synced data to existing manual runs;
-- pace, HR, cadence, elevation, training load and HR zones when the real source contains them;
-- weekly actual stats;
-- race-training trends;
-- optional HRV/resting-HR/sleep context only after HealthFit → Intervals coverage is verified.
-
-Read:
-
-```text
-docs/CONNECTED_TRAINING.md
-docs/INTERVALS_INTEGRATION.md
-docs/CONNECTED_DATA_FIELDS.md
-```
+`docs/CONNECTED_DATA_FIELDS.md` is authoritative for verified source fields, units and pipeline-specific semantics.
 
 ## Product boundaries
 
-STACK is not a replacement for Apple Fitness, HealthFit or Intervals.icu.
-
-It does not become:
+STACK is not intended to become:
 
 - a live GPS/run tracker;
-- a social platform;
-- a generic fitness analytics dashboard;
-- an AI coach;
-- an automatic recovery-based plan editor;
-- a medical-readiness tool;
-- a Strava integration;
-- a direct HealthKit/native app;
-- a multi-user cloud service in the personal API-key release.
+- a Strava clone;
+- an Intervals.icu dashboard clone;
+- a public social network;
+- an AI coach that autonomously rewrites training;
+- a medical/readiness product;
+- a route-mapping product;
+- a game economy with XP/coins/quests.
 
-Build remains deterministic HTML/CSS — no canvas, WebGL or physics engine.
+Prefer factual, traceable running context and meaningful omission over opaque scores or invented certainty.
 
-## Technical direction
+## Technical baseline
 
 - React
 - TypeScript
 - Vite
 - Plain CSS/design tokens
 - Lucide React
-- Versioned browser localStorage for user state
+- versioned local persistence/cache
+- Supabase Auth/Postgres/RLS for approved account/personal-sync and Crew systems
 - Vercel deployment
-- Narrow stateless serverless readers under `api/`
+- direct/proxy Intervals connection modes
 
-Current server routes:
-
-- `api/calendar.ts` — availability-calendar reader when source CORS blocks the browser;
-- `api/intervals.ts` — planned for UI-8, protected read-only Intervals proxy.
-
-Connected Training keeps the powerful Intervals personal API key server-side and protects the proxy with a separate local STACK sync token. See `docs/DEPLOYMENT.md`.
-
-## Installing it
-
-STACK is installable to a home screen and opens without browser chrome. It is intentionally **not offline-capable** yet: no service worker ships until offline behavior is separately designed/tested.
-
-On iOS Safari: **Share → Add to Home Screen**.
-
-A browser tab and installed app on the same origin share local training state.
-
-## Persistence
-
-Training state lives under the same browser-origin storage key across deployments. Deploying to the same domain preserves it; changing domains does not.
-
-Unreadable storage enters the recovery flow instead of silently resetting.
-
-Connected Training may add normalized health/run metrics to that local state but does not add a server database.
+Do not add a router, global-state framework, UI framework, canvas/WebGL/physics engine or broader backend merely because a feature is substantial. Add infrastructure only when the scoped issue demonstrates the need.
 
 ## Repository map
 
@@ -121,37 +127,29 @@ Connected Training may add normalized health/run metrics to that local state but
 ├─ AGENTS.md
 ├─ START_HERE.md
 ├─ README.md
-├─ api/            narrow Vercel serverless readers
-├─ docs/           product, data, integration, QA and phase source of truth
+├─ api/            narrow serverless readers
+├─ docs/           product, data, design, integration, QA and historical phase records
 ├─ public/         manifest and app icons
-├─ scripts/        icon generation
+├─ scripts/
 ├─ seed/
 ├─ src/
 ├─ reference/
+├─ supabase/       database migrations/config/tests for approved Supabase systems
 └─ .github/
 ```
 
-## Build workflow
+## Validation
 
-One implementation phase equals one branch and one pull request.
-
-Connected sequence:
-
-```text
-UI-8  Connected Data Foundation
-UI-9  Connected Run Detail
-UI-10 Connected Today + Week
-UI-11 Training Trends
-UI-12 Wellness / Recovery Context
-UI-13 Optional plan-export investigation (deferred)
-```
-
-Every automated phase must pass without real external credentials:
+Before opening or updating a PR, run the same clean-install validation used by CI:
 
 ```bash
+npm ci
 npm run check
+git diff --check
 ```
 
-Connected phases then add a separate deployed real-data smoke test using Vercel secrets and the user's own HealthFit/Intervals data.
+Every normal pull request into `main` must pass the required **PR Validation / Install, lint, test, build** check before merge. Database changes also run the path-scoped **Supabase Migration Gate** and must pass that specialist verification when it is triggered.
 
-See `START_HERE.md` and `docs/AGENT_PROMPTS.md` before starting a phase.
+Do not bypass failed checks for ordinary work. An urgent fix may use an explicit administrator override only when the risk is understood and the validation gap is documented; the normal path remains PR → green required checks → merge.
+
+Connected-data or database changes may require additional deployed/device/SQL verification defined by their specialist contracts. Never commit real credentials, raw private payloads, GPS coordinates or other sensitive data.

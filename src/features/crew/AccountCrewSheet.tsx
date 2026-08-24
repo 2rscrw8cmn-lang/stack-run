@@ -176,7 +176,9 @@ function PersonalDataPanel({ sync }: { sync: PersonalSyncController }) {
               This device has {initialization.runCount} {initialization.runCount === 1 ? "run" : "runs"} and{" "}
               {initialization.blockCount} built {initialization.blockCount === 1 ? "block" : "blocks"}.
             </p>
-            <p className="crew-settings__note">{initialization.raceName}</p>
+            <p className="crew-settings__note">
+              {initialization.raceName ?? "No active race plan"}
+            </p>
           </div>
         </div>
         <p className="crew-settings__copy">
@@ -1160,9 +1162,24 @@ export function AccountCrewSheet({ isOpen, onClose, crew, personalSync, localRac
 
             {crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}
             {crew.message && <p role="status" className="crew-settings__message">{crew.message}</p>}
-            {crew.projectionError && (
-              <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
-            )}
+            {crew.projectionWaitingForPersonal ? (
+              <p className="crew-settings__note" role="status">
+                Crew sharing starts as soon as personal STACK finishes syncing on this device.
+              </p>
+            ) : crew.projectionError ? (
+              <>
+                <p className="crew-settings__note">Crew sharing will retry later. Personal STACK is unaffected.</p>
+                {/*
+                  * Issue #128 asked that a blocked projection not fail
+                  * silently. Reassurance alone was still silent about the one
+                  * thing anyone diagnosing this needs: the reason the upload
+                  * was refused.
+                  */}
+                <p className="crew-settings__note crew-settings__note--detail">
+                  {crew.projectionError}
+                </p>
+              </>
+            ) : null}
           </>
         )}
         {visibleView !== "main" && crew.error && <p role="alert" className="crew-settings__message crew-settings__message--error">{crew.error}</p>}

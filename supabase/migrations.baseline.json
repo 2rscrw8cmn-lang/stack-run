@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "frozenThrough": "20260820170000",
+  "note": "Files at or before frozenThrough are historical and must never be edited in place. Add a forward-only migration instead.",
+  "migrations": [
+    {
+      "file": "20260810212106_race_crew_foundation.sql",
+      "sha256": "0749133839b9137778146886384e56e3f2774bad8f81a12940ced616b72d2ea3"
+    },
+    {
+      "file": "20260810212506_race_crew_function_grants.sql",
+      "sha256": "eb48e960ea33ea82453e7d07eb6d0974540342b1c5dfe6504762b340827faaa9"
+    },
+    {
+      "file": "20260810230000_crew_reactions.sql",
+      "sha256": "106dd72d932dcf741d413340316486f6dbd7be2cb96e31ac49703d5815426290"
+    },
+    {
+      "file": "20260811090000_shared_run_build_placement.sql",
+      "sha256": "c2e0522ab5ad0d8e88a0521dd525f2925862479fcf4010fb707b22973a2f9de1"
+    },
+    {
+      "file": "20260811150000_crew_build_placement.sql",
+      "sha256": "596f800f4c3c5fb6e5d0ea4a898fbaef37fcc75b5b73be956519e051a33c9a12"
+    },
+    {
+      "file": "20260811200000_crew_integrity_support.sql",
+      "sha256": "32b67e331bda20e9327553a08c80d22a01a804a0a17263b697000fb6aa44108c"
+    },
+    {
+      "file": "20260812150000_crew_membership_boundary_and_placed_at.sql",
+      "sha256": "df7ced182790afc64a01a16d9640bb8b994ad82e1b95ccd1e4fd89f6c5d70fd9"
+    },
+    {
+      "file": "20260812170000_crew_build_start_date.sql",
+      "sha256": "10410c86e4159262d6cde47189e42563437ed806f56d7d441807203573aa3b67"
+    },
+    {
+      "file": "20260812180000_crew_member_accent_color.sql",
+      "sha256": "7019aecdd91dcde19cda7561ed7e50f1e748d07c37795c1ba2c2974c944981a2"
+    },
+    {
+      "file": "20260812190000_member_build_unwindowed_history.sql",
+      "sha256": "491e0e059e144644d41f66c46f5b32aa4a5bbde085d77fecab4057649458fd82"
+    },
+    {
+      "file": "20260812210000_multi_crew_and_emblem.sql",
+      "sha256": "3c9a7b218c467d00613349819ee4aed2d5ef775eaf4010e6681bc6f5fe87fa81"
+    },
+    {
+      "file": "20260812220000_crew_type_run_club.sql",
+      "sha256": "3bf386d016ff7b15531c8d93389d1129b026756004e63690affb7176bf4dc51c"
+    },
+    {
+      "file": "20260813150000_personal_account_sync.sql",
+      "sha256": "fe650fae9689d3ca17ab505c4398cfdccd750e5499b7392bb762975041956429"
+    },
+    {
+      "file": "20260813170000_runner_icon.sql",
+      "sha256": "96ce73d203ce5734b7c8f89bf93c44d0ea3169d9c0a84011ad4270ac0f9443bf"
+    },
+    {
+      "file": "20260813173000_personal_table_write_privileges.sql",
+      "sha256": "b6b973f52d4d42aca4b43d6325902d1726682c81dd1763c339def94e26e6cc30"
+    },
+    {
+      "file": "20260813190000_personal_sync_correctness.sql",
+      "sha256": "6928b6419d3b999d8d89e8b7cc5dd3173420c8542b3b812a01ccc8aa60d0441f"
+    },
+    {
+      "file": "20260814010000_reusable_crew_invites.sql",
+      "sha256": "37c11a27f6215b5f74a951196e12f7428b9f61480df516901f56db5e6639e2b1"
+    },
+    {
+      "file": "20260814120000_crew_contribution_identity.sql",
+      "sha256": "0e62e3ac7797202dc996d2ebed8135599f284901fc20397f4aa0a0326a45a3c3"
+    },
+    {
+      "file": "20260814120001_runner_icon_backdrop.sql",
+      "sha256": "da66ba2dc8d99c186f0684191e69753134b54ba2d464c5231220b05ce70b31f6"
+    },
+    {
+      "file": "20260814130000_crew_props_seen_at.sql",
+      "sha256": "a14ddf53e9a0d4d864951b22b0677d7f59e3f261be0e2a3aca78dae0554be6ce"
+    },
+    {
+      "file": "20260815000000_three_layer_crew_emblem.sql",
+      "sha256": "1e3be9a675b8a63b22dd9dfbea148ea1ae667f95d3d4bdd77b0f2a547278a115"
+    },
+    {
+      "file": "20260815120000_crew_emblem_ink_style.sql",
+      "sha256": "a6c343878a98d378fc770ece959bfb565e52c3a685d06ee0bf99528f03c04140"
+    },
+    {
+      "file": "20260815160000_crew_emblem_second_accent.sql",
+      "sha256": "4dda1167f74ccafe99a604deeb93c8feb5fd5d1d77550ff0bd0808fda4b88ba6"
+    },
+    {
+      "file": "20260817120000_cross_training_activity_type.sql",
+      "sha256": "e60185c5749cf9a5a8a62b6dc584bed83fc26e5026f6dfaf2f39105d3bed29fb"
+    },
+    {
+      "file": "20260818120000_cross_training_days.sql",
+      "sha256": "07e8f02de5b3d690361fb86e0a7b0ee20aae9ad65472d285be44182d87320108"
+    },
+    {
+      "file": "20260818130000_manual_heart_rate.sql",
+      "sha256": "2a85faaa0e6fab165a846769ba0a04100ce41d1c2f76c8faef27a4fe8e1058a8"
+    },
+    {
+      "file": "20260818140000_cross_training_crew_duration_height.sql",
+      "sha256": "bb2938e065bf2de179ef3b69f1e5c5302dc51faac0e6446dd406d7d6573fee25"
+    },
+    {
+      "file": "20260818150000_crew_heart_rate.sql",
+      "sha256": "9f15e416fa38ba5e561e9a08ed74222160d7d2a99688efa7178555c0ecdcbc66"
+    },
+    {
+      "file": "20260819025500_crew_special_blocks.sql",
+      "sha256": "d641a75fef3cb47fd406178d87ecea3cd9a70f0c3fc2a0a641d5d63b6a426b6a"
+    },
+    {
+      "file": "20260819030000_crew_special_block_metric_sync.sql",
+      "sha256": "e25c9444a69fa09f6ccff996d48a88e15a3d320beda6065ab9ab941314251e2b"
+    },
+    {
+      "file": "20260819030500_crew_special_block_read_grant.sql",
+      "sha256": "9d44feb5a580c0e92417f59ca03fa2497776a42da76926d28a125b02e8c2d284"
+    },
+    {
+      "file": "20260819031000_crew_award_footprint_tuning.sql",
+      "sha256": "2c5bb2c1bc0be24cec72b4eb6337b359217a1da206600955daa4165b56c14bca"
+    },
+    {
+      "file": "20260820120000_crew_award_start_date.sql",
+      "sha256": "364c34fa2a36c5b8c1a33672fd221b74cc17df3a6d551b6845092d1bbf7cba1f"
+    },
+    {
+      "file": "20260820130000_crew_award_metrics_on_projection.sql",
+      "sha256": "60b93a78da0c0fa555f55b5f2dfc7fab055585bb6f49dd0a401f0a07facf3ad2"
+    },
+    {
+      "file": "20260820135000_reconcile_hand_applied_crew_schema.sql",
+      "sha256": "6a24ef6693c0e02a101f3db92f8cd69a4ccfd9c11ccf0577942e2ecbb0c85ebc"
+    },
+    {
+      "file": "20260820140000_remove_pre_rollout_award_blocks.sql",
+      "sha256": "dea17cec272a2f33853f5434a0c689ee8fb458035b6cbb4b6adc42f9f0c69e59"
+    },
+    {
+      "file": "20260820150000_crew_build_canonical_occupancy.sql",
+      "sha256": "2f9935247346d2046e6f4414c0b23e0a1fe02d5015e66363f8bd60c9fd7921aa"
+    },
+    {
+      "file": "20260820160000_heal_uses_support_repair_only.sql",
+      "sha256": "4d6ea83ebf170cac9167d87bf28f8bde1a89c10df0da2ee3e21c9338fdc51341"
+    },
+    {
+      "file": "20260820170000_shared_run_source.sql",
+      "sha256": "5b1cb58ffdb60ccc004f57ddd2a72e3f1a1e39109add7ac1ef2c70d2e833d159"
+    }
+  ]
+}

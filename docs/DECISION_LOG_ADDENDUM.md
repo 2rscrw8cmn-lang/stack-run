@@ -650,3 +650,240 @@ This preserves the Crew Build as the product's shared artifact, gives weekly com
 **Status**
 
 Approved for the Crew Special Blocks implementation. See `docs/CREW_SPECIAL_BLOCKS.md`.
+
+## D-081 — One canonical definition of Crew Build occupancy, and a projection handoff that says when it is waiting
+
+**Decision**
+
+The Crew Build has exactly one definition of what is physically in the tower, and every surface uses it: client rendering, landing-option generation, server collision and support validation, and repair. That definition is what the Crew screen can actually draw — a run inside its Crew's `build_start_date` window, both coordinates present, and the whole footprint inside the eight columns rather than merely the anchor; the earlier rectangle winning any overlap; and nothing left floating.
+
+`crew_build_items()` now applies those rules on read, and `canonicalize_crew_build()` writes them back to storage. Both placement RPCs canonicalize under the Crew advisory lock they already take, immediately before they validate. A landing the client offers can therefore only be refused by a block that a refresh will actually reveal — the reported failure was a runner being told `That space was just taken. Choose another spot.` about a cell that stayed visibly empty afterwards, because the occupying row had fallen out of the Build window and only the server could still see it.
+
+**Healing only ever demotes.** Invalid construction returns to READY, in place, for the runner who earned it. Nothing is relocated, no other runner's block is moved to make room, and no contribution is deleted. `heal_crew_build_support()` delegates to the same canonical pass rather than keeping its own runs-only view of support — that view could not see a Special Block, so it demoted every run resting on one.
+
+**A Crew projection blocked by personal sync is a state, not a silence.** Projection still refuses to publish until this device owns the account's canonical personal cache; publishing from a cache that is not yet authoritative could share the wrong runs. What changes is that the refusal is visible and recoverable. Crew says its blocks are waiting on personal STACK, and personal sync reports the moment its cache becomes canonical, which forces the projection that join time could not safely publish. Existing eligible runs become READY Crew blocks as soon as the handoff completes, rather than when some unrelated later focus or edit happens to retry. A runner joining a Run Club with months of history behind them no longer sees an empty Crew that fills itself in later for no visible reason.
+
+**The forced refresh after a placement is a read barrier.** It waits out any dashboard request that was already running, because that request may have queried before the write, and then issues its own. A read that fails is reported as a dashboard error; it is not evidence that a write the server accepted did not happen.
+
+**The eight-column grid is a mechanic, not a readout.** Crew placement stops naming `Column N` and stops teaching numbered-column language. The coordinate stays where it is genuinely needed: the placement controls, and the landing slots' accessible names, which still say which column a block would land in.
+
+**Reason**
+
+Two runners hit the same class of bug from opposite ends — one had contributions the server would not accept, the other had contributions the server had never received — and both looked to the runner like the Crew quietly losing their work. Neither is fixable by adding another retry; both come from two components disagreeing about a fact that only one of them should own. Naming the canonical definition once, and making the one legitimate wait say so out loud, is what stops that class of drift rather than the two instances of it.
+
+**Status**
+
+Approved. Closes issue #128. See `supabase/migrations/20260820150000_crew_build_canonical_occupancy.sql` and `supabase/tests/0023_crew_build_canonical_occupancy.sql`.
+
+## D-082 — A run Crew cannot store costs that run, never the batch
+
+**Decision**
+
+The device never sends Crew a value the database is constrained to refuse.
+
+The Crew projection uploads a runner's whole history in one `upsert`, which is one SQL statement: Postgres evaluates every CHECK on every row in it, and a single violation aborts the entire statement. One unusable value therefore costs the runner every run, in every crew they belong to, on every retry, indefinitely. Personal STACK saves runs one at a time, so the same value fails only its own run there and everything else stays healthy. The runner sees a full personal Build and empty crews, and nothing about that symptom points at the cause.
+
+For a nullable column the device mirrors the CHECK and sends `null` — a value Crew cannot store is never worth failing a runner's whole contribution over. For a NOT NULL column there is nothing to omit, so `isShareableWithCrew` leaves that one run out of the batch and the rest upload. Either way the projection reports what it left behind: `syncCrewProjection` returns a count and a runner-facing sentence rather than succeeding silently or failing wholesale.
+
+**Calculated values get the most suspicion.** A heart rate is reported by a device and is occasionally wrong. The four award scores are derived on this device — one division by a near-zero baseline puts a percentage outside 0-100 — so they are the likeliest to drift out of range and have no external source to blame.
+
+A per-run fallback backs this up: when a batch fails anyway, `upsertSharedRuns` retries one row at a time so a constraint this code was never taught about costs only the rows actually at fault. It is a backstop, not a substitute. It runs only after a failure, costs a request per run when it does, and cannot say which rule was broken — the client-side guard is what makes the failure comprehensible.
+
+**Reason**
+
+This is D-081's root cause in a second place: the client and the server disagreeing about a fact only one of them owns. There the disagreement was about which blocks physically exist; here it is about which values are storable. Both produced a failure that was silent, total, and pointed somewhere other than its cause. The live instance was `manual_heart_rate` outside its 30-250 CHECK — a value that was never required, and was not missing, merely unusable, with nothing on the device checking.
+
+Batching is worth keeping: it is one request instead of one per run, on phones, for a group of about ten friends. What is not acceptable is that its failure mode is all-or-nothing and invisible. This makes the batch the fast path and bounds what its failure can cost.
+
+**Status**
+
+Approved. Follows issue #128. See `docs/CREW_PROJECTION_CONTRACT.md`, which is required reading before adding a constrained Crew column.
+
+## D-083 — The Crew page is the tower, and a manually logged block says so with one asterisk
+
+**Decision**
+
+**The shared tower is the Crew page's primary object, not a widget inside a card.** The Crew Build was a lime-framed `technical-grid` section holding a `CREW BUILD` label, an oversized miles-built heading, and — inside all of that — a second lime frame around the field itself. Two borders, two grids, and the structure everybody came to see squeezed between them.
+
+The outer card is removed entirely. The `CREW BUILD` label goes with it: the active Crew tab already establishes context, so the copy added weight without adding information. Only the build field keeps a border, and that border drops to `--border-strong` with its inset lime glow removed — the blocks provide the page's colour, and the frame's job is to say where the site ends. The field runs to the screen's own gutter, its course height grows so the bricks and the grid scale together, and its viewport cap rises about a quarter. Growing the sky alone would have made the section taller and the build no bigger; the point is a larger build, not more headroom.
+
+**Four crew figures replace the single miles-built heading**: total miles, total runs, total run time, and runners.
+
+Miles, Runs and Time are read from the runs *placed in the tower*, not from every shared run in the Build window. The row sits directly above the structure and captions it, so a figure that counted an unplaced run would claim more than the tower shows. A run that is earned but not yet built is not lost: it appears in Recent Crew Runs and in its runner's own READY prompt, which is where an unbuilt run belongs.
+
+Runners is the roster, not the contributors — a crew of seven where three have run reads `7`. The other three figures are all measures of activity, and a fourth would have been a restatement; what they do not say is how many people this build is for. A crew that has just formed reads `0.0 / 0 / 0:00 / 5`, which is an accurate and useful thing for it to say about itself.
+
+Total time reads as hours and minutes (`14:32`) under the label `Hours`, because a crew passes a hundred hours quickly and nobody reads the seconds.
+
+**Each figure is a squared-off tile carrying a coloured rule across its top edge.** Hairline dividers were not enough: four numbers set in a row at that size read as one long number, and `--text-subtle` labels at 8px were too faint to break them apart. The bar is what actually delimits them — it is read before a single digit is — and the labels move to `--text-muted` at 9px behind it. The four colours are their own `--crew-stat-*` tokens rather than borrowings from the activity or zone palettes: reusing `--simulation` for Runs would say a crew's runs are simulations, and reusing the zone ramp would imply the four figures are ordered. They are not; here colour is a delimiter and carries no meaning of its own.
+
+The colour is confined to the bar. The tiles sit on `--data-surface-strong` — the same instrument ground Runs and the charts use — with a neutral `--border` frame, so the row stays quieter than the field it captions. No icon sits beside any number: an icon is a second thing to decode in a tile whose only job is to show one figure, and four of them would compete with the blocks below.
+
+`.crew-build` is shared with the Member Build inside Crew Profile, which is a small tower on a sheet and wants none of this, so every rule above is scoped to a `--page` modifier.
+
+**A manually logged run's block wears one asterisk after its mileage — `3.1*` — and nothing else.** No icon, no badge, no corner treatment, no legend. Syncing is the norm, so a synced block stays exactly as it was; the exception is what earns a mark. The asterisk is smaller and dimmer than the number it qualifies and inherits the face's own colour. RACE and Cross Training show no mileage for it to follow and are unchanged. The mark is `aria-hidden` decoration, so each block's accessible name carries the words `manual entry` instead.
+
+**Every run detail now names its source, not only the synced ones.** `RunResultDetail`'s meta line reads `Source · Manual entry` or `Source · Intervals.icu` in place of the old `Synced via Intervals.icu`, and `CrewRunDetailSheet` carries the same line under the run's identity. It stays in the secondary register: the source is context for the run, never the point of it.
+
+**`shared_runs` gains a `source` column, narrowing D-056 by one more word.** Crew could not previously tell a hand-typed run from a synced one, so the asterisk had nothing to stand on. The column stores exactly the two words `personal_runs.source` does and nothing about the connection behind them — no external activity id, no import timestamps, no provider credentials. It is nullable, unlike its `personal_runs` counterpart: every row shared before this migration has no source to report and back-filling one would be inventing a fact. Null therefore reads as manual entry everywhere, which is what STACK has always defaulted an unlabelled run to. Nullable also keeps the column out of `isShareableWithCrew` — a run whose origin we cannot name is still a run the crew should have — and per D-082 a value outside the union is sent as `null` by `crewSafeRunSource` rather than failing the batch.
+
+**Reason**
+
+Crew is a destination because of the thing the crew built together. The page had drifted into a dashboard that happened to contain a tower, with the frames and headings taking the space and the attention the structure should have had. Removing a card and a heading is most of the fix; the rest is scaling the build itself rather than the box around it.
+
+The asterisk is the smallest mark that answers "did this actually get measured?" without turning the tower into a legend. Manual entry is rare, so marking it costs almost nothing and marking the common case would have cost every brick.
+
+**Status**
+
+Approved. Closes issue #137, which incorporates issue #129. See `supabase/migrations/20260820170000_shared_run_source.sql`.
+
+## D-084 — STACK has one readable phone floor, and one color per semantic role
+
+**Decision**
+
+**Nothing user-facing is set below 11px, and a label a runner reads to interpret something is at least 12px.** The two jobs small type does are named as tokens — `--type-label` (12px) for a label that says what a figure is, which activity a run was, what state an action is in, or what a chart axis reads; `--type-meta` (11px) for genuinely tertiary support such as a date, a window, a unit suffix, or a count qualifying a figure stated above it. Stabilization 1.08 raised every 7–9px rule in the product to one of the two, and re-read the 10px rules against the same test: those that named a figure or an action went to `--type-label`, the rest to `--type-meta`. A tight layout buys its fit back from tracking, padding, wrapping or fewer labels — never from type size, so a responsive override may reduce density but may not drop below the floor.
+
+Three cases were invisible to a reading of the stylesheets and are recorded because they will recur:
+
+- **A fraction of a parent is not a size.** `.run-result-detail__primary small` was `0.46em`, which rode the value's own `clamp()` down to about 7px beside a secondary metric on a 320px phone while nothing in the source read below 10.
+- **Chart type is measured in viewBox units.** A 320-unit chart is drawn about 288px wide on a 320px phone, so the value ticks at 10 units rendered at 9px. The x-axis had already been fixed to 13.5 units for exactly this reason; the y-axis had not. Both axes now sit at 13.5, the axis gutter widens to hold a three-digit figure at that size, and the first and last date labels are clamped inside the plot instead of running under the value ticks and off the right edge.
+- **A dead token is a size, silently.** `font-size: var(--text-sm)` in three rules referred to a token that has never existed, so those elements inherited whatever their parent happened to be.
+
+The one exception is text stamped into a Build object's face — the unit after a brick's mileage and a manually logged block's asterisk. Both are `aria-hidden` decoration of facts the block's accessible name already states in full, on an object whose width is its footprint in the tower. D-083's `--crew-stat-*` labels move from 9px to `--type-label`; the coloured rule remains what delimits the four figures, exactly as that decision reasoned.
+
+**Each color family answers one question, and a role never changes color between two surfaces.** The families and their questions are recorded in `docs/DESIGN_SYSTEM.md` under "Color semantics": lime asks *is this current or selected*, activity color asks *what kind of running*, member color asks *whose*, zone color asks *which zone*, a signal accent asks *which signal*, an award mark asks *which award*, and danger asks *is this destructive*. Color locates and identifies; it does not judge. A red award mark is Best Zone 2's identity, not a verdict on the running that earned it.
+
+Two conflicts were resolved rather than documented. **Crew Special Block awards had two palettes**: the ready panel gave Best Zone 2 a cyan mark, Fastest Avg. Pace an orange one and Steady a blue one, while the brick that same award becomes — and `docs/CREW_SPECIAL_BLOCKS.md`, which is authoritative — used red, cyan and teal. The awards now resolve from one `--award-*` table keyed on `data-award`, which every award surface reads. **Training Signal accents aliased the activity palette directly**, so a signal card's tint was indistinguishable in the source from a claim about an easy run; they now read through `--signal-*` tokens that borrow the same hues deliberately and can move without repainting activity color.
+
+**Reason**
+
+Both halves of this are accumulation, not disagreement. Every 8px label was defensible on the surface that introduced it, and every second award palette looked right in the file it was written in; nothing in the build could see across surfaces to notice the result. The tokens and the two guard tests — `src/styles/typographyFloor.test.ts` and `src/styles/colorSemantics.test.ts` — exist so the next pass inherits the floor instead of re-deriving it.
+
+**Status**
+
+Approved. Closes issue #150, and implements the concrete cleanup Stabilization 1.07 (#149) recorded the system for. See `docs/DESIGN_SYSTEM.md` — "Color semantics" and "Type scale and the phone floor".
+
+## D-085 — Today has one Action Card, and it retires when the run owes nothing
+
+**Decision**
+
+**The scheduled workout and the completed run are two states of one card, not two components.** `TodayActionCard` is the frame both states render into: an eyebrow that names the card and the kind of run once, an activity mark, one value, an optional caption, and whatever that state still needs underneath. `TodayWorkoutCard` supplies the scheduled state, `CompletedRunSummary` the completed one. They previously shared nothing but a screen, and looked it — one an oversized hero, the other a receipt.
+
+**Every fact is stated once.** The plan says the same thing up to three times: the type `long`, the title `Long Run: 4-5 Miles`, and the target `4-5`. `todayActionReading` resolves that into one value and at most one caption: the eyebrow carries the type, the value carries the target, and the title only earns a line when it says something neither of those did — a race's name, a simulation's shape. The instruction is not compressed away; it is the line a runner actually reads before going out, and it stays whole in the calmer register the rest of Today uses. What paid for the height instead was the repetition, the 40px distance and the 40px colour tile.
+
+**The completed state shows only what the run still owes.** `Place Personal Block` while the personal block is unplaced, `Place Crew Block` while the viewer has a READY Crew contribution, each disappearing independently as it is satisfied (D-066). **When neither is owed, the card retires.** A run that owes nothing is a fact, not an action, so the state collapses to a single confirmation line in the same register as a day that asks nothing, and Today gives the space back to the week, the tower and the crew.
+
+**Correcting a run is not a Today action at all.** `Edit` is gone from the completed state rather than demoted within it: run editing and history live in Runs/Run Detail with the rest of the record, and a second path into the entry form from Today only made the card owe something it does not. Today records a run and hands over the blocks it earned; the screen never saves over a run it already has, and no longer takes a delete callback it cannot reach. Manual logging is untouched — `Mark Complete` remains the scheduled state's action, as the fallback that keeps STACK honest when nothing synced.
+
+Two smaller corrections came with the merge. The workout card had accumulated three layers of overrides across `components.css`; the type label in the last of them was painted `var(--long)`, so every workout type's label rendered in long-run amber regardless of what kind of run it was. There is now one definition of the card. `.run-found` keeps its own frame and no longer shares a rule with a card it is not a state of.
+
+**Reason**
+
+Today is a decision surface. A card that is the same size whether it is asking for a run, waiting on a block, or reporting a fact from four hours ago is furniture, not a decision. Making the two states one component is what makes the retirement expressible at all: the card can shrink as the day resolves because it is one object changing state rather than two components taking turns.
+
+The redundancy went unnoticed for the same reason the 8px labels in D-084 did — each line was defensible where it was written, and nothing read them together. `todayActionReading` puts that reading in one tested place.
+
+**Status**
+
+Approved. Closes issue #152. Synced-run recognition lands in this same completed state (Evolution 2.02) and does not change its contract.
+
+## D-086 — Plan is optional intent with explicit active/history lifecycle
+
+**Decision**
+
+Schema 10 makes `AppState.plan` nullable and adds immutable historical plan
+snapshots. A new runner starts without an active plan; an existing schema-9
+runner keeps the current plan active during migration. Finishing a post-race
+plan or explicitly generating its replacement archives the current plan. Date
+passage alone never mutates lifecycle.
+
+Actual history, Personal Build, connected data and eligible Crew behavior do
+not depend on an active plan. Build continues across races and is never reset
+or archived as a Plan side effect. Plan Context disappears naturally without
+active intent, while linked runs may still resolve the archived workout that
+describes their historical relationship.
+
+Plan's no-active state offers Race Setup and read-only historical plans. Today
+omits scheduled/rest/countdown claims and offers only a quiet route to setup.
+Race Crew metadata remains Crew-owned context and never creates a personal
+plan.
+
+Signed-in canonical storage carries nullable active plan and plan history
+atomically in `personal_training_state`; the change does not widen RLS or the
+Crew projection boundary.
+
+**Reason**
+
+Actual history is foundational product data and Plan is optional intent. A
+structurally mandatory plan made the product misdescribe ordinary running
+between races and made starting another race feel compulsory. An explicit
+active/history lifecycle preserves old intent without letting it dominate the
+runner's current day.
+
+**Status**
+
+Approved for Evolution 2.06 / issue #157. The complete lifecycle, persistence
+and verification contract is `docs/NO_ACTIVE_PLAN_LIFECYCLE.md`.
+
+## D-087 — Crew gains one source-verified 5K scalar, and the recap's finish hands over instead of repeating
+
+**Decision**
+
+The Crew projection widens by exactly one optional column,
+`shared_runs.best_5k_seconds`: the time of a real, continuous 5,000 m effort
+inside a shared run, as the contributing runner's own connected source reported
+it. Nothing else about the source's answer crosses the boundary — no pace curve,
+no stream, no route, no exact start time, no source payload, no credential. The
+column is nullable, bounded 600-21600 by a CHECK and mirrored on the device by
+`crewSafeBest5kSeconds`, so a value Crew cannot store is omitted rather than
+sent (D-082).
+
+STACK never computes this number. It asks Intervals' own pace curve for the
+5,000 m best effort and stores the answer as
+`RunLog.importedMetrics.best5kSeconds`. `duration / distance * 5K`, a value from
+one instantaneous sample, an interpolation between pace-curve points, and the
+average pace of a run that happened to be near 5K are all explicitly excluded.
+A run below 5,000 m has no 5K, which is the source's own rule.
+
+Existing runs are filled in by a bounded enrichment pass — newest first, only
+runs that could have a 5K, a handful of activities per pass, and never the same
+settled activity twice. Nothing has to be deleted or re-imported, and a device
+that never runs the pass simply has runs with no 5K.
+
+Separately, the Crew Week Recap's final page stops restating the recap. The old
+Week Complete page repeated the emblem, the totals page 1 had already given at
+display size, and the Build crop page 3 had just animated; it is replaced by a
+handoff into the week already being run — emblem, `NEW WEEK LIVE`, the new
+Monday-Sunday range. This sets the rule for any retrospective reusing the recap
+presentation language: **if a finish page cannot carry a genuinely new fact, it
+should not exist.**
+
+**Reason**
+
+The recap's Best Performances page was three readings of the same
+distance-and-count aggregates the opening page already showed, because the one
+genuinely interesting performance fact — a real 5K time — needed within-run data
+Crew deliberately does not carry. That reasoning was right about the data and
+wrong about who has to derive it: Intervals already computes best efforts over
+its own activities, so STACK can ask for one scalar instead of importing a
+telemetry surface. The boundary widens by a number, not by a capability.
+
+The bounds and the device-side guard matter more here than for a device-derived
+value, not less. The pace-curve response shape is `Expected` rather than
+`Verified`, so an unrecognized shape must yield no 5K, and a misread value must
+never reach the CHECK.
+
+A "fastest mile" remains unavailable, and remains unavailable for the original
+reason: nothing would be asking a source for it, only reconstructing it from an
+average.
+
+**Status**
+
+Approved for Evolution 2.1 / issue #186. The complete contract is
+`docs/CREW_WEEK_RECAP.md`; the source-verification status and promotion
+checklist are in `docs/CONNECTED_DATA_FIELDS.md`; the storage rule is
+`docs/CREW_PROJECTION_CONTRACT.md`.
+
+Outstanding owner verification: the pace-curve response shape has not yet been
+checked against a real Intervals-connected run, and until it is, the field stays
+`Expected`.

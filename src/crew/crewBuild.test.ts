@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRID_COLUMNS } from "../domain/placement";
+import { GRID_COLUMNS, placementOptions } from "../domain/placement";
 import {
   canPlaceCrewBuildBlock,
   CREW_BUILD_COLUMNS,
@@ -298,19 +298,52 @@ describe("shared geometry reuse (issue #65)", () => {
     expect(byId.get("upper")!.depth).toBeGreaterThan(byId.get("ground")!.depth);
   });
 
-  it("offers one gravity-computed landing per column, exactly like Personal Build's placementOptions", () => {
+  it("offers the lowest valid landing for each column", () => {
     const base = deriveCrewBuild([
       run("base", "drew", { distanceMiles: 2.9, crewBuildRow: 0, crewBuildColumnStart: 1 }),
     ]);
     const moving = run("moving", "zack", { distanceMiles: 2.9 });
     const options = crewBuildLandingOptions(moving, base.blocks);
 
-    // One landing per column a 1-wide block fits in, never a floating row.
+    // One landing per column a 1-wide block fits in.
     expect(options).toHaveLength(8);
     // Column 1 is occupied at row 0, so a new block there rests on top of it.
     expect(options[0]).toMatchObject({ row: 1, columnStart: 1 });
     // Every other column is still open ground.
     expect(options[1]).toMatchObject({ row: 0, columnStart: 2 });
+  });
+
+  it("fills the production-shaped cavity beneath a 3.1-mile bridge without changing Personal Build gravity", () => {
+    const model = deriveCrewBuild([
+      run("left-support", "zack", {
+        distanceMiles: 2.9,
+        activityType: "intervals",
+        crewBuildRow: 0,
+        crewBuildColumnStart: 1,
+      }),
+      run("cavity-support", "zack", {
+        distanceMiles: 2.9,
+        crewBuildRow: 0,
+        crewBuildColumnStart: 2,
+      }),
+      run("bridge", "drew", {
+        distanceMiles: 3.1,
+        crewBuildRow: 2,
+        crewBuildColumnStart: 1,
+      }),
+    ]);
+    const filler = run("filler", "travis", { distanceMiles: 2.9 });
+
+    const crewOption = crewBuildLandingOptions(filler, model.blocks)
+      .find((option) => option.columnStart === 2);
+    expect(crewOption).toMatchObject({ row: 1, columnStart: 2, columnEnd: 2 });
+    expect(canPlaceCrewBuildBlock(filler, crewOption!, model.blocks)).toBe(true);
+
+    // Personal Build intentionally keeps skyline/gravity semantics, so its
+    // corresponding option still lands above the bridge.
+    const personalOption = placementOptions(1, 1, model.blocks)
+      .find((option) => option.columnStart === 2);
+    expect(personalOption).toMatchObject({ row: 3, columnStart: 2 });
   });
 
   it("never offers a landing that fails Crew's own support/collision validation", () => {

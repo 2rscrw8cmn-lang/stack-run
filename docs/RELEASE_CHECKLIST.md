@@ -1,5 +1,7 @@
 # Production smoke test
 
+`docs/STACK_1_0_ACCEPTANCE.md` is the dated current-product baseline that records which checks were actually run, which passed through automation/deployment evidence, and which still require a real device/source. Use this file as the detailed smoke-test library, then record the result in that baseline rather than treating unchecked items here as implicit passes.
+
 Run this against the deployed production URL on the iPhone the app is for and once in a desktop browser. `npm run check` is the gate for everything that can be automated and must pass before deploy.
 
 ## 1. The build reached the internet
@@ -177,7 +179,7 @@ Temporarily forget/disable connection or simulate an upstream error.
 
 ## Sign-off
 
-Record in `docs/PHASE_STATUS.md`:
+Record the current release result in `docs/STACK_1_0_ACCEPTANCE.md`, including:
 
 - deployed commit;
 - date;

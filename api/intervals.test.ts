@@ -44,14 +44,29 @@ describe("Intervals proxy", () => {
     expect((await readIntervals(request("resource=activities&oldest=2026-01-01&newest=2026-06-01"), env)).status).toBe(400);
     expect((await readIntervals(request("resource=activity&id=../secret"), env)).status).toBe(400);
     expect((await readIntervals(request("resource=activity-streams&id=../secret"), env)).status).toBe(400);
+    expect((await readIntervals(request("resource=activity-pace-curve&id=../secret"), env)).status).toBe(400);
     expect((await readIntervals(request("resource=anything"), env)).status).toBe(400);
   });
-  it("requests the Run Profile stream types for the streams resource", async () => {
+  it("requests the Run Profile stream types from the explicit JSON streams resource", async () => {
     const fetcher = upstream(() => new Response(JSON.stringify({ time: [0, 60] })));
     const response = await readIntervals(request("resource=activity-streams&id=activity-1"), env, fetcher);
     const url = new URL(String(fetcher.mock.calls[0]?.[0]));
-    expect(url.pathname).toBe("/api/v1/activity/activity-1/streams");
+    expect(url.pathname).toBe("/api/v1/activity/activity-1/streams.json");
     expect(url.searchParams.get("types")).toBe("time,heartrate,altitude,velocity_smooth,cadence");
+    expect(response.status).toBe(200);
+  });
+  it("asks the pace curve for the one best-effort distance STACK presents", async () => {
+    const fetcher = upstream(() => new Response(JSON.stringify({ distances: [5000], secs: [1215] })));
+    const response = await readIntervals(
+      // The client cannot widen this: the distance is fixed by the route, so a
+      // crafted request cannot turn a 5K lookup into a whole pace curve.
+      request("resource=activity-pace-curve&id=activity-1&distances=1000,5000,10000"),
+      env,
+      fetcher,
+    );
+    const url = new URL(String(fetcher.mock.calls[0]?.[0]));
+    expect(url.pathname).toBe("/api/v1/activity/activity-1/pace-curve");
+    expect(url.searchParams.get("distances")).toBe("5000");
     expect(response.status).toBe(200);
   });
   it("tests the connection against the activity endpoint sync itself uses", async () => {

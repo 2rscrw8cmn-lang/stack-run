@@ -93,6 +93,19 @@ export interface IntervalsRunProfile {
   samples: IntervalsRunProfileSample[];
 }
 
+/**
+ * What Intervals' own pace curve says about one activity's best 5K.
+ *
+ * `best5kSeconds` is `null` for the two outcomes that must not be told apart
+ * by guessing: an activity that never covered 5,000 m, and one whose curve
+ * simply carries no 5,000 m point. Both mean STACK has no 5K for this run, and
+ * both are settled answers — see `settled` for why that distinction is not
+ * needed at the call site either.
+ */
+export interface IntervalsBestEfforts {
+  best5kSeconds: number | null;
+}
+
 function positive(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
@@ -290,6 +303,135 @@ export function normalizeIntervalsRunProfile(raw: unknown): IntervalsRunProfile 
 export const RUN_PROFILE_STREAM_TYPES = ["time", "heartrate", "altitude", "velocity_smooth", "cadence"] as const;
 
 /**
+ * The one distance STACK asks the pace curve about, in metres.
+ *
+ * Exactly 5,000 — never "about 5,000". Intervals' best-effort calculation
+ * needs a real 5,000 m window inside the activity and does not manufacture one
+ * from a 4.99 km run, and that is the truth rule STACK wants too: a 4.99 km
+ * run has no 5K time, it has a 4.99 km time.
+ */
+export const BEST_5K_METERS = 5000;
+/**
+ * The pace-curve distances STACK asks for. One entry, because one is all the
+ * recap can present — a wider ladder would be telemetry STACK has no product
+ * for and, on the Crew side, a boundary nobody has agreed to widen.
+ */
+export const BEST_EFFORT_DISTANCES = [BEST_5K_METERS] as const;
+
+/**
+ * Believable bounds for a 5K result, in seconds.
+ *
+ * The floor sits comfortably under the world record (about 12:35) and the
+ * ceiling well past a walked 5K. A value outside them is a unit mismatch or a
+ * corrupt row rather than a run, and STACK would rather show no 5K than a
+ * wrong one — the recap can omit a beat, it cannot un-say a number.
+ */
+export const BEST_5K_MIN_SECONDS = 600;
+export const BEST_5K_MAX_SECONDS = 21_600;
+
+export function isPlausibleBest5kSeconds(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= BEST_5K_MIN_SECONDS &&
+    value <= BEST_5K_MAX_SECONDS
+  );
+}
+
+/** Whether a curve point's distance is the 5,000 m effort rather than a neighbour on the ladder. */
+function isBest5kDistance(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value) && Math.round(value) === BEST_5K_METERS;
+}
+
+function numberAt(source: Record<string, unknown>, keys: readonly string[]): number | undefined {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
+const CURVE_DISTANCE_KEYS = ["distances", "distance", "meters", "distance_meters"] as const;
+const CURVE_SECONDS_KEYS = ["secs", "seconds", "times", "time", "moving_time", "elapsed_time"] as const;
+
+/** The first array under any of `keys`, or undefined. */
+function arrayAt(source: Record<string, unknown>, keys: readonly string[]): unknown[] | undefined {
+  for (const key of keys) {
+    const value = source[key];
+    if (Array.isArray(value)) return value;
+  }
+  return undefined;
+}
+
+/** The 5,000 m time from a list of `{ distance, secs }`-shaped points. */
+function best5kFromPoints(points: readonly unknown[]): number | null {
+  for (const entry of points) {
+    if (!entry || typeof entry !== "object") continue;
+    const point = entry as Record<string, unknown>;
+    if (!isBest5kDistance(numberAt(point, CURVE_DISTANCE_KEYS))) continue;
+    const secs = numberAt(point, CURVE_SECONDS_KEYS);
+    if (isPlausibleBest5kSeconds(secs)) return secs;
+  }
+  return null;
+}
+
+/** The 5,000 m time from parallel `distances` / `secs` arrays. */
+function best5kFromParallelArrays(source: Record<string, unknown>): number | null {
+  const distances = arrayAt(source, CURVE_DISTANCE_KEYS);
+  const seconds = arrayAt(source, CURVE_SECONDS_KEYS);
+  if (!distances || !seconds || distances.length !== seconds.length) return null;
+  for (let index = 0; index < distances.length; index += 1) {
+    if (!isBest5kDistance(distances[index])) continue;
+    const secs = seconds[index];
+    if (isPlausibleBest5kSeconds(secs)) return secs;
+  }
+  return null;
+}
+
+/**
+ * One activity's best 5K, as reported by Intervals' own pace curve.
+ *
+ * **Status: `Expected`, not `Verified`** — see `docs/CONNECTED_DATA_FIELDS.md`.
+ * The endpoint and the field names below follow Intervals.icu's documented
+ * pace-curve contract; the exact response shape has not yet been checked
+ * against a real connected run. So this normalizer is written the same way
+ * `normalizeIntervalsRunProfile` is: it recognizes the shapes the contract
+ * plausibly answers with, and anything else yields no 5K rather than a guess.
+ *
+ * It never computes a 5K. Every number it can return came from the source as
+ * the time for a 5,000 m window; a whole-run average, an interpolation between
+ * two ladder points, or a scaled 4.99 km time would each be STACK inventing a
+ * fact, which is the one thing this metric exists to avoid.
+ */
+export function normalizeIntervalsBestEfforts(raw: unknown): IntervalsBestEfforts {
+  if (Array.isArray(raw)) return { best5kSeconds: best5kFromPoints(raw) };
+  if (!raw || typeof raw !== "object") return { best5kSeconds: null };
+  const source = raw as Record<string, unknown>;
+
+  const direct = best5kFromParallelArrays(source);
+  if (direct !== null) return { best5kSeconds: direct };
+
+  // A curve delivered under a wrapper key, and a curve delivered as a list of
+  // points, are both shapes the documented contract allows.
+  for (const key of ["curve", "points", "efforts", "bests", "paceCurve", "pace_curve"]) {
+    const value = source[key];
+    if (Array.isArray(value)) {
+      const fromPoints = best5kFromPoints(value);
+      if (fromPoints !== null) return { best5kSeconds: fromPoints };
+    } else if (value && typeof value === "object") {
+      const nested = best5kFromParallelArrays(value as Record<string, unknown>);
+      if (nested !== null) return { best5kSeconds: nested };
+    }
+  }
+
+  // Last, a map keyed by the distance itself: `{ "5000": 1123 }`.
+  const keyed = source[String(BEST_5K_METERS)];
+  if (isPlausibleBest5kSeconds(keyed)) return { best5kSeconds: keyed };
+
+  return { best5kSeconds: null };
+}
+
+/**
  * The activity ids STACK has already settled: imported, attached or ignored.
  * Everything else that has ever been discovered is still the user's to review.
  */
@@ -361,7 +503,8 @@ const SUGGESTION_WITHIN_DAYS = 2;
  * The one thing this does exclude is a workout another run already satisfies.
  * One scheduled workout links to at most one RunLog, and that stays true.
  */
-export function availableScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan, runLogs: readonly RunLog[]): Workout[] {
+export function availableScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan | null, runLogs: readonly RunLog[]): Workout[] {
+  if (!plan) return [];
   const matched = new Set(runLogs.flatMap((run) => run.workoutId ? [run.workoutId] : []));
   return plan.weeks
     .flatMap((week) => week.workouts)
@@ -379,7 +522,8 @@ export function availableScheduledMatches(candidate: IntervalsCandidate, plan: T
  * offers on the Run Found card. The full manual list is
  * `availableScheduledMatches`.
  */
-export function suggestScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan, runLogs: readonly RunLog[]): Workout[] {
+export function suggestScheduledMatches(candidate: IntervalsCandidate, plan: TrainingPlan | null, runLogs: readonly RunLog[]): Workout[] {
+  if (!plan) return [];
   const matched = new Set(runLogs.flatMap((run) => run.workoutId ? [run.workoutId] : []));
   return plan.weeks.flatMap((week) => week.workouts).filter((workout) => workout.type !== "rest" && !matched.has(workout.id) && Math.abs(daysBetweenLocalDates(workout.date, candidate.completedDate)) <= SUGGESTION_WITHIN_DAYS).sort((a, b) => {
     const dateDiff = Math.abs(daysBetweenLocalDates(a.date, candidate.completedDate)) - Math.abs(daysBetweenLocalDates(b.date, candidate.completedDate));
@@ -413,17 +557,31 @@ export interface RunFound {
  */
 export function selectRunFound(
   candidates: readonly IntervalsCandidate[],
-  plan: TrainingPlan,
+  plan: TrainingPlan | null,
   runLogs: readonly RunLog[],
   today: string,
+  preferredWorkoutId: string | null = null,
 ): RunFound | null {
+  const importedActivityIds = new Set(
+    runLogs.flatMap((run) =>
+      run.externalSource?.provider === "intervals"
+        ? [run.externalSource.activityId]
+        : [],
+    ),
+  );
   const recent = candidates
     .filter((candidate) => {
       const age = daysBetweenLocalDates(candidate.completedDate, today);
-      return age >= 0 && age <= RUN_FOUND_WITHIN_DAYS;
+      return (
+        age >= 0 &&
+        age <= RUN_FOUND_WITHIN_DAYS &&
+        !importedActivityIds.has(candidate.externalId)
+      );
     })
     .map((candidate) => ({ candidate, workout: suggestScheduledMatches(candidate, plan, runLogs)[0] ?? null }))
     .sort((a, b) =>
+      Number(Boolean(preferredWorkoutId && b.workout?.id === preferredWorkoutId)) -
+      Number(Boolean(preferredWorkoutId && a.workout?.id === preferredWorkoutId)) ||
       b.candidate.completedDate.localeCompare(a.candidate.completedDate) ||
       Number(Boolean(b.workout)) - Number(Boolean(a.workout)) ||
       a.candidate.externalId.localeCompare(b.candidate.externalId));
@@ -536,7 +694,12 @@ async function read(params: URLSearchParams, token: string, context: ReadContext
   }
 }
 
-type IntervalsResource = "status" | "activities" | "activity" | "activity-streams";
+type IntervalsResource =
+  | "status"
+  | "activities"
+  | "activity"
+  | "activity-streams"
+  | "activity-pace-curve";
 
 function directUrl(
   resource: IntervalsResource,
@@ -548,6 +711,9 @@ function directUrl(
   }
   if (resource === "activity-streams") {
     return `https://intervals.icu/api/v1/activity/${encodeURIComponent(activityId ?? "")}/streams?types=${RUN_PROFILE_STREAM_TYPES.join(",")}`;
+  }
+  if (resource === "activity-pace-curve") {
+    return `https://intervals.icu/api/v1/activity/${encodeURIComponent(activityId ?? "")}/pace-curve?distances=${BEST_EFFORT_DISTANCES.join(",")}`;
   }
   const directRange = range ?? (() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -631,4 +797,26 @@ export async function fetchIntervalsRunProfile(activityId: string, connectionInp
   }
   const params = new URLSearchParams({ resource: "activity-streams", id: activityId });
   return normalizeIntervalsRunProfile(await read(params, connection.credential, "detail"));
+}
+
+/**
+ * One activity's best-effort times, from Intervals' own pace curve.
+ *
+ * Deliberately not part of ordinary sync's per-activity work: this is a second
+ * request per run, and Intervals rate-limits. `src/connected/best5k.ts` owns
+ * when it is worth spending one — a bounded number of runs that are missing a
+ * 5K and could plausibly have one, and never the same run twice.
+ */
+export async function fetchIntervalsBestEfforts(
+  activityId: string,
+  connectionInput: IntervalsConnectionInput,
+): Promise<IntervalsBestEfforts> {
+  const connection = connectionFrom(connectionInput);
+  if (connection.mode === "local-api-key") {
+    return normalizeIntervalsBestEfforts(
+      await readDirect("activity-pace-curve", connection.credential, "detail", undefined, activityId),
+    );
+  }
+  const params = new URLSearchParams({ resource: "activity-pace-curve", id: activityId });
+  return normalizeIntervalsBestEfforts(await read(params, connection.credential, "detail"));
 }

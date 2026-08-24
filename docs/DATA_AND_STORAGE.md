@@ -23,26 +23,28 @@ Key:
 stack.app-state.v1
 ```
 
-Current schema: **9**.
+Current schema: **10**.
 
 UI components never read/write the AppState storage slot directly. Personal state mutations go through `src/storage/appStateRepository.ts`.
 
 Race Crew still reads only its narrow safe projection. Crew members and owners
 cannot read the private personal tables.
 
-## Current schema-9 shape
+## Current schema-10 shape
 
 Conceptually:
 
 ```ts
 export interface AppState {
-  schemaVersion: 9;
+  schemaVersion: 10;
   settings: AppSettings;
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory: ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
   availability: AvailabilityCalendar | null;
   runDays: Weekday[] | null;
+  crossTrainingDays: Weekday[] | null;
   raceSetup: RacePlanSetup | null;
   intervalsSync: IntervalsSyncState;
 }
@@ -83,12 +85,33 @@ export interface ImportedRunMetrics {
   elapsedTimeSeconds?: number;
   trainingLoad?: number;
   hrZoneSeconds?: number[];
+  /** Issue #186. The source's own fastest 5,000 m effort, in seconds. */
+  best5kSeconds?: number;
 }
 ```
 
 Missing metric is absent, never an invented zero.
 
 Pace is derived from distance/duration.
+
+`best5kSeconds` is the one field here that does not arrive with the activity
+import: it comes from a second, bounded read of the source's pace curve, and it
+may therefore appear on a run days after that run was imported. It is still a
+source-derived fact rather than a STACK-derived one, which is why it lives here
+and not beside `manualHeartRate` — see `docs/CONNECTED_DATA_FIELDS.md` for the
+truth rule and the verification status.
+
+Which activities have already been asked is device-local bookkeeping, not
+training data, and lives outside AppState:
+
+```text
+stack.intervals.best-5k-probes.v1   { "<scope>": { "<activity-id>": "<stamp>" } }
+```
+
+The stamp carries the source revision the answer was settled against, so a
+revised activity is asked again and a settled one — including one with no 5K,
+the common answer — never is. Losing the value costs a few repeated requests
+inside the same bounded budget.
 
 ## Credentials are outside AppState
 
@@ -170,6 +193,82 @@ Rules:
   failed write is reported in Run Data rather than being silently treated as
   persisted.
 
+### Historical activity history (STACK Next, NEXT-1)
+
+The runner's normalized history of actual running activity lives in:
+
+```text
+stack.history.activities.v1
+```
+
+through `src/storage/historicalActivityRepository.ts`, account-scoped with the
+same `.<user-id>` suffix as the slots above, and outside AppState.
+
+It is a different thing from the review queue. The queue is what the runner is
+*asked about*; this is what they have *done*, over a configurable lookback
+(365 days by default) that has nothing to do with the active plan window.
+
+Rules:
+
+- normalized Tier 1 source facts only — source id, local date and start time,
+  source type, name, distance in metres, moving/elapsed seconds, average and max
+  HR, HR-zone seconds, elevation gain in metres, cadence verbatim, training
+  load, `sourceUpdatedAt` — plus STACK's `firstSeenAt` / `lastSeenAt` /
+  `reconciledAt` bookkeeping;
+- every write is assembled from an explicit field allowlist, so no raw payload,
+  route, coordinate, stream or credential can reach the slot;
+- missing metrics are stored as explicit null and never as zero;
+- source units are stored; conversion to miles and feet is derived at read time;
+- no STACK-derived classification, plan link or Build state is stored — the
+  link to an accepted `RunLog` is derived at read time;
+- `provider + sourceId` is the only dedupe identity, so repeated sync never
+  duplicates;
+- an activity that changed upstream is replaced in place under the same id,
+  keeping `firstSeenAt` and stamping `reconciledAt`; a metric that has gone
+  missing upstream is written back to null rather than left stale;
+- history outside the current sync window is kept, never pruned;
+- outside AppState, so it is in no backup, export, Supabase table or crew
+  projection, and it required no schema migration;
+- unreadable storage yields an empty history rather than a broken app, and a
+  refused write is reported rather than silently treated as persisted.
+
+Nothing in the product clears this slot today. Discarding a year of history is
+a product decision, not a side effect of forgetting a credential, so
+`clearHistoricalActivities` exists without a caller.
+
+### Historical sync bookkeeping (STACK Next, NEXT-2)
+
+When this device last read that history, and how it went:
+
+```text
+stack.history.sync.v1
+```
+
+through `src/storage/historySyncStateRepository.ts`, account-scoped the same way
+and also outside AppState.
+
+Five values, and nothing else: `lastSuccessAt`, `lastCompleteAt`,
+`lastAttemptAt`, `lastFailureMessage`, `storedActivities`. Deliberately
+timestamps rather than a status enum — a stored enum would need migrating every
+time the sync policy learns a new state, and every state
+`src/history/historySyncPolicy.ts` reports is derivable from these.
+
+Rules:
+
+- **neither reading nor writing it can fail an app.** A record that cannot be
+  read is a device that has not synced yet, which costs one extra read; a record
+  that cannot be written is a device that re-syncs sooner than it needed to,
+  which costs one wasted request. Nothing a runner decided lives here, so
+  neither is worth interrupting them about;
+- `useRunnerHistory` also holds an in-session attempt floor in memory, so a
+  browser that refuses writes cannot loop on repeated focus events;
+- values that are not the shape they claim to be are dropped on load rather than
+  trusted — an unparseable timestamp becomes null, which reads as "never", which
+  is the safe direction;
+- no credential, no activity identity and no source payload is stored;
+- outside AppState, so no migration, no backup or export exposure, and nothing
+  reaches Supabase or a crew projection.
+
 ### Supabase session
 
 Supabase JS may persist its own authenticated session in browser storage.
@@ -247,7 +346,7 @@ Periods:
 - Weekly Miles: current Monday–Sunday week using actual local run dates;
 - Longest Run: trailing 28 days;
 - Consistency: most recent up-to-4 plan weeks through today, scheduled workouts only and never obligations before Crew membership;
-- Miles Built: current local active plan/Build actual miles.
+- Miles Built: current local Personal Build actual miles, independent of an active plan.
 
 Extras count actual miles but do not repair Consistency.
 
@@ -290,6 +389,29 @@ stored per account under `stack.crew.active.v1`, never server state:
 Losing or clearing it only means the oldest membership opens first. A
 remembered crew the account has left, been removed from or that has been
 deleted resolves the same way, and the resolved crew is written back.
+
+Two other Crew preferences follow the same rule — device-local, per account,
+never server state, and never anybody else's business:
+
+```text
+stack.crew.props-dismissed.v1   Props swiped off the runner's own list
+stack.crew.recap-dismissed.v1   Crew Week Recaps the runner has cleared
+stack.crew.recap-seen.v1        Crew Week Recaps the runner has opened
+```
+
+All three are `{ "<user-id>": ["<key>", …] }` and all three are bounded per
+account. A recap key is `<crew-id>:<week-start>`, so acknowledging one Crew's
+week never touches another Crew's. Losing any of them only means a cleared row,
+a cleared recap or an unread mark reappears once; a recap ages out on its own
+within days of its week closing regardless.
+
+The two recap keys are the same record read by **both** discovery surfaces —
+Today's teaser and Crew's notification (issue #186) — and they mean different
+things. `recap-seen` is "I opened it", which clears the unread treatment and
+hides nothing; `recap-dismissed` is "I am done with it", which removes the
+prompt from both surfaces. They are separate so the two surfaces can never hold
+contradictory state about one week, and so opening a recap is never mistaken for
+finishing with it.
 
 Projection is not scoped to the viewed crew. Each sync pass uploads this
 device's safe projection to **every** crew the account is in, each against

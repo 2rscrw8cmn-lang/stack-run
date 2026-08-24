@@ -7,7 +7,7 @@ import type { AvailabilityCalendar } from "../domain/availability";
 import { todayLocalDate } from "../domain/dates";
 import type { RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
-import type { BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
+import type { ArchivedTrainingPlan, BlockPlacement, RunLog, TrainingPlan, Workout } from "../domain/types";
 import { BuildScreen } from "../features/build/BuildScreen";
 import type { PlacementRequest } from "../features/build/BuildScreen";
 import { PlanScreen } from "../features/plan/PlanScreen";
@@ -19,6 +19,7 @@ import type { AppState, Effort, RunActivityType } from "../domain/types";
 import type { IntervalsCandidate, IntervalsConnection } from "../connected/intervals";
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet";
 import type { ConnectedSync } from "../features/connected/useConnectedSync";
+import type { RunnerHistory } from "../features/runs/useRunnerHistory";
 import { SettingsSheet } from "../features/settings/SettingsSheet";
 import { useCallback, useEffect, useState } from "react";
 import type { RaceCrewController } from "../crew/useRaceCrew";
@@ -36,7 +37,8 @@ interface AppShellProps {
   onReplayTour: () => void;
   /** Something the whole app needs to say, shown under the brand bar. */
   notice?: ReactNode;
-  plan: TrainingPlan;
+  plan: TrainingPlan | null;
+  planHistory: readonly ArchivedTrainingPlan[];
   runLogs: RunLog[];
   blockPlacements: BlockPlacement[];
   onSaveRun: (
@@ -53,6 +55,7 @@ interface AppShellProps {
   /** Persists an edited plan, and restores the seed. */
   onEditPlan: (plan: TrainingPlan) => void;
   onResetPlan: () => void;
+  onFinishPlan: () => void;
   /** Days the user cannot run, imported from a calendar. */
   availability: AvailabilityCalendar | null;
   onSaveAvailability: (calendar: AvailabilityCalendar | null) => void;
@@ -75,6 +78,8 @@ interface AppShellProps {
   onForgetIntervalsApiKey: () => void;
   raceCrew: RaceCrewController;
   personalSync?: PersonalSyncController;
+  /** The runner's unified actual history, and how current the connected part is. */
+  runnerHistory?: RunnerHistory;
   onImportIntervals: (candidate: IntervalsCandidate, workoutId: string | null, type: RunActivityType, effort: Effort, notes: string) => void;
   onAttachIntervals: (candidate: IntervalsCandidate, runLogId: string) => void; onIgnoreIntervals: (id: string) => void; onClearIgnoredIntervals: () => void;
 }
@@ -86,6 +91,7 @@ export function AppShell({
   onReplayTour,
   notice,
   plan,
+  planHistory,
   runLogs,
   blockPlacements,
   onSaveRun,
@@ -94,6 +100,7 @@ export function AppShell({
   onUnlinkRun,
   onEditPlan,
   onResetPlan,
+  onFinishPlan,
   availability,
   onSaveAvailability,
   runDays,
@@ -105,7 +112,7 @@ export function AppShell({
   onPlaceBlock,
   placingRunLogId,
   onPlacingChange,
-  appState, syncToken, intervalsConnection, connectedSync, onConnectIntervals, onForgetIntervals, onConnectIntervalsApiKey, onForgetIntervalsApiKey, raceCrew, personalSync, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
+  appState, syncToken, intervalsConnection, connectedSync, onConnectIntervals, onForgetIntervals, onConnectIntervalsApiKey, onForgetIntervalsApiKey, raceCrew, personalSync, runnerHistory, onImportIntervals, onAttachIntervals, onIgnoreIntervals, onClearIgnoredIntervals,
 }: AppShellProps) {
   const [runDataOpen, setRunDataOpen] = useState(false);
   // A review handed in from Today, and a counter that remounts the sheet so it
@@ -219,9 +226,10 @@ export function AppShell({
           <TodayScreen
             plan={plan}
             runLogs={runLogs}
+            runnerRuns={runnerHistory?.runs}
             blockPlacements={blockPlacements}
             onViewPlan={() => onTabChange("plan")}
-            onViewTrends={() => onTabChange("runs")}
+            onViewRuns={() => onTabChange("runs")}
             onViewBuild={() => onTabChange("build")}
             onStartPlacing={(runLogId) => {
               onPlacingChange(runLogId);
@@ -232,7 +240,6 @@ export function AppShell({
               onTabChange("crew");
             }}
             onSaveRun={onSaveRun}
-            onDeleteRun={onDeleteRun}
             availability={availability}
             candidates={connectedSync.candidates}
             onReviewCandidate={(candidate) => openRunData({ candidate })}
@@ -246,6 +253,7 @@ export function AppShell({
         {activeTab === "build" && (
           <BuildScreen
             plan={plan}
+            planHistory={planHistory}
             runLogs={runLogs}
             blockPlacements={blockPlacements}
             onSaveRun={onSaveRun}
@@ -259,7 +267,11 @@ export function AppShell({
         {activeTab === "runs" && (
           <RunsScreen
             plan={plan}
+            planHistory={planHistory}
             runLogs={runLogs}
+            runnerRuns={runnerHistory?.runs}
+            historyPhase={runnerHistory?.phase}
+            historyCompleteAt={runnerHistory?.lastCompleteAt ?? null}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             onLinkRun={onLinkRun}
@@ -278,11 +290,18 @@ export function AppShell({
         {activeTab === "plan" && (
           <PlanScreen
             plan={plan}
+            planHistory={planHistory}
             runLogs={runLogs}
+            runnerRuns={runnerHistory?.runs}
             onSaveRun={onSaveRun}
             onDeleteRun={onDeleteRun}
             onEditPlan={onEditPlan}
             availability={availability}
+            raceSetup={raceSetup}
+            runDays={runDays}
+            crossTrainingDays={crossTrainingDays}
+            onGeneratePlan={onGeneratePlan}
+            onFinishPlan={onFinishPlan}
             syncToken={intervalsConnection}
           />
         )}
@@ -343,7 +362,7 @@ export function AppShell({
         }}
         crew={raceCrew}
         personalSync={personalSync}
-        localRace={plan.race}
+        localRace={plan?.race ?? null}
       />
       <RunDataSheet
         key={runDataVisit}

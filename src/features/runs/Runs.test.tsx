@@ -68,13 +68,19 @@ describe("Runs", () => {
     ]);
 
     expect(screen.getByRole("heading", { level: 1, name: "Runs" })).toHaveClass("visually-hidden");
-    expect(screen.getByLabelText("Running history summary")).toHaveTextContent("2runs5.5Total mi");
+    expect(screen.getByText("2 runs")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log Run" })).toBeInTheDocument();
-    expect(screen.getByText("5.5 miles run")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Recent Runs" })).toBeInTheDocument();
+    // Four readings, each carrying the window it was measured over.
+    expect(
+      screen.getByRole("button", { name: /^Runner snapshot\./ }),
+    ).toHaveAccessibleName(
+      "Runner snapshot. 5.5 miles over the last 28 days. 5.5 miles over the last 7 days. 0.3 runs per week over the last 8 weeks. Longest run of the last 28 days, 3.4 miles. Open history detail.",
+    );
+    expect(screen.getByRole("heading", { name: "Recent Activity" })).toBeInTheDocument();
   });
 
-  it("lists scheduled, extra, typed in and synced runs together, newest first", () => {
+  it("lists scheduled, extra, typed in and synced runs together, newest first", async () => {
+    const user = userEvent.setup();
     renderRuns([
       run("scheduled", "2026-08-04", { workoutId: "workout-002", distanceMiles: 2 }),
       run("extra", "2026-08-05", { activityType: "intervals" }),
@@ -83,6 +89,16 @@ describe("Runs", () => {
     ]);
 
     expect(rows().map((row) => row.getAttribute("aria-label"))).toEqual([
+      expect.stringContaining("Sunday, August 9"),
+      expect.stringContaining("Saturday, August 8"),
+      expect.stringContaining("Wednesday, August 5"),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Show more recent runs" }));
+    const archiveRows = screen
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("run-row"));
+    expect(archiveRows.map((row) => row.getAttribute("aria-label"))).toEqual([
       expect.stringContaining("Sunday, August 9"),
       expect.stringContaining("Saturday, August 8"),
       expect.stringContaining("Wednesday, August 5"),
@@ -145,7 +161,7 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Synced via Intervals.icu")).toBeInTheDocument();
+    expect(sheet.getByText("Intervals.icu")).toBeInTheDocument();
     expect(sheet.getByText("151 bpm")).toBeInTheDocument();
     expect(
       sheet.getByRole("list", { name: "Heart rate zone distribution" }),
@@ -260,6 +276,30 @@ describe("Runs", () => {
     expect(screen.getByText("Run unlinked from the plan.")).toBeInTheDocument();
   });
 
+  it("keeps an archived plan relationship read-only in Run Detail", async () => {
+    const onUnlinkRun = vi.fn();
+    const archivedRun = run("archived", "2026-08-04");
+    const user = userEvent.setup();
+    renderRuns([archivedRun], {
+      planHistory: [{
+        id: "archive-1",
+        plan,
+        raceSetup: null,
+        runLinks: { [archivedRun.id]: "workout-002" },
+        archivedAt: "2026-12-06T12:00:00.000Z",
+      }],
+      onUnlinkRun,
+    });
+
+    await user.click(rows()[0]);
+
+    expect(screen.getByText("Plan")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Unlink from Plan" }),
+    ).not.toBeInTheDocument();
+    expect(onUnlinkRun).not.toHaveBeenCalled();
+  });
+
   it("deletes through the existing entry sheet and puts focus back on the list", async () => {
     const onDeleteRun = vi.fn();
     vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -306,184 +346,5 @@ describe("Runs", () => {
 
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByRole("heading", { name: "Run Detail" })).toBeInTheDocument();
-  });
-});
-
-describe("Runs Training Signals", () => {
-  const week1 = [
-    run("a", "2026-08-04", { workoutId: "workout-002", distanceMiles: 2 }),
-    run("b", "2026-08-06", { workoutId: "workout-004", distanceMiles: 2 }),
-    run("c", "2026-08-09", { activityType: "long", distanceMiles: 4.2 }),
-  ];
-
-  it("puts factual Training Signals on Runs, one measure to a card", () => {
-    renderRuns(week1);
-
-    expect(
-      screen.getByRole("heading", { name: "Training Signals" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Weekly Mileage, 8.2 mi/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Long Run, 4.2 mi/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Consistency, 50%/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps compact cards to a title, a value and a note — no mini charts", () => {
-    renderRuns(week1);
-    const card = screen.getByRole("button", { name: /^Weekly Mileage,/ });
-    expect(card.querySelector("svg")).toBeNull();
-    expect(card.querySelectorAll(".mini-bars, .mini-donut, .mini-sparkline, .mini-matrix")).toHaveLength(0);
-  });
-
-  it("names the value and the specific destination on every card", () => {
-    renderRuns(week1);
-    const card = screen.getByRole("button", { name: /^Consistency/ });
-    expect(card).toHaveAccessibleName(
-      "Consistency, 50%, 2 of 4 completed. Open Consistency detail.",
-    );
-  });
-
-  it("supports keyboard activation for a signal and its selected week", async () => {
-    const user = userEvent.setup();
-    renderRuns([
-      run("w1", "2026-08-04", { distanceMiles: 3 }),
-      run("w2", "2026-08-11", { distanceMiles: 4 }),
-    ], { today: "2026-08-16" });
-
-    const card = screen.getByRole("button", { name: /^Weekly Mileage,/ });
-    card.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Weekly Mileage");
-
-    const week = screen.getByRole("button", { name: /^Week 1, 3 actual miles/ });
-    week.focus();
-    await user.keyboard("{Enter}");
-    expect(week).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Week 1 runs")).toBeInTheDocument();
-  });
-
-  it("leaves out a measure nothing has been recorded for", () => {
-    renderRuns([run("a", "2026-08-04", { distanceMiles: 2 })]);
-    expect(
-      screen.queryByRole("button", { name: /^Long Run/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^HR Zones/ }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Training Load/ })).not.toBeInTheDocument();
-  });
-
-  it("opens a dedicated detail for every available signal", async () => {
-    const user = userEvent.setup();
-    const richRuns = [
-      run("e1", "2026-08-03", { durationSeconds: 1860, importedMetrics: { averageHeartRate: 150, trainingLoad: 30, hrZoneSeconds: [0, 600, 300, 0, 0, 0, 0] } }),
-      run("e2", "2026-08-04", { durationSeconds: 1830 }),
-      run("e3", "2026-08-05", { durationSeconds: 1800 }),
-      run("e4", "2026-08-06", { durationSeconds: 1770 }),
-      run("l1", "2026-08-09", { activityType: "long", distanceMiles: 5 }),
-      run("e5", "2026-08-10", { durationSeconds: 1740, importedMetrics: { averageHeartRate: 149, trainingLoad: 35, hrZoneSeconds: [0, 300, 600, 0, 0, 0, 0] } }),
-      run("e6", "2026-08-11", { durationSeconds: 1710 }),
-      run("e7", "2026-08-12", { durationSeconds: 1680 }),
-      run("e8", "2026-08-13", { durationSeconds: 1650 }),
-      run("l2", "2026-08-16", { activityType: "long", distanceMiles: 6 }),
-    ];
-    renderRuns(richRuns, { today: "2026-08-16" });
-
-    const details = [
-      ["Weekly Mileage", /^Weekly Mileage,/],
-      ["Long Run", /^Long Run,/],
-      ["Easy Pace", /^Easy Pace,/],
-      ["Heart Rate Zones", /^HR Zones,/],
-      ["Training Load", /^Training Load,/],
-      ["Consistency", /^Consistency,/],
-      ["Run Mix", /^Run Mix,/],
-    ] as const;
-
-    for (const [title, cardName] of details) {
-      await user.click(screen.getByRole("button", { name: cardName }));
-      expect(screen.getByRole("dialog")).toHaveAccessibleName(title);
-      await user.click(screen.getByRole("button", { name: "Close" }));
-    }
-  });
-
-  it("keeps HR-zone and Run Mix instruments concise with adaptive facts", async () => {
-    const user = userEvent.setup();
-    const richRuns = [
-      run("easy-hr", "2026-08-03", { importedMetrics: { hrZoneSeconds: [0, 300, 900, 0, 0, 0, 0] } }),
-      run("long", "2026-08-09", { activityType: "long", distanceMiles: 5 }),
-    ];
-    renderRuns(richRuns, { today: "2026-08-10" });
-
-    await user.click(screen.getByRole("button", { name: /^HR Zones,/ }));
-    expect(screen.getByText("1 of 2 runs")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 runs had HR-zone data.")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Coverage" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/does not label a zone good or bad/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Close" }));
-
-    await user.click(screen.getByRole("button", { name: /^Run Mix,/ }));
-    expect(screen.getByText("Last 4 weeks")).toBeInTheDocument();
-    expect(screen.getByText("2", { selector: ".signal-facts dd" })).toBeInTheDocument();
-    const largestShare = screen.getByText("Largest share").closest("dl");
-    expect(largestShare).toHaveAttribute("data-count", "3");
-    expect(screen.getAllByText(/Long Run ·/).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Extra is not an activity type/i)).not.toBeInTheDocument();
-  });
-
-  it("selects a mileage week and reaches the underlying existing run detail", async () => {
-    const user = userEvent.setup();
-    renderRuns([
-      run("w1", "2026-08-04", { distanceMiles: 3 }),
-      run("w2", "2026-08-11", { distanceMiles: 4 }),
-    ], { today: "2026-08-16" });
-
-    await user.click(screen.getByRole("button", { name: /^Weekly Mileage,/ }));
-    await user.click(screen.getByRole("button", { name: /^Week 1, 3 actual miles/ }));
-    expect(screen.getByText("Week 1 runs")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Open Easy on .*Aug 4/ }));
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
-    await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Weekly Mileage");
-  });
-
-  it("draws Training Load in Intervals blue, not the generic actual-data color", async () => {
-    const user = userEvent.setup();
-    const richRuns = [
-      run("e1", "2026-08-03", { importedMetrics: { trainingLoad: 30 } }),
-      run("e2", "2026-08-10", { importedMetrics: { trainingLoad: 32 } }),
-    ];
-    renderRuns(richRuns, { today: "2026-08-16" });
-
-    await user.click(screen.getByRole("button", { name: /^Training Load,/ }));
-    expect(document.querySelector(".plan-actual-chart--intervals")).toBeInTheDocument();
-  });
-
-  it("gives Run Mix and HR Zones a large centered donut, not the compact side-by-side one", async () => {
-    const user = userEvent.setup();
-    const richRuns = [
-      run("hr", "2026-08-03", { importedMetrics: { hrZoneSeconds: [0, 300, 900, 0, 0, 0, 0] } }),
-      run("long", "2026-08-09", { activityType: "long", distanceMiles: 5 }),
-    ];
-    renderRuns(richRuns, { today: "2026-08-10" });
-
-    await user.click(screen.getByRole("button", { name: /^HR Zones,/ }));
-    expect(document.querySelector(".donut--large")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Close" }));
-
-    await user.click(screen.getByRole("button", { name: /^Run Mix,/ }));
-    expect(document.querySelector(".donut--large")).toBeInTheDocument();
-  });
-
-  it("removes the redundant select-a-week instructions now that the chart is the control", async () => {
-    const user = userEvent.setup();
-    renderRuns(week1);
-    await user.click(screen.getByRole("button", { name: /^Weekly Mileage,/ }));
-    expect(screen.queryByText(/tap a bar/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Select a week" })).not.toBeInTheDocument();
   });
 });

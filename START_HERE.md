@@ -1,163 +1,205 @@
 # STACK — Start Here
 
-This repository is the source of truth for **STACK**, a mobile-first running plan app with the tagline **Build your race.**
+This file is the entry point for current work on STACK.
 
-## Current project state
+## Branch context
 
-Implemented/accepted:
+**`main` is the canonical production product branch.**
 
-- UI-0 through UI-21, including Connected Training, Performance Arcade and Race Crew;
-- UI-21 Crew Destination + Shared Crew Build, including runner-owned placement (merged PR #38).
+STACK Next shipped to `main` through PR #136 on August 20, 2026. `feature/stack-next` and its child branches are historical implementation branches; they are not the base or PR target for new work.
 
-In review:
+For normal work:
 
-- UI-22 Final Product Polish + Onboarding, the final planned product phase.
+```text
+main
+└── <issue-scoped branch>
+```
 
-Intentionally skipped/deferred:
+Rules:
 
-- UI-12 Wellness / Recovery Context;
-- UI-15 Optional Plan Export Investigation.
+- branch from the latest `main`;
+- keep the branch scoped to one issue/phase unless an explicit dependency requires stacking;
+- target the pull request back to `main`;
+- do not work directly on `main`;
+- do not revive the old STACK Next integration-branch workflow;
+- keep relevant docs synchronized with behavior;
+- do not mark work complete with failing required checks.
 
-Current primary destinations:
+The current forward roadmap is tracked in GitHub issues. The active sequences are **STACK 1.0 Stabilization 1.xx** and **STACK Evolution 2.xx**.
 
-> **Today / Build / Runs / Plan**, plus **Crew** for a signed-in active crew member
+## Current product principle
 
-Settings is an icon-only top-right gear.
+STACK is now organized around this relationship:
 
-Current personal AppState: **schema 9**.
+> **Actual history says what happened. Plan says what was intended. A link says how an actual run relates to that intent.**
 
-## Current connected-data path
+The broader product hierarchy remains:
 
-Apple Watch:
+- **Today** — what matters now;
+- **Runs** — what actually happened and what history says;
+- **Build** — the tangible reward for recorded/accepted running;
+- **Plan** — race-specific intent;
+- **Crew** — optional social/shared Build downstream of personal truth.
+
+Historical activity is foundational product data, but the UI uses progressive disclosure rather than exposing the whole dataset at primary-screen depth.
+
+For Runs:
+
+> **Overview is for understanding. History is for lookup. Detail is for investigation.**
+
+For presentation work, the product-wide rule is:
+
+> **Interface is quiet. Data is STACK.**
+
+`docs/DESIGN_SYSTEM.md` is the default design authority for new surfaces. Specialist visual contracts extend it with subsystem-specific rules; they should not create a parallel visual system.
+
+## Required reading
+
+Read in this order for most work:
+
+1. `AGENTS.md`
+2. `docs/PRODUCT_AND_SCOPE.md`
+3. `docs/CURRENT_APPLICATION_STRUCTURE.md`
+4. `docs/ENGINEERING_STANDARDS.md`
+5. `docs/DESIGN_SYSTEM.md`
+6. the specialist contract(s) for the system being changed
+
+For UI/presentation work, read `docs/DESIGN_SYSTEM.md` before a specialist chart, Build, Crew, or feature visual contract. The specialist document owns exact subsystem behavior; the design system owns the shared shell, typography roles, surface hierarchy, controls, rows, accessibility, and interaction language.
+
+Specialist reading includes:
+
+### Connected running data
+
+- `docs/CONNECTED_DATA_FIELDS.md`
+- `docs/INTERVALS_INTEGRATION.md`
+- `docs/INTERVALS_DATA_STRATEGY.md` for the historical-data design rationale
+
+### Runs / Signals / Run Detail
+
+- `docs/RUNS_PRODUCT_MODEL.md`
+- `docs/RUNS_VISUALIZATION_SYSTEM.md`
+- `docs/RUN_DETAIL_PRODUCT_SPEC.md`
+
+### Personal persistence / account sync
+
+- `docs/DATA_AND_STORAGE.md`
+- `docs/PERSONAL_ACCOUNT_SYNC.md`
+
+### Crew / Supabase
+
+Read the current Crew/security docs relevant to the change. Before touching `shared_runs`, any Crew CHECK constraint, or any value uploaded from a device to Crew, read:
+
+- `docs/CREW_PROJECTION_CONTRACT.md`
+
+For the weekly Crew recap and the recap presentation language, read:
+
+- `docs/CREW_WEEK_RECAP.md`
+
+Also consult `docs/DECISION_LOG_ADDENDUM.md` for accepted Crew/product decisions that remain in force.
+
+## Authority order
+
+When current documents conflict, prefer:
+
+1. the explicitly approved GitHub issue/phase contract for the work being performed;
+2. `docs/PRODUCT_AND_SCOPE.md` for current product scope;
+3. specialist product/data/security contracts for the subsystem being changed;
+4. `docs/DESIGN_SYSTEM.md` for product-wide presentation defaults, then the relevant specialist visual contract for exact subsystem extensions;
+5. `docs/ENGINEERING_STANDARDS.md`;
+6. `docs/CURRENT_APPLICATION_STRUCTURE.md` for current implementation shape;
+7. `docs/DATA_AND_STORAGE.md` for current persistence behavior;
+8. accepted decision logs;
+9. historical phase/program docs for rationale only;
+10. existing code when documentation does not answer the question.
+
+If a specialist visual contract and `docs/DESIGN_SYSTEM.md` appear to contradict each other, do not silently choose the more convenient rule. Treat the discrepancy as something to resolve in the scoped issue.
+
+If code and a current contract disagree, do not silently choose one. Treat the discrepancy as something to resolve in the scoped issue.
+
+## Historical STACK Next documents
+
+The following are useful historical records of how the current product was built:
+
+- `docs/STACK_NEXT.md`
+- `docs/STACK_NEXT_IMPLEMENTATION.md`
+- `docs/STACK_NEXT_AGENT_PROMPT.md`
+- `docs/STACK_NEXT_ACCEPTANCE_LOG.md`
+- `docs/NEXT5_PLAN_ROLE_REVISION.md`
+- `docs/NEXT6_BUILD_CREW_COMPATIBILITY.md`
+- `docs/RUNS_REFRAME_IMPLEMENTATION.md`
+- the R1–R4 and other NEXT phase briefs/results
+
+They may contain old branch names, sequencing, draft status or instructions that were correct during development. Those details are historical and must not override the current `main` workflow.
+
+The product principles they established can still be active when they agree with current product/docs.
+
+## Connected-data source truth
+
+The common Apple path is:
 
 ```text
 Apple Watch → Apple Health → HealthFit → Intervals.icu → STACK
 ```
 
-Other watch/training services may skip HealthFit when they already sync directly into Intervals.icu.
+Other services may sync directly into Intervals. Manual logging remains a complete fallback.
 
-Manual logging remains a full fallback.
+`docs/CONNECTED_DATA_FIELDS.md` is authoritative for exact verified source fields, units and pipeline-specific semantics.
 
-## Active phase
+Preserve the rule:
 
-**UI-22 — Final Product Polish + Onboarding** is the final planned product phase. It adds no new product capability: it resolves accumulated hierarchy, selector, copy, accessibility and responsive inconsistencies, then gives genuinely new users a short local introduction to the existing Plan → Run → Build → Today loop.
+> **Source aggregates provide stated summary facts. Streams provide shape.**
 
-Read first:
+Do not recompute a trusted source summary from per-sample streams merely because the samples exist. Missing metrics remain missing; absence never becomes zero.
 
-```text
-docs/PRODUCT_AND_SCOPE.md
-docs/NEXT_PRODUCT_PROGRAM.md
-docs/RACE_CREW.md
-docs/RACE_CREW_SETUP.md
-docs/RUN_DATA_SETUP.md
-docs/RACE_CREW_IMPLEMENTATION.md
-docs/DATA_AND_STORAGE.md
-docs/DECISION_LOG_ADDENDUM.md
+## Product boundaries
+
+Unless a separately approved issue explicitly changes the direction, do not turn STACK into:
+
+- a live GPS tracker;
+- a Strava/Intervals dashboard clone;
+- an AI coach that automatically rewrites plans;
+- a medical/readiness product;
+- a public social network;
+- a route-mapping product;
+- an XP/coin/quest economy.
+
+Prefer traceable facts, runner-specific context, progressive disclosure and meaningful omission.
+
+## Engineering guardrails
+
+Preserve unless the scoped issue explicitly changes them:
+
+- React + TypeScript + Vite;
+- phone-first responsive behavior;
+- manual logging fallback;
+- current connected-data compatibility;
+- current Build ownership/placement rules;
+- current personal-data and Crew privacy boundaries;
+- Supabase RLS/security boundaries;
+- current secret handling;
+- accessible names/focus and Reduced Motion behavior;
+- no raw private payloads in fixtures;
+- no automatic plan mutation from health data;
+- no unnecessary framework/backend expansion.
+
+Do not introduce a router, global-state framework, UI framework, canvas/WebGL/physics system or broader backend just because a feature is large. Infrastructure requires a concrete scoped need.
+
+## Delivery and verification
+
+Before review of normal implementation work:
+
+```bash
+npm install
+npm run check
+git diff --check
 ```
 
-Existing users are migrated quietly and are never forced through the tour. The tour can be replayed from Settings; Crew receives one contextual explanation only when an eligible runner first opens it. Onboarding preferences live in a small repository separate from personal AppState schema 9.
+Use additional specialist verification when required:
 
-## Race Crew hobby architecture
+- real Intervals/device smoke tests for source behavior not provable with fixtures;
+- SQL/Supabase verification for database/RLS changes;
+- 320px / ~390px / 430px / desktop review for material UI changes;
+- real iPhone Safari review when phone interaction/readability is materially changed;
+- keyboard and Reduced Motion review where applicable.
 
-Race Crew v1 is for roughly ten known friends, not a public app.
-
-```text
-PERSONAL DATA
-watch → Intervals.icu → personal API key on that runner's device → STACK
-
-CREW DATA
-STACK → narrow safe projection → Supabase Auth/Postgres/RLS → Crew
-```
-
-Locked decisions:
-
-- Supabase Auth + Postgres + RLS;
-- optional account: email + exactly 8 numeric digits presented as STACK PIN;
-- no normal magic-link login;
-- personal plan/runs/Build stay local;
-- no full cloud sync;
-- each runner's Intervals personal API key stays only on their own device;
-- no Intervals key in Supabase;
-- direct `/api/v1/` browser mode for new hobby users after real Safari verification;
-- keep current owner Vercel proxy working during migration;
-- Race Crew gets only explicitly safe run/summary projections.
-
-Intervals officially recommends OAuth for apps intended for multiple users. The owner has intentionally accepted personal keys as a private-hobby shortcut. Revisit OAuth before public/open/commercial/stranger onboarding.
-
-## UI-22 polish rules
-
-- preserve the Performance Arcade direction while reducing noise and duplication;
-- keep Runs personal and compact, with Log Run immediately available but no oversized page title;
-- use segmented controls for small finite choices, the shared STACK native select for longer lists, and native date controls for dates;
-- use the shared ActivityTypePicker and EffortPicker everywhere those concepts are edited;
-- hide normal fresh-status timestamps and show relative age only when it is useful;
-- keep every interactive target at least 44 CSS px and every destination usable at 320 CSS px;
-- add no router, global state, feature system, database migration or AppState migration.
-
-## Run Data setup is part of the product
-
-The three-app Apple Watch path is acceptable only if STACK explains it well.
-
-`docs/RUN_DATA_SETUP.md` is the content source for the in-app onboarding wizard.
-
-For Apple Watch friends, explain each job:
-
-- Apple Watch records the run;
-- HealthFit moves Apple Health workouts to Intervals;
-- Intervals is STACK's activity-data bridge;
-- STACK provides plan/history/trends/Build/Crew.
-
-A user must verify one run is visible in Intervals before connecting STACK.
-
-## Privacy boundary
-
-Crew-safe:
-
-- display name;
-- date;
-- run type;
-- distance;
-- duration;
-- derived pace;
-- approved comparison summaries.
-
-Never share/upload by default:
-
-- Intervals key/external ids;
-- GPS/routes/location;
-- exact start time;
-- HR/HR zones/Training Load;
-- wellness;
-- effort;
-- notes;
-- raw source data;
-- availability-calendar details;
-- full AppState.
-
-## Authority order
-
-When documents conflict:
-
-1. `docs/PRODUCT_AND_SCOPE.md`
-2. `docs/NEXT_PRODUCT_PROGRAM.md`
-3. `docs/RACE_CREW.md`
-4. `docs/RACE_CREW_IMPLEMENTATION.md`
-5. `docs/RACE_CREW_SETUP.md`
-6. `docs/RUN_DATA_SETUP.md`
-7. `docs/DATA_AND_STORAGE.md`
-8. `docs/DECISION_LOG_ADDENDUM.md`
-9. connected-data engineering docs for existing import semantics
-10. older historical phase docs
-11. existing code
-
-`docs/CONNECTED_DATA_FIELDS.md` remains authoritative for verified imported metrics.
-
-## TRNRBOI reference
-
-`drewwest289/TRNRBOI-8000` remains design/product inspiration only.
-
-Do not copy its code, assets, Strava implementation, backend/auth, Game Boy shell or calculations.
-
-## Delivery rule
-
-Use one branch and one PR per implementation phase unless the owner explicitly requests otherwise.
+Never commit API keys, Supabase secret keys, raw private payloads, GPS coordinates or other sensitive data.

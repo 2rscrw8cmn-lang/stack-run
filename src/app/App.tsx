@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AvailabilityCalendar } from "../domain/availability";
-import type { AppState, RunLog } from "../domain/types";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types";
 import {
   deleteRunLog,
   linkRunLogToWorkout,
@@ -12,6 +12,7 @@ import {
   saveAvailability,
   savePlan,
   saveGeneratedPlan,
+  finishActivePlan,
   saveRunDays,
   saveCrossTrainingDays,
   saveRunLog,
@@ -19,6 +20,7 @@ import {
   acceptIntervalsRun,
   attachIntervalsRun,
   saveIntervalsSync,
+  recordImportedBest5k,
   ignoreIntervalsActivity,
   clearIgnoredIntervalsActivities,
   unlinkRunLogFromWorkout,
@@ -31,7 +33,9 @@ import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
 import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
+import { crewRecapDemoVariant } from "../features/crew/crewRecapDemo";
 import { useConnectedSync } from "../features/connected/useConnectedSync";
+import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
 import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
 import { useRaceCrew } from "../crew/useRaceCrew";
@@ -50,8 +54,13 @@ import {
 import { WelcomeSheet } from "../features/onboarding/WelcomeSheet";
 import { TourCoachmark } from "../features/onboarding/TourCoachmark";
 import { usePersonalSync } from "../personal-sync/usePersonalSync";
+import { useRunnerHistory } from "../features/runs/useRunnerHistory";
 
 export type TabId = "today" | "build" | "runs" | "crew" | "plan";
+
+/** Stable empties, so a boot state with no app yet does not churn the history hook. */
+const NO_RUN_LOGS: RunLog[] = [];
+const NO_BLOCK_PLACEMENTS: BlockPlacement[] = [];
 
 /**
  * Either an app, or the reason there isn't one.
@@ -78,9 +87,9 @@ function readBootState(): BootState {
 }
 
 const CORE_TOUR: ReadonlyArray<{ tab: TabId; title: string; copy: string }> = [
-  { tab: "plan", title: "Plan", copy: "See what should happen, one training week at a time." },
   { tab: "runs", title: "Runs", copy: "See what actually happened. Log runs here or connect Run Data." },
-  { tab: "build", title: "Build", copy: "Every completed run earns a block. Place it to build your race." },
+  { tab: "build", title: "Build", copy: "Every run you record earns a block. Place it to build your race." },
+  { tab: "plan", title: "Plan", copy: "Race intent is optional. Set up a race when you want a schedule." },
   { tab: "today", title: "Today", copy: "Start here for today's workout and what matters now." },
 ];
 
@@ -141,9 +150,21 @@ export function App() {
    * the same signed-in session; that transient state must not hide the Crew
    * tab or kick the runner back to Runs.
    */
-  const crewAvailable = Boolean(raceCrew.userId && raceCrew.account?.crew);
+  /*
+   * `?demo=recap` opens the Crew destination too. The recap notification lives
+   * on Crew, and issue #186's review addendum requires it to be reviewable from
+   * a branch preview on demand — which a reviewer with no crew, or a fresh
+   * browser on the preview hostname, otherwise cannot do at all. The gate is
+   * `crewRecapDemoVariant`, which is preview-host-only, so no production
+   * hostname can reach it; the Crew screen then renders its own fake-data demo
+   * rather than any account's real crew.
+   */
+  const crewAvailable =
+    Boolean(raceCrew.userId && raceCrew.account?.crew) ||
+    crewRecapDemoVariant() !== null;
   const raceCrewUserId = raceCrew.userId;
   const refreshCrewData = raceCrew.refreshCrewData;
+  const notePersonalSyncReady = raceCrew.notePersonalSyncReady;
 
   function persistOnboarding(next: OnboardingState) {
     setOnboarding(next);
@@ -202,16 +223,26 @@ export function App() {
     });
   }, [raceCrewUserId]);
 
+  // The account's personal cache has just become canonical on this device.
+  // Crew sharing may have stood down at join time waiting for exactly that, so
+  // publish the projection it could not publish before reading the crew back —
+  // otherwise existing runs stay invisible to the crew until something
+  // unrelated changes and triggers a later sync.
   useEffect(() => {
     if (!personalSync.initialized || !raceCrewUserId) return;
-    void refreshCrewData(true);
-  }, [personalSync.initialized, raceCrewUserId, refreshCrewData]);
+    void notePersonalSyncReady().then(() => refreshCrewData(true));
+  }, [
+    notePersonalSyncReady,
+    personalSync.initialized,
+    raceCrewUserId,
+    refreshCrewData,
+  ]);
 
   useEffect(() => onStorageWriteError((error) => setWriteError(error.message)), []);
 
   // A newly recorded run may cross a factual threshold. Compare the run-log
   // transition in memory, show the facts briefly, and never write a badge or
-  // replay marker into schema 9.
+  // replay marker into persisted state.
   useEffect(() => {
     if (!appState) return;
     const prior = previousRunLogs.current;
@@ -247,19 +278,54 @@ export function App() {
     [setAppState],
   );
 
+  const intervalsConnection = intervalsApiKey
+    ? ({ mode: "local-api-key", credential: intervalsApiKey } as const)
+    : syncToken
+      ? ({ mode: "legacy-proxy", credential: syncToken } as const)
+      : null;
+
   // One sync for the whole app: Today offers what it found, Run Data reviews
   // the rest, and neither can be looking at a different answer than the other.
   const connectedSync = useConnectedSync({
-    connection: intervalsApiKey
-      ? { mode: "local-api-key", credential: intervalsApiKey }
-      : syncToken
-        ? { mode: "legacy-proxy", credential: syncToken }
-        : null,
+    connection: intervalsConnection,
     state: appState,
     onSynced: recordSync,
     accountId: raceCrew.userId ?? null,
     pendingSeed: personalSync.pendingCandidates,
     onPendingChanged: personalSync.recordPendingCandidates,
+  });
+
+  /**
+   * Source-verified best 5K times for runs already imported.
+   *
+   * Deliberately downstream of the sync above and of nothing else: the pass is
+   * bounded, silent and optional, and a run with no 5K is a complete run. See
+   * `src/connected/best5k.ts` for why this is not folded into ordinary sync.
+   */
+  const recordBest5k = useCallback(
+    (secondsByRunLogId: ReadonlyMap<string, number>) =>
+      setAppState((current) => recordImportedBest5k(current, secondsByRunLogId)),
+    [setAppState],
+  );
+  useBest5kEnrichment({
+    connection: intervalsConnection,
+    runLogs: appState?.runLogs ?? NO_RUN_LOGS,
+    accountId: raceCrew.userId ?? null,
+    onBest5kFound: recordBest5k,
+  });
+
+  /**
+   * The runner's history, which is a different question from the review queue
+   * above and is answered on its own conservative schedule. It never blocks:
+   * a device with no connection, a failed read and a browser that refuses to
+   * store all leave a fully usable app and a history built from STACK's own
+   * runs. See `src/history/historySyncPolicy.ts` for when it reads at all.
+   */
+  const runnerHistory = useRunnerHistory({
+    connection: intervalsConnection,
+    accountId: raceCrew.userId ?? null,
+    runLogs: appState?.runLogs ?? NO_RUN_LOGS,
+    blockPlacements: appState?.blockPlacements ?? NO_BLOCK_PLACEMENTS,
   });
 
   if (boot.kind === "recovering") {
@@ -299,7 +365,7 @@ export function App() {
     return (
       <CrewInviteLanding
         crew={raceCrew}
-        localRace={boot.state.plan.race}
+        localRace={boot.state.plan?.race ?? null}
         onOpenCrew={() => setActiveTab("crew")}
       />
     );
@@ -338,6 +404,7 @@ export function App() {
         </>
       ) : undefined}
       plan={boot.state.plan}
+      planHistory={boot.state.planHistory}
       runLogs={boot.state.runLogs}
       blockPlacements={boot.state.blockPlacements}
       onSaveRun={(workout, values: ValidRunEntry, runLogId?: string) =>
@@ -388,6 +455,7 @@ export function App() {
       onGeneratePlan={(setup, plan) =>
         setAppState((current) => saveGeneratedPlan(current, setup, plan))
       }
+      onFinishPlan={() => setAppState((current) => finishActivePlan(current))}
       runDays={boot.state.runDays}
       onSaveRunDays={(runDays, plan) =>
         setAppState((current) => saveRunDays(current, runDays, plan))
@@ -409,16 +477,11 @@ export function App() {
       onPlacingChange={setPlacingRunLogId}
       appState={boot.state}
       syncToken={syncToken}
-      intervalsConnection={
-        intervalsApiKey
-          ? { mode: "local-api-key", credential: intervalsApiKey }
-          : syncToken
-            ? { mode: "legacy-proxy", credential: syncToken }
-            : null
-      }
+      intervalsConnection={intervalsConnection}
       connectedSync={connectedSync}
       raceCrew={raceCrew}
       personalSync={personalSync}
+      runnerHistory={runnerHistory}
       onConnectIntervalsApiKey={(apiKey) => {
         try {
           saveIntervalsApiKey(apiKey, raceCrew.userId ?? null);

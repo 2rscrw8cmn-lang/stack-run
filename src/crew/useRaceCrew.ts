@@ -102,6 +102,12 @@ export interface RaceCrewController {
   pendingInvite: PendingCrewInvite | null;
   latestInviteUrl: string | null;
   projectionError: string | null;
+  /**
+   * Crew sharing is held back until the canonical personal cache has finished
+   * its account handoff. This is a recoverable wait, not a failure: it clears
+   * on its own once `notePersonalSyncReady` reports the handoff done.
+   */
+  projectionWaitingForPersonal: boolean;
   crewData: CrewDashboardData | null;
   crewDataStatus: "idle" | "loading" | "ready" | "error";
   crewDataError: string | null;
@@ -131,6 +137,12 @@ export interface RaceCrewController {
   removeMember: (userId: string) => Promise<void>;
   deleteRunContribution: (localRunId: string) => Promise<void>;
   refreshCrewData: (force?: boolean) => Promise<void>;
+  /**
+   * Personal sync owns the moment its cache becomes canonical for an account.
+   * It reports that here so a projection held back at join time is published
+   * immediately, rather than waiting for an unrelated later focus or edit.
+   */
+  notePersonalSyncReady: () => Promise<void>;
   toggleProps: (runId: string) => Promise<void>;
   markPropsSeen: () => Promise<void>;
   dismissPropNotification: (notificationId: string) => void;
@@ -165,6 +177,8 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   );
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
+  const [projectionWaitingForPersonal, setProjectionWaitingForPersonal] =
+    useState(false);
   const [crewData, setCrewData] = useState<CrewDashboardData | null>(null);
   const [crewDataStatus, setCrewDataStatus] = useState<
     RaceCrewController["crewDataStatus"]
@@ -184,12 +198,16 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   /** Freshness is per crew: each one owns its Build window and its own sync. */
   const lastProjection = useRef(new Map<string, { fingerprint: string; syncedAt: number }>());
   const lastDashboard = useRef({ crewId: "", loadedAt: 0 });
+  /** The most recent snapshot a dashboard read actually returned, or null. */
+  const lastLoad = useRef<{ crewId: string; data: CrewDashboardData } | null>(null);
   const dashboardInFlight = useRef<{ crewId: string; request: Promise<void> } | null>(null);
   const propsInFlight = useRef(new Set<string>());
 
   const resetCrewClientState = useCallback((): void => {
     setLatestInviteUrl(null);
     lastProjection.current.clear();
+    lastLoad.current = null;
+    setProjectionWaitingForPersonal(false);
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
@@ -344,10 +362,18 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     const activeUser = current.user;
     const memberships = current.account?.memberships ?? [];
     if (!state || !activeUser || memberships.length === 0) return;
+    // Joining a crew can complete before this device has finished adopting the
+    // account's canonical personal cache. Projecting from a cache that is not
+    // yet authoritative could publish the wrong runs, so the gate stays — but
+    // it says so, and `notePersonalSyncReady` reopens it.
     if (
       loadActivePersonalOwner() !== activeUser.id ||
       !loadPersonalMetadata(activeUser.id).initialized
-    ) return;
+    ) {
+      setProjectionWaitingForPersonal(true);
+      return;
+    }
+    setProjectionWaitingForPersonal(false);
     const today = todayLocalDate();
     const failures: string[] = [];
 
@@ -365,7 +391,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         for (const tombstone of pendingDeletes) {
           await deleteCrewRunProjection(availability.client, tombstone);
         }
-        await syncCrewProjection(availability.client, {
+        const outcome = await syncCrewProjection(availability.client, {
           state,
           crewId: crew.id,
           userId: activeUser.id,
@@ -373,6 +399,10 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
           buildStartDate: crew.buildStartDate,
           authoritativeEmpty: pendingDeletes.length > 0,
         });
+        // A run Crew cannot store is reported, not treated as a failed sync:
+        // every other contribution did upload, so this crew is up to date and
+        // the freshness bookkeeping below is correct.
+        if (outcome.message) failures.push(outcome.message);
         for (const tombstone of pendingDeletes) {
           removeCrewDeleteTombstone(tombstone);
         }
@@ -384,6 +414,22 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }
     setProjectionError(failures[0] ?? null);
   }, [availability]);
+
+  const waitingForPersonal = useRef(false);
+  useEffect(() => {
+    waitingForPersonal.current = projectionWaitingForPersonal;
+  }, [projectionWaitingForPersonal]);
+
+  /**
+   * Personal sync has finished making this device's cache canonical for the
+   * account. A projection that had to stand down at join time is exactly the
+   * work that is now safe, so force it rather than leaving the runner's
+   * existing runs unshared until something unrelated changes.
+   */
+  const notePersonalSyncReady = useCallback(async (): Promise<void> => {
+    if (!waitingForPersonal.current) return;
+    await syncProjection(true);
+  }, [syncProjection]);
 
   /** A deleted personal run is withdrawn from every crew it was shared with. */
   async function deleteRunContribution(localRunId: string): Promise<void> {
@@ -436,10 +482,25 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       lastDashboard.current.crewId === crewId &&
       Date.now() - lastDashboard.current.loadedAt < CREW_DASHBOARD_STALE_MS;
     if (!force && fresh) return;
+
     // Only a request for the crew being asked about can be shared; switching
     // crews must not be answered with the previous crew's load.
-    if (dashboardInFlight.current?.crewId === crewId) {
-      return dashboardInFlight.current.request;
+    //
+    // A forced refresh is a read barrier after a mutation, so it cannot simply
+    // join a request that is already running: that request may have queried
+    // before the write landed, and its answer would show the Crew as it was
+    // beforehand. Wait the earlier request out, then issue a new query.
+    while (dashboardInFlight.current?.crewId === crewId) {
+      const inFlight = dashboardInFlight.current;
+      if (!force) return inFlight.request;
+      await inFlight.request;
+      if (
+        latest.current.account?.crew?.id !== crewId ||
+        latest.current.user?.id !== userId
+      ) return;
+      if (dashboardInFlight.current?.request === inFlight.request) {
+        dashboardInFlight.current = null;
+      }
     }
 
     const request = (async () => {
@@ -455,11 +516,16 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
           buildStartDate,
         );
         if (latest.current.account?.crew?.id !== crewId) return;
+        lastLoad.current = { crewId, data: loaded };
         setCrewData(loaded);
         setCrewDataStatus("ready");
         setPropsErrors({});
         lastDashboard.current = { crewId, loadedAt: Date.now() };
       } catch (reason) {
+        // The visible dashboard keeps its last good snapshot, but a failed read
+        // is not evidence about anything: it can neither confirm nor deny a
+        // mutation that has already been accepted.
+        lastLoad.current = null;
         const currentUser = latest.current.user;
         if (currentUser) {
           try {
@@ -493,6 +559,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   useEffect(() => {
     const crewId = account?.crew?.id ?? "";
     if (lastDashboard.current.crewId === crewId) return;
+    lastLoad.current = null;
     setCrewData(null);
     setCrewDataStatus("idle");
     setCrewDataError(null);
@@ -687,6 +754,24 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       });
       lastDashboard.current.loadedAt = 0;
       await refreshCrewData(true);
+      // The write is the server's answer; this read is only the proof the
+      // runner sees. If a fresh read comes back without the coordinates, the
+      // block would silently reappear as READY, so say so instead. A read that
+      // failed proves nothing either way and reports itself separately.
+      const snapshot = lastLoad.current;
+      if (snapshot && snapshot.crewId === account.crew.id) {
+        const placed = snapshot.data.crewBuildRuns.find((run) => run.id === runId);
+        if (
+          !placed ||
+          placed.crewBuildRow !== row ||
+          placed.crewBuildColumnStart !== columnStart
+        ) {
+          setCrewBuildPlacementError(
+            "That placement could not be confirmed. Refresh and try again.",
+          );
+          return false;
+        }
+      }
       return true;
     } catch (reason) {
       if (reason instanceof CrewBuildPlacementError && reason.kind === "conflict") {
@@ -725,6 +810,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     pendingInvite,
     latestInviteUrl,
     projectionError,
+    projectionWaitingForPersonal,
     crewData,
     crewDataStatus,
     crewDataError,
@@ -892,6 +978,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }, "Crew member removed."),
     deleteRunContribution,
     refreshCrewData,
+    notePersonalSyncReady,
     toggleProps,
     markPropsSeen,
     dismissPropNotification,

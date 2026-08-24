@@ -9,7 +9,13 @@ interface QueryCall {
   value: unknown;
 }
 
-function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
+function fakeClient(
+  calls: QueryCall[],
+  failingTable?: string,
+  sharedRunOverrides: Record<string, unknown> = {},
+  /** Refuses any select naming this column, as a database missing it would. */
+  missingColumn?: string,
+): SupabaseClient {
   const data: Record<string, unknown[]> = {
     crew_members: [
       { user_id: "user-1", role: "owner", joined_at: "2026-08-01T00:00:00Z" },
@@ -36,6 +42,7 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         activity_type: "long",
         distance_miles: 6.1,
         duration_seconds: 3522,
+        source: "intervals",
         build_row: 4,
         build_column_start: 2,
         crew_build_row: 7,
@@ -46,6 +53,8 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         average_heart_rate: 148,
         max_heart_rate: 171,
         manual_heart_rate: null,
+        best_5k_seconds: 1290,
+        ...sharedRunOverrides,
       },
     ],
     crew_reactions: [
@@ -56,8 +65,10 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
 
   return {
     from: vi.fn((table: string) => {
+      let selected = "";
       const builder = {
         select(columns: string) {
+          selected = columns;
           calls.push({ table, operation: "select", value: columns });
           return builder;
         },
@@ -80,10 +91,32 @@ function fakeClient(calls: QueryCall[], failingTable?: string): SupabaseClient {
         then<TResult1 = { data: unknown[]; error: { message: string } | null }>(
           onfulfilled?: ((value: { data: unknown[]; error: { message: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
         ) {
-          return Promise.resolve({
-            data: data[table] ?? [],
-            error: table === failingTable ? { message: `${table} unavailable` } : null,
-          }).then(onfulfilled);
+          const askedForMissing =
+            missingColumn !== undefined &&
+            calls.some(
+              (call) =>
+                call.table === table &&
+                call.operation === "select" &&
+                String(call.value).includes(missingColumn),
+            ) &&
+            String(selected).includes(missingColumn);
+          const error = askedForMissing
+            ? { message: `column shared_runs.${missingColumn} does not exist` }
+            : table === failingTable
+              ? { message: `${table} unavailable` }
+              : null;
+          // A database without the column does not return it either, so the
+          // fallback read has to work from rows that genuinely lack it.
+          const rows = error ? [] : data[table] ?? [];
+          const served =
+            missingColumn === undefined || error
+              ? rows
+              : rows.map((item) => {
+                const copy = { ...(item as Record<string, unknown>) };
+                delete copy[missingColumn];
+                return copy;
+              });
+          return Promise.resolve({ data: served, error }).then(onfulfilled);
         },
       };
       return builder;
@@ -109,11 +142,15 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
+      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate,best_5k_seconds",
     );
-    // Heart rate is the one deliberate exception, per D-079; everything else
-    // private (training load, effort, notes, source, route, GPS) stays out.
-    expect(String(runSelect?.value)).not.toMatch(/load|effort|note|source|route|gps/i);
+    // Heart rate is the one deliberate exception, per D-079; `source` is the
+    // two-word origin issue #129 needs to mark a manual block; and
+    // `best_5k_seconds` is the single approved performance scalar issue #186
+    // adds — the source's own answer for one 5,000 m window, never the curve
+    // it came from. Everything else private (training load, effort, notes,
+    // route, GPS) stays out.
+    expect(String(runSelect?.value)).not.toMatch(/load|effort|note|route|gps|external/i);
     const reactionSelect = calls.find(
       (call) => call.table === "crew_reactions" && call.operation === "select",
     );
@@ -141,6 +178,7 @@ describe("Crew dashboard query", () => {
       activityType: "long",
       distanceMiles: 6.1,
       durationSeconds: 3522,
+      source: "intervals",
       createdAt: "2026-08-09T12:00:00Z",
       updatedAt: "2026-08-09T12:00:00Z",
       buildRow: 4,
@@ -153,6 +191,7 @@ describe("Crew dashboard query", () => {
       averageHeartRate: 148,
       maxHeartRate: 171,
       manualHeartRate: null,
+      best5kSeconds: 1290,
       propsCount: 2,
       viewerHasPropped: true,
     });
@@ -163,6 +202,7 @@ describe("Crew dashboard query", () => {
         localDate: "2026-08-09",
         activityType: "long",
         distanceMiles: 6.1,
+        source: "intervals",
         buildRow: 4,
         buildColumnStart: 2,
         buildWidth: null,
@@ -181,6 +221,7 @@ describe("Crew dashboard query", () => {
         activityType: "long",
         distanceMiles: 6.1,
         durationSeconds: 3522,
+        source: "intervals",
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
@@ -205,6 +246,55 @@ describe("Crew dashboard query", () => {
       },
     ]);
     expect(loaded.sharedRunsTruncated).toBe(false);
+  });
+
+  /**
+   * Issue #186. A crew whose database has not yet gained the column reports
+   * nothing, an older row carries nothing, and a value outside the bounds the
+   * column is constrained to is not a 5K. All three are the same answer here —
+   * no 5K — and none of them is worth failing the whole crew read over.
+   */
+  it("reads a missing or unusable best 5K as no 5K, never as zero", async () => {
+    for (const best_5k_seconds of [undefined, null, 0, -1290, 21601, "fast", Number.NaN]) {
+      const loaded = await loadCrewDashboard(
+        fakeClient([], undefined, { best_5k_seconds }),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+      );
+      expect(loaded.runs[0].best5kSeconds, String(best_5k_seconds)).toBeNull();
+      expect(loaded.sharedRunsAvailable).toBe(true);
+    }
+  });
+
+  /**
+   * Issue #186 shipped `best_5k_seconds` in this select, and a Vercel deploy is
+   * not a migration. On a database the migration had not reached, naming the
+   * column failed the whole read — which costs the Crew its tower, its recent
+   * activity and its Props, for one optional footnote.
+   */
+  it("falls back to the columns every database has when an optional one is missing", async () => {
+    const calls: QueryCall[] = [];
+    const loaded = await loadCrewDashboard(
+      fakeClient(calls, undefined, {}, "best_5k_seconds"),
+      "crew-1",
+      "user-1",
+      "2026-08-01",
+    );
+
+    const selects = calls
+      .filter((call) => call.table === "shared_runs" && call.operation === "select")
+      .map((call) => String(call.value));
+    expect(selects).toHaveLength(2);
+    expect(selects[0]).toContain("best_5k_seconds");
+    expect(selects[1]).not.toContain("best_5k_seconds");
+
+    // The crew keeps everything else: only the 5K is missing.
+    expect(loaded.sharedRunsAvailable).toBe(true);
+    expect(loaded.runs).toHaveLength(1);
+    expect(loaded.runs[0].distanceMiles).toBe(6.1);
+    expect(loaded.runs[0].best5kSeconds).toBeNull();
+    expect(loaded.crewBuildRuns).toHaveLength(1);
   });
 
   it("preserves members and comparisons when shared runs are unavailable", async () => {
@@ -243,6 +333,7 @@ describe("Crew dashboard query", () => {
         localDate: "2026-08-09",
         activityType: "long",
         distanceMiles: 6.1,
+        source: "intervals",
         buildRow: 4,
         buildColumnStart: 2,
         buildWidth: null,

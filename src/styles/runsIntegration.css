@@ -1,0 +1,38 @@
+/*
+ * R4 Runs integration polish.
+ *
+ * These rules close presentation seams between the accepted R2 chart system
+ * and the R3 Run Profile without redesigning Run Detail. Keep this file small:
+ * anything that becomes a broader component rule belongs back in the shared
+ * component stylesheet after the integration phase.
+ */
+
+/*
+ * R2 established a 12px phone floor for axis/date labels. Run Profile kept its
+ * pre-R2 8px time axis even though it has only two or three labels, so there is
+ * no density reason for microscopic type here.
+ */
+.run-profile-chart__axis {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* Supporting labels may stay subordinate, but 8px is unnecessarily small. */
+.run-profile-chart__facts dt {
+  font-size: var(--type-label);
+}
+
+/*
+ * The profile selector has a deliberately large 44px hit target around a small
+ * visible chip. Put keyboard focus on the visible control instead of drawing a
+ * second large lime box around the invisible hit area. The keyboard-visible
+ * focus indication remains explicit and does not depend on color alone.
+ */
+.run-profile__selector:focus-visible {
+  outline: none;
+}
+
+.run-profile__selector:focus-visible > span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

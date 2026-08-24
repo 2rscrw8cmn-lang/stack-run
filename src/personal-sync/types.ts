@@ -8,6 +8,7 @@ import type {
 export interface PersonalTrainingDocument {
   settings: AppState["settings"];
   plan: AppState["plan"];
+  planHistory: AppState["planHistory"];
   raceSetup: AppState["raceSetup"];
   availability: AppState["availability"];
   runDays: AppState["runDays"];
@@ -90,7 +91,7 @@ export type PersonalSyncStatus =
 export interface PersonalInitializationSummary {
   runCount: number;
   blockCount: number;
-  raceName: string;
+  raceName: string | null;
 }
 
 export interface PersonalSyncController {
@@ -114,6 +115,7 @@ export function trainingDocumentFrom(state: AppState): PersonalTrainingDocument 
   return {
     settings: state.settings,
     plan: state.plan,
+    planHistory: state.planHistory,
     raceSetup: state.raceSetup,
     availability: state.availability,
     runDays: state.runDays,

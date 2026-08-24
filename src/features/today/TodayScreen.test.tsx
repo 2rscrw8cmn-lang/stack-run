@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { BlockPlacement, RunLog } from "../../domain/types";
 import type { CrewDashboardData, CrewSharedRun } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
+import type { RunnerRun } from "../../history/runnerRun";
+import { signalRuns } from "../../signals/signalTestRuns";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { TodayScreen } from "./TodayScreen";
 
@@ -31,6 +33,34 @@ const extraRun: RunLog = {
   completedDate: "2026-08-05",
   distanceMiles: 3.4,
 };
+
+/**
+ * A run the runner did that STACK holds only as connected history — never
+ * logged, never accepted, carrying no STACK overlay. It is still a run, so it
+ * is still what Today reports as this runner's actual training.
+ */
+function historicalRun(date: string, distanceMiles: number): RunnerRun {
+  return {
+    id: `history:intervals:${date}`,
+    date,
+    startTimeLocal: `${date}T07:00:00`,
+    distanceMiles,
+    durationSeconds: Math.round(distanceMiles * 540),
+    paceSecondsPerMile: 540,
+    averageHeartRate: null,
+    maxHeartRate: null,
+    hrZoneSeconds: null,
+    elevationGainFeet: null,
+    averageCadence: null,
+    trainingLoad: null,
+    sourceName: "Morning Run",
+    sourceType: "Run",
+    externalActivityId: date,
+    origin: "historical-activity",
+    isReconciled: false,
+    stack: null,
+  };
+}
 
 function placementFor(runLogId: string): BlockPlacement {
   return {
@@ -96,7 +126,6 @@ function crewWith(run: Partial<CrewSharedRun>): RaceCrewController {
 
 function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
   const onSaveRun = vi.fn();
-  const onDeleteRun = vi.fn();
   const onViewPlan = vi.fn();
   const onViewBuild = vi.fn();
   const onStartPlacing = vi.fn();
@@ -110,13 +139,11 @@ function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
       onViewBuild={onViewBuild}
       onStartPlacing={onStartPlacing}
       onSaveRun={onSaveRun}
-      onDeleteRun={onDeleteRun}
       {...props}
     />,
   );
   return {
     onSaveRun,
-    onDeleteRun,
     onViewPlan,
     onViewBuild,
     onStartPlacing,
@@ -126,6 +153,18 @@ function renderToday(props: Partial<Parameters<typeof TodayScreen>[0]> = {}) {
 }
 
 describe("TodayScreen race context", () => {
+  it("keeps Today useful without inventing a race or rest day", async () => {
+    const { onViewPlan, user } = renderToday({ plan: null });
+
+    expect(screen.queryByText("OUC Half Marathon")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rest Day")).not.toBeInTheDocument();
+    expect(screen.getByText("Running without a race plan")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your Build" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Set up a race plan" }));
+    expect(onViewPlan).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the race as a compact line rather than a countdown hero", () => {
     renderToday({ today: "2026-08-04" });
 
@@ -149,6 +188,48 @@ describe("TodayScreen workout states", () => {
     expect(
       screen.getByRole("heading", { name: "Complete Run" }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * Issue #152: the plan states the same fact three times — `easy`, the title
+   * `2 Miles`, and the target `2`. The card names the type once, leads with
+   * the target once, and keeps the instruction, which is the line a runner
+   * reads before going out.
+   */
+  it("states the scheduled run once rather than three times", () => {
+    const { container } = renderToday({ today: "2026-08-06" });
+
+    const card = container.querySelector(".today-action") as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(within(card).getAllByText("Easy")).toHaveLength(1);
+    expect(within(card).getByText("2 mi")).toBeInTheDocument();
+    expect(within(card).queryByText("2 Miles")).toBeNull();
+    expect(
+      within(card).getByText("Easy conversational effort."),
+    ).toBeInTheDocument();
+  });
+
+  /* `Long Run: 4 Miles` is the type and the target again, so neither repeats. */
+  it("drops a title that only restates the type and the target", () => {
+    const { container } = renderToday({ today: "2026-08-09" });
+
+    const card = container.querySelector(".today-action") as HTMLElement;
+    expect(within(card).getByText("Long Run")).toBeInTheDocument();
+    expect(within(card).getByText("4 mi")).toBeInTheDocument();
+    expect(within(card).queryByText(/Long Run: 4 Miles/)).toBeNull();
+  });
+
+  /* Both states of the same card, so Today has one action surface (#152). */
+  it("uses one card for the scheduled run and for what it still owes", () => {
+    const { container } = renderToday({ today: "2026-08-06" });
+    expect(
+      container.querySelector('.today-action[data-state="scheduled"]'),
+    ).not.toBeNull();
+
+    const completed = renderToday({ runLogs: [completedEasyRun] });
+    expect(
+      completed.container.querySelector('.today-action[data-state="complete"]'),
+    ).not.toBeNull();
   });
 
   it("shows the rest-day state with no completion requirement", () => {
@@ -180,9 +261,10 @@ describe("TodayScreen workout states", () => {
 
     expect(screen.getByText("Plan starts soon")).toBeInTheDocument();
     expect(screen.getByText(/Training begins Monday, August 3, 2026/)).toBeInTheDocument();
-    expect(screen.queryByText("This Week")).not.toBeInTheDocument();
+    // A week that has not started cannot report scheduled progress, and Today
+    // does not invent one for it.
     expect(screen.queryByRole("progressbar", { name: /scheduled runs complete/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Next")).toBeInTheDocument();
+    expect(screen.getByText("Up next")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Mark Complete" }),
     ).not.toBeInTheDocument();
@@ -191,8 +273,14 @@ describe("TodayScreen workout states", () => {
   it("shows the after-race state once race day has passed", () => {
     renderToday({ today: "2026-12-31" });
     expect(screen.getByText("Race complete")).toBeInTheDocument();
-    expect(screen.queryByText("This Week")).not.toBeInTheDocument();
-    expect(screen.queryByText("Next")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: /scheduled runs complete/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Up next")).not.toBeInTheDocument();
+  });
+
+  it("drops the countdown once the race is behind the runner", () => {
+    renderToday({ today: "2026-12-31" });
+    expect(screen.getByText("OUC Half Marathon")).toBeInTheDocument();
+    expect(screen.queryByText("Race day")).not.toBeInTheDocument();
   });
 });
 
@@ -206,7 +294,7 @@ describe("TodayScreen This Week", () => {
     renderToday({ runLogs: [completedEasyRun], today: "2026-08-06" });
 
     // Week 1 schedules four runs; one of them is logged.
-    expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 4 scheduled/)).toBeInTheDocument();
     expect(
       within(screen.getByRole("list", { name: "Week 1 days" })).getAllByRole(
         "listitem",
@@ -220,28 +308,51 @@ describe("TodayScreen This Week", () => {
       today: "2026-08-06",
     });
 
-    expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 4 scheduled/)).toBeInTheDocument();
     expect(screen.getByText("+1 extra")).toBeInTheDocument();
   });
 
-  it("adds up what was actually run without touching scheduled completion", () => {
+  it("leads with what was actually run and keeps scheduled progress beside it", () => {
     renderToday({
       runLogs: [completedEasyRun, extraRun],
       today: "2026-08-06",
     });
 
-    // Scheduled progress is still one of four; the totals below it count both
-    // runs, because the legs do not know which one the plan asked for.
-    expect(screen.getByText(/1 of 4 runs/)).toBeInTheDocument();
-    const totals = within(screen.getByRole("group", { name: "Week 1 actual totals" }));
-    expect(totals.getByText("5.5")).toBeInTheDocument();
-    expect(totals.getByText("41:00")).toBeInTheDocument();
-    expect(totals.getByText("3.4 mi")).toBeInTheDocument();
+    // Actuals first: both runs count, because the legs do not know which one
+    // the plan asked for. Scheduled progress is still one of four.
+    const actual = within(screen.getByLabelText("Actually run this week"));
+    expect(actual.getByText("5.5")).toBeInTheDocument();
+    expect(actual.getByText("2 runs")).toBeInTheDocument();
+    expect(screen.getByText(/1 of 4 scheduled/)).toBeInTheDocument();
   });
 
-  it("says nothing about totals in a week with nothing in it", () => {
+  it("reports an empty week as zero miles rather than hiding the week", () => {
     renderToday({ today: "2026-08-06" });
-    expect(screen.queryByRole("group", { name: /actual totals/ })).not.toBeInTheDocument();
+    const actual = within(screen.getByLabelText("Actually run this week"));
+    expect(actual.getByText("0")).toBeInTheDocument();
+    expect(actual.getByText("0 runs")).toBeInTheDocument();
+  });
+
+  it("counts a connected run STACK never accepted as running this week", () => {
+    renderToday({
+      runnerRuns: [historicalRun("2026-08-05", 6.2)],
+      today: "2026-08-06",
+    });
+
+    const actual = within(screen.getByLabelText("Actually run this week"));
+    expect(actual.getByText("6.2")).toBeInTheDocument();
+    // It is a run, not a completed workout: the plan count is untouched.
+    expect(screen.getByText(/0 of 4 scheduled/)).toBeInTheDocument();
+  });
+
+  it("keeps the week outside the plan, without a schedule to report", () => {
+    renderToday({
+      runnerRuns: [historicalRun("2026-07-14", 4)],
+      today: "2026-07-15",
+    });
+
+    expect(screen.getByText("This Week")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Plan" })).not.toBeInTheDocument();
   });
 
   it("links through to the full schedule", async () => {
@@ -252,18 +363,18 @@ describe("TodayScreen This Week", () => {
   });
 });
 
-describe("TodayScreen Next", () => {
+describe("TodayScreen Up next", () => {
   it("shows the next scheduled run after today", () => {
     renderToday({ today: "2026-08-04" });
 
-    const next = screen.getByText("Next").closest(".next-workout") as HTMLElement;
+    const next = screen.getByText("Up next").closest(".next-workout") as HTMLElement;
     // Aug 5 is a rest day, so the next run is Thursday Aug 6.
     expect(within(next).getByText(/Thursday, Aug 6/)).toBeInTheDocument();
   });
 
   it("omits the section when no run remains before the race", () => {
     renderToday({ today: "2026-12-05" });
-    expect(screen.queryByText("Next")).not.toBeInTheDocument();
+    expect(screen.queryByText("Up next")).not.toBeInTheDocument();
   });
 });
 
@@ -283,6 +394,8 @@ describe("TodayScreen run entry", () => {
     await user.click(screen.getByRole("button", { name: "Save Run" }));
 
     expect(onSaveRun.mock.calls[0][0].id).toBe("workout-002");
+    // Today records runs; it never saves over one (issue #152).
+    expect(onSaveRun.mock.calls[0][2]).toBeUndefined();
     expect(
       screen.getByText("Run saved. You earned an Easy block."),
     ).toBeInTheDocument();
@@ -299,7 +412,7 @@ describe("TodayScreen build preview", () => {
     renderToday({ runLogs: [prePlanExtra], today: "2026-07-15" });
 
     expect(screen.getByText("Plan starts soon")).toBeInTheDocument();
-    expect(screen.queryByText("This Week")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: /scheduled runs complete/ })).not.toBeInTheDocument();
     expect(screen.getByText("1 ready to place")).toBeInTheDocument();
   });
 
@@ -332,8 +445,13 @@ describe("TodayScreen earned block", () => {
     expect(onStartPlacing).toHaveBeenCalledWith("run-workout-002");
   });
 
-  it("says nothing at all once the block is placed and nothing else is owed", () => {
-    renderToday({
+  /*
+   * Issue #152: a run that owes nothing is a fact, not an action, so the card
+   * retires. One line of confirmation is left, and editing goes back to Runs
+   * with the rest of the record.
+   */
+  it("collapses the card once the block is placed and nothing else is owed", () => {
+    const { container } = renderToday({
       runLogs: [completedEasyRun],
       blockPlacements: [placementFor("run-workout-002")],
     });
@@ -347,9 +465,11 @@ describe("TodayScreen earned block", () => {
     expect(
       screen.queryByText(/built into the tower/),
     ).not.toBeInTheDocument();
-    // The compact summary and its quiet Edit are all that remain.
+    expect(container.querySelector(".today-action")).toBeNull();
+
+    // What is left says the run happened, and stops there.
+    expect(screen.getByText("Run complete")).toBeInTheDocument();
     expect(screen.getByText("2.1 mi · 20:30 · 9:46 /MI")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 
   /*
@@ -404,27 +524,18 @@ describe("TodayScreen earned block", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("deletes a logged run after confirming", async () => {
-    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  /*
+   * Issue #152: Today logs a run and hands over the blocks it earned. Nothing
+   * on this screen corrects or deletes a recorded run — that is Runs/Run
+   * Detail's job, with the rest of the runner's record.
+   */
+  it("offers no way to edit or delete a run it has already recorded", () => {
+    renderToday({ runLogs: [completedEasyRun] });
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Delete Run" }));
-
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(onDeleteRun).toHaveBeenCalledWith("run-workout-002");
-    confirm.mockRestore();
-  });
-
-  it("keeps the run when the confirmation is declined", async () => {
-    const { user, onDeleteRun } = renderToday({ runLogs: [completedEasyRun] });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Delete Run" }));
-
-    expect(onDeleteRun).not.toHaveBeenCalled();
-    confirm.mockRestore();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete Run" }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers no delete on an entry that has not been saved yet", async () => {
@@ -436,20 +547,6 @@ describe("TodayScreen earned block", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("edits a completed run through the same form", async () => {
-    const { user, onSaveRun } = renderToday({ runLogs: [completedEasyRun] });
-
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getByLabelText(/Distance/)).toHaveValue("2.1");
-
-    await user.clear(screen.getByLabelText(/Distance/));
-    await user.type(screen.getByLabelText(/Distance/), "2.6");
-    await user.click(screen.getByRole("button", { name: "Save Run" }));
-
-    expect(onSaveRun).toHaveBeenCalledTimes(1);
-    expect(onSaveRun.mock.calls[0][1]).toMatchObject({ distanceMiles: 2.6 });
-    expect(onSaveRun.mock.calls[0][2]).toBe("run-workout-002");
-  });
 });
 
 const candidate = {
@@ -465,22 +562,28 @@ const candidate = {
 
 describe("TodayScreen run found", () => {
   /*
-   * Issue #120: a prompt, not the import workflow. Pace, heart rate, the
-   * extra-run decision and the ignore control all belong to Run Data now.
+   * Issue #153: a likely completion becomes the one Today Action Card. It is
+   * still a prompt, not the import workflow: the decision remains in Run Data.
    */
-  it("names the synced run and what it looks like, and nothing more", () => {
-    renderToday({ candidates: [candidate] });
+  it("replaces the manual completion card with the suggested synced run", () => {
+    const { container } = renderToday({ candidates: [candidate] });
 
     expect(screen.getByText("Run found")).toBeInTheDocument();
     expect(screen.getByText("2.15 mi · 20:30")).toBeInTheDocument();
     expect(screen.getByText(/^Looks like /)).toBeInTheDocument();
+    expect(
+      container.querySelectorAll('.today-action[data-state="found"]'),
+    ).toHaveLength(1);
+    expect(container.querySelectorAll(".today-action")).toHaveLength(1);
+    expect(screen.queryByText("Today’s workout")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Mark Complete" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("9:32 /MI")).not.toBeInTheDocument();
     expect(screen.queryByText(/bpm/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Extra Run" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Not now" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ignore this run" })).not.toBeInTheDocument();
-    // Whatever sync found, the day's workout is still the thing on screen.
-    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
   });
 
   it("continues into the existing review rather than importing behind the user", async () => {
@@ -489,6 +592,50 @@ describe("TodayScreen run found", () => {
 
     await user.click(screen.getByRole("button", { name: "Review Run →" }));
     expect(onReviewCandidate).toHaveBeenCalledWith(candidate);
+  });
+
+  it("promotes a late sync without reopening Today", () => {
+    const props = {
+      plan,
+      runLogs: [] as RunLog[],
+      today: "2026-08-04",
+      onViewPlan: vi.fn(),
+      onSaveRun: vi.fn(),
+    };
+    const { container, rerender } = render(<TodayScreen {...props} />);
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+
+    rerender(<TodayScreen {...props} candidates={[candidate]} />);
+
+    expect(screen.getByText("Run found")).toBeInTheDocument();
+    expect(screen.queryByText("Today’s workout")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".today-action")).toHaveLength(1);
+  });
+
+  it("keeps an unmatched run as an explicit Extra review when no workout is due", async () => {
+    const extraCandidate = { ...candidate, completedDate: "2026-07-15" };
+    const onReviewCandidate = vi.fn();
+    const { user } = renderToday({
+      today: "2026-07-15",
+      candidates: [extraCandidate],
+      onReviewCandidate,
+    });
+
+    expect(screen.getByText("Run found")).toBeInTheDocument();
+    expect(screen.getByText("Wed, Jul 15")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark Complete" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review Run →" }));
+    expect(onReviewCandidate).toHaveBeenCalledWith(extraCandidate);
+  });
+
+  it("does not let an unrelated candidate displace today's scheduled workout", () => {
+    renderToday({
+      candidates: [{ ...candidate, completedDate: "2026-08-01" }],
+    });
+
+    expect(screen.getByText("Today’s workout")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark Complete" })).toBeInTheDocument();
+    expect(screen.queryByText("Run found")).not.toBeInTheDocument();
   });
 
   it("leaves an older synced run to Run Data rather than putting it on Today", () => {
@@ -511,5 +658,106 @@ describe("TodayScreen run found", () => {
   it("does not talk about sync while it has a run to offer", () => {
     renderToday({ candidates: [candidate], syncError: "Intervals.icu could not be reached." });
     expect(screen.queryByText("Intervals.icu could not be reached.")).not.toBeInTheDocument();
+  });
+});
+
+describe("TodayScreen recent training", () => {
+  it("orients the runner in two or three facts, each with its window", () => {
+    // Sep 17 is a scheduled easy run: the context sits under the workout, not
+    // instead of it.
+    renderToday({
+      runnerRuns: signalRuns({
+        today: "2026-09-17",
+        current: { runCount: 8, options: { miles: 5 } },
+        baseline: { runCount: 8, options: { miles: 5 } },
+      }),
+      today: "2026-09-17",
+    });
+
+    const context = within(screen.getByRole("group", { name: "Recent training" }));
+    expect(context.getByText("Last 28 days")).toBeInTheDocument();
+    expect(context.getByText("Last 8 wks")).toBeInTheDocument();
+    expect(context.getByText("Longest 28d")).toBeInTheDocument();
+  });
+
+  it("says nothing rather than explaining that it has nothing to say", () => {
+    renderToday({ today: "2026-08-04" });
+    expect(screen.queryByRole("group", { name: "Recent training" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/not enough history/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps working on a rest day, which is the point of having it", () => {
+    // Sep 16 is a rest day: the plan has nothing to say, and the screen does.
+    renderToday({
+      runnerRuns: signalRuns({
+        today: "2026-09-16",
+        current: { runCount: 8, options: { miles: 5 } },
+        baseline: { runCount: 8, options: { miles: 5 } },
+      }),
+      today: "2026-09-16",
+    });
+
+    expect(screen.getByText("Rest Day")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Recent training" })).toBeInTheDocument();
+    expect(screen.getByText("This Week")).toBeInTheDocument();
+    expect(screen.getByText("Your Build")).toBeInTheDocument();
+  });
+});
+
+describe("TodayScreen observation", () => {
+  const today = "2026-09-16";
+  const rising = signalRuns({
+    today,
+    current: { runCount: 8, options: { miles: 5 } },
+    baseline: { runCount: 6, options: { miles: 4 } },
+  });
+
+  it("shows one observation, with the evidence NEXT-3 already computed", () => {
+    renderToday({ runnerRuns: rising, today, onViewRuns: vi.fn() });
+
+    expect(screen.getByText("Volume is building")).toBeInTheDocument();
+    expect(
+      screen.getByText(/40 mi in the last 28 days, up from 24 mi in the 28 before\./),
+    ).toBeInTheDocument();
+  });
+
+  it("shows exactly one, never a list", () => {
+    const { container } = renderToday({ runnerRuns: rising, today, onViewRuns: vi.fn() });
+    expect(container.querySelectorAll(".today-signal")).toHaveLength(1);
+    expect(screen.queryByText("Training Signals")).not.toBeInTheDocument();
+  });
+
+  it("does not repeat the number the observation already states", () => {
+    renderToday({ runnerRuns: rising, today, onViewRuns: vi.fn() });
+    const context = within(screen.getByRole("group", { name: "Recent training" }));
+    expect(context.queryByText("Last 28 days")).not.toBeInTheDocument();
+    expect(context.getByText("Last 8 wks")).toBeInTheDocument();
+  });
+
+  it("observes without advising", () => {
+    renderToday({ runnerRuns: rising, today, onViewRuns: vi.fn() });
+    expect(screen.queryByText(/take it easy|should|recovered|ready|try to/i)).not.toBeInTheDocument();
+  });
+
+  it("routes into Runs rather than opening a second detail sheet", async () => {
+    const onViewRuns = vi.fn();
+    const { user } = renderToday({ runnerRuns: rising, today, onViewRuns });
+
+    await user.click(screen.getByRole("button", { name: /Volume is building/ }));
+    expect(onViewRuns).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows nothing when the runner's training has not changed", () => {
+    const { container } = renderToday({
+      runnerRuns: signalRuns({
+        today,
+        current: { runCount: 8, options: { miles: 5 } },
+        baseline: { runCount: 8, options: { miles: 5 } },
+      }),
+      today,
+      onViewRuns: vi.fn(),
+    });
+    expect(container.querySelectorAll(".today-signal")).toHaveLength(0);
   });
 });

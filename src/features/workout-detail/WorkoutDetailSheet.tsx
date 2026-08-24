@@ -1,11 +1,7 @@
 import { Circle, CircleCheck } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
-import {
-  BLOCK_STATE_LABEL,
-  WORKOUT_TYPE_LABEL,
-  type BlockState,
-} from "../../domain/build";
+import { WORKOUT_TYPE_LABEL, type BlockState } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import type { RunLog, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
@@ -14,6 +10,14 @@ import { RunResultDetail } from "./RunResultDetail";
 interface WorkoutDetailSheetProps {
   workout: Workout;
   state: BlockState;
+  /**
+   * What this day's relationship to the schedule is called, supplied by the
+   * caller rather than derived here. Plan says `No linked run` for a past
+   * workout nothing is linked to, because an unlinked plan item is not proof
+   * that the runner did not run. It is required so no caller can fall back to
+   * language that claims more than STACK knows.
+   */
+  statusLabel: string;
   runLog?: RunLog | null;
   /** Provided by Plan for a run whose day has arrived and that has no log yet. */
   onLogRun?: () => void;
@@ -40,6 +44,7 @@ interface WorkoutDetailSheetProps {
 export function WorkoutDetailSheet({
   workout,
   state,
+  statusLabel,
   runLog,
   onLogRun,
   onEditRun,
@@ -58,7 +63,7 @@ export function WorkoutDetailSheet({
       <div className="workout-detail">
         <p className="workout-detail__status" data-state={state}>
           <StatusIcon size={20} strokeWidth={1.8} aria-hidden="true" />
-          <span>{BLOCK_STATE_LABEL[state]}</span>
+          <span>{statusLabel}</span>
         </p>
 
         <dl className="workout-detail__facts">

@@ -1,0 +1,321 @@
+/* NEXT-4 — Today as a decision surface.
+   Presentation only. Every number on this screen is computed in
+   src/features/today/todayModel.ts, src/history/ or src/signals/. */
+
+/*
+ * The screen breathes a little more than it did, because it now has fewer
+ * boxes on it. Cards are reserved for the one thing that can be acted on.
+ */
+.today-screen {
+  gap: 14px;
+}
+
+/* The race recedes to goal context: the smallest type on the screen, and no
+   longer the second-loudest thing under the date. */
+.race-context {
+  gap: 6px;
+  font-size: var(--type-meta);
+  letter-spacing: 0.07em;
+}
+
+.race-context svg {
+  flex: none;
+  color: var(--text-subtle);
+}
+
+/* A day that asks nothing
+   ------------------------------------------------------------------
+   Rest, before-plan and after-race. One line each, so the emptiest days on
+   the calendar stop being the loudest thing on the screen. */
+
+.today-note {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.today-note__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-label);
+  letter-spacing: 0.09em;
+}
+
+.today-note__icon {
+  display: inline-flex;
+  color: var(--text-subtle);
+}
+
+.today-note__body {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* A run that owes nothing
+   ------------------------------------------------------------------
+   Once the Personal and Crew blocks are standing, the completed run is a fact
+   rather than an action, so the Today Action Card retires to the same one-line
+   register as a day that asks nothing (issue #152). */
+
+.today-settled {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px var(--space-2);
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.today-settled svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.today-settled__label {
+  color: var(--text-muted);
+  font-size: var(--type-label);
+}
+
+.today-settled__facts {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Recent training
+   ------------------------------------------------------------------
+   Two or three facts, each with its own window. Not a KPI shelf: no borders
+   around each reading, no chevron, nothing to tap. */
+
+.today-context {
+  display: grid;
+  grid-template-columns: repeat(var(--today-readings, 3), minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 9px 0;
+  border-top: 1px solid var(--data-border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* One or two readings share the row rather than leaving an empty third column
+   where a suppressed fact used to be. */
+.today-context[data-readings="2"] { --today-readings: 2; }
+.today-context[data-readings="1"] { --today-readings: 1; }
+
+.today-context__reading {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.today-context__value {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(17px, 5.2vw, 21px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.today-context__unit {
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.today-context__label {
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+  letter-spacing: 0.06em;
+}
+
+/* This week
+   ------------------------------------------------------------------
+   Actuals lead: the miles and the runs are the section's own value, and the
+   plan's scheduled progress sits underneath as the context it is. */
+
+.this-week__actual {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.this-week__miles {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  color: var(--text);
+  font-size: clamp(17px, 5.2vw, 21px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.this-week__unit {
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.this-week__runs {
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  letter-spacing: 0.06em;
+}
+
+.this-week__planned {
+  display: grid;
+  gap: 5px;
+}
+
+/* Demoted from the section's headline value to a line inside it. */
+.this-week .this-week__count {
+  justify-content: flex-start;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.this-week .this-week__extra {
+  padding: 1px 6px;
+  font-size: var(--type-meta);
+}
+
+/* One observation
+   ------------------------------------------------------------------
+   Quieter than a Training Signal card on Runs, because Today is allowed one
+   and does not have a section to put it in. Nothing is coloured by which way
+   the measure moved: that would be scorekeeping. */
+
+.today-signal {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--data-surface, var(--surface-soft));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.today-signal:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.today-signal__mark,
+.today-signal__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.today-signal__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.today-signal__headline {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.today-signal__evidence {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Build
+   ------------------------------------------------------------------
+   What is waiting and the way in share one row, so the crop of the tower is
+   the tallest thing in the section. */
+
+.build-preview__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.build-preview .build-preview__count {
+  font-size: var(--type-meta);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.build-preview__pending {
+  font-size: 11px;
+}
+
+/* The narrowest supported width: three readings still fit, tighter. */
+@media (max-width: 340px) {
+  .today-context { gap: var(--space-1); }
+  .today-context__value { font-size: 16px; }
+  .today-signal { padding: 9px 8px 9px 10px; }
+  .today-signal__headline { font-size: 13px; }
+}
+.today-plan-prompt {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.today-plan-prompt span {
+  display: grid;
+  gap: 2px;
+}
+
+.today-plan-prompt strong,
+.today-plan-prompt small {
+  font: inherit;
+}
+
+.today-plan-prompt strong {
+  color: var(--text);
+}
+
+.today-plan-prompt small {
+  font-size: var(--type-meta);
+}

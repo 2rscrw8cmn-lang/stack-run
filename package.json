@@ -10,7 +10,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "check": "npm run lint && npm run test && npm run build"
+    "check": "npm run lint && npm run test && npm run build",
+    "db:start": "supabase start --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
+    "db:stop": "supabase stop --no-backup",
+    "db:reset": "supabase db reset --local --no-seed",
+    "db:verify:migrations": "node scripts/verify-supabase-migrations.mjs",
+    "db:verify:sql": "node scripts/run-supabase-sql-tests.mjs",
+    "db:verify": "npm run db:verify:migrations && npm run db:reset && npm run db:verify:sql"
   },
   "dependencies": {
     "@fontsource/space-mono": "^5.3.0",
@@ -33,6 +39,7 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.8.0",
     "jsdom": "^30.0.1",
+    "supabase": "2.115.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
     "vite": "^8.1.5",

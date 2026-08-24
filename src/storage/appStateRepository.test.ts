@@ -12,14 +12,16 @@ import {
   readBackup,
   resetAppState,
   saveAppState,
+  saveGeneratedPlan,
   savePlan,
   saveRunLog,
   ignoreIntervalsActivity,
+  finishActivePlan,
   unlinkRunLogFromWorkout,
   StorageLoadError,
   StorageWriteError,
 } from "./appStateRepository";
-import { CURRENT_SCHEMA_VERSION } from "./migrations";
+import { createSeededAppState, CURRENT_SCHEMA_VERSION } from "./migrations";
 import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
 
 beforeEach(() => {
@@ -154,7 +156,7 @@ describe("loadAppState", () => {
     const version1 = {
       schemaVersion: 1,
       settings: { units: "miles", theme: "dark" },
-      plan: loadAppState().plan,
+      plan: createSeededAppState().plan,
       runLogs: [
         {
           id: "log-1",
@@ -427,20 +429,20 @@ describe("unlinkRunLogFromWorkout", () => {
 
 describe("savePlan", () => {
   it("persists an edited plan and reloads it", () => {
-    const state = loadAppState();
+    const state = createSeededAppState();
     const edited = moveWorkout(state.plan, "workout-002", "2026-08-05");
 
     savePlan(state, edited);
 
     const reloaded = loadAppState();
-    const moved = reloaded.plan.weeks[0].workouts.find(
+    const moved = reloaded.plan!.weeks[0].workouts.find(
       (workout) => workout.id === "workout-002",
     );
     expect(moved?.date).toBe("2026-08-05");
   });
 
   it("leaves runs and placements attached to the workouts they name", () => {
-    let state = saveRunLog(loadAppState(), scheduledRun);
+    let state = saveRunLog(createSeededAppState(), scheduledRun);
     const runId = runIdForWorkout(state, "workout-002");
     state = placeBlock(state, {
       runLogId: runId,
@@ -450,7 +452,7 @@ describe("savePlan", () => {
       height: 1,
     });
 
-    state = savePlan(state, moveWorkout(state.plan, "workout-002", "2026-09-16"));
+    state = savePlan(state, moveWorkout(state.plan!, "workout-002", "2026-09-16"));
 
     expect(state.runLogs[0].workoutId).toBe("workout-002");
     expect(state.blockPlacements[0].runLogId).toBe(runId);
@@ -461,19 +463,18 @@ describe("savePlan", () => {
 
 describe("resetAppState", () => {
   it("discards plan edits along with the runs and blocks", () => {
-    const logged = saveRunLog(loadAppState(), scheduledRun);
-    savePlan(logged, moveWorkout(logged.plan, "workout-004", "2026-08-05"));
+    const logged = saveRunLog(createSeededAppState(), scheduledRun);
+    savePlan(logged, moveWorkout(logged.plan!, "workout-004", "2026-08-05"));
 
     const reset = resetAppState();
 
     expect(reset.runLogs).toEqual([]);
     expect(reset.blockPlacements).toEqual([]);
-    expect(
-      reset.plan.weeks[0].workouts.find((w) => w.id === "workout-004")?.date,
-    ).toBe("2026-08-06");
+    expect(reset.plan).toBeNull();
+    expect(reset.planHistory).toEqual([]);
   });
 
-  it("restores the seed plan and clears run logs", () => {
+  it("returns to the no-plan starting point and clears run logs", () => {
     const state = loadAppState();
     state.runLogs.push({
       id: "log-1",
@@ -493,6 +494,51 @@ describe("resetAppState", () => {
     expect(reset.runLogs).toEqual([]);
     expect(reset.blockPlacements).toEqual([]);
     expect(loadAppState().runLogs).toEqual([]);
+  });
+});
+
+describe("finishActivePlan", () => {
+  it("archives the active plan without erasing actual runs or Personal Build", () => {
+    let state = saveRunLog(createSeededAppState(), scheduledRun);
+    const runId = runIdForWorkout(state, "workout-002");
+    state = placeBlock(state, {
+      runLogId: runId,
+      row: 0,
+      columnStart: 1,
+      width: 1,
+      height: 1,
+    });
+
+    const finished = finishActivePlan(state);
+
+    expect(finished.plan).toBeNull();
+    expect(finished.raceSetup).toBeNull();
+    expect(finished.planHistory).toHaveLength(1);
+    expect(finished.planHistory[0].plan.id).toBe("stack-ouc-half-2026");
+    expect(finished.planHistory[0].runLinks).toEqual({ [runId]: "workout-002" });
+    expect(finished.runLogs).toEqual([
+      { ...state.runLogs[0], workoutId: null },
+    ]);
+    expect(finished.blockPlacements).toEqual(state.blockPlacements);
+    expect(loadAppState()).toEqual(finished);
+  });
+});
+
+describe("saveGeneratedPlan", () => {
+  it("archives old links so repeated generated workout ids do not complete the replacement", () => {
+    const state = saveRunLog(createSeededAppState(), scheduledRun);
+    const runId = runIdForWorkout(state, "workout-002");
+    const replacement = { ...state.plan!, id: "replacement-plan" };
+
+    const next = saveGeneratedPlan(
+      state,
+      { name: "Replacement", date: "2027-05-01", distance: "half", level: "novice" },
+      replacement,
+      "2026-12-06T12:00:00.000Z",
+    );
+
+    expect(next.runLogs[0].workoutId).toBeNull();
+    expect(next.planHistory[0].runLinks).toEqual({ [runId]: "workout-002" });
   });
 });
 

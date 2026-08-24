@@ -97,7 +97,8 @@ describe("Crew award metrics", () => {
     const state = {
       plan: plan(scheduled),
       runLogs: [logged],
-    } as Pick<AppState, "plan" | "runLogs">;
+      planHistory: [],
+    } as Pick<AppState, "plan" | "planHistory" | "runLogs">;
     expect(crewAwardMetricsByRunId(state).get(logged.id)).toEqual({
       zone2Percent: 75,
       targetPercent: 100,

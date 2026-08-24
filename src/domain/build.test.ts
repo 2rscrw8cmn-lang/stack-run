@@ -13,7 +13,12 @@ import {
   selectBuildViewModel,
   totalActualMiles,
 } from "./build";
-import type { BlockPlacement, RunActivityType, RunLog } from "./types";
+import type {
+  ArchivedTrainingPlan,
+  BlockPlacement,
+  RunActivityType,
+  RunLog,
+} from "./types";
 
 const plan = loadSeedPlan();
 
@@ -144,6 +149,21 @@ describe("earnedBlocks", () => {
     expect(earned).toHaveLength(1);
     expect(earned[0].workout).toBeNull();
     expect(earned[0].footprint).toEqual({ width: 3, height: 2 });
+  });
+
+  it("retains scheduled workout context from an archived plan", () => {
+    const runLog = extraRun("run-archived");
+    const archivedPlan: ArchivedTrainingPlan = {
+      id: "archive-1",
+      plan,
+      raceSetup: null,
+      runLinks: { [runLog.id]: "workout-002" },
+      archivedAt: "2026-12-07T12:00:00.000Z",
+    };
+
+    const [earned] = earnedBlocks(null, [runLog], [archivedPlan]);
+
+    expect(earned.workout?.id).toBe("workout-002");
   });
 
   it("orders blocks by the date the run happened", () => {

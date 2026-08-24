@@ -35,7 +35,7 @@ function metrics(value: unknown): ImportedRunMetrics | null {
   const source = value as Record<string, unknown>;
   const zones = source.hrZoneSeconds;
   if (zones !== undefined && !(Array.isArray(zones) && zones.every(numeric))) return null;
-  const scalars = ["averageHeartRate", "maxHeartRate", "averageCadence", "elevationGainFeet", "trainingLoad", "elapsedTimeSeconds"] as const;
+  const scalars = ["averageHeartRate", "maxHeartRate", "averageCadence", "elevationGainFeet", "trainingLoad", "elapsedTimeSeconds", "best5kSeconds"] as const;
   if (scalars.some((key) => source[key] !== undefined && !numeric(source[key]))) return null;
   return source as ImportedRunMetrics;
 }

@@ -7,12 +7,19 @@ import {
   type CrewEmblem,
 } from "../src/crew/emblem.js";
 import type { CrewType } from "../src/crew/types.js";
+import {
+  checkSupabaseBoundary,
+  deploymentEnvironmentFromVercel,
+} from "../src/crew/supabaseEnvironment.js";
 
 type Environment = {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+  STACK_BACKEND_ENV?: string;
+  VITE_STACK_BACKEND_ENV?: string;
+  VERCEL_ENV?: string;
 };
 
 declare const process: { env: Environment };
@@ -39,11 +46,26 @@ function number(value: unknown): number | null {
 }
 
 /** Never log the capability token: this resolver is the only server boundary. */
-export async function resolveInvitePreview(token: string | null): Promise<InvitePreview | null> {
+export async function resolveInvitePreview(
+  token: string | null,
+  environment: Environment = process.env,
+  fetcher: typeof fetch = fetch,
+): Promise<InvitePreview | null> {
   if (!token || !/^[A-Za-z0-9_-]{32,}$/.test(token)) return null;
-  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
+  const url = (environment.SUPABASE_URL ?? environment.VITE_SUPABASE_URL)?.trim();
+  const key = (
+    environment.SUPABASE_PUBLISHABLE_KEY ?? environment.VITE_SUPABASE_PUBLISHABLE_KEY
+  )?.trim();
+  const backendEnvironment = (
+    environment.STACK_BACKEND_ENV ?? environment.VITE_STACK_BACKEND_ENV
+  )?.trim();
+  if (!url || !key || !backendEnvironment) return null;
+  const boundary = checkSupabaseBoundary(
+    url,
+    backendEnvironment,
+    deploymentEnvironmentFromVercel(environment.VERCEL_ENV),
+  );
+  if (!boundary.allowed) return null;
   try {
     // Vercel's current Node runtime exposes Web Crypto, while browser code uses
     // the same standard API. Keep every runtime-dependent operation inside the
@@ -51,7 +73,7 @@ export async function resolveInvitePreview(token: string | null): Promise<Invite
     // capability link into a platform 500.
     const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
     const tokenHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-    const response = await fetch(`${url.replace(/\/$/, "")}/rest/v1/rpc/preview_crew_invite`, {
+    const response = await fetcher(`${url.replace(/\/$/, "")}/rest/v1/rpc/preview_crew_invite`, {
       method: "POST",
       headers: {
         apikey: key,

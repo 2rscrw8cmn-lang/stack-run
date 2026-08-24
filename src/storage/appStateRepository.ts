@@ -11,6 +11,7 @@ import { relinkRunLogs, type RacePlanSetup } from "../domain/racePlan";
 import type { Weekday } from "../domain/runDays";
 import type {
   AppState,
+  ArchivedTrainingPlan,
   BlockPlacement,
   RunLog,
   TrainingPlan,
@@ -108,7 +109,7 @@ export function onStorageWriteError(
 
 /**
  * Reads AppState from localStorage. When no state has been saved yet, this
- * returns a fresh state built from the seed plan. When the stored value
+ * returns a fresh state without an active plan. When the stored value
  * cannot be read — invalid JSON, or a shape no migration recognises — the raw
  * value is preserved under a timestamped backup key and a recoverable
  * StorageLoadError is thrown so the UI can offer a way out.
@@ -498,6 +499,49 @@ export function attachIntervalsRun(state: AppState, candidate: IntervalsCandidat
   return saveRunLog(state, { ...existing, id: existing.id, completedDate: candidate.completedDate, distanceMiles: candidate.distanceMiles, durationSeconds: candidate.durationSeconds, source: "intervals", externalSource: { provider: "intervals", activityId: candidate.externalId, sourceUpdatedAt: candidate.sourceUpdatedAt, importedAt: new Date().toISOString() }, importedMetrics: Object.keys(candidate.metrics).length ? candidate.metrics : null });
 }
 
+/**
+ * Records source-verified best 5K times against runs that already exist.
+ *
+ * Additive and narrow on purpose: it writes one field of `importedMetrics` on
+ * the named runs and touches nothing else — not the distance, not the duration,
+ * not `updatedAt` on a run that did not change. A 5K arriving days after the
+ * import is new information about the same run, not an edit of it.
+ *
+ * Returns the state unchanged when nothing new was learned, so a pass that
+ * found no 5K costs no write and no re-render.
+ */
+export function recordImportedBest5k(
+  state: AppState,
+  secondsByRunLogId: ReadonlyMap<string, number>,
+): AppState {
+  const changed = state.runLogs.filter(
+    (run) =>
+      secondsByRunLogId.has(run.id) &&
+      run.importedMetrics?.best5kSeconds !== secondsByRunLogId.get(run.id),
+  );
+  if (changed.length === 0) return state;
+
+  const changedIds = new Set(changed.map((run) => run.id));
+  const now = new Date().toISOString();
+  const next: AppState = {
+    ...state,
+    runLogs: state.runLogs.map((run) =>
+      changedIds.has(run.id)
+        ? {
+            ...run,
+            importedMetrics: {
+              ...(run.importedMetrics ?? {}),
+              best5kSeconds: secondsByRunLogId.get(run.id)!,
+            },
+            updatedAt: now,
+          }
+        : run,
+    ),
+  };
+  saveAppState(next);
+  return next;
+}
+
 export function saveIntervalsSync(state: AppState, syncedAt: string): AppState {
   const next = { ...state, intervalsSync: { ...state.intervalsSync, lastSuccessfulActivitySyncAt: syncedAt } };
   saveAppState(next); return next;
@@ -567,21 +611,66 @@ export function saveCrossTrainingDays(
  *
  * The runs and the blocks they earned belong to the runner, not to the plan
  * that happened to ask for them, so a regenerated plan never costs either.
- * Runs are re-attached to whatever the new plan schedules on the same date;
- * the rest become extra runs, which is what they now are.
+ * Existing explicit links continue to describe the archived plan. Previously
+ * extra runs may attach to a same-day workout in the new plan.
  */
 export function saveGeneratedPlan(
   state: AppState,
   setup: RacePlanSetup,
   plan: TrainingPlan,
+  archivedAt = new Date().toISOString(),
 ): AppState {
-  const { runLogs } = relinkRunLogs(state.runLogs, plan);
-  const next: AppState = { ...state, plan, raceSetup: setup, runLogs };
+  const extraIds = new Set(
+    state.runLogs.flatMap((run) => run.workoutId === null ? [run.id] : []),
+  );
+  const archived = archiveActivePlan(state, archivedAt);
+  const extras = archived.runLogs.filter((run) => extraIds.has(run.id));
+  const relinkedExtras = new Map(
+    relinkRunLogs(extras, plan).runLogs.map((run) => [run.id, run]),
+  );
+  const runLogs = archived.runLogs.map((run) => relinkedExtras.get(run.id) ?? run);
+  const next: AppState = { ...archived, plan, raceSetup: setup, runLogs };
   saveAppState(next);
   return next;
 }
 
-/** Discards all plan edits, run logs, and placements and restores the seed plan. */
+function archiveActivePlan(state: AppState, archivedAt: string): AppState {
+  if (!state.plan) return state;
+  let id = `${state.plan.id}:${archivedAt}`;
+  let suffix = 1;
+  const ids = new Set(state.planHistory.map((entry) => entry.id));
+  while (ids.has(id)) id = `${state.plan.id}:${archivedAt}:${++suffix}`;
+  const archived: ArchivedTrainingPlan = {
+    id,
+    plan: state.plan,
+    raceSetup: state.raceSetup,
+    runLinks: Object.fromEntries(
+      state.runLogs.flatMap((run) => run.workoutId ? [[run.id, run.workoutId]] : []),
+    ),
+    archivedAt,
+  };
+  return {
+    ...state,
+    plan: null,
+    planHistory: [archived, ...state.planHistory],
+    runLogs: state.runLogs.map((run) =>
+      run.workoutId === null ? run : { ...run, workoutId: null }
+    ),
+    raceSetup: null,
+  };
+}
+
+/** Explicitly ends the active race lifecycle without touching runs or Build. */
+export function finishActivePlan(
+  state: AppState,
+  archivedAt = new Date().toISOString(),
+): AppState {
+  const next = archiveActivePlan(state, archivedAt);
+  if (next !== state) saveAppState(next);
+  return next;
+}
+
+/** Discards all personal state and returns to the no-plan starting point. */
 export function resetAppState(): AppState {
   const fresh = createInitialAppState();
   saveAppState(fresh);

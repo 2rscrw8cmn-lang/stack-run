@@ -57,6 +57,31 @@ describe("Crew Mini Build derivation", () => {
       .toBe(1);
   });
 
+  /*
+   * Issue #129: Member Build reproduces the runner's real Personal Build, so
+   * a run cannot read as hand-logged in the shared tower and unmarked here.
+   * A run that names no source is manual, the same default everywhere else.
+   */
+  it("carries each run's source through to its block", () => {
+    const [synced] = deriveCrewMiniBuild(
+      [{ ...run("r", "2026-08-01", 4, "easy"), source: "intervals" }],
+      "runner-1",
+    ).blocks;
+    expect(synced.source).toBe("intervals");
+
+    const [manual] = deriveCrewMiniBuild(
+      [{ ...run("r", "2026-08-01", 4, "easy"), source: "manual" }],
+      "runner-1",
+    ).blocks;
+    expect(manual.source).toBe("manual");
+
+    const [unstated] = deriveCrewMiniBuild(
+      [run("r", "2026-08-01", 4, "easy")],
+      "runner-1",
+    ).blocks;
+    expect(unstated.source).toBeNull();
+  });
+
   it("uses supplied coordinates regardless of query order and keeps activity semantics", () => {
     const runs = [
       run("c", "2026-08-03", 8, "long", "runner-1", 3, 5),

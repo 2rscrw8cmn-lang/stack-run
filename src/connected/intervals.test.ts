@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createInitialAppState } from "../storage/migrations";
+import { createSeededAppState } from "../storage/migrations";
 import { addDaysToLocalDate } from "../domain/dates";
 import type { RunLog } from "../domain/types";
-import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals";
+import { availableScheduledMatches, fetchIntervals, fetchIntervalsBestEfforts, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
 /**
@@ -38,12 +38,12 @@ describe("Intervals normalization", () => {
     expect(normalizeActivityList([activity], [importedRun("i1")], [])).toHaveLength(0);
   });
   it("suggests an unmatched workout within two days deterministically", () => {
-    const state = createInitialAppState(); const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
+    const state = createSeededAppState(); const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
     const candidate = normalizeIntervalsActivity({ ...activity, start_date_local: `${workout.date}T08:00:00` })!;
     expect(suggestScheduledMatches(candidate, state.plan, [])[0]?.id).toBe(workout.id);
   });
   it("offers Today the newest recent run, preferring one that completes the plan", () => {
-    const state = createInitialAppState();
+    const state = createSeededAppState();
     const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
     const matched = normalizeIntervalsActivity({ ...activity, id: "matched", start_date_local: `${workout.date}T08:00:00` })!;
     const unmatched = normalizeIntervalsActivity({ ...activity, id: "unmatched", start_date_local: `${workout.date}T18:00:00` })!;
@@ -53,8 +53,45 @@ describe("Intervals normalization", () => {
     expect(found?.candidate.externalId).toBe("matched");
     expect(found?.workout?.id).toBe(workout.id);
   });
+  it("lets Today prefer the candidate suggested for the workout due now", () => {
+    const state = createSeededAppState();
+    const workouts = state.plan.weeks
+      .flatMap((week) => week.workouts)
+      .filter((item) => item.type !== "rest");
+    const preferredWorkout = workouts[0];
+    const newerWorkout = workouts[1];
+    const preferred = candidateFor("preferred", preferredWorkout.date);
+    const newer = candidateFor("newer", newerWorkout.date);
+
+    const found = selectRunFound(
+      [newer, preferred],
+      state.plan,
+      [],
+      newerWorkout.date,
+      preferredWorkout.id,
+    );
+
+    expect(found?.candidate.externalId).toBe("preferred");
+    expect(found?.workout?.id).toBe(preferredWorkout.id);
+  });
+  it("never offers a stale candidate whose source activity is already accepted", () => {
+    const state = createSeededAppState();
+    const workout = state.plan.weeks
+      .flatMap((week) => week.workouts)
+      .find((item) => item.type !== "rest")!;
+    const candidate = candidateFor("accepted", workout.date);
+
+    expect(
+      selectRunFound(
+        [candidate],
+        state.plan,
+        [importedRun("accepted")],
+        workout.date,
+      ),
+    ).toBeNull();
+  });
   it("leaves a stale candidate to Run Data rather than to Today", () => {
-    const state = createInitialAppState();
+    const state = createSeededAppState();
     const workout = state.plan.weeks.flatMap((week) => week.workouts).find((item) => item.type !== "rest")!;
     const old = normalizeIntervalsActivity({ ...activity, start_date_local: `${addDaysToLocalDate(workout.date, -9)}T08:00:00` })!;
     expect(selectRunFound([old], state.plan, [], workout.date)).toBeNull();
@@ -182,7 +219,7 @@ describe("unresolved candidate queue", () => {
  * away from could not be matched to its workout at all.
  */
 describe("manual scheduled matches", () => {
-  const state = createInitialAppState();
+  const state = createSeededAppState();
   const plan = state.plan;
   const candidate = candidateFor("i1", "2026-08-04");
 
@@ -393,6 +430,25 @@ describe("Run Data failure messages", () => {
   it("separates a request that never arrived from an answer that refused it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
     await expect(fetchIntervals("status", "token")).rejects.toThrow("Check this device's connection");
+    fetchMock.mockRestore();
+  });
+
+  it("asks the pace curve for one activity's 5K over both connection modes", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      // A fresh body per call: a Response can only be read once.
+      .mockImplementation(async () => new Response(JSON.stringify({ distances: [5000], secs: [1215] })));
+
+    expect((await fetchIntervalsBestEfforts("a1", "token")).best5kSeconds).toBe(1215);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("resource=activity-pace-curve");
+
+    expect(
+      (await fetchIntervalsBestEfforts("a1", { mode: "local-api-key", credential: "key" }))
+        .best5kSeconds,
+    ).toBe(1215);
+    const direct = new URL(String(fetchMock.mock.calls[1]?.[0]));
+    expect(direct.pathname).toBe("/api/v1/activity/a1/pace-curve");
+    expect(direct.searchParams.get("distances")).toBe("5000");
     fetchMock.mockRestore();
   });
 

@@ -61,11 +61,11 @@ insert into public.crew_award_blocks (
   id, crew_id, week_start, award_type, winner_user_id, result_value,
   crew_build_row, crew_build_column_start, crew_build_placed_at
 ) values
-  ('c1eanup0-0000-4000-8000-000000000001',
+  ('c1ea0000-0000-4000-8000-000000000001',
    (select crew_id from cleanup_ids),
    current_date - (extract(isodow from current_date)::integer - 1) - 35,
    'miles', '92000000-0000-0000-0000-000000000001', 12.5, 0, 1, now()),
-  ('c1eanup0-0000-4000-8000-000000000002',
+  ('c1ea0000-0000-4000-8000-000000000002',
    (select crew_id from cleanup_ids),
    current_date - (extract(isodow from current_date)::integer - 1) - 7,
    'runs', '92000000-0000-0000-0000-000000000001', 4, 0, 5, now());
@@ -105,14 +105,14 @@ do $$
 begin
   if exists (
     select 1 from public.crew_award_blocks
-    where id = 'c1eanup0-0000-4000-8000-000000000001'
+    where id = 'c1ea0000-0000-4000-8000-000000000001'
   ) then
     raise exception 'cleanup failure: a pre-rollout award survived the cleanup';
   end if;
 
   if not exists (
     select 1 from public.crew_award_blocks
-    where id = 'c1eanup0-0000-4000-8000-000000000002'
+    where id = 'c1ea0000-0000-4000-8000-000000000002'
       and crew_build_row = 0
       and crew_build_column_start = 5
   ) then

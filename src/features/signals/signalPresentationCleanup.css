@@ -1,0 +1,433 @@
+/* R1 presentation refinement. Domain arithmetic stays in src/signals/. */
+
+.signal-cards.section {
+  gap: 10px;
+  padding-top: 12px;
+  border-top-color: var(--border);
+}
+
+.signal-cards .section__title,
+.signal-cards .section__icon {
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.signal-cards__list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.signal-cards__list > li + li {
+  border-top: 1px solid var(--border);
+}
+
+.signal-card,
+.signal-cards .signal-card {
+  display: grid;
+  align-items: stretch;
+  gap: 9px;
+  min-height: 44px;
+  padding: 13px 2px 13px 11px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transition: background-color 140ms ease;
+}
+
+.signal-card::before,
+.signal-cards .signal-card::before {
+  inset: 13px auto 13px 0;
+  width: 2px;
+}
+
+.signal-card:hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--signal-accent) 4%, transparent);
+}
+
+.signal-card__header,
+.signal-card__reading,
+.signal-card__reference {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.signal-card__label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.signal-card__more {
+  color: var(--text-subtle);
+}
+
+.signal-card__current,
+.signal-card__change {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.signal-card__change {
+  justify-items: end;
+  text-align: right;
+}
+
+.signal-card__current strong,
+.signal-card__change strong,
+.signal-card__reference strong {
+  color: var(--text);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-card__current strong {
+  color: var(--signal-accent);
+  font-size: clamp(22px, 7vw, 28px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.signal-card__change strong {
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.signal-card__current small,
+.signal-card__change small,
+.signal-card__reference small {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.signal-card__visual {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.signal-visual__row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.signal-visual__label {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: var(--type-meta);
+  letter-spacing: 0.06em;
+}
+
+.signal-visual__track {
+  position: relative;
+  overflow: hidden;
+  height: 6px;
+  background: color-mix(in srgb, var(--signal-accent) 10%, var(--surface-soft));
+}
+
+.signal-visual__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--signal-fill);
+  background: var(--signal-accent);
+}
+
+.signal-visual[data-texture="blocks"] .signal-visual__track,
+.signal-visual__track--blocks {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 7px, var(--bg) 7px 9px),
+    color-mix(in srgb, var(--signal-accent) 10%, var(--surface-soft));
+}
+
+.signal-visual[data-texture="blocks"] .signal-visual__fill,
+.signal-visual__track--blocks .signal-visual__fill {
+  background:
+    repeating-linear-gradient(90deg, var(--signal-accent) 0 7px, var(--bg) 7px 9px);
+}
+
+.signal-visual--trend svg {
+  display: block;
+  width: 100%;
+  height: 32px;
+  overflow: visible;
+}
+
+.signal-visual__guide {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.signal-visual__line {
+  fill: none;
+  stroke: var(--signal-accent);
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+}
+
+.signal-card__reference {
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.signal-card__reference strong {
+  font-size: 11px;
+}
+
+.signal-cards__all {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* A utility action, not a branded control: quiet sans, muted, left-aligned. */
+.signal-cards__all .button {
+  min-height: 44px;
+  padding-inline: 0 var(--space-4);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.signal-cards__all .button:hover {
+  color: var(--text);
+}
+
+/* Signal Detail: result, shape, evidence, then methodology on demand. */
+
+.sheet.sheet--instrument .sheet__title {
+  color: var(--text);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  text-transform: none;
+}
+
+.signal-detail {
+  gap: 18px;
+}
+
+.signal-result {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 2px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.signal-result__current,
+.signal-result__change {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.signal-result__change {
+  justify-items: end;
+  text-align: right;
+}
+
+.signal-result strong {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.signal-result__current strong {
+  color: var(--accent);
+  font-size: clamp(29px, 9vw, 38px);
+  letter-spacing: -0.05em;
+}
+
+.signal-result__change strong {
+  color: var(--text);
+  font-size: clamp(14px, 4.3vw, 18px);
+}
+
+.signal-result span {
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  letter-spacing: 0.07em;
+}
+
+.signal-detail__section {
+  gap: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sheet--instrument .signal-detail__section h3 {
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sheet--instrument .plan-actual-chart,
+.sheet--instrument .selectable-line {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  background-image: none;
+}
+
+.sheet--instrument .chart__grid-line {
+  opacity: 0.28;
+}
+
+.sheet--instrument .plan-actual-chart__actual {
+  filter: none;
+  opacity: 0.42;
+}
+
+.sheet--instrument .plan-actual-chart__actual--selected {
+  opacity: 1;
+}
+
+.signal-reference {
+  margin: 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.signal-reference > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.signal-reference dt,
+.signal-reference dd {
+  margin: 0;
+}
+
+.signal-reference dt {
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+}
+
+.signal-reference dd {
+  color: var(--text);
+  font-family: var(--font-data);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-detail__interpretation {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.signal-methodology {
+  border-top: 1px solid var(--border);
+}
+
+.signal-methodology summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.signal-methodology summary::-webkit-details-marker {
+  display: none;
+}
+
+.signal-methodology summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.signal-methodology summary svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.signal-methodology__body {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 0 var(--space-3);
+}
+
+.signal-methodology__body > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.signal-methodology .signal-periods {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.signal-methodology .signal-periods > div {
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 760px) {
+  .signal-cards__list[data-density="featured"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .signal-cards__list[data-density="featured"] > li + li {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+
+  .signal-cards__list[data-density="featured"] .signal-card {
+    padding-inline: 13px;
+  }
+}
+
+@media (max-width: 340px) {
+  .signal-card,
+  .signal-cards .signal-card {
+    padding-left: 9px;
+  }
+
+  .signal-card__current strong {
+    font-size: 21px;
+  }
+}

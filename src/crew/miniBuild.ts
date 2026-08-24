@@ -12,7 +12,7 @@ import {
   voidsOf,
   type GridVoid,
 } from "../domain/placement";
-import type { RunActivityType } from "../domain/types";
+import type { RunActivityType, RunSource } from "../domain/types";
 import type { CrewMiniBuildRun } from "./types";
 
 export const MEMBER_BUILD_BLOCK_LIMIT = 128;
@@ -31,6 +31,8 @@ export interface CrewMiniBuildBlock {
   row: number;
   distanceMiles: number;
   localDate: string;
+  /** Issue #129: the fact behind a hand-logged block's asterisk. */
+  source: RunSource | null;
 }
 
 export interface CrewMiniBuildModel {
@@ -86,6 +88,7 @@ export function deriveCrewMiniBuild(
       row: run.buildRow!,
       distanceMiles: run.distanceMiles,
       localDate: run.localDate,
+      source: run.source ?? null,
     };
   });
 

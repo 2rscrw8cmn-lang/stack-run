@@ -93,6 +93,32 @@ Required at:
 - Existing valid storage
 - Corrupted storage
 
+## Pull requests and merge gate
+
+Normal work targets `main` through a pull request. Before merge:
+
+1. install from the lockfile with `npm ci`;
+2. run `npm run check`;
+3. run `git diff --check`;
+4. wait for the required **PR Validation / Install, lint, test, build** GitHub check to pass.
+
+Database changes additionally use the path-scoped **Supabase Migration Gate** and must pass it whenever it is triggered.
+
+Do not use direct pushes or administrator bypass as the normal development path. An urgent fix may use an explicit override only when the risk is understood and the validation gap is documented.
+
+## Crew uploads
+
+- Never send Crew a value the database is constrained to refuse.
+- The projection is a single `upsert`: one refused row fails every run, for
+  every crew, on every retry, and personal STACK stays healthy throughout, so
+  nothing about the symptom points at the cause.
+- Nullable column: mirror the CHECK on the device and send `null` instead.
+- NOT NULL column: leave that run out of the batch via `isShareableWithCrew`.
+- Report what was left behind. A run that is not reaching the crew is told to
+  the runner, not discovered by comparing two screens.
+- New constrained column means a new guard and a test that an out-of-range
+  value is not sent. See `docs/CREW_PROJECTION_CONTRACT.md`.
+
 ## Scripts
 
 Phase 0 must provide:
