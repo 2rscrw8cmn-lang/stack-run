@@ -24,6 +24,12 @@ import type { RunActivityType, RunLog } from "./types";
  * don't carry a run's duration (by the same design that keeps heart rate and
  * imported metrics out of Crew), so their Cross Training blocks keep the
  * fixed height below.
+ *
+ * Width stays fixed for Cross Training everywhere, not just height. Some
+ * Cross Training activities (a synced cycling ride, say) do carry real
+ * distance, but that distance is still not comparable to a run's — sizing
+ * width from it would make a bike ride's mileage compete with a run's for
+ * space on the tower. See `CROSS_TRAINING_WIDTH`.
  */
 
 export type BlockWidth = 1 | 2 | 3 | 4;
@@ -63,6 +69,13 @@ const HEIGHT_BY_TYPE: Record<RunActivityType, BlockHeight> = {
 /** Below this, a Cross Training session reads as a light one. */
 const CROSS_TRAINING_DURATION_THRESHOLD_SECONDS = 30 * 60;
 
+/**
+ * Cross Training's width, replacing the distance-based lookup above: fixed
+ * regardless of any distance logged (or synced) alongside the session, since
+ * that distance isn't comparable to a run's.
+ */
+export const CROSS_TRAINING_WIDTH: BlockWidth = 1;
+
 export function widthForMiles(miles: number): BlockWidth {
   for (const band of WIDTH_BANDS) {
     if (miles < band.under) {
@@ -88,11 +101,13 @@ export function crossTrainingHeightForDuration(durationSeconds: number): BlockHe
 
 /** The block an activity earns. Frozen onto the placement when it is built. */
 export function footprintFor(runLog: RunLog): Footprint {
-  return {
-    width: widthForMiles(runLog.distanceMiles),
-    height:
-      runLog.activityType === "cross"
-        ? crossTrainingHeightForDuration(runLog.durationSeconds)
-        : heightForActivityType(runLog.activityType),
-  };
+  return runLog.activityType === "cross"
+    ? {
+        width: CROSS_TRAINING_WIDTH,
+        height: crossTrainingHeightForDuration(runLog.durationSeconds),
+      }
+    : {
+        width: widthForMiles(runLog.distanceMiles),
+        height: heightForActivityType(runLog.activityType),
+      };
 }

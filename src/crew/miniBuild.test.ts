@@ -50,6 +50,13 @@ describe("Crew Mini Build derivation", () => {
       .toBe(height);
   });
 
+  it("does not widen a legacy Cross Training block from its real mileage", () => {
+    // No buildWidth stored, so this exercises the widthForMiles fallback -
+    // a synced ride's real distance must still not widen the block.
+    expect(deriveCrewMiniBuild([run("r", "2026-08-01", 20, "cross")], "runner-1").blocks[0].width)
+      .toBe(1);
+  });
+
   it("uses supplied coordinates regardless of query order and keeps activity semantics", () => {
     const runs = [
       run("c", "2026-08-03", 8, "long", "runner-1", 3, 5),

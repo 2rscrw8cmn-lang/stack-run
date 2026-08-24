@@ -1,4 +1,5 @@
 import {
+  CROSS_TRAINING_WIDTH,
   heightForActivityType,
   widthForMiles,
   type BlockHeight,
@@ -15,6 +16,11 @@ import type { RunActivityType } from "../domain/types";
 import type { CrewMiniBuildRun } from "./types";
 
 export const MEMBER_BUILD_BLOCK_LIMIT = 128;
+
+/** Legacy rows with no persisted `buildWidth`. Cross Training never sizes from distance. */
+function fallbackWidth(run: Pick<CrewMiniBuildRun, "activityType" | "distanceMiles">): BlockWidth {
+  return run.activityType === "cross" ? CROSS_TRAINING_WIDTH : widthForMiles(run.distanceMiles);
+}
 
 export interface CrewMiniBuildBlock {
   id: string;
@@ -58,7 +64,7 @@ export function deriveCrewMiniBuild(
         Number.isInteger(run.buildColumnStart) &&
         run.buildColumnStart !== null &&
         run.buildColumnStart >= 1 &&
-        run.buildColumnStart + (run.buildWidth ?? widthForMiles(run.distanceMiles)) - 1 <= 8,
+        run.buildColumnStart + (run.buildWidth ?? fallbackWidth(run)) - 1 <= 8,
     )
     .sort(
       (left, right) =>
@@ -69,7 +75,7 @@ export function deriveCrewMiniBuild(
     .slice(0, Math.max(0, limit));
 
   const blocks: CrewMiniBuildBlock[] = bounded.map((run) => {
-    const width = run.buildWidth ?? widthForMiles(run.distanceMiles);
+    const width = run.buildWidth ?? fallbackWidth(run);
     const height = run.buildHeight ?? heightForActivityType(run.activityType);
     return {
       id: run.id,
