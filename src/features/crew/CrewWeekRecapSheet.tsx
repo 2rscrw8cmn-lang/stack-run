@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDateLabel } from "../../domain/dates";
-import { formatMilesBuilt } from "../../domain/distance";
+import { formatMiles, formatMilesBuilt } from "../../domain/distance";
 import { formatDurationSeconds, formatTotalHoursMinutes } from "../../domain/duration";
 import { formatWeekRange } from "../../domain/plan";
 import { formatPaceSeconds } from "../../domain/runs";
@@ -72,6 +72,7 @@ function performanceReading(
     case "bestPace":
       return { value: formatPaceSeconds(performance.value), unit: null };
     case "longestRun":
+      return { value: formatMiles(performance.value), unit: "MI" };
     case "mostMiles":
     case "biggestCrewDay":
       return { value: formatMilesBuilt(performance.value), unit: "MI" };
