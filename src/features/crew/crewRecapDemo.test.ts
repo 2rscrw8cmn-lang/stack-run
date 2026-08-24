@@ -46,14 +46,19 @@ describe("Crew Week Recap owner review", () => {
     // four-person fixture never would.
     expect(participation).toMatchObject({ everyoneRan: true, rosterSize: 9 });
 
-    // The revised Best Performances page in its full editorial order, led by a
-    // representative source-verified 5K.
+    // Best Performances is no longer capped at four. The fixture deliberately
+    // contains a tie for Most Runs, so that individual metric is omitted while
+    // the other qualifying facts all remain on the page.
     const performances = demo.recap.beats.find((beat) => beat.kind === "performances")!;
     expect(performances.items.map((item) => item.kind)).toEqual([
       "best5k",
       "bestPace",
       "longestRun",
+      "mostMiles",
+      "mostTimeRunning",
+      "biggestMileageIncrease",
       "biggestCrewDay",
+      "mostRunnersDay",
     ]);
     // 20:55, from the fixture's own scalar. Two runs carry one, so the review
     // path exercises the selection and not only the presentation.
