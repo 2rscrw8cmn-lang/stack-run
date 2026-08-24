@@ -1,5 +1,6 @@
 import {
   crossTrainingHeightForDuration,
+  CROSS_TRAINING_WIDTH,
   heightForActivityType,
   widthForMiles,
   type BlockHeight,
@@ -170,13 +171,15 @@ function compareReadyAwards(
 export function crewBuildFootprint(
   run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "durationSeconds">,
 ): { width: BlockWidth; height: BlockHeight } {
-  return {
-    width: widthForMiles(run.distanceMiles),
-    height:
-      run.activityType === "cross"
-        ? crossTrainingHeightForDuration(run.durationSeconds)
-        : heightForActivityType(run.activityType),
-  };
+  return run.activityType === "cross"
+    ? {
+        width: CROSS_TRAINING_WIDTH,
+        height: crossTrainingHeightForDuration(run.durationSeconds),
+      }
+    : {
+        width: widthForMiles(run.distanceMiles),
+        height: heightForActivityType(run.activityType),
+      };
 }
 
 export function isCrewBuildPlacementWithinGrid(

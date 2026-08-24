@@ -118,4 +118,13 @@ describe("footprintFor", () => {
     expect(footprintFor(short)).toEqual({ width: 1, height: 1 });
     expect(footprintFor(long)).toEqual({ width: 1, height: 2 });
   });
+
+  it("does not let a Cross Training activity's real mileage widen the block", () => {
+    // A synced ride carries genuine distance, unlike a mobility session logged at 0 miles.
+    const shortRide = log(4, "cross", 4, "solid");
+    const longRide = { ...log(20, "cross", 3, "solid"), durationSeconds: 45 * 60 };
+
+    expect(footprintFor(shortRide).width).toBe(1);
+    expect(footprintFor(longRide)).toEqual({ width: 1, height: 2 });
+  });
 });

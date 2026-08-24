@@ -373,4 +373,9 @@ describe("crewBuildFootprint", () => {
     expect(crewBuildFootprint(run("a", "zack", { activityType: "intervals" })).height).toBe(2);
     expect(crewBuildFootprint(run("a", "zack", { activityType: "race" })).height).toBe(3);
   });
+
+  it("does not let a Cross Training activity's real mileage widen the block", () => {
+    const ride = run("ride", "zack", { activityType: "cross", distanceMiles: 20, durationSeconds: 45 * 60 });
+    expect(crewBuildFootprint(ride)).toEqual({ width: 1, height: 2 });
+  });
 });

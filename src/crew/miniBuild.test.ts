@@ -50,6 +50,13 @@ describe("Crew Mini Build derivation", () => {
       .toBe(height);
   });
 
+  it("does not widen a legacy Cross Training block from its real mileage", () => {
+    // No buildWidth stored, so this exercises the widthForMiles fallback -
+    // a synced ride's real distance must still not widen the block.
+    expect(deriveCrewMiniBuild([run("r", "2026-08-01", 20, "cross")], "runner-1").blocks[0].width)
+      .toBe(1);
+  });
+
   /*
    * Issue #129: Member Build reproduces the runner's real Personal Build, so
    * a run cannot read as hand-logged in the shared tower and unmarked here.
