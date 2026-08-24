@@ -44,13 +44,23 @@ A value Crew cannot store is never worth failing a runner's whole contribution
 over.
 
 `src/crew/projection.ts` holds these guards next to each other on purpose:
-`crewSafeHeartRate`, `crewSafePercent`, `crewSafeNonNegative`. Adding a nullable
-constrained column means adding its guard beside them.
+`crewSafeHeartRate`, `crewSafePercent`, `crewSafeNonNegative`,
+`crewSafeBest5kSeconds`. Adding a nullable constrained column means adding its
+guard beside them.
 
 **Calculated values deserve the most suspicion.** A heart rate is reported by a
 device and is wrong occasionally. The award scores are *derived here* — one
 division by a near-zero baseline puts a percentage outside 0-100 — so they are
 the likeliest to drift out of range, and they have no external source to blame.
+
+**A value from an unverified source read deserves the same suspicion, for the
+opposite reason.** `best_5k_seconds` (issue #186) is whatever Intervals' pace
+curve answered, through a normalizer whose response shape is still `Expected`
+rather than `Verified` — see `docs/CONNECTED_DATA_FIELDS.md`. A value in
+minutes, in milliseconds, or from a shape the normalizer misread would arrive
+here looking perfectly finite. `crewSafeBest5kSeconds` bounds it to the column's
+own 600-21600 before it can reach the CHECK. "The source said so" is not a
+reason to relax a guard; it is a reason to keep one.
 
 ### Required (NOT NULL) columns
 

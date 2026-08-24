@@ -121,6 +121,7 @@ UI-8 may not ship import until the first six concepts above are understood well 
 | Training load | `icu_training_load` | Verified | UI-9 | Intervals-derived; labelled plainly as Training Load. |
 | HR zone times | `icu_hr_zone_times` | Verified | UI-9 | Seven entries, seconds, zone 1 first. Zeroes are real; STACK shows every zone rather than guessing which are meaningful. |
 | Average speed | `average_speed` | Expected | Deferred | STACK derives pace from distance/duration; use only if needed for diagnostics. |
+| Fastest 5K | `pace-curve` 5,000 m best effort | Expected | Evolution 2.1 | Not an activity-summary field: a separate endpoint, requested only by the bounded enrichment pass. See "Best-effort times (pace curve)". |
 | Perceived exertion / Apple effort | source-dependent | Expected | Deferred | Do not map into Rough/Solid/Great until actual semantics are verified. |
 
 ## Interval / lap metrics
@@ -228,6 +229,48 @@ One display-only exception, which changes no value: the pace chart scales its
 visible y-axis to the bulk of the series (Tukey IQR fences) so a handful of
 near-stops cannot flatten the rest into a flat line. Outlying samples are kept,
 clamped to the edge of the visible window, and still counted everywhere else.
+
+## Best-effort times (pace curve)
+
+The Crew Week Recap's **Fastest 5K** (issue #186) needs the time of a real, continuous 5,000 m window inside a run. STACK cannot compute that from what it stores — a whole run's average pace is not a 5K time — and it deliberately does not reconstruct one from `velocity_smooth`. Intervals already runs a pace curve over its own activities and reports best-effort times, so STACK asks it for the 5,000 m answer and stores that:
+
+```text
+GET /api/v1/activity/{id}/pace-curve?distances=5000
+```
+
+The distance is fixed by both the client and the `/api/intervals` reader, so neither a crafted request nor a later caller can widen this into a whole-curve read.
+
+| STACK concept | Intervals candidate | Status | UI phase | Notes |
+|---|---|---|---|---|
+| Fastest 5K | `pace-curve` 5,000 m best effort | Expected | Evolution 2.1 | Seconds. Read as either parallel `distances` / `secs` arrays or a list of `{ distance, secs }` points; **not yet verified against a real connected run.** |
+
+### Source behaviour STACK adopts
+
+Intervals' best-effort calculation requires an actual ≥ 5,000 m window in the activity. It does not fabricate a 5K from a 4.99 km run.
+
+That is the right truth rule for STACK too, and it is enforced twice:
+
+- `normalizeIntervalsBestEfforts` matches the 5,000 m point **exactly** (`Math.round(distance) === 5000`) and never interpolates between ladder points;
+- the enrichment pass will not spend a request on a run below `BEST_5K_MIN_MILES` — 5,000 m converted to miles and rounded **up**, because STACK's stored mileage is two decimals and a run stored as `3.10` may really have been 4,988 m.
+
+A result outside 600–21,600 s is refused rather than shown: the floor sits comfortably under the world record (about 12:35) and the ceiling well past a walked 5K, so a value outside them is a unit mismatch or a corrupt row rather than a run.
+
+### Why this row is `Expected`
+
+The endpoint and field names follow Intervals.icu's documented pace-curve contract. **The exact response shape has not been checked against a real HealthFit-originated activity on a connected account.** Following the same discipline as the Run Profile streams above, the normalizer is written so that any shape it does not recognize yields **no 5K** rather than a guess, and no run fact anywhere in STACK depends on it — a missing 5K costs a recap beat and nothing else.
+
+Because this value is projected to Crew, the device also bounds it before upload (`crewSafeBest5kSeconds`), so an unverified source value can never reach the `shared_runs` CHECK and take a runner's whole projection down with it. See `docs/CREW_PROJECTION_CONTRACT.md`.
+
+### Promotion checklist
+
+- [ ] `GET /activity/{id}/pace-curve?distances=5000` is confirmed reachable on a real owner run through the direct local-key path.
+- [ ] The legacy `/api/intervals?resource=activity-pace-curve` proxy path is separately confirmed, if that connection mode remains supported.
+- [ ] The exact response shape (array vs. parallel arrays, the distance and seconds key names, the unit of `secs`) is recorded here.
+- [ ] The returned 5K is compared against Intervals' own visible Best Effort for that same activity and agrees within rounding.
+- [ ] A real activity **below** 5 km is confirmed to return no 5,000 m point — not a scaled or interpolated one.
+- [ ] A real activity with no pace curve at all is confirmed to yield no 5K and no error.
+
+No raw pace curve, stream, route or credential material is recorded here, and none is persisted anywhere in STACK: only the single derived scalar is stored.
 
 ## Wellness fields
 

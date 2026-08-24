@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
@@ -117,13 +117,14 @@ function row(): HTMLElement {
 
 /**
  * Clearing plays the same exit a completed swipe does, so the row leaves the
- * DOM only once it has visibly left the screen.
+ * DOM only once it has visibly left the screen. Waited for rather than slept
+ * through: a fixed delay races the exit timer under load.
  */
 async function clearRow(): Promise<void> {
   fireEvent.click(screen.getByRole("button", { name: /^Clear: Week Recap/ }));
-  await act(async () => {
-    await new Promise((resolve) => window.setTimeout(resolve, 200));
-  });
+  await waitFor(() =>
+    expect(document.querySelector(".crew-recap-notification__list")).toBeNull(),
+  );
 }
 
 describe("Crew Week Recap notification", () => {

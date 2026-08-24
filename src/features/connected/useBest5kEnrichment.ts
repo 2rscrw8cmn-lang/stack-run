@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   BEST_5K_PASS_LIMIT,
   enrichBest5k,
@@ -63,12 +63,15 @@ export function useBest5kEnrichment({
    * itself: a pass that settles six activities lowers it, which is what lets
    * the next pass start without waiting for another app open, and a pass that
    * settles nothing leaves it unchanged, which is what stops a loop.
+   *
+   * Memoized because it walks the whole run log and reads `localStorage`. A
+   * runner with years of history renders this hook's parent on every keystroke
+   * in a run form; this must not be part of that.
    */
-  const outstanding = planBest5kEnrichment(
-    runLogs,
-    loadBest5kProbes(accountId),
-    today,
-  ).length;
+  const outstanding = useMemo(
+    () => planBest5kEnrichment(runLogs, loadBest5kProbes(accountId), today).length,
+    [accountId, runLogs, today],
+  );
 
   useEffect(() => {
     if (!credential || outstanding === 0 || inFlight.current) return;

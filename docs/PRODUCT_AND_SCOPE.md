@@ -280,14 +280,17 @@ Special Blocks:
 
 ### Crew Week Recap
 
-After a Monday–Sunday Crew week closes, STACK tells the Crew what it built that week: a short celebratory story derived from facts the Crew already shares — miles, runs, time, who ran, the week's longest run, the slice of the Crew Build the week added, and any Special Block already standing in the tower.
+After a Monday–Sunday Crew week closes, STACK tells the Crew what it built that week: a short celebratory story derived from facts the Crew already shares — miles, runs, time, who ran, the week's standout efforts, the slice of the Crew Build the week added, and any Special Block already standing in the tower.
 
 It is a story, not a second dashboard:
 
 - it is derived on demand and never stored, so two members of the same Crew see the same shared-week facts;
 - a beat with no evidence is omitted rather than padded or estimated, and a week with no shared running produces no recap;
 - it never ranks the roster, never scores anybody, and never announces an unplaced Special Block;
-- it appears on Today as a limited-time module below Today's action surface, can be dismissed, and ages out three days after the week closes.
+- it is discovered in two places inside the same limited window — a teaser below Today's action surface and a notification below the Crew header — both of which open the same recap, share one seen/cleared record, and age out three days after the week closes;
+- each page carries something the pages before it did not, which is why the story now ends by handing over to the new Crew week rather than restating the closed one.
+
+Its Best Performances page may name a **source-verified Fastest 5K**: the time of a real 5,000 m effort inside a shared run, as the contributing runner's connected source reported it. STACK never estimates one from a run's average pace — a run under 5,000 m has no 5K — and a "fastest mile" stays unavailable for exactly that reason.
 
 `docs/CREW_WEEK_RECAP.md` is the contract, including the recap presentation language later retrospectives reuse.
 
@@ -309,7 +312,8 @@ Depending on availability/validation, the projection may include:
 - run source (`manual` / `intervals`);
 - sanitized Personal-Build placement facts used for Member Build;
 - average, max and manual heart rate under the deliberate D-079 exception;
-- narrowly derived award scalars required for deterministic Special Block ranking.
+- narrowly derived award scalars required for deterministic Special Block ranking;
+- one source-verified best-effort scalar, the fastest 5,000 m time, under the deliberate D-087 exception.
 
 Optional constrained values are sanitized to `null` rather than being allowed to fail the entire Crew upload.
 
@@ -320,6 +324,7 @@ Crew does **not** receive raw:
 - Intervals credentials;
 - Intervals external activity ids;
 - source payloads;
+- pace curves and per-sample streams (only the single derived 5K scalar above crosses the boundary);
 - GPS/routes/location;
 - exact start time;
 - HR-zone arrays/raw zone durations;

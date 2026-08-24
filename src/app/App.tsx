@@ -33,6 +33,7 @@ import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
 import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
+import { crewRecapDemoVariant } from "../features/crew/crewRecapDemo";
 import { useConnectedSync } from "../features/connected/useConnectedSync";
 import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
@@ -149,7 +150,18 @@ export function App() {
    * the same signed-in session; that transient state must not hide the Crew
    * tab or kick the runner back to Runs.
    */
-  const crewAvailable = Boolean(raceCrew.userId && raceCrew.account?.crew);
+  /*
+   * `?demo=recap` opens the Crew destination too. The recap notification lives
+   * on Crew, and issue #186's review addendum requires it to be reviewable from
+   * a branch preview on demand — which a reviewer with no crew, or a fresh
+   * browser on the preview hostname, otherwise cannot do at all. The gate is
+   * `crewRecapDemoVariant`, which is preview-host-only, so no production
+   * hostname can reach it; the Crew screen then renders its own fake-data demo
+   * rather than any account's real crew.
+   */
+  const crewAvailable =
+    Boolean(raceCrew.userId && raceCrew.account?.crew) ||
+    crewRecapDemoVariant() !== null;
   const raceCrewUserId = raceCrew.userId;
   const refreshCrewData = raceCrew.refreshCrewData;
   const notePersonalSyncReady = raceCrew.notePersonalSyncReady;
