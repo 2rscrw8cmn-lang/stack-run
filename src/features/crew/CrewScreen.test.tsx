@@ -1577,7 +1577,9 @@ describe("Switching between crews", () => {
 
   it("shows the viewed crew's own emblem beside its name", () => {
     openCrew(inTwoCrews());
-    expect(document.querySelectorAll(".crew-emblem")).toHaveLength(1);
+    // Scoped to the header: issue #186's recap notification carries the same
+    // emblem, deliberately, and it is not part of the crew's identity line.
+    expect(document.querySelectorAll(".crew-view__lead .crew-emblem")).toHaveLength(1);
   });
 });
 

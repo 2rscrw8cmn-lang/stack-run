@@ -28,6 +28,15 @@ function recap(overrides: Partial<CrewWeekRecap> = {}): CrewWeekRecap {
         kind: "performances",
         items: [
           {
+            kind: "best5k",
+            value: 1290,
+            runCount: null,
+            runner: ZACK,
+            localDate: "2026-08-11",
+            activityType: "easy",
+            runId: "quick",
+          },
+          {
             kind: "longestRun",
             value: 12,
             runCount: null,
@@ -100,16 +109,22 @@ describe("Crew Week Recap sheet", () => {
     expect(within(dialog).getByText("Aug 10 – Aug 16")).toBeInTheDocument();
     // Participation is folded in here rather than taking a page of its own.
     expect(within(dialog).getByText("FULL CREW · 2 / 2")).toBeInTheDocument();
-    const scoreboard = within(dialog).getByText("On Your Feet").closest("dl")!;
+    const scoreboard = within(dialog).getByText("Hours").closest("dl")!;
     expect(within(scoreboard).getByText("3")).toBeInTheDocument();
     expect(within(scoreboard).getByText("3:20")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /Back/ })).toBeDisabled();
 
     const next = within(dialog).getByRole("button", { name: /Next/ });
 
-    // 2 — Best Performances: a hero effort plus the rest.
+    // 2 — Best Performances: a hero effort plus the rest, led by the facts the
+    // opening page could not give.
     await user.click(next);
     expect(within(dialog).getByText("Best Performances")).toBeInTheDocument();
+    expect(within(dialog).getByText("Fastest 5K")).toBeInTheDocument();
+    expect(within(dialog).getByText("21:30")).toBeInTheDocument();
+    // The equivalent pace is the same verified 5K result per mile, not a
+    // second measurement — and never the run's own average pace.
+    expect(within(dialog).getByText(/TUESDAY · 6:55 \/MI/i)).toBeInTheDocument();
     expect(within(dialog).getByText("Longest Run")).toBeInTheDocument();
     expect(within(dialog).getByText("12")).toBeInTheDocument();
     expect(within(dialog).getByText("Wednesday")).toBeInTheDocument();
@@ -142,12 +157,46 @@ describe("Crew Week Recap sheet", () => {
     expect(within(dialog).getByText("Last Week")).toBeInTheDocument();
     expect(within(dialog).getByText("This Week")).toBeInTheDocument();
 
-    // 6 — the finish, closing on the week's own figures rather than a compliment.
+    // 6 — the handoff into the week already being run.
     await user.click(next);
-    expect(within(dialog).getByText("WEEK COMPLETE")).toBeInTheDocument();
-    expect(within(dialog).getByText(/21.0 MI · 3 RUNS · 2 RUNNERS/)).toBeInTheDocument();
+    expect(within(dialog).getByText("NEW WEEK LIVE")).toBeInTheDocument();
+    expect(within(dialog).getByText("Aug 17 – Aug 23")).toBeInTheDocument();
     expect(within(dialog).getByText("Page 6 of 6")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Done" })).toBeInTheDocument();
+  });
+
+  it("finishes without repeating the Build or the week's totals", async () => {
+    const user = userEvent.setup();
+    const dialog = open();
+    for (let step = 0; step < 5; step += 1) {
+      await user.click(within(dialog).getByRole("button", { name: /^Next/ }));
+    }
+    // The old finish repeated the emblem, the same mileage/runs/runners the
+    // opening page had already given at display size, and the Build crop page
+    // three had just animated. Evolution 2.1 removed all three.
+    expect(within(dialog).queryByText("WEEK COMPLETE")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/21.0 MI · 3 RUNS · 2 RUNNERS/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("img", { name: /blocks this week/ })).not.toBeInTheDocument();
+  });
+
+  it("never states a 5K for a week whose runs carry none", async () => {
+    const user = userEvent.setup();
+    const model = recap();
+    const performances = model.beats.find((item) => item.kind === "performances")!;
+    const dialog = open(
+      recap({
+        beats: model.beats.map((item) =>
+          item === performances
+            ? { ...performances, items: performances.items.filter((entry) => entry.kind !== "best5k") }
+            : item,
+        ),
+      }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: /^Next/ }));
+    expect(within(dialog).getByText("Best Performances")).toBeInTheDocument();
+    // Not a zero, not a dash, not an estimate from the totals: absent.
+    expect(within(dialog).queryByText("Fastest 5K")).not.toBeInTheDocument();
+    expect(within(dialog).getByText("Longest Run")).toBeInTheDocument();
   });
 
   it("carries page identity on the sheet itself, so the backdrop is the whole panel", async () => {
@@ -174,7 +223,7 @@ describe("Crew Week Recap sheet", () => {
       "sheet--crew-recap--build",
       "sheet--crew-recap--awards",
       "sheet--crew-recap--change",
-      "sheet--crew-recap--complete",
+      "sheet--crew-recap--nextWeek",
     ]);
   });
 

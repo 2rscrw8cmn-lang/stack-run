@@ -1,6 +1,6 @@
 # Crew Week Recap
 
-**Status:** current specialist contract for the weekly Crew recap and, per Evolution 2.04, for the **recap presentation language** any later STACK retrospective reuses.
+**Status:** current specialist contract for the weekly Crew recap and, per Evolution 2.04, for the **recap presentation language** any later STACK retrospective reuses. Revised by Evolution 2.1 (issue #186): a Crew-page notification, a richer Best Performances page including a source-verified Fastest 5K, and a new-week handoff in place of the old finish.
 
 Extends `docs/DESIGN_SYSTEM.md`. It does not create a second visual system, and it does not change Crew's data boundary, Special Block rules, or Today's action hierarchy.
 
@@ -23,7 +23,8 @@ It is deliberately **not**:
 One definition, shared with the rest of the product: **Monday through Sunday**, via `mondayOfLocalDate`.
 
 - `lastClosedCrewWeek(today)` — the most recently completed week. A week is never recapped while it is still being run.
-- `isCrewRecapCurrent(week, today)` — whether that week is still Today's business. The window opens the day after the week ends and closes `CREW_RECAP_TODAY_DAYS` (3) days later: Monday through Wednesday, then it is gone.
+- `isCrewRecapCurrent(week, today)` — whether that week is still current. The window opens the day after the week ends and closes `CREW_RECAP_TODAY_DAYS` (3) days later: Monday through Wednesday, then it is gone. **One window, both surfaces** — Today's teaser and Crew's notification cannot disagree about whether last week is still current.
+- `nextCrewWeekAfter(week)` — the week that started when the recapped one ended. The last page hands over to it.
 - A week that ended before the Crew's own `buildStartDate` has no recap at all.
 
 ## Derivation
@@ -37,6 +38,8 @@ Three rules govern it.
 **A missing fact omits its beat.** Absence never becomes zero or a hedge. A week with one run produces a short, true recap; it does not produce a padded one.
 
 **It says nothing the Crew has not already said.** Run facts come through `CrewWeekRecapRun`, narrower again than `CrewSharedRun`: no heart rate (D-079), no Props, no `localRunId`, no personal Build coordinates, and — as everywhere in Crew — no notes, routes, exact start times, zones, effort or plan detail. `crewWeekRecapRunsFrom` performs that drop in one reviewable place.
+
+Issue #186 widened that contract by exactly one number, `best5kSeconds` — see "Fastest 5K" below. It is a scalar the source itself computed, not a new telemetry surface, and it is named explicitly in `crewWeekRecapRunsFrom` like every other field there.
 
 ### The beats
 
@@ -56,18 +59,53 @@ A week with no shared running returns `null`. A recap of zero miles is not a min
 
 ### Best performances, and the line they cannot cross
 
-`performances` carries the week's standout efforts in editorial order. Each is a different question, and each survives only if one run answers it outright — a tie has no answer that is not a choice between two runners, so a tie omits the item.
+`performances` carries the week's standout efforts in **editorial order**, capped at `CREW_RECAP_PERFORMANCE_LIMIT` (4). Each is a different question, and each survives only if one run answers it outright — a tie has no answer that is not a choice between two runners, so a tie omits the item.
 
-| Kind | The question | Qualifier |
+The order is the point, and Evolution 2.1 changed it. The previous order led with Longest Run and carried two day beats, which meant three of the four items were readings of the distance-and-count aggregates page 1 had already shown at display size. The page's job is the facts a glance at the totals *cannot* give, so those go first:
+
+| # | Kind | The question | Qualifier |
+| --- | --- | --- | --- |
+| 1 | `best5k` | the fastest verified 5,000 m effort | a run carrying a finite positive `best5kSeconds` — see below |
+| 2 | `bestPace` | the fastest average pace | a non-Cross run of at least 2 miles — **the same qualifier `finalize_crew_awards` uses for Fastest Avg. Pace** |
+| 3 | `longestRun` | the furthest single run | distance above zero |
+| 4 | `biggestCrewDay` | the day the Crew covered the most ground | one day, strictly biggest |
+| 5 | `mostActiveDay` | the day the Crew ran most often | one day, strictly busiest, with more than one run on it, **and a different day from `biggestCrewDay`** — when they are the same day, the biggest day's own line already carries its run count |
+
+The limit is a ceiling, not a quota. A candidate with no evidence is skipped and the next one fills in behind it, so a week with no verified 5K reads exactly as it did before Evolution 2.1 (pace, distance, and both day facts), and a sparse week produces a short true page rather than a padded one. `mostActiveDay` is therefore the **fallback** crew-level fact rather than a second day beat: it appears only when an earlier candidate left a slot free.
+
+The last two are crew-level on purpose: a column of individual bests starts to read as a leaderboard, and a beat about the whole crew's day keeps the page a story about the group.
+
+**What this page still cannot claim.** A "fastest mile" needs within-run data — splits, laps, a distance-over-time stream — that the Crew projection deliberately does not carry, and STACK does not reconstruct one from a whole-run average. That is the same limit which leaves D-080's `Steady` award unminted rather than fabricated, and it holds: a 3.4-mile run's average pace is not a mile time, and presenting it as one would be inventing a fact.
+
+### Fastest 5K
+
+Issue #186's one data change, and the exception that proves the rule above rather than breaking it.
+
+**What it means.** The time of a real, continuous 5,000 m effort inside a shared run, as the contributing runner's own connected source reported it. It is never:
+
+- the average pace of a run that happened to be near 5K;
+- `duration / distance * 5K`;
+- a value reconstructed from one instantaneous pace sample;
+- an interpolation between two points on a pace curve.
+
+**Why it is allowed when a fastest mile is not.** STACK does not compute this. Intervals already runs a pace curve over its own activities and reports best-effort times; STACK asks it for the 5,000 m answer, stores that one number against the run, and projects that one number. Nothing within-run reaches Crew — no curve, no stream, no route, no source payload. So the page still says nothing derived from data the recap does not have; the derivation happened at the source, where the data lives.
+
+**Where the truth rule comes from.** Intervals' best-effort calculation requires an actual 5,000 m window inside the activity and does not manufacture one from a 4.99 km run. STACK adopts the same rule, and mirrors it on the device: the enrichment pass will not even spend a request on a run below `BEST_5K_MIN_MILES` (5,000 m rounded up against STACK's two-decimal mileage), and `normalizeIntervalsBestEfforts` matches the 5,000 m point exactly.
+
+**Selection.** Smallest value wins. The existing tie rule holds — an exact tie omits the beat rather than picking between two runners. The item carries the runner's identity and the run's date, and the presentation states the elapsed 5K time with the equivalent `/MI` beneath it. That pace is the *same verified result in another unit*, which is the one arithmetic this metric permits; the forbidden direction (a run's average pace scaled into a 5K) invents a measurement and nothing does it.
+
+**Where the value lives.**
+
+| Layer | Field | Notes |
 | --- | --- | --- |
-| `longestRun` | the furthest single run | distance above zero |
-| `bestPace` | the fastest average pace | a non-Cross run of at least 2 miles — **the same qualifier `finalize_crew_awards` uses for Fastest Avg. Pace** |
-| `biggestCrewDay` | the day the Crew covered the most ground | one day, strictly biggest |
-| `mostActiveDay` | the day the Crew ran most often | one day, strictly busiest, with more than one run on it, **and a different day from `biggestCrewDay`** — when they are the same day, the biggest day's own line already carries its run count |
+| Personal run | `RunLog.importedMetrics.best5kSeconds` | Source-derived. Absent on a manual run, a run under 5 km, and a synced run whose source has not been asked. |
+| Crew column | `shared_runs.best_5k_seconds` | Nullable `integer`, CHECK 600–21600, mirrored on the device by `crewSafeBest5kSeconds`. See `docs/CREW_PROJECTION_CONTRACT.md`. |
+| Crew read | `CrewSharedRun.best5kSeconds` | A missing column, an older row and an out-of-bounds value all read as "no 5K" rather than failing the crew read. |
+| Recap | `CrewWeekRecapRun.best5kSeconds` | Carried explicitly by `crewWeekRecapRunsFrom`, for this beat only. |
 
-The last two are crew-level on purpose: four individual bests in a row starts to read as a leaderboard, and two beats about the whole crew's days keep the page a story about the group.
+**How existing runs get one.** `src/connected/best5k.ts` plans a bounded pass and `useBest5kEnrichment` runs it: newest run first, only runs that could have a 5K, at most `BEST_5K_PASS_LIMIT` (6) activities per pass, within `BEST_5K_LOOKBACK_DAYS` (120). Every activity actually asked about is recorded in `src/storage/best5kProbeRepository.ts` — including the ones with no 5K, which is the common answer and the one worth remembering — so a settled question is never asked twice. A **failed** request settles nothing: a rate limit says nothing about the run. Nothing has to be deleted or re-imported, and a device that never runs the pass simply has runs with no 5K.
 
-**What this page cannot claim.** A "fastest mile" or a "best 5K" needs within-run data — splits, laps, a distance-over-time stream — that the Crew projection deliberately does not carry. That is the same limit which leaves D-080's `Steady` award unminted rather than fabricated from an average, and it applies here for the same reason: a 3.4-mile run's average pace is not a 5K time, and presenting it as one would be inventing a fact. If STACK ever projects verified splits to Crew, those two become derivable; until then they are absent rather than estimated.
+**Source-verification status.** The pace-curve endpoint and response shape follow Intervals.icu's documented contract and are recorded as `Expected`, **not `Verified`**, in `docs/CONNECTED_DATA_FIELDS.md`: they have not yet been checked against a real connected run. `normalizeIntervalsBestEfforts` is written accordingly — a shape it does not recognize yields no 5K rather than a guess — and the device-side bound is what keeps an unverified source value from reaching a Crew CHECK.
 
 ### Special Blocks
 
@@ -85,12 +123,20 @@ This is the part Evolution 2.05 reuses.
 
 | Page | Composition |
 | --- | --- |
-| Together | Split: emblem, week, mileage hero, a three-reading scoreboard and the participation row at the top; the week's real blocks standing on the floor, with the sheet's own sky between them |
+| Together | Split: emblem, week, mileage hero, a three-reading scoreboard (`Runs` / `Runners` / **`Hours`**) and the participation row at the top; the week's real blocks standing on the floor, with the sheet's own sky between them |
 | Best Performances | One hero effort on an accent edge, then the rest as a rhythm of rows, each naming its runner |
 | Added to the Build | One centred group, tower drawn a size up, because here the tower is the subject rather than the payoff under a number |
 | Awards | The award objects carry it: hollow blocks at display size, name, result, winner. The count decides the arrangement — one is a centred hero, two a pair, three or four a 2×2, more tightens — rather than `auto-fit` deciding it from whatever width is going |
 | Against Last Week | The delta, then two columns of plain CSS against a chart-rule field, at a size that makes them the object of the page |
-| Week Complete | The one page that centres itself, because a finish is not a reading: emblem, title, the week's own figures, and the tower it built |
+| New Week Live | The one page that centres itself, because a handoff is not a reading: emblem, title, and the new Monday–Sunday range. Nothing else — see "Every page earns its place" |
+
+**Every page earns its place.** Evolution 2.1 replaced the old Week Complete page, which showed the emblem again, the same mileage/runs/runners page 1 had already given at display size, and the Build crop page 3 had just animated. Three jobs the recap had already done, at the moment it should have been ending — which is what made the finish weak.
+
+What replaced it is the one fact none of the earlier pages could carry: the week that is already running. It stays a shared Crew fact — the same seven days for every member, with no personal workout, plan or schedule on it — and the footer's existing `Done` is the action, because a second button on the page would be the same tap twice.
+
+The rule this sets for any later retrospective reusing this language: **if a finish page cannot carry a genuinely new fact, it should not exist.** Padding a story with a page that restates it is worse than ending one page earlier.
+
+`Hours` is the same rename applied to the opening scoreboard: `On Your Feet` was a sentence fragment doing a machine label's job, next to two labels (`Runs`, `Runners`) that simply name their reading.
 
 **Participation is folded into the opening, never its own page.** A page whose only fact is "everyone ran" is a weak page, and it does not survive contact with a real roster. The row shows up to seven marks and then counts the rest (`+4`), so an eleven-person Crew reads as easily as a four-person one and neither needs a layout of its own.
 
@@ -111,7 +157,7 @@ Every treatment is a CSS gradient stack, held at low alpha so the data stays the
 | Added to the Build | blueprint field with a lit floor for the tower to stand on |
 | Awards | two soft cones from above and a lit floor — neutral light, because every award already owns a colour and a warm wash would be a second colour system arguing with it |
 | Against Last Week | chart rules to read the columns against, and a rise under the bars |
-| Week Complete | a centred glow with a scatter of sparks, each spark a 2px radial stop rather than an element or an image |
+| New Week Live | a centred glow with a scatter of sparks, each spark a 2px radial stop rather than an element or an image. The treatment survived Evolution 2.1 even though the page's job changed: a week opening is as much a moment as a week closing |
 
 Nothing here is an asset. No PNG, no SVG illustration, no exported artwork — the whole set ships as gradients.
 
@@ -124,9 +170,9 @@ Nothing here is an asset. No PNG, no SVG illustration, no exported artwork — t
 | Added to the Build | the block count | air | the tower, just above the footer rule |
 | Awards | the heading | the awards, centred | breathing space |
 | Against Last Week | the delta | the columns, at a size worth looking at | their two figures |
-| Week Complete | emblem, title and the week's figures | — | the tower |
+| New Week Live | — | emblem, title and the new week's range, centred | — |
 
-**Say nothing the page already shows.** Three sentences an earlier pass used to explain its own visuals are gone, and `CrewWeekRecapSheet.test.tsx` keeps them gone: the Awards page no longer says the blocks are standing in the Crew Build, the comparison no longer reads its own delta back as a percentage, and the finish no longer congratulates anyone — it closes on the week's own figures instead. A recap of facts does not need a narrator.
+**Say nothing the page already shows.** Three sentences an earlier pass used to explain its own visuals are gone, and `CrewWeekRecapSheet.test.tsx` keeps them gone: the Awards page no longer says the blocks are standing in the Crew Build, the comparison no longer reads its own delta back as a percentage, and the finish no longer congratulates anyone. Evolution 2.1 extended the same rule from sentences to whole pages — the finish no longer restates the week's figures or redraws its tower either. A recap of facts does not need a narrator, and it does not need a reprise.
 
 **Every visual is drawn by the app.** No artwork, no illustration, no generated image, no second tower renderer. The blocks are the real `Brick` / `AwardBrick` construction under the real member colours; the identity marks are the real `CrewEmblem` and `RunnerIcon`.
 
@@ -145,7 +191,39 @@ The recap introduces no geometry of its own. Two extractions carry the Build lan
 
 **The slice is real.** The Crew Build frames draw this week's blocks in their true tower columns, widths, heights and member colours, rebased on the lowest course the week reached, with the cells other weeks occupy drawn as recesses. It is `aria-hidden` behind a single accessible label, because the same facts are stated in text above it and a masonry crop has no reading order worth announcing.
 
-## Today integration
+## Discovery
+
+The recap has two discovery surfaces, and they are deliberately different shapes: a **teaser** on Today, and a **notification** on Crew. Both derive the same `CrewWeekRecap`, open the same sheet, and share one acknowledgement record.
+
+### Acknowledgement: seen and cleared
+
+`src/storage/crewRecapAcknowledgementRepository.ts` holds both, per account and per Crew week, device-local.
+
+| | Written by | Means | Effect |
+| --- | --- | --- | --- |
+| **Seen** | opening the recap from either surface | "I opened it" | clears the Crew notification's unread treatment; hides nothing |
+| **Cleared** | the Today card's dismiss, or the Crew row's swipe / Clear | "I am done with it" | removes the prompt from **both** surfaces for that week |
+
+Two rules make this the whole design.
+
+**One record, both surfaces.** Today's teaser and Crew's notification are the same recap seen from two places. A recap cleared on Today must not still be sitting unread on Crew, so there is one stored answer rather than two independent "dismissed" concepts.
+
+**Seen is not hidden.** The distinction is Props' — opening either Crew surface clears the unread ring, but a row leaves the list only when its runner actually clears it. A story worth telling is worth replaying for as long as its week is current.
+
+Acknowledging a recap is a statement about a screen, never about the week: no Crew fact is mutated, and no crewmate learns of it.
+
+### Crew: a notification
+
+`src/features/crew/CrewRecapNotification.tsx`.
+
+- It renders **immediately below the Crew header**, above Props and above the tower. A notification a runner has to scroll past the Build to find is a notification they will not see; Props is a running feed, the recap is the weekly moment, so the recap sits first.
+- It is a **notification, not a second dashboard card**. Crew already has a notification language and it is the right one: a row rather than a panel, an unread edge, a swipe or a `Clear` button, `touch-action: pan-y` so a vertical scroll is never hijacked, and the same exit animation. Introducing a second Crew alert pattern for one weekly row would be inventing a dialect.
+- The row **states the week's headline facts** — `WEEK RECAP · SEP 7 – SEP 13` over `Last week is in · 54.8 MI · 12 RUNS`. "Your recap is ready" is a notification about a notification.
+- The mark is the **Crew's own emblem**, not a generic analytics glyph. The recap is about this crew and the emblem is how the product already says so.
+- One notification per `crewId + weekStart`, gated by exactly the same conditions Today's teaser uses: a valid Crew with a real `buildStartDate`, available shared runs, real shared running in the week, the Monday 06:00 ET release, and the current window.
+- The whole body is one target into the recap: two hit areas to one story would be two ways to the same place.
+
+### Today: a teaser
 
 `src/features/today/TodayCrewRecap.tsx`.
 
@@ -154,7 +232,7 @@ The recap introduces no geometry of its own. Two extractions carry the Build lan
 - It is a **teaser, not a second dashboard card**: one header line, one sentence, one compact machine line, and a bottom row pairing the way in with a small crop of the week's real blocks. The crop is the first thing to give way — it is hidden below 360px so the copy never loses a line.
 - It states the week's headline facts itself. A module that says only "your recap is ready" is a notification wearing a card's clothes.
 - `View recap →` opens the fuller page-by-page recap, replayable for as long as the module is on Today.
-- Dismissal is device-local, per account and per Crew week (`src/storage/dismissedCrewRecapRepository.ts`). Dismissing is a statement about this screen, not about the week: the Crew's shared facts are untouched and no crewmate learns of it.
+- Its dismiss control is the **cleared** statement above, so it takes the prompt off Crew too; opening `View recap →` is the **seen** statement, which does not.
 - The award read that feeds the `specialBlocks` beat happens only after the week, the Crew and the dismissal have all said yes, so Today never spends a round trip on a recap it will not show. It is failure-tolerant: an unavailable award read costs the recap that one beat, never the recap.
 
 ## Motion
@@ -189,12 +267,24 @@ The recap also differs from the Crew screen's four figures above the tower (`cre
 
 ## Owner review
 
-The recap is on Today for three days a week, for a Crew that ran. That is right for the product and awkward to review, so `src/features/today/crewRecapDemo.ts` provides the same kind of in-memory overlay `?demo=today` already gives Today:
+The recap exists for three days a week, for a Crew that ran, after a 06:00 ET release. That is right for the product and impossible to review on demand, so a preview-host demo is **required scope for this feature**, not optional QA polish: `src/features/crew/crewRecapDemo.ts`.
 
-- `?demo=recap` — a four-runner week with every beat present, including a won-but-unplaced Special Block that must **not** appear;
-- `?demo=recap-minimal` — one run, one runner, nothing placed, no previous week.
+- `?demo=recap` — a nine-runner week with every beat present, a representative source-verified Fastest 5K, and a won-but-unplaced Special Block that must **not** appear;
+- `?demo=recap-minimal` — one run, one runner, nothing placed, no previous week, and no verified 5K.
 
-Both are preview-host-only (localhost or a Vercel `-git-` branch preview), carry their own fake crew, roster, week and awards, never touch a real Crew or account, and never write to `localStorage`. The recap they show is produced by the real `crewWeekRecap` derivation — only the facts going in are invented — and the module renders the same card the live path does. The card carries a `RECAP DEMO · FAKE CREW DATA` banner.
+Both are preview-host-only (localhost or a Vercel `-git-` branch preview), carry their own fake crew, roster, week and awards, never touch a real Crew, account, `localStorage`, Supabase or Intervals, and never make a live source read — the 5K in the fixture is a literal in that module.
+
+Both discovery surfaces resolve the same fixture, so one URL reviews the whole feature:
+
+| Surface | What is reviewable |
+| --- | --- |
+| Today | the teaser, and `View recap →` into the sheet |
+| Crew | the notification unread, opening it (seen), and clearing it |
+| Sheet | every page in order, including `Hours`, the Fastest 5K, the Build animation, Awards, Against Last Week, and the new-week handoff |
+
+Two things make it a real review rather than a mock. The demo renders the **production notification, card, sheet and derivation** — only the facts going in and the acknowledgement callbacks are fake, and the acknowledgement is held in memory so reviewing writes nothing into the runner's stored recap state. And `crewRecapDemoVariant()` also opens the **Crew destination** in `App.tsx`, because the notification lives on Crew and a reviewer with no crew could otherwise not reach the screen at all. That gate is preview-host-only, so no production hostname can reach it, and the Crew screen then renders the fake-data demo rather than any account's real crew.
+
+Both surfaces carry a `RECAP DEMO · FAKE CREW DATA` banner.
 
 ## Naming
 
@@ -206,10 +296,16 @@ Deliberately not implemented. Evolution 2.04 states sharing is optional and only
 
 ## Verification
 
-- `src/crew/weekRecap.test.ts` — the window, every beat's evidence rule, determinism across read order, the sparse-week minimum, and the field drop.
+- `src/crew/weekRecap.test.ts` — the window, every beat's evidence rule, the editorial order, the Fastest 5K's present/missing/invalid/tied cases, determinism across read order, the sparse-week minimum, and the field drop.
+- `src/features/crew/CrewRecapNotification.test.tsx` — unseen → seen → cleared, the release hour and the window, the demo review path, and the cases that render nothing.
 - `src/features/today/TodayCrewRecap.test.tsx` — the Today window, dismissal persistence, and the cases that render nothing.
-- `src/features/crew/CrewWeekRecapSheet.test.tsx` — the six-page order, the page class the backdrop hangs off, the copy that must stay deleted, the large-roster overflow row, and the pages a sparse week drops.
-- `src/storage/dismissedCrewRecapRepository.test.ts` — per-account, per-week dismissal and corrupt-value tolerance.
-- `src/features/today/crewRecapDemo.test.ts` — the review overlay's host rule, its window, and both fixtures.
+- `src/features/crew/CrewWeekRecapSheet.test.tsx` — the page order, the page class the backdrop hangs off, the copy that must stay deleted, that the finish repeats neither the tower nor the totals, the large-roster overflow row, and the pages a sparse week drops.
+- `src/storage/crewRecapAcknowledgementRepository.test.ts` — per-account, per-week seen and cleared kept apart, and corrupt-value tolerance.
+- `src/features/crew/crewRecapDemo.test.ts` — the review overlay's host rule, its window, both fixtures, and that it reaches no real source.
+- `src/connected/best5k.test.ts` — the pace-curve normalizer's recognized shapes, its refusal to invent a 5K from a nearby distance, the enrichment plan's bounds, and the probe record.
+- `src/features/connected/useBest5kEnrichment.test.tsx` — that a pass stops at its limit rather than draining the rate limit, that a settled "no 5K" is remembered and a failed request is not, and that a run with nothing to ask about costs no request.
+- `src/crew/projection.test.ts` — that a `best_5k_seconds` value the CHECK would refuse is never sent, boundaries included.
+- `src/crew/dashboard.test.ts` — the approved column list, and a missing/unusable 5K read as no 5K.
+- `supabase/tests/0026_crew_best_5k_seconds.sql` — the column's round-trip, its null case, its CHECK and its update grant.
 
-Reviewed in a real browser at 320px, ~390px, 430px and desktop via the owner-review overlay. Real iPhone Safari review remains owner verification.
+Reviewed in a real browser at 320px, ~390px, 430px and desktop via the owner-review overlay. Real iPhone Safari review, and real-Intervals verification of the pace-curve response shape, remain owner verification.

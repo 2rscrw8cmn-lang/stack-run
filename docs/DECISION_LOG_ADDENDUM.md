@@ -824,3 +824,66 @@ runner's current day.
 
 Approved for Evolution 2.06 / issue #157. The complete lifecycle, persistence
 and verification contract is `docs/NO_ACTIVE_PLAN_LIFECYCLE.md`.
+
+## D-087 — Crew gains one source-verified 5K scalar, and the recap's finish hands over instead of repeating
+
+**Decision**
+
+The Crew projection widens by exactly one optional column,
+`shared_runs.best_5k_seconds`: the time of a real, continuous 5,000 m effort
+inside a shared run, as the contributing runner's own connected source reported
+it. Nothing else about the source's answer crosses the boundary — no pace curve,
+no stream, no route, no exact start time, no source payload, no credential. The
+column is nullable, bounded 600-21600 by a CHECK and mirrored on the device by
+`crewSafeBest5kSeconds`, so a value Crew cannot store is omitted rather than
+sent (D-082).
+
+STACK never computes this number. It asks Intervals' own pace curve for the
+5,000 m best effort and stores the answer as
+`RunLog.importedMetrics.best5kSeconds`. `duration / distance * 5K`, a value from
+one instantaneous sample, an interpolation between pace-curve points, and the
+average pace of a run that happened to be near 5K are all explicitly excluded.
+A run below 5,000 m has no 5K, which is the source's own rule.
+
+Existing runs are filled in by a bounded enrichment pass — newest first, only
+runs that could have a 5K, a handful of activities per pass, and never the same
+settled activity twice. Nothing has to be deleted or re-imported, and a device
+that never runs the pass simply has runs with no 5K.
+
+Separately, the Crew Week Recap's final page stops restating the recap. The old
+Week Complete page repeated the emblem, the totals page 1 had already given at
+display size, and the Build crop page 3 had just animated; it is replaced by a
+handoff into the week already being run — emblem, `NEW WEEK LIVE`, the new
+Monday-Sunday range. This sets the rule for any retrospective reusing the recap
+presentation language: **if a finish page cannot carry a genuinely new fact, it
+should not exist.**
+
+**Reason**
+
+The recap's Best Performances page was three readings of the same
+distance-and-count aggregates the opening page already showed, because the one
+genuinely interesting performance fact — a real 5K time — needed within-run data
+Crew deliberately does not carry. That reasoning was right about the data and
+wrong about who has to derive it: Intervals already computes best efforts over
+its own activities, so STACK can ask for one scalar instead of importing a
+telemetry surface. The boundary widens by a number, not by a capability.
+
+The bounds and the device-side guard matter more here than for a device-derived
+value, not less. The pace-curve response shape is `Expected` rather than
+`Verified`, so an unrecognized shape must yield no 5K, and a misread value must
+never reach the CHECK.
+
+A "fastest mile" remains unavailable, and remains unavailable for the original
+reason: nothing would be asking a source for it, only reconstructing it from an
+average.
+
+**Status**
+
+Approved for Evolution 2.1 / issue #186. The complete contract is
+`docs/CREW_WEEK_RECAP.md`; the source-verification status and promotion
+checklist are in `docs/CONNECTED_DATA_FIELDS.md`; the storage rule is
+`docs/CREW_PROJECTION_CONTRACT.md`.
+
+Outstanding owner verification: the pace-curve response shape has not yet been
+checked against a real Intervals-connected run, and until it is, the field stays
+`Expected`.

@@ -20,11 +20,12 @@ import {
 import {
   dismissCrewRecap,
   loadDismissedCrewRecapKeys,
-} from "../../storage/dismissedCrewRecapRepository";
+  markCrewRecapSeen,
+} from "../../storage/crewRecapAcknowledgementRepository";
 import { CrewEmblem } from "../crew/CrewEmblem";
 import { CrewWeekRecapSheet } from "../crew/CrewWeekRecapSheet";
 import { RecapBuildCrop } from "../crew/RecapBuildCrop";
-import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
+import { crewRecapDemoData, crewRecapDemoVariant } from "../crew/crewRecapDemo";
 import "../crew/crewWeekRecap.css";
 
 /**
@@ -164,6 +165,11 @@ function CrewWeekRecapModule({
       recap={recap}
       emblem={activeCrew.emblem}
       crewName={activeCrew.name}
+      // Issue #186: one acknowledgement record, both surfaces. Opening the
+      // recap here is the same statement as opening it from Crew, so the
+      // notification on Crew is no longer unread either — and dismissing here
+      // is still the stronger statement that takes the prompt off both.
+      onOpened={() => markCrewRecapSeen(viewerUserId, recapKey)}
       onDismiss={() => {
         dismissCrewRecap(viewerUserId, recapKey);
         setDismissed(true);
@@ -186,12 +192,14 @@ function CrewRecapCard({
   recap,
   emblem,
   crewName,
+  onOpened,
   onDismiss,
   isDemo = false,
 }: {
   recap: CrewWeekRecap;
   emblem: CrewEmblemModel;
   crewName: string;
+  onOpened?: () => void;
   onDismiss?: () => void;
   isDemo?: boolean;
 }) {
@@ -254,7 +262,10 @@ function CrewRecapCard({
             className="today-crew-recap__open"
             aria-haspopup="dialog"
             aria-expanded={isOpen}
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setOpen(true);
+              onOpened?.();
+            }}
           >
             View recap →
           </button>

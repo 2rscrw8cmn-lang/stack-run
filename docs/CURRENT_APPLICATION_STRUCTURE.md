@@ -125,6 +125,17 @@ Review actions can:
 
 The actual plan relationship remains explicit. Connected activity does not silently rewrite a workout relationship.
 
+### Source-derived best efforts
+
+A run's **fastest 5K** cannot be computed from what STACK stores: the average pace of a whole run is not the time of a 5,000 m window inside it. So STACK asks Intervals' own pace curve for that one number and stores it as `RunLog.importedMetrics.best5kSeconds`.
+
+- `src/connected/intervals.ts` — the pace-curve request and `normalizeIntervalsBestEfforts`, which recognizes the documented response shapes and yields no 5K for anything else. Status is `Expected`, not `Verified`: see `docs/CONNECTED_DATA_FIELDS.md`.
+- `src/connected/best5k.ts` — which runs are worth asking about, and the bounds of one pass.
+- `src/features/connected/useBest5kEnrichment.ts` — the pass itself, kept out of ordinary sync because it answers a question about runs already imported.
+- `src/storage/best5kProbeRepository.ts` — which activities have already been asked, so a settled answer (including "no 5K", the common one) is never asked again.
+
+Three rules hold it: the value is always the source's own answer and never STACK's arithmetic; the pass is bounded in what it asks and how often; and a run with no 5K is a complete run, so nothing about the feature is required for STACK to work.
+
 ## 5. Historical activity mirror and unified runner history
 
 STACK Next introduced a normalized historical source mirror outside AppState.
@@ -365,7 +376,8 @@ Current projected run facts include validated combinations of:
 - source (`manual` / `intervals`);
 - sanitized Personal Build placement facts needed for Member Build;
 - average/max/manual heart rate under D-079;
-- derived award scalars used by Special Block finalization.
+- derived award scalars used by Special Block finalization;
+- `best_5k_seconds`, the source-verified fastest 5,000 m effort, for the Crew Week Recap's Fastest 5K (issue #186). One bounded scalar the source itself computed — never the pace curve, stream or payload it came from.
 
 The projection intentionally does not send raw:
 
@@ -473,17 +485,23 @@ Optimistic interaction is reconciled through the Crew controller/backend rather 
 Primary implementation:
 
 - `src/crew/weekRecap.ts` — the whole derivation;
-- `src/features/today/TodayCrewRecap.tsx` — Today's limited-time module and its gate;
-- `src/features/crew/CrewWeekRecapSheet.tsx` — the fuller six-page recap, each page with its own layout and CSS backdrop;
+- `src/features/crew/CrewRecapNotification.tsx` — Crew's notification, in the Props notification family, and its gate;
+- `src/features/today/TodayCrewRecap.tsx` — Today's limited-time teaser and its gate;
+- `src/features/crew/CrewWeekRecapSheet.tsx` — the fuller page-by-page recap, each page with its own layout and CSS backdrop;
 - `src/features/build/BuildCrop.tsx` — a read-only piece of tower, shared with any surface that shows built blocks without placing them;
 - `src/features/crew/crewBrickFace.ts` — the Crew brick's face label and member colour, extracted from `CrewBuild` so a crop cannot disagree with the tower;
-- `src/storage/dismissedCrewRecapRepository.ts` — device-local, per-account dismissal.
+- `src/storage/crewRecapAcknowledgementRepository.ts` — device-local, per-account **seen** and **cleared**, shared by both surfaces;
+- `src/features/crew/crewRecapDemo.ts` — the preview-host review fixture both surfaces resolve.
 
 After a Monday–Sunday Crew week closes, the recap tells the Crew what it built that week. It is derived and never stored, so the same closed week produces the same recap on every device; a beat with no evidence is omitted rather than padded; and a week with no shared running has no recap at all.
 
 It reads a projection narrower again than the shared-run contract (`CrewWeekRecapRun`), and it reports Special Blocks only once they are standing in the Crew Build — D-080 keeps an unplaced award the winner's own placement prompt.
 
-The module sits below Today's action surface, ages out three days after the week closes, and can be dismissed. `?demo=recap` / `?demo=recap-minimal` are preview-host-only owner-review overlays with their own fake crew, in the same shape as Today's existing `?demo=today`.
+Two surfaces discover it, both inside the same Monday–Wednesday window: a teaser below Today's action surface, and a notification below the Crew header. They derive the same recap and share one acknowledgement record, so they cannot disagree about the week or about what the runner has already done with it — opening either marks it **seen**, and an explicit clear on either removes the prompt from **both**.
+
+The recap's Best Performances page may name a **source-verified Fastest 5K** — the time of a real 5,000 m window reported by the contributing runner's own connected source, projected to Crew as the single scalar `shared_runs.best_5k_seconds`. STACK never estimates one from a run's average pace. See sections 4 and 12, and `docs/CREW_WEEK_RECAP.md`.
+
+`?demo=recap` / `?demo=recap-minimal` are preview-host-only owner-review overlays with their own fake crew, in the same shape as Today's existing `?demo=today`. They are required scope for the feature rather than optional QA: the live recap cannot be reached on demand. The recap demo also opens the Crew destination, since the notification lives there.
 
 The recap week is the same ISO Monday–Sunday week `finalize_crew_awards` uses, matched on the run's own local date. Recap totals count everything the Crew shared that week and are deliberately not the awards' narrower qualifying totals. `docs/CREW_WEEK_RECAP.md` is the contract, including the recap presentation language later retrospectives reuse.
 

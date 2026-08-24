@@ -20,6 +20,7 @@ import {
   acceptIntervalsRun,
   attachIntervalsRun,
   saveIntervalsSync,
+  recordImportedBest5k,
   ignoreIntervalsActivity,
   clearIgnoredIntervalsActivities,
   unlinkRunLogFromWorkout,
@@ -32,7 +33,9 @@ import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
 import { useRosterRefresh } from "../features/availability/useRosterRefresh";
 import { AppShell } from "./AppShell";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
+import { crewRecapDemoVariant } from "../features/crew/crewRecapDemo";
 import { useConnectedSync } from "../features/connected/useConnectedSync";
+import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
 import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
 import { useRaceCrew } from "../crew/useRaceCrew";
@@ -147,7 +150,18 @@ export function App() {
    * the same signed-in session; that transient state must not hide the Crew
    * tab or kick the runner back to Runs.
    */
-  const crewAvailable = Boolean(raceCrew.userId && raceCrew.account?.crew);
+  /*
+   * `?demo=recap` opens the Crew destination too. The recap notification lives
+   * on Crew, and issue #186's review addendum requires it to be reviewable from
+   * a branch preview on demand — which a reviewer with no crew, or a fresh
+   * browser on the preview hostname, otherwise cannot do at all. The gate is
+   * `crewRecapDemoVariant`, which is preview-host-only, so no production
+   * hostname can reach it; the Crew screen then renders its own fake-data demo
+   * rather than any account's real crew.
+   */
+  const crewAvailable =
+    Boolean(raceCrew.userId && raceCrew.account?.crew) ||
+    crewRecapDemoVariant() !== null;
   const raceCrewUserId = raceCrew.userId;
   const refreshCrewData = raceCrew.refreshCrewData;
   const notePersonalSyncReady = raceCrew.notePersonalSyncReady;
@@ -279,6 +293,25 @@ export function App() {
     accountId: raceCrew.userId ?? null,
     pendingSeed: personalSync.pendingCandidates,
     onPendingChanged: personalSync.recordPendingCandidates,
+  });
+
+  /**
+   * Source-verified best 5K times for runs already imported.
+   *
+   * Deliberately downstream of the sync above and of nothing else: the pass is
+   * bounded, silent and optional, and a run with no 5K is a complete run. See
+   * `src/connected/best5k.ts` for why this is not folded into ordinary sync.
+   */
+  const recordBest5k = useCallback(
+    (secondsByRunLogId: ReadonlyMap<string, number>) =>
+      setAppState((current) => recordImportedBest5k(current, secondsByRunLogId)),
+    [setAppState],
+  );
+  useBest5kEnrichment({
+    connection: intervalsConnection,
+    runLogs: appState?.runLogs ?? NO_RUN_LOGS,
+    accountId: raceCrew.userId ?? null,
+    onBest5kFound: recordBest5k,
   });
 
   /**

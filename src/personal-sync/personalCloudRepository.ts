@@ -153,6 +153,7 @@ function parseMetrics(value: unknown): ImportedRunMetrics | null {
     "elevationGainFeet",
     "elapsedTimeSeconds",
     "trainingLoad",
+    "best5kSeconds",
   ] as const;
   for (const key of scalarKeys) {
     if (candidate[key] === undefined) continue;

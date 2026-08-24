@@ -45,18 +45,28 @@ import type { CrewMember, CrewSharedRun, CrewWeekRecapRun } from "./types";
  * plan. Special Blocks appear only once they are standing in the Crew Build,
  * where the whole Crew can already see them — D-080 keeps an unplaced award
  * the winner's own business, and the recap does not announce one.
+ *
+ * Issue #186 widened that contract by exactly one number — `best5kSeconds`,
+ * the time of a real 5,000 m window inside a run as the contributing runner's
+ * own source reported it. It is a scalar the device already holds and Crew now
+ * stores, not a new telemetry surface: no pace curve, stream, route or source
+ * payload crosses the boundary with it.
  */
 
 /** How the crew week is defined everywhere in this module: Monday through Sunday. */
 export const CREW_RECAP_WEEK_DAYS = 7;
 
 /**
- * How long a closed week stays on Today.
+ * How long a closed week stays on Today and on Crew.
  *
- * The recap is a limited-time module, not a permanent one. It appears the
+ * The recap is a limited-time prompt, not a permanent one. It appears the
  * Monday after a week closes and ages out after Wednesday, which is long
  * enough for a runner who opens STACK twice a week to see it and short enough
- * that Today is never carrying last week's story into next week's running.
+ * that neither screen is carrying last week's story into next week's running.
+ *
+ * One window, both surfaces: Today's teaser and Crew's notification are the
+ * same recap seen from two places, so they cannot disagree about whether last
+ * week is still current.
  */
 export const CREW_RECAP_TODAY_DAYS = 3;
 
@@ -110,28 +120,37 @@ export interface CrewWeekRecapTotals {
 /**
  * The standout efforts of a week.
  *
- * Each kind is a different question, and each is answerable from the shared
- * run contract alone — distance, duration, activity type and the day. Nothing
- * here needs a split, a stream or a lap, which is the line that decides what
- * this page can honestly claim: a "fastest mile" or a "best 5K" would need
- * within-run data Crew deliberately does not carry, the same limit that
- * leaves D-080's `Steady` award unminted.
+ * Each kind is a different question, and four of the five are answerable from
+ * the shared run contract alone — distance, duration, activity type and the
+ * day. STACK still computes no split, stream or lap of its own: a "fastest
+ * mile" reconstructed from a whole-run average would be inventing a fact, and
+ * it stays unavailable for the same reason D-080's `Steady` award stays
+ * unminted.
  *
- * The last two are crew-level on purpose. Four individual bests in a row
- * starts to read as a leaderboard; two beats about the whole crew's biggest
- * and busiest days keep the page a story about the group.
+ * `best5k` is the one exception, and it is an exception to *who computed it*
+ * rather than to the rule. Intervals already runs a pace curve over its own
+ * activities and reports the time of a real 5,000 m window; STACK asks for
+ * that one number, stores it against the run, and projects that scalar and
+ * nothing else. So the page still says nothing STACK derived from data it does
+ * not have — see `docs/CREW_WEEK_RECAP.md`.
+ *
+ * The last two are crew-level on purpose. A column of individual bests starts
+ * to read as a leaderboard; a beat about the whole crew's biggest or busiest
+ * day keeps the page a story about the group.
  */
 export type CrewWeekPerformanceKind =
-  | "longestRun"
+  | "best5k"
   | "bestPace"
+  | "longestRun"
   | "biggestCrewDay"
   | "mostActiveDay";
 
 export interface CrewWeekPerformance {
   kind: CrewWeekPerformanceKind;
   /**
-   * In the kind's own unit: miles, seconds per mile, or a count of runs. The
-   * presentation layer formats it; nothing here is pre-formatted.
+   * In the kind's own unit: miles, seconds per mile, elapsed seconds for a 5K,
+   * or a count of runs. The presentation layer formats it; nothing here is
+   * pre-formatted.
    */
   value: number;
   /** Runs on the day, for the crew-level kinds. Null for a single run. */
@@ -226,6 +245,10 @@ export function crewWeekRecapRunsFrom(
     distanceMiles: run.distanceMiles,
     durationSeconds: run.durationSeconds,
     source: run.source ?? null,
+    // Issue #186: the one performance scalar the recap story is allowed to
+    // name. Carried across explicitly, like every other field here, so it is
+    // visible in the drop rather than arriving because a spread let it.
+    best5kSeconds: run.best5kSeconds ?? null,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,
   }));
@@ -240,6 +263,19 @@ export function crewWeekContaining(localDate: string): CrewWeekWindow {
 /** The most recently completed Monday–Sunday week as of `today`. */
 export function lastClosedCrewWeek(today: string): CrewWeekWindow {
   return crewWeekContaining(addDaysToLocalDate(mondayOfLocalDate(today), -1));
+}
+
+/**
+ * The week that started when the recapped one ended.
+ *
+ * The recap's last page hands over to it, which is the one genuinely new thing
+ * a finish can say: everything else about the closed week has already been
+ * said by the pages before it. It is a date range and nothing more — a Crew
+ * week is the same seven days for every member, which is what keeps the
+ * handoff a shared fact rather than one runner's schedule.
+ */
+export function nextCrewWeekAfter(week: CrewWeekWindow): CrewWeekWindow {
+  return crewWeekContaining(addDaysToLocalDate(week.weekEnd, 1));
 }
 
 /**
@@ -434,30 +470,65 @@ function dayPerformance(
 }
 
 /**
+ * How many efforts the page shows.
+ *
+ * Four is the ceiling because the page's job is to be the *interesting* page —
+ * facts a runner could not get by glancing at the opening totals. Every
+ * candidate past the fourth is a weaker reading of ground the first four
+ * already covered, and a fifth row is how a story page turns into a table.
+ */
+export const CREW_RECAP_PERFORMANCE_LIMIT = 4;
+
+/**
+ * A source-verified 5K, or nothing.
+ *
+ * Only runs carrying a real `best5kSeconds` qualify, and the smallest wins.
+ * There is no fallback to a run's average pace and no scaling of a 4.99 km
+ * time: the number either came from the source as the time of a 5,000 m
+ * window or the beat does not exist. An exact tie omits it, like every other
+ * effort here — a tie has no answer that is not a choice between two runners.
+ */
+function best5kRun(
+  weekRuns: readonly CrewWeekRecapRun[],
+): { run: CrewWeekRecapRun; value: number } | null {
+  return bestRun(
+    weekRuns,
+    (run) =>
+      typeof run.best5kSeconds === "number" &&
+      Number.isFinite(run.best5kSeconds) &&
+      run.best5kSeconds > 0,
+    (run) => run.best5kSeconds!,
+    (candidate, incumbent) => candidate < incumbent,
+  );
+}
+
+/**
  * The week's standout efforts, in editorial order.
  *
- * Two runner efforts, then two about the Crew's own days. Each is omitted when
- * its evidence is missing or tied, so a quiet week produces a short page
- * rather than a padded one, and the page disappears entirely when nothing
- * stands out.
+ * The order is the point. Evolution 2.1 found the page repeating the opening
+ * one: Longest Run, Biggest Crew Day and Most Active Day are three readings of
+ * the same distance-and-count aggregates the first page already showed at
+ * display size. So the page now leads with the two facts that are genuinely
+ * new — a source-verified 5K, then the fastest average pace — and keeps one
+ * crew-level day fact rather than two.
  *
- * Two rules keep the page from repeating itself. The pace measure uses the
- * same qualifier the Fastest Avg. Pace award uses — a non-Cross run of at
- * least two miles — so the page and the award cannot disagree about what a
- * qualifying pace is. And the busiest day appears only when it is a
- * *different* day from the biggest one; when they are the same day, the
- * biggest day's own line already carries its run count, and a second entry
- * would be the same Wednesday twice.
+ * `CREW_RECAP_PERFORMANCE_LIMIT` is a ceiling, not a quota: a candidate that
+ * is missing or tied is skipped and the next one fills in behind it, so a
+ * sparse week still produces a short true page rather than a padded one, and
+ * the page disappears entirely when nothing stands out.
+ *
+ * Three rules keep it from repeating itself. The pace measure uses the same
+ * qualifier the Fastest Avg. Pace award uses — a non-Cross run of at least two
+ * miles — so the page and the award cannot disagree about what a qualifying
+ * pace is. The busiest day appears only when it is a *different* day from the
+ * biggest one; when they are the same day, the biggest day's own line already
+ * carries its run count. And only one day fact is shown at all, because the
+ * second one was always the weakest thing on the page.
  */
 function performancesBeat(
   weekRuns: readonly CrewWeekRecapRun[],
 ): CrewWeekRecapBeat | null {
-  const longest = bestRun(
-    weekRuns,
-    (run) => run.distanceMiles > 0,
-    (run) => run.distanceMiles,
-    (candidate, incumbent) => candidate > incumbent,
-  );
+  const best5k = best5kRun(weekRuns);
   const pace = bestRun(
     weekRuns,
     (run) =>
@@ -467,20 +538,35 @@ function performancesBeat(
     (run) => run.durationSeconds / run.distanceMiles,
     (candidate, incumbent) => candidate < incumbent,
   );
+  const longest = bestRun(
+    weekRuns,
+    (run) => run.distanceMiles > 0,
+    (run) => run.distanceMiles,
+    (candidate, incumbent) => candidate > incumbent,
+  );
 
   const days = crewDays(weekRuns);
   const biggest = bestDay(days, (day) => day.miles, 0.01);
   const busiest = bestDay(days, (day) => day.runs, 2);
 
-  const items: CrewWeekPerformance[] = [];
-  if (longest) items.push(performanceOf("longestRun", longest));
-  if (pace) items.push(performanceOf("bestPace", pace));
-  if (biggest) {
-    items.push(dayPerformance("biggestCrewDay", biggest, roundMiles(biggest.miles)));
-  }
-  if (busiest && busiest.localDate !== biggest?.localDate) {
-    items.push(dayPerformance("mostActiveDay", busiest, busiest.runs));
-  }
+  const candidates: (CrewWeekPerformance | null)[] = [
+    best5k ? performanceOf("best5k", best5k) : null,
+    pace ? performanceOf("bestPace", pace) : null,
+    longest ? performanceOf("longestRun", longest) : null,
+    biggest
+      ? dayPerformance("biggestCrewDay", biggest, roundMiles(biggest.miles))
+      : null,
+    // Last, and only if a slot is left. The busiest day is the weakest reading
+    // on the page when the biggest day is already on it — and never appears
+    // when they are the same date, which would be the same Wednesday twice.
+    busiest && busiest.localDate !== biggest?.localDate
+      ? dayPerformance("mostActiveDay", busiest, busiest.runs)
+      : null,
+  ];
+
+  const items = candidates
+    .filter((item): item is CrewWeekPerformance => item !== null)
+    .slice(0, CREW_RECAP_PERFORMANCE_LIMIT);
 
   return items.length > 0 ? { kind: "performances", items } : null;
 }

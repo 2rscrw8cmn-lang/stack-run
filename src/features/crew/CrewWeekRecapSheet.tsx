@@ -4,17 +4,18 @@ import { Button } from "../../components/ui/Button";
 import { Sheet } from "../../components/ui/Sheet";
 import { formatDateLabel } from "../../domain/dates";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance";
-import { formatTotalHoursMinutes } from "../../domain/duration";
+import { formatDurationSeconds, formatTotalHoursMinutes } from "../../domain/duration";
 import { formatWeekRange } from "../../domain/plan";
 import { formatPaceSeconds } from "../../domain/runs";
 import { CREW_AWARD_LABEL, formatCrewAwardResult } from "../../crew/awards";
 import { crewMemberAccent } from "../../crew/memberAccent";
-import type {
-  CrewWeekPerformance,
-  CrewWeekRecap,
-  CrewWeekRecapAward,
-  CrewWeekRecapBeat,
-  CrewWeekRecapRunner,
+import {
+  nextCrewWeekAfter,
+  type CrewWeekPerformance,
+  type CrewWeekRecap,
+  type CrewWeekRecapAward,
+  type CrewWeekRecapBeat,
+  type CrewWeekRecapRunner,
 } from "../../crew/weekRecap";
 import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
 import { AwardBrick } from "./AwardBrick";
@@ -27,8 +28,12 @@ import "./crewWeekRecap.css";
 /**
  * The Crew Week Recap.
  *
- * Six pages sharing one system, each with its own job, rhythm and backdrop —
- * not one composition repeated six times. The sheet itself is the canvas:
+ * Up to six pages sharing one system, each with its own job, rhythm and
+ * backdrop — not one composition repeated six times. Each page earns its place
+ * by carrying something the pages before it did not, which is what Evolution
+ * 2.1 asked of the last one: a week that has already been counted, built and
+ * compared has nothing left to say about itself, so the finish hands over to
+ * the week now being run. The sheet itself is the canvas:
  * there is no inner stage card and no page that is a bordered rectangle
  * containing a number. Hierarchy comes from type, space and actual Crew
  * objects.
@@ -71,23 +76,39 @@ type Page =
   | { kind: "build"; beat: BuildBeat }
   | { kind: "awards"; beat: AwardsBeat }
   | { kind: "change"; beat: ChangeBeat }
-  | { kind: "complete" };
+  | { kind: "nextWeek" };
 
 /** How many runner marks the participation row shows before it counts the rest. */
 const RUNNER_ROW_LIMIT = 6;
 
 const PERFORMANCE_LABEL: Record<CrewWeekPerformance["kind"], string> = {
-  longestRun: "Longest Run",
+  best5k: "Fastest 5K",
   bestPace: "Fastest Avg Pace",
+  longestRun: "Longest Run",
   biggestCrewDay: "Biggest Crew Day",
   mostActiveDay: "Most Active Day",
 };
+
+/**
+ * Metres in a mile, for restating a verified 5K as a pace.
+ *
+ * This is the one arithmetic the 5K allows, and it runs in the safe direction:
+ * the source's own 5,000 m time expressed per mile is the same measurement in
+ * another unit. The forbidden direction — a run's average pace scaled into a
+ * 5K — invents a measurement, and nothing here does it.
+ */
+const METERS_PER_MILE = 1609.344;
+const MILES_IN_5K = 5000 / METERS_PER_MILE;
 
 /** The reading and its unit, kept apart so the unit can sit back at baseline. */
 function performanceReading(
   performance: CrewWeekPerformance,
 ): { value: string; unit: string | null } {
   switch (performance.kind) {
+    case "best5k":
+      // An elapsed time, so it carries no unit: `21:30` is a 5K result the way
+      // a stopwatch reads it, and `21:30 MIN` would be reading it aloud.
+      return { value: formatDurationSeconds(Math.round(performance.value)), unit: null };
     case "longestRun":
       return { value: formatMiles(performance.value), unit: "MI" };
     case "bestPace":
@@ -112,6 +133,10 @@ function performanceReading(
 function performanceDetail(performance: CrewWeekPerformance): string {
   const day = formatDateLabel(performance.localDate, { weekday: "long" });
   switch (performance.kind) {
+    case "best5k":
+      // The pace is the same verified result said per mile, never a second
+      // measurement — see `MILES_IN_5K`. The day is what the figure cannot say.
+      return `${day} · ${formatPaceSeconds(performance.value / MILES_IN_5K)}`;
     case "longestRun":
       return day;
     case "bestPace":
@@ -214,7 +239,7 @@ function TogetherPage({
             <dd className="data-value">
               {formatTotalHoursMinutes(totals.durationSeconds)}
             </dd>
-            <dt className="machine-label">On Your Feet</dt>
+            <dt className="machine-label">Hours</dt>
           </div>
         </dl>
       </div>
@@ -434,40 +459,30 @@ function ChangePage({
   );
 }
 
-/* Page 6 — the finish. */
-function CompletePage({
-  recap,
-  emblem,
-  build,
-}: {
-  recap: CrewWeekRecap;
-  emblem: CrewEmblemModel;
-  build: BuildBeat | null;
-}) {
-  const { totals } = recap;
+/* The last page — a handoff, not a summary. */
+function NextWeekPage({ recap, emblem }: { recap: CrewWeekRecap; emblem: CrewEmblemModel }) {
+  const next = nextCrewWeekAfter({ weekStart: recap.weekStart, weekEnd: recap.weekEnd });
   return (
-    <div className="crew-recap__page crew-recap__page--complete">
+    <div className="crew-recap__page crew-recap__page--next-week">
       {/*
-        The week's own figures close the recap rather than a compliment. A
-        generic sign-off says nothing the runner did not already know; the
-        line they earned does.
+        Evolution 2.1 replaced the old finish, which repeated the emblem, the
+        same mileage and runners the opening page had already given at display
+        size, and the same Build crop page three had just animated. Three jobs
+        the recap had already done, at the moment it should have been ending.
+
+        What is left is the one fact none of the earlier pages could carry: the
+        week that is already running. It is the same seven days for every
+        member, so the handoff stays a shared Crew fact — no personal workout,
+        no plan, nothing one runner sees and another does not. The footer's
+        `Done` is the action; a second button here would be the same tap twice.
       */}
       <div className="crew-recap__finale">
         <CrewEmblem emblem={emblem} size={54} />
-        <p className="crew-recap__headline">WEEK COMPLETE</p>
+        <p className="crew-recap__headline">NEW WEEK LIVE</p>
         <p className="crew-recap__finale-facts machine-label">
-          {formatMilesBuilt(totals.miles)} MI · {totals.runs}{" "}
-          {totals.runs === 1 ? "RUN" : "RUNS"} · {totals.activeRunners}{" "}
-          {totals.activeRunners === 1 ? "RUNNER" : "RUNNERS"}
+          {formatWeekRange(next.weekStart, next.weekEnd)}
         </p>
       </div>
-      {build && (
-        <RecapBuildCrop
-          beat={build}
-          className="crew-recap__finale-crop"
-          animateSettle={false}
-        />
-      )}
     </div>
   );
 }
@@ -502,7 +517,7 @@ export function CrewWeekRecapSheet({
       ...(build ? [{ kind: "build", beat: build } as Page] : []),
       ...(awards ? [{ kind: "awards", beat: awards } as Page] : []),
       ...(change ? [{ kind: "change", beat: change } as Page] : []),
-      { kind: "complete" } as Page,
+      { kind: "nextWeek" } as Page,
     ];
   }, [recap, build]);
 
@@ -571,8 +586,8 @@ export function CrewWeekRecapSheet({
             {current.kind === "change" && (
               <ChangePage beat={current.beat} miles={recap.totals.miles} />
             )}
-            {current.kind === "complete" && (
-              <CompletePage recap={recap} emblem={emblem} build={build} />
+            {current.kind === "nextWeek" && (
+              <NextWeekPage recap={recap} emblem={emblem} />
             )}
           </div>
         </div>

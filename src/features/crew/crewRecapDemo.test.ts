@@ -6,7 +6,7 @@ import {
 } from "./crewRecapDemo";
 import { isCrewRecapCurrent, lastClosedCrewWeek } from "../../crew/weekRecap";
 
-const PREVIEW = "stack-run-git-issue-155-owner.vercel.app";
+const PREVIEW = "stack-run-git-issue-186-owner.vercel.app";
 
 describe("Crew Week Recap owner review", () => {
   it("is preview-host-only and never enables on a production hostname", () => {
@@ -46,14 +46,18 @@ describe("Crew Week Recap owner review", () => {
     // four-person fixture never would.
     expect(participation).toMatchObject({ everyoneRan: true, rosterSize: 9 });
 
-    // Every performance kind the page can show, including the crew-level one.
+    // The revised Best Performances page in its full editorial order, led by a
+    // representative source-verified 5K.
     const performances = demo.recap.beats.find((beat) => beat.kind === "performances")!;
     expect(performances.items.map((item) => item.kind)).toEqual([
-      "longestRun",
+      "best5k",
       "bestPace",
+      "longestRun",
       "biggestCrewDay",
-      "mostActiveDay",
     ]);
+    // 20:55, from the fixture's own scalar. Two runs carry one, so the review
+    // path exercises the selection and not only the presentation.
+    expect(performances.items[0]).toMatchObject({ value: 1255, runId: "w2" });
 
     const special = demo.recap.beats.find((beat) => beat.kind === "specialBlocks")!;
     // The fixture includes a won-but-unplaced Fastest Avg. Pace block (D-080).
@@ -72,5 +76,17 @@ describe("Crew Week Recap owner review", () => {
       "participation",
       "performances",
     ]);
+    // No verified 5K in the sparse week, so the beat is absent rather than
+    // estimated from a run that happens to be 3.1 miles long.
+    const performances = demo.recap.beats.find((beat) => beat.kind === "performances")!;
+    expect(performances.items.some((item) => item.kind === "best5k")).toBe(false);
+  });
+
+  it("invents its facts and reaches no real source", () => {
+    // Nothing in the fixture is a credential, an activity id, or a value that
+    // could have come from a live read: every run is a literal in this module.
+    const demo = crewRecapDemoData("full")!;
+    expect(demo.recap.crewId).toBe("demo-crew");
+    expect(JSON.stringify(demo)).not.toMatch(/intervals\.icu|api[_-]?key|pace-curve/i);
   });
 });

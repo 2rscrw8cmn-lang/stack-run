@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createSeededAppState } from "../storage/migrations";
 import { addDaysToLocalDate } from "../domain/dates";
 import type { RunLog } from "../domain/types";
-import { availableScheduledMatches, fetchIntervals, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals";
+import { availableScheduledMatches, fetchIntervals, fetchIntervalsBestEfforts, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
 /**
@@ -430,6 +430,25 @@ describe("Run Data failure messages", () => {
   it("separates a request that never arrived from an answer that refused it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
     await expect(fetchIntervals("status", "token")).rejects.toThrow("Check this device's connection");
+    fetchMock.mockRestore();
+  });
+
+  it("asks the pace curve for one activity's 5K over both connection modes", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      // A fresh body per call: a Response can only be read once.
+      .mockImplementation(async () => new Response(JSON.stringify({ distances: [5000], secs: [1215] })));
+
+    expect((await fetchIntervalsBestEfforts("a1", "token")).best5kSeconds).toBe(1215);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("resource=activity-pace-curve");
+
+    expect(
+      (await fetchIntervalsBestEfforts("a1", { mode: "local-api-key", credential: "key" }))
+        .best5kSeconds,
+    ).toBe(1215);
+    const direct = new URL(String(fetchMock.mock.calls[1]?.[0]));
+    expect(direct.pathname).toBe("/api/v1/activity/a1/pace-curve");
+    expect(direct.searchParams.get("distances")).toBe("5000");
     fetchMock.mockRestore();
   });
 

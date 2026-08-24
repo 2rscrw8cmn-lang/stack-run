@@ -10,7 +10,11 @@ import type {
   CrewRole,
   CrewSharedRun,
 } from "./types";
-import { isCrewEligibleLocalDate } from "./projection";
+import {
+  CREW_BEST_5K_MAX_SECONDS,
+  CREW_BEST_5K_MIN_SECONDS,
+  isCrewEligibleLocalDate,
+} from "./projection";
 
 const RECENT_RUN_LIMIT = 20;
 const MEMBER_BUILD_RUNS_PER_MEMBER = 128;
@@ -63,6 +67,24 @@ function nullableInteger(source: Row, key: string): number | null {
  */
 function runSourceFrom(value: unknown): RunSource | null {
   return value === "manual" || value === "intervals" ? value : null;
+}
+
+/**
+ * Issue #186: a crew whose database has not yet gained `best_5k_seconds`, or a
+ * row written before it existed, reports nothing — and so does a value outside
+ * the bounds the column is constrained to. All three read as "no 5K" here
+ * rather than throwing: a performance beat is a footnote on a week, and a
+ * missing footnote is never worth failing the whole crew read over.
+ */
+function best5kSecondsFrom(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return value !== null &&
+    value !== undefined &&
+    Number.isFinite(parsed) &&
+    parsed >= CREW_BEST_5K_MIN_SECONDS &&
+    parsed <= CREW_BEST_5K_MAX_SECONDS
+    ? Math.round(parsed)
+    : null;
 }
 
 function roleFrom(value: unknown): CrewRole {
@@ -136,7 +158,7 @@ export async function loadCrewDashboard(
     client
       .from("shared_runs")
       .select(
-        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate",
+        "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate,best_5k_seconds",
       )
       .eq("crew_id", crewId)
       .in("user_id", userIds)
@@ -231,6 +253,7 @@ export async function loadCrewDashboard(
       averageHeartRate: nullableInteger(item, "average_heart_rate"),
       maxHeartRate: nullableInteger(item, "max_heart_rate"),
       manualHeartRate: nullableInteger(item, "manual_heart_rate"),
+      best5kSeconds: best5kSecondsFrom(item.best_5k_seconds),
       propsCount: 0,
       viewerHasPropped: false,
     };

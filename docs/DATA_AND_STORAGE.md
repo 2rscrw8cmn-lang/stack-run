@@ -85,12 +85,33 @@ export interface ImportedRunMetrics {
   elapsedTimeSeconds?: number;
   trainingLoad?: number;
   hrZoneSeconds?: number[];
+  /** Issue #186. The source's own fastest 5,000 m effort, in seconds. */
+  best5kSeconds?: number;
 }
 ```
 
 Missing metric is absent, never an invented zero.
 
 Pace is derived from distance/duration.
+
+`best5kSeconds` is the one field here that does not arrive with the activity
+import: it comes from a second, bounded read of the source's pace curve, and it
+may therefore appear on a run days after that run was imported. It is still a
+source-derived fact rather than a STACK-derived one, which is why it lives here
+and not beside `manualHeartRate` — see `docs/CONNECTED_DATA_FIELDS.md` for the
+truth rule and the verification status.
+
+Which activities have already been asked is device-local bookkeeping, not
+training data, and lives outside AppState:
+
+```text
+stack.intervals.best-5k-probes.v1   { "<scope>": { "<activity-id>": "<stamp>" } }
+```
+
+The stamp carries the source revision the answer was settled against, so a
+revised activity is asked again and a settled one — including one with no 5K,
+the common answer — never is. Losing the value costs a few repeated requests
+inside the same bounded budget.
 
 ## Credentials are outside AppState
 
@@ -374,14 +395,23 @@ never server state, and never anybody else's business:
 
 ```text
 stack.crew.props-dismissed.v1   Props swiped off the runner's own list
-stack.crew.recap-dismissed.v1   Crew Week Recaps dismissed from Today
+stack.crew.recap-dismissed.v1   Crew Week Recaps the runner has cleared
+stack.crew.recap-seen.v1        Crew Week Recaps the runner has opened
 ```
 
-Both are `{ "<user-id>": ["<key>", …] }` and both are bounded per account. A
-recap key is `<crew-id>:<week-start>`, so dismissing one Crew's week never
-touches another Crew's. Losing either value only means a cleared row or a
-dismissed recap reappears once; a recap ages off Today on its own within days
-of its week closing regardless.
+All three are `{ "<user-id>": ["<key>", …] }` and all three are bounded per
+account. A recap key is `<crew-id>:<week-start>`, so acknowledging one Crew's
+week never touches another Crew's. Losing any of them only means a cleared row,
+a cleared recap or an unread mark reappears once; a recap ages out on its own
+within days of its week closing regardless.
+
+The two recap keys are the same record read by **both** discovery surfaces —
+Today's teaser and Crew's notification (issue #186) — and they mean different
+things. `recap-seen` is "I opened it", which clears the unread treatment and
+hides nothing; `recap-dismissed` is "I am done with it", which removes the
+prompt from both surfaces. They are separate so the two surfaces can never hold
+contradictory state about one week, and so opening a recap is never mistaken for
+finishing with it.
 
 Projection is not scoped to the viewed crew. Each sync pass uploads this
 device's safe projection to **every** crew the account is in, each against

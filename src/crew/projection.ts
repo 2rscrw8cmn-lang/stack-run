@@ -36,6 +36,14 @@ export interface CrewSharedRunProjection {
   maxHeartRate: number | null;
   manualHeartRate: number | null;
   /**
+   * Issue #186: the one performance scalar Crew gains for the recap's Fastest
+   * 5K. Source-verified — the time of a real 5,000 m window inside the run, as
+   * the connected source's own pace curve reported it — never an estimate from
+   * the run's average pace. Null covers every ordinary case: a manual run, a
+   * run shorter than 5K, and a run whose source has not been asked yet.
+   */
+  best5kSeconds: number | null;
+  /**
    * Derived award scores, per D-080. Each is a single scalar computed on this
    * device from data that never leaves it; null means "not derivable", which is
    * also what `Steady` always is until a verified variability source exists.
@@ -138,6 +146,7 @@ export function projectSharedRun(
     averageHeartRate: crewSafeHeartRate(run.importedMetrics?.averageHeartRate),
     maxHeartRate: crewSafeHeartRate(run.importedMetrics?.maxHeartRate),
     manualHeartRate: crewSafeHeartRate(run.manualHeartRate),
+    best5kSeconds: crewSafeBest5kSeconds(run.importedMetrics?.best5kSeconds),
     awardZone2Percent: crewSafePercent(awardMetrics?.zone2Percent),
     awardTargetPercent: crewSafePercent(awardMetrics?.targetPercent),
     awardLevelUpPercent: crewSafePercent(awardMetrics?.levelUpPercent),
@@ -170,6 +179,9 @@ export function projectSharedRun(
  */
 const CREW_HEART_RATE_MIN = 30;
 const CREW_HEART_RATE_MAX = 250;
+/** Mirrors `shared_runs_best_5k_seconds_check`. See `crewSafeBest5kSeconds`. */
+export const CREW_BEST_5K_MIN_SECONDS = 600;
+export const CREW_BEST_5K_MAX_SECONDS = 21_600;
 
 function crewSafeHeartRate(value: number | null | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
@@ -201,6 +213,28 @@ const CREW_RUN_SOURCES: readonly RunSource[] = ["manual", "intervals"];
 
 function crewSafeRunSource(value: RunSource | null | undefined): RunSource | null {
   return value != null && CREW_RUN_SOURCES.includes(value) ? value : null;
+}
+
+/**
+ * `shared_runs.best_5k_seconds` accepts 600–21600 — comfortably under the world
+ * record at one end and well past a walked 5K at the other.
+ *
+ * Unlike the award scores above, this one is not derived on the device: it is
+ * whatever the connected source answered. That is a reason for *more*
+ * suspicion, not less. STACK has never verified this endpoint's response shape
+ * against a real run (see `docs/CONNECTED_DATA_FIELDS.md`), so a value in
+ * minutes, in milliseconds, or from a shape the normalizer misread would land
+ * here — and per `docs/CREW_PROJECTION_CONTRACT.md` one refused value aborts
+ * the runner's entire upsert, in every crew, on every retry. Out of range is
+ * sent as null: a missing 5K costs a recap beat, a refused batch costs the
+ * runner every run they have.
+ */
+function crewSafeBest5kSeconds(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return rounded >= CREW_BEST_5K_MIN_SECONDS && rounded <= CREW_BEST_5K_MAX_SECONDS
+    ? rounded
+    : null;
 }
 
 /** `award_steady_seconds` is a non-negative pace-variability figure. */
@@ -445,6 +479,7 @@ function sharedRunRow(
     average_heart_rate: run.averageHeartRate,
     max_heart_rate: run.maxHeartRate,
     manual_heart_rate: run.manualHeartRate,
+    best_5k_seconds: run.best5kSeconds,
     award_zone2_percent: run.awardZone2Percent,
     award_target_percent: run.awardTargetPercent,
     award_level_up_percent: run.awardLevelUpPercent,

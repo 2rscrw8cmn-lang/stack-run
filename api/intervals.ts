@@ -27,6 +27,13 @@ const MAX_RANGE_DAYS = 120;
  */
 const RUN_PROFILE_STREAM_TYPES = "time,heartrate,altitude,velocity_smooth,cadence";
 /**
+ * The only best-effort distance STACK asks the pace curve for, in metres.
+ * Fixed here rather than taken from the query, so this route can never be used
+ * to pull the whole curve — one product metric, one distance. See
+ * `BEST_EFFORT_DISTANCES` in `src/connected/intervals.ts`.
+ */
+const BEST_EFFORT_DISTANCES = "5000";
+/**
  * Intervals sits behind Cloudflare, which challenges clients that do not look
  * like anything in particular. This says what STACK is rather than pretending
  * to be a browser.
@@ -136,7 +143,12 @@ export async function readIntervals(request: Request, env: Environment = process
     if (!id || !ACTIVITY_ID.test(id)) return json(400, { error: "invalid_activity_id", message: "That activity id is not readable." });
     upstream = new URL(`${BASE}/activity/${encodeURIComponent(id)}/streams.json`);
     upstream.searchParams.set("types", RUN_PROFILE_STREAM_TYPES);
-  } else return json(400, { error: "invalid_resource", message: "STACK Run Data reader: deployed and configured. Ask for resource=status, activities, activity, activity-streams or wellness." });
+  } else if (resource === "activity-pace-curve") {
+    const id = url.searchParams.get("id");
+    if (!id || !ACTIVITY_ID.test(id)) return json(400, { error: "invalid_activity_id", message: "That activity id is not readable." });
+    upstream = new URL(`${BASE}/activity/${encodeURIComponent(id)}/pace-curve`);
+    upstream.searchParams.set("distances", BEST_EFFORT_DISTANCES);
+  } else return json(400, { error: "invalid_resource", message: "STACK Run Data reader: deployed and configured. Ask for resource=status, activities, activity, activity-streams, activity-pace-curve or wellness." });
 
   let response: Response;
   try {

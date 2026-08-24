@@ -32,6 +32,18 @@ export interface ImportedRunMetrics {
   elapsedTimeSeconds?: number;
   trainingLoad?: number;
   hrZoneSeconds?: number[];
+  /**
+   * The fastest continuous 5,000 m effort inside this run, in seconds, as the
+   * connected source itself reports it.
+   *
+   * Source-derived, never STACK-derived. It is present only when Intervals'
+   * own pace curve returns a 5,000 m best effort for the activity, which it
+   * does only when the activity actually covered 5,000 m — the same rule the
+   * source applies, and the reason a 4.99 km run has no value here rather than
+   * a rounded one. `duration / distance * 5K` is not this number and is never
+   * written into it; see `docs/CONNECTED_DATA_FIELDS.md`.
+   */
+  best5kSeconds?: number;
 }
 
 export interface Race {
