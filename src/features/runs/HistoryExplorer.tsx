@@ -5,7 +5,7 @@ import { defaultSelectedIndex } from "../../components/charts/chartDefaultSelect
 import { sparseTickIndices } from "../../components/charts/chartTickDensity";
 import { formatDateLabel } from "../../domain/dates";
 import { formatRunsMiles } from "../../domain/distance";
-import type { RunnerRun } from "../../history/runnerRun";
+import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";
 import { RunnerRunRow } from "./RunnerRunRow";
 import {
   HISTORY_METRIC_IDS,
@@ -14,7 +14,7 @@ import {
   aggregateHistoryZones,
   createHistoryBuckets,
   defaultHistoryRange,
-  earliestKnownDate,
+  earliestRunningDate,
   historyChartKind,
   readHistoryRange,
   resolveHistoryDateRange,
@@ -93,7 +93,7 @@ export function HistoryExplorer({ runs, today, onBack, onOpenRun }: HistoryExplo
     headingRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const earliest = earliestKnownDate(runs, today);
+  const earliestRunning = earliestRunningDate(runs, today);
   const range = resolveHistoryDateRange(runs, today, rangeId);
   const rangedRuns = runsInHistoryRange(runs, range);
   const buckets = createHistoryBuckets(rangedRuns, range);
@@ -107,7 +107,7 @@ export function HistoryExplorer({ runs, today, onBack, onOpenRun }: HistoryExplo
   const selectedIndex = explicitIndex >= 0 ? explicitIndex : defaultIndex;
   const selectedBucket = metricBuckets[selectedIndex] ?? null;
   const reading =
-    metric === "zones" ? null : readHistoryRange(runs, range, metric, earliest);
+    metric === "zones" ? null : readHistoryRange(runs, range, metric, earliestRunning);
   const zoneMix = aggregateHistoryZones(rangedRuns);
   const availability = metricAvailability(rangedRuns);
 
@@ -256,9 +256,9 @@ export function HistoryExplorer({ runs, today, onBack, onOpenRun }: HistoryExplo
 
       <section className="history-explorer__runs" aria-labelledby="history-runs-title">
         <div className="history-explorer__runs-heading">
-          <h2 id="history-runs-title">Runs in period</h2>
+          <h2 id="history-runs-title">Activities in period</h2>
           <span className="history-explorer__runs-count machine-label">
-            {listedRuns.length} {listedRuns.length === 1 ? "RUN" : "RUNS"}
+            {listedRuns.length} {listedRuns.length === 1 ? "ACTIVITY" : "ACTIVITIES"}
           </span>
         </div>
         <p className="history-explorer__runs-period machine-label">{listPeriod}</p>
@@ -271,7 +271,7 @@ export function HistoryExplorer({ runs, today, onBack, onOpenRun }: HistoryExplo
           </ul>
         ) : (
           <p className="history-explorer__empty history-explorer__empty--runs">
-            No runs recorded in this period.
+            No activities recorded in this period.
           </p>
         )}
 
@@ -522,13 +522,14 @@ function ZoneComposition({ mix }: { mix: HistoryZoneMix }) {
 }
 
 function metricAvailability(runs: readonly RunnerRun[]): Record<HistoryMetricId, boolean> {
+  const running = runningRunnerRuns(runs);
   return {
     miles: true,
     runs: true,
-    time: runs.some((run) => run.durationSeconds !== null),
-    load: runs.some((run) => run.trainingLoad !== null),
-    gain: runs.some((run) => run.elevationGainFeet !== null),
-    zones: runs.some(
+    time: running.some((run) => run.durationSeconds !== null),
+    load: running.some((run) => run.trainingLoad !== null),
+    gain: running.some((run) => run.elevationGainFeet !== null),
+    zones: running.some(
       (run) => run.hrZoneSeconds !== null && run.hrZoneSeconds.some((seconds) => seconds > 0),
     ),
   };

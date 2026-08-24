@@ -101,7 +101,7 @@ describe("Training Signals cards", () => {
     const sections = [...document.querySelectorAll(".section__title")].map(
       (title) => title.textContent,
     );
-    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Runs"]);
+    expect(sections).toEqual(["Recent Training", "Training Signals", "Recent Activity"]);
   });
 
   it("orders what changed above what did not, then by family", () => {

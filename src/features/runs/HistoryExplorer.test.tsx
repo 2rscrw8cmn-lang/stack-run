@@ -271,13 +271,13 @@ describe("History Explorer zones", () => {
 });
 
 describe("History Explorer run list", () => {
-  it("names the list Runs in period and covers the whole selected range", () => {
+  it("names the mixed activity list and covers the whole selected range", () => {
     renderExplorer();
 
-    expect(screen.getByRole("heading", { name: "Runs in period" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Activities in period" })).toBeInTheDocument();
     expect(screen.queryByText(/CONTRIBUTING RUNS/i)).not.toBeInTheDocument();
     const count = document.querySelector(".history-explorer__runs-count")!.textContent;
-    expect(count).toMatch(/^\d+ RUNS?$/);
+    expect(count).toMatch(/^\d+ ACTIVIT(?:Y|IES)$/);
     expect(document.querySelectorAll(".history-explorer__run-list .run-row").length).toBe(
       Number.parseInt(count!, 10),
     );

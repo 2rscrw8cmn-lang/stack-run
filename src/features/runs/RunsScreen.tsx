@@ -9,7 +9,7 @@ import { runHistory, type RunHistoryEntry } from "../../domain/runs";
 import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "../../domain/types";
 import type { IntervalsConnection } from "../../connected/intervals";
 import type { HistorySyncPhase } from "../../history/historySyncPolicy";
-import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
+import { runningRunnerRuns, unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
 import { runnerSnapshot } from "../../history/runnerSnapshot";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
 import type { ValidRunEntry } from "../run-entry/runValidation";
@@ -153,8 +153,9 @@ export function RunsScreen({
   const isSignalDemo = isSignalDemoEnabled();
   const actualRuns = runnerRuns ?? fallbackRunnerRuns(runLogs);
   const runs = isSignalDemo ? signalDemoRuns(today) : actualRuns;
-  const snapshot = runnerSnapshot(runs, today);
-  const signals = presentableRunnerSignals({ runs, today, plan, runLogs });
+  const runningRuns = runningRunnerRuns(runs);
+  const snapshot = runnerSnapshot(runningRuns, today);
+  const signals = presentableRunnerSignals({ runs: runningRuns, today, plan, runLogs });
   const overviewSignals = selectOverviewSignals(signals);
   const selectedSignal =
     signals.find((signal) => signal.id === selectedSignalId) ?? null;
@@ -286,9 +287,9 @@ export function RunsScreen({
         <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>Runs</h1>
         <div className="runs-screen__title-row">
           <p className="runs-screen__count machine-label">
-            {runs.length === 0
+            {runningRuns.length === 0
               ? "No runs yet"
-              : `${runs.length} ${runs.length === 1 ? "run" : "runs"}`}
+              : `${runningRuns.length} ${runningRuns.length === 1 ? "run" : "runs"}`}
           </p>
           {!isSignalDemo && (
             <Button
@@ -306,7 +307,7 @@ export function RunsScreen({
             SIGNAL DEMO · FAKE PREVIEW DATA · REMOVE ?demo=signals TO RETURN
           </p>
         )}
-        {runs.length > 0 && (
+        {runningRuns.length > 0 && (
           <RunnerSnapshot
             snapshot={snapshot}
             phase={historyPhase}
@@ -338,7 +339,7 @@ export function RunsScreen({
             signals={visibleSignals}
             runs={runs}
             today={today}
-            hasHistory={runs.length > 0}
+            hasHistory={runningRuns.length > 0}
             hiddenSignalCount={Math.max(0, signals.length - RUNS_OVERVIEW_SIGNAL_LIMIT)}
             isExpanded={areSignalsExpanded}
             onToggleExpanded={() => setSignalsExpanded((expanded) => !expanded)}
@@ -351,7 +352,7 @@ export function RunsScreen({
           <Section
             className="runs-recent"
             icon={<History size={15} strokeWidth={2} />}
-            title="Recent Runs"
+            title="Recent Activity"
             meta={
               <span className="machine-label">
                 {recentRuns.length} OF {runs.length}

@@ -339,9 +339,9 @@ See `CREW_PROJECTION_CONTRACT.md`, `RACE_CREW_IMPLEMENTATION.md` and `CREW_SPECI
 
 Cross Training is a current STACK activity type and may be recorded/accepted into personal state. Crew storage also permits Cross Training, including zero-distance sessions when valid.
 
-A known current asymmetry remains: the historical source mirror is intentionally restricted to verified running types, so a source-only Cross Training activity may not join unified historical history while an accepted/logged Cross Training activity can exist in STACK.
+Unified actual history includes approved Cross Training from the connected source when the source activity type has been verified on the real pipeline. The current verified mapping is `HighIntensityIntervalTraining` → Cross Training; STACK does not guess cycling, swimming, strength or other source aliases. Zero-distance Cross Training is valid.
 
-Do not silently widen the history allowlist without deciding how non-running activity should affect running-specific volume, pace, long-run and Signal calculations. This is tracked as an explicit future product decision.
+Runs chronology can therefore show a source-only Cross Training session whether or not it was accepted into STACK. Running-specific interpretation remains running-only: mileage, run frequency, pace, long-run calculations, History metrics and Training Signals exclude Cross Training. Historical-only Cross Training never earns a Personal Build block and does not widen the Crew projection.
 
 ## Persistence boundaries
 
@@ -389,7 +389,6 @@ Do not add infrastructure or product breadth merely because an upstream API make
 
 The following are known product boundaries, not undocumented surprises:
 
-- source-only Cross Training history asymmetry;
 - the legacy Intervals proxy path still exists alongside the verified direct local-key path;
 - Crew `Steady` award awaits a verified pace-variability source;
 - Best Efforts / personal records are not currently claimed;

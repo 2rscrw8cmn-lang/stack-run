@@ -1,3 +1,4 @@
+import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals";
 import type { HistoricalActivity } from "../history/historicalActivity";
 import { compareHistoricalActivities } from "../history/historicalActivity";
 import { StorageWriteError } from "./appStateRepository";
@@ -72,16 +73,19 @@ function storedActivity(activity: HistoricalActivity): HistoricalActivity {
 function isStoredActivity(value: unknown): value is HistoricalActivity {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const activity = value as Partial<HistoricalActivity>;
+  const sourceType = typeof activity.sourceType === "string" ? activity.sourceType : "";
+  const isRunning = VERIFIED_RUNNING_TYPES.has(sourceType);
+  const isCrossTraining = VERIFIED_CROSS_TRAINING_TYPES.has(sourceType);
   return (
     activity.provider === "intervals" &&
     typeof activity.sourceId === "string" &&
     activity.sourceId.length > 0 &&
     typeof activity.startDateLocal === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(activity.startDateLocal) &&
-    typeof activity.sourceType === "string" &&
+    (isRunning || isCrossTraining) &&
     typeof activity.distanceMeters === "number" &&
     Number.isFinite(activity.distanceMeters) &&
-    activity.distanceMeters > 0 &&
+    (isRunning ? activity.distanceMeters > 0 : activity.distanceMeters >= 0) &&
     (typeof activity.movingTimeSeconds === "number" || typeof activity.elapsedTimeSeconds === "number") &&
     typeof activity.firstSeenAt === "string" &&
     typeof activity.lastSeenAt === "string"

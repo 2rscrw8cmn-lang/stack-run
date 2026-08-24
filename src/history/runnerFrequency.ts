@@ -1,5 +1,5 @@
 import { daysBetweenLocalDates, mondayOfLocalDate } from "../domain/dates";
-import { runnerRunsBetween, type RunnerRun } from "./runnerRun";
+import { runningRunsBetween, type RunnerRun } from "./runnerRun";
 import { weeklyVolume } from "./runnerVolume";
 
 /**
@@ -84,7 +84,7 @@ export function runFrequency(
   const span = Math.max(1, Math.floor(weeks));
   const calendarWeeks = weeklyVolume(runs, today, span);
   const startDate = calendarWeeks[0].startDate;
-  const windowRuns = runnerRunsBetween(runs, startDate, today);
+  const windowRuns = runningRunsBetween(runs, startDate, today);
 
   const daysIntoCurrentWeek = daysBetweenLocalDates(mondayOfLocalDate(today), today) + 1;
   const elapsedWeeks = Number(
@@ -141,7 +141,7 @@ export function runFrequencyInRange(
 ): FrequencyInRange {
   const days = Math.max(0, daysBetweenLocalDates(startDate, endDate)) + 1;
   const weeks = Number((days / DAYS_PER_WEEK).toFixed(2));
-  const windowRuns = runnerRunsBetween(runs, startDate, endDate);
+  const windowRuns = runningRunsBetween(runs, startDate, endDate);
   return {
     startDate,
     endDate,

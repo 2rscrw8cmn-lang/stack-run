@@ -1,5 +1,5 @@
 import { addDaysToLocalDate } from "../domain/dates";
-import { runnerRunsBetween, type RunnerRun } from "./runnerRun";
+import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun";
 
 /**
  * Which metrics this runner's history can actually support a statement about.
@@ -74,8 +74,9 @@ export function metricCoverage(
   runs: readonly RunnerRun[],
   metric: RunnerMetric,
 ): MetricCoverage {
-  const present = runs.filter(METRIC_VALUE[metric]).length;
-  const total = runs.length;
+  const running = runningRunnerRuns(runs);
+  const present = running.filter(METRIC_VALUE[metric]).length;
+  const total = running.length;
   return {
     metric,
     present,
@@ -122,7 +123,7 @@ export function runnerCoverage(
 ): RunnerCoverageWindow {
   const span = Math.max(1, Math.floor(days));
   const startDate = addDaysToLocalDate(today, -(span - 1));
-  const windowRuns = runnerRunsBetween(runs, startDate, today);
+  const windowRuns = runningRunsBetween(runs, startDate, today);
   return {
     days: span,
     startDate,

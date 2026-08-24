@@ -1,5 +1,5 @@
 import { metricCoverage } from "../history/runnerCoverage";
-import { runnerRunsBetween, type RunnerRun } from "../history/runnerRun";
+import { runningRunsBetween, type RunnerRun } from "../history/runnerRun";
 import {
   classifyChange,
   compareCoverage,
@@ -79,12 +79,12 @@ export function workloadSignal(
   windowDays: number = SIGNAL_WINDOW_DAYS,
 ): SignalOf<"workload"> {
   const windows = comparisonWindows(today, windowDays);
-  const currentRuns = runnerRunsBetween(
+  const currentRuns = runningRunsBetween(
     runs,
     windows.current.startDate,
     windows.current.endDate,
   );
-  const baselineRuns = runnerRunsBetween(
+  const baselineRuns = runningRunsBetween(
     runs,
     windows.baseline.startDate,
     windows.baseline.endDate,

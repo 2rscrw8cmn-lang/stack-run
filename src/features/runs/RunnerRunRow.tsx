@@ -5,7 +5,7 @@ import { formatDateLabel } from "../../domain/dates";
 import { formatRunsMiles } from "../../domain/distance";
 import { formatDurationSeconds } from "../../domain/duration";
 import { formatPaceSeconds } from "../../domain/runs";
-import type { RunnerRun } from "../../history/runnerRun";
+import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun";
 
 interface RunnerRunRowProps {
   run: RunnerRun;
@@ -52,8 +52,12 @@ const ROW_DATE: Intl.DateTimeFormatOptions = {
  */
 export function RunnerRunRow({ run, onOpen }: RunnerRunRowProps) {
   const stack = run.stack;
-  const type = stack ? WORKOUT_TYPE_LABEL[stack.activityType] : run.sourceName ?? "Run";
-  const distance = `${formatRunsMiles(run.distanceMiles)} mi`;
+  const activityKind = runnerRunActivityKind(run);
+  const historicalCross = !stack && activityKind === "cross-training";
+  const type = stack
+    ? WORKOUT_TYPE_LABEL[stack.activityType]
+    : run.sourceName ?? (historicalCross ? "Cross Training" : "Run");
+  const distance = run.distanceMiles > 0 ? `${formatRunsMiles(run.distanceMiles)} mi` : null;
   const duration = run.durationSeconds === null ? null : formatDurationSeconds(run.durationSeconds);
   const pace = run.paceSecondsPerMile === null ? null : formatPaceSeconds(run.paceSecondsPerMile);
 
@@ -73,14 +77,16 @@ export function RunnerRunRow({ run, onOpen }: RunnerRunRowProps) {
       <button
         type="button"
         className="run-row"
-        data-type={stack?.activityType ?? "history"}
+        data-type={stack?.activityType ?? (historicalCross ? "cross" : "history")}
         data-origin={run.origin}
         aria-label={name}
         onClick={onOpen}
       >
-        <span className="run-row__icon" data-type={stack?.activityType ?? "history"}>
+        <span className="run-row__icon" data-type={stack?.activityType ?? (historicalCross ? "cross" : "history")}>
           {stack ? (
             <ActivityIcon type={stack.activityType} size={20} />
+          ) : historicalCross ? (
+            <ActivityIcon type="cross" size={20} />
           ) : (
             <Activity size={20} strokeWidth={1.8} />
           )}
@@ -93,7 +99,7 @@ export function RunnerRunRow({ run, onOpen }: RunnerRunRowProps) {
           <span className="run-row__date">{formatDateLabel(run.date, ROW_DATE)}</span>
         </span>
         <span className="run-row__metrics">
-          <span className="run-row__distance">{distance}</span>
+          {distance && <span className="run-row__distance">{distance}</span>}
           {secondary && <span className="run-row__secondary">{secondary}</span>}
         </span>
       </button>

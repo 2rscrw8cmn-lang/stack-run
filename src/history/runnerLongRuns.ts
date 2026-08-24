@@ -1,5 +1,5 @@
 import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates";
-import { runnerRunsBetween, type RunnerRun } from "./runnerRun";
+import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun";
 import { weeklyVolume, type WeeklyVolumePoint } from "./runnerVolume";
 
 /**
@@ -38,7 +38,7 @@ export const LONGEST_RUN_WINDOW_DAYS = 28;
 export function longestRun(runs: readonly RunnerRun[]): RunnerRun | null {
   let longest: RunnerRun | null = null;
   // Ascending by date so a strict `>` keeps the first of equal distances.
-  for (const run of [...runs].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))) {
+  for (const run of runningRunnerRuns(runs).sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))) {
     if (longest === null || run.distanceMiles > longest.distanceMiles) longest = run;
   }
   return longest;
@@ -102,7 +102,7 @@ export function longestRunInRange(
   startDate: string,
   endDate: string,
 ): LongestRunInWindow {
-  const run = longestRun(runnerRunsBetween(runs, startDate, endDate));
+  const run = longestRun(runningRunsBetween(runs, startDate, endDate));
   return {
     days: Math.max(0, daysBetweenLocalDates(startDate, endDate)) + 1,
     startDate,
