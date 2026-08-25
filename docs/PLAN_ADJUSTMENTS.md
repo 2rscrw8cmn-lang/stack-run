@@ -15,6 +15,13 @@ scope yet — formalizing per-capability scopes is #181's job, not this one's.
 There is no UI for this yet either. Surfacing "your assistant changed this"
 in the app is #182's job.
 
+**Scope note (#181):** as of `docs/EXTERNAL_INTEGRATION.md`, a token also
+carries a `read`/`read_write` scope. `apply_plan_patch`/`undo_plan_patch`
+below reject a `read`-scoped token with `token_scope_insufficient`, checked
+in SQL via `_resolve_external_api_token`, independent of anything the
+calling route validated first — same reasoning as the immutability checks
+this document is mostly about.
+
 ## The operation vocabulary
 
 `PlanAdjustmentOperation` (`src/domain/planAdjustment.ts`) has four

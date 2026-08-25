@@ -28,6 +28,7 @@ import {
   createExternalApiToken as createExternalApiTokenRecord,
   listExternalApiTokens,
   revokeExternalApiToken as revokeExternalApiTokenRecord,
+  type ExternalApiTokenScope,
   type ExternalApiTokenSummary,
 } from "./externalApiTokenService";
 import type { CrewMemberAccent } from "./memberAccent";
@@ -159,7 +160,7 @@ export interface RaceCrewController {
   clearMessage: () => void;
   refreshExternalApiTokens: () => Promise<void>;
   /** Returns the raw token, shown exactly once — nothing can read it back afterward. */
-  createExternalApiToken: (label: string) => Promise<string>;
+  createExternalApiToken: (label: string, scope: ExternalApiTokenScope) => Promise<string>;
   revokeExternalApiToken: (tokenId: string) => Promise<void>;
 }
 
@@ -970,13 +971,13 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       if (!availability.configured) return;
       setExternalApiTokens(await listExternalApiTokens(availability.client));
     }),
-    createExternalApiToken: async (label) => {
+    createExternalApiToken: async (label, scope) => {
       if (!availability.configured) throw new Error("Race Crew is not configured.");
       setBusy(true);
       setError(null);
       setMessage(null);
       try {
-        const created = await createExternalApiTokenRecord(availability.client, label);
+        const created = await createExternalApiTokenRecord(availability.client, label, scope);
         setExternalApiTokens(await listExternalApiTokens(availability.client));
         setMessage("Token created. Copy it now — it will not be shown again.");
         return created.token;
