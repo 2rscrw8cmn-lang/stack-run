@@ -38,6 +38,7 @@ import {
 import { compareCrewRace } from "../../crew/raceMatch";
 import type { CrewType, RaceCrew } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
+import type { ExternalApiTokenScope } from "../../crew/externalApiTokenService";
 import { CrewEmblem } from "./CrewEmblem";
 import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
 import type { PersonalSyncController } from "../../personal-sync/types";
@@ -977,8 +978,16 @@ function tokenDateLabel(iso: string): string {
  * its hash, be read back afterward, so this screen has no "reveal" affordance
  * for an existing row, only for the one just minted.
  */
+const SCOPE_LABEL: Record<ExternalApiTokenScope, string> = {
+  read: "Read only",
+  read_write: "Read & write",
+};
+
 function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; onBack: () => void }) {
   const [label, setLabel] = useState("");
+  // Least-privilege default: a runner opts into write access, rather than
+  // opting out of it.
+  const [scope, setScope] = useState<ExternalApiTokenScope>("read");
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const tokens = crew.externalApiTokens;
@@ -994,7 +1003,7 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
   async function createToken(): Promise<void> {
     const trimmed = label.trim();
     if (!trimmed) return;
-    const token = await crew.createExternalApiToken(trimmed);
+    const token = await crew.createExternalApiToken(trimmed, scope);
     setRevealedToken(token);
     setCopied(false);
     setLabel("");
@@ -1035,6 +1044,29 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
             onChange={(event) => setLabel(event.target.value)}
           />
         </FormField>
+
+        <div className="crew-settings__switch" aria-label="Access level">
+          <button
+            type="button"
+            aria-pressed={scope === "read"}
+            onClick={() => setScope("read")}
+          >
+            Read only
+          </button>
+          <button
+            type="button"
+            aria-pressed={scope === "read_write"}
+            onClick={() => setScope("read_write")}
+          >
+            Read &amp; write
+          </button>
+        </div>
+        <p className="crew-settings__copy">
+          {scope === "read"
+            ? "Sees your plan, recent runs, Build progress and Crew summary. Cannot change anything."
+            : "All of the above, plus your assistant can adjust future workouts — never Build, never past runs, never your race goal."}
+        </p>
+
         <Button
           variant="secondary"
           icon={<KeyRound size={18} />}
@@ -1052,6 +1084,8 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
                 <span className="crew-settings__external-token-body">
                   <strong>{token.label}</strong>
                   <small>
+                    {SCOPE_LABEL[token.scope]}
+                    {" · "}
                     {token.revokedAt
                       ? `Revoked ${tokenDateLabel(token.revokedAt)}`
                       : token.lastUsedAt

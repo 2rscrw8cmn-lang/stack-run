@@ -85,7 +85,7 @@ begin
   set local role authenticated;
   set local request.jwt.claim.role = 'authenticated';
   set local request.jwt.claim.sub = '99800000-0000-0000-0000-000000000001';
-  select token into v_token from public.create_external_api_token('ChatGPT');
+  select token into v_token from public.create_external_api_token('ChatGPT', 'read_write');
   reset role;
   reset request.jwt.claim.role;
   reset request.jwt.claim.sub;
@@ -245,7 +245,7 @@ begin
   set local role authenticated;
   set local request.jwt.claim.role = 'authenticated';
   set local request.jwt.claim.sub = '99800000-0000-0000-0000-000000000002';
-  select token into v_token from public.create_external_api_token('ChatGPT');
+  select token into v_token from public.create_external_api_token('ChatGPT', 'read_write');
   reset role;
   reset request.jwt.claim.role;
   reset request.jwt.claim.sub;

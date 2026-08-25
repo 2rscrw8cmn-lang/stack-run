@@ -24,7 +24,7 @@ mistaken for the finished integration:
 | #178 (this doc) | Read-only training context | Done |
 | #179 | Structured race goal + original/current/actual plan truth (see `docs/PLAN_TRUTH_MODEL.md`) | Done |
 | #180 | Atomic plan adjustments + audit ledger + undo (see `docs/PLAN_ADJUSTMENTS.md`) | Done |
-| #181 | Formal auth scopes + provider-neutral transport | Not started |
+| #181 | Formal auth scopes + provider-neutral transport (see `docs/EXTERNAL_INTEGRATION.md`) | Done |
 | #182 | The AI-sparkle provenance UI | Not started |
 | #183 | Real external-assistant end-to-end QA | Not started |
 
@@ -51,6 +51,10 @@ Settings → Account & Crew → External Assistant Access, and sent as
 - A missing, malformed, or revoked token gets the same generic `401`. The
   response never distinguishes *why* a token failed — that would be an
   enumeration signal with no legitimate use.
+- Every token has a scope, `read` or `read_write`, chosen at creation (#181).
+  This route only ever needs read access and is reachable at either scope;
+  `read_write` additionally unlocks `api/plan-adjustments.ts`. See
+  `docs/EXTERNAL_INTEGRATION.md` for the full client-facing contract.
 
 See `supabase/migrations/20260814010000_reusable_crew_invites.sql` for the
 capability-token pattern this one is built on, and

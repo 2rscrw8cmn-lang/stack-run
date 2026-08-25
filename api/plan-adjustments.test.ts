@@ -185,6 +185,17 @@ describe("Plan adjustments endpoint — apply", () => {
     expect(JSON.stringify(body)).not.toMatch(/immutable_field/);
   });
 
+  it("maps a read-only token's attempt to apply a patch to 403, naming the actual problem (#181)", async () => {
+    const fetcher = upstream(
+      new Response(JSON.stringify({ training: rawTraining })),
+      new Response(JSON.stringify({ message: "token_scope_insufficient" }), { status: 400 }),
+    );
+    const response = await handlePlanAdjustments(request({ body: applyBody }), ENV, fetcher);
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe("insufficient_scope");
+  });
+
   it("maps a token failure on the read step to a generic 401", async () => {
     const fetcher = upstream(new Response(JSON.stringify({ message: "token_invalid_or_revoked" }), { status: 400 }));
     const response = await handlePlanAdjustments(request({ body: applyBody }), ENV, fetcher);
@@ -236,6 +247,16 @@ describe("Plan adjustments endpoint — undo", () => {
       fetcher,
     );
     expect(response.status).toBe(409);
+  });
+
+  it("maps a read-only token's attempt to undo a patch to 403", async () => {
+    const fetcher = upstream(new Response(JSON.stringify({ message: "token_scope_insufficient" }), { status: 400 }));
+    const response = await handlePlanAdjustments(
+      request({ method: "DELETE", path: "/api/plan-adjustments?id=adj-1" }),
+      ENV,
+      fetcher,
+    );
+    expect(response.status).toBe(403);
   });
 });
 
