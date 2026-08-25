@@ -240,6 +240,7 @@ export function AppShell({
               onTabChange("crew");
             }}
             onSaveRun={onSaveRun}
+            onEditPlan={onEditPlan}
             availability={availability}
             candidates={connectedSync.candidates}
             onReviewCandidate={(candidate) => openRunData({ candidate })}
@@ -303,6 +304,7 @@ export function AppShell({
             onGeneratePlan={onGeneratePlan}
             onFinishPlan={onFinishPlan}
             syncToken={intervalsConnection}
+            planAdjustments={raceCrew.planAdjustments}
           />
         )}
       </main>

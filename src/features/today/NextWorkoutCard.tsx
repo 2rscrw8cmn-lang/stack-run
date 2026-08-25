@@ -1,13 +1,17 @@
 import { CalendarClock } from "lucide-react";
 import type { CSSProperties } from "react";
 import { ActivityIcon } from "../../components/shared/ActivityIcon";
+import { AssistantAdjustmentBadge } from "../../components/shared/AssistantAdjustmentBadge";
 import { Section } from "../../components/ui/Section";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
+import type { WorkoutProvenanceSlot } from "../../domain/planProvenance";
 import type { Workout } from "../../domain/types";
 
 interface NextWorkoutCardProps {
   workout: Workout;
+  /** #182: absent when there's nothing to show — no ledger, no match, or overridden since. */
+  provenance?: WorkoutProvenanceSlot | null;
 }
 
 /**
@@ -19,7 +23,7 @@ interface NextWorkoutCardProps {
  * when the plan has nothing left to ask for, and it never invents a suggestion
  * of its own.
  */
-export function NextWorkoutCard({ workout }: NextWorkoutCardProps) {
+export function NextWorkoutCard({ workout, provenance }: NextWorkoutCardProps) {
   return (
     <Section
       className="next-workout"
@@ -51,6 +55,15 @@ export function NextWorkoutCard({ workout }: NextWorkoutCardProps) {
               : ""}
           </p>
         </div>
+        {provenance && (
+          <AssistantAdjustmentBadge
+            className="next-workout__provenance"
+            workout={workout}
+            provenance={provenance.value}
+            canUndo={provenance.canUndo}
+            onUndo={provenance.onUndo}
+          />
+        )}
       </div>
     </Section>
   );
