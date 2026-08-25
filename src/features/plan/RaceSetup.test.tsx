@@ -110,6 +110,73 @@ describe("setting up the race", () => {
     expect(types).toContain("simulation");
   });
 
+  it("defaults the goal to none and never blocks building over it", async () => {
+    const { user, onGeneratePlan } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    expect(screen.getByRole("button", { name: "No specific goal" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const [setup, generated] = onGeneratePlan.mock.calls[0] as [
+      { goal: { type: string } },
+      TrainingPlan,
+    ];
+    expect(setup.goal).toEqual({ type: "none" });
+    expect(generated.race.goal).toEqual({ type: "none" });
+  });
+
+  it("carries a stated goal type through to the generated plan", async () => {
+    const { user, onGeneratePlan } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: "Just finish" }));
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const generated = onGeneratePlan.mock.calls[0][1] as TrainingPlan;
+    expect(generated.race.goal).toEqual({ type: "finish" });
+  });
+
+  it("parses a target finish time and carries it through", async () => {
+    const { user, onGeneratePlan } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: "Target finish time" }));
+    await user.type(screen.getByLabelText("Target finish time"), "1:45:00");
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const generated = onGeneratePlan.mock.calls[0][1] as TrainingPlan;
+    expect(generated.race.goal).toEqual({ type: "time", targetFinishSeconds: 6300 });
+  });
+
+  it("falls back to none, without blocking, when the typed time cannot be read", async () => {
+    const { user, onGeneratePlan } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: "Target finish time" }));
+    await user.type(screen.getByLabelText("Target finish time"), "not a time");
+    expect(screen.getByText(/Not a time STACK can use/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Build Plan/ })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+    const generated = onGeneratePlan.mock.calls[0][1] as TrainingPlan;
+    expect(generated.race.goal).toEqual({ type: "none" });
+  });
+
+  it("parses a target pace and carries it through", async () => {
+    const { user, onGeneratePlan } = renderPlan();
+
+    await user.click(screen.getByRole("button", { name: /^Race/ }));
+    await user.click(screen.getByRole("button", { name: "Target pace" }));
+    await user.type(screen.getByLabelText("Target pace (per mile)"), "8:00");
+    await user.click(screen.getByRole("button", { name: /Build Plan/ }));
+
+    const generated = onGeneratePlan.mock.calls[0][1] as TrainingPlan;
+    expect(generated.race.goal).toEqual({ type: "pace", targetPaceSecondsPerMile: 480 });
+  });
+
   it("only schedules runs on the days the runner said they run", async () => {
     const { user, onGeneratePlan } = renderPlan({ runDays: [1, 3, 5] });
 

@@ -1,11 +1,40 @@
 import { addDaysToLocalDate, parseLocalDate } from "./dates";
 import { EVERY_DAY, weekdayOf, type Weekday } from "./runDays";
 import type {
+  Race,
+  RaceGoal,
   TrainingPlan,
   TrainingWeek,
   Workout,
   WorkoutType,
 } from "./types";
+
+/** A plan stored before #179 introduced these three fields. */
+type LegacyTrainingPlan = Omit<TrainingPlan, "revision" | "originalPlan" | "race"> & {
+  revision?: number;
+  originalPlan?: TrainingPlan | null;
+  race: Omit<Race, "goal"> & { goal?: RaceGoal };
+};
+
+/**
+ * Backfills a plan from before #179 (schema 10 and earlier, and the bundled
+ * seed plan, none of which ever set these): `revision` starts fresh at 1
+ * rather than continuing whatever count the runner's edits were already at,
+ * because no such count existed to continue. `originalPlan` is honestly
+ * `null` — this plan may already have been edited by the time this runs, and
+ * there is no way to recover its true as-generated form. `race.goal`
+ * defaults to `{type: "none"}`: nothing before #179 ever asked for one. See
+ * `docs/PLAN_TRUTH_MODEL.md`.
+ */
+export function backfillPlan(plan: TrainingPlan): TrainingPlan {
+  const loose = plan as unknown as LegacyTrainingPlan;
+  return {
+    ...loose,
+    race: { ...loose.race, goal: loose.race.goal ?? { type: "none" } },
+    revision: loose.revision ?? 1,
+    originalPlan: loose.originalPlan ?? null,
+  } as TrainingPlan;
+}
 
 /**
  * Building a plan from a race, rather than shipping one.
@@ -164,6 +193,13 @@ export interface RacePlanSetup {
    * behaving exactly as it did, which is why this needed no migration.
    */
   startDate?: string;
+  /**
+   * What the runner is training toward, beyond finishing the distance itself.
+   * Absent (like `startDate`) means "not asked yet" on the working form
+   * before submission; `generateTrainingPlan` defaults it to `{type: "none"}`
+   * on the plan it produces, since `Race.goal` itself is never optional.
+   */
+  goal?: RaceGoal;
 }
 
 /** How many of each kind of hard session a plan asks for. */
@@ -953,7 +989,10 @@ export function generateTrainingPlan(
     });
   }
 
-  return {
+  // Built with originalPlan: null first, then returned with originalPlan
+  // pointing at that same (still-null-original) object — the frozen snapshot
+  // this plan's every future edit is measured against. See `TrainingPlan.originalPlan`.
+  const generated: TrainingPlan = {
     schemaVersion: 1,
     id: planId,
     name: `${setup.name} — ${RUNNER_LEVEL_LABEL[setup.level]} ${profile.label}`,
@@ -961,6 +1000,7 @@ export function generateTrainingPlan(
       name: setup.name,
       date: setup.date,
       distanceMiles: profile.miles,
+      goal: setup.goal ?? { type: "none" },
     },
     startDate: trainingWeeks[0].startDate,
     endDate: trainingWeeks[trainingWeeks.length - 1].endDate,
@@ -969,7 +1009,10 @@ export function generateTrainingPlan(
       `${weeks}-week ${profile.label.toLowerCase()} plan for a ${RUNNER_LEVEL_LABEL[setup.level].toLowerCase()} runner.`,
       "Generated from the race date and edited by hand from there. It is not an adaptive coaching engine and never reads your logged runs.",
     ],
+    revision: 1,
+    originalPlan: null,
   };
+  return { ...generated, originalPlan: generated };
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IntervalsCandidate } from "../connected/intervals";
+import { backfillPlan } from "../domain/racePlan";
 import type {
   AppSettings,
   ArchivedTrainingPlan,
@@ -335,12 +336,21 @@ export function parseTrainingRow(value: unknown, legacy = false): {
   ) {
     throw new Error("Cloud Cross Training day data is malformed.");
   }
+  // A cloud row written before #179 has a plan (and archived plans) with no
+  // revision/originalPlan/race.goal — isPlan/isArchivedPlan above deliberately
+  // don't check for them, so backfill here the same way migrations.ts and
+  // loadSeedPlan do for local storage. See `docs/PLAN_TRUTH_MODEL.md`.
+  const plan = row.plan ? backfillPlan(row.plan as TrainingPlan) : null;
+  const history = (planHistory as ArchivedTrainingPlan[]).map((entry) => ({
+    ...entry,
+    plan: backfillPlan(entry.plan),
+  }));
   return {
     revision: rowRevision,
     document: {
       settings: row.settings,
-      plan: row.plan,
-      planHistory,
+      plan,
+      planHistory: history,
       raceSetup: (row.race_setup ?? null) as PersonalTrainingDocument["raceSetup"],
       availability: (row.availability ?? null) as PersonalTrainingDocument["availability"],
       runDays: (row.run_days ?? null) as PersonalTrainingDocument["runDays"],

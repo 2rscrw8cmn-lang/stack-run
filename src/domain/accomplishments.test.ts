@@ -6,11 +6,13 @@ const plan: TrainingPlan = {
   schemaVersion: 1,
   id: "plan",
   name: "Test plan",
-  race: { name: "Test race", date: "2026-10-01", distanceMiles: 13.1 },
+  race: { name: "Test race", date: "2026-10-01", distanceMiles: 13.1, goal: { type: "none" } },
   startDate: "2026-08-01",
   endDate: "2026-10-01",
   weeks: [],
   notes: [],
+  revision: 1,
+  originalPlan: null,
 };
 
 function run(id: string, distanceMiles: number, completedDate = "2026-08-10"): RunLog {

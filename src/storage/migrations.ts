@@ -10,9 +10,16 @@ import type {
   RunLog,
   TrainingPlan,
 } from "../domain/types";
+import { backfillPlan } from "../domain/racePlan";
 import { loadSeedPlan } from "../seed/loadSeedPlan";
 
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
+
+function backfillPlanHistory(
+  planHistory: readonly ArchivedTrainingPlan[],
+): ArchivedTrainingPlan[] {
+  return planHistory.map((archived) => ({ ...archived, plan: backfillPlan(archived.plan) }));
+}
 
 /** Every run log before version 5 belonged to a scheduled workout. */
 interface RunLogV4 {
@@ -103,6 +110,22 @@ function validBuildAssignment(value: unknown): boolean {
       .includes(String(build.colorKey));
 }
 
+/** `RaceGoal`'s four variants — see `docs/PLAN_TRUTH_MODEL.md`. */
+function validRaceGoal(value: unknown): boolean {
+  const goal = object(value);
+  if (!goal) return false;
+  if (goal.type === "none" || goal.type === "finish") return true;
+  if (goal.type === "time") {
+    return typeof goal.targetFinishSeconds === "number" &&
+      Number.isFinite(goal.targetFinishSeconds) && goal.targetFinishSeconds > 0;
+  }
+  if (goal.type === "pace") {
+    return typeof goal.targetPaceSecondsPerMile === "number" &&
+      Number.isFinite(goal.targetPaceSecondsPerMile) && goal.targetPaceSecondsPerMile > 0;
+  }
+  return false;
+}
+
 function validTrainingPlan(value: unknown): boolean {
   const plan = object(value);
   const race = object(plan?.race);
@@ -113,8 +136,13 @@ function validTrainingPlan(value: unknown): boolean {
       typeof race.name !== "string" || !localDate(race.date) ||
       typeof race.distanceMiles !== "number" || !Number.isFinite(race.distanceMiles) ||
       race.distanceMiles <= 0 || !optionalString(race.startTime) ||
-      !optionalString(race.location) || !Array.isArray(plan.weeks) ||
-      plan.weeks.length === 0) return false;
+      !optionalString(race.location) || !validRaceGoal(race.goal) ||
+      !Array.isArray(plan.weeks) || plan.weeks.length === 0 ||
+      !Number.isInteger(plan.revision) || Number(plan.revision) < 1 ||
+      // A leaf, not a chain: the snapshot's own originalPlan must be null.
+      (plan.originalPlan !== null &&
+        (!validTrainingPlan(plan.originalPlan) ||
+          object(plan.originalPlan)?.originalPlan !== null))) return false;
 
   return plan.weeks.every((weekValue) => {
     const week = object(weekValue);
@@ -317,7 +345,7 @@ export function migrateAppState(input: unknown): AppState {
     return {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       settings: legacy.settings,
-      plan: legacy.plan,
+      plan: backfillPlan(legacy.plan),
       planHistory: [],
       runLogs,
       blockPlacements: upgradePlacements(runLogs, legacy.blockPlacements ?? []),
@@ -335,9 +363,11 @@ export function migrateAppState(input: unknown): AppState {
    * none, and the plan it already holds is untouched.
    */
   if (candidate.schemaVersion === 5) {
+    const legacyPlan = (candidate as unknown as AppState).plan;
     return {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacyPlan ? backfillPlan(legacyPlan) : null,
       blockPlacements: candidate.blockPlacements ?? [],
       planHistory: [],
       availability: null,
@@ -354,9 +384,11 @@ export function migrateAppState(input: unknown): AppState {
    * a preference from the schedule would put words in their mouth.
    */
   if (candidate.schemaVersion === 6) {
+    const legacyPlan = (candidate as unknown as AppState).plan;
     return {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacyPlan ? backfillPlan(legacyPlan) : null,
       blockPlacements: candidate.blockPlacements ?? [],
       planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
@@ -373,9 +405,11 @@ export function migrateAppState(input: unknown): AppState {
    * from the plan would claim the generator produced something it did not.
    */
   if (candidate.schemaVersion === 7) {
+    const legacyPlan = (candidate as unknown as AppState).plan;
     return {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacyPlan ? backfillPlan(legacyPlan) : null,
       blockPlacements: candidate.blockPlacements ?? [],
       planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
@@ -391,6 +425,7 @@ export function migrateAppState(input: unknown): AppState {
     return {
       ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacy.plan ? backfillPlan(legacy.plan) : null,
       planHistory: [],
       runLogs: legacy.runLogs.map((runLog) => ({ ...runLog, source: "manual", externalSource: null, importedMetrics: null })),
       // Schema 8 predates the Cross Training day preference.
@@ -401,20 +436,39 @@ export function migrateAppState(input: unknown): AppState {
 
   /** Schema 9 structurally required one active plan and had no history. */
   if (candidate.schemaVersion === 9) {
+    const legacy = candidate as unknown as Omit<AppState, "schemaVersion" | "planHistory">;
     return validateCurrentAppState({
-      ...(candidate as unknown as Omit<AppState, "schemaVersion" | "planHistory">),
+      ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacy.plan ? backfillPlan(legacy.plan) : null,
       planHistory: [],
     });
   }
 
+  /**
+   * Schema 10 predates a plan's own `revision`/`originalPlan`/`race.goal`
+   * (#179). Nothing else about the shape changed, so this is backfill only —
+   * see `backfillPlan`.
+   */
+  if (candidate.schemaVersion === 10) {
+    const legacy = candidate as unknown as AppState;
+    return validateCurrentAppState({
+      ...legacy,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacy.plan ? backfillPlan(legacy.plan) : null,
+      planHistory: backfillPlanHistory(legacy.planHistory ?? []),
+    });
+  }
+
   if (candidate.schemaVersion === CURRENT_SCHEMA_VERSION) {
+    const legacyPlan = (candidate as unknown as AppState).plan;
     return validateCurrentAppState({
       ...(candidate as unknown as AppState),
       // A payload written by an older build of this phase, or hand edited,
       // may still be missing these.
+      plan: legacyPlan ? backfillPlan(legacyPlan) : null,
       blockPlacements: candidate.blockPlacements ?? [],
-      planHistory: (candidate as unknown as AppState).planHistory ?? [],
+      planHistory: backfillPlanHistory((candidate as unknown as AppState).planHistory ?? []),
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
       crossTrainingDays: (candidate as unknown as AppState).crossTrainingDays ?? null,

@@ -153,6 +153,21 @@ describe("personal cloud hydration", () => {
     expect(snapshot?.training.planHistory).toEqual([]);
   });
 
+  it("backfills a cloud plan stored before #179's revision/originalPlan/race.goal", async () => {
+    const legacyPlan = structuredClone(rows().personal_training_state.plan) as unknown as Record<string, unknown>;
+    delete legacyPlan.revision;
+    delete legacyPlan.originalPlan;
+    delete (legacyPlan.race as Record<string, unknown>).goal;
+
+    const snapshot = await loadPersonalCloudSnapshot(readClient(rows({
+      personal_training_state: { ...rows().personal_training_state, plan: legacyPlan },
+    })));
+
+    expect(snapshot?.training.plan?.revision).toBe(1);
+    expect(snapshot?.training.plan?.originalPlan).toBeNull();
+    expect(snapshot?.training.plan?.race.goal).toEqual({ type: "none" });
+  });
+
   it("round-trips a hand-typed heart rate, and leaves it out when the column is absent", async () => {
     const withManual = await loadPersonalCloudSnapshot(
       readClient(rows({

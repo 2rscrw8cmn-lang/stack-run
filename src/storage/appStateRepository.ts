@@ -398,9 +398,15 @@ export function placeBlock(
  * plan; this only persists one. Run logs and placements are untouched, which
  * is what keeps a completed run attached to the workout it satisfied when that
  * workout is edited or moved.
+ *
+ * `revision` is bumped here, once per persisted change, rather than inside
+ * the pure domain editors that build `plan` — this is the actual commit
+ * boundary, the same reasoning `personal_training_state.revision` already
+ * bumps once per write rather than once per intermediate step. See
+ * `docs/PLAN_TRUTH_MODEL.md`.
  */
 export function savePlan(state: AppState, plan: TrainingPlan): AppState {
-  const next: AppState = { ...state, plan };
+  const next: AppState = { ...state, plan: { ...plan, revision: plan.revision + 1 } };
   saveAppState(next);
   return next;
 }
@@ -586,7 +592,7 @@ export function saveRunDays(
   runDays: Weekday[],
   plan: TrainingPlan,
 ): AppState {
-  const next: AppState = { ...state, runDays, plan };
+  const next: AppState = { ...state, runDays, plan: { ...plan, revision: plan.revision + 1 } };
   saveAppState(next);
   return next;
 }
@@ -601,7 +607,11 @@ export function saveCrossTrainingDays(
   crossTrainingDays: Weekday[],
   plan: TrainingPlan,
 ): AppState {
-  const next: AppState = { ...state, crossTrainingDays, plan };
+  const next: AppState = {
+    ...state,
+    crossTrainingDays,
+    plan: { ...plan, revision: plan.revision + 1 },
+  };
   saveAppState(next);
   return next;
 }

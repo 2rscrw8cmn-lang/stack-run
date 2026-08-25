@@ -129,6 +129,48 @@ describe("migrateAppState from version 9", () => {
   });
 });
 
+describe("migrateAppState from version 10", () => {
+  it("backfills revision, originalPlan, and race.goal honestly, for the active plan and every archived one", () => {
+    const seeded = createSeededAppState();
+    // Schema 10's plan shape predates #179: no revision, no originalPlan, no
+    // race.goal, on either the active plan or an archived one.
+    const legacyPlan = { ...seeded.plan } as Record<string, unknown>;
+    delete legacyPlan.revision;
+    delete legacyPlan.originalPlan;
+    const legacyRace = { ...seeded.plan.race } as Record<string, unknown>;
+    delete legacyRace.goal;
+    legacyPlan.race = legacyRace;
+
+    const archived = { ...legacyPlan, id: "archived-plan" };
+    const version10: Record<string, unknown> = {
+      ...seeded,
+      schemaVersion: 10,
+      plan: legacyPlan,
+      planHistory: [
+        {
+          id: "history-1",
+          plan: archived,
+          raceSetup: null,
+          runLinks: {},
+          archivedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    };
+
+    const migrated = migrateAppState(version10);
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.plan?.revision).toBe(1);
+    // Honestly null: this plan may already have been edited under schema 10,
+    // and there is no way to recover its true as-generated form.
+    expect(migrated.plan?.originalPlan).toBeNull();
+    expect(migrated.plan?.race.goal).toEqual({ type: "none" });
+    expect(migrated.planHistory[0].plan.revision).toBe(1);
+    expect(migrated.planHistory[0].plan.originalPlan).toBeNull();
+    expect(migrated.planHistory[0].plan.race.goal).toEqual({ type: "none" });
+  });
+});
+
 describe("migrateAppState from version 4", () => {
   it("keeps every run's values, timestamps, and scheduled link", () => {
     const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));

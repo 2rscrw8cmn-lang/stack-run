@@ -47,7 +47,7 @@ function plan(scheduled: Workout): TrainingPlan {
     schemaVersion: 1,
     id: "plan",
     name: "Plan",
-    race: { name: "Race", date: "2026-12-05", distanceMiles: 13.1 },
+    race: { name: "Race", date: "2026-12-05", distanceMiles: 13.1, goal: { type: "none" } },
     startDate: "2026-08-10",
     endDate: "2026-12-05",
     weeks: [{
@@ -58,6 +58,8 @@ function plan(scheduled: Workout): TrainingPlan {
       workouts: [scheduled],
     }],
     notes: [],
+    revision: 1,
+    originalPlan: null,
   };
 }
 

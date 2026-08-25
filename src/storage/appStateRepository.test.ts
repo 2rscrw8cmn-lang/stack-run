@@ -459,6 +459,20 @@ describe("savePlan", () => {
     expect(loadAppState().runLogs).toHaveLength(1);
     expect(loadAppState().blockPlacements).toHaveLength(1);
   });
+
+  it("bumps the plan's revision once per save, leaving originalPlan untouched", () => {
+    const state = createSeededAppState();
+    const startingRevision = state.plan.revision;
+    const original = state.plan.originalPlan;
+
+    const once = savePlan(state, moveWorkout(state.plan, "workout-002", "2026-08-05"));
+    expect(once.plan!.revision).toBe(startingRevision + 1);
+    expect(once.plan!.originalPlan).toEqual(original);
+
+    const twice = savePlan(once, moveWorkout(once.plan!, "workout-004", "2026-08-06"));
+    expect(twice.plan!.revision).toBe(startingRevision + 2);
+    expect(twice.plan!.originalPlan).toEqual(original);
+  });
 });
 
 describe("resetAppState", () => {
@@ -539,6 +553,19 @@ describe("saveGeneratedPlan", () => {
 
     expect(next.runLogs[0].workoutId).toBeNull();
     expect(next.planHistory[0].runLinks).toEqual({ [runId]: "workout-002" });
+  });
+
+  it("does not bump the incoming plan's revision — it is already fresh from generation", () => {
+    const state = createSeededAppState();
+    const replacement = { ...state.plan, id: "replacement-plan", revision: 1, originalPlan: null };
+
+    const next = saveGeneratedPlan(
+      state,
+      { name: "Replacement", date: "2027-05-01", distance: "half", level: "novice" },
+      replacement,
+    );
+
+    expect(next.plan!.revision).toBe(1);
   });
 });
 
