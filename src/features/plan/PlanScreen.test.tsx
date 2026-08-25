@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { RunLog } from "../../domain/types";
+import type { RunActivityType, RunLog } from "../../domain/types";
 import { historicalRun } from "../../history/runnerFixtures";
 import { unifiedRunnerHistory } from "../../history/runnerRun";
+import type { PlanAdjustmentRecord } from "../../domain/planProvenance";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { PlanScreen } from "./PlanScreen";
 
@@ -414,5 +415,75 @@ describe("PlanScreen workout detail", () => {
     await user.click(screen.getByRole("button", { name: "Save Run" }));
 
     expect(onSaveRun.mock.calls[0][0].id).toBe("workout-004");
+  });
+});
+
+describe("PlanScreen assistant provenance (#182)", () => {
+  const futureWorkout = plan.weeks[0]!.workouts.find((w) => w.date === "2026-08-08")!;
+
+  function adjustmentFor(overrides: Partial<PlanAdjustmentRecord> = {}): PlanAdjustmentRecord {
+    return {
+      id: "adj-1",
+      operations: [{
+        op: "editRun",
+        workoutId: futureWorkout.id,
+        values: {
+          // Aug 8 is a real run day in the seed plan, never rest.
+          type: futureWorkout.type as RunActivityType,
+          title: futureWorkout.title,
+          targetDistanceMiles: futureWorkout.targetDistanceMiles,
+          details: futureWorkout.details,
+        },
+      }],
+      reason: "Runner asked for a lighter week",
+      beforeWorkouts: [{ ...futureWorkout, title: "Old title before assistant edit" }],
+      resultingPlanRevision: plan.revision,
+      createdAt: "2026-08-05T00:00:00Z",
+      ...overrides,
+    };
+  }
+
+  it("shows the sparkle only on the workout an adjustment currently matches", () => {
+    renderPlan({ planAdjustments: [adjustmentFor()] });
+    const badges = screen.getAllByRole("button", { name: "Assistant-adjusted — view change" });
+    expect(badges).toHaveLength(1);
+  });
+
+  it("shows nothing when there is no matching adjustment", () => {
+    renderPlan({ planAdjustments: [] });
+    expect(
+      screen.queryByRole("button", { name: "Assistant-adjusted — view change" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens a compact sheet describing the change, when it happened, and the reason", async () => {
+    const { user } = renderPlan({ planAdjustments: [adjustmentFor()] });
+    await user.click(screen.getByRole("button", { name: "Assistant-adjusted — view change" }));
+    const sheet = screen.getByRole("dialog", { name: "Assistant Change" });
+    expect(within(sheet).getByText(`Title: Old title before assistant edit → ${futureWorkout.title}`)).toBeInTheDocument();
+    expect(within(sheet).getByText(/Runner asked for a lighter week/)).toBeInTheDocument();
+  });
+
+  it("offers Undo when the plan has not changed since, and restores the prior fields through onEditPlan", async () => {
+    const onEditPlan = vi.fn();
+    const { user } = renderPlan({ planAdjustments: [adjustmentFor()], onEditPlan });
+    await user.click(screen.getByRole("button", { name: "Assistant-adjusted — view change" }));
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(onEditPlan).toHaveBeenCalledTimes(1);
+    const restored = onEditPlan.mock.calls[0][0];
+    const restoredWorkout = restored.weeks
+      .flatMap((week: { workouts: { id: string }[] }) => week.workouts)
+      .find((w: { id: string }) => w.id === futureWorkout.id);
+    expect(restoredWorkout.title).toBe("Old title before assistant edit");
+  });
+
+  it("withholds Undo once the plan has moved on since this adjustment landed", async () => {
+    const { user } = renderPlan({
+      planAdjustments: [adjustmentFor({ resultingPlanRevision: plan.revision + 5 })],
+    });
+    await user.click(screen.getByRole("button", { name: "Assistant-adjusted — view change" }));
+    const sheet = screen.getByRole("dialog", { name: "Assistant Change" });
+    expect(within(sheet).queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
   });
 });
