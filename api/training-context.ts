@@ -25,11 +25,13 @@ import type { PersonalCloudSnapshot } from "../src/personal-sync/types.js";
 import {
   projectExternalTrainingContext,
   type ExternalCrewSummaryRow,
+  type ExternalPlanAdjustmentRow,
 } from "../src/external/trainingContextProjection.js";
 import {
   checkSupabaseBoundary,
   deploymentEnvironmentFromVercel,
 } from "../src/crew/supabaseEnvironment.js";
+import { todayUtc } from "../src/domain/dates.js";
 
 type Environment = {
   SUPABASE_URL?: string;
@@ -53,11 +55,6 @@ function json(status: number, body: object, extra?: HeadersInit): Response {
   });
 }
 
-/** Today in UTC. The route has no device-local timezone to read this from. */
-function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 async function sha256Hex(value: string): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -66,6 +63,25 @@ async function sha256Hex(value: string): Promise<string> {
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
+    : null;
+}
+
+/** Untrusted network JSON in, an explicit allowlist out — nothing here is ever spread. */
+function parsePlanAdjustmentRow(value: unknown): ExternalPlanAdjustmentRow | null {
+  const row = record(value);
+  const kind = row?.kind === "apply" || row?.kind === "undo" ? row.kind : null;
+  return typeof row?.appliedAt === "string" &&
+    kind &&
+    Array.isArray(row.operations) &&
+    (row.reason === null || typeof row.reason === "string") &&
+    typeof row.reverted === "boolean"
+    ? {
+        appliedAt: row.appliedAt,
+        kind,
+        operations: row.operations,
+        reason: row.reason,
+        reverted: row.reverted,
+      }
     : null;
 }
 
@@ -213,7 +229,10 @@ export async function readTrainingContext(
     const crewRows = Array.isArray(raw.crew)
       ? raw.crew.map(parseCrewRow).filter((row): row is ExternalCrewSummaryRow => row !== null)
       : [];
-    return json(200, projectExternalTrainingContext(state, today, crewRows));
+    const planAdjustmentRows = Array.isArray(raw.planAdjustments)
+      ? raw.planAdjustments.map(parsePlanAdjustmentRow).filter((row): row is ExternalPlanAdjustmentRow => row !== null)
+      : [];
+    return json(200, projectExternalTrainingContext(state, today, crewRows, planAdjustmentRows));
   } catch {
     // A malformed cloud document is a data-integrity problem, not something
     // this route can explain to an external caller beyond "try again later."

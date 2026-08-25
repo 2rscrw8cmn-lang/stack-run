@@ -4,6 +4,7 @@ import type { RunLog } from "../domain/types";
 import {
   projectExternalTrainingContext,
   type ExternalCrewSummaryRow,
+  type ExternalPlanAdjustmentRow,
 } from "./trainingContextProjection";
 import { presentableRunnerSignals } from "../signals/runnerSignals";
 import { unifiedRunnerHistory } from "../history/runnerRun";
@@ -166,8 +167,34 @@ describe("projectExternalTrainingContext", () => {
     expect(context.crew).toEqual(rows);
   });
 
-  it("never fabricates plan-adjustment history — always the explicit empty array", () => {
+  it("is honest about no plan-adjustment history when there is none", () => {
     const context = projectExternalTrainingContext(createInitialAppState(), "2026-08-15");
     expect(context.planAdjustments).toEqual([]);
+  });
+
+  it("projects real plan-adjustment history (#180) rather than a permanent stub", () => {
+    const rows: ExternalPlanAdjustmentRow[] = [
+      {
+        appliedAt: "2026-08-14T12:00:00Z",
+        kind: "apply",
+        operations: [{ op: "skip", workoutId: "workout-1" }],
+        reason: "Runner asked for a lighter week",
+        reverted: false,
+      },
+      {
+        appliedAt: "2026-08-13T12:00:00Z",
+        kind: "undo",
+        operations: [{ op: "move", workoutId: "workout-2", toDate: "2026-08-20" }],
+        reason: null,
+        reverted: false,
+      },
+    ];
+    const context = projectExternalTrainingContext(
+      createInitialAppState(),
+      "2026-08-15",
+      [],
+      rows,
+    );
+    expect(context.planAdjustments).toEqual(rows);
   });
 });

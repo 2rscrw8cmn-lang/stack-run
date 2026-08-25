@@ -33,6 +33,15 @@ export function todayLocalDate(): string {
   return formatLocalDate(new Date());
 }
 
+/**
+ * Today in UTC, as a `YYYY-MM-DD` local-date string. For server code with no
+ * device-local timezone to read `todayLocalDate()` from — a Vercel function
+ * has no "local" clock, only UTC.
+ */
+export function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function compareLocalDates(a: string, b: string): number {
   return parseLocalDate(a).getTime() - parseLocalDate(b).getTime();
 }

@@ -43,8 +43,8 @@ export interface ExternalTrainingContext {
   build: ExternalBuildContext;
   signals: TrainingSignal[];
   crew: ExternalCrewSummary[];
-  /** Not yet implemented — see #180. Always empty, never fabricated. */
-  planAdjustments: [];
+  /** Most recent first, capped server-side. See #180 / docs/PLAN_ADJUSTMENTS.md. */
+  planAdjustments: ExternalPlanAdjustment[];
 }
 
 export interface ExternalUpcomingWorkout {
@@ -139,7 +139,7 @@ function projectUpcomingWorkout(workout: Workout): ExternalUpcomingWorkout {
   };
 }
 
-function projectPlan(
+export function projectPlan(
   plan: TrainingPlan,
   runLogs: AppState["runLogs"],
   today: string,
@@ -251,6 +251,34 @@ function projectBuild(
   };
 }
 
+/** A plan-adjustment audit row (#180), narrowed to what an external caller needs to see. */
+export interface ExternalPlanAdjustment {
+  appliedAt: string;
+  kind: "apply" | "undo";
+  operations: unknown[];
+  reason: string | null;
+  reverted: boolean;
+}
+
+/** Raw shape `external_training_snapshot` returns per adjustment row. */
+export interface ExternalPlanAdjustmentRow {
+  appliedAt: string;
+  kind: "apply" | "undo";
+  operations: unknown[];
+  reason: string | null;
+  reverted: boolean;
+}
+
+function projectPlanAdjustment(row: ExternalPlanAdjustmentRow): ExternalPlanAdjustment {
+  return {
+    appliedAt: row.appliedAt,
+    kind: row.kind,
+    operations: row.operations,
+    reason: row.reason,
+    reverted: row.reverted,
+  };
+}
+
 /** Raw per-crew summary row the caller reads for the viewer's own membership only. */
 export interface ExternalCrewSummaryRow {
   crewName: string;
@@ -278,6 +306,7 @@ export function projectExternalTrainingContext(
   state: Pick<AppState, "plan" | "planHistory" | "runLogs" | "blockPlacements">,
   today: string,
   crewSummaries: readonly ExternalCrewSummaryRow[] = [],
+  planAdjustments: readonly ExternalPlanAdjustmentRow[] = [],
 ): ExternalTrainingContext {
   const { history, recent } = projectRecentRuns(state, today);
 
@@ -294,6 +323,6 @@ export function projectExternalTrainingContext(
       runLogs: state.runLogs,
     }),
     crew: crewSummaries.map(projectCrewSummary),
-    planAdjustments: [],
+    planAdjustments: planAdjustments.map(projectPlanAdjustment),
   };
 }

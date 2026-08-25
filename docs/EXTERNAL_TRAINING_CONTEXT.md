@@ -14,16 +14,16 @@ reasoning. **STACK makes no call to any AI or model provider, anywhere in this
 path, and never will as part of this feature.** There is no STACK-funded
 inference cost and none is planned.
 
-This document covers only the read side. There is no way to write a plan
-change through this API yet — that is #180, a separate, later, atomically
-audited slice. Nothing described here should be mistaken for the finished
-integration:
+This document covers the read side only. The write side —
+`api/plan-adjustments.ts`, atomic and audited — is #180, documented
+separately in `docs/PLAN_ADJUSTMENTS.md`. Nothing described here should be
+mistaken for the finished integration:
 
 | Slice | What it adds | Status |
 |---|---|---|
 | #178 (this doc) | Read-only training context | Done |
 | #179 | Structured race goal + original/current/actual plan truth (see `docs/PLAN_TRUTH_MODEL.md`) | Done |
-| #180 | Atomic plan adjustments + audit ledger + undo | Not started |
+| #180 | Atomic plan adjustments + audit ledger + undo (see `docs/PLAN_ADJUSTMENTS.md`) | Done |
 | #181 | Formal auth scopes + provider-neutral transport | Not started |
 | #182 | The AI-sparkle provenance UI | Not started |
 | #183 | Real external-assistant end-to-end QA | Not started |
@@ -78,8 +78,9 @@ service *they* chose — so the withholding is narrower than Crew's:
   A token for an account that has never turned on personal cloud sync gets a
   `200` with an honestly empty context, not an error — mirrored from
   `loadPersonalCloudSnapshot`'s own null-when-uninitialized behavior.
-  `planAdjustments` is always `[]`, because that model does not exist yet
-  (#180).
+  `planAdjustments` holds the account's most recent adjustment history (see
+  `docs/PLAN_ADJUSTMENTS.md`, #180) — empty until an assistant has actually
+  applied one.
 - **Race goal**: `name`/`date`/`distanceMiles` from `TrainingPlan.race`, plus
   the structured `goal` (#179) — one of `{type: "none" | "finish"}` or
   `{type: "time", targetFinishSeconds}` / `{type: "pace",
