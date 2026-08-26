@@ -6,6 +6,9 @@
     "api/intervals.ts": {
       "maxDuration": 30
     },
+    "api/training-context.ts": {
+      "maxDuration": 30
+    },
     "api/crew-invite.ts": {
       "maxDuration": 10
     },

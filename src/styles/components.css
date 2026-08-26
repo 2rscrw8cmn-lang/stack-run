@@ -5518,6 +5518,28 @@ textarea.run-input {
 /* On a phone the trailing state word costs the crew name more than it is
    worth beside it, so it drops under the name rather than squeezing it to
    three lines. The pressed border and fill still say which crew is viewed. */
+.crew-settings__external-tokens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.crew-settings__external-token-row {
+  min-width: 0;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+}
+.crew-settings__external-token-body { min-width: 0; display: grid; gap: 2px; }
+.crew-settings__external-token-body small { color: var(--text-muted); }
+
 @media (max-width: 420px) {
   .crew-settings__crew-option { grid-template-columns: auto minmax(0, 1fr); }
   .crew-settings__crew-option > .machine-label { grid-column: 2; }
@@ -5717,6 +5739,7 @@ textarea.run-input {
   cursor: pointer;
 }
 .crew-settings__icon-row .runner-icon { justify-self: center; }
+.crew-settings__icon-row-glyph { justify-self: center; color: var(--text-muted); }
 .crew-settings__icon-row-body { min-width: 0; display: grid; gap: 2px; }
 .crew-settings__icon-row-body small { color: var(--text-muted); }
 
