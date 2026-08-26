@@ -108,6 +108,7 @@ function controller(
     crewBuildPlacementPending: false,
     crewBuildPlacementError: null,
     externalApiTokens: null,
+    planAdjustments: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -135,6 +136,7 @@ function controller(
     refreshExternalApiTokens: action,
     createExternalApiToken: vi.fn(async () => "token"),
     revokeExternalApiToken: action,
+    refreshPlanAdjustments: action,
     ...overrides,
   };
 }

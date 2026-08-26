@@ -527,6 +527,7 @@ Current baseline:
 | Build | `Blocks` |
 | Blocks ready | `Boxes` |
 | Streak | `Flame` |
+| Assistant-adjusted (#182) | `Sparkles` |
 
 Typical sizes:
 

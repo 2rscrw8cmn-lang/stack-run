@@ -18,6 +18,12 @@ import type {
   Workout,
 } from "../../domain/types";
 import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
+import { restoreWorkout } from "../../domain/planEdit";
+import {
+  canUndoProvenance,
+  deriveWorkoutProvenance,
+  type WorkoutProvenanceSlot,
+} from "../../domain/planProvenance";
 import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals";
 import { RunFoundCard } from "./RunFoundCard";
 import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
@@ -65,6 +71,12 @@ interface TodayScreenProps {
     values: ValidRunEntry,
     runLogId?: string,
   ) => void;
+  /**
+   * Plan editing (#182): only ever used to undo an assistant adjustment on
+   * `NextWorkoutCard` — Today has no other plan-mutation surface. Absent
+   * means no Undo is offered, the same as `planAdjustments` being absent.
+   */
+  onEditPlan?: (plan: TrainingPlan) => void;
   availability?: AvailabilityCalendar | null;
   candidates?: IntervalsCandidate[];
   /** Opens Run Data on this candidate's own review state. */
@@ -96,6 +108,7 @@ export function TodayScreen({
   onStartPlacing = () => undefined,
   onStartCrewPlacing = () => undefined,
   onSaveRun = () => undefined,
+  onEditPlan,
   availability = null,
   candidates = [],
   onReviewCandidate = () => undefined,
@@ -191,6 +204,26 @@ export function TodayScreen({
     setEntryVisit((visit) => visit + 1);
     setEntryOpen(true);
   }
+
+  /**
+   * #182: the sparkle's data for `NextWorkoutCard` — the one Today surface
+   * that can ever be assistant-modified, since `nextScheduledWorkout` is
+   * always strictly future. `TodayWorkoutCard` (today's own workout) never
+   * gets one: nothing in the ledger can ever name it.
+   */
+  const nextProvenance: WorkoutProvenanceSlot | null = (() => {
+    if (!model.next || !plan || !raceCrew?.planAdjustments) return null;
+    const workout = model.next;
+    const value = deriveWorkoutProvenance(workout, raceCrew.planAdjustments);
+    if (!value) return null;
+    return {
+      value,
+      // Undo needs somewhere to send the restored plan; without it, the
+      // sparkle still describes the change, it just offers no action.
+      canUndo: Boolean(onEditPlan) && canUndoProvenance(value, plan.revision),
+      onUndo: () => onEditPlan?.(restoreWorkout(plan, value.before)),
+    };
+  })();
 
   return (
     <div className="today-screen">
@@ -303,7 +336,7 @@ export function TodayScreen({
         <TodaySignalNote signal={model.signal} onViewSignals={onViewRuns} />
       )}
 
-      {model.next && <NextWorkoutCard workout={model.next} />}
+      {model.next && <NextWorkoutCard workout={model.next} provenance={nextProvenance} />}
 
       <BuildPreview
         blocks={build.blocks}

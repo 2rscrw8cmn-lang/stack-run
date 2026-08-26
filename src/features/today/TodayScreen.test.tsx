@@ -1,10 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { BlockPlacement, RunLog } from "../../domain/types";
+import type { BlockPlacement, RunActivityType, RunLog } from "../../domain/types";
 import type { CrewDashboardData, CrewSharedRun } from "../../crew/types";
 import type { RaceCrewController } from "../../crew/useRaceCrew";
 import type { RunnerRun } from "../../history/runnerRun";
+import type { PlanAdjustmentRecord } from "../../domain/planProvenance";
 import { signalRuns } from "../../signals/signalTestRuns";
 import { loadSeedPlan } from "../../seed/loadSeedPlan";
 import { TodayScreen } from "./TodayScreen";
@@ -375,6 +376,57 @@ describe("TodayScreen Up next", () => {
   it("omits the section when no run remains before the race", () => {
     renderToday({ today: "2026-12-05" });
     expect(screen.queryByText("Up next")).not.toBeInTheDocument();
+  });
+});
+
+describe("TodayScreen assistant provenance (#182)", () => {
+  const nextWorkout = plan.weeks[0]!.workouts.find((w) => w.date === "2026-08-06")!;
+  const todayWorkout = plan.weeks[0]!.workouts.find((w) => w.date === "2026-08-04")!;
+
+  function adjustmentFor(workoutId: string, workout: typeof nextWorkout): PlanAdjustmentRecord {
+    return {
+      id: "adj-1",
+      operations: [{
+        op: "editRun",
+        workoutId,
+        // Both fixture workouts (Aug 4 and Aug 6) are real run days, never rest.
+        values: { type: workout.type as RunActivityType, title: workout.title, targetDistanceMiles: workout.targetDistanceMiles, details: workout.details },
+      }],
+      reason: null,
+      beforeWorkouts: [{ ...workout, title: "Old title" }],
+      resultingPlanRevision: plan.revision,
+      createdAt: "2026-08-01T00:00:00Z",
+    };
+  }
+
+  it("shows the sparkle on Up next when the ledger matches it", () => {
+    renderToday({
+      today: "2026-08-04",
+      raceCrew: { ...crewWith({}), planAdjustments: [adjustmentFor(nextWorkout.id, nextWorkout)] },
+    });
+    expect(screen.getByRole("button", { name: "Assistant-adjusted — view change" })).toBeInTheDocument();
+  });
+
+  it("never shows a sparkle on today's own workout, even if the ledger names it", () => {
+    renderToday({
+      today: "2026-08-04",
+      raceCrew: { ...crewWith({}), planAdjustments: [adjustmentFor(todayWorkout.id, todayWorkout)] },
+    });
+    // Today's own workout can never have been assistant-adjusted (only strictly
+    // future workouts can), so nothing here should ever check the ledger for it.
+    expect(screen.queryByRole("button", { name: "Assistant-adjusted — view change" })).not.toBeInTheDocument();
+  });
+
+  it("undoes through onEditPlan when Undo is used from Up next", async () => {
+    const onEditPlan = vi.fn();
+    const { user } = renderToday({
+      today: "2026-08-04",
+      onEditPlan,
+      raceCrew: { ...crewWith({}), planAdjustments: [adjustmentFor(nextWorkout.id, nextWorkout)] },
+    });
+    await user.click(screen.getByRole("button", { name: "Assistant-adjusted — view change" }));
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(onEditPlan).toHaveBeenCalledTimes(1);
   });
 });
 
