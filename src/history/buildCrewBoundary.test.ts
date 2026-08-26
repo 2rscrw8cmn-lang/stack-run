@@ -2,25 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   APP_STATE_STORAGE_KEY,
   HISTORICAL_ACTIVITIES_STORAGE_KEY,
-} from "../storage/storageKeys";
+} from "../storage/storageKeys.js";
 import {
   clearHistoricalActivities,
   loadHistoricalActivities,
   saveHistoricalActivities,
-} from "../storage/historicalActivityRepository";
-import { createInitialAppState } from "../storage/migrations";
-import { earnedBlocks, selectBuildViewModel } from "../domain/build";
-import { autoPlaceOption, placementOptions } from "../domain/placement";
-import { footprintFor } from "../domain/footprint";
-import type { AppState, BlockPlacement } from "../domain/types";
+} from "../storage/historicalActivityRepository.js";
+import { createInitialAppState } from "../storage/migrations.js";
+import { earnedBlocks, selectBuildViewModel } from "../domain/build.js";
+import { autoPlaceOption, placementOptions } from "../domain/placement.js";
+import { footprintFor } from "../domain/footprint.js";
+import type { AppState, BlockPlacement } from "../domain/types.js";
 import {
   projectMemberSummary,
   projectSharedRuns,
   projectionFingerprint,
-} from "../crew/projection";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";
-import { unifiedRunnerHistory } from "./runnerRun";
+} from "../crew/projection.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures.js";
+import { unifiedRunnerHistory } from "./runnerRun.js";
 
 /**
  * NEXT-6 — where the runner-history model stops.

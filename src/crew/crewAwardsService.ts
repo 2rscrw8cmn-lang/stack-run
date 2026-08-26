@@ -4,12 +4,12 @@ import {
   CREW_BUILD_PLACEMENT_CONFLICT,
   CREW_BUILD_PLACEMENT_UNSUPPORTED,
   CREW_BUILD_SUPPORTING_BLOCK,
-} from "./crewBuildPlacement";
+} from "./crewBuildPlacement.js";
 import {
   type CrewAwardBlockRecord,
   type CrewAwardType,
-} from "./awards";
-import { isCrewAwardFinalizationSafe } from "./weekRollover";
+} from "./awards.js";
+import { isCrewAwardFinalizationSafe } from "./weekRollover.js";
 
 interface AwardLoadResult {
   available: boolean;

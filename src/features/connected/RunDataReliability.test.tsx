@@ -2,18 +2,18 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { fetchIntervals } from "../../connected/intervals";
-import { selectPlanWeekViewModel } from "../../domain/plan";
-import type { AppState } from "../../domain/types";
+import type { fetchIntervals } from "../../connected/intervals.js";
+import { selectPlanWeekViewModel } from "../../domain/plan.js";
+import type { AppState } from "../../domain/types.js";
 import {
   acceptIntervalsRun,
   saveIntervalsSync,
   saveRunLog,
-} from "../../storage/appStateRepository";
-import { loadPendingIntervalsCandidates } from "../../storage/intervalsPendingRepository";
-import { createSeededAppState } from "../../storage/migrations";
-import { RunDataSheet } from "./RunDataSheet";
-import { useConnectedSync } from "./useConnectedSync";
+} from "../../storage/appStateRepository.js";
+import { loadPendingIntervalsCandidates } from "../../storage/intervalsPendingRepository.js";
+import { createSeededAppState } from "../../storage/migrations.js";
+import { RunDataSheet } from "./RunDataSheet.js";
+import { useConnectedSync } from "./useConnectedSync.js";
 
 /**
  * Issues #40 and #41 arriving together, which is how a real device meets them.

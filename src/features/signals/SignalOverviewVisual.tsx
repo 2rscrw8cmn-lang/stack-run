@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
-import type { RunnerRun } from "../../history/runnerRun";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { signalOverviewVisual } from "./signalOverview";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { signalOverviewVisual } from "./signalOverview.js";
 
 interface SignalOverviewVisualProps {
   signal: TrainingSignal;

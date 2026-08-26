@@ -4,15 +4,15 @@ import {
   compareLocalDates,
   formatLocalDate,
   parseLocalDate,
-} from "../domain/dates";
+} from "../domain/dates.js";
 import type {
   AppState,
   BlockPlacement,
   RunActivityType,
   RunLog,
   RunSource,
-} from "../domain/types";
-import { crewAwardMetricsByRunId, type CrewRunAwardMetrics } from "./awardMetrics";
+} from "../domain/types.js";
+import { crewAwardMetricsByRunId, type CrewRunAwardMetrics } from "./awardMetrics.js";
 
 export interface CrewSharedRunProjection {
   localRunId: string;

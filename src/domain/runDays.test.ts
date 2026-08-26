@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import { earnsBlock } from "./build";
-import { findWorkout } from "./planEdit";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import { earnsBlock } from "./build.js";
+import { findWorkout } from "./planEdit.js";
 import {
   applyRunDays,
   currentRunDays,
   planRunDayChange,
   weekdayOf,
   type Weekday,
-} from "./runDays";
-import type { RunLog } from "./types";
+} from "./runDays.js";
+import type { RunLog } from "./types.js";
 
 const plan = loadSeedPlan();
 const START = "2026-08-01";

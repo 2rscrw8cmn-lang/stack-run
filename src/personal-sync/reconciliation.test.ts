@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { IntervalsCandidate } from "../connected/intervals";
-import type { BlockPlacement, RunLog } from "../domain/types";
-import { createSeededAppState } from "../storage/migrations";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import type { BlockPlacement, RunLog } from "../domain/types.js";
+import { createSeededAppState } from "../storage/migrations.js";
 import {
   appStateFromCloud,
   canonicalizeFirstDevice,
@@ -9,8 +9,8 @@ import {
   mergeMissingRunPlacements,
   reconcileLegacyRuns,
   rewritePlacementRunIds,
-} from "./reconciliation";
-import type { PersonalCloudRun, PersonalCloudSnapshot } from "./types";
+} from "./reconciliation.js";
+import type { PersonalCloudRun, PersonalCloudSnapshot } from "./types.js";
 
 const createdAt = "2026-08-10T12:00:00.000Z";
 

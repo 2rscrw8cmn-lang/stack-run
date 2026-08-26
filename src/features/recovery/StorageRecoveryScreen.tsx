@@ -1,8 +1,8 @@
 import { Download, RotateCcw, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { StackMark } from "../../components/shared/StackMark";
-import { Button } from "../../components/ui/Button";
-import type { StorageLoadFailure } from "../../storage/appStateRepository";
+import { StackMark } from "../../components/shared/StackMark.js";
+import { Button } from "../../components/ui/Button.js";
+import type { StorageLoadFailure } from "../../storage/appStateRepository.js";
 
 interface StorageRecoveryScreenProps {
   reason: StorageLoadFailure;

@@ -2,9 +2,9 @@ import {
   CREW_AWARD_LABEL,
   formatCrewAwardResult,
   isFeatureCrewAward,
-} from "../../crew/awards";
-import type { CrewBuildReadyAward } from "../../crew/crewBuild";
-import { Button } from "../../components/ui/Button";
+} from "../../crew/awards.js";
+import type { CrewBuildReadyAward } from "../../crew/crewBuild.js";
+import { Button } from "../../components/ui/Button.js";
 import "./awardBlock.css";
 import "./crewAwardsPanel.css";
 

@@ -1,5 +1,5 @@
 import { CloudAlert, X } from "lucide-react";
-import { IconButton } from "../../components/ui/IconButton";
+import { IconButton } from "../../components/ui/IconButton.js";
 
 interface StorageWriteBannerProps {
   message: string;

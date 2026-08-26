@@ -1,12 +1,12 @@
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { formatPace } from "../../domain/runs";
-import type { CrewSharedRun } from "../../crew/types";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { PropsButton } from "./PropsButton";
-import { RunnerIcon } from "./RunnerIcon";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { formatPace } from "../../domain/runs.js";
+import type { CrewSharedRun } from "../../crew/types.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import { PropsButton } from "./PropsButton.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 
 interface CrewRunRowProps {
   run: CrewSharedRun;

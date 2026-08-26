@@ -1,5 +1,5 @@
 import { Shuffle } from "lucide-react";
-import type { CrewMemberAccent } from "../../crew/memberAccent";
+import type { CrewMemberAccent } from "../../crew/memberAccent.js";
 import {
   RUNNER_ICON_DRAW_ORDER,
   RUNNER_ICON_PARTS,
@@ -10,8 +10,8 @@ import {
   setRunnerIconPart,
   type RunnerIcon as RunnerIconModel,
   type RunnerIconPart,
-} from "../../crew/runnerIcon";
-import { RunnerIcon, RunnerIconPart as RunnerIconPartLayer } from "./RunnerIcon";
+} from "../../crew/runnerIcon.js";
+import { RunnerIcon, RunnerIconPart as RunnerIconPartLayer } from "./RunnerIcon.js";
 
 /**
  * Each part's own window onto the drawing, so a thumbnail is that part at a

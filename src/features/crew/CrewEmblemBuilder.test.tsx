@@ -8,8 +8,8 @@ import {
   decodeCrewEmblem,
   encodeCrewEmblem,
   type CrewEmblem,
-} from "../../crew/emblem";
-import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
+} from "../../crew/emblem.js";
+import { CrewEmblemBuilder } from "./CrewEmblemBuilder.js";
 
 const emblem: CrewEmblem = decodeCrewEmblem("E2-4.2-7.0-3.5-0-12.6")!;
 

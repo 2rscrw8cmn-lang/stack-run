@@ -1,11 +1,11 @@
-import { daysBetweenLocalDates } from "../domain/dates";
-import type { RunLog } from "../domain/types";
+import { daysBetweenLocalDates } from "../domain/dates.js";
+import type { RunLog } from "../domain/types.js";
 import {
   BEST_5K_METERS,
   isPlausibleBest5kSeconds,
   type IntervalsBestEfforts,
-} from "./intervals";
-import { best5kProbeStamp } from "../storage/best5kProbeRepository";
+} from "./intervals.js";
+import { best5kProbeStamp } from "../storage/best5kProbeRepository.js";
 
 /**
  * Filling in a source-verified best 5K for runs that already exist.

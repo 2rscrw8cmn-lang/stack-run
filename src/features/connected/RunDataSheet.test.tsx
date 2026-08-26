@@ -1,10 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { IntervalsCandidate } from "../../connected/intervals";
-import type { RunLog } from "../../domain/types";
-import { createSeededAppState } from "../../storage/migrations";
-import { RunDataSheet } from "./RunDataSheet";
+import type { IntervalsCandidate } from "../../connected/intervals.js";
+import type { RunLog } from "../../domain/types.js";
+import { createSeededAppState } from "../../storage/migrations.js";
+import { RunDataSheet } from "./RunDataSheet.js";
 
 const state = createSeededAppState();
 const workouts = state.plan.weeks.flatMap((week) => week.workouts);

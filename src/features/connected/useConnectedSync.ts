@@ -6,13 +6,13 @@ import {
   unresolvedCandidates,
   type IntervalsCandidate,
   type IntervalsConnection,
-} from "../../connected/intervals";
+} from "../../connected/intervals.js";
 import {
   loadPendingIntervalsCandidates,
   savePendingIntervalsCandidates,
-} from "../../storage/intervalsPendingRepository";
-import { addDaysToLocalDate, todayLocalDate } from "../../domain/dates";
-import type { AppState } from "../../domain/types";
+} from "../../storage/intervalsPendingRepository.js";
+import { addDaysToLocalDate, todayLocalDate } from "../../domain/dates.js";
+import type { AppState } from "../../domain/types.js";
 
 /**
  * How long a sync stays good enough to leave alone. A run reaches Intervals

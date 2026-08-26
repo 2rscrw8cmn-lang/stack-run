@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 import {
   addPlannedRun,
   changeToRest,
@@ -10,8 +10,8 @@ import {
   moveWorkout,
   PlanEditError,
   workoutOnDate,
-} from "./planEdit";
-import type { TrainingPlan } from "./types";
+} from "./planEdit.js";
+import type { TrainingPlan } from "./types.js";
 
 const seed = loadSeedPlan();
 

@@ -11,7 +11,7 @@ import {
   isLocalDateString,
   isSameLocalDate,
   parseLocalDate,
-} from "./dates";
+} from "./dates.js";
 
 describe("parseLocalDate", () => {
   it("parses year, month, and day as a local date, not UTC", () => {

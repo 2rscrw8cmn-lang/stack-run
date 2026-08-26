@@ -1,6 +1,6 @@
 import rawSeedPlan from "../../seed/stack-training-plan-2026.json";
-import { backfillPlan } from "../domain/racePlan";
-import type { TrainingPlan } from "../domain/types";
+import { backfillPlan } from "../domain/racePlan.js";
+import type { TrainingPlan } from "../domain/types.js";
 
 /**
  * Loads the bundled 2026 training plan. This is the only source used to

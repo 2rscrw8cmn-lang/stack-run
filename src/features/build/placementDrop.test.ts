@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dropMarks, placementImpact, PLACEMENT_DROP_MS } from "./placementDrop";
-import { heightForActivityType, widthForMiles } from "../../domain/footprint";
+import { dropMarks, placementImpact, PLACEMENT_DROP_MS } from "./placementDrop.js";
+import { heightForActivityType, widthForMiles } from "../../domain/footprint.js";
 
 /** The block a run of this shape earns, straight from the footprint domain. */
 function footprintFor(miles: number, type: Parameters<typeof heightForActivityType>[0]) {

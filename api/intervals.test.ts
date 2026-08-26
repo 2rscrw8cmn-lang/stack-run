@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { readIntervals } from "./intervals";
+import handler, { readIntervals } from "./intervals.js";
 
 /** Declared rather than imported, the way `intervals.ts` itself does it. */
 declare const process: { env: Record<string, string | undefined> };

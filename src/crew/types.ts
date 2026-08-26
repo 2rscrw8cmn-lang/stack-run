@@ -1,7 +1,7 @@
-import type { RunSource } from "../domain/types";
-import type { CrewEmblem } from "./emblem";
-import type { CrewMemberAccent } from "./memberAccent";
-import type { RunnerIcon } from "./runnerIcon";
+import type { RunSource } from "../domain/types.js";
+import type { CrewEmblem } from "./emblem.js";
+import type { CrewMemberAccent } from "./memberAccent.js";
+import type { RunnerIcon } from "./runnerIcon.js";
 
 export interface CrewProfile {
   id: string;

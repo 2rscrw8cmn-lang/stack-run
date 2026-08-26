@@ -1,11 +1,11 @@
 import { Circle, CircleCheck } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL, type BlockState } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import type { RunLog, Workout } from "../../domain/types";
-import type { IntervalsConnection } from "../../connected/intervals";
-import { RunResultDetail } from "./RunResultDetail";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL, type BlockState } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { RunLog, Workout } from "../../domain/types.js";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import { RunResultDetail } from "./RunResultDetail.js";
 
 interface WorkoutDetailSheetProps {
   workout: Workout;

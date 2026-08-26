@@ -1,11 +1,11 @@
-import type { AppState } from "../domain/types";
-import { migrateAppState } from "./migrations";
-import { backupStorageKey } from "./storageKeys";
+import type { AppState } from "../domain/types.js";
+import { migrateAppState } from "./migrations.js";
+import { backupStorageKey } from "./storageKeys.js";
 import type {
   PersonalCacheMetadata,
   PersonalOutbox,
   PersonalRevisionState,
-} from "../personal-sync/types";
+} from "../personal-sync/types.js";
 
 const ACTIVE_OWNER_KEY = "stack.personal.active-owner.v1";
 const ACCOUNT_STATE_PREFIX = "stack.app-state.account.v1.";

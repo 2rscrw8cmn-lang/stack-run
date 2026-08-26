@@ -1,4 +1,4 @@
-import type { Race } from "../domain/types";
+import type { Race } from "../domain/types.js";
 
 export interface CrewRace {
   raceName: string | null;

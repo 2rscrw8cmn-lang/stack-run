@@ -1,5 +1,5 @@
 import { CalendarPlus, ChevronRight, Flag } from "lucide-react";
-import type { PlanLifecycleNote as LifecycleNote } from "./planLifecycle";
+import type { PlanLifecycleNote as LifecycleNote } from "./planLifecycle.js";
 
 interface PlanLifecycleNoteProps {
   note: LifecycleNote;

@@ -1,16 +1,16 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { DEFAULT_CREW_EMBLEM, decodeCrewEmblem } from "../../crew/emblem";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { DEFAULT_CREW_EMBLEM, decodeCrewEmblem } from "../../crew/emblem.js";
 import type {
   CrewDashboardData,
   CrewMember,
   CrewMemberSummary,
   CrewSharedRun,
   RaceCrew,
-} from "../../crew/types";
-import { CrewScreen } from "./CrewScreen";
+} from "../../crew/types.js";
+import { CrewScreen } from "./CrewScreen.js";
 
 const TODAY = "2026-08-10";
 

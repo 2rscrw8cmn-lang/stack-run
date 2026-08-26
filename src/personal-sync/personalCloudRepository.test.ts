@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { createSeededAppState } from "../storage/migrations";
-import { loadAccountAppState, saveAccountAppState } from "../storage/personalSyncRepository";
+import { createSeededAppState } from "../storage/migrations.js";
+import { loadAccountAppState, saveAccountAppState } from "../storage/personalSyncRepository.js";
 import {
   initializePersonalCloud,
   loadPersonalCloudSnapshot,
@@ -11,7 +11,7 @@ import {
   savePersonalBuildDocument,
   savePersonalRun,
   savePersonalTrainingDocument,
-} from "./personalCloudRepository";
+} from "./personalCloudRepository.js";
 
 function rows(overrides: Partial<Record<string, unknown>> = {}) {
   const seed = createSeededAppState();

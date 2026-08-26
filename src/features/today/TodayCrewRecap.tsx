@@ -1,13 +1,13 @@
 import { X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { IconButton } from "../../components/ui/IconButton";
-import { isLocalDateString } from "../../domain/dates";
-import { formatMilesBuilt } from "../../domain/distance";
-import { formatWeekRange } from "../../domain/plan";
-import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
-import { useCrewAwards } from "../../crew/useCrewAwards";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { isCrewRecapReleaseOpen } from "../../crew/weekRollover";
+import { IconButton } from "../../components/ui/IconButton.js";
+import { isLocalDateString } from "../../domain/dates.js";
+import { formatMilesBuilt } from "../../domain/distance.js";
+import { formatWeekRange } from "../../domain/plan.js";
+import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem.js";
+import { useCrewAwards } from "../../crew/useCrewAwards.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { isCrewRecapReleaseOpen } from "../../crew/weekRollover.js";
 import {
   crewWeekRecap,
   crewWeekRecapKey,
@@ -16,16 +16,16 @@ import {
   lastClosedCrewWeek,
   type CrewWeekRecap,
   type CrewWeekRecapBeat,
-} from "../../crew/weekRecap";
+} from "../../crew/weekRecap.js";
 import {
   dismissCrewRecap,
   loadDismissedCrewRecapKeys,
   markCrewRecapSeen,
-} from "../../storage/crewRecapAcknowledgementRepository";
-import { CrewEmblem } from "../crew/CrewEmblem";
-import { CrewWeekRecapSheet } from "../crew/CrewWeekRecapSheet";
-import { RecapBuildCrop } from "../crew/RecapBuildCrop";
-import { crewRecapDemoData, crewRecapDemoVariant } from "../crew/crewRecapDemo";
+} from "../../storage/crewRecapAcknowledgementRepository.js";
+import { CrewEmblem } from "../crew/CrewEmblem.js";
+import { CrewWeekRecapSheet } from "../crew/CrewWeekRecapSheet.js";
+import { RecapBuildCrop } from "../crew/RecapBuildCrop.js";
+import { crewRecapDemoData, crewRecapDemoVariant } from "../crew/crewRecapDemo.js";
 import "../crew/crewWeekRecap.css";
 
 /**

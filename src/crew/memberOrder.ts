@@ -1,4 +1,4 @@
-import type { CrewMember } from "./types";
+import type { CrewMember } from "./types.js";
 
 /** Current runner first, then the stable membership order from joined_at. */
 export function viewerFirstMembers(

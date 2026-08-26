@@ -1,5 +1,5 @@
-import type { BuildSummaryMetrics } from "../../domain/build";
-import { formatMilesBuilt } from "../../domain/distance";
+import type { BuildSummaryMetrics } from "../../domain/build.js";
+import { formatMilesBuilt } from "../../domain/distance.js";
 
 interface BuildHeadingProps {
   metrics: BuildSummaryMetrics;

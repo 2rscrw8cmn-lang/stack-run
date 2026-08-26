@@ -1,9 +1,9 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RunLog } from "../../domain/types";
-import { BEST_5K_PASS_LIMIT } from "../../connected/best5k";
-import { loadBest5kProbes } from "../../storage/best5kProbeRepository";
-import { useBest5kEnrichment } from "./useBest5kEnrichment";
+import type { RunLog } from "../../domain/types.js";
+import { BEST_5K_PASS_LIMIT } from "../../connected/best5k.js";
+import { loadBest5kProbes } from "../../storage/best5kProbeRepository.js";
+import { useBest5kEnrichment } from "./useBest5kEnrichment.js";
 
 const TODAY = "2026-09-15";
 const CONNECTION = { mode: "local-api-key" as const, credential: "fake-key" };

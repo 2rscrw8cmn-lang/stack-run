@@ -1,12 +1,12 @@
-import { activeWeekNumber, blockStateFor, earnsBlock, scheduledRuns } from "./build";
+import { activeWeekNumber, blockStateFor, earnsBlock, scheduledRuns } from "./build.js";
 import {
   compareLocalDates,
   daysBetweenLocalDates,
   formatDateLabel,
   isAfterLocalDate,
   isBeforeLocalDate,
-} from "./dates";
-import type { RunLog, TrainingPlan, TrainingWeek, Workout } from "./types";
+} from "./dates.js";
+import type { RunLog, TrainingPlan, TrainingWeek, Workout } from "./types.js";
 
 /**
  * A day's status in the plan list. Rest is its own status rather than a

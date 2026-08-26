@@ -1,5 +1,5 @@
-import { addDaysToLocalDate } from "../domain/dates";
-import type { CrewSharedRun } from "./types";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import type { CrewSharedRun } from "./types.js";
 
 /** Privacy-safe Today window: teammate runs from today or yesterday, max two. */
 export function selectRecentCrewActivity(

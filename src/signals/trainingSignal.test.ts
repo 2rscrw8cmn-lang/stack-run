@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { historicalRun, stackRun } from "../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../history/runnerRun";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import { presentableRunnerSignals, runnerSignals } from "./runnerSignals";
+import { historicalRun, stackRun } from "../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import { presentableRunnerSignals, runnerSignals } from "./runnerSignals.js";
 import {
   classifyAbsoluteChange,
   classifyChange,
@@ -14,7 +14,7 @@ import {
   SIGNAL_WINDOW_DAYS,
   TRAINING_SIGNAL_PRIORITY,
   type TrainingSignal,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * The signal model itself: windows, ordering, availability and purity.

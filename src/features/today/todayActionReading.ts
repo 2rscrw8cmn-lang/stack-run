@@ -1,5 +1,5 @@
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import type { Workout } from "../../domain/types";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import type { Workout } from "../../domain/types.js";
 
 /**
  * What the Today Action Card says about a workout, once the repetition is out.

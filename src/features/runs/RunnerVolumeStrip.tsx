@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
-import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection";
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import type { WeeklyVolumePoint } from "../../history/runnerVolume";
+import { PlanActualColumns } from "../../components/charts/PlanActualColumns.js";
+import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import type { WeeklyVolumePoint } from "../../history/runnerVolume.js";
 
 interface RunnerVolumeStripProps {
   weeks: WeeklyVolumePoint[];

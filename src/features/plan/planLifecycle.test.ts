@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
 import {
   ANCHOR_WEEK_LABEL,
   planLifecycle,
   planLifecycleNote,
-} from "./planLifecycle";
+} from "./planLifecycle.js";
 
 // The seed plan starts Aug 3 2026 and races on Dec 5 2026.
 const plan = loadSeedPlan();

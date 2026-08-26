@@ -1,5 +1,5 @@
-import { isAfterLocalDate, isBeforeLocalDate } from "./dates";
-import type { Effort, RunLog, TrainingPlan, Workout } from "./types";
+import { isAfterLocalDate, isBeforeLocalDate } from "./dates.js";
+import type { Effort, RunLog, TrainingPlan, Workout } from "./types.js";
 
 export const EFFORT_LABEL: Record<Effort, string> = {
   rough: "Rough",

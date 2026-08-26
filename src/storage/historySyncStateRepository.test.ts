@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { emptyHistorySyncRecord } from "../history/historySyncPolicy";
+import { emptyHistorySyncRecord } from "../history/historySyncPolicy.js";
 import {
   clearHistorySyncRecord,
   loadHistorySyncRecord,
   saveHistorySyncRecord,
-} from "./historySyncStateRepository";
-import { HISTORY_SYNC_STATE_STORAGE_KEY } from "./storageKeys";
+} from "./historySyncStateRepository.js";
+import { HISTORY_SYNC_STATE_STORAGE_KEY } from "./storageKeys.js";
 
 const record = {
   lastSuccessAt: "2026-08-15T09:00:00.000Z",

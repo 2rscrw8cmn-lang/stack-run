@@ -1,5 +1,5 @@
-import type { CrewMemberSummary } from "./types";
-import { formatUpdatedAgo } from "../domain/dates";
+import type { CrewMemberSummary } from "./types.js";
+import { formatUpdatedAgo } from "../domain/dates.js";
 
 export const CREW_DASHBOARD_STALE_MS = 5 * 60_000;
 const CREW_DASHBOARD_WARNING_MS = 2 * 60 * 60_000;

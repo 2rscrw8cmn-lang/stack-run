@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { stackRun } from "../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../history/runnerRun";
-import { signalRuns } from "./signalTestRuns";
+import { stackRun } from "../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
+import { signalRuns } from "./signalTestRuns.js";
 import {
   volumeSignal,
   VOLUME_MINIMUM_MEANINGFUL_MILES,
   VOLUME_STABLE_BAND,
-} from "./volumeSignal";
+} from "./volumeSignal.js";
 
 const TODAY = "2026-08-15";
 

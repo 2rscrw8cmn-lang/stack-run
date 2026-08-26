@@ -1,5 +1,5 @@
-import type { RunLog } from "../../domain/types";
-import type { RunnerRun } from "../../history/runnerRun";
+import type { RunLog } from "../../domain/types.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
 
 /**
  * Everything about one run that belongs to its **source** rather than to STACK.

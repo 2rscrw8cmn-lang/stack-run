@@ -1,12 +1,12 @@
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Button } from "../../components/ui/Button";
-import { defaultSelectedIndex } from "../../components/charts/chartDefaultSelection";
-import { sparseTickIndices } from "../../components/charts/chartTickDensity";
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";
-import { RunnerRunRow } from "./RunnerRunRow";
+import { Button } from "../../components/ui/Button.js";
+import { defaultSelectedIndex } from "../../components/charts/chartDefaultSelection.js";
+import { sparseTickIndices } from "../../components/charts/chartTickDensity.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun.js";
+import { RunnerRunRow } from "./RunnerRunRow.js";
 import {
   HISTORY_METRIC_IDS,
   HISTORY_RANGE_IDS,
@@ -25,7 +25,7 @@ import {
   type HistoryRangeId,
   type HistoryRangeReading,
   type HistoryZoneMix,
-} from "./historyExplorerModel";
+} from "./historyExplorerModel.js";
 import "./historyExplorer.css";
 
 export const HISTORY_EXPLORER_PAGE_SIZE = 25;

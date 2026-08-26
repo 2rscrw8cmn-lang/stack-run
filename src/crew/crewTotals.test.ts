@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { crewBuildTotals } from "./crewTotals";
-import type { CrewBuildBlock } from "./crewBuild";
-import type { CrewBuildRun } from "./types";
+import { crewBuildTotals } from "./crewTotals.js";
+import type { CrewBuildBlock } from "./crewBuild.js";
+import type { CrewBuildRun } from "./types.js";
 
 function run(overrides: Partial<CrewBuildRun> = {}): CrewBuildRun {
   return {

@@ -1,12 +1,12 @@
 import { CalendarRange, ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
-import type { BlockedDay } from "../../domain/availability";
-import { ProgressBar } from "../../components/ui/ProgressBar";
-import { Section } from "../../components/ui/Section";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { PLAN_DAY_STATUS_LABEL } from "../../domain/plan";
-import type { TodayWeek } from "./todayModel";
+import type { BlockedDay } from "../../domain/availability.js";
+import { ProgressBar } from "../../components/ui/ProgressBar.js";
+import { Section } from "../../components/ui/Section.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { PLAN_DAY_STATUS_LABEL } from "../../domain/plan.js";
+import type { TodayWeek } from "./todayModel.js";
 
 interface ThisWeekStripProps {
   week: TodayWeek;

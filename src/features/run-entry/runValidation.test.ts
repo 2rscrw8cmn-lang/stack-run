@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateRunEntry, type RunEntryValues } from "./runValidation";
+import { validateRunEntry, type RunEntryValues } from "./runValidation.js";
 
 const TODAY = "2026-08-06";
 

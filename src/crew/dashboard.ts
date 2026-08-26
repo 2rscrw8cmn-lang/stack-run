@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { RunActivityType, RunSource } from "../domain/types";
-import { accentColorFrom, type CrewMemberAccent } from "./memberAccent";
-import { resolveRunnerIcon, runnerIconFromSeed, type RunnerIcon } from "./runnerIcon";
+import type { RunActivityType, RunSource } from "../domain/types.js";
+import { accentColorFrom, type CrewMemberAccent } from "./memberAccent.js";
+import { resolveRunnerIcon, runnerIconFromSeed, type RunnerIcon } from "./runnerIcon.js";
 import type {
   CrewDashboardData,
   CrewMember,
@@ -9,12 +9,12 @@ import type {
   CrewPropNotification,
   CrewRole,
   CrewSharedRun,
-} from "./types";
+} from "./types.js";
 import {
   CREW_BEST_5K_MAX_SECONDS,
   CREW_BEST_5K_MIN_SECONDS,
   isCrewEligibleLocalDate,
-} from "./projection";
+} from "./projection.js";
 
 /**
  * The shared-run columns every deployment has, and the ones a deployment might

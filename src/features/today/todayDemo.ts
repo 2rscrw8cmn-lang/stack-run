@@ -1,19 +1,19 @@
-import { addDaysToLocalDate } from "../../domain/dates";
+import { addDaysToLocalDate } from "../../domain/dates.js";
 import type {
   BlockPlacement,
   RunActivityType,
   RunLog,
   TrainingPlan,
   Workout,
-} from "../../domain/types";
+} from "../../domain/types.js";
 import {
   compareRunnerRuns,
   unifiedRunnerHistory,
   type RunnerRun,
-} from "../../history/runnerRun";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import type { IntervalsCandidate } from "../../connected/intervals";
-import { signalDemoRuns } from "../signals/signalDemo";
+} from "../../history/runnerRun.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import type { IntervalsCandidate } from "../../connected/intervals.js";
+import { signalDemoRuns } from "../signals/signalDemo.js";
 
 interface TodayDemoLocation {
   hostname: string;

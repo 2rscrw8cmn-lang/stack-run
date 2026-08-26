@@ -1,11 +1,11 @@
 import { Dumbbell } from "lucide-react";
 import type { CSSProperties } from "react";
-import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatCompactMiles, formatMiles } from "../../domain/distance";
-import { isManualRun } from "../../domain/runSource";
-import { Brick, type BrickFaceLabel } from "./Brick";
-import { dropMarks } from "./placementDrop";
+import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatCompactMiles, formatMiles } from "../../domain/distance.js";
+import { isManualRun } from "../../domain/runSource.js";
+import { Brick, type BrickFaceLabel } from "./Brick.js";
+import { dropMarks } from "./placementDrop.js";
 
 interface PlacedBlockProps {
   block: PlacedBlockData;

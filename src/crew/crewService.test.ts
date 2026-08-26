@@ -8,14 +8,14 @@ import {
   updateCrew,
   updateRunnerIcon,
   validateCrewDetails,
-} from "./crewService";
-import { crewMemberAccent } from "./memberAccent";
-import { runnerIconFromSeed } from "./runnerIcon";
+} from "./crewService.js";
+import { crewMemberAccent } from "./memberAccent.js";
+import { runnerIconFromSeed } from "./runnerIcon.js";
 import {
   DEFAULT_CREW_EMBLEM,
   decodeCrewEmblem,
   encodeCrewEmblem,
-} from "./emblem";
+} from "./emblem.js";
 
 function crewTable(result: { data: unknown; error: { message: string } | null }) {
   const chain = {

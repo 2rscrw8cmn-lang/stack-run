@@ -1,9 +1,9 @@
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL, type PlacedBlock } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import type { IntervalsConnection } from "../../connected/intervals";
-import { RunResultDetail } from "../workout-detail/RunResultDetail";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL, type PlacedBlock } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import { RunResultDetail } from "../workout-detail/RunResultDetail.js";
 
 interface BlockDetailSheetProps {
   block: PlacedBlock;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import type { RunLog, TrainingPlan } from "./types";
-import { findWorkoutForDate, selectTodayViewModel } from "./workout";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import type { RunLog, TrainingPlan } from "./types.js";
+import { findWorkoutForDate, selectTodayViewModel } from "./workout.js";
 
 const plan: TrainingPlan = {
   schemaVersion: 1,

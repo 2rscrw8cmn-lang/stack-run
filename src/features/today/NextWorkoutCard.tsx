@@ -1,12 +1,12 @@
 import { CalendarClock } from "lucide-react";
 import type { CSSProperties } from "react";
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { AssistantAdjustmentBadge } from "../../components/shared/AssistantAdjustmentBadge";
-import { Section } from "../../components/ui/Section";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import type { WorkoutProvenanceSlot } from "../../domain/planProvenance";
-import type { Workout } from "../../domain/types";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { AssistantAdjustmentBadge } from "../../components/shared/AssistantAdjustmentBadge.js";
+import { Section } from "../../components/ui/Section.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { WorkoutProvenanceSlot } from "../../domain/planProvenance.js";
+import type { Workout } from "../../domain/types.js";
 
 interface NextWorkoutCardProps {
   workout: Workout;

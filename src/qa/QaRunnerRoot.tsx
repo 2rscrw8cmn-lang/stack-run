@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { App } from "../app/App";
-import { getSupabaseAvailability } from "../crew/supabaseClient";
-import { QaRunnerApp } from "./QaRunnerApp";
-import { isQaPreviewHost, isQaRunnerEmail } from "./qaRunner";
+import { App } from "../app/App.js";
+import { getSupabaseAvailability } from "../crew/supabaseClient.js";
+import { QaRunnerApp } from "./QaRunnerApp.js";
+import { isQaPreviewHost, isQaRunnerEmail } from "./qaRunner.js";
 
 /**
  * Chooses the full-app synthetic QA harness from the authenticated account.

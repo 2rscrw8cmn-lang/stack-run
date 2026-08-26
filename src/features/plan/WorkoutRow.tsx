@@ -1,12 +1,12 @@
 import { CalendarDays, Circle, CircleCheck, MinusCircle } from "lucide-react";
 import type { CSSProperties } from "react";
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { AssistantAdjustmentBadge } from "../../components/shared/AssistantAdjustmentBadge";
-import { blockedPhrase, type BlockedDay } from "../../domain/availability";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { PLAN_DAY_STATUS_LABEL, type PlanDay } from "../../domain/plan";
-import type { WorkoutProvenanceSlot } from "../../domain/planProvenance";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { AssistantAdjustmentBadge } from "../../components/shared/AssistantAdjustmentBadge.js";
+import { blockedPhrase, type BlockedDay } from "../../domain/availability.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { PLAN_DAY_STATUS_LABEL, type PlanDay } from "../../domain/plan.js";
+import type { WorkoutProvenanceSlot } from "../../domain/planProvenance.js";
 
 interface WorkoutRowProps {
   day: PlanDay;

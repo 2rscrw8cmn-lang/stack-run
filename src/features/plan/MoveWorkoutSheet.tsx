@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
 import {
   isInsidePlanRange,
   moveConflict,
   workoutOnDate,
-} from "../../domain/planEdit";
-import type { TrainingPlan, Workout } from "../../domain/types";
+} from "../../domain/planEdit.js";
+import type { TrainingPlan, Workout } from "../../domain/types.js";
 
 interface MoveWorkoutSheetProps {
   plan: TrainingPlan;

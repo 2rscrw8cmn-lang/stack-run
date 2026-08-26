@@ -1,14 +1,14 @@
-import { runnerHistoryRange, type RunnerHistoryRange, type RunnerRun } from "./runnerRun";
+import { runnerHistoryRange, type RunnerHistoryRange, type RunnerRun } from "./runnerRun.js";
 import {
   runFrequency,
   RUNNER_FREQUENCY_WEEKS,
   type FrequencyFacts,
-} from "./runnerFrequency";
+} from "./runnerFrequency.js";
 import {
   longestRunInWindow,
   LONGEST_RUN_WINDOW_DAYS,
   type LongestRunInWindow,
-} from "./runnerLongRuns";
+} from "./runnerLongRuns.js";
 import {
   trailingVolume,
   weeklyVolume,
@@ -17,7 +17,7 @@ import {
   TRAILING_WEEK_DAYS,
   type TrailingVolume,
   type WeeklyVolumePoint,
-} from "./runnerVolume";
+} from "./runnerVolume.js";
 
 /**
  * The compact runner snapshot: a few defensible facts, each with its window.

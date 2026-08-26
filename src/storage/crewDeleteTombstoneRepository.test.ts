@@ -3,8 +3,8 @@ import {
   addCrewDeleteTombstone,
   loadCrewDeleteTombstones,
   removeCrewDeleteTombstone,
-} from "./crewDeleteTombstoneRepository";
-import { CREW_DELETE_TOMBSTONES_STORAGE_KEY } from "./storageKeys";
+} from "./crewDeleteTombstoneRepository.js";
+import { CREW_DELETE_TOMBSTONES_STORAGE_KEY } from "./storageKeys.js";
 
 beforeEach(() => localStorage.clear());
 

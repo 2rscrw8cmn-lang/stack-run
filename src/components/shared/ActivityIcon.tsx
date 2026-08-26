@@ -8,7 +8,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import type { WorkoutType } from "../../domain/types";
+import type { WorkoutType } from "../../domain/types.js";
 
 /**
  * One icon per kind of day, so a workout is recognisable before it is read.

@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createInitialAppState } from "../../storage/migrations";
-import type { AppState, RunLog } from "../../domain/types";
-import type { fetchIntervals } from "../../connected/intervals";
-import { loadPendingIntervalsCandidates } from "../../storage/intervalsPendingRepository";
-import { useConnectedSync } from "./useConnectedSync";
+import { createInitialAppState } from "../../storage/migrations.js";
+import type { AppState, RunLog } from "../../domain/types.js";
+import type { fetchIntervals } from "../../connected/intervals.js";
+import { loadPendingIntervalsCandidates } from "../../storage/intervalsPendingRepository.js";
+import { useConnectedSync } from "./useConnectedSync.js";
 
 const activity = (id: string, date: string) => ({ id, type: "Run", start_date_local: `${date}T07:00:00`, distance: 5000, moving_time: 1500 });
 /** A stub with the client's own signature, so the range argument stays typed. */

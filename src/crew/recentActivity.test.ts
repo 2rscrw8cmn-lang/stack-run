@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CrewSharedRun } from "./types";
-import { selectRecentCrewActivity } from "./recentActivity";
+import type { CrewSharedRun } from "./types.js";
+import { selectRecentCrewActivity } from "./recentActivity.js";
 
 function run(id: string, userId: string, localDate: string): CrewSharedRun {
   return {

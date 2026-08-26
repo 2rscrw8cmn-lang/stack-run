@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";
-import { unifiedRunnerHistory } from "./runnerRun";
-import { trailingVolume, weeklyVolume } from "./runnerVolume";
+import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures.js";
+import { unifiedRunnerHistory } from "./runnerRun.js";
+import { trailingVolume, weeklyVolume } from "./runnerVolume.js";
 
 /**
  * Volume, and the boundaries it is easy to get wrong by one day.

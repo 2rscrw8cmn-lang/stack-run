@@ -1,15 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { acceptedRun, historicalRun, stackRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import type { RunLog } from "../../domain/types";
+import { acceptedRun, historicalRun, stackRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import type { RunLog } from "../../domain/types.js";
 import {
   RECENT_EXPANDED_RUN_COUNT,
   RECENT_RUN_COUNT,
   RunsScreen,
-} from "./RunsScreen";
+} from "./RunsScreen.js";
 
 /**
  * Runs, once it is a history of the runner rather than a log of the plan.

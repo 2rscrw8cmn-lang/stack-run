@@ -1,4 +1,4 @@
-import { isAfterLocalDate } from "./dates";
+import { isAfterLocalDate } from "./dates.js";
 import {
   addPlannedRun,
   changeToRest,
@@ -8,8 +8,8 @@ import {
   moveWorkout,
   PlanEditError,
   type PlannedRunValues,
-} from "./planEdit";
-import type { TrainingPlan, Workout } from "./types";
+} from "./planEdit.js";
+import type { TrainingPlan, Workout } from "./types.js";
 
 /**
  * What an authorized external assistant may ask STACK to change about a

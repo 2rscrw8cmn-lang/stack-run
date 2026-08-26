@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { stackRun } from "../history/runnerFixtures";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import { planContextSignal } from "./planContextSignal";
-import { TRAINING_SIGNAL_PRIORITY } from "./trainingSignal";
+import { stackRun } from "../history/runnerFixtures.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import { planContextSignal } from "./planContextSignal.js";
+import { TRAINING_SIGNAL_PRIORITY } from "./trainingSignal.js";
 
 const plan = loadSeedPlan();
 /** A Sunday inside the plan's second week, so week 1 is complete and due. */

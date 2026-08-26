@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
-import type { CrewSharedRun } from "../../crew/types";
+import { CrewRunDetailSheet } from "./CrewRunDetailSheet.js";
+import type { CrewSharedRun } from "../../crew/types.js";
 
 function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
   return {

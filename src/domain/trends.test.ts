@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import type { RunActivityType, RunLog } from "./types";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import type { RunActivityType, RunLog } from "./types.js";
 import {
   plannedTargetMiles,
   selectTrainingSignals,
   TREND_WEEK_WINDOW,
-} from "./trends";
+} from "./trends.js";
 
 const plan = loadSeedPlan();
 const week1 = plan.weeks[0];

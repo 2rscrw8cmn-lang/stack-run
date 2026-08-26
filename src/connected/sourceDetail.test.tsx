@@ -1,13 +1,13 @@
 import { render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IntervalsConnection } from "./intervals";
+import type { IntervalsConnection } from "./intervals.js";
 import {
   intervalsSourceDetailReader,
   SourceDetailReaderProvider,
   useSourceDetailReader,
   type SourceConnection,
   type SourceDetailReader,
-} from "./sourceDetail";
+} from "./sourceDetail.js";
 
 /**
  * The seam R3 put between Run Detail and the outside world.

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { placeCrewBuildBlock } from "./crewBuildPlacement";
+import { placeCrewBuildBlock } from "./crewBuildPlacement.js";
 
 describe("Crew Build placement RPC client", () => {
   it("sends only the shared run id and snapped Crew coordinates", async () => {

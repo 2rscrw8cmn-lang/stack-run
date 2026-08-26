@@ -3,8 +3,8 @@ import {
   crewRecapDemoData,
   crewRecapDemoVariant,
   CREW_RECAP_DEMO_TODAY,
-} from "./crewRecapDemo";
-import { isCrewRecapCurrent, lastClosedCrewWeek } from "../../crew/weekRecap";
+} from "./crewRecapDemo.js";
+import { isCrewRecapCurrent, lastClosedCrewWeek } from "../../crew/weekRecap.js";
 
 const PREVIEW = "stack-run-git-issue-186-owner.vercel.app";
 

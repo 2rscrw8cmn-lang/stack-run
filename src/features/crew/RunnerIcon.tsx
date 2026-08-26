@@ -1,4 +1,4 @@
-import type { CrewMemberAccent } from "../../crew/memberAccent";
+import type { CrewMemberAccent } from "../../crew/memberAccent.js";
 import {
   RUNNER_ICON_DRAW_ORDER,
   RUNNER_ICON_VIEW_BOX,
@@ -7,7 +7,7 @@ import {
   runnerIconShape,
   type RunnerIcon as RunnerIconModel,
   type RunnerIconPart,
-} from "../../crew/runnerIcon";
+} from "../../crew/runnerIcon.js";
 
 /**
  * The class a part's filled plates are drawn with. Three tones, and which one

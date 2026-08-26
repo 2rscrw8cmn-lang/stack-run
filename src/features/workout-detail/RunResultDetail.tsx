@@ -1,10 +1,10 @@
-import type { IntervalsConnection } from "../../connected/intervals";
-import { formatDurationSeconds } from "../../domain/duration";
-import { runSourceLabel } from "../../domain/runSource";
-import type { RunLog } from "../../domain/types";
-import { EFFORT_LABEL } from "../../domain/workout";
-import { SourceRunDetail } from "./SourceRunDetail";
-import { sourceRunFactsFromRunLog } from "./sourceRunFacts";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { runSourceLabel } from "../../domain/runSource.js";
+import type { RunLog } from "../../domain/types.js";
+import { EFFORT_LABEL } from "../../domain/workout.js";
+import { SourceRunDetail } from "./SourceRunDetail.js";
+import { sourceRunFactsFromRunLog } from "./sourceRunFacts.js";
 
 const ELAPSED_SIGNIFICANCE_SECONDS = 30;
 

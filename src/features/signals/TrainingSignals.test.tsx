@@ -1,13 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { addDaysToLocalDate } from "../../domain/dates";
-import { historicalRun, stackRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import type { HistoricalActivity } from "../../history/historicalActivity";
-import type { RunLog } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { RunsScreen } from "../runs/RunsScreen";
+import { addDaysToLocalDate } from "../../domain/dates.js";
+import { historicalRun, stackRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import type { HistoricalActivity } from "../../history/historicalActivity.js";
+import type { RunLog } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { RunsScreen } from "../runs/RunsScreen.js";
 
 /** Training Signals v2 on the Runs screen. Domain arithmetic is tested in src/signals/. */
 

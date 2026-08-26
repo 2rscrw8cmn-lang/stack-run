@@ -1,12 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import type { CrewDashboardData, CrewSharedRun } from "./types";
+import type { CrewDashboardData, CrewSharedRun } from "./types.js";
 import {
   setCrewReaction,
   commitOptimisticCrewProps,
   withDashboardPropsState,
   withViewerPropsState,
-} from "./reactions";
+} from "./reactions.js";
 
 function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
   return {

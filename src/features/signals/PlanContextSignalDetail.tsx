@@ -1,8 +1,8 @@
-import type { RunLog, TrainingPlan } from "../../domain/types";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { selectTrainingSignals } from "../../domain/trends";
-import { ConsistencyDetail } from "../trends/ConsistencyDetail";
-import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { selectTrainingSignals } from "../../domain/trends.js";
+import { ConsistencyDetail } from "../trends/ConsistencyDetail.js";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts.js";
 
 /**
  * Plan context, kept whole and moved to the bottom.

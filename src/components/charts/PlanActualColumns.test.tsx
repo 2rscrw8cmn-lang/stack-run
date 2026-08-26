@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   PlanActualColumns,
   type PlanActualColumn,
-} from "./PlanActualColumns";
-import { sparseTickIndices } from "./chartTickDensity";
+} from "./PlanActualColumns.js";
+import { sparseTickIndices } from "./chartTickDensity.js";
 
 const columns: PlanActualColumn[] = [
   { key: "w1", shortLabel: "W1", selectionLabel: "Week 1, 4 actual miles, 5 planned miles", actual: 4, planned: 5 },

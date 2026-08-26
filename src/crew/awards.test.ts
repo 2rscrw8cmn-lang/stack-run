@@ -4,7 +4,7 @@ import {
   crewAwardFootprint,
   formatCrewAwardResult,
   isFeatureCrewAward,
-} from "./awards";
+} from "./awards.js";
 
 describe("crewAwardFootprint", () => {
   // Must stay in step with public.crew_award_width() in

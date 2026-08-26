@@ -1,12 +1,12 @@
 import { ThumbsUp, X } from "lucide-react";
-import { Section } from "../../components/ui/Section";
-import { useSwipeToDismiss } from "../../components/ui/useSwipeToDismiss";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatMiles } from "../../domain/distance";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { formatPropAge } from "../../crew/notifications";
-import type { CrewPropNotification } from "../../crew/types";
-import { RunnerIcon } from "./RunnerIcon";
+import { Section } from "../../components/ui/Section.js";
+import { useSwipeToDismiss } from "../../components/ui/useSwipeToDismiss.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatMiles } from "../../domain/distance.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import { formatPropAge } from "../../crew/notifications.js";
+import type { CrewPropNotification } from "../../crew/types.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 
 const MAX_VISIBLE = 8;
 

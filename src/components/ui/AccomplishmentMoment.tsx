@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import type { AccomplishmentMoment as Moment } from "../../domain/accomplishments";
+import type { AccomplishmentMoment as Moment } from "../../domain/accomplishments.js";
 
 export function AccomplishmentMoment({ moments }: { moments: Moment[] }) {
   if (moments.length === 0) return null;

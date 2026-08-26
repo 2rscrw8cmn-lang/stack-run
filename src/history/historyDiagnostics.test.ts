@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { saveIntervalsApiKey } from "../storage/intervalsCredentialRepository";
-import { saveHistoricalActivities } from "../storage/historicalActivityRepository";
-import type { HistoricalActivity } from "./historicalActivity";
+import { saveIntervalsApiKey } from "../storage/intervalsCredentialRepository.js";
+import { saveHistoricalActivities } from "../storage/historicalActivityRepository.js";
+import type { HistoricalActivity } from "./historicalActivity.js";
 import {
   createHistoryDiagnostics,
   historyDiagnosticsEnabled,
   installHistoryDiagnostics,
   HISTORY_DIAGNOSTICS_GLOBAL,
   HISTORY_DIAGNOSTICS_STORAGE_KEY,
-} from "./historyDiagnostics";
+} from "./historyDiagnostics.js";
 
 const activity: HistoricalActivity = {
   provider: "intervals",

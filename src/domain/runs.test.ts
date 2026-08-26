@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import type { RunLog } from "./types";
-import { formatPace, runHistory } from "./runs";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import type { RunLog } from "./types.js";
+import { formatPace, runHistory } from "./runs.js";
 
 const plan = loadSeedPlan();
 

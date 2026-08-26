@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AvailabilityCalendar } from "../../domain/availability";
-import { useRosterRefresh } from "./useRosterRefresh";
+import type { AvailabilityCalendar } from "../../domain/availability.js";
+import { useRosterRefresh } from "./useRosterRefresh.js";
 
 const ICS = [
   "BEGIN:VCALENDAR",

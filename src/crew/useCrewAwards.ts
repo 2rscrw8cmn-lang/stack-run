@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getSupabaseAvailability } from "./supabaseClient";
+import { getSupabaseAvailability } from "./supabaseClient.js";
 import {
   loadCrewAwards,
   placeCrewAwardBlock,
-} from "./crewAwardsService";
-import { CrewBuildPlacementError } from "./crewBuildPlacement";
-import type { CrewAwardBlockRecord } from "./awards";
+} from "./crewAwardsService.js";
+import { CrewBuildPlacementError } from "./crewBuildPlacement.js";
+import type { CrewAwardBlockRecord } from "./awards.js";
 
 export interface CrewAwardsController {
   available: boolean;

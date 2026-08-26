@@ -1,7 +1,7 @@
-import { formatMiles } from "../domain/distance";
-import { longestRunInRange } from "../history/runnerLongRuns";
-import type { RunnerRun } from "../history/runnerRun";
-import { volumeInRange } from "../history/runnerVolume";
+import { formatMiles } from "../domain/distance.js";
+import { longestRunInRange } from "../history/runnerLongRuns.js";
+import type { RunnerRun } from "../history/runnerRun.js";
+import { volumeInRange } from "../history/runnerVolume.js";
 import {
   classifyChange,
   comparisonPhrase,
@@ -15,7 +15,7 @@ import {
   windowAvailability,
   type SignalDirection,
   type SignalOf,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * Long runs — whether the runner's longest efforts are getting longer.

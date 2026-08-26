@@ -1,4 +1,4 @@
-import { addDaysToLocalDate, compareLocalDates, daysBetweenLocalDates } from "../domain/dates";
+import { addDaysToLocalDate, compareLocalDates, daysBetweenLocalDates } from "../domain/dates.js";
 
 /** One inclusive `oldest`…`newest` request the activities endpoint accepts. */
 export interface HistoricalWindow {

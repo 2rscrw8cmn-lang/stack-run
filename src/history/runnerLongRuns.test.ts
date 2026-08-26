@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { historicalRun, stackRun } from "./runnerFixtures";
-import { longestRun, longestRunByWeek, longestRunInWindow } from "./runnerLongRuns";
-import { unifiedRunnerHistory } from "./runnerRun";
+import { historicalRun, stackRun } from "./runnerFixtures.js";
+import { longestRun, longestRunByWeek, longestRunInWindow } from "./runnerLongRuns.js";
+import { unifiedRunnerHistory } from "./runnerRun.js";
 
 const TODAY = "2026-08-15";
 

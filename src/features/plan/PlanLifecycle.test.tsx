@@ -2,13 +2,13 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { earnedBlocks } from "../../domain/build";
-import { findWorkout } from "../../domain/planEdit";
-import type { RunLog, TrainingPlan } from "../../domain/types";
-import { historicalRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { PlanScreen } from "./PlanScreen";
+import { earnedBlocks } from "../../domain/build.js";
+import { findWorkout } from "../../domain/planEdit.js";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import { historicalRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { PlanScreen } from "./PlanScreen.js";
 
 /**
  * NEXT-5 lifecycle behavior.

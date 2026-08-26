@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { IntervalsCandidate } from "../connected/intervals";
-import { backfillPlan } from "../domain/racePlan";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import { backfillPlan } from "../domain/racePlan.js";
 import type {
   AppSettings,
   ArchivedTrainingPlan,
@@ -11,7 +11,7 @@ import type {
   RunLog,
   RunSource,
   TrainingPlan,
-} from "../domain/types";
+} from "../domain/types.js";
 import type {
   PersonalCloudRun,
   PersonalCloudSnapshot,
@@ -19,8 +19,8 @@ import type {
   PersonalInitializationRun,
   PersonalIntervalsDocument,
   PersonalTrainingDocument,
-} from "./types";
-import { appStateFromCloud } from "./reconciliation";
+} from "./types.js";
+import { appStateFromCloud } from "./reconciliation.js";
 
 export type PersonalConflictKind =
   | "training"

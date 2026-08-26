@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { AppErrorBoundary } from "./app/AppErrorBoundary";
-import { GettingStartedPage } from "./features/help/GettingStartedPage";
-import { installHistoryDiagnostics } from "./history/historyDiagnostics";
-import { QaRunnerRoot } from "./qa/QaRunnerRoot";
+import { AppErrorBoundary } from "./app/AppErrorBoundary.js";
+import { GettingStartedPage } from "./features/help/GettingStartedPage.js";
+import { installHistoryDiagnostics } from "./history/historyDiagnostics.js";
+import { QaRunnerRoot } from "./qa/QaRunnerRoot.js";
 import "@fontsource/space-mono/400.css";
 import "@fontsource/space-mono/700.css";
 import "./styles/tokens.css";

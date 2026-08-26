@@ -4,11 +4,11 @@ import {
   loadDismissedCrewRecapKeys,
   loadSeenCrewRecapKeys,
   markCrewRecapSeen,
-} from "./crewRecapAcknowledgementRepository";
+} from "./crewRecapAcknowledgementRepository.js";
 import {
   DISMISSED_CREW_RECAPS_STORAGE_KEY,
   SEEN_CREW_RECAPS_STORAGE_KEY,
-} from "./storageKeys";
+} from "./storageKeys.js";
 
 describe("Crew Week Recap acknowledgement", () => {
   beforeEach(() => {

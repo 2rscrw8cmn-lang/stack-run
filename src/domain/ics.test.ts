@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CalendarParseError, parseCalendar } from "./ics";
+import { CalendarParseError, parseCalendar } from "./ics.js";
 
 function calendar(...events: string[]): string {
   return [

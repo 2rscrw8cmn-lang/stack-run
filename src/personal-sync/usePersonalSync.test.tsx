@@ -2,21 +2,21 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IntervalsCandidate } from "../connected/intervals";
-import { repackPlacements } from "../domain/placement";
-import type { AppState, BlockPlacement, RunLog } from "../domain/types";
-import { acceptIntervalsRun } from "../storage/appStateRepository";
-import { loadIntervalsApiKey, saveIntervalsApiKey } from "../storage/intervalsCredentialRepository";
-import { createSeededAppState } from "../storage/migrations";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import { repackPlacements } from "../domain/placement.js";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types.js";
+import { acceptIntervalsRun } from "../storage/appStateRepository.js";
+import { loadIntervalsApiKey, saveIntervalsApiKey } from "../storage/intervalsCredentialRepository.js";
+import { createSeededAppState } from "../storage/migrations.js";
 import {
   emptyPersonalOutbox,
   loadPersonalOutbox,
   saveAccountAppState,
   savePersonalMetadata,
   savePersonalOutbox,
-} from "../storage/personalSyncRepository";
-import { appStateFromCloud } from "./reconciliation";
-import type { PersonalCloudSnapshot } from "./types";
+} from "../storage/personalSyncRepository.js";
+import { appStateFromCloud } from "./reconciliation.js";
+import type { PersonalCloudSnapshot } from "./types.js";
 
 const cloud = vi.hoisted(() => ({
   initialize: vi.fn(),
@@ -64,7 +64,7 @@ vi.mock("./personalCloudRepository", async () => {
   };
 });
 
-import { usePersonalSync } from "./usePersonalSync";
+import { usePersonalSync } from "./usePersonalSync.js";
 
 const at = "2026-08-10T12:00:00.000Z";
 

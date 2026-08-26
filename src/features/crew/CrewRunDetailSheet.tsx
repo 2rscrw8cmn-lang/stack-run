@@ -1,16 +1,16 @@
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { runSourceLabel } from "../../domain/runSource";
-import { formatPace } from "../../domain/runs";
-import type { CrewSharedRun } from "../../crew/types";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { PropsButton } from "./PropsButton";
-import { RunnerIcon } from "./RunnerIcon";
-import { Button } from "../../components/ui/Button";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { runSourceLabel } from "../../domain/runSource.js";
+import { formatPace } from "../../domain/runs.js";
+import type { CrewSharedRun } from "../../crew/types.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import { PropsButton } from "./PropsButton.js";
+import { RunnerIcon } from "./RunnerIcon.js";
+import { Button } from "../../components/ui/Button.js";
 
 interface CrewRunDetailSheetProps {
   run: CrewSharedRun | null;

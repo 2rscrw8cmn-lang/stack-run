@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { CrewMiniBuildRun } from "./types";
+import type { CrewMiniBuildRun } from "./types.js";
 import {
   deriveCrewMiniBuild,
   faceCulledMiniBuildTower,
   MEMBER_BUILD_BLOCK_LIMIT,
-} from "./miniBuild";
+} from "./miniBuild.js";
 
 function run(
   id: string,

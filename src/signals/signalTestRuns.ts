@@ -1,8 +1,8 @@
-import { addDaysToLocalDate } from "../domain/dates";
-import { historicalRun } from "../history/runnerFixtures";
-import { unifiedRunnerHistory, type RunnerRun } from "../history/runnerRun";
-import type { HistoricalRunOptions } from "../history/runnerFixtures";
-import { comparisonWindows } from "./trainingSignal";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import { historicalRun } from "../history/runnerFixtures.js";
+import { unifiedRunnerHistory, type RunnerRun } from "../history/runnerRun.js";
+import type { HistoricalRunOptions } from "../history/runnerFixtures.js";
+import { comparisonWindows } from "./trainingSignal.js";
 
 /**
  * Two windows of invented running, for the signal tests.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CrewMember } from "./types";
-import { viewerFirstMembers } from "./memberOrder";
+import type { CrewMember } from "./types.js";
+import { viewerFirstMembers } from "./memberOrder.js";
 
 const members: CrewMember[] = [
   { userId: "a", displayName: "A", role: "owner", joinedAt: "1", accentColor: null, runnerIcon: { head: 0, face: 0, body: 0, flair: 0, background: 0 } },

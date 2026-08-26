@@ -1,14 +1,14 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { BlockPlacement, RunActivityType, RunLog } from "../../domain/types";
-import type { CrewDashboardData, CrewSharedRun } from "../../crew/types";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { RunnerRun } from "../../history/runnerRun";
-import type { PlanAdjustmentRecord } from "../../domain/planProvenance";
-import { signalRuns } from "../../signals/signalTestRuns";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { TodayScreen } from "./TodayScreen";
+import type { BlockPlacement, RunActivityType, RunLog } from "../../domain/types.js";
+import type { CrewDashboardData, CrewSharedRun } from "../../crew/types.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import type { PlanAdjustmentRecord } from "../../domain/planProvenance.js";
+import { signalRuns } from "../../signals/signalTestRuns.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { TodayScreen } from "./TodayScreen.js";
 
 const plan = loadSeedPlan();
 

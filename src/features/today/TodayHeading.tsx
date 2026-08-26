@@ -1,6 +1,6 @@
 import { Flag } from "lucide-react";
-import { formatDateLabel } from "../../domain/dates";
-import type { Race } from "../../domain/types";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { Race } from "../../domain/types.js";
 
 interface TodayHeadingProps {
   today: string;

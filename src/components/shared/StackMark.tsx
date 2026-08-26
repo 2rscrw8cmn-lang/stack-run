@@ -27,4 +27,4 @@ export function StackMark({ size = 24, className }: StackMarkProps) {
     </svg>
   );
 }
-import { stackMarkSvgMarkup } from "./stackMarkSvg";
+import { stackMarkSvgMarkup } from "./stackMarkSvg.js";

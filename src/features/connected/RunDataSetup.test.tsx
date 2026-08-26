@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RunDataSetup } from "./RunDataSetup";
+import { RunDataSetup } from "./RunDataSetup.js";
 
 describe("Run Data setup", () => {
   it("explains the Apple Watch bridge before asking for a credential", async () => {

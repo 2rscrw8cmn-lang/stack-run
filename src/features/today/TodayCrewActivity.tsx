@@ -1,14 +1,14 @@
 import { UsersRound } from "lucide-react";
 import { useEffect } from "react";
-import { Button } from "../../components/ui/Button";
-import { Section } from "../../components/ui/Section";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatMiles } from "../../domain/distance";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { selectRecentCrewActivity } from "../../crew/recentActivity";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { PropsButton } from "../crew/PropsButton";
-import { RunnerIcon } from "../crew/RunnerIcon";
+import { Button } from "../../components/ui/Button.js";
+import { Section } from "../../components/ui/Section.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatMiles } from "../../domain/distance.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import { selectRecentCrewActivity } from "../../crew/recentActivity.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { PropsButton } from "../crew/PropsButton.js";
+import { RunnerIcon } from "../crew/RunnerIcon.js";
 
 export function TodayCrewActivity({
   crew,

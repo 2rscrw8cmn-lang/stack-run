@@ -2,9 +2,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   checkSupabaseBoundary,
   type SupabaseBackendIdentity,
-} from "./supabaseEnvironment";
+} from "./supabaseEnvironment.js";
 
-export type { SupabaseBackendIdentity } from "./supabaseEnvironment";
+export type { SupabaseBackendIdentity } from "./supabaseEnvironment.js";
 
 export type SupabaseAvailability =
   | { configured: false; reason: string; client: null; backend: null }

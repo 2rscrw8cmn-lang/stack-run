@@ -1,7 +1,7 @@
 import { useRef, type KeyboardEvent } from "react";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import type { RunActivityType } from "../../domain/types";
-import { ActivityIcon } from "./ActivityIcon";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import type { RunActivityType } from "../../domain/types.js";
+import { ActivityIcon } from "./ActivityIcon.js";
 
 const PICKER_TYPES: readonly RunActivityType[] = [
   "easy",

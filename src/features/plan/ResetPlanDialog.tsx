@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
 
 interface ResetPlanDialogProps {
   runCount: number;

@@ -3,7 +3,7 @@ import {
   adoptLegacyIntervalsSyncToken,
   loadIntervalsSyncToken,
   saveIntervalsSyncToken,
-} from "./intervalsTokenRepository";
+} from "./intervalsTokenRepository.js";
 
 describe("legacy Intervals proxy token adoption", () => {
   beforeEach(() => localStorage.clear());

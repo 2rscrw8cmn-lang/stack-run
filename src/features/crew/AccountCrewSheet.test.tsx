@@ -1,16 +1,16 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
 import {
   CREW_EMBLEM_COLORS,
   CREW_EMBLEM_SHAPES,
   DEFAULT_CREW_EMBLEM,
-} from "../../crew/emblem";
-import type { LoadedCrewAccount, RaceCrew } from "../../crew/types";
-import type { PersonalSyncController } from "../../personal-sync/types";
-import { todayLocalDate } from "../../domain/dates";
-import { AccountCrewSheet } from "./AccountCrewSheet";
+} from "../../crew/emblem.js";
+import type { LoadedCrewAccount, RaceCrew } from "../../crew/types.js";
+import type { PersonalSyncController } from "../../personal-sync/types.js";
+import { todayLocalDate } from "../../domain/dates.js";
+import { AccountCrewSheet } from "./AccountCrewSheet.js";
 
 const MAIN_SHAPES = CREW_EMBLEM_SHAPES.main.map((shape) => shape.name);
 const SECONDARY_SHAPES = CREW_EMBLEM_SHAPES.secondary.map((shape) => shape.name);

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { todayLocalDate } from "../domain/dates";
-import type { AppState } from "../domain/types";
+import { todayLocalDate } from "../domain/dates.js";
+import type { AppState } from "../domain/types.js";
 import {
   createStackAccount,
   signInToStack,
   signOutOfStack,
-} from "./auth";
+} from "./auth.js";
 import {
   createCrew,
   createCrewInvite,
@@ -23,64 +23,64 @@ import {
   updatePropsSeenAt,
   updateRunnerIcon,
   type CrewDetailsInput,
-} from "./crewService";
+} from "./crewService.js";
 import {
   createExternalApiToken as createExternalApiTokenRecord,
   listExternalApiTokens,
   revokeExternalApiToken as revokeExternalApiTokenRecord,
   type ExternalApiTokenScope,
   type ExternalApiTokenSummary,
-} from "./externalApiTokenService";
-import { listRecentPlanAdjustments } from "./planAdjustmentService";
-import type { PlanAdjustmentRecord } from "../domain/planProvenance";
-import type { CrewMemberAccent } from "./memberAccent";
-import { unreadPropNotifications } from "./notifications";
-import type { RunnerIcon } from "./runnerIcon";
+} from "./externalApiTokenService.js";
+import { listRecentPlanAdjustments } from "./planAdjustmentService.js";
+import type { PlanAdjustmentRecord } from "../domain/planProvenance.js";
+import type { CrewMemberAccent } from "./memberAccent.js";
+import { unreadPropNotifications } from "./notifications.js";
+import type { RunnerIcon } from "./runnerIcon.js";
 import {
   captureInviteFromLocation,
   clearPendingInvite,
-} from "./invites";
+} from "./invites.js";
 import {
   deleteCrewRunProjection,
   projectionFingerprint,
   syncCrewProjection,
-} from "./projection";
+} from "./projection.js";
 import {
   addCrewDeleteTombstone,
   loadCrewDeleteTombstones,
   removeCrewDeleteTombstone,
   type CrewDeleteTombstone,
-} from "../storage/crewDeleteTombstoneRepository";
+} from "../storage/crewDeleteTombstoneRepository.js";
 import {
   loadActiveCrewId,
   saveActiveCrewId,
-} from "../storage/activeCrewRepository";
+} from "../storage/activeCrewRepository.js";
 import {
   dismissPropNotification as rememberDismissedPropNotification,
   loadDismissedPropNotificationIds,
-} from "../storage/dismissedPropNotificationRepository";
-import { loadCrewDashboard } from "./dashboard";
+} from "../storage/dismissedPropNotificationRepository.js";
+import { loadCrewDashboard } from "./dashboard.js";
 import {
   loadActivePersonalOwner,
   loadPersonalMetadata,
-} from "../storage/personalSyncRepository";
+} from "../storage/personalSyncRepository.js";
 import {
   commitOptimisticCrewProps,
   setCrewReaction,
   withDashboardPropsState,
-} from "./reactions";
-import { CREW_DASHBOARD_STALE_MS } from "./freshness";
-import { getSupabaseAvailability } from "./supabaseClient";
+} from "./reactions.js";
+import { CREW_DASHBOARD_STALE_MS } from "./freshness.js";
+import { getSupabaseAvailability } from "./supabaseClient.js";
 import {
   CrewBuildPlacementError,
   placeCrewBuildBlock,
-} from "./crewBuildPlacement";
+} from "./crewBuildPlacement.js";
 import type {
   CrewDashboardData,
   CrewInvitePreview,
   CrewPropNotification,
   LoadedCrewAccount,
-} from "./types";
+} from "./types.js";
 
 const PROJECTION_STALE_MS = 30 * 60_000;
 

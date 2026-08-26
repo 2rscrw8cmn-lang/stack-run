@@ -7,7 +7,7 @@ import {
   inviteTokenFromHash,
   loadPendingInvite,
   rememberPendingInvite,
-} from "./invites";
+} from "./invites.js";
 
 describe("crew invites", () => {
   beforeEach(() => sessionStorage.clear());

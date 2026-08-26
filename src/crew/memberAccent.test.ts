@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accentColorFrom, crewMemberAccent, MEMBER_ACCENTS } from "./memberAccent";
+import { accentColorFrom, crewMemberAccent, MEMBER_ACCENTS } from "./memberAccent.js";
 
 describe("Crew member accents", () => {
   it("falls back to a deterministic pick from the 16-color palette when unpicked", () => {

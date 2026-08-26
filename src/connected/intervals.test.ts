@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSeededAppState } from "../storage/migrations";
-import { addDaysToLocalDate } from "../domain/dates";
-import type { RunLog } from "../domain/types";
-import { availableScheduledMatches, fetchIntervals, fetchIntervalsBestEfforts, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals";
+import { createSeededAppState } from "../storage/migrations.js";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import type { RunLog } from "../domain/types.js";
+import { availableScheduledMatches, fetchIntervals, fetchIntervalsBestEfforts, fetchIntervalsActivityDetail, fetchIntervalsRunProfile, intervalsBasicAuthorization, mergeCandidates, normalizeActivityList, normalizeIntervalsActivity, normalizeIntervalsActivityDetail, normalizeIntervalsRunProfile, selectRunFound, suggestScheduledMatches, unresolvedCandidates, VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "./intervals.js";
 
 const activity = { id: "i1", type: "Run", start_date_local: "2026-06-10T07:00:00", distance: 5000, moving_time: 1500, elapsed_time: 1600, average_heartrate: "invalid" };
 /**

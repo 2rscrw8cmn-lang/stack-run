@@ -4,7 +4,7 @@ import {
   createExternalApiToken,
   listExternalApiTokens,
   revokeExternalApiToken,
-} from "./externalApiTokenService";
+} from "./externalApiTokenService.js";
 
 describe("listExternalApiTokens", () => {
   it("selects and projects the scope column alongside the existing fields", async () => {

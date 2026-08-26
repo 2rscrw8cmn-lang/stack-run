@@ -1,5 +1,5 @@
-import type { CrewBuildBlock } from "./crewBuild";
-import type { CrewBuildRun } from "./types";
+import type { CrewBuildBlock } from "./crewBuild.js";
+import type { CrewBuildRun } from "./types.js";
 
 /**
  * What the crew has done together, in four figures.

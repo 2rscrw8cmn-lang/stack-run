@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultSelectedIndex, defaultSelectedKey } from "./chartDefaultSelection";
+import { defaultSelectedIndex, defaultSelectedKey } from "./chartDefaultSelection.js";
 
 describe("Chart default selection", () => {
   it("opens on the latest completed period with something in it", () => {

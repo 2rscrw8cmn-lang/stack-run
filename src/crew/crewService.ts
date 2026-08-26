@@ -1,23 +1,23 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { formatLocalDate, parseLocalDate } from "../domain/dates";
+import { formatLocalDate, parseLocalDate } from "../domain/dates.js";
 import {
   DEFAULT_CREW_EMBLEM,
   encodeCrewEmblem,
   resolveCrewEmblem,
   type CrewEmblem,
-} from "./emblem";
-import { hashInviteToken, inviteUrl } from "./invites";
+} from "./emblem.js";
+import { hashInviteToken, inviteUrl } from "./invites.js";
 import {
   accentColorFrom,
   crewMemberAccent,
   type CrewMemberAccent,
-} from "./memberAccent";
+} from "./memberAccent.js";
 import {
   encodeRunnerIcon,
   resolveRunnerIcon,
   runnerIconFromSeed,
   type RunnerIcon,
-} from "./runnerIcon";
+} from "./runnerIcon.js";
 import type {
   CrewInvite,
   CrewInvitePreview,
@@ -28,7 +28,7 @@ import type {
   CrewType,
   LoadedCrewAccount,
   RaceCrew,
-} from "./types";
+} from "./types.js";
 
 type Row = Record<string, unknown>;
 

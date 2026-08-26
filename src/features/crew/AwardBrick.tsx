@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { CrewAwardType } from "../../crew/awards";
+import type { CrewAwardType } from "../../crew/awards.js";
 import "./awardBlock.css";
 
 /**

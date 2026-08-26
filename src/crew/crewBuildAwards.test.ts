@@ -3,9 +3,9 @@ import {
   canPlaceCrewAwardBlock,
   crewAwardLandingOptions,
   deriveCrewBuildWithAwards,
-} from "./crewBuild";
-import type { CrewAwardBlockRecord } from "./awards";
-import type { CrewBuildRun } from "./types";
+} from "./crewBuild.js";
+import type { CrewAwardBlockRecord } from "./awards.js";
+import type { CrewBuildRun } from "./types.js";
 
 function run(id: string, values: Partial<CrewBuildRun> = {}): CrewBuildRun {
   return {

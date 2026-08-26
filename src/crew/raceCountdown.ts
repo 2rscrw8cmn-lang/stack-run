@@ -1,4 +1,4 @@
-import { daysBetweenLocalDates, formatDateLabel } from "../domain/dates";
+import { daysBetweenLocalDates, formatDateLabel } from "../domain/dates.js";
 
 export type RaceCountdown =
   | { kind: "future"; days: number; label: string }

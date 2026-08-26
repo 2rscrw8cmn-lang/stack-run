@@ -1,5 +1,5 @@
-import { INTERVALS_SYNC_TOKEN_STORAGE_KEY } from "./storageKeys";
-import { StorageWriteError } from "./appStateRepository";
+import { INTERVALS_SYNC_TOKEN_STORAGE_KEY } from "./storageKeys.js";
+import { StorageWriteError } from "./appStateRepository.js";
 
 function storageKey(accountId: string | null): string {
   return accountId

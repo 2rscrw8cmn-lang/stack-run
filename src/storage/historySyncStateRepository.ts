@@ -1,8 +1,8 @@
 import {
   emptyHistorySyncRecord,
   type HistorySyncRecord,
-} from "../history/historySyncPolicy";
-import { HISTORY_SYNC_STATE_STORAGE_KEY } from "./storageKeys";
+} from "../history/historySyncPolicy.js";
+import { HISTORY_SYNC_STATE_STORAGE_KEY } from "./storageKeys.js";
 
 /**
  * When this device last read the runner's history, and how it went.

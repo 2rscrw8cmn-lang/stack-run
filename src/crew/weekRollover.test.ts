@@ -5,7 +5,7 @@ import {
   crewWeekClock,
   isCrewAwardFinalizationSafe,
   isCrewRecapReleaseOpen,
-} from "./weekRollover";
+} from "./weekRollover.js";
 
 describe("Crew weekly rollover", () => {
   it("is anchored to America/New_York at Monday 06:00", () => {

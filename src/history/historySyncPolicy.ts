@@ -1,4 +1,4 @@
-import { DEFAULT_HISTORICAL_LOOKBACK_DAYS } from "./historicalWindows";
+import { DEFAULT_HISTORICAL_LOOKBACK_DAYS } from "./historicalWindows.js";
 
 /**
  * When STACK is allowed to ask Intervals for history, and when it is not.

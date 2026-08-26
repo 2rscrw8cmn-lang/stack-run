@@ -12,8 +12,8 @@ import {
   setCrewEmblemShape,
   type CrewEmblem,
   type CrewEmblemLayer,
-} from "../../crew/emblem";
-import { CrewEmblem as CrewEmblemMark } from "./CrewEmblem";
+} from "../../crew/emblem.js";
+import { CrewEmblem as CrewEmblemMark } from "./CrewEmblem.js";
 
 interface CrewEmblemBuilderProps {
   emblem: CrewEmblem;

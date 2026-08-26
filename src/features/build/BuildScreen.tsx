@@ -4,29 +4,29 @@ import {
   findPlacementForRunLog,
   selectBuildViewModel,
   WORKOUT_TYPE_LABEL,
-} from "../../domain/build";
-import { todayLocalDate } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+} from "../../domain/build.js";
+import { todayLocalDate } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
 import {
   autoPlaceOption,
   placementOptions,
   type PlacementOption,
-} from "../../domain/placement";
+} from "../../domain/placement.js";
 import type {
   ArchivedTrainingPlan,
   BlockPlacement,
   RunLog,
   TrainingPlan,
-} from "../../domain/types";
-import type { IntervalsConnection } from "../../connected/intervals";
-import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
-import type { ValidRunEntry } from "../run-entry/runValidation";
-import { BlockDetailSheet } from "./BlockDetailSheet";
-import { BuildHeading } from "./BuildHeading";
-import { BuiltStructure } from "./BuiltStructure";
-import { PendingBlocksTray } from "./PendingBlocksTray";
-import { describeCandidate } from "./describeCandidate";
-import { PlacementBar } from "./PlacementBar";
+} from "../../domain/types.js";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import { CompleteRunSheet } from "../run-entry/CompleteRunSheet.js";
+import type { ValidRunEntry } from "../run-entry/runValidation.js";
+import { BlockDetailSheet } from "./BlockDetailSheet.js";
+import { BuildHeading } from "./BuildHeading.js";
+import { BuiltStructure } from "./BuiltStructure.js";
+import { PendingBlocksTray } from "./PendingBlocksTray.js";
+import { describeCandidate } from "./describeCandidate.js";
+import { PlacementBar } from "./PlacementBar.js";
 
 /**
  * How long the placement confirmation stays on screen before the tower is

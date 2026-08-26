@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CrewMemberSummary } from "./types";
-import { crewFreshness, crewSyncStatus } from "./freshness";
+import type { CrewMemberSummary } from "./types.js";
+import { crewFreshness, crewSyncStatus } from "./freshness.js";
 
 function summary(updatedAt: string): CrewMemberSummary {
   return {

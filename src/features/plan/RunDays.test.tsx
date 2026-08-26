@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { earnsBlock } from "../../domain/build";
-import { weekdayOf } from "../../domain/runDays";
-import type { TrainingPlan } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { OpenSettings } from "../../test/OpenSettings";
+import { earnsBlock } from "../../domain/build.js";
+import { weekdayOf } from "../../domain/runDays.js";
+import type { TrainingPlan } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { OpenSettings } from "../../test/OpenSettings.js";
 
 const plan = loadSeedPlan();
 

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addDaysToLocalDate } from "../domain/dates";
-import type { fetchIntervals } from "../connected/intervals";
-import { loadHistoricalActivities } from "../storage/historicalActivityRepository";
-import { HISTORICAL_ACTIVITIES_STORAGE_KEY } from "../storage/storageKeys";
-import { fixtureActivities, fixtureRide } from "./historicalFixtures";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import type { fetchIntervals } from "../connected/intervals.js";
+import { loadHistoricalActivities } from "../storage/historicalActivityRepository.js";
+import { HISTORICAL_ACTIVITIES_STORAGE_KEY } from "../storage/storageKeys.js";
+import { fixtureActivities, fixtureRide } from "./historicalFixtures.js";
 import {
   historicalActivitiesBetween,
   syncHistoricalActivities,
-} from "./historicalSync";
-import { historicalWindows } from "./historicalWindows";
+} from "./historicalSync.js";
+import { historicalWindows } from "./historicalWindows.js";
 
 const connection = { mode: "local-api-key" as const, credential: "fake-personal-key" };
 const today = "2026-08-15";

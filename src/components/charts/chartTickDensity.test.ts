@@ -3,7 +3,7 @@ import {
   MINIMUM_LABEL_GAP_RATIO,
   PHONE_X_LABEL_TARGET,
   sparseTickIndices,
-} from "./chartTickDensity";
+} from "./chartTickDensity.js";
 
 describe("Chart tick density", () => {
   it("labels every bucket only while there are few enough of them", () => {

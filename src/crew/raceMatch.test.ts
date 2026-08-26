@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareCrewRace } from "./raceMatch";
+import { compareCrewRace } from "./raceMatch.js";
 
 describe("crew race comparison", () => {
   it("warns for date or distance but never returns replacement state", () => {

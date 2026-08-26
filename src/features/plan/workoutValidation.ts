@@ -1,5 +1,5 @@
-import type { RunActivityType } from "../../domain/types";
-import type { PlannedRunValues } from "../../domain/planEdit";
+import type { RunActivityType } from "../../domain/types.js";
+import type { PlannedRunValues } from "../../domain/planEdit.js";
 
 export interface WorkoutFormValues {
   type: RunActivityType;

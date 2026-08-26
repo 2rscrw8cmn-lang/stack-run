@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseDurationInput } from "../../domain/duration";
-import { maskDurationInput } from "./durationMask";
+import { parseDurationInput } from "../../domain/duration.js";
+import { maskDurationInput } from "./durationMask.js";
 
 describe("maskDurationInput", () => {
   it("fills digits from the seconds up", () => {

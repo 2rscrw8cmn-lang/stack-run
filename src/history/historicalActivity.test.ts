@@ -4,12 +4,12 @@ import {
   normalizeHistoricalActivities,
   normalizeHistoricalActivity,
   type HistoricalActivity,
-} from "./historicalActivity";
+} from "./historicalActivity.js";
 import {
   fixtureActivities,
   fixtureActivityWithPrivatePayload,
   fixtureRide,
-} from "./historicalFixtures";
+} from "./historicalFixtures.js";
 
 const seenAt = "2026-08-15T12:00:00.000Z";
 

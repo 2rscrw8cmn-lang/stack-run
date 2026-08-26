@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
-import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection";
-import { formatDateLabel } from "../../domain/dates";
-import type { RunnerRun } from "../../history/runnerRun";
-import { weeklyVolume } from "../../history/runnerVolume";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection } from "../trends/TrendDetailShared";
+import { PlanActualColumns } from "../../components/charts/PlanActualColumns.js";
+import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import { weeklyVolume } from "../../history/runnerVolume.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { DetailSection } from "../trends/TrendDetailShared.js";
 import {
   SignalCoverageNote,
   SignalReference,
   SignalResultSummary,
-} from "./SignalDetailParts";
-import { signedNumber, signedPercent } from "./signalFormatting";
+} from "./SignalDetailParts.js";
+import { signedNumber, signedPercent } from "./signalFormatting.js";
 
 /** Workload, with the coverage that qualifies the comparison. */
 export function WorkloadSignalDetail({

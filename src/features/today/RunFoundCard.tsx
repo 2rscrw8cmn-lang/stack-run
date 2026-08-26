@@ -1,12 +1,12 @@
 import { Database } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Button } from "../../components/ui/Button";
-import type { RunFound } from "../../connected/intervals";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { TodayActionCard } from "./TodayActionCard";
+import { Button } from "../../components/ui/Button.js";
+import type { RunFound } from "../../connected/intervals.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { TodayActionCard } from "./TodayActionCard.js";
 
 interface RunFoundCardProps {
   found: RunFound;

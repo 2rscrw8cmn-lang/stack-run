@@ -1,10 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { findWorkout, workoutOnDate } from "../../domain/planEdit";
-import type { RunLog, TrainingPlan } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { PlanScreen } from "./PlanScreen";
+import { findWorkout, workoutOnDate } from "../../domain/planEdit.js";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { PlanScreen } from "./PlanScreen.js";
 
 const seed = loadSeedPlan();
 

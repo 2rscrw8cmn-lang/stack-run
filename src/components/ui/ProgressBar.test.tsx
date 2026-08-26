@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ProgressBar } from "./ProgressBar";
+import { ProgressBar } from "./ProgressBar.js";
 
 describe("ProgressBar", () => {
   it("exposes value, max, and an accessible label", () => {

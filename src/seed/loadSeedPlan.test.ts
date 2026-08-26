@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "./loadSeedPlan";
+import { loadSeedPlan } from "./loadSeedPlan.js";
 
 describe("loadSeedPlan", () => {
   it("loads the 18-week OUC Half Marathon plan", () => {

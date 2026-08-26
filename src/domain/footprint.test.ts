@@ -4,8 +4,8 @@ import {
   footprintFor,
   heightForActivityType,
   widthForMiles,
-} from "./footprint";
-import type { Effort, RunActivityType, RunLog } from "./types";
+} from "./footprint.js";
+import type { Effort, RunActivityType, RunLog } from "./types.js";
 
 function log(
   distanceMiles: number,

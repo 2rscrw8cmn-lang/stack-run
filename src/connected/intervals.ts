@@ -1,5 +1,5 @@
-import type { ImportedRunMetrics, RunActivityType, RunLog, TrainingPlan, Workout } from "../domain/types";
-import { daysBetweenLocalDates } from "../domain/dates";
+import type { ImportedRunMetrics, RunActivityType, RunLog, TrainingPlan, Workout } from "../domain/types.js";
+import { daysBetweenLocalDates } from "../domain/dates.js";
 
 const METERS_PER_MILE = 1609.344;
 const FEET_PER_METER = 3.28084;

@@ -1,6 +1,6 @@
-import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates";
-import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun";
-import { weeklyVolume, type WeeklyVolumePoint } from "./runnerVolume";
+import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates.js";
+import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun.js";
+import { weeklyVolume, type WeeklyVolumePoint } from "./runnerVolume.js";
 
 /**
  * Long-run history, as a fact about distance rather than a claim about intent.

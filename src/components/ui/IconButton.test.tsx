@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { X } from "lucide-react";
 import { describe, expect, it } from "vitest";
-import { IconButton } from "./IconButton";
+import { IconButton } from "./IconButton.js";
 
 describe("IconButton", () => {
   it("exposes the required accessible label", () => {

@@ -1,7 +1,7 @@
-import { WORKOUT_TYPE_LABEL } from "./build";
-import { formatDateLabel } from "./dates";
-import type { PlanAdjustmentOperation } from "./planAdjustment";
-import type { Workout } from "./types";
+import { WORKOUT_TYPE_LABEL } from "./build.js";
+import { formatDateLabel } from "./dates.js";
+import type { PlanAdjustmentOperation } from "./planAdjustment.js";
+import type { Workout } from "./types.js";
 
 /**
  * One row of #180's audit ledger (`plan_adjustments`), as the signed-in

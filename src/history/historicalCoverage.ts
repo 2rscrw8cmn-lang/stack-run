@@ -1,6 +1,6 @@
-import { VERIFIED_RUNNING_TYPES } from "../connected/intervals";
-import { historicalDistanceMiles } from "./historicalMeasures";
-import type { HistoricalActivity, HistoricalRejection } from "./historicalActivity";
+import { VERIFIED_RUNNING_TYPES } from "../connected/intervals.js";
+import { historicalDistanceMiles } from "./historicalMeasures.js";
+import type { HistoricalActivity, HistoricalRejection } from "./historicalActivity.js";
 
 /**
  * What the historical dataset actually contains, for engineering.

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { LogIn, UserPlus } from "lucide-react";
-import type { Race } from "../../domain/types";
-import { formatDateLabel } from "../../domain/dates";
-import { compareCrewRace } from "../../crew/raceMatch";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { StackMark } from "../../components/shared/StackMark";
-import { CrewEmblem } from "./CrewEmblem";
+import type { Race } from "../../domain/types.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { compareCrewRace } from "../../crew/raceMatch.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { StackMark } from "../../components/shared/StackMark.js";
+import { CrewEmblem } from "./CrewEmblem.js";
 
 interface Props {
   crew: RaceCrewController;

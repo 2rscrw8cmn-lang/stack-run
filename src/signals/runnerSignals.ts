@@ -1,17 +1,17 @@
-import type { RunLog, TrainingPlan } from "../domain/types";
-import type { RunnerRun } from "../history/runnerRun";
-import { frequencySignal } from "./frequencySignal";
-import { longRunSignal } from "./longRunSignal";
-import { planContextSignal } from "./planContextSignal";
+import type { RunLog, TrainingPlan } from "../domain/types.js";
+import type { RunnerRun } from "../history/runnerRun.js";
+import { frequencySignal } from "./frequencySignal.js";
+import { longRunSignal } from "./longRunSignal.js";
+import { planContextSignal } from "./planContextSignal.js";
 import {
   orderTrainingSignals,
   presentableSignals,
   SIGNAL_WINDOW_DAYS,
   type TrainingSignal,
-} from "./trainingSignal";
-import { volumeSignal } from "./volumeSignal";
-import { workloadSignal } from "./workloadSignal";
-import { zoneSignal } from "./zoneSignal";
+} from "./trainingSignal.js";
+import { volumeSignal } from "./volumeSignal.js";
+import { workloadSignal } from "./workloadSignal.js";
+import { zoneSignal } from "./zoneSignal.js";
 
 export interface RunnerSignalsInput {
   /** The unified actual history — NEXT-2's `unifiedRunnerHistory` output. */

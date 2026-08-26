@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   RUNNER_METRIC_MINIMUM_RATIO,
   RUNNER_METRIC_MINIMUM_RUNS,
-} from "../history/runnerCoverage";
-import { signalRuns, type WindowSpec } from "./signalTestRuns";
-import { workloadSignal, WORKLOAD_STABLE_BAND } from "./workloadSignal";
+} from "../history/runnerCoverage.js";
+import { signalRuns, type WindowSpec } from "./signalTestRuns.js";
+import { workloadSignal, WORKLOAD_STABLE_BAND } from "./workloadSignal.js";
 
 const TODAY = "2026-08-15";
 

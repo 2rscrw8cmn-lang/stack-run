@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { RotateCcw, TriangleAlert } from "lucide-react";
-import { StackMark } from "../components/shared/StackMark";
-import { Button } from "../components/ui/Button";
+import { StackMark } from "../components/shared/StackMark.js";
+import { Button } from "../components/ui/Button.js";
 
 interface AppErrorBoundaryProps {
   children: ReactNode;

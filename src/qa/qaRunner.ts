@@ -1,6 +1,6 @@
-import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates";
-import { footprintFor } from "../domain/footprint";
-import { autoPlaceOption, placementOptions } from "../domain/placement";
+import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates.js";
+import { footprintFor } from "../domain/footprint.js";
+import { autoPlaceOption, placementOptions } from "../domain/placement.js";
 import type {
   AppState,
   BlockPlacement,
@@ -8,16 +8,16 @@ import type {
   RunLog,
   TrainingPlan,
   Workout,
-} from "../domain/types";
-import type { HistoricalActivity } from "../history/historicalActivity";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import { createInitialAppState } from "../storage/migrations";
+} from "../domain/types.js";
+import type { HistoricalActivity } from "../history/historicalActivity.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import { createInitialAppState } from "../storage/migrations.js";
 import {
   QA_AGGREGATE_ONLY_ACTIVITY_ID,
   QA_HISTORICAL_AGGREGATE_ACTIVITY_ID,
   QA_HISTORICAL_RICH_ACTIVITY_ID,
   QA_RICH_PROFILE_ACTIVITY_ID,
-} from "./qaSourceDetail";
+} from "./qaSourceDetail.js";
 
 /**
  * Public synthetic review credentials. They unlock no real runner data and are

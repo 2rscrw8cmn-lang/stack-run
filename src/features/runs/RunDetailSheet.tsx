@@ -1,12 +1,12 @@
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { availableWorkoutsForRunLog } from "../../domain/plan";
-import type { RunHistoryEntry } from "../../domain/runs";
-import type { RunLog, TrainingPlan } from "../../domain/types";
-import type { IntervalsConnection } from "../../connected/intervals";
-import { RunResultDetail } from "../workout-detail/RunResultDetail";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { availableWorkoutsForRunLog } from "../../domain/plan.js";
+import type { RunHistoryEntry } from "../../domain/runs.js";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import { RunResultDetail } from "../workout-detail/RunResultDetail.js";
 
 interface RunDetailSheetProps {
   entry: RunHistoryEntry;

@@ -1,5 +1,5 @@
-import { addDaysToLocalDate } from "../../domain/dates";
-import { compareRunnerRuns, type RunnerRun } from "../../history/runnerRun";
+import { addDaysToLocalDate } from "../../domain/dates.js";
+import { compareRunnerRuns, type RunnerRun } from "../../history/runnerRun.js";
 
 interface SignalDemoLocation {
   hostname: string;

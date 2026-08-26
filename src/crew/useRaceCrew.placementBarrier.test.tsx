@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_CREW_EMBLEM } from "./emblem";
-import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "./types";
+import { DEFAULT_CREW_EMBLEM } from "./emblem.js";
+import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "./types.js";
 
 /*
  * Issue #128: the forced refresh after a placement is a read barrier, not just

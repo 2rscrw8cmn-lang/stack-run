@@ -1,4 +1,4 @@
-import { ACTIVE_CREW_STORAGE_KEY } from "./storageKeys";
+import { ACTIVE_CREW_STORAGE_KEY } from "./storageKeys.js";
 
 type ActiveCrewByUserId = Record<string, string>;
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ONBOARDING_STORAGE_KEY } from "./storageKeys";
-import { INITIAL_ONBOARDING_STATE, loadOnboarding, saveOnboarding } from "./onboardingRepository";
+import { ONBOARDING_STORAGE_KEY } from "./storageKeys.js";
+import { INITIAL_ONBOARDING_STATE, loadOnboarding, saveOnboarding } from "./onboardingRepository.js";
 
 beforeEach(() => localStorage.clear());
 

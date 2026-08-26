@@ -1,17 +1,17 @@
-import { Sheet } from "../../components/ui/Sheet";
-import { SelectableTrendLine } from "../../components/charts/SelectableTrendLine";
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { SelectableTrendLine } from "../../components/charts/SelectableTrendLine.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
 import {
   DEFERRED_COMPARISON_NOTE,
   runnerCoverage,
   type MetricCoverage,
   type RunnerMetric,
-} from "../../history/runnerCoverage";
-import { longestRunByWeek } from "../../history/runnerLongRuns";
-import type { RunnerRun } from "../../history/runnerRun";
-import type { RunnerSnapshot } from "../../history/runnerSnapshot";
-import { DetailSection, SignalFacts } from "../trends/TrendDetailShared";
+} from "../../history/runnerCoverage.js";
+import { longestRunByWeek } from "../../history/runnerLongRuns.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import type { RunnerSnapshot } from "../../history/runnerSnapshot.js";
+import { DetailSection, SignalFacts } from "../trends/TrendDetailShared.js";
 
 interface RunnerProfileSheetProps {
   runs: readonly RunnerRun[];

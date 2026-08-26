@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToLocalDate } from "../../domain/dates";
-import { historicalRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { runnerSignals } from "../../signals/runnerSignals";
+import { addDaysToLocalDate } from "../../domain/dates.js";
+import { historicalRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { runnerSignals } from "../../signals/runnerSignals.js";
 import {
   RUNS_OVERVIEW_SIGNAL_LIMIT,
   selectOverviewSignals,
   signalSummaryReading,
   signalOverviewVisual,
-} from "./signalOverview";
+} from "./signalOverview.js";
 
 const TODAY = "2026-08-15";
 

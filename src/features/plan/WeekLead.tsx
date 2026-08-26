@@ -1,13 +1,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { IconButton } from "../../components/ui/IconButton";
-import { formatRunsMiles } from "../../domain/distance";
-import type { PlanWeekViewModel } from "../../domain/plan";
-import { ANCHOR_WEEK_LABEL, type PlanLifecycle } from "./planLifecycle";
+import { Button } from "../../components/ui/Button.js";
+import { IconButton } from "../../components/ui/IconButton.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import type { PlanWeekViewModel } from "../../domain/plan.js";
+import { ANCHOR_WEEK_LABEL, type PlanLifecycle } from "./planLifecycle.js";
 import type {
   PlanWeekActualContext,
   PlanWeekIntentContext,
-} from "./planWeekContext";
+} from "./planWeekContext.js";
 
 interface WeekLeadProps {
   week: PlanWeekViewModel;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { HistoricalActivity } from "./historicalActivity";
+import type { HistoricalActivity } from "./historicalActivity.js";
 import {
   reconcileHistoricalActivities,
   sameSourceFacts,
-} from "./historicalReconciliation";
+} from "./historicalReconciliation.js";
 
 function activity(overrides: Partial<HistoricalActivity> = {}): HistoricalActivity {
   return {

@@ -1,4 +1,4 @@
-import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals";
+import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals.js";
 
 /**
  * One historical activity in STACK's approved actual-history set, as the source stated it.

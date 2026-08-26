@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { RunLog } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { CompleteRunSheet } from "./CompleteRunSheet";
+import type { RunLog } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { CompleteRunSheet } from "./CompleteRunSheet.js";
 
 const workout = loadSeedPlan().weeks[0].workouts.find(
   (item) => item.type !== "rest",

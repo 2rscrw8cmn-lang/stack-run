@@ -14,7 +14,7 @@ import {
   setRunnerIconPart,
   type RunnerIcon,
   type RunnerIconShape,
-} from "./runnerIcon";
+} from "./runnerIcon.js";
 
 const icon: RunnerIcon = { head: 1, face: 3, body: 5, flair: 2, background: 3 };
 

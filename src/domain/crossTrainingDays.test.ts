@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import { findWorkout } from "./planEdit";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import { findWorkout } from "./planEdit.js";
 import {
   applyCrossTrainingDays,
   currentCrossTrainingDays,
   planCrossTrainingDayChange,
-} from "./crossTrainingDays";
-import { crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts";
-import { weekdayOf, type Weekday } from "./runDays";
+} from "./crossTrainingDays.js";
+import { crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts.js";
+import { weekdayOf, type Weekday } from "./runDays.js";
 
 const plan = loadSeedPlan();
 const START = "2026-08-01";

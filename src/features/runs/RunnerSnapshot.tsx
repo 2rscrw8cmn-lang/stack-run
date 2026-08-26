@@ -1,8 +1,8 @@
 import { ChevronRight } from "lucide-react";
-import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import type { HistorySyncPhase } from "../../history/historySyncPolicy";
-import type { RunnerSnapshot as Snapshot } from "../../history/runnerSnapshot";
+import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import type { HistorySyncPhase } from "../../history/historySyncPolicy.js";
+import type { RunnerSnapshot as Snapshot } from "../../history/runnerSnapshot.js";
 
 interface RunnerSnapshotProps {
   snapshot: Snapshot;

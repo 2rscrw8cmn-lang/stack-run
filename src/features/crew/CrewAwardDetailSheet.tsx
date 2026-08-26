@@ -1,18 +1,18 @@
 import { Calendar, Flag, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
-import { addDaysToLocalDate, formatDateLabel } from "../../domain/dates";
+import { addDaysToLocalDate, formatDateLabel } from "../../domain/dates.js";
 import {
   CREW_AWARD_DESCRIPTION,
   CREW_AWARD_LABEL,
   formatCrewAwardResult,
   isFeatureCrewAward,
   type CrewAwardBlockRecord,
-} from "../../crew/awards";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import type { CrewMember } from "../../crew/types";
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { AwardBrick } from "./AwardBrick";
+} from "../../crew/awards.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import type { CrewMember } from "../../crew/types.js";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { AwardBrick } from "./AwardBrick.js";
 import "./awardBlock.css";
 
 function Fact({ icon, label, value, name = false }: { icon: ReactNode; label: string; value: string; name?: boolean }) {

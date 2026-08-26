@@ -1,4 +1,4 @@
-import { addDaysToLocalDate, compareLocalDates } from "../domain/dates";
+import { addDaysToLocalDate, compareLocalDates } from "../domain/dates.js";
 
 /** Same trailing window Longest Run already uses, so the two stay comparable. */
 export const AVG_PACE_WINDOW = 28;

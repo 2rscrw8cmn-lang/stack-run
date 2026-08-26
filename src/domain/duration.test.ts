@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDurationSeconds, formatTotalHoursMinutes, parseDurationInput } from "./duration";
+import { formatDurationSeconds, formatTotalHoursMinutes, parseDurationInput } from "./duration.js";
 
 describe("parseDurationInput", () => {
   it("parses MM:SS", () => {

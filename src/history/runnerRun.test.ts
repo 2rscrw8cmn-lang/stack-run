@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";
+import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures.js";
 import {
   runnerHistoryRange,
   runnerRunsBetween,
   unifiedRunnerHistory,
-} from "./runnerRun";
+} from "./runnerRun.js";
 
 /**
  * The reconciliation rules, stated as tests.

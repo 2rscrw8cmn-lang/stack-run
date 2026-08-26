@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { CrewBuildReadyAward } from "../../crew/crewBuild";
-import { CrewAwardsPanel } from "./CrewAwardsPanel";
+import type { CrewBuildReadyAward } from "../../crew/crewBuild.js";
+import { CrewAwardsPanel } from "./CrewAwardsPanel.js";
 
 function readyAward(overrides: Partial<CrewBuildReadyAward> = {}): CrewBuildReadyAward {
   return {

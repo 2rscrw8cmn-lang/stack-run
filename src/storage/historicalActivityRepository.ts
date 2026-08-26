@@ -1,8 +1,8 @@
-import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals";
-import type { HistoricalActivity } from "../history/historicalActivity";
-import { compareHistoricalActivities } from "../history/historicalActivity";
-import { StorageWriteError } from "./appStateRepository";
-import { HISTORICAL_ACTIVITIES_STORAGE_KEY } from "./storageKeys";
+import { VERIFIED_CROSS_TRAINING_TYPES, VERIFIED_RUNNING_TYPES } from "../connected/intervals.js";
+import type { HistoricalActivity } from "../history/historicalActivity.js";
+import { compareHistoricalActivities } from "../history/historicalActivity.js";
+import { StorageWriteError } from "./appStateRepository.js";
+import { HISTORICAL_ACTIVITIES_STORAGE_KEY } from "./storageKeys.js";
 
 /**
  * The runner's normalized historical activity history, kept outside schema-9

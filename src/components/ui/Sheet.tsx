@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { IconButton } from "./IconButton";
+import { IconButton } from "./IconButton.js";
 
 interface SheetProps {
   title: string;

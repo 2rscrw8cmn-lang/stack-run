@@ -1,9 +1,9 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RaceCrewController } from "../crew/useRaceCrew";
-import { DEFAULT_CREW_EMBLEM } from "../crew/emblem";
-import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "../crew/types";
+import type { RaceCrewController } from "../crew/useRaceCrew.js";
+import { DEFAULT_CREW_EMBLEM } from "../crew/emblem.js";
+import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "../crew/types.js";
 
 const action = vi.fn(async () => undefined);
 

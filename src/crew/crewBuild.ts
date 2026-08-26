@@ -5,7 +5,7 @@ import {
   widthForMiles,
   type BlockHeight,
   type BlockWidth,
-} from "../domain/footprint";
+} from "../domain/footprint.js";
 import {
   faceVisibilityOf,
   GRID_COLUMNS,
@@ -15,15 +15,15 @@ import {
   type FaceVisibility,
   type GridVoid,
   type PlacementOption,
-} from "../domain/placement";
-import type { RunActivityType, RunSource } from "../domain/types";
+} from "../domain/placement.js";
+import type { RunActivityType, RunSource } from "../domain/types.js";
 import {
   crewAwardFootprint,
   type CrewAwardBlockRecord,
   type CrewAwardType,
-} from "./awards";
-import type { CrewMemberAccent } from "./memberAccent";
-import type { CrewBuildRun } from "./types";
+} from "./awards.js";
+import type { CrewMemberAccent } from "./memberAccent.js";
+import type { CrewBuildRun } from "./types.js";
 
 /** Safety ceiling for the private ten-person Crew run read. */
 export const CREW_BUILD_BLOCK_LIMIT = 1280;

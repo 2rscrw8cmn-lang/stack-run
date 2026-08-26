@@ -1,5 +1,5 @@
-import type { RunnerRun } from "../history/runnerRun";
-import { runFrequencyInRange } from "../history/runnerFrequency";
+import type { RunnerRun } from "../history/runnerRun.js";
+import { runFrequencyInRange } from "../history/runnerFrequency.js";
 import {
   classifyAbsoluteChange,
   comparisonPhrase,
@@ -13,7 +13,7 @@ import {
   windowAvailability,
   type SignalDirection,
   type SignalOf,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * Frequency — how often the runner has been running.

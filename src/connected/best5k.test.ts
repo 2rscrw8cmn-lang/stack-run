@@ -1,22 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RunLog } from "../domain/types";
+import type { RunLog } from "../domain/types.js";
 import {
   BEST_5K_MIN_MILES,
   couldHaveBest5k,
   enrichBest5k,
   planBest5kEnrichment,
-} from "./best5k";
+} from "./best5k.js";
 import {
   BEST_5K_MAX_SECONDS,
   BEST_5K_MIN_SECONDS,
   normalizeIntervalsBestEfforts,
-} from "./intervals";
+} from "./intervals.js";
 import {
   best5kProbeStamp,
   clearBest5kProbes,
   loadBest5kProbes,
   recordBest5kProbes,
-} from "../storage/best5kProbeRepository";
+} from "../storage/best5kProbeRepository.js";
 
 const TODAY = "2026-09-15";
 

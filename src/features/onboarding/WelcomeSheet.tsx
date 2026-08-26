@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
-import { StackMark } from "../../components/shared/StackMark";
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
+import { StackMark } from "../../components/shared/StackMark.js";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
 
 interface WelcomeSheetProps {
   isOpen: boolean;

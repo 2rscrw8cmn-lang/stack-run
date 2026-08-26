@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crewRaceLine, raceCountdown } from "./raceCountdown";
+import { crewRaceLine, raceCountdown } from "./raceCountdown.js";
 
 describe("Crew race countdown", () => {
   it("counts down to a future race", () => {

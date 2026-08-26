@@ -3,12 +3,12 @@ import { useState } from "react";
 import {
   describeProvenanceChange,
   type WorkoutProvenance,
-} from "../../domain/planProvenance";
-import { formatUpdatedAgo } from "../../domain/dates";
-import type { Workout } from "../../domain/types";
-import { Button } from "../ui/Button";
-import { IconButton } from "../ui/IconButton";
-import { Sheet } from "../ui/Sheet";
+} from "../../domain/planProvenance.js";
+import { formatUpdatedAgo } from "../../domain/dates.js";
+import type { Workout } from "../../domain/types.js";
+import { Button } from "../ui/Button.js";
+import { IconButton } from "../ui/IconButton.js";
+import { Sheet } from "../ui/Sheet.js";
 
 interface AssistantAdjustmentBadgeProps {
   /** The workout's current, live state — used to describe what it is now. */

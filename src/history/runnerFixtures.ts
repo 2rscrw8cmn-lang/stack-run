@@ -1,5 +1,5 @@
-import type { RunLog } from "../domain/types";
-import type { HistoricalActivity } from "./historicalActivity";
+import type { RunLog } from "../domain/types.js";
+import type { HistoricalActivity } from "./historicalActivity.js";
 
 /**
  * Builders for the two records the unified history reconciles.

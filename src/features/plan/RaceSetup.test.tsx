@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { relinkRunLogs } from "../../domain/racePlan";
-import type { RunLog, TrainingPlan } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { OpenSettings } from "../../test/OpenSettings";
+import { relinkRunLogs } from "../../domain/racePlan.js";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { OpenSettings } from "../../test/OpenSettings.js";
 
 const plan = loadSeedPlan();
 

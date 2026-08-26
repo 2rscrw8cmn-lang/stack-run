@@ -1,14 +1,14 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles, formatMilesBuilt } from "../../domain/distance";
-import { formatDurationSeconds, formatTotalHoursMinutes } from "../../domain/duration";
-import { formatWeekRange } from "../../domain/plan";
-import { formatPaceSeconds } from "../../domain/runs";
-import { CREW_AWARD_LABEL, formatCrewAwardResult } from "../../crew/awards";
-import { crewMemberAccent } from "../../crew/memberAccent";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles, formatMilesBuilt } from "../../domain/distance.js";
+import { formatDurationSeconds, formatTotalHoursMinutes } from "../../domain/duration.js";
+import { formatWeekRange } from "../../domain/plan.js";
+import { formatPaceSeconds } from "../../domain/runs.js";
+import { CREW_AWARD_LABEL, formatCrewAwardResult } from "../../crew/awards.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
 import {
   nextCrewWeekAfter,
   type CrewWeekPerformance,
@@ -16,12 +16,12 @@ import {
   type CrewWeekRecapAward,
   type CrewWeekRecapBeat,
   type CrewWeekRecapRunner,
-} from "../../crew/weekRecap";
-import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
-import { AwardBrick } from "./AwardBrick";
-import { CrewEmblem } from "./CrewEmblem";
-import { RecapBuildCrop } from "./RecapBuildCrop";
-import { RunnerIcon } from "./RunnerIcon";
+} from "../../crew/weekRecap.js";
+import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem.js";
+import { AwardBrick } from "./AwardBrick.js";
+import { CrewEmblem } from "./CrewEmblem.js";
+import { RecapBuildCrop } from "./RecapBuildCrop.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 import "./awardBlock.css";
 import "./crewWeekRecap.css";
 

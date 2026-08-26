@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CROSS_TRAINING_WORKOUTS, crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts";
+import { CROSS_TRAINING_WORKOUTS, crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts.js";
 
 describe("crossTrainingWorkoutForIndex", () => {
   it("returns each rotation workout in order", () => {

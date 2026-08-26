@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createInitialAppState } from "../storage/migrations";
-import { DEFAULT_CREW_EMBLEM } from "./emblem";
-import type { LoadedCrewAccount, RaceCrew } from "./types";
+import { createInitialAppState } from "../storage/migrations.js";
+import { DEFAULT_CREW_EMBLEM } from "./emblem.js";
+import type { LoadedCrewAccount, RaceCrew } from "./types.js";
 
 /*
  * Issue #128: joining a Crew can finish before this device has adopted the

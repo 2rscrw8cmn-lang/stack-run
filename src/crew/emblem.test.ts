@@ -27,7 +27,7 @@ import {
   setCrewEmblemShape,
   type CrewEmblem,
   type CrewEmblemLayer,
-} from "./emblem";
+} from "./emblem.js";
 
 const emblem: CrewEmblem = {
   main: { shape: 4, color: 2 },

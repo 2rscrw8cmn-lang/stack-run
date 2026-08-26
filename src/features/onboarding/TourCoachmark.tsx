@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Button } from "../../components/ui/Button";
-import { IconButton } from "../../components/ui/IconButton";
+import { Button } from "../../components/ui/Button.js";
+import { IconButton } from "../../components/ui/IconButton.js";
 
 interface TourCoachmarkProps {
   title: string;

@@ -1,21 +1,21 @@
 import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
 import {
   shiftKinds,
   type AvailabilityCalendar,
-} from "../../domain/availability";
+} from "../../domain/availability.js";
 import {
   CalendarFetchError,
   fetchCalendar,
   nameFromFile,
   nameFromUrl,
   readCalendarSource,
-} from "../../domain/calendarSource";
-import { formatDateLabel } from "../../domain/dates";
-import { CalendarParseError, parseCalendar } from "../../domain/ics";
+} from "../../domain/calendarSource.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { CalendarParseError, parseCalendar } from "../../domain/ics.js";
 
 interface AvailabilitySheetProps {
   calendar: AvailabilityCalendar | null;

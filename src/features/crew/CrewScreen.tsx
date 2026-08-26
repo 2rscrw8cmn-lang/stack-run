@@ -21,11 +21,11 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Button } from "../../components/ui/Button";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { IconButton } from "../../components/ui/IconButton";
-import { Section } from "../../components/ui/Section";
-import { Sheet } from "../../components/ui/Sheet";
+import { Button } from "../../components/ui/Button.js";
+import { EmptyState } from "../../components/ui/EmptyState.js";
+import { IconButton } from "../../components/ui/IconButton.js";
+import { Section } from "../../components/ui/Section.js";
+import { Sheet } from "../../components/ui/Sheet.js";
 import {
   awardsWonByUserId,
   comparisonBarPercent,
@@ -35,37 +35,37 @@ import {
   orderedComparisonRows,
   type ComparisonMetric,
   type ComparisonSummary,
-} from "../../crew/comparisons";
-import { avgPaceSecondsByUserId, AVG_PACE_WINDOW } from "../../crew/avgPace";
+} from "../../crew/comparisons.js";
+import { avgPaceSecondsByUserId, AVG_PACE_WINDOW } from "../../crew/avgPace.js";
 import {
   crewAwardLandingOptions,
   crewBuildLandingOptions,
   deriveCrewBuildWithAwards,
   EMPTY_CREW_BUILD,
-} from "../../crew/crewBuild";
-import { crewSyncStatus } from "../../crew/freshness";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { deriveCrewMiniBuild } from "../../crew/miniBuild";
-import { viewerFirstMembers } from "../../crew/memberOrder";
-import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown";
-import { crewBuildTotals } from "../../crew/crewTotals";
-import type { CrewBuildRun } from "../../crew/types";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { useCrewAwards } from "../../crew/useCrewAwards";
-import { todayLocalDate } from "../../domain/dates";
-import { autoPlaceOption } from "../../domain/placement";
-import { useJustPlaced } from "../build/useJustPlaced";
-import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet";
-import { CrewAwardsPanel } from "./CrewAwardsPanel";
-import { CrewBuild, type CrewBuildPlacementMode } from "./CrewBuild";
-import { CrewEmblem } from "./CrewEmblem";
-import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet";
-import { CrewRecapNotification } from "./CrewRecapNotification";
-import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
-import { CrewRunDetailSheet } from "./CrewRunDetailSheet";
-import { CrewRunRow } from "./CrewRunRow";
-import { PropNotifications } from "./PropNotifications";
-import { RunnerIcon } from "./RunnerIcon";
+} from "../../crew/crewBuild.js";
+import { crewSyncStatus } from "../../crew/freshness.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import { deriveCrewMiniBuild } from "../../crew/miniBuild.js";
+import { viewerFirstMembers } from "../../crew/memberOrder.js";
+import { crewClubLine, crewRaceLine, raceCountdown } from "../../crew/raceCountdown.js";
+import { crewBuildTotals } from "../../crew/crewTotals.js";
+import type { CrewBuildRun } from "../../crew/types.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { useCrewAwards } from "../../crew/useCrewAwards.js";
+import { todayLocalDate } from "../../domain/dates.js";
+import { autoPlaceOption } from "../../domain/placement.js";
+import { useJustPlaced } from "../build/useJustPlaced.js";
+import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet.js";
+import { CrewAwardsPanel } from "./CrewAwardsPanel.js";
+import { CrewBuild, type CrewBuildPlacementMode } from "./CrewBuild.js";
+import { CrewEmblem } from "./CrewEmblem.js";
+import { CrewMemberProfileSheet } from "./CrewMemberProfileSheet.js";
+import { CrewRecapNotification } from "./CrewRecapNotification.js";
+import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo.js";
+import { CrewRunDetailSheet } from "./CrewRunDetailSheet.js";
+import { CrewRunRow } from "./CrewRunRow.js";
+import { PropNotifications } from "./PropNotifications.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 
 const DEFAULT_RECENT_RUNS = 6;
 const MAX_RECENT_RUNS = 20;

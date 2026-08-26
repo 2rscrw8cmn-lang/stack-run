@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createSeededAppState } from "./migrations";
+import { createSeededAppState } from "./migrations.js";
 import {
   accountAppStateStorageKey,
   backupPersonalState,
@@ -11,7 +11,7 @@ import {
   saveAccountAppState,
   savePersonalMetadata,
   savePersonalOutbox,
-} from "./personalSyncRepository";
+} from "./personalSyncRepository.js";
 
 beforeEach(() => localStorage.clear());
 

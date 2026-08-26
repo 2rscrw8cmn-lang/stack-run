@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { parseLocalDate } from "../../domain/dates";
+import { parseLocalDate } from "../../domain/dates.js";
 
 const WIDTH = 280;
 const HEIGHT = 112;

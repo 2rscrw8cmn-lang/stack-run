@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToLocalDate } from "../domain/dates";
-import { historicalRun, stackRun } from "../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../history/runnerRun";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import { historicalRun, stackRun } from "../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
 import {
   longRunSignal,
   LONG_RUN_MINIMUM_MEANINGFUL_MILES,
   LONG_RUN_STABLE_BAND,
-} from "./longRunSignal";
-import { signalRuns } from "./signalTestRuns";
+} from "./longRunSignal.js";
+import { signalRuns } from "./signalTestRuns.js";
 
 const TODAY = "2026-08-15";
 

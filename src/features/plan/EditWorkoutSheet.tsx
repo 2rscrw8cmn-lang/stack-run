@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
-import { formatDateLabel } from "../../domain/dates";
-import type { PlannedRunValues } from "../../domain/planEdit";
-import type { RunActivityType, Workout } from "../../domain/types";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { PlannedRunValues } from "../../domain/planEdit.js";
+import type { RunActivityType, Workout } from "../../domain/types.js";
 import {
   DETAILS_MAX_LENGTH,
   validateWorkoutForm,
   type WorkoutFormErrors,
   type WorkoutFormValues,
-} from "./workoutValidation";
+} from "./workoutValidation.js";
 
 interface EditWorkoutSheetProps {
   /** The day being planned. A rest day here means a run is being added to it. */

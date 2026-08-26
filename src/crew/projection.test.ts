@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { createInitialAppState, createSeededAppState } from "../storage/migrations";
-import type { RunLog } from "../domain/types";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations.js";
+import type { RunLog } from "../domain/types.js";
 import {
   projectMemberSummary,
   projectSharedRuns,
@@ -13,7 +13,7 @@ import {
   syncCrewProjection,
   isShareableWithCrew,
   type CrewSharedRunProjection,
-} from "./projection";
+} from "./projection.js";
 
 const privateRun: RunLog = {
   id: "local-run-1",

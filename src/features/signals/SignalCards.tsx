@@ -1,10 +1,10 @@
 import { Activity, ChevronRight } from "lucide-react";
-import { Section } from "../../components/ui/Section";
-import type { RunnerRun } from "../../history/runnerRun";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { Button } from "../../components/ui/Button";
-import { SignalOverviewVisual } from "./SignalOverviewVisual";
-import { signalSummaryReading } from "./signalOverview";
+import { Section } from "../../components/ui/Section.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { Button } from "../../components/ui/Button.js";
+import { SignalOverviewVisual } from "./SignalOverviewVisual.js";
+import { signalSummaryReading } from "./signalOverview.js";
 import "./signalPresentationCleanup.css";
 
 interface SignalCardsProps {

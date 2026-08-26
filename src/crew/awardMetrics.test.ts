@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { AppState, RunLog, TrainingPlan, Workout } from "../domain/types";
+import type { AppState, RunLog, TrainingPlan, Workout } from "../domain/types.js";
 import {
   crewAwardMetricsByRunId,
   levelUpPercent,
   targetDistanceRange,
   targetExecutionPercent,
   zone2ExecutionPercent,
-} from "./awardMetrics";
+} from "./awardMetrics.js";
 
 function run(overrides: Partial<RunLog> = {}): RunLog {
   return {

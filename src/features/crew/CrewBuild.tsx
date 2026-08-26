@@ -1,36 +1,36 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles, formatMilesBuilt } from "../../domain/distance";
-import { formatTotalHoursMinutes } from "../../domain/duration";
-import { isManualRun } from "../../domain/runSource";
-import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles, formatMilesBuilt } from "../../domain/distance.js";
+import { formatTotalHoursMinutes } from "../../domain/duration.js";
+import { isManualRun } from "../../domain/runSource.js";
+import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement.js";
 import {
   CREW_AWARD_LABEL,
   crewAwardFootprint,
   formatCrewAwardResult,
   type CrewAwardBlockRecord,
-} from "../../crew/awards";
-import { crewMemberAccent } from "../../crew/memberAccent";
+} from "../../crew/awards.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
 import {
   CREW_BUILD_MIN_VISIBLE_COURSES,
   crewBuildFootprint,
   type CrewBuildBlock,
   type CrewBuildModel,
   type CrewBuildRunBlock,
-} from "../../crew/crewBuild";
-import type { CrewBuildTotals } from "../../crew/crewTotals";
-import type { CrewBuildRun, CrewMember } from "../../crew/types";
-import { Button } from "../../components/ui/Button";
-import { Brick } from "../build/Brick";
-import { crewFaceLabel, memberPieceColor } from "./crewBrickFace";
-import { LandingSlot } from "../build/LandingSlot";
-import { PlacementBar } from "../build/PlacementBar";
-import { dropMarks, placementImpact } from "../build/placementDrop";
-import { useColumnDragPlacement } from "../build/useColumnDragPlacement";
-import { AwardBrick } from "./AwardBrick";
-import { RunnerIcon } from "./RunnerIcon";
+} from "../../crew/crewBuild.js";
+import type { CrewBuildTotals } from "../../crew/crewTotals.js";
+import type { CrewBuildRun, CrewMember } from "../../crew/types.js";
+import { Button } from "../../components/ui/Button.js";
+import { Brick } from "../build/Brick.js";
+import { crewFaceLabel, memberPieceColor } from "./crewBrickFace.js";
+import { LandingSlot } from "../build/LandingSlot.js";
+import { PlacementBar } from "../build/PlacementBar.js";
+import { dropMarks, placementImpact } from "../build/placementDrop.js";
+import { useColumnDragPlacement } from "../build/useColumnDragPlacement.js";
+import { AwardBrick } from "./AwardBrick.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 
 const MAX_VISIBLE_COURSES = 14;
 

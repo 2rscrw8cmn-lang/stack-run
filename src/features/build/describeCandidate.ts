@@ -1,5 +1,5 @@
-import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
-import type { PlacementOption } from "../../domain/placement";
+import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build.js";
+import type { PlacementOption } from "../../domain/placement.js";
 
 /**
  * Where the hovering block would go, for the live region. Screen reader users

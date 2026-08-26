@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
-import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection";
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import type { RunnerRun } from "../../history/runnerRun";
-import { weeklyVolume } from "../../history/runnerVolume";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection } from "../trends/TrendDetailShared";
-import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
-import { signedMilesChange, signedPercent } from "./signalFormatting";
+import { PlanActualColumns } from "../../components/charts/PlanActualColumns.js";
+import { defaultSelectedKey } from "../../components/charts/chartDefaultSelection.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import { weeklyVolume } from "../../history/runnerVolume.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { DetailSection } from "../trends/TrendDetailShared.js";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts.js";
+import { signedMilesChange, signedPercent } from "./signalFormatting.js";
 
 /** Volume, with the twelve weeks the two comparison windows were cut out of. */
 export function VolumeSignalDetail({

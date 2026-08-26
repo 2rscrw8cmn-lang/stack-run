@@ -1,6 +1,6 @@
-import { compareLocalDates } from "./dates";
-import { workoutsById } from "./build";
-import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "./types";
+import { compareLocalDates } from "./dates.js";
+import { workoutsById } from "./build.js";
+import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "./types.js";
 
 /**
  * One actual run, with the scheduled workout behind it when there was one.

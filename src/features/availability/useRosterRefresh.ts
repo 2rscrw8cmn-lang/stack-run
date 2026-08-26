@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import type { AvailabilityCalendar } from "../../domain/availability";
-import { fetchCalendar } from "../../domain/calendarSource";
-import { parseCalendar } from "../../domain/ics";
+import type { AvailabilityCalendar } from "../../domain/availability.js";
+import { fetchCalendar } from "../../domain/calendarSource.js";
+import { parseCalendar } from "../../domain/ics.js";
 
 /**
  * Re-reads a remembered roster once, quietly, when the app opens.

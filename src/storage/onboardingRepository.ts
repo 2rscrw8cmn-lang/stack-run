@@ -1,4 +1,4 @@
-import { ONBOARDING_STORAGE_KEY } from "./storageKeys";
+import { ONBOARDING_STORAGE_KEY } from "./storageKeys.js";
 
 export interface OnboardingState {
   version: 1;

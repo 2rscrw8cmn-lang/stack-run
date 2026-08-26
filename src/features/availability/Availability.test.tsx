@@ -1,13 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { AvailabilityCalendar } from "../../domain/availability";
-import { CalendarFetchError } from "../../domain/calendarSource";
-import { findWorkout } from "../../domain/planEdit";
-import type { TrainingPlan } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { OpenSettings } from "../../test/OpenSettings";
-import { PlanScreen } from "../plan/PlanScreen";
+import type { AvailabilityCalendar } from "../../domain/availability.js";
+import { CalendarFetchError } from "../../domain/calendarSource.js";
+import { findWorkout } from "../../domain/planEdit.js";
+import type { TrainingPlan } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { OpenSettings } from "../../test/OpenSettings.js";
+import { PlanScreen } from "../plan/PlanScreen.js";
 
 const plan = loadSeedPlan();
 

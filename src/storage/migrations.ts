@@ -1,5 +1,5 @@
-import { footprintFor } from "../domain/footprint";
-import { repackPlacements } from "../domain/placement";
+import { footprintFor } from "../domain/footprint.js";
+import { repackPlacements } from "../domain/placement.js";
 import type {
   AppSettings,
   AppState,
@@ -9,9 +9,9 @@ import type {
   RunActivityType,
   RunLog,
   TrainingPlan,
-} from "../domain/types";
-import { backfillPlan } from "../domain/racePlan";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
+} from "../domain/types.js";
+import { backfillPlan } from "../domain/racePlan.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 
 export const CURRENT_SCHEMA_VERSION = 11;
 

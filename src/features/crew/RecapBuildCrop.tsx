@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { formatMilesBuilt } from "../../domain/distance";
+import { formatMilesBuilt } from "../../domain/distance.js";
 import {
   faceCulledRecapSlice,
   type CrewWeekRecapBeat,
-} from "../../crew/weekRecap";
-import { crewMemberAccent } from "../../crew/memberAccent";
-import { BuildCrop, type BuildCropBlock } from "../build/BuildCrop";
-import { crewFaceLabel, memberPieceColor } from "./crewBrickFace";
+} from "../../crew/weekRecap.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
+import { BuildCrop, type BuildCropBlock } from "../build/BuildCrop.js";
+import { crewFaceLabel, memberPieceColor } from "./crewBrickFace.js";
 
 /**
  * The week's own slice of the Crew Build, drawn as Crew Build draws it.

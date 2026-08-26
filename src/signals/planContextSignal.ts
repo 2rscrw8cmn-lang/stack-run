@@ -1,5 +1,5 @@
-import { selectTrainingSignals } from "../domain/trends";
-import type { RunLog, TrainingPlan } from "../domain/types";
+import { selectTrainingSignals } from "../domain/trends.js";
+import type { RunLog, TrainingPlan } from "../domain/types.js";
 import {
   comparisonWindows,
   SIGNAL_WINDOW_DAYS,
@@ -7,7 +7,7 @@ import {
   TRAINING_SIGNAL_TITLE,
   unavailableSignal,
   type SignalOf,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * Plan context — what the plan asked for, and what was recorded against it.

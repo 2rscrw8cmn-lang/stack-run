@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { RunLog, TrainingPlan } from "./types";
-import { accomplishmentsForAddedRuns } from "./accomplishments";
+import type { RunLog, TrainingPlan } from "./types.js";
+import { accomplishmentsForAddedRuns } from "./accomplishments.js";
 
 const plan: TrainingPlan = {
   schemaVersion: 1,

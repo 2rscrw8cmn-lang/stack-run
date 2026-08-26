@@ -1,14 +1,14 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
+import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem.js";
 import type {
   CrewDashboardData,
   CrewMember,
   CrewSharedRun,
-} from "../../crew/types";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { TodayCrewRecap } from "./TodayCrewRecap";
+} from "../../crew/types.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { TodayCrewRecap } from "./TodayCrewRecap.js";
 
 const ICON = { head: 0, face: 0, body: 0, flair: 0, background: 0 };
 

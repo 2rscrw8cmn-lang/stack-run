@@ -1,5 +1,5 @@
-import { formatDurationSeconds } from "../../domain/duration";
-import type { DonutSegment } from "./DonutChart";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import type { DonutSegment } from "./DonutChart.js";
 
 export function zoneDonutSegments(zoneSeconds: readonly number[]): DonutSegment[] {
   const colors = [

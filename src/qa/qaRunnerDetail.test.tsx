@@ -1,19 +1,19 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SourceDetailReaderProvider } from "../connected/sourceDetail";
-import type { RunLog } from "../domain/types";
-import { unifiedRunnerHistory, type RunnerRun } from "../history/runnerRun";
-import { HistoricalRunSheet } from "../features/runs/HistoricalRunSheet";
-import { RunResultDetail } from "../features/workout-detail/RunResultDetail";
-import { createQaRunnerAppState, qaRunnerHistoricalActivities } from "./qaRunner";
+import { SourceDetailReaderProvider } from "../connected/sourceDetail.js";
+import type { RunLog } from "../domain/types.js";
+import { unifiedRunnerHistory, type RunnerRun } from "../history/runnerRun.js";
+import { HistoricalRunSheet } from "../features/runs/HistoricalRunSheet.js";
+import { RunResultDetail } from "../features/workout-detail/RunResultDetail.js";
+import { createQaRunnerAppState, qaRunnerHistoricalActivities } from "./qaRunner.js";
 import {
   QA_AGGREGATE_ONLY_ACTIVITY_ID,
   QA_HISTORICAL_AGGREGATE_ACTIVITY_ID,
   QA_HISTORICAL_RICH_ACTIVITY_ID,
   QA_RICH_PROFILE_ACTIVITY_ID,
   qaSourceDetailReaderFor,
-} from "./qaSourceDetail";
+} from "./qaSourceDetail.js";
 
 /**
  * The review R3A exists to make possible: both Run Detail states, rendered by

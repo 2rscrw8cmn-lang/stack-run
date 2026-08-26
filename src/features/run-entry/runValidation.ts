@@ -1,6 +1,6 @@
-import { isAfterLocalDate, todayLocalDate } from "../../domain/dates";
-import { parseDurationInput } from "../../domain/duration";
-import type { Effort, RunActivityType } from "../../domain/types";
+import { isAfterLocalDate, todayLocalDate } from "../../domain/dates.js";
+import { parseDurationInput } from "../../domain/duration.js";
+import type { Effort, RunActivityType } from "../../domain/types.js";
 
 export interface RunEntryValues {
   /** The local date the run actually happened, as typed. */
