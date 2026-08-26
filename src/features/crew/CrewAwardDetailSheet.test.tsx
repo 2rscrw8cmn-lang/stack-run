@@ -1,8 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet";
-import type { CrewAwardBlockRecord } from "../../crew/awards";
-import type { CrewMember } from "../../crew/types";
+import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet.js";
+import type { CrewAwardBlockRecord } from "../../crew/awards.js";
+import type { CrewMember } from "../../crew/types.js";
 
 const member: CrewMember = {
   userId: "drew",

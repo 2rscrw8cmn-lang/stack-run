@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent } from "react";
-import type { PlacementOption } from "../../domain/placement";
+import type { PlacementOption } from "../../domain/placement.js";
 
 interface LandingSlotProps {
   option: PlacementOption;

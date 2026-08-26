@@ -1,8 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "./App";
-import { createInitialAppState, createSeededAppState } from "../storage/migrations";
+import { App } from "./App.js";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations.js";
 
 const COMPLETED_ONBOARDING = JSON.stringify({
   version: 1,

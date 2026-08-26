@@ -1,4 +1,4 @@
-import { DISMISSED_PROP_NOTIFICATIONS_STORAGE_KEY } from "./storageKeys";
+import { DISMISSED_PROP_NOTIFICATIONS_STORAGE_KEY } from "./storageKeys.js";
 
 type DismissedByUserId = Record<string, string[]>;
 

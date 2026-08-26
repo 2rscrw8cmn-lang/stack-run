@@ -1,8 +1,8 @@
 import {
   normalizeIntervalsActivityDetail,
   normalizeIntervalsRunProfile,
-} from "../connected/intervals";
-import type { SourceDetailReader, SourceDetailReaderFactory } from "../connected/sourceDetail";
+} from "../connected/intervals.js";
+import type { SourceDetailReader, SourceDetailReaderFactory } from "../connected/sourceDetail.js";
 
 /**
  * Deterministic synthetic answers to the two external reads Run Detail makes.

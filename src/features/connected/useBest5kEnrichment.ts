@@ -3,17 +3,17 @@ import {
   BEST_5K_PASS_LIMIT,
   enrichBest5k,
   planBest5kEnrichment,
-} from "../../connected/best5k";
+} from "../../connected/best5k.js";
 import {
   fetchIntervalsBestEfforts,
   type IntervalsConnection,
-} from "../../connected/intervals";
+} from "../../connected/intervals.js";
 import {
   loadBest5kProbes,
   recordBest5kProbes,
-} from "../../storage/best5kProbeRepository";
-import { todayLocalDate } from "../../domain/dates";
-import type { RunLog } from "../../domain/types";
+} from "../../storage/best5kProbeRepository.js";
+import { todayLocalDate } from "../../domain/dates.js";
+import type { RunLog } from "../../domain/types.js";
 
 /**
  * Fills in source-verified best 5K times for runs that already have none.

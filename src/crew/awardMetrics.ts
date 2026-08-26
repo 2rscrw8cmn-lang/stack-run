@@ -1,5 +1,5 @@
-import { addDaysToLocalDate, compareLocalDates } from "../domain/dates";
-import type { AppState, RunLog, Workout } from "../domain/types";
+import { addDaysToLocalDate, compareLocalDates } from "../domain/dates.js";
+import type { AppState, RunLog, Workout } from "../domain/types.js";
 
 export interface CrewRunAwardMetrics {
   zone2Percent: number | null;

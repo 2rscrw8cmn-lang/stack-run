@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { fetchIntervals, IntervalsConnection } from "../../connected/intervals";
-import { todayLocalDate } from "../../domain/dates";
-import type { BlockPlacement, RunLog } from "../../domain/types";
-import type { HistoricalActivity } from "../../history/historicalActivity";
+import type { fetchIntervals, IntervalsConnection } from "../../connected/intervals.js";
+import { todayLocalDate } from "../../domain/dates.js";
+import type { BlockPlacement, RunLog } from "../../domain/types.js";
+import type { HistoricalActivity } from "../../history/historicalActivity.js";
 import {
   historicalActivities,
   syncHistoricalActivities,
-} from "../../history/historicalSync";
+} from "../../history/historicalSync.js";
 import {
   historySyncDecision,
   historySyncPhase,
   recordAfterSync,
   type HistorySyncPhase,
   type HistorySyncRecord,
-} from "../../history/historySyncPolicy";
-import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
+} from "../../history/historySyncPolicy.js";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun.js";
 import {
   loadHistorySyncRecord,
   saveHistorySyncRecord,
-} from "../../storage/historySyncStateRepository";
+} from "../../storage/historySyncStateRepository.js";
 
 /**
  * The runner's actual history, kept current without anybody asking.

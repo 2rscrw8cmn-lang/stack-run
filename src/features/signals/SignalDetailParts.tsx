@@ -1,8 +1,8 @@
-import { windowRangeLabel } from "./signalFormatting";
+import { windowRangeLabel } from "./signalFormatting.js";
 import type {
   SignalWindow,
   SignalWindowCoverage,
-} from "../../signals/trainingSignal";
+} from "../../signals/trainingSignal.js";
 
 /**
  * Shared presentation pieces for Training Signals details.

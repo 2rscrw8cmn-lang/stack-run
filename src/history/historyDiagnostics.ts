@@ -1,14 +1,14 @@
-import type { IntervalsConnection } from "../connected/intervals";
-import { loadIntervalsApiKey } from "../storage/intervalsCredentialRepository";
-import { loadIntervalsSyncToken } from "../storage/intervalsTokenRepository";
+import type { IntervalsConnection } from "../connected/intervals.js";
+import { loadIntervalsApiKey } from "../storage/intervalsCredentialRepository.js";
+import { loadIntervalsSyncToken } from "../storage/intervalsTokenRepository.js";
 import {
   LOCAL_PERSONAL_OWNER,
   loadActivePersonalOwner,
-} from "../storage/personalSyncRepository";
-import { clearHistoricalActivities } from "../storage/historicalActivityRepository";
-import { formatHistoricalCoverage, summarizeHistoricalCoverage } from "./historicalCoverage";
-import { historicalActivities, syncHistoricalActivities } from "./historicalSync";
-import { DEFAULT_HISTORICAL_LOOKBACK_DAYS } from "./historicalWindows";
+} from "../storage/personalSyncRepository.js";
+import { clearHistoricalActivities } from "../storage/historicalActivityRepository.js";
+import { formatHistoricalCoverage, summarizeHistoricalCoverage } from "./historicalCoverage.js";
+import { historicalActivities, syncHistoricalActivities } from "./historicalSync.js";
+import { DEFAULT_HISTORICAL_LOOKBACK_DAYS } from "./historicalWindows.js";
 
 /**
  * A development diagnostic for the historical data foundation, and nothing

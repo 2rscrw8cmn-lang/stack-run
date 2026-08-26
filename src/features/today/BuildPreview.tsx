@@ -1,7 +1,7 @@
 import { Blocks, ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Section } from "../../components/ui/Section";
-import type { EarnedBlock, PlacedBlock } from "../../domain/build";
+import { Section } from "../../components/ui/Section.js";
+import type { EarnedBlock, PlacedBlock } from "../../domain/build.js";
 
 interface BuildPreviewProps {
   blocks: PlacedBlock[];

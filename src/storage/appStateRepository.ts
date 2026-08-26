@@ -1,33 +1,33 @@
-import { footprintFor } from "../domain/footprint";
+import { footprintFor } from "../domain/footprint.js";
 import {
   assertPlacementFits,
   canMove,
   InvalidPlacementError,
   repackPlacements,
   type PlacementCandidate,
-} from "../domain/placement";
-import type { AvailabilityCalendar } from "../domain/availability";
-import { relinkRunLogs, type RacePlanSetup } from "../domain/racePlan";
-import type { Weekday } from "../domain/runDays";
+} from "../domain/placement.js";
+import type { AvailabilityCalendar } from "../domain/availability.js";
+import { relinkRunLogs, type RacePlanSetup } from "../domain/racePlan.js";
+import type { Weekday } from "../domain/runDays.js";
 import type {
   AppState,
   ArchivedTrainingPlan,
   BlockPlacement,
   RunLog,
   TrainingPlan,
-} from "../domain/types";
-import type { IntervalsCandidate } from "../connected/intervals";
-import { createInitialAppState, migrateAppState } from "./migrations";
+} from "../domain/types.js";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import { createInitialAppState, migrateAppState } from "./migrations.js";
 import {
   APP_STATE_STORAGE_KEY,
   backupStorageKey,
   listBackupStorageKeys,
-} from "./storageKeys";
+} from "./storageKeys.js";
 import {
   accountAppStateStorageKey,
   loadActivePersonalOwner,
   LOCAL_PERSONAL_OWNER,
-} from "./personalSyncRepository";
+} from "./personalSyncRepository.js";
 
 function activeAppStateStorageKey(): string {
   const owner = loadActivePersonalOwner();

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToLocalDate, mondayOfLocalDate } from "../../domain/dates";
-import { selectPlanWeekViewModel } from "../../domain/plan";
-import type { RunLog } from "../../domain/types";
-import { historicalRun, stackRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { presentableRunnerSignals } from "../../signals/runnerSignals";
-import { signalRuns } from "../../signals/signalTestRuns";
+import { addDaysToLocalDate, mondayOfLocalDate } from "../../domain/dates.js";
+import { selectPlanWeekViewModel } from "../../domain/plan.js";
+import type { RunLog } from "../../domain/types.js";
+import { historicalRun, stackRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { presentableRunnerSignals } from "../../signals/runnerSignals.js";
+import { signalRuns } from "../../signals/signalTestRuns.js";
 import {
   TRAINING_SIGNAL_PRIORITY,
   TRAINING_SIGNAL_TITLE,
@@ -14,14 +14,14 @@ import {
   type SignalId,
   type TrainingSignal,
   type TrainingSignalFamily,
-} from "../../signals/trainingSignal";
+} from "../../signals/trainingSignal.js";
 import {
   selectTodayModel,
   selectTodaySignal,
   todayContextReadings,
   todayWeek,
   TODAY_CONTEXT_READING_LIMIT,
-} from "./todayModel";
+} from "./todayModel.js";
 
 const plan = loadSeedPlan();
 

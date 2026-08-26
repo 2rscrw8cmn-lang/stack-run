@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readyCrewBlockForLocalRun, type CrewContributionFact } from "./todayCrewBlock";
+import { readyCrewBlockForLocalRun, type CrewContributionFact } from "./todayCrewBlock.js";
 
 const runs: CrewContributionFact[] = [
   { id: "shared-1", localRunId: "local-1", userId: "zack", crewBuildRow: null },

@@ -1,11 +1,11 @@
 import { Boxes } from "lucide-react";
 import type { CSSProperties } from "react";
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { Button } from "../../components/ui/Button";
-import { Section } from "../../components/ui/Section";
-import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { Button } from "../../components/ui/Button.js";
+import { Section } from "../../components/ui/Section.js";
+import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
 
 interface PendingBlocksTrayProps {
   blocks: EarnedBlock[];

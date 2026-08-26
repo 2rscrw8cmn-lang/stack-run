@@ -4,19 +4,19 @@ import {
   blockedDates,
   findAvailabilityConflicts,
   type AvailabilityCalendar,
-} from "../../domain/availability";
-import { earnedBlockPhrase } from "../../domain/build";
+} from "../../domain/availability.js";
+import { earnedBlockPhrase } from "../../domain/build.js";
 import {
   formatDateLabel,
   isBeforeLocalDate,
   todayLocalDate,
-} from "../../domain/dates";
+} from "../../domain/dates.js";
 import {
   clampWeekNumber,
   currentWeekNumber,
   PLAN_DAY_STATUS_LABEL,
   selectPlanWeekViewModel,
-} from "../../domain/plan";
+} from "../../domain/plan.js";
 import {
   addPlannedRun,
   changeToRest,
@@ -27,39 +27,39 @@ import {
   PlanEditError,
   restoreWorkout,
   type PlannedRunValues,
-} from "../../domain/planEdit";
+} from "../../domain/planEdit.js";
 import {
   canUndoProvenance,
   deriveWorkoutProvenance,
   type PlanAdjustmentRecord,
   type WorkoutProvenanceSlot,
-} from "../../domain/planProvenance";
-import type { RacePlanSetup } from "../../domain/racePlan";
-import type { Weekday } from "../../domain/runDays";
+} from "../../domain/planProvenance.js";
+import type { RacePlanSetup } from "../../domain/racePlan.js";
+import type { Weekday } from "../../domain/runDays.js";
 import type {
   ArchivedTrainingPlan,
   RunLog,
   TrainingPlan,
   Workout,
-} from "../../domain/types";
-import { Button } from "../../components/ui/Button";
-import type { IntervalsConnection } from "../../connected/intervals";
-import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
-import { ConflictReviewSheet } from "../availability/ConflictReviewSheet";
-import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
-import type { ValidRunEntry } from "../run-entry/runValidation";
-import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet";
-import { EditWorkoutSheet } from "./EditWorkoutSheet";
-import { MoveWorkoutSheet } from "./MoveWorkoutSheet";
-import { planLifecycle, planLifecycleNote } from "./planLifecycle";
-import { PlanLifecycleNote } from "./PlanLifecycleNote";
-import { RaceSetupSheet } from "./RaceSetupSheet";
+} from "../../domain/types.js";
+import { Button } from "../../components/ui/Button.js";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun.js";
+import { ConflictReviewSheet } from "../availability/ConflictReviewSheet.js";
+import { CompleteRunSheet } from "../run-entry/CompleteRunSheet.js";
+import type { ValidRunEntry } from "../run-entry/runValidation.js";
+import { WorkoutDetailSheet } from "../workout-detail/WorkoutDetailSheet.js";
+import { EditWorkoutSheet } from "./EditWorkoutSheet.js";
+import { MoveWorkoutSheet } from "./MoveWorkoutSheet.js";
+import { planLifecycle, planLifecycleNote } from "./planLifecycle.js";
+import { PlanLifecycleNote } from "./PlanLifecycleNote.js";
+import { RaceSetupSheet } from "./RaceSetupSheet.js";
 import {
   planWeekActualContext,
   planWeekIntentContext,
-} from "./planWeekContext";
-import { WeekLead } from "./WeekLead";
-import { WorkoutRow } from "./WorkoutRow";
+} from "./planWeekContext.js";
+import { WeekLead } from "./WeekLead.js";
+import { WorkoutRow } from "./WorkoutRow.js";
 import "./planNext.css";
 
 interface PlanScreenProps {

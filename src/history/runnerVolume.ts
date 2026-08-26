@@ -2,8 +2,8 @@ import {
   addDaysToLocalDate,
   daysBetweenLocalDates,
   mondayOfLocalDate,
-} from "../domain/dates";
-import { runningRunsBetween, type RunnerRun } from "./runnerRun";
+} from "../domain/dates.js";
+import { runningRunsBetween, type RunnerRun } from "./runnerRun.js";
 
 /**
  * How much running there has actually been, over windows that say what they are.

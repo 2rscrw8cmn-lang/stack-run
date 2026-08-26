@@ -1,9 +1,9 @@
 import { Dumbbell } from "lucide-react";
-import { formatCompactMiles } from "../../domain/distance";
-import { isManualRun } from "../../domain/runSource";
-import type { RunActivityType, RunSource } from "../../domain/types";
-import { crewMemberAccent, type CrewMemberAccent } from "../../crew/memberAccent";
-import type { BrickFaceLabel } from "../build/Brick";
+import { formatCompactMiles } from "../../domain/distance.js";
+import { isManualRun } from "../../domain/runSource.js";
+import type { RunActivityType, RunSource } from "../../domain/types.js";
+import { crewMemberAccent, type CrewMemberAccent } from "../../crew/memberAccent.js";
+import type { BrickFaceLabel } from "../build/Brick.js";
 
 /**
  * What a Crew brick's front face says, and what colour it is.

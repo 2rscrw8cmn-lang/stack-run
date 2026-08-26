@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { historicalRun } from "../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../history/runnerRun";
-import { signalRuns, type WindowSpec } from "./signalTestRuns";
+import { historicalRun } from "../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
+import { signalRuns, type WindowSpec } from "./signalTestRuns.js";
 import {
   aggregateZoneSeconds,
   zoneSignal,
   ZONE_LOWER_ZONE_COUNT,
   ZONE_STABLE_BAND_SHARE,
-} from "./zoneSignal";
+} from "./zoneSignal.js";
 
 const TODAY = "2026-08-15";
 

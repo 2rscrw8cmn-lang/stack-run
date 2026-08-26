@@ -1,5 +1,5 @@
-import { formatMiles } from "./distance";
-import type { RunLog, TrainingPlan } from "./types";
+import { formatMiles } from "./distance.js";
+import type { RunLog, TrainingPlan } from "./types.js";
 
 export interface AccomplishmentMoment {
   id: string;

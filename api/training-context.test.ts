@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { readTrainingContext } from "./training-context";
+import handler, { readTrainingContext } from "./training-context.js";
 
 /** Declared rather than imported, the way `intervals.ts` itself does it. */
 declare const process: { env: Record<string, string | undefined> };

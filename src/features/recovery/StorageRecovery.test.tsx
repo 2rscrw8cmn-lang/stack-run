@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "../../app/App";
-import { createSeededAppState } from "../../storage/migrations";
-import { APP_STATE_STORAGE_KEY } from "../../storage/storageKeys";
+import { App } from "../../app/App.js";
+import { createSeededAppState } from "../../storage/migrations.js";
+import { APP_STATE_STORAGE_KEY } from "../../storage/storageKeys.js";
 
 beforeEach(() => {
   localStorage.clear();

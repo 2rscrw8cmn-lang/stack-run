@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CREW_EMBLEM_LAYERS } from "../crew/emblem";
+import { CREW_EMBLEM_LAYERS } from "../crew/emblem.js";
 
 /**
  * There is no CSS/visual-regression harness in this repository (no Playwright,

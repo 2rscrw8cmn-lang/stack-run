@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
-import type { CrewDashboardData, CrewMember, CrewSharedRun } from "../../crew/types";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { loadSeenCrewRecapKeys } from "../../storage/crewRecapAcknowledgementRepository";
-import { CrewRecapNotification } from "./CrewRecapNotification";
+import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem.js";
+import type { CrewDashboardData, CrewMember, CrewSharedRun } from "../../crew/types.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { loadSeenCrewRecapKeys } from "../../storage/crewRecapAcknowledgementRepository.js";
+import { CrewRecapNotification } from "./CrewRecapNotification.js";
 
 /**
  * The Crew screen's own award read, handed in. This module never opens one of

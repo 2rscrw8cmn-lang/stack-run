@@ -1,10 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IntervalsRunProfile } from "../../connected/intervals";
-import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail";
-import type { RunLog } from "../../domain/types";
-import { RunResultDetail } from "./RunResultDetail";
+import type { IntervalsRunProfile } from "../../connected/intervals.js";
+import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail.js";
+import type { RunLog } from "../../domain/types.js";
+import { RunResultDetail } from "./RunResultDetail.js";
 
 const base: RunLog = {
   id: "run-1", workoutId: null, completedDate: "2026-06-10", activityType: "intervals",

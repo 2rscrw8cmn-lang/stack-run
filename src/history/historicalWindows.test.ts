@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates";
+import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates.js";
 import {
   historicalWindows,
   windowSpanDays,
   HISTORICAL_WINDOW_DAYS,
   MAX_HISTORICAL_LOOKBACK_DAYS,
-} from "./historicalWindows";
+} from "./historicalWindows.js";
 
 /** The hard ceiling `api/intervals.ts` enforces on a single request. */
 const PROXY_MAX_RANGE_DAYS = 120;

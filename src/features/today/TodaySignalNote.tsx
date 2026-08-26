@@ -1,5 +1,5 @@
 import { ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
-import type { TrainingSignal } from "../../signals/trainingSignal";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
 
 interface TodaySignalNoteProps {
   signal: TrainingSignal;

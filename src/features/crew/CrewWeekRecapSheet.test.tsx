@@ -1,9 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem";
-import type { CrewWeekRecap } from "../../crew/weekRecap";
-import { CrewWeekRecapSheet } from "./CrewWeekRecapSheet";
+import { DEFAULT_CREW_EMBLEM } from "../../crew/emblem.js";
+import type { CrewWeekRecap } from "../../crew/weekRecap.js";
+import { CrewWeekRecapSheet } from "./CrewWeekRecapSheet.js";
 
 const ICON = { head: 0, face: 0, body: 0, flair: 0, background: 0 };
 const ZACK = { userId: "zack", displayName: "Zack", accentColor: null, runnerIcon: ICON };

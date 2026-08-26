@@ -1,15 +1,15 @@
 import { CalendarCheck, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Section } from "../../components/ui/Section";
-import { useSwipeToDismiss } from "../../components/ui/useSwipeToDismiss";
-import { isLocalDateString, todayLocalDate } from "../../domain/dates";
-import { formatMilesBuilt } from "../../domain/distance";
-import { formatWeekRange } from "../../domain/plan";
-import type { CrewAwardBlockRecord } from "../../crew/awards";
-import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem";
-import type { CrewAwardsController } from "../../crew/useCrewAwards";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { isCrewRecapReleaseOpen } from "../../crew/weekRollover";
+import { Section } from "../../components/ui/Section.js";
+import { useSwipeToDismiss } from "../../components/ui/useSwipeToDismiss.js";
+import { isLocalDateString, todayLocalDate } from "../../domain/dates.js";
+import { formatMilesBuilt } from "../../domain/distance.js";
+import { formatWeekRange } from "../../domain/plan.js";
+import type { CrewAwardBlockRecord } from "../../crew/awards.js";
+import type { CrewEmblem as CrewEmblemModel } from "../../crew/emblem.js";
+import type { CrewAwardsController } from "../../crew/useCrewAwards.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { isCrewRecapReleaseOpen } from "../../crew/weekRollover.js";
 import {
   crewWeekRecap,
   crewWeekRecapKey,
@@ -17,16 +17,16 @@ import {
   isCrewRecapCurrent,
   lastClosedCrewWeek,
   type CrewWeekRecap,
-} from "../../crew/weekRecap";
+} from "../../crew/weekRecap.js";
 import {
   dismissCrewRecap,
   loadDismissedCrewRecapKeys,
   loadSeenCrewRecapKeys,
   markCrewRecapSeen,
-} from "../../storage/crewRecapAcknowledgementRepository";
-import { CrewEmblem } from "./CrewEmblem";
-import { CrewWeekRecapSheet } from "./CrewWeekRecapSheet";
-import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo";
+} from "../../storage/crewRecapAcknowledgementRepository.js";
+import { CrewEmblem } from "./CrewEmblem.js";
+import { CrewWeekRecapSheet } from "./CrewWeekRecapSheet.js";
+import { crewRecapDemoData, crewRecapDemoVariant } from "./crewRecapDemo.js";
 import "./crewWeekRecap.css";
 
 /**

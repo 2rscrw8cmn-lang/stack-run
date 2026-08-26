@@ -1,5 +1,5 @@
-import { metricCoverage } from "../history/runnerCoverage";
-import { runningRunsBetween, type RunnerRun } from "../history/runnerRun";
+import { metricCoverage } from "../history/runnerCoverage.js";
+import { runningRunsBetween, type RunnerRun } from "../history/runnerRun.js";
 import {
   classifyAbsoluteChange,
   compareCoverage,
@@ -14,7 +14,7 @@ import {
   windowAvailability,
   type SignalDirection,
   type SignalOf,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * Zone mix — where recorded heart-rate zone time has been spent, and whether

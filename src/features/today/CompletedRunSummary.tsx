@@ -1,13 +1,13 @@
 import { Check } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Button } from "../../components/ui/Button";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { formatPace } from "../../domain/runs";
-import type { BlockPlacement, RunLog, Workout } from "../../domain/types";
-import { TodayActionCard } from "./TodayActionCard";
-import { todayActionReading } from "./todayActionReading";
+import { Button } from "../../components/ui/Button.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { formatPace } from "../../domain/runs.js";
+import type { BlockPlacement, RunLog, Workout } from "../../domain/types.js";
+import { TodayActionCard } from "./TodayActionCard.js";
+import { todayActionReading } from "./todayActionReading.js";
 
 interface CompletedRunSummaryProps {
   workout: Workout;

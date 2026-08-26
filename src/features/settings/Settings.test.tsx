@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { BottomNav } from "../../components/shared/BottomNav";
-import type { AvailabilityCalendar } from "../../domain/availability";
-import type { RunLog } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { OpenSettings } from "../../test/OpenSettings";
+import { BottomNav } from "../../components/shared/BottomNav.js";
+import type { AvailabilityCalendar } from "../../domain/availability.js";
+import type { RunLog } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { OpenSettings } from "../../test/OpenSettings.js";
 
 const plan = loadSeedPlan();
 

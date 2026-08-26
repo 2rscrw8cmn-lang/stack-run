@@ -1,9 +1,9 @@
-import { Sheet } from "../../components/ui/Sheet";
-import type { SourceConnection } from "../../connected/sourceDetail";
-import { formatDateLabel } from "../../domain/dates";
-import { SourceRunDetail } from "../workout-detail/SourceRunDetail";
-import { sourceRunFactsFromRunnerRun } from "../workout-detail/sourceRunFacts";
-import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun";
+import { Sheet } from "../../components/ui/Sheet.js";
+import type { SourceConnection } from "../../connected/sourceDetail.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { SourceRunDetail } from "../workout-detail/SourceRunDetail.js";
+import { sourceRunFactsFromRunnerRun } from "../workout-detail/sourceRunFacts.js";
+import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun.js";
 
 interface HistoricalRunSheetProps {
   run: RunnerRun | null;

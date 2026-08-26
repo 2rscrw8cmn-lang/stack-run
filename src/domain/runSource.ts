@@ -1,4 +1,4 @@
-import type { RunSource } from "./types";
+import type { RunSource } from "./types.js";
 
 /**
  * How a run got into STACK, said once so every screen says it the same way.

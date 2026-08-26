@@ -1,15 +1,15 @@
-import { DonutChart } from "../../components/charts/DonutChart";
-import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments";
-import { formatDurationSeconds } from "../../domain/duration";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { ZONE_LOWER_ZONE_COUNT } from "../../signals/zoneSignal";
-import { DetailSection } from "../trends/TrendDetailShared";
+import { DonutChart } from "../../components/charts/DonutChart.js";
+import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { ZONE_LOWER_ZONE_COUNT } from "../../signals/zoneSignal.js";
+import { DetailSection } from "../trends/TrendDetailShared.js";
 import {
   SignalCoverageNote,
   SignalReference,
   SignalResultSummary,
-} from "./SignalDetailParts";
-import { signedPoints } from "./signalFormatting";
+} from "./SignalDetailParts.js";
+import { signedPoints } from "./signalFormatting.js";
 
 /** Zone mix, showing the current distribution and the prior-period comparison. */
 export function ZoneSignalDetail({

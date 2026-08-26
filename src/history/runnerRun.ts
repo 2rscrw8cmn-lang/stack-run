@@ -1,13 +1,13 @@
-import { VERIFIED_CROSS_TRAINING_TYPES } from "../connected/intervals";
-import { historicalDistanceMiles, historicalDurationSeconds } from "./historicalMeasures";
-import type { HistoricalActivity } from "./historicalActivity";
+import { VERIFIED_CROSS_TRAINING_TYPES } from "../connected/intervals.js";
+import { historicalDistanceMiles, historicalDurationSeconds } from "./historicalMeasures.js";
+import type { HistoricalActivity } from "./historicalActivity.js";
 import type {
   BlockPlacement,
   Effort,
   RunActivityType,
   RunLog,
   RunSource,
-} from "../domain/types";
+} from "../domain/types.js";
 
 /**
  * The unified answer to "what runs has this runner actually done?".

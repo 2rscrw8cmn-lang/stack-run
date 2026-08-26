@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 import {
   blockedDates,
   findAvailabilityConflicts,
   proposeDateFor,
   shiftKinds,
   type AvailabilityCalendar,
-} from "./availability";
-import type { CalendarShift } from "./ics";
-import { findWorkout, moveWorkout } from "./planEdit";
-import type { RunLog } from "./types";
+} from "./availability.js";
+import type { CalendarShift } from "./ics.js";
+import { findWorkout, moveWorkout } from "./planEdit.js";
+import type { RunLog } from "./types.js";
 
 const plan = loadSeedPlan();
 

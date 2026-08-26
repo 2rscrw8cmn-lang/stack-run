@@ -15,7 +15,7 @@ import {
   Watch,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { StackMark } from "../../components/shared/StackMark";
+import { StackMark } from "../../components/shared/StackMark.js";
 import "./getting-started.css";
 import settingsRunData from "./screens/settings-run-data.webp";
 import pathChooser from "./screens/path-chooser.webp";

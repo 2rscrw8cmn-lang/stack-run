@@ -1,10 +1,10 @@
-import { addDaysToLocalDate, compareLocalDates } from "../domain/dates";
+import { addDaysToLocalDate, compareLocalDates } from "../domain/dates.js";
 import {
   currentWeekNumber,
   nextScheduledWorkout,
   selectPlanWeekViewModel,
-} from "../domain/plan";
-import { scheduledRuns, selectBuildViewModel } from "../domain/build";
+} from "../domain/plan.js";
+import { scheduledRuns, selectBuildViewModel } from "../domain/build.js";
 import type {
   AppState,
   Effort,
@@ -13,10 +13,10 @@ import type {
   RunSource,
   TrainingPlan,
   Workout,
-} from "../domain/types";
-import { unifiedRunnerHistory, runnerRunsBetween, type RunnerRun } from "../history/runnerRun";
-import { presentableRunnerSignals } from "../signals/runnerSignals";
-import type { TrainingSignal } from "../signals/trainingSignal";
+} from "../domain/types.js";
+import { unifiedRunnerHistory, runnerRunsBetween, type RunnerRun } from "../history/runnerRun.js";
+import { presentableRunnerSignals } from "../signals/runnerSignals.js";
+import type { TrainingSignal } from "../signals/trainingSignal.js";
 
 /**
  * The read-only training context an authorized external assistant sees

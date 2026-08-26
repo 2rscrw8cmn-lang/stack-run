@@ -6,7 +6,7 @@ import {
   signInToStack,
   signOutOfStack,
   STACK_PIN_PATTERN,
-} from "./auth";
+} from "./auth.js";
 
 describe("STACK PIN", () => {
   it.each(["00000000", "12345678", "99999999"])("accepts %s", (pin) => {

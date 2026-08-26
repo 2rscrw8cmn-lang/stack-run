@@ -1,8 +1,8 @@
-import { ACTIVITY_TYPES } from "../domain/build";
-import type { IntervalsCandidate } from "../connected/intervals";
-import type { ImportedRunMetrics } from "../domain/types";
-import { StorageWriteError } from "./appStateRepository";
-import { INTERVALS_PENDING_STORAGE_KEY } from "./storageKeys";
+import { ACTIVITY_TYPES } from "../domain/build.js";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import type { ImportedRunMetrics } from "../domain/types.js";
+import { StorageWriteError } from "./appStateRepository.js";
+import { INTERVALS_PENDING_STORAGE_KEY } from "./storageKeys.js";
 
 const VALID_ACTIVITY_TYPES = new Set<string>(ACTIVITY_TYPES);
 

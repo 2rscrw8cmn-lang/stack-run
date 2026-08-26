@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { CrewPropNotification } from "../../crew/types";
-import { PropNotifications } from "./PropNotifications";
+import type { CrewPropNotification } from "../../crew/types.js";
+import { PropNotifications } from "./PropNotifications.js";
 
 function notification(
   id: string,

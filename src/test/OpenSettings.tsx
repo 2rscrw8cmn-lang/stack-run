@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SettingsSheet } from "../features/settings/SettingsSheet";
+import { SettingsSheet } from "../features/settings/SettingsSheet.js";
 
 type SettingsProps = Parameters<typeof SettingsSheet>[0];
 

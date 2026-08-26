@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Card } from "./Card";
+import { Card } from "./Card.js";
 
 describe("Card", () => {
   it("renders its children on the neutral surface class", () => {

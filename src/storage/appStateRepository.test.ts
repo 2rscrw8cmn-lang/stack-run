@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement";
-import { moveWorkout } from "../domain/planEdit";
-import { likelyManualMatches, normalizeActivityList } from "../connected/intervals";
+import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement.js";
+import { moveWorkout } from "../domain/planEdit.js";
+import { likelyManualMatches, normalizeActivityList } from "../connected/intervals.js";
 import {
   acceptIntervalsRun,
   deleteRunLog,
@@ -20,9 +20,9 @@ import {
   unlinkRunLogFromWorkout,
   StorageLoadError,
   StorageWriteError,
-} from "./appStateRepository";
-import { createSeededAppState, CURRENT_SCHEMA_VERSION } from "./migrations";
-import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys";
+} from "./appStateRepository.js";
+import { createSeededAppState, CURRENT_SCHEMA_VERSION } from "./migrations.js";
+import { APP_STATE_STORAGE_KEY, backupStorageKey } from "./storageKeys.js";
 
 beforeEach(() => {
   localStorage.clear();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRID_COLUMNS, placementOptions } from "../domain/placement";
+import { GRID_COLUMNS, placementOptions } from "../domain/placement.js";
 import {
   canPlaceCrewBuildBlock,
   CREW_BUILD_COLUMNS,
@@ -10,8 +10,8 @@ import {
   crewBuildPlacementOptions,
   deriveCrewBuild,
   isRecentCrewBuildPlacement,
-} from "./crewBuild";
-import type { CrewBuildRun } from "./types";
+} from "./crewBuild.js";
+import type { CrewBuildRun } from "./types.js";
 
 function run(
   id: string,

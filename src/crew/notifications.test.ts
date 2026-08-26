@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatPropAge, unreadPropNotifications } from "./notifications";
-import type { CrewPropNotification } from "./types";
+import { formatPropAge, unreadPropNotifications } from "./notifications.js";
+import type { CrewPropNotification } from "./types.js";
 
 function notification(
   id: string,

@@ -1,4 +1,4 @@
-import { addDaysToLocalDate } from "../domain/dates";
+import { addDaysToLocalDate } from "../domain/dates.js";
 
 /**
  * Synthetic Intervals activity payloads for tests and fixture summaries.

@@ -1,22 +1,22 @@
 import { useMemo, useRef, useState } from "react";
-import { AppShell } from "../app/AppShell";
-import type { TabId } from "../app/App";
-import type { PlacementRequest } from "../features/build/BuildScreen";
-import type { ConnectedSync } from "../features/connected/useConnectedSync";
-import type { RunnerHistory } from "../features/runs/useRunnerHistory";
-import type { ValidRunEntry } from "../features/run-entry/runValidation";
-import { SourceDetailReaderProvider } from "../connected/sourceDetail";
-import { useRaceCrew } from "../crew/useRaceCrew";
-import { todayLocalDate } from "../domain/dates";
-import type { AppState, RunLog, TrainingPlan, Workout } from "../domain/types";
-import { unifiedRunnerHistory } from "../history/runnerRun";
+import { AppShell } from "../app/AppShell.js";
+import type { TabId } from "../app/App.js";
+import type { PlacementRequest } from "../features/build/BuildScreen.js";
+import type { ConnectedSync } from "../features/connected/useConnectedSync.js";
+import type { RunnerHistory } from "../features/runs/useRunnerHistory.js";
+import type { ValidRunEntry } from "../features/run-entry/runValidation.js";
+import { SourceDetailReaderProvider } from "../connected/sourceDetail.js";
+import { useRaceCrew } from "../crew/useRaceCrew.js";
+import { todayLocalDate } from "../domain/dates.js";
+import type { AppState, RunLog, TrainingPlan, Workout } from "../domain/types.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
 import {
   createQaRunnerAppState,
   qaPlanLifecycleFrom,
   qaRunnerHistoricalActivities,
   QA_PLAN_LIFECYCLES,
-} from "./qaRunner";
-import { qaSourceDetailReaderFor } from "./qaSourceDetail";
+} from "./qaRunner.js";
+import { qaSourceDetailReaderFor } from "./qaSourceDetail.js";
 import "./qaRunner.css";
 
 /** Short enough for the notice row on a 320px phone. */

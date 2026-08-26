@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PlanAdjustmentOperation } from "../domain/planAdjustment";
-import type { PlanAdjustmentRecord } from "../domain/planProvenance";
-import type { Workout } from "../domain/types";
+import type { PlanAdjustmentOperation } from "../domain/planAdjustment.js";
+import type { PlanAdjustmentRecord } from "../domain/planProvenance.js";
+import type { Workout } from "../domain/types.js";
 
 /**
  * The signed-in browser's own read of #180's audit ledger (`plan_adjustments`)

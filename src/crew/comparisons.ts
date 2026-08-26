@@ -1,8 +1,8 @@
-import { addDaysToLocalDate, compareLocalDates } from "../domain/dates";
-import { formatMiles, formatMilesBuilt } from "../domain/distance";
-import { formatPaceSeconds } from "../domain/runs";
-import type { CrewMember, CrewMemberSummary } from "./types";
-import { AVG_PACE_WINDOW } from "./avgPace";
+import { addDaysToLocalDate, compareLocalDates } from "../domain/dates.js";
+import { formatMiles, formatMilesBuilt } from "../domain/distance.js";
+import { formatPaceSeconds } from "../domain/runs.js";
+import type { CrewMember, CrewMemberSummary } from "./types.js";
+import { AVG_PACE_WINDOW } from "./avgPace.js";
 
 export type ComparisonMetric =
   | "weekly-miles"

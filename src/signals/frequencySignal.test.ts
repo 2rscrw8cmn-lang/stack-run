@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { frequencySignal, FREQUENCY_STABLE_BAND_RUNS_PER_WEEK } from "./frequencySignal";
-import { signalRuns } from "./signalTestRuns";
+import { frequencySignal, FREQUENCY_STABLE_BAND_RUNS_PER_WEEK } from "./frequencySignal.js";
+import { signalRuns } from "./signalTestRuns.js";
 
 const TODAY = "2026-08-15";
 

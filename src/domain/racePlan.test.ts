@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { earnsBlock } from "./build";
-import { daysBetweenLocalDates, formatLocalDate } from "./dates";
+import { earnsBlock } from "./build.js";
+import { daysBetweenLocalDates, formatLocalDate } from "./dates.js";
 import {
   countQualitySessions,
   DISTANCE_PROFILES,
@@ -18,10 +18,10 @@ import {
   type RaceDistance,
   type RacePlanSetup,
   type RunnerLevel,
-} from "./racePlan";
-import { weekdayOf, type Weekday } from "./runDays";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
-import type { TrainingPlan } from "./types";
+} from "./racePlan.js";
+import { weekdayOf, type Weekday } from "./runDays.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
+import type { TrainingPlan } from "./types.js";
 
 function setupFor(overrides: Partial<RacePlanSetup> = {}): RacePlanSetup {
   return {

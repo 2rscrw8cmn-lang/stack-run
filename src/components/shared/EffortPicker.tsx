@@ -1,6 +1,6 @@
 import { Frown, Meh, Smile, type LucideIcon } from "lucide-react";
 import { useId } from "react";
-import type { Effort } from "../../domain/types";
+import type { Effort } from "../../domain/types.js";
 
 const EFFORTS: Array<{ value: Effort; label: string; Icon: LucideIcon }> = [
   { value: "rough", label: "Rough", Icon: Frown },

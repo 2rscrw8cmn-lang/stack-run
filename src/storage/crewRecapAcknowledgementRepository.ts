@@ -1,7 +1,7 @@
 import {
   DISMISSED_CREW_RECAPS_STORAGE_KEY,
   SEEN_CREW_RECAPS_STORAGE_KEY,
-} from "./storageKeys";
+} from "./storageKeys.js";
 
 /**
  * What a runner has done about one Crew week's recap.

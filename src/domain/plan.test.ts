@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 import {
   availableWorkoutsForRunLog,
   clampWeekNumber,
@@ -7,8 +7,8 @@ import {
   formatWeekRange,
   planWeekBounds,
   selectPlanWeekViewModel,
-} from "./plan";
-import type { RunLog } from "./types";
+} from "./plan.js";
+import type { RunLog } from "./types.js";
 
 const plan = loadSeedPlan();
 

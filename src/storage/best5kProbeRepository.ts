@@ -1,4 +1,4 @@
-import { BEST_5K_PROBES_STORAGE_KEY } from "./storageKeys";
+import { BEST_5K_PROBES_STORAGE_KEY } from "./storageKeys.js";
 
 /**
  * Which Intervals activities STACK has already asked about a best 5K.

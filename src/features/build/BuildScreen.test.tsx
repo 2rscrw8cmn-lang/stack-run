@@ -2,9 +2,9 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { BlockPlacement, RunLog } from "../../domain/types";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { BuildScreen, type PlacementRequest } from "./BuildScreen";
+import type { BlockPlacement, RunLog } from "../../domain/types.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { BuildScreen, type PlacementRequest } from "./BuildScreen.js";
 
 const plan = loadSeedPlan();
 

@@ -1,19 +1,19 @@
 import { Blocks } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { Section } from "../../components/ui/Section";
+import { EmptyState } from "../../components/ui/EmptyState.js";
+import { Section } from "../../components/ui/Section.js";
 import {
   WORKOUT_TYPE_LABEL,
   type EarnedBlock,
   type PlacedBlock as PlacedBlockData,
   type TowerVoid,
-} from "../../domain/build";
-import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement";
-import { PlacedBlock } from "./PlacedBlock";
-import { LandingSlot } from "./LandingSlot";
-import { placementImpact } from "./placementDrop";
-import { useColumnDragPlacement } from "./useColumnDragPlacement";
+} from "../../domain/build.js";
+import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement.js";
+import { PlacedBlock } from "./PlacedBlock.js";
+import { LandingSlot } from "./LandingSlot.js";
+import { placementImpact } from "./placementDrop.js";
+import { useColumnDragPlacement } from "./useColumnDragPlacement.js";
 
 export interface StructurePlacing {
   block: EarnedBlock;

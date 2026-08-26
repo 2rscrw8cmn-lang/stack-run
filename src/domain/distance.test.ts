@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCompactMiles, formatMiles, formatMilesBuilt } from "./distance";
+import { formatCompactMiles, formatMiles, formatMilesBuilt } from "./distance.js";
 
 describe("formatMiles", () => {
   it("keeps a typed distance exactly as it reads", () => {

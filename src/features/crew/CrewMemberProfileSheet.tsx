@@ -1,34 +1,34 @@
 import { Dumbbell, History, Trophy } from "lucide-react";
 import { useState, type CSSProperties } from "react";
-import { Button } from "../../components/ui/Button";
-import { Section } from "../../components/ui/Section";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatCompactMiles, formatMiles, formatMilesBuilt } from "../../domain/distance";
-import { isManualRun } from "../../domain/runSource";
-import { GRID_COLUMNS } from "../../domain/placement";
+import { Button } from "../../components/ui/Button.js";
+import { Section } from "../../components/ui/Section.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatCompactMiles, formatMiles, formatMilesBuilt } from "../../domain/distance.js";
+import { isManualRun } from "../../domain/runSource.js";
+import { GRID_COLUMNS } from "../../domain/placement.js";
 import {
   AVG_PACE_WINDOW_LABEL,
   formatComparisonReading,
   type ComparisonSummary,
-} from "../../crew/comparisons";
+} from "../../crew/comparisons.js";
 import {
   CREW_AWARD_LABEL,
   formatCrewAwardResult,
   type CrewAwardBlockRecord,
-} from "../../crew/awards";
-import { crewMemberAccent } from "../../crew/memberAccent";
+} from "../../crew/awards.js";
+import { crewMemberAccent } from "../../crew/memberAccent.js";
 import {
   faceCulledMiniBuildTower,
   type CrewMiniBuildFacedBlock,
   type CrewMiniBuildModel,
-} from "../../crew/miniBuild";
-import type { CrewMember, CrewSharedRun } from "../../crew/types";
-import { Brick, type BrickFaceLabel } from "../build/Brick";
-import { AwardGlyph } from "./AwardBrick";
-import { CrewRunRow } from "./CrewRunRow";
-import { RunnerIcon } from "./RunnerIcon";
+} from "../../crew/miniBuild.js";
+import type { CrewMember, CrewSharedRun } from "../../crew/types.js";
+import { Brick, type BrickFaceLabel } from "../build/Brick.js";
+import { AwardGlyph } from "./AwardBrick.js";
+import { CrewRunRow } from "./CrewRunRow.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 import "./awardBlock.css";
 
 // Profiles are compared side by side, so their Build field keeps one stable

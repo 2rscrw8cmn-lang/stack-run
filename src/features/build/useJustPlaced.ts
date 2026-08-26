@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { PLACEMENT_DROP_MS } from "./placementDrop";
+import { PLACEMENT_DROP_MS } from "./placementDrop.js";
 
 /**
  * Which block this session just placed, for as long as its landing lasts.

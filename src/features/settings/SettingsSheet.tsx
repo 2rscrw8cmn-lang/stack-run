@@ -12,31 +12,31 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
-import { Sheet } from "../../components/ui/Sheet";
+import { Sheet } from "../../components/ui/Sheet.js";
 import {
   blockedDates,
   type AvailabilityCalendar,
-} from "../../domain/availability";
+} from "../../domain/availability.js";
 import {
   applyCrossTrainingDays,
   currentCrossTrainingDays,
   planCrossTrainingDayChange,
-} from "../../domain/crossTrainingDays";
-import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
-import type { RacePlanSetup } from "../../domain/racePlan";
+} from "../../domain/crossTrainingDays.js";
+import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates.js";
+import type { RacePlanSetup } from "../../domain/racePlan.js";
 import {
   applyRunDays,
   currentRunDays,
   planRunDayChange,
   WEEKDAY_NAMES,
   type Weekday,
-} from "../../domain/runDays";
-import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types";
-import { AvailabilitySheet } from "../availability/AvailabilitySheet";
-import { CrossTrainingDaysSheet } from "../plan/CrossTrainingDaysSheet";
-import { RaceSetupSheet } from "../plan/RaceSetupSheet";
-import { ResetPlanDialog } from "../plan/ResetPlanDialog";
-import { RunDaysSheet } from "../plan/RunDaysSheet";
+} from "../../domain/runDays.js";
+import type { BlockPlacement, RunLog, TrainingPlan } from "../../domain/types.js";
+import { AvailabilitySheet } from "../availability/AvailabilitySheet.js";
+import { CrossTrainingDaysSheet } from "../plan/CrossTrainingDaysSheet.js";
+import { RaceSetupSheet } from "../plan/RaceSetupSheet.js";
+import { ResetPlanDialog } from "../plan/ResetPlanDialog.js";
+import { RunDaysSheet } from "../plan/RunDaysSheet.js";
 
 interface SettingsSheetProps {
   isOpen: boolean;

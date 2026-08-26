@@ -1,5 +1,5 @@
-import type { BlockWidth } from "./footprint";
-import type { BlockPlacement } from "./types";
+import type { BlockWidth } from "./footprint.js";
+import type { BlockPlacement } from "./types.js";
 
 /**
  * The tower is one continuous grid this many columns wide. Blocks stack

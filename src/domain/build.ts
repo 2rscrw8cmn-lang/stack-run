@@ -1,10 +1,10 @@
-import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates";
+import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates.js";
 import {
   footprintFor,
   type BlockHeight,
   type BlockWidth,
   type Footprint,
-} from "./footprint";
+} from "./footprint.js";
 import {
   faceVisibilityOf,
   newestPlacement,
@@ -12,7 +12,7 @@ import {
   skylineOf,
   topOf,
   voidsOf,
-} from "./placement";
+} from "./placement.js";
 import type {
   ArchivedTrainingPlan,
   BlockPlacement,
@@ -21,7 +21,7 @@ import type {
   TrainingPlan,
   Workout,
   WorkoutType,
-} from "./types";
+} from "./types.js";
 
 export type { BlockWidth, BlockHeight, Footprint };
 

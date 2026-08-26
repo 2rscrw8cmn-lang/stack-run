@@ -1,5 +1,5 @@
-import type { TrainingSignals } from "../../domain/trends";
-import { DetailSection } from "./TrendDetailShared";
+import type { TrainingSignals } from "../../domain/trends.js";
+import { DetailSection } from "./TrendDetailShared.js";
 
 export function ConsistencyDetail({ signals }: { signals: TrainingSignals }) {
   const { consistency } = signals;

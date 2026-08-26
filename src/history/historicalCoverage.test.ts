@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { emptyRejectionCounts, normalizeHistoricalActivities } from "./historicalActivity";
+import { emptyRejectionCounts, normalizeHistoricalActivities } from "./historicalActivity.js";
 import {
   formatHistoricalCoverage,
   summarizeHistoricalCoverage,
-} from "./historicalCoverage";
-import { fixtureActivities, fixtureRide } from "./historicalFixtures";
+} from "./historicalCoverage.js";
+import { fixtureActivities, fixtureRide } from "./historicalFixtures.js";
 
 const seenAt = "2026-08-15T12:00:00.000Z";
 

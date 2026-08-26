@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createInitialAppState, createSeededAppState } from "../storage/migrations";
-import type { RunLog } from "../domain/types";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations.js";
+import type { RunLog } from "../domain/types.js";
 import {
   projectExternalTrainingContext,
   type ExternalCrewSummaryRow,
   type ExternalPlanAdjustmentRow,
-} from "./trainingContextProjection";
-import { presentableRunnerSignals } from "../signals/runnerSignals";
-import { unifiedRunnerHistory } from "../history/runnerRun";
+} from "./trainingContextProjection.js";
+import { presentableRunnerSignals } from "../signals/runnerSignals.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
 
 const privateRun: RunLog = {
   id: "run-1",

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { selectPlanWeekViewModel } from "../../domain/plan";
-import { historicalRun, stackRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { planWeekActualContext, planWeekIntentContext } from "./planWeekContext";
+import { selectPlanWeekViewModel } from "../../domain/plan.js";
+import { historicalRun, stackRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { planWeekActualContext, planWeekIntentContext } from "./planWeekContext.js";
 
 const plan = loadSeedPlan();
 

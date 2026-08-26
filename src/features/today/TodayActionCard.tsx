@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Card } from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card.js";
 
 interface TodayActionCardProps {
   /** Which state of the same card this is. Presentation only. */

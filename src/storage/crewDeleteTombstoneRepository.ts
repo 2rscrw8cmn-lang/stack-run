@@ -1,4 +1,4 @@
-import { CREW_DELETE_TOMBSTONES_STORAGE_KEY } from "./storageKeys";
+import { CREW_DELETE_TOMBSTONES_STORAGE_KEY } from "./storageKeys.js";
 
 export interface CrewDeleteTombstone {
   crewId: string;

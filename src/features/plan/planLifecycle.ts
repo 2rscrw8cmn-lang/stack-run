@@ -1,5 +1,5 @@
-import { formatDateLabel, isAfterLocalDate, isBeforeLocalDate } from "../../domain/dates";
-import type { TrainingPlan } from "../../domain/types";
+import { formatDateLabel, isAfterLocalDate, isBeforeLocalDate } from "../../domain/dates.js";
+import type { TrainingPlan } from "../../domain/types.js";
 
 /**
  * Where the runner is relative to the plan's own window.

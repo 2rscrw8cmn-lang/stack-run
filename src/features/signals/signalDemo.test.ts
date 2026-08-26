@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { presentableRunnerSignals } from "../../signals/runnerSignals";
-import { isSignalDemoEnabled, signalDemoRuns } from "./signalDemo";
+import { presentableRunnerSignals } from "../../signals/runnerSignals.js";
+import { isSignalDemoEnabled, signalDemoRuns } from "./signalDemo.js";
 
 const TODAY = "2026-08-15";
 

@@ -1,8 +1,8 @@
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import type { AvailabilityConflict } from "../../domain/availability";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import type { AvailabilityConflict } from "../../domain/availability.js";
 
 interface ConflictReviewSheetProps {
   conflicts: AvailabilityConflict[];

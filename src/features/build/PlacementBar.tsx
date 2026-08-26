@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, WandSparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Button } from "../../components/ui/Button";
-import { IconButton } from "../../components/ui/IconButton";
+import { Button } from "../../components/ui/Button.js";
+import { IconButton } from "../../components/ui/IconButton.js";
 
 interface PlacementBarProps {
   /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */

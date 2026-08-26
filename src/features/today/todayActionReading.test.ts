@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Workout, WorkoutType } from "../../domain/types";
-import { todayActionReading } from "./todayActionReading";
+import type { Workout, WorkoutType } from "../../domain/types.js";
+import { todayActionReading } from "./todayActionReading.js";
 
 function workout(
   type: WorkoutType,

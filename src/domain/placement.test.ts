@@ -16,8 +16,8 @@ import {
   skylineOf,
   topOf,
   voidsOf,
-} from "./placement";
-import type { BlockPlacement } from "./types";
+} from "./placement.js";
+import type { BlockPlacement } from "./types.js";
 
 function placement(
   runLogId: string,

@@ -6,7 +6,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import type { TabId } from "../../app/App";
+import type { TabId } from "../../app/App.js";
 
 interface TabDefinition {
   id: TabId;

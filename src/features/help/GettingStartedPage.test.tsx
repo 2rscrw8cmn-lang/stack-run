@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { GettingStartedPage } from "./GettingStartedPage";
+import { GettingStartedPage } from "./GettingStartedPage.js";
 
 describe("GettingStartedPage", () => {
   it("leads staff through the two supported fitness-data paths", () => {

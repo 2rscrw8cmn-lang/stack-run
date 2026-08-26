@@ -1,23 +1,23 @@
-import { fetchIntervals, type IntervalsConnection } from "../connected/intervals";
-import { todayLocalDate } from "../domain/dates";
+import { fetchIntervals, type IntervalsConnection } from "../connected/intervals.js";
+import { todayLocalDate } from "../domain/dates.js";
 import {
   loadHistoricalActivities,
   saveHistoricalActivities,
-} from "../storage/historicalActivityRepository";
+} from "../storage/historicalActivityRepository.js";
 import {
   addRejectionCounts,
   emptyRejectionCounts,
   normalizeHistoricalActivities,
   type HistoricalActivity,
   type HistoricalRejection,
-} from "./historicalActivity";
-import { reconcileHistoricalActivities } from "./historicalReconciliation";
+} from "./historicalActivity.js";
+import { reconcileHistoricalActivities } from "./historicalReconciliation.js";
 import {
   DEFAULT_HISTORICAL_LOOKBACK_DAYS,
   historicalWindows,
   HISTORICAL_WINDOW_DAYS,
   type HistoricalWindow,
-} from "./historicalWindows";
+} from "./historicalWindows.js";
 
 /**
  * The service boundary for historical activity data.

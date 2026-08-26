@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IntervalsCandidate } from "../connected/intervals";
-import { StorageWriteError } from "./appStateRepository";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import { StorageWriteError } from "./appStateRepository.js";
 import {
   clearPendingIntervalsCandidates,
   loadPendingIntervalsCandidates,
   savePendingIntervalsCandidates,
-} from "./intervalsPendingRepository";
-import { INTERVALS_PENDING_STORAGE_KEY } from "./storageKeys";
+} from "./intervalsPendingRepository.js";
+import { INTERVALS_PENDING_STORAGE_KEY } from "./storageKeys.js";
 
 const candidate: IntervalsCandidate = {
   externalId: "i1",

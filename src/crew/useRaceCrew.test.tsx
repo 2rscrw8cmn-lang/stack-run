@@ -1,9 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createInitialAppState } from "../storage/migrations";
-import { loadCrewDeleteTombstones } from "../storage/crewDeleteTombstoneRepository";
-import { DEFAULT_CREW_EMBLEM } from "./emblem";
-import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "./types";
+import { createInitialAppState } from "../storage/migrations.js";
+import { loadCrewDeleteTombstones } from "../storage/crewDeleteTombstoneRepository.js";
+import { DEFAULT_CREW_EMBLEM } from "./emblem.js";
+import type { CrewDashboardData, LoadedCrewAccount, RaceCrew } from "./types.js";
 
 const mocks = vi.hoisted(() => {
   const user = {

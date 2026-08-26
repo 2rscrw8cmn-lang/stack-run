@@ -1,18 +1,18 @@
 import { Info } from "lucide-react";
-import { Sheet } from "../../components/ui/Sheet";
-import type { RunLog, TrainingPlan } from "../../domain/types";
-import type { RunnerRun } from "../../history/runnerRun";
+import { Sheet } from "../../components/ui/Sheet.js";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
 import {
   TRAINING_SIGNAL_EXPLANATION,
   type TrainingSignal,
-} from "../../signals/trainingSignal";
-import { FrequencySignalDetail } from "./FrequencySignalDetail";
-import { LongRunSignalDetail } from "./LongRunSignalDetail";
-import { PlanContextSignalDetail } from "./PlanContextSignalDetail";
-import { VolumeSignalDetail } from "./VolumeSignalDetail";
-import { WorkloadSignalDetail } from "./WorkloadSignalDetail";
-import { ZoneSignalDetail } from "./ZoneSignalDetail";
-import { SignalPeriods } from "./SignalDetailParts";
+} from "../../signals/trainingSignal.js";
+import { FrequencySignalDetail } from "./FrequencySignalDetail.js";
+import { LongRunSignalDetail } from "./LongRunSignalDetail.js";
+import { PlanContextSignalDetail } from "./PlanContextSignalDetail.js";
+import { VolumeSignalDetail } from "./VolumeSignalDetail.js";
+import { WorkloadSignalDetail } from "./WorkloadSignalDetail.js";
+import { ZoneSignalDetail } from "./ZoneSignalDetail.js";
+import { SignalPeriods } from "./SignalDetailParts.js";
 
 interface SignalDetailSheetProps {
   signal: TrainingSignal | null;

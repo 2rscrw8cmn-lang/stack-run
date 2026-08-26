@@ -1,5 +1,5 @@
-import type { RunLog } from "../domain/types";
-import type { HistoricalActivity } from "./historicalActivity";
+import type { RunLog } from "../domain/types.js";
+import type { HistoricalActivity } from "./historicalActivity.js";
 
 /**
  * How the historical layer and the existing run log relate.

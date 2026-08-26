@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { IntervalsCandidate } from "../connected/intervals";
-import { mergeCandidates } from "../connected/intervals";
-import type { AppState, RunLog } from "../domain/types";
-import { reconcileCrewContributions } from "../crew/projection";
-import { getSupabaseAvailability } from "../crew/supabaseClient";
+import type { IntervalsCandidate } from "../connected/intervals.js";
+import { mergeCandidates } from "../connected/intervals.js";
+import type { AppState, RunLog } from "../domain/types.js";
+import { reconcileCrewContributions } from "../crew/projection.js";
+import { getSupabaseAvailability } from "../crew/supabaseClient.js";
 import {
   adoptLegacyIntervalsApiKey,
-} from "../storage/intervalsCredentialRepository";
+} from "../storage/intervalsCredentialRepository.js";
 import {
   loadPendingIntervalsCandidates,
   savePendingIntervalsCandidates,
-} from "../storage/intervalsPendingRepository";
-import { adoptLegacyIntervalsSyncToken } from "../storage/intervalsTokenRepository";
-import { createInitialAppState, migrateAppState } from "../storage/migrations";
+} from "../storage/intervalsPendingRepository.js";
+import { adoptLegacyIntervalsSyncToken } from "../storage/intervalsTokenRepository.js";
+import { createInitialAppState, migrateAppState } from "../storage/migrations.js";
 import {
   backupPersonalState,
   emptyPersonalOutbox,
@@ -27,7 +27,7 @@ import {
   saveActivePersonalOwner,
   savePersonalMetadata,
   savePersonalOutbox,
-} from "../storage/personalSyncRepository";
+} from "../storage/personalSyncRepository.js";
 import {
   deletePersonalRuns,
   initializePersonalCloud,
@@ -39,7 +39,7 @@ import {
   savePersonalIntervalsDocument,
   savePersonalRun,
   savePersonalTrainingDocument,
-} from "./personalCloudRepository";
+} from "./personalCloudRepository.js";
 import {
   appStateFromCloud,
   canonicalizeFirstDevice,
@@ -49,14 +49,14 @@ import {
   repairCanonicalPlacements,
   rewritePlanHistoryRunIds,
   rewritePlacementRunIds,
-} from "./reconciliation";
+} from "./reconciliation.js";
 import {
   intervalsDocumentFrom,
   trainingDocumentFrom,
   type PersonalCacheMetadata,
   type PersonalCloudSnapshot,
   type PersonalSyncController,
-} from "./types";
+} from "./types.js";
 
 interface Options {
   sessionStatus: "unconfigured" | "loading" | "signed-out" | "signed-in";

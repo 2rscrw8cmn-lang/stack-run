@@ -1,7 +1,7 @@
-import { DEFAULT_CREW_EMBLEM, type CrewEmblem } from "../../crew/emblem";
-import type { CrewMember, CrewWeekRecapRun } from "../../crew/types";
-import { crewWeekRecap, type CrewWeekRecap } from "../../crew/weekRecap";
-import { isPreviewReviewHost } from "../today/todayDemo";
+import { DEFAULT_CREW_EMBLEM, type CrewEmblem } from "../../crew/emblem.js";
+import type { CrewMember, CrewWeekRecapRun } from "../../crew/types.js";
+import { crewWeekRecap, type CrewWeekRecap } from "../../crew/weekRecap.js";
+import { isPreviewReviewHost } from "../today/todayDemo.js";
 
 /**
  * Owner review for the Crew Week Recap.

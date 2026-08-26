@@ -1,12 +1,12 @@
-import { formatRunsMiles } from "../../domain/distance";
-import { longestRunByWeek } from "../../history/runnerLongRuns";
-import type { RunnerRun } from "../../history/runnerRun";
-import type { TrainingSignal } from "../../signals/trainingSignal";
+import { formatRunsMiles } from "../../domain/distance.js";
+import { longestRunByWeek } from "../../history/runnerLongRuns.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
 import {
   signedMilesChange,
   signedNumber,
   signedPoints,
-} from "./signalFormatting";
+} from "./signalFormatting.js";
 
 /** The overview is a summary, not the complete signal inventory. */
 export const RUNS_OVERVIEW_SIGNAL_LIMIT = 3;

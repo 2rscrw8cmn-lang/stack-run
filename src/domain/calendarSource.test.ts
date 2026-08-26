@@ -6,7 +6,7 @@ import {
   nameFromUrl,
   normalizeCalendarUrl,
   readCalendarSource,
-} from "./calendarSource";
+} from "./calendarSource.js";
 
 describe("readCalendarSource", () => {
   it("recognises a link", () => {

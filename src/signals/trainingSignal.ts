@@ -1,5 +1,5 @@
-import { addDaysToLocalDate } from "../domain/dates";
-import type { RunnerRun } from "../history/runnerRun";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import type { RunnerRun } from "../history/runnerRun.js";
 
 /**
  * Training Signals v2 — the domain model.

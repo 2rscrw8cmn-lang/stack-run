@@ -15,36 +15,36 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { formatDateLabel, todayLocalDate } from "../../domain/dates";
-import type { Race } from "../../domain/types";
-import { validateCrewDetails } from "../../crew/crewService";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates.js";
+import type { Race } from "../../domain/types.js";
+import { validateCrewDetails } from "../../crew/crewService.js";
 import {
   DEFAULT_CREW_EMBLEM,
   type CrewEmblem as CrewEmblemModel,
-} from "../../crew/emblem";
+} from "../../crew/emblem.js";
 import {
   MEMBER_ACCENTS,
   MEMBER_ACCENT_LABEL,
   crewMemberAccent,
   type CrewMemberAccent,
-} from "../../crew/memberAccent";
+} from "../../crew/memberAccent.js";
 import {
   sameRunnerIcon,
   type RunnerIcon as RunnerIconModel,
-} from "../../crew/runnerIcon";
-import { compareCrewRace } from "../../crew/raceMatch";
-import type { CrewType, RaceCrew } from "../../crew/types";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import type { ExternalApiTokenScope } from "../../crew/externalApiTokenService";
-import { CrewEmblem } from "./CrewEmblem";
-import { CrewEmblemBuilder } from "./CrewEmblemBuilder";
-import type { PersonalSyncController } from "../../personal-sync/types";
-import { PropNotifications } from "./PropNotifications";
-import { RunnerIcon } from "./RunnerIcon";
-import { RunnerIconBuilder } from "./RunnerIconBuilder";
+} from "../../crew/runnerIcon.js";
+import { compareCrewRace } from "../../crew/raceMatch.js";
+import type { CrewType, RaceCrew } from "../../crew/types.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import type { ExternalApiTokenScope } from "../../crew/externalApiTokenService.js";
+import { CrewEmblem } from "./CrewEmblem.js";
+import { CrewEmblemBuilder } from "./CrewEmblemBuilder.js";
+import type { PersonalSyncController } from "../../personal-sync/types.js";
+import { PropNotifications } from "./PropNotifications.js";
+import { RunnerIcon } from "./RunnerIcon.js";
+import { RunnerIconBuilder } from "./RunnerIconBuilder.js";
 
 interface Props {
   isOpen: boolean;

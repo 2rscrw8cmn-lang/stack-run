@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { StackSelect } from "../../components/ui/StackSelect";
-import { formatDateLabel } from "../../domain/dates";
-import { availableWorkoutsForRunLog } from "../../domain/plan";
-import type { RunLog, TrainingPlan } from "../../domain/types";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { StackSelect } from "../../components/ui/StackSelect.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { availableWorkoutsForRunLog } from "../../domain/plan.js";
+import type { RunLog, TrainingPlan } from "../../domain/types.js";
 
 interface ConnectToPlanSheetProps {
   runLog: RunLog;

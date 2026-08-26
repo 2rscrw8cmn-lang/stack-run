@@ -1,24 +1,24 @@
 import { useId, useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
-import { EffortPicker } from "../../components/shared/EffortPicker";
-import { todayLocalDate } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker.js";
+import { EffortPicker } from "../../components/shared/EffortPicker.js";
+import { todayLocalDate } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
 import type {
   RunActivityType,
   RunLog,
   Workout,
-} from "../../domain/types";
-import { maskDurationInput } from "./durationMask";
+} from "../../domain/types.js";
+import { maskDurationInput } from "./durationMask.js";
 import {
   validateRunEntry,
   type RunEntryErrors,
   type RunEntryValues,
   type ValidRunEntry,
-} from "./runValidation";
+} from "./runValidation.js";
 
 const NOTES_MAX_LENGTH = 120;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";
-import { runFrequency } from "./runnerFrequency";
-import { unifiedRunnerHistory } from "./runnerRun";
+import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures.js";
+import { runFrequency } from "./runnerFrequency.js";
+import { unifiedRunnerHistory } from "./runnerRun.js";
 
 /** `2026-08-15` is a Saturday: its week runs Mon 10th → Sun 16th and is partial. */
 const TODAY = "2026-08-15";

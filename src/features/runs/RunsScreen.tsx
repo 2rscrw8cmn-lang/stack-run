@@ -1,35 +1,35 @@
 import { BarChart3, ChevronRight, History, Plus } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { Section } from "../../components/ui/Section";
-import { earnedBlockPhrase } from "../../domain/build";
-import { formatDateLabel, todayLocalDate } from "../../domain/dates";
-import { runHistory, type RunHistoryEntry } from "../../domain/runs";
-import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "../../domain/types";
-import type { IntervalsConnection } from "../../connected/intervals";
-import type { HistorySyncPhase } from "../../history/historySyncPolicy";
-import { runningRunnerRuns, unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
-import { runnerSnapshot } from "../../history/runnerSnapshot";
-import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
-import type { ValidRunEntry } from "../run-entry/runValidation";
-import { ConnectToPlanSheet } from "./ConnectToPlanSheet";
-import { HistoricalRunSheet } from "./HistoricalRunSheet";
-import { HistoryExplorer } from "./HistoryExplorer";
-import { RunDetailSheet } from "./RunDetailSheet";
-import { RunnerProfileSheet } from "./RunnerProfileSheet";
-import { RunnerRunRow } from "./RunnerRunRow";
-import { RunnerSnapshot } from "./RunnerSnapshot";
-import { RunnerVolumeStrip } from "./RunnerVolumeStrip";
-import { SignalCards } from "../signals/SignalCards";
-import { SignalDetailSheet } from "../signals/SignalDetailSheet";
-import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo";
+import { Button } from "../../components/ui/Button.js";
+import { EmptyState } from "../../components/ui/EmptyState.js";
+import { Section } from "../../components/ui/Section.js";
+import { earnedBlockPhrase } from "../../domain/build.js";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates.js";
+import { runHistory, type RunHistoryEntry } from "../../domain/runs.js";
+import type { ArchivedTrainingPlan, RunLog, TrainingPlan, Workout } from "../../domain/types.js";
+import type { IntervalsConnection } from "../../connected/intervals.js";
+import type { HistorySyncPhase } from "../../history/historySyncPolicy.js";
+import { runningRunnerRuns, unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun.js";
+import { runnerSnapshot } from "../../history/runnerSnapshot.js";
+import { CompleteRunSheet } from "../run-entry/CompleteRunSheet.js";
+import type { ValidRunEntry } from "../run-entry/runValidation.js";
+import { ConnectToPlanSheet } from "./ConnectToPlanSheet.js";
+import { HistoricalRunSheet } from "./HistoricalRunSheet.js";
+import { HistoryExplorer } from "./HistoryExplorer.js";
+import { RunDetailSheet } from "./RunDetailSheet.js";
+import { RunnerProfileSheet } from "./RunnerProfileSheet.js";
+import { RunnerRunRow } from "./RunnerRunRow.js";
+import { RunnerSnapshot } from "./RunnerSnapshot.js";
+import { RunnerVolumeStrip } from "./RunnerVolumeStrip.js";
+import { SignalCards } from "../signals/SignalCards.js";
+import { SignalDetailSheet } from "../signals/SignalDetailSheet.js";
+import { isSignalDemoEnabled, signalDemoRuns } from "../signals/signalDemo.js";
 import {
   RUNS_OVERVIEW_SIGNAL_LIMIT,
   selectOverviewSignals,
-} from "../signals/signalOverview";
-import { presentableRunnerSignals } from "../../signals/runnerSignals";
-import type { SignalId } from "../../signals/trainingSignal";
+} from "../signals/signalOverview.js";
+import { presentableRunnerSignals } from "../../signals/runnerSignals.js";
+import type { SignalId } from "../../signals/trainingSignal.js";
 import "./runsOverview.css";
 
 /** Runs Overview is orientation, not the archive. */

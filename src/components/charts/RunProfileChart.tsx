@@ -1,4 +1,4 @@
-import { formatDurationSeconds } from "../../domain/duration";
+import { formatDurationSeconds } from "../../domain/duration.js";
 
 const WIDTH = 300;
 const HEIGHT = 120;

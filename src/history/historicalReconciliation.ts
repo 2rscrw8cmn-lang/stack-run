@@ -1,7 +1,7 @@
 import {
   compareHistoricalActivities,
   type HistoricalActivity,
-} from "./historicalActivity";
+} from "./historicalActivity.js";
 
 /**
  * Reconciling a historical sync against what STACK already stored.

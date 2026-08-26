@@ -8,7 +8,7 @@ import {
   type IntervalsActivityDetail,
   type IntervalsConnection,
   type IntervalsRunProfile,
-} from "./intervals";
+} from "./intervals.js";
 
 /**
  * The external read boundary Run Detail depends on.

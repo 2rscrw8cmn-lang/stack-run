@@ -1,9 +1,9 @@
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { formatPace, type RunHistoryEntry } from "../../domain/runs";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { formatPace, type RunHistoryEntry } from "../../domain/runs.js";
 
 interface RunRowProps {
   entry: RunHistoryEntry;

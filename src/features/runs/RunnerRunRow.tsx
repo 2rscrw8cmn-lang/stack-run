@@ -1,11 +1,11 @@
 import { Activity } from "lucide-react";
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { formatPaceSeconds } from "../../domain/runs";
-import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { formatPaceSeconds } from "../../domain/runs.js";
+import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun.js";
 
 interface RunnerRunRowProps {
   run: RunnerRun;

@@ -1,9 +1,9 @@
-import { earnsBlock } from "./build";
-import { daysBetweenLocalDates, isBeforeLocalDate } from "./dates";
-import type { CalendarShift } from "./ics";
-import { findWeek } from "./plan";
-import { isRaceWorkout } from "./planEdit";
-import type { RunLog, TrainingPlan, Workout } from "./types";
+import { earnsBlock } from "./build.js";
+import { daysBetweenLocalDates, isBeforeLocalDate } from "./dates.js";
+import type { CalendarShift } from "./ics.js";
+import { findWeek } from "./plan.js";
+import { isRaceWorkout } from "./planEdit.js";
+import type { RunLog, TrainingPlan, Workout } from "./types.js";
 
 /**
  * An imported calendar of somebody else's commitments, and which of them

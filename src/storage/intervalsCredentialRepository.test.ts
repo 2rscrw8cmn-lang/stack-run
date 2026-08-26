@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createInitialAppState } from "./migrations";
+import { createInitialAppState } from "./migrations.js";
 import {
   forgetIntervalsApiKey,
   adoptLegacyIntervalsApiKey,
   loadIntervalsApiKey,
   saveIntervalsApiKey,
-} from "./intervalsCredentialRepository";
+} from "./intervalsCredentialRepository.js";
 import {
   APP_STATE_STORAGE_KEY,
   INTERVALS_API_KEY_STORAGE_KEY,
-} from "./storageKeys";
+} from "./storageKeys.js";
 
 describe("Intervals credential repository", () => {
   beforeEach(() => localStorage.clear());

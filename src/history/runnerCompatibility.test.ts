@@ -1,23 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { normalizeIntervalsActivity, type fetchIntervals } from "../connected/intervals";
-import { earnedBlocks } from "../domain/build";
-import { footprintFor } from "../domain/footprint";
-import { selectTrainingSignals } from "../domain/trends";
-import type { AppState } from "../domain/types";
-import { projectMemberSummary, projectSharedRuns } from "../crew/projection";
+import { normalizeIntervalsActivity, type fetchIntervals } from "../connected/intervals.js";
+import { earnedBlocks } from "../domain/build.js";
+import { footprintFor } from "../domain/footprint.js";
+import { selectTrainingSignals } from "../domain/trends.js";
+import type { AppState } from "../domain/types.js";
+import { projectMemberSummary, projectSharedRuns } from "../crew/projection.js";
 import {
   acceptIntervalsRun,
   loadAppState,
   placeBlock,
   saveAppState,
   saveRunLog,
-} from "../storage/appStateRepository";
-import { createSeededAppState } from "../storage/migrations";
-import { APP_STATE_STORAGE_KEY } from "../storage/storageKeys";
-import { fixtureActivities } from "./historicalFixtures";
-import { syncHistoricalActivities } from "./historicalSync";
-import { runnerSnapshot } from "./runnerSnapshot";
-import { unifiedRunnerHistory } from "./runnerRun";
+} from "../storage/appStateRepository.js";
+import { createSeededAppState } from "../storage/migrations.js";
+import { APP_STATE_STORAGE_KEY } from "../storage/storageKeys.js";
+import { fixtureActivities } from "./historicalFixtures.js";
+import { syncHistoricalActivities } from "./historicalSync.js";
+import { runnerSnapshot } from "./runnerSnapshot.js";
+import { unifiedRunnerHistory } from "./runnerRun.js";
 
 /**
  * NEXT-2 reads. It does not write.

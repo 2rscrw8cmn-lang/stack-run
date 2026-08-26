@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { RUNNER_ICON_SHAPES, type RunnerIcon as RunnerIconModel } from "../../crew/runnerIcon";
-import { RunnerIcon } from "./RunnerIcon";
+import { RUNNER_ICON_SHAPES, type RunnerIcon as RunnerIconModel } from "../../crew/runnerIcon.js";
+import { RunnerIcon } from "./RunnerIcon.js";
 
 const icon: RunnerIconModel = { head: 1, face: 3, body: 5, flair: 2, background: 3 };
 

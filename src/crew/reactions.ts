@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CrewDashboardData, CrewSharedRun } from "./types";
+import type { CrewDashboardData, CrewSharedRun } from "./types.js";
 
 export interface CrewReactionMutation {
   crewId: string;

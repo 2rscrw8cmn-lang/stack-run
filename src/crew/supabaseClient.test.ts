@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSupabaseAvailability } from "./supabaseClient";
+import { getSupabaseAvailability } from "./supabaseClient.js";
 
 const productionEnv = {
   VITE_SUPABASE_URL: "https://fgnecruhlybarcmljggi.supabase.co",

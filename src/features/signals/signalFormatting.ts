@@ -1,5 +1,5 @@
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
 
 /**
  * Signed display of a change a signal has already decided the meaning of.

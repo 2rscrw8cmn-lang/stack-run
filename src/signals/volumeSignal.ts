@@ -1,6 +1,6 @@
-import { formatMiles } from "../domain/distance";
-import type { RunnerRun } from "../history/runnerRun";
-import { volumeInRange } from "../history/runnerVolume";
+import { formatMiles } from "../domain/distance.js";
+import type { RunnerRun } from "../history/runnerRun.js";
+import { volumeInRange } from "../history/runnerVolume.js";
 import {
   classifyChange,
   comparisonPhrase,
@@ -14,7 +14,7 @@ import {
   windowAvailability,
   type SignalDirection,
   type SignalOf,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * Volume — how much running there has been, and whether that is changing.

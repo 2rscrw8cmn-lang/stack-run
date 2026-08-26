@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { selectTodayModel } from "./todayModel";
+import { selectTodayModel } from "./todayModel.js";
 import {
   isTodayDemoEnabled,
   isTodayFoundDemoEnabled,
   todayDemoData,
   todayFoundDemoCandidate,
   TODAY_DEMO_DATE,
-} from "./todayDemo";
+} from "./todayDemo.js";
 
 describe("Today preview demo", () => {
   it("is enabled only on localhost or a Vercel branch preview with demo=today", () => {

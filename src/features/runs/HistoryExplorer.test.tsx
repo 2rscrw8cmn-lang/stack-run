@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { addDaysToLocalDate } from "../../domain/dates";
-import { historicalRun, stackRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import { HistoryExplorer } from "./HistoryExplorer";
+import { addDaysToLocalDate } from "../../domain/dates.js";
+import { historicalRun, stackRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import { HistoryExplorer } from "./HistoryExplorer.js";
 
 const TODAY = "2026-08-17";
 

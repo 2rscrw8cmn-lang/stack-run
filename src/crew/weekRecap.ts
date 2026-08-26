@@ -3,21 +3,21 @@ import {
   compareLocalDates,
   daysBetweenLocalDates,
   mondayOfLocalDate,
-} from "../domain/dates";
-import type { BlockHeight, BlockWidth } from "../domain/footprint";
-import type { RunActivityType, RunSource } from "../domain/types";
-import type { CrewAwardBlockRecord, CrewAwardType } from "./awards";
+} from "../domain/dates.js";
+import type { BlockHeight, BlockWidth } from "../domain/footprint.js";
+import type { RunActivityType, RunSource } from "../domain/types.js";
+import type { CrewAwardBlockRecord, CrewAwardType } from "./awards.js";
 import {
   faceVisibilityOf,
   occupiedCellsOf,
   topOf,
   voidsOf,
   type GridVoid,
-} from "../domain/placement";
-import { crewBuildFootprint, CREW_BUILD_COLUMNS } from "./crewBuild";
-import type { CrewMemberAccent } from "./memberAccent";
-import type { RunnerIcon } from "./runnerIcon";
-import type { CrewMember, CrewSharedRun, CrewWeekRecapRun } from "./types";
+} from "../domain/placement.js";
+import { crewBuildFootprint, CREW_BUILD_COLUMNS } from "./crewBuild.js";
+import type { CrewMemberAccent } from "./memberAccent.js";
+import type { RunnerIcon } from "./runnerIcon.js";
+import type { CrewMember, CrewSharedRun, CrewWeekRecapRun } from "./types.js";
 
 export const CREW_RECAP_WEEK_DAYS = 7;
 export const CREW_RECAP_TODAY_DAYS = 3;

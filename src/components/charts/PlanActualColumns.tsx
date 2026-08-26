@@ -1,4 +1,4 @@
-import { sparseTickIndices } from "./chartTickDensity";
+import { sparseTickIndices } from "./chartTickDensity.js";
 
 const WIDTH = 320;
 const DEFAULT_PLOT_HEIGHT = 168;

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { applyPlanAdjustments, type PlanAdjustmentOperation } from "./planAdjustment";
-import { PlanEditError } from "./planEdit";
-import { generateTrainingPlan, type RacePlanSetup } from "./racePlan";
-import type { TrainingPlan, Workout } from "./types";
+import { applyPlanAdjustments, type PlanAdjustmentOperation } from "./planAdjustment.js";
+import { PlanEditError } from "./planEdit.js";
+import { generateTrainingPlan, type RacePlanSetup } from "./racePlan.js";
+import type { TrainingPlan, Workout } from "./types.js";
 
 const TODAY = "2026-09-01";
 

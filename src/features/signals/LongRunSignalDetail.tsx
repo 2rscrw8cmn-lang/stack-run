@@ -1,12 +1,12 @@
-import { SelectableTrendLine } from "../../components/charts/SelectableTrendLine";
-import { formatDateLabel } from "../../domain/dates";
-import { formatRunsMiles } from "../../domain/distance";
-import { longestRunByWeek } from "../../history/runnerLongRuns";
-import type { RunnerRun } from "../../history/runnerRun";
-import type { TrainingSignal } from "../../signals/trainingSignal";
-import { DetailSection } from "../trends/TrendDetailShared";
-import { SignalReference, SignalResultSummary } from "./SignalDetailParts";
-import { signedMilesChange, signedPercent } from "./signalFormatting";
+import { SelectableTrendLine } from "../../components/charts/SelectableTrendLine.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatRunsMiles } from "../../domain/distance.js";
+import { longestRunByWeek } from "../../history/runnerLongRuns.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
+import type { TrainingSignal } from "../../signals/trainingSignal.js";
+import { DetailSection } from "../trends/TrendDetailShared.js";
+import { SignalReference, SignalResultSummary } from "./SignalDetailParts.js";
+import { signedMilesChange, signedPercent } from "./signalFormatting.js";
 
 /** Long runs, with the two runs the comparison is actually about. */
 export function LongRunSignalDetail({

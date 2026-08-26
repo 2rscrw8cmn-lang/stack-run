@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { loadCrewDashboard } from "./dashboard";
-import { runnerIconFromSeed } from "./runnerIcon";
+import { loadCrewDashboard } from "./dashboard.js";
+import { runnerIconFromSeed } from "./runnerIcon.js";
 
 interface QueryCall {
   table: string;

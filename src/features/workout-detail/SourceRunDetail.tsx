@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "../../components/ui/Button";
-import { DonutChart } from "../../components/charts/DonutChart";
-import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments";
-import { RunProfileChart, type RunProfileFact } from "../../components/charts/RunProfileChart";
+import { Button } from "../../components/ui/Button.js";
+import { DonutChart } from "../../components/charts/DonutChart.js";
+import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments.js";
+import { RunProfileChart, type RunProfileFact } from "../../components/charts/RunProfileChart.js";
 import type {
   IntervalsActivityDetail,
   IntervalsRunProfile,
   IntervalsRunProfileSample,
-} from "../../connected/intervals";
+} from "../../connected/intervals.js";
 import {
   useSourceDetailReader,
   type SourceConnection,
   type SourceDetailReader,
-} from "../../connected/sourceDetail";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
-import { formatPaceSeconds } from "../../domain/runs";
-import type { SourceRunFacts } from "./sourceRunFacts";
+} from "../../connected/sourceDetail.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
+import { formatPaceSeconds } from "../../domain/runs.js";
+import type { SourceRunFacts } from "./sourceRunFacts.js";
 
 const ELAPSED_SIGNIFICANCE_SECONDS = 30;
 

@@ -1,5 +1,5 @@
-import { addDaysToLocalDate, parseLocalDate } from "./dates";
-import { EVERY_DAY, weekdayOf, type Weekday } from "./runDays";
+import { addDaysToLocalDate, parseLocalDate } from "./dates.js";
+import { EVERY_DAY, weekdayOf, type Weekday } from "./runDays.js";
 import type {
   Race,
   RaceGoal,
@@ -7,7 +7,7 @@ import type {
   TrainingWeek,
   Workout,
   WorkoutType,
-} from "./types";
+} from "./types.js";
 
 /** A plan stored before #179 introduced these three fields. */
 type LegacyTrainingPlan = Omit<TrainingPlan, "revision" | "originalPlan" | "race"> & {

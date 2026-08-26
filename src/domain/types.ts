@@ -1,6 +1,6 @@
-import type { AvailabilityCalendar } from "./availability";
-import type { RacePlanSetup } from "./racePlan";
-import type { Weekday } from "./runDays";
+import type { AvailabilityCalendar } from "./availability.js";
+import type { RacePlanSetup } from "./racePlan.js";
+import type { Weekday } from "./runDays.js";
 
 export type WorkoutType =
   | "rest"

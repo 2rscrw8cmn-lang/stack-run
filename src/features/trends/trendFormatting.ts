@@ -1,5 +1,5 @@
-import { formatMiles } from "../../domain/distance";
-import { formatPaceSeconds } from "../../domain/runs";
+import { formatMiles } from "../../domain/distance.js";
+import { formatPaceSeconds } from "../../domain/runs.js";
 
 export function paceLabel(secondsPerMile: number): string {
   return formatPaceSeconds(secondsPerMile);

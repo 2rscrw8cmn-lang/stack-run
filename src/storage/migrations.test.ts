@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GRID_COLUMNS, lastColumnOf, topOf } from "../domain/placement";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
+import { GRID_COLUMNS, lastColumnOf, topOf } from "../domain/placement.js";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 import {
   createInitialAppState,
   createSeededAppState,
@@ -8,7 +8,7 @@ import {
   InvalidAppStateError,
   migrateAppState,
   UnsupportedSchemaVersionError,
-} from "./migrations";
+} from "./migrations.js";
 
 /** A stored run from before activity types existed. workout-002 is an easy run. */
 const legacyEasyRun = {

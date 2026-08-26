@@ -1,7 +1,7 @@
-import { earnsBlock } from "./build";
-import { isBeforeLocalDate, parseLocalDate } from "./dates";
-import { isRaceWorkout, moveWorkout } from "./planEdit";
-import type { RunLog, TrainingPlan, Workout } from "./types";
+import { earnsBlock } from "./build.js";
+import { isBeforeLocalDate, parseLocalDate } from "./dates.js";
+import { isRaceWorkout, moveWorkout } from "./planEdit.js";
+import type { RunLog, TrainingPlan, Workout } from "./types.js";
 
 /**
  * Which weekdays the runner is willing to run on.

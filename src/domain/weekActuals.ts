@@ -1,5 +1,5 @@
-import { isAfterLocalDate, isBeforeLocalDate } from "./dates";
-import type { RunLog } from "./types";
+import { isAfterLocalDate, isBeforeLocalDate } from "./dates.js";
+import type { RunLog } from "./types.js";
 
 /**
  * What was actually run in a week, as opposed to how much of the week's plan

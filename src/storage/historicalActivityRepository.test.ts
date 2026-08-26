@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { HistoricalActivity } from "../history/historicalActivity";
-import { StorageWriteError } from "./appStateRepository";
+import type { HistoricalActivity } from "../history/historicalActivity.js";
+import { StorageWriteError } from "./appStateRepository.js";
 import {
   clearHistoricalActivities,
   loadHistoricalActivities,
   saveHistoricalActivities,
-} from "./historicalActivityRepository";
-import { HISTORICAL_ACTIVITIES_STORAGE_KEY } from "./storageKeys";
+} from "./historicalActivityRepository.js";
+import { HISTORICAL_ACTIVITIES_STORAGE_KEY } from "./storageKeys.js";
 
 function activity(overrides: Partial<HistoricalActivity> = {}): HistoricalActivity {
   return {

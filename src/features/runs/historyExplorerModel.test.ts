@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunnerRun } from "../../history/runnerRun";
+import type { RunnerRun } from "../../history/runnerRun.js";
 import {
   TRAILING_WEEK_BUCKETS,
   aggregateHistoryMetric,
@@ -13,7 +13,7 @@ import {
   runsInHistoryRange,
   summarizeHistoryMetric,
   type HistoryBucket,
-} from "./historyExplorerModel";
+} from "./historyExplorerModel.js";
 
 function run(date: string, options: Partial<RunnerRun> = {}): RunnerRun {
   return {

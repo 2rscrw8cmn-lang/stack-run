@@ -1,25 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { fetchIntervals } from "../connected/intervals";
-import { normalizeIntervalsActivity } from "../connected/intervals";
-import { earnedBlocks } from "../domain/build";
+import type { fetchIntervals } from "../connected/intervals.js";
+import { normalizeIntervalsActivity } from "../connected/intervals.js";
+import { earnedBlocks } from "../domain/build.js";
 import {
   acceptIntervalsRun,
   loadAppState,
   placeBlock,
   saveAppState,
   saveRunLog,
-} from "../storage/appStateRepository";
+} from "../storage/appStateRepository.js";
 import {
   loadPendingIntervalsCandidates,
   savePendingIntervalsCandidates,
-} from "../storage/intervalsPendingRepository";
-import { createInitialAppState, createSeededAppState } from "../storage/migrations";
-import { APP_STATE_STORAGE_KEY, INTERVALS_PENDING_STORAGE_KEY } from "../storage/storageKeys";
-import { footprintFor } from "../domain/footprint";
-import type { AppState } from "../domain/types";
-import { fixtureActivities } from "./historicalFixtures";
-import { historicalAcceptanceCounts, runLogForHistoricalActivity, unacceptedHistoricalActivities } from "./historicalLinks";
-import { syncHistoricalActivities } from "./historicalSync";
+} from "../storage/intervalsPendingRepository.js";
+import { createInitialAppState, createSeededAppState } from "../storage/migrations.js";
+import { APP_STATE_STORAGE_KEY, INTERVALS_PENDING_STORAGE_KEY } from "../storage/storageKeys.js";
+import { footprintFor } from "../domain/footprint.js";
+import type { AppState } from "../domain/types.js";
+import { fixtureActivities } from "./historicalFixtures.js";
+import { historicalAcceptanceCounts, runLogForHistoricalActivity, unacceptedHistoricalActivities } from "./historicalLinks.js";
+import { syncHistoricalActivities } from "./historicalSync.js";
 
 /**
  * NEXT-1 adds a history layer beside the existing application, not underneath

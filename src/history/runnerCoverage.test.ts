@@ -4,9 +4,9 @@ import {
   runnerCoverage,
   RUNNER_METRIC_MINIMUM_RATIO,
   RUNNER_METRIC_MINIMUM_RUNS,
-} from "./runnerCoverage";
-import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";
-import { unifiedRunnerHistory } from "./runnerRun";
+} from "./runnerCoverage.js";
+import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures.js";
+import { unifiedRunnerHistory } from "./runnerRun.js";
 
 const TODAY = "2026-08-15";
 

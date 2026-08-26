@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addDaysToLocalDate } from "../domain/dates";
-import { unifiedRunnerHistory } from "../history/runnerRun";
-import { createQaRunnerAppState, qaRunnerHistoricalActivities } from "./qaRunner";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
+import { createQaRunnerAppState, qaRunnerHistoricalActivities } from "./qaRunner.js";
 import {
   QA_AGGREGATE_ONLY_ACTIVITY_ID,
   QA_HISTORICAL_AGGREGATE_ACTIVITY_ID,
   QA_HISTORICAL_RICH_ACTIVITY_ID,
   QA_RICH_PROFILE_ACTIVITY_ID,
   qaSourceDetailReaderFor,
-} from "./qaSourceDetail";
+} from "./qaSourceDetail.js";
 
 const TODAY = "2026-08-16";
 const reader = qaSourceDetailReaderFor(null)!;

@@ -1,11 +1,11 @@
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { applyCrossTrainingDays } from "../../domain/crossTrainingDays";
-import { formatDateLabel } from "../../domain/dates";
-import { formatDurationSeconds, parseDurationInput } from "../../domain/duration";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { applyCrossTrainingDays } from "../../domain/crossTrainingDays.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatDurationSeconds, parseDurationInput } from "../../domain/duration.js";
 import {
   countQualitySessions,
   DISTANCE_PROFILES,
@@ -24,9 +24,9 @@ import {
   type RaceDistance,
   type RacePlanSetup,
   type RunnerLevel,
-} from "../../domain/racePlan";
-import type { Weekday } from "../../domain/runDays";
-import type { RaceGoal, RunLog, TrainingPlan } from "../../domain/types";
+} from "../../domain/racePlan.js";
+import type { Weekday } from "../../domain/runDays.js";
+import type { RaceGoal, RunLog, TrainingPlan } from "../../domain/types.js";
 
 const GOAL_TYPE_ORDER: readonly RaceGoal["type"][] = ["none", "finish", "time", "pace"];
 const GOAL_TYPE_LABEL: Record<RaceGoal["type"], string> = {

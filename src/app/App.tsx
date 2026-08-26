@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { AvailabilityCalendar } from "../domain/availability";
-import type { AppState, BlockPlacement, RunLog } from "../domain/types";
+import type { AvailabilityCalendar } from "../domain/availability.js";
+import type { AppState, BlockPlacement, RunLog } from "../domain/types.js";
 import {
   deleteRunLog,
   linkRunLogToWorkout,
@@ -25,36 +25,36 @@ import {
   clearIgnoredIntervalsActivities,
   unlinkRunLogFromWorkout,
   hasStoredAppState,
-} from "../storage/appStateRepository";
-import type { ValidRunEntry } from "../features/run-entry/runValidation";
-import { createInitialAppState } from "../storage/migrations";
-import { StorageRecoveryScreen } from "../features/recovery/StorageRecoveryScreen";
-import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner";
-import { useRosterRefresh } from "../features/availability/useRosterRefresh";
-import { AppShell } from "./AppShell";
-import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository";
-import { crewRecapDemoVariant } from "../features/crew/crewRecapDemo";
-import { useConnectedSync } from "../features/connected/useConnectedSync";
-import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment";
-import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments";
-import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment";
-import { useRaceCrew } from "../crew/useRaceCrew";
-import { CrewInviteLanding } from "../features/crew/CrewInviteLanding";
+} from "../storage/appStateRepository.js";
+import type { ValidRunEntry } from "../features/run-entry/runValidation.js";
+import { createInitialAppState } from "../storage/migrations.js";
+import { StorageRecoveryScreen } from "../features/recovery/StorageRecoveryScreen.js";
+import { StorageWriteBanner } from "../features/recovery/StorageWriteBanner.js";
+import { useRosterRefresh } from "../features/availability/useRosterRefresh.js";
+import { AppShell } from "./AppShell.js";
+import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository.js";
+import { crewRecapDemoVariant } from "../features/crew/crewRecapDemo.js";
+import { useConnectedSync } from "../features/connected/useConnectedSync.js";
+import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment.js";
+import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments.js";
+import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment.js";
+import { useRaceCrew } from "../crew/useRaceCrew.js";
+import { CrewInviteLanding } from "../features/crew/CrewInviteLanding.js";
 import {
   forgetIntervalsApiKey,
   loadIntervalsApiKey,
   saveIntervalsApiKey,
-} from "../storage/intervalsCredentialRepository";
+} from "../storage/intervalsCredentialRepository.js";
 import {
   loadOnboarding,
   saveOnboarding,
   type OnboardingSnapshot,
   type OnboardingState,
-} from "../storage/onboardingRepository";
-import { WelcomeSheet } from "../features/onboarding/WelcomeSheet";
-import { TourCoachmark } from "../features/onboarding/TourCoachmark";
-import { usePersonalSync } from "../personal-sync/usePersonalSync";
-import { useRunnerHistory } from "../features/runs/useRunnerHistory";
+} from "../storage/onboardingRepository.js";
+import { WelcomeSheet } from "../features/onboarding/WelcomeSheet.js";
+import { TourCoachmark } from "../features/onboarding/TourCoachmark.js";
+import { usePersonalSync } from "../personal-sync/usePersonalSync.js";
+import { useRunnerHistory } from "../features/runs/useRunnerHistory.js";
 
 export type TabId = "today" | "build" | "runs" | "crew" | "plan";
 

@@ -1,6 +1,6 @@
-import { formatMiles } from "../domain/distance";
-import { formatPaceSeconds } from "../domain/runs";
-import type { BlockWidth } from "../domain/footprint";
+import { formatMiles } from "../domain/distance.js";
+import { formatPaceSeconds } from "../domain/runs.js";
+import type { BlockWidth } from "../domain/footprint.js";
 
 export type CrewAwardType =
   | "miles"

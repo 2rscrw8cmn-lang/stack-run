@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { RunProfileChart, type RunProfilePoint } from "./RunProfileChart";
+import { RunProfileChart, type RunProfilePoint } from "./RunProfileChart.js";
 
 const points = (values: Array<number | null>, step = 30): RunProfilePoint[] =>
   values.map((value, index) => ({ timeSeconds: index * step, value }));

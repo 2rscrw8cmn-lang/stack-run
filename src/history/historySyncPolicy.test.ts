@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_HISTORICAL_LOOKBACK_DAYS } from "./historicalWindows";
+import { DEFAULT_HISTORICAL_LOOKBACK_DAYS } from "./historicalWindows.js";
 import {
   emptyHistorySyncRecord,
   historySyncDecision,
@@ -9,7 +9,7 @@ import {
   HISTORY_RETRY_AFTER_MS,
   HISTORY_STALE_AFTER_MS,
   type HistorySyncRecord,
-} from "./historySyncPolicy";
+} from "./historySyncPolicy.js";
 
 /**
  * The trigger policy, as a set of statements about when STACK is allowed to ask

@@ -1,6 +1,6 @@
-import { daysBetweenLocalDates, mondayOfLocalDate } from "../domain/dates";
-import { runningRunsBetween, type RunnerRun } from "./runnerRun";
-import { weeklyVolume } from "./runnerVolume";
+import { daysBetweenLocalDates, mondayOfLocalDate } from "../domain/dates.js";
+import { runningRunsBetween, type RunnerRun } from "./runnerRun.js";
+import { weeklyVolume } from "./runnerVolume.js";
 
 /**
  * How often this runner has actually been running.

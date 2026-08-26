@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { StackSelect } from "./StackSelect";
+import { StackSelect } from "./StackSelect.js";
 
 describe("StackSelect", () => {
   it("keeps native list semantics in the standardized treatment", async () => {

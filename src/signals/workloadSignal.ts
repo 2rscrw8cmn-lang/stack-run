@@ -1,5 +1,5 @@
-import { metricCoverage } from "../history/runnerCoverage";
-import { runningRunsBetween, type RunnerRun } from "../history/runnerRun";
+import { metricCoverage } from "../history/runnerCoverage.js";
+import { runningRunsBetween, type RunnerRun } from "../history/runnerRun.js";
 import {
   classifyChange,
   compareCoverage,
@@ -15,7 +15,7 @@ import {
   windowAvailability,
   type SignalDirection,
   type SignalOf,
-} from "./trainingSignal";
+} from "./trainingSignal.js";
 
 /**
  * Workload — the source's own Training Load, totalled over two windows.

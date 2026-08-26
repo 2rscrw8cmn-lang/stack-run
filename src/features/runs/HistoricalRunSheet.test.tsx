@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IntervalsRunProfile } from "../../connected/intervals";
-import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail";
-import { historicalRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
-import { HistoricalRunSheet } from "./HistoricalRunSheet";
+import type { IntervalsRunProfile } from "../../connected/intervals.js";
+import { SourceDetailReaderProvider, type SourceDetailReaderFactory } from "../../connected/sourceDetail.js";
+import { historicalRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun.js";
+import { HistoricalRunSheet } from "./HistoricalRunSheet.js";
 
 /**
  * R3B: a historical-only run reaching the same source-owned detail an accepted

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import handler, { handlePlanAdjustments } from "./plan-adjustments";
+import handler, { handlePlanAdjustments } from "./plan-adjustments.js";
 
 declare const process: { env: Record<string, string | undefined> };
 

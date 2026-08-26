@@ -1,8 +1,8 @@
-import { isBeforeLocalDate } from "./dates";
-import { addPlannedRun } from "./planEdit";
-import { WEEKDAY_ORDER, weekdayOf, type Weekday } from "./runDays";
-import { crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts";
-import type { TrainingPlan, Workout } from "./types";
+import { isBeforeLocalDate } from "./dates.js";
+import { addPlannedRun } from "./planEdit.js";
+import { WEEKDAY_ORDER, weekdayOf, type Weekday } from "./runDays.js";
+import { crossTrainingWorkoutForIndex } from "./crossTrainingWorkouts.js";
+import type { TrainingPlan, Workout } from "./types.js";
 
 /**
  * Which weekdays the runner wants Cross Training on, applied to the whole

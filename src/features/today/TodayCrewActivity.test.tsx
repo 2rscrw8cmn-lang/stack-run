@@ -1,9 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { CrewDashboardData, CrewSharedRun } from "../../crew/types";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { TodayCrewActivity } from "./TodayCrewActivity";
+import type { CrewDashboardData, CrewSharedRun } from "../../crew/types.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { TodayCrewActivity } from "./TodayCrewActivity.js";
 
 function run(
   id: string,

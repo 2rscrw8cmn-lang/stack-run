@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
-import handler, { readCalendar } from "./calendar";
+import handler, { readCalendar } from "./calendar.js";
 
 const ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR";
 

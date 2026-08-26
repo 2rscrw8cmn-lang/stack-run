@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { CrewAwardBlockRecord } from "./awards";
-import type { CrewMember, CrewSharedRun, CrewWeekRecapRun } from "./types";
+import type { CrewAwardBlockRecord } from "./awards.js";
+import type { CrewMember, CrewSharedRun, CrewWeekRecapRun } from "./types.js";
 import {
   crewWeekRecap,
   crewWeekRecapRunsFrom,
   isCrewRecapCurrent,
   lastClosedCrewWeek,
   type CrewWeekRecapBeat,
-} from "./weekRecap";
+} from "./weekRecap.js";
 
 const ICON = { head: 0, face: 0, body: 0, flair: 0, background: 0 };
 

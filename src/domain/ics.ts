@@ -1,4 +1,4 @@
-import { addDaysToLocalDate, formatLocalDate } from "./dates";
+import { addDaysToLocalDate, formatLocalDate } from "./dates.js";
 
 /**
  * One shift from an imported calendar, reduced to what STACK needs to know:

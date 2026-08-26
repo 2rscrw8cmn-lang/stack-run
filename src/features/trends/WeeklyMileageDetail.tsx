@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { PlanActualColumns } from "../../components/charts/PlanActualColumns";
-import { formatDateLabel } from "../../domain/dates";
-import { formatMiles } from "../../domain/distance";
-import { meanValues, type TrainingSignals } from "../../domain/trends";
-import { DetailSection, SignalFacts, TrendRunList } from "./TrendDetailShared";
-import { signedMiles } from "./trendFormatting";
+import { PlanActualColumns } from "../../components/charts/PlanActualColumns.js";
+import { formatDateLabel } from "../../domain/dates.js";
+import { formatMiles } from "../../domain/distance.js";
+import { meanValues, type TrainingSignals } from "../../domain/trends.js";
+import { DetailSection, SignalFacts, TrendRunList } from "./TrendDetailShared.js";
+import { signedMiles } from "./trendFormatting.js";
 
 export function WeeklyMileageDetail({
   signals,

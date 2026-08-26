@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isManualRun, runSourceLabel } from "./runSource";
+import { isManualRun, runSourceLabel } from "./runSource.js";
 
 /*
  * Issue #129: manual entry is the exception. `intervals` is the only value

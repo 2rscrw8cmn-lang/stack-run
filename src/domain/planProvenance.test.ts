@@ -4,8 +4,8 @@ import {
   deriveWorkoutProvenance,
   describeProvenanceChange,
   type PlanAdjustmentRecord,
-} from "./planProvenance";
-import type { Workout } from "./types";
+} from "./planProvenance.js";
+import type { Workout } from "./types.js";
 
 function workout(overrides: Partial<Workout> = {}): Workout {
   return {

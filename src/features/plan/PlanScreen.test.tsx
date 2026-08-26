@@ -1,12 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { RunActivityType, RunLog } from "../../domain/types";
-import { historicalRun } from "../../history/runnerFixtures";
-import { unifiedRunnerHistory } from "../../history/runnerRun";
-import type { PlanAdjustmentRecord } from "../../domain/planProvenance";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import { PlanScreen } from "./PlanScreen";
+import type { RunActivityType, RunLog } from "../../domain/types.js";
+import { historicalRun } from "../../history/runnerFixtures.js";
+import { unifiedRunnerHistory } from "../../history/runnerRun.js";
+import type { PlanAdjustmentRecord } from "../../domain/planProvenance.js";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import { PlanScreen } from "./PlanScreen.js";
 
 const plan = loadSeedPlan();
 

@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
-import type { BlockHeight, BlockWidth } from "../../domain/footprint";
-import type { GridVoid } from "../../domain/placement";
-import { GRID_COLUMNS } from "../../domain/placement";
-import type { CrewAwardType } from "../../crew/awards";
-import { AwardBrick } from "../crew/AwardBrick";
-import { Brick, type BrickFaceLabel } from "./Brick";
+import type { BlockHeight, BlockWidth } from "../../domain/footprint.js";
+import type { GridVoid } from "../../domain/placement.js";
+import { GRID_COLUMNS } from "../../domain/placement.js";
+import type { CrewAwardType } from "../../crew/awards.js";
+import { AwardBrick } from "../crew/AwardBrick.js";
+import { Brick, type BrickFaceLabel } from "./Brick.js";
 import "./buildCrop.css";
 
 /**

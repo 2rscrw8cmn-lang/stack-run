@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { normalizeHistoricalActivity, type HistoricalActivity } from "./historicalActivity";
-import { summarizeHistoricalCoverage } from "./historicalCoverage";
-import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures";
+import { normalizeHistoricalActivity, type HistoricalActivity } from "./historicalActivity.js";
+import { summarizeHistoricalCoverage } from "./historicalCoverage.js";
+import { acceptedRun, historicalRun, stackRun } from "./runnerFixtures.js";
 import {
   runnerRunActivityKind,
   runnerHistoryRange,
   unifiedRunnerHistory,
-} from "./runnerRun";
-import { trailingVolume } from "./runnerVolume";
-import { runFrequencyInRange } from "./runnerFrequency";
-import { longestRunInRange } from "./runnerLongRuns";
-import { metricCoverage } from "./runnerCoverage";
-import { aggregateHistoryZones, summarizeHistoryMetric } from "../features/runs/historyExplorerModel";
+} from "./runnerRun.js";
+import { trailingVolume } from "./runnerVolume.js";
+import { runFrequencyInRange } from "./runnerFrequency.js";
+import { longestRunInRange } from "./runnerLongRuns.js";
+import { metricCoverage } from "./runnerCoverage.js";
+import { aggregateHistoryZones, summarizeHistoryMetric } from "../features/runs/historyExplorerModel.js";
 
 const seenAt = "2026-08-23T12:00:00.000Z";
 

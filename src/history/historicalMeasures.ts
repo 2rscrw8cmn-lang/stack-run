@@ -1,4 +1,4 @@
-import type { HistoricalActivity } from "./historicalActivity";
+import type { HistoricalActivity } from "./historicalActivity.js";
 
 /**
  * Conversions off the stored source facts.

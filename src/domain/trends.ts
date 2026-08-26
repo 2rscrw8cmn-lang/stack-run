@@ -5,15 +5,15 @@ import {
   isAfterLocalDate,
   isBeforeLocalDate,
   mondayOfLocalDate,
-} from "./dates";
-import { formatWeekRange } from "./plan";
+} from "./dates.js";
+import { formatWeekRange } from "./plan.js";
 import type {
   RunActivityType,
   RunLog,
   TrainingPlan,
   TrainingWeek,
   Workout,
-} from "./types";
+} from "./types.js";
 
 export const TREND_MINIMUM_RUNS = 4;
 export const TREND_WEEK_WINDOW = 12;

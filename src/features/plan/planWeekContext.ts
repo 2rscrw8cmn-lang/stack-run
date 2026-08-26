@@ -1,5 +1,5 @@
-import type { PlanWeekViewModel } from "../../domain/plan";
-import type { RunnerRun } from "../../history/runnerRun";
+import type { PlanWeekViewModel } from "../../domain/plan.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
 
 export interface PlanWeekActualContext {
   miles: number;

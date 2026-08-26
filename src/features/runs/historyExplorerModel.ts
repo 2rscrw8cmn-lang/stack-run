@@ -4,8 +4,8 @@ import {
   formatLocalDate,
   mondayOfLocalDate,
   parseLocalDate,
-} from "../../domain/dates";
-import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun";
+} from "../../domain/dates.js";
+import { runningRunnerRuns, type RunnerRun } from "../../history/runnerRun.js";
 
 export const HISTORY_RANGE_IDS = ["4w", "3m", "6m", "ytd", "1y", "all"] as const;
 export type HistoryRangeId = (typeof HISTORY_RANGE_IDS)[number];

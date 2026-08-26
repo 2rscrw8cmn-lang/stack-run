@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
-import { ActivityIcon } from "../../components/shared/ActivityIcon";
-import { Button } from "../../components/ui/Button";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build";
-import type { Workout } from "../../domain/types";
-import { TodayActionCard } from "./TodayActionCard";
-import { todayActionReading } from "./todayActionReading";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
+import { Button } from "../../components/ui/Button.js";
+import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
+import type { Workout } from "../../domain/types.js";
+import { TodayActionCard } from "./TodayActionCard.js";
+import { todayActionReading } from "./todayActionReading.js";
 
 interface TodayWorkoutCardProps {
   workout: Workout;

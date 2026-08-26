@@ -1,4 +1,4 @@
-import type { CrewPropNotification } from "./types";
+import type { CrewPropNotification } from "./types.js";
 
 /** Props on the viewer's own runs since they last opened a surface that shows them. */
 export function unreadPropNotifications(

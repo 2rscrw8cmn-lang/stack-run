@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { Sheet } from "../../components/ui/Sheet";
-import { formatDateLabel } from "../../domain/dates";
+import { Button } from "../../components/ui/Button.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { formatDateLabel } from "../../domain/dates.js";
 import {
   currentCrossTrainingDays,
   planCrossTrainingDayChange,
-} from "../../domain/crossTrainingDays";
-import { WEEKDAY_NAMES, WEEKDAY_ORDER, type Weekday } from "../../domain/runDays";
-import type { TrainingPlan } from "../../domain/types";
+} from "../../domain/crossTrainingDays.js";
+import { WEEKDAY_NAMES, WEEKDAY_ORDER, type Weekday } from "../../domain/runDays.js";
+import type { TrainingPlan } from "../../domain/types.js";
 
 interface CrossTrainingDaysSheetProps {
   plan: TrainingPlan;

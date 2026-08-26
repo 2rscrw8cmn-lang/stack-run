@@ -2,35 +2,35 @@ import {
   addDaysToLocalDate,
   daysBetweenLocalDates,
   mondayOfLocalDate,
-} from "../../domain/dates";
+} from "../../domain/dates.js";
 import {
   currentWeekNumber,
   nextScheduledWorkout,
   selectPlanWeekViewModel,
   type PlanWeekViewModel,
-} from "../../domain/plan";
-import type { RunLog, TrainingPlan, Workout } from "../../domain/types";
-import { selectTodayViewModel, type TodayViewModel } from "../../domain/workout";
+} from "../../domain/plan.js";
+import type { RunLog, TrainingPlan, Workout } from "../../domain/types.js";
+import { selectTodayViewModel, type TodayViewModel } from "../../domain/workout.js";
 import {
   runFrequency,
   RUNNER_FREQUENCY_WEEKS,
-} from "../../history/runnerFrequency";
+} from "../../history/runnerFrequency.js";
 import {
   longestRunInWindow,
   LONGEST_RUN_WINDOW_DAYS,
-} from "../../history/runnerLongRuns";
-import { runnerHistoryRange, type RunnerRun } from "../../history/runnerRun";
+} from "../../history/runnerLongRuns.js";
+import { runnerHistoryRange, type RunnerRun } from "../../history/runnerRun.js";
 import {
   TRAILING_MONTH_DAYS,
   trailingVolume,
   volumeInRange,
-} from "../../history/runnerVolume";
-import { presentableRunnerSignals } from "../../signals/runnerSignals";
+} from "../../history/runnerVolume.js";
+import { presentableRunnerSignals } from "../../signals/runnerSignals.js";
 import {
   presentableSignals,
   type TrainingSignal,
   type TrainingSignalFamily,
-} from "../../signals/trainingSignal";
+} from "../../signals/trainingSignal.js";
 
 /**
  * What Today is, once it stops being a small copy of Plan.

@@ -1,22 +1,22 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { fetchIntervals } from "../../connected/intervals";
-import { emptyRejectionCounts } from "../../history/historicalActivity";
-import { fixtureActivities } from "../../history/historicalFixtures";
+import type { fetchIntervals } from "../../connected/intervals.js";
+import { emptyRejectionCounts } from "../../history/historicalActivity.js";
+import { fixtureActivities } from "../../history/historicalFixtures.js";
 import {
   historicalActivities,
   type HistoricalSyncResult,
-} from "../../history/historicalSync";
+} from "../../history/historicalSync.js";
 import {
   HISTORY_REFRESH_LOOKBACK_DAYS,
   HISTORY_STALE_AFTER_MS,
-} from "../../history/historySyncPolicy";
-import { historicalRun, stackRun } from "../../history/runnerFixtures";
+} from "../../history/historySyncPolicy.js";
+import { historicalRun, stackRun } from "../../history/runnerFixtures.js";
 import {
   loadHistorySyncRecord,
   saveHistorySyncRecord,
-} from "../../storage/historySyncStateRepository";
-import { useRunnerHistory, type RunnerHistoryOptions } from "./useRunnerHistory";
+} from "../../storage/historySyncStateRepository.js";
+import { useRunnerHistory, type RunnerHistoryOptions } from "./useRunnerHistory.js";
 
 /**
  * The lifecycle end to end: the policy, NEXT-1's sync service and real

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Sheet } from "./Sheet";
+import { Sheet } from "./Sheet.js";
 
 describe("Sheet", () => {
   it("is hidden when closed and visible with its title when open", () => {

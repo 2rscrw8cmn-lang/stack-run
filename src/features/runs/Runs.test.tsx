@@ -1,9 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadSeedPlan } from "../../seed/loadSeedPlan";
-import type { RunLog } from "../../domain/types";
-import { RunsScreen } from "./RunsScreen";
+import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
+import type { RunLog } from "../../domain/types.js";
+import { RunsScreen } from "./RunsScreen.js";
 
 const plan = loadSeedPlan();
 const TODAY = "2026-08-09";

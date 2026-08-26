@@ -4,16 +4,16 @@ import {
   widthForMiles,
   type BlockHeight,
   type BlockWidth,
-} from "../domain/footprint";
+} from "../domain/footprint.js";
 import {
   faceVisibilityOf,
   occupiedCellsOf,
   topOf,
   voidsOf,
   type GridVoid,
-} from "../domain/placement";
-import type { RunActivityType, RunSource } from "../domain/types";
-import type { CrewMiniBuildRun } from "./types";
+} from "../domain/placement.js";
+import type { RunActivityType, RunSource } from "../domain/types.js";
+import type { CrewMiniBuildRun } from "./types.js";
 
 export const MEMBER_BUILD_BLOCK_LIMIT = 128;
 

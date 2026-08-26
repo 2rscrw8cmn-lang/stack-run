@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { unifiedRunnerHistory } from "../history/runnerRun";
-import { presentableRunnerSignals } from "../signals/runnerSignals";
-import { autoPlaceOption, placementOptions } from "../domain/placement";
-import { footprintFor } from "../domain/footprint";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
+import { presentableRunnerSignals } from "../signals/runnerSignals.js";
+import { autoPlaceOption, placementOptions } from "../domain/placement.js";
+import { footprintFor } from "../domain/footprint.js";
 import {
   createQaRunnerAppState,
   isQaPreviewHost,
@@ -11,7 +11,7 @@ import {
   qaPlanLifecycleFrom,
   qaRunnerHistoricalActivities,
   QA_RUNNER_EMAIL,
-} from "./qaRunner";
+} from "./qaRunner.js";
 
 describe("QA Runner isolation", () => {
   it("enables the harness only on localhost or Vercel branch previews", () => {

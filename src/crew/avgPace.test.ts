@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avgPaceSecondsByUserId, type AvgPaceRun } from "./avgPace";
+import { avgPaceSecondsByUserId, type AvgPaceRun } from "./avgPace.js";
 
 const today = "2026-08-28";
 

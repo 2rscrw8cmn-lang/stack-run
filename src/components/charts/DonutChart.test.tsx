@@ -1,8 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { DonutChart } from "./DonutChart";
-import { zoneDonutSegments } from "./zoneDonutSegments";
+import { DonutChart } from "./DonutChart.js";
+import { zoneDonutSegments } from "./zoneDonutSegments.js";
 
 function renderZones(zones: number[]) {
   return render(

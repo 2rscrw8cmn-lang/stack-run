@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadSeedPlan } from "../seed/loadSeedPlan";
+import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 import {
   activeWeekNumber,
   blockStateFor,
@@ -12,13 +12,13 @@ import {
   scheduledRuns,
   selectBuildViewModel,
   totalActualMiles,
-} from "./build";
+} from "./build.js";
 import type {
   ArchivedTrainingPlan,
   BlockPlacement,
   RunActivityType,
   RunLog,
-} from "./types";
+} from "./types.js";
 
 const plan = loadSeedPlan();
 

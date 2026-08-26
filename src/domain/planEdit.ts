@@ -1,4 +1,4 @@
-import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates";
+import { compareLocalDates, isAfterLocalDate, isBeforeLocalDate } from "./dates.js";
 import type {
   BuildAssignment,
   RunActivityType,
@@ -6,7 +6,7 @@ import type {
   TrainingWeek,
   Workout,
   WorkoutType,
-} from "./types";
+} from "./types.js";
 
 export class PlanEditError extends Error {
   constructor(message: string) {

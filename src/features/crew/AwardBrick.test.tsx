@@ -4,8 +4,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { FEATURE_CREW_AWARD_TYPES, type CrewAwardType } from "../../crew/awards";
-import { AwardBrick } from "./AwardBrick";
+import { FEATURE_CREW_AWARD_TYPES, type CrewAwardType } from "../../crew/awards.js";
+import { AwardBrick } from "./AwardBrick.js";
 
 const ALL_AWARDS: readonly CrewAwardType[] = [
   "miles", "zone2", "pace", "runs", "longHaul", "steady", "onTarget", "levelUp",

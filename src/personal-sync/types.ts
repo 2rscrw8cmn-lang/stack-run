@@ -1,9 +1,9 @@
-import type { IntervalsCandidate } from "../connected/intervals";
+import type { IntervalsCandidate } from "../connected/intervals.js";
 import type {
   AppState,
   BlockPlacement,
   RunLog,
-} from "../domain/types";
+} from "../domain/types.js";
 
 export interface PersonalTrainingDocument {
   settings: AppState["settings"];

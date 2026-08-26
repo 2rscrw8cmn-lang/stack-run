@@ -3,50 +3,50 @@ import { useState } from "react";
 import {
   blockedDates,
   type AvailabilityCalendar,
-} from "../../domain/availability";
+} from "../../domain/availability.js";
 import {
   earnedBlockPhrase,
   findPlacementForRunLog,
   selectBuildViewModel,
-} from "../../domain/build";
-import { readyCrewBlockForLocalRun } from "../../crew/todayCrewBlock";
-import { formatDateLabel, todayLocalDate } from "../../domain/dates";
+} from "../../domain/build.js";
+import { readyCrewBlockForLocalRun } from "../../crew/todayCrewBlock.js";
+import { formatDateLabel, todayLocalDate } from "../../domain/dates.js";
 import type {
   BlockPlacement,
   RunLog,
   TrainingPlan,
   Workout,
-} from "../../domain/types";
-import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun";
-import { restoreWorkout } from "../../domain/planEdit";
+} from "../../domain/types.js";
+import { unifiedRunnerHistory, type RunnerRun } from "../../history/runnerRun.js";
+import { restoreWorkout } from "../../domain/planEdit.js";
 import {
   canUndoProvenance,
   deriveWorkoutProvenance,
   type WorkoutProvenanceSlot,
-} from "../../domain/planProvenance";
-import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals";
-import { RunFoundCard } from "./RunFoundCard";
-import { CompleteRunSheet } from "../run-entry/CompleteRunSheet";
-import type { ValidRunEntry } from "../run-entry/runValidation";
-import { BuildPreview } from "./BuildPreview";
-import { CompletedRunSummary } from "./CompletedRunSummary";
-import { NextWorkoutCard } from "./NextWorkoutCard";
-import { ThisWeekStrip } from "./ThisWeekStrip";
-import { TodayContext } from "./TodayContext";
-import { TodayHeading } from "./TodayHeading";
-import { TodayNote } from "./TodayNote";
-import { TodaySignalNote } from "./TodaySignalNote";
-import { TodayWorkoutCard } from "./TodayWorkoutCard";
+} from "../../domain/planProvenance.js";
+import { selectRunFound, type IntervalsCandidate } from "../../connected/intervals.js";
+import { RunFoundCard } from "./RunFoundCard.js";
+import { CompleteRunSheet } from "../run-entry/CompleteRunSheet.js";
+import type { ValidRunEntry } from "../run-entry/runValidation.js";
+import { BuildPreview } from "./BuildPreview.js";
+import { CompletedRunSummary } from "./CompletedRunSummary.js";
+import { NextWorkoutCard } from "./NextWorkoutCard.js";
+import { ThisWeekStrip } from "./ThisWeekStrip.js";
+import { TodayContext } from "./TodayContext.js";
+import { TodayHeading } from "./TodayHeading.js";
+import { TodayNote } from "./TodayNote.js";
+import { TodaySignalNote } from "./TodaySignalNote.js";
+import { TodayWorkoutCard } from "./TodayWorkoutCard.js";
 import {
   isTodayDemoEnabled,
   isTodayFoundDemoEnabled,
   todayDemoData,
   todayFoundDemoCandidate,
-} from "./todayDemo";
-import { selectTodayModel } from "./todayModel";
-import type { RaceCrewController } from "../../crew/useRaceCrew";
-import { TodayCrewActivity } from "./TodayCrewActivity";
-import { TodayCrewRecap } from "./TodayCrewRecap";
+} from "./todayDemo.js";
+import { selectTodayModel } from "./todayModel.js";
+import type { RaceCrewController } from "../../crew/useRaceCrew.js";
+import { TodayCrewActivity } from "./TodayCrewActivity.js";
+import { TodayCrewRecap } from "./TodayCrewRecap.js";
 import "./todayDecisionSurface.css";
 
 interface TodayScreenProps {

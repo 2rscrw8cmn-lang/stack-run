@@ -1,5 +1,5 @@
-import { formatMiles } from "../../domain/distance";
-import type { TodayContextReading } from "./todayModel";
+import { formatMiles } from "../../domain/distance.js";
+import type { TodayContextReading } from "./todayModel.js";
 
 interface TodayContextProps {
   readings: TodayContextReading[];

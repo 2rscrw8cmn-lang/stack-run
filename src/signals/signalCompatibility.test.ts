@@ -1,26 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { normalizeIntervalsActivity, type fetchIntervals } from "../connected/intervals";
-import { earnedBlocks } from "../domain/build";
-import { footprintFor } from "../domain/footprint";
-import { selectTrainingSignals } from "../domain/trends";
-import type { AppState } from "../domain/types";
-import { projectMemberSummary, projectSharedRuns } from "../crew/projection";
-import { fixtureActivities } from "../history/historicalFixtures";
-import { syncHistoricalActivities } from "../history/historicalSync";
-import { unifiedRunnerHistory } from "../history/runnerRun";
+import { normalizeIntervalsActivity, type fetchIntervals } from "../connected/intervals.js";
+import { earnedBlocks } from "../domain/build.js";
+import { footprintFor } from "../domain/footprint.js";
+import { selectTrainingSignals } from "../domain/trends.js";
+import type { AppState } from "../domain/types.js";
+import { projectMemberSummary, projectSharedRuns } from "../crew/projection.js";
+import { fixtureActivities } from "../history/historicalFixtures.js";
+import { syncHistoricalActivities } from "../history/historicalSync.js";
+import { unifiedRunnerHistory } from "../history/runnerRun.js";
 import {
   acceptIntervalsRun,
   loadAppState,
   placeBlock,
   saveAppState,
   saveRunLog,
-} from "../storage/appStateRepository";
-import { createSeededAppState } from "../storage/migrations";
+} from "../storage/appStateRepository.js";
+import { createSeededAppState } from "../storage/migrations.js";
 import {
   APP_STATE_STORAGE_KEY,
   HISTORY_SYNC_STATE_STORAGE_KEY,
-} from "../storage/storageKeys";
-import { runnerSignals } from "./runnerSignals";
+} from "../storage/storageKeys.js";
+import { runnerSignals } from "./runnerSignals.js";
 
 /**
  * NEXT-3 reads. It does not write, and it does not change anything NEXT-2 built.

@@ -1,8 +1,8 @@
 import { ArrowLeft, ArrowRight, Database, Watch } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { FormField } from "../../components/ui/FormField";
-import { fetchIntervals } from "../../connected/intervals";
+import { Button } from "../../components/ui/Button.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { fetchIntervals } from "../../connected/intervals.js";
 
 interface Props {
   onConnected: (apiKey: string) => void;

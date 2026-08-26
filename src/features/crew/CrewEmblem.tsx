@@ -5,7 +5,7 @@ import {
   crewEmblemSvgMarkup,
   type CrewEmblem as CrewEmblemModel,
   type CrewEmblemLayer,
-} from "../../crew/emblem";
+} from "../../crew/emblem.js";
 
 interface CrewEmblemProps {
   emblem: CrewEmblemModel;

@@ -1,19 +1,19 @@
-import { mergeCandidates, unresolvedCandidates, type IntervalsCandidate } from "../connected/intervals";
-import { InvalidPlacementError, assertPlacementFits, repackPlacements } from "../domain/placement";
+import { mergeCandidates, unresolvedCandidates, type IntervalsCandidate } from "../connected/intervals.js";
+import { InvalidPlacementError, assertPlacementFits, repackPlacements } from "../domain/placement.js";
 import type {
   AppState,
   ArchivedTrainingPlan,
   BlockPlacement,
   RunLog,
-} from "../domain/types";
-import { createRunLogId } from "../storage/appStateRepository";
-import { migrateAppState } from "../storage/migrations";
+} from "../domain/types.js";
+import { createRunLogId } from "../storage/appStateRepository.js";
+import { migrateAppState } from "../storage/migrations.js";
 import type {
   PersonalCloudRun,
   PersonalCloudSnapshot,
   PersonalInitializationRun,
   PersonalIntervalsDocument,
-} from "./types";
+} from "./types.js";
 
 function externalKey(run: RunLog): string | null {
   const source = run.externalSource;

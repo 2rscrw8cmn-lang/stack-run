@@ -1,4 +1,4 @@
-import type { RunActivityType, RunLog } from "./types";
+import type { RunActivityType, RunLog } from "./types.js";
 
 /**
  * How an actual run becomes a block, per D-018.

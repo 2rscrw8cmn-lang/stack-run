@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { RunLog } from "./types";
-import { selectWeekActuals } from "./weekActuals";
+import type { RunLog } from "./types.js";
+import { selectWeekActuals } from "./weekActuals.js";
 
 const run = (completedDate: string, distanceMiles: number, durationSeconds: number, workoutId: string | null = null): RunLog => ({
   id: `run-${completedDate}-${distanceMiles}`, workoutId, completedDate, activityType: "easy",

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   dismissPropNotification,
   loadDismissedPropNotificationIds,
-} from "./dismissedPropNotificationRepository";
-import { DISMISSED_PROP_NOTIFICATIONS_STORAGE_KEY } from "./storageKeys";
+} from "./dismissedPropNotificationRepository.js";
+import { DISMISSED_PROP_NOTIFICATIONS_STORAGE_KEY } from "./storageKeys.js";
 
 beforeEach(() => localStorage.clear());
 

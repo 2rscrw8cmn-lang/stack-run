@@ -1,5 +1,5 @@
-import { addDaysToLocalDate } from "../domain/dates";
-import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun";
+import { addDaysToLocalDate } from "../domain/dates.js";
+import { runningRunnerRuns, runningRunsBetween, type RunnerRun } from "./runnerRun.js";
 
 /**
  * Which metrics this runner's history can actually support a statement about.

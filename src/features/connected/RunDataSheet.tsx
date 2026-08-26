@@ -1,24 +1,24 @@
 import { CircleCheck, History, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker";
-import { EffortPicker } from "../../components/shared/EffortPicker";
-import { FormField } from "../../components/ui/FormField";
-import { Sheet } from "../../components/ui/Sheet";
-import { StackSelect } from "../../components/ui/StackSelect";
-import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates";
-import type { AppState, Effort, RunActivityType } from "../../domain/types";
-import { earnedBlockPhrase } from "../../domain/build";
-import { formatMiles } from "../../domain/distance";
-import { formatDurationSeconds } from "../../domain/duration";
+import { Button } from "../../components/ui/Button.js";
+import { ActivityTypePicker } from "../../components/shared/ActivityTypePicker.js";
+import { EffortPicker } from "../../components/shared/EffortPicker.js";
+import { FormField } from "../../components/ui/FormField.js";
+import { Sheet } from "../../components/ui/Sheet.js";
+import { StackSelect } from "../../components/ui/StackSelect.js";
+import { formatDateLabel, formatUpdatedAgo } from "../../domain/dates.js";
+import type { AppState, Effort, RunActivityType } from "../../domain/types.js";
+import { earnedBlockPhrase } from "../../domain/build.js";
+import { formatMiles } from "../../domain/distance.js";
+import { formatDurationSeconds } from "../../domain/duration.js";
 import {
   availableScheduledMatches,
   likelyManualMatches,
   suggestScheduledMatches,
   type IntervalsCandidate,
   type IntervalsConnection,
-} from "../../connected/intervals";
-import { RunDataSetup } from "./RunDataSetup";
+} from "../../connected/intervals.js";
+import { RunDataSetup } from "./RunDataSetup.js";
 
 /** A candidate handed in from Today, to open straight in its review state. */
 export interface RunDataReview {
