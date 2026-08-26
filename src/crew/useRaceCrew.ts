@@ -28,8 +28,11 @@ import {
   createExternalApiToken as createExternalApiTokenRecord,
   listExternalApiTokens,
   revokeExternalApiToken as revokeExternalApiTokenRecord,
+  type ExternalApiTokenScope,
   type ExternalApiTokenSummary,
 } from "./externalApiTokenService";
+import { listRecentPlanAdjustments } from "./planAdjustmentService";
+import type { PlanAdjustmentRecord } from "../domain/planProvenance";
 import type { CrewMemberAccent } from "./memberAccent";
 import { unreadPropNotifications } from "./notifications";
 import type { RunnerIcon } from "./runnerIcon";
@@ -127,6 +130,13 @@ export interface RaceCrewController {
   crewBuildPlacementError: string | null;
   /** This account's own #178 external assistant tokens, loaded on request. */
   externalApiTokens: ExternalApiTokenSummary[] | null;
+  /**
+   * This account's own recent unreverted plan adjustments (#180's ledger),
+   * loaded eagerly whenever signed in — not gated on Crew membership, since
+   * this is personal-plan provenance. Feeds #182's sparkle via
+   * `deriveWorkoutProvenance` (`src/domain/planProvenance.ts`).
+   */
+  planAdjustments: PlanAdjustmentRecord[] | null;
   createAccount: (input: { email: string; pin: string; displayName: string }) => Promise<void>;
   signIn: (input: { email: string; pin: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -159,8 +169,9 @@ export interface RaceCrewController {
   clearMessage: () => void;
   refreshExternalApiTokens: () => Promise<void>;
   /** Returns the raw token, shown exactly once — nothing can read it back afterward. */
-  createExternalApiToken: (label: string) => Promise<string>;
+  createExternalApiToken: (label: string, scope: ExternalApiTokenScope) => Promise<string>;
   revokeExternalApiToken: (tokenId: string) => Promise<void>;
+  refreshPlanAdjustments: () => Promise<void>;
 }
 
 function messageOf(error: unknown): string {
@@ -179,6 +190,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   const [account, setAccount] = useState<LoadedCrewAccount | null>(null);
   const [dismissedPropIds, setDismissedPropIds] = useState<ReadonlySet<string>>(new Set());
   const dismissedPropIdsUserId = useRef<string | null>(null);
+  const planAdjustmentsUserId = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -189,6 +201,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   );
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [externalApiTokens, setExternalApiTokens] = useState<ExternalApiTokenSummary[] | null>(null);
+  const [planAdjustments, setPlanAdjustments] = useState<PlanAdjustmentRecord[] | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
   const [projectionWaitingForPersonal, setProjectionWaitingForPersonal] =
     useState(false);
@@ -242,6 +255,13 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
   if ((user?.id ?? null) !== dismissedPropIdsUserId.current) {
     dismissedPropIdsUserId.current = user?.id ?? null;
     setDismissedPropIds(user ? loadDismissedPropNotificationIds(user.id) : new Set());
+  }
+
+  // #182: same reasoning and shape as dismissedPropIds above — the ref is
+  // written only here, during render, never from inside an effect.
+  if ((user?.id ?? null) !== planAdjustmentsUserId.current) {
+    planAdjustmentsUserId.current = user?.id ?? null;
+    if (!user) setPlanAdjustments(null);
   }
 
   const reloadAccount = useCallback(async (
@@ -569,6 +589,42 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     }
   }, [availability, resetCrewClientState]);
 
+  /**
+   * #182: a silent background read, not a user action — mirrors
+   * `refreshCrewData`'s shape (no `operate`, no busy/message toast) rather
+   * than `refreshExternalApiTokens`'s (a settings-panel action a runner
+   * explicitly triggered). A failed read just leaves the last good list in
+   * place; provenance is best-effort display data, not something worth
+   * surfacing a global error for.
+   */
+  const refreshPlanAdjustments = useCallback(async (): Promise<void> => {
+    if (!availability.configured || !latest.current.user) return;
+    try {
+      setPlanAdjustments(await listRecentPlanAdjustments(availability.client));
+    } catch {
+      // Keep the last good list rather than clearing it on a transient failure.
+    }
+  }, [availability]);
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setTimeout(() => void refreshPlanAdjustments(), 0);
+    return () => window.clearTimeout(timer);
+  }, [user, refreshPlanAdjustments]);
+
+  useEffect(() => {
+    if (!user) return;
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") void refreshPlanAdjustments();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user, refreshPlanAdjustments]);
+
   useEffect(() => {
     const crewId = account?.crew?.id ?? "";
     if (lastDashboard.current.crewId === crewId) return;
@@ -834,6 +890,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     crewBuildPlacementPending,
     crewBuildPlacementError,
     externalApiTokens,
+    planAdjustments,
     createAccount: (input) => operate(async () => {
       if (!availability.configured) return;
       const nextUser = await createStackAccount(availability.client, input);
@@ -970,13 +1027,13 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       if (!availability.configured) return;
       setExternalApiTokens(await listExternalApiTokens(availability.client));
     }),
-    createExternalApiToken: async (label) => {
+    createExternalApiToken: async (label, scope) => {
       if (!availability.configured) throw new Error("Race Crew is not configured.");
       setBusy(true);
       setError(null);
       setMessage(null);
       try {
-        const created = await createExternalApiTokenRecord(availability.client, label);
+        const created = await createExternalApiTokenRecord(availability.client, label, scope);
         setExternalApiTokens(await listExternalApiTokens(availability.client));
         setMessage("Token created. Copy it now — it will not be shown again.");
         return created.token;
@@ -992,6 +1049,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       await revokeExternalApiTokenRecord(availability.client, tokenId);
       setExternalApiTokens(await listExternalApiTokens(availability.client));
     }, "Token revoked."),
+    refreshPlanAdjustments,
     joinPendingInvite: () => operate(async () => {
       if (!availability.configured || !pendingInvite || !user) return;
       const joinedCrewId = await redeemCrewInvite(availability.client, pendingInvite.token);

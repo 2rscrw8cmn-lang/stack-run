@@ -631,6 +631,14 @@
 
 .next-workout__detail {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* #182: sibling of the detail block, not nested in anything clickable —
+   `NextWorkoutCard` has no row-level button to avoid nesting inside. */
+.next-workout__provenance {
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .next-workout__title {
@@ -2291,7 +2299,29 @@ textarea.run-input {
   list-style: none;
 }
 
+/* #182: the compact "Assistant Change" sheet — quiet on purpose, no chrome
+   beyond what `Sheet` already provides. */
+.assistant-adjustment-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.assistant-adjustment-detail__meta {
+  margin: 0;
+  font-size: var(--type-meta);
+  color: var(--text-muted);
+}
+
+.assistant-adjustment-detail__reason {
+  margin: 0;
+  font-style: italic;
+  color: var(--text-subtle);
+}
+
 .workout-row {
+  display: flex;
+  align-items: stretch;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -2311,10 +2341,20 @@ textarea.run-input {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 64px;
   padding: var(--space-3);
   text-align: left;
+}
+
+/* #182: the sparkle sits beside the row's own button, not inside it — a
+   button cannot nest inside another button. Its own min 44px target
+   (`.icon-button`) needs no extra sizing here, only placement. */
+.workout-row__provenance {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: var(--space-2);
 }
 
 .workout-row__button {

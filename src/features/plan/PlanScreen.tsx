@@ -25,8 +25,15 @@ import {
   isRaceWorkout,
   moveWorkout,
   PlanEditError,
+  restoreWorkout,
   type PlannedRunValues,
 } from "../../domain/planEdit";
+import {
+  canUndoProvenance,
+  deriveWorkoutProvenance,
+  type PlanAdjustmentRecord,
+  type WorkoutProvenanceSlot,
+} from "../../domain/planProvenance";
 import type { RacePlanSetup } from "../../domain/racePlan";
 import type { Weekday } from "../../domain/runDays";
 import type {
@@ -93,6 +100,12 @@ interface PlanScreenProps {
   onGeneratePlan?: (setup: RacePlanSetup, plan: TrainingPlan) => void;
   onFinishPlan?: () => void;
   syncToken?: IntervalsConnection | string | null;
+  /**
+   * #180's audit ledger, as the signed-in browser reads it (#182). Absent
+   * while signed out, offline, or still loading — a workout simply shows no
+   * sparkle then, never a false one.
+   */
+  planAdjustments?: readonly PlanAdjustmentRecord[] | null;
 }
 
 /**
@@ -131,6 +144,7 @@ export function PlanScreen({
   onGeneratePlan,
   onFinishPlan,
   syncToken,
+  planAdjustments = null,
 }: PlanScreenProps) {
   const [weekNumber, setWeekNumber] = useState(() =>
     plan ? currentWeekNumber(plan, today) : 1,
@@ -320,6 +334,28 @@ export function PlanScreen({
     );
   }
 
+  /**
+   * #182: the sparkle's data for one workout, or null when nothing to show —
+   * no ledger yet (signed out/offline/loading), no adjustment ever matched
+   * this workout, a manual edit since overrode it, or this is a read-only
+   * archived-plan view (`isHistorical`), where a plan edit of any kind is
+   * not offered at all.
+   */
+  function provenanceFor(workout: Workout): WorkoutProvenanceSlot | null {
+    if (isHistorical || !planAdjustments) return null;
+    const value = deriveWorkoutProvenance(workout, planAdjustments);
+    if (!value) return null;
+    return {
+      value,
+      canUndo: canUndoProvenance(value, viewPlan.revision),
+      onUndo: () =>
+        applyPlanEdit(
+          () => restoreWorkout(viewPlan, value.before),
+          `${formatDateLabel(workout.date)} restored to what it was before your assistant's change.`,
+        ),
+    };
+  }
+
   function planActionsFor(workout: Workout, isCompleted: boolean) {
     if (isHistorical) return {};
     if (isRaceWorkout(workout)) {
@@ -436,6 +472,7 @@ export function PlanScreen({
             blocked={
               day.status === "rest" ? undefined : blocked.get(day.workout.date)
             }
+            provenance={provenanceFor(day.workout)}
             onSelect={(workoutId) => {
               // A rest day has nothing to read; the only thing to do with one
               // is plan a run on it.

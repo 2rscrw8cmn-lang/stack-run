@@ -298,3 +298,17 @@ export function moveWorkout(
     }),
   );
 }
+
+/**
+ * Splices one workout back into the plan by id, replacing whatever is
+ * currently there. Used to restore a workout's pre-adjustment fields
+ * (#182, `src/domain/planProvenance.ts`) — the same "known-good workout
+ * object back into the plan" operation `undo_plan_patch` performs in SQL,
+ * reusing this file's own tested rebuild machinery instead of re-deriving it.
+ */
+export function restoreWorkout(plan: TrainingPlan, workout: Workout): TrainingPlan {
+  return withWorkouts(
+    plan,
+    allWorkouts(plan).map((candidate) => (candidate.id === workout.id ? workout : candidate)),
+  );
+}

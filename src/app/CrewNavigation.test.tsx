@@ -78,6 +78,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     crewBuildPlacementPending: false,
     crewBuildPlacementError: null,
     externalApiTokens: null,
+    planAdjustments: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -105,6 +106,7 @@ function controller(overrides: Partial<RaceCrewController> = {}): RaceCrewContro
     refreshExternalApiTokens: action,
     createExternalApiToken: vi.fn(async () => "token"),
     revokeExternalApiToken: action,
+    refreshPlanAdjustments: action,
     ...overrides,
   };
 }

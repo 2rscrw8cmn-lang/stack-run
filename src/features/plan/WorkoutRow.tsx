@@ -1,10 +1,12 @@
 import { CalendarDays, Circle, CircleCheck, MinusCircle } from "lucide-react";
 import type { CSSProperties } from "react";
 import { ActivityIcon } from "../../components/shared/ActivityIcon";
+import { AssistantAdjustmentBadge } from "../../components/shared/AssistantAdjustmentBadge";
 import { blockedPhrase, type BlockedDay } from "../../domain/availability";
 import { WORKOUT_TYPE_LABEL } from "../../domain/build";
 import { formatDateLabel } from "../../domain/dates";
 import { PLAN_DAY_STATUS_LABEL, type PlanDay } from "../../domain/plan";
+import type { WorkoutProvenanceSlot } from "../../domain/planProvenance";
 
 interface WorkoutRowProps {
   day: PlanDay;
@@ -13,6 +15,7 @@ interface WorkoutRowProps {
    * day that asks for a run: a rest day is not owed, so nothing is in its way.
    */
   blocked?: BlockedDay;
+  provenance?: WorkoutProvenanceSlot | null;
   onSelect: (workoutId: string) => void;
 }
 
@@ -34,7 +37,7 @@ function targetPhrase(day: PlanDay): string {
  * owes nothing, and has no detail worth opening. A run day is a button that
  * opens the workout detail sheet.
  */
-export function WorkoutRow({ day, blocked, onSelect }: WorkoutRowProps) {
+export function WorkoutRow({ day, blocked, provenance, onSelect }: WorkoutRowProps) {
   const isBlocked = blocked !== undefined;
   const { workout, status } = day;
   const StatusIcon = STATUS_ICON[status];
@@ -115,6 +118,15 @@ export function WorkoutRow({ day, blocked, onSelect }: WorkoutRowProps) {
       >
         {content}
       </button>
+      {provenance && (
+        <AssistantAdjustmentBadge
+          className="workout-row__provenance"
+          workout={workout}
+          provenance={provenance.value}
+          canUndo={provenance.canUndo}
+          onUndo={provenance.onUndo}
+        />
+      )}
     </li>
   );
 }

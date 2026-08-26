@@ -108,6 +108,7 @@ function controller(
     crewBuildPlacementPending: false,
     crewBuildPlacementError: null,
     externalApiTokens: null,
+    planAdjustments: null,
     createAccount: action,
     signIn: action,
     signOut: action,
@@ -135,6 +136,7 @@ function controller(
     refreshExternalApiTokens: action,
     createExternalApiToken: vi.fn(async () => "token"),
     revokeExternalApiToken: action,
+    refreshPlanAdjustments: action,
     ...overrides,
   };
 }
@@ -1106,5 +1108,57 @@ describe("Join Crew", () => {
     await user.click(screen.getByRole("button", { name: "Join Crew" }));
     expect(screen.getByRole("heading", { name: "Join Crew" })).toBeInTheDocument();
     expect(screen.getByText(/Ask a crew owner for their private invite link/)).toBeInTheDocument();
+  });
+});
+
+describe("External Assistant Access (#181 scopes)", () => {
+  async function openExternalTokens(crewOverrides: Partial<RaceCrewController> = {}) {
+    const user = userEvent.setup();
+    render(
+      <AccountCrewSheet
+        isOpen
+        onClose={vi.fn()}
+        localRace={null}
+        crew={controller({ status: "signed-in", email: "owner@example.test", account: ownerAccount, ...crewOverrides })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Owner.*owner@example\.test/ }));
+    await user.click(screen.getByRole("button", { name: /External Assistant Access/ }));
+    return user;
+  }
+
+  it("defaults the access-level picker to Read only", async () => {
+    await openExternalTokens();
+    expect(screen.getByRole("heading", { name: "External Assistant Access" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Read only" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Read & write" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("creates a read-only token by default without any extra action", async () => {
+    const createExternalApiToken = vi.fn(async () => "token");
+    const user = await openExternalTokens({ createExternalApiToken });
+    await user.type(screen.getByPlaceholderText("e.g. ChatGPT"), "ChatGPT");
+    await user.click(screen.getByRole("button", { name: "Create Token" }));
+    expect(createExternalApiToken).toHaveBeenCalledWith("ChatGPT", "read");
+  });
+
+  it("switches to Read & write and passes the chosen scope through", async () => {
+    const createExternalApiToken = vi.fn(async () => "token");
+    const user = await openExternalTokens({ createExternalApiToken });
+    await user.click(screen.getByRole("button", { name: "Read & write" }));
+    expect(screen.getByText(/your assistant can adjust future workouts/)).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("e.g. ChatGPT"), "ChatGPT");
+    await user.click(screen.getByRole("button", { name: "Create Token" }));
+    expect(createExternalApiToken).toHaveBeenCalledWith("ChatGPT", "read_write");
+  });
+
+  it("shows each existing token's access level", async () => {
+    await openExternalTokens({
+      externalApiTokens: [
+        { id: "t-1", label: "ChatGPT", scope: "read_write", createdAt: "2026-08-01T00:00:00Z", lastUsedAt: null, revokedAt: null },
+      ],
+    });
+    const row = within(screen.getByText("ChatGPT").closest("li")!);
+    expect(row.getByText(/Read & write/)).toBeInTheDocument();
   });
 });
