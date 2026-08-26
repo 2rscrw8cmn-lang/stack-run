@@ -22,7 +22,7 @@ integration:
 | Slice | What it adds | Status |
 |---|---|---|
 | #178 (this doc) | Read-only training context | Done |
-| #179 | Structured race goal + baseline/current/actual plan truth | Not started |
+| #179 | Structured race goal + original/current/actual plan truth (see `docs/PLAN_TRUTH_MODEL.md`) | Done |
 | #180 | Atomic plan adjustments + audit ledger + undo | Not started |
 | #181 | Formal auth scopes + provider-neutral transport | Not started |
 | #182 | The AI-sparkle provenance UI | Not started |
@@ -80,9 +80,11 @@ service *they* chose — so the withholding is narrower than Crew's:
   `loadPersonalCloudSnapshot`'s own null-when-uninitialized behavior.
   `planAdjustments` is always `[]`, because that model does not exist yet
   (#180).
-- **Race goal**: whatever `TrainingPlan.race` already holds
-  (`name`/`date`/`distanceMiles`). There is no structured goal type yet —
-  that is #179's job, not this endpoint's to invent.
+- **Race goal**: `name`/`date`/`distanceMiles` from `TrainingPlan.race`, plus
+  the structured `goal` (#179) — one of `{type: "none" | "finish"}` or
+  `{type: "time", targetFinishSeconds}` / `{type: "pace",
+  targetPaceSecondsPerMile}`. Still fully read-only through this endpoint;
+  writing one is #180's job, not this endpoint's.
 
 ## Where the data comes from
 

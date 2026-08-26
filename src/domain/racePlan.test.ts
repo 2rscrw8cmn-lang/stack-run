@@ -213,6 +213,26 @@ describe("generateTrainingPlan", () => {
     expect(plan.endDate >= "2026-12-05").toBe(true);
   });
 
+  it("starts a freshly generated plan at revision 1 with itself as the original", () => {
+    const plan = generateTrainingPlan(setupFor(), { today: "2026-08-09" });
+
+    expect(plan.revision).toBe(1);
+    expect(plan.originalPlan).toEqual({ ...plan, originalPlan: null });
+    // The snapshot is a leaf, not a chain.
+    expect(plan.originalPlan?.originalPlan).toBeNull();
+  });
+
+  it("defaults the race goal to none, and passes through a stated one", () => {
+    const none = generateTrainingPlan(setupFor(), { today: "2026-08-09" });
+    expect(none.race.goal).toEqual({ type: "none" });
+
+    const withGoal = generateTrainingPlan(
+      setupFor({ goal: { type: "time", targetFinishSeconds: 7200 } }),
+      { today: "2026-08-09" },
+    );
+    expect(withGoal.race.goal).toEqual({ type: "time", targetFinishSeconds: 7200 });
+  });
+
   it("holds exactly one workout on every date it covers", () => {
     const plan = generateTrainingPlan(setupFor(), { today: "2026-08-09" });
     const dates = plan.weeks.flatMap((week) =>

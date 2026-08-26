@@ -46,12 +46,25 @@ export interface ImportedRunMetrics {
   best5kSeconds?: number;
 }
 
+/**
+ * What the runner is training toward, beyond the distance and date already on
+ * `Race` itself. `"none"` is a real, explicit answer — the runner has not
+ * stated a goal — rather than the field being missing or nullable: STACK
+ * never guesses at a goal it was not told. See `docs/PLAN_TRUTH_MODEL.md`.
+ */
+export type RaceGoal =
+  | { type: "none" }
+  | { type: "finish" }
+  | { type: "time"; targetFinishSeconds: number }
+  | { type: "pace"; targetPaceSecondsPerMile: number };
+
 export interface Race {
   name: string;
   date: string;
   startTime?: string;
   location?: string;
   distanceMiles: number;
+  goal: RaceGoal;
 }
 
 export interface BuildAssignment {
@@ -91,6 +104,23 @@ export interface TrainingPlan {
   endDate: string;
   weeks: TrainingWeek[];
   notes: string[];
+  /**
+   * Bumped once per persisted change to this plan (regeneration starts a new
+   * plan at 1; every saved edit after that adds 1) — see `savePlan`/
+   * `saveRunDays`/`saveCrossTrainingDays` in `appStateRepository.ts`. A
+   * plan-scoped concurrency boundary, deliberately narrower than the
+   * whole-document `personal_training_state.revision` in Supabase. See
+   * `docs/PLAN_TRUTH_MODEL.md`.
+   */
+  revision: number;
+  /**
+   * A frozen copy of this plan exactly as generated, before any edit —
+   * "original" in `docs/PLAN_TRUTH_MODEL.md`'s original/current/actual truth
+   * model. Set once, at generation, and never touched again. This field is
+   * always `null` *on the snapshot itself*: it is a leaf, not a chain, so
+   * nothing should ever read `plan.originalPlan.originalPlan`.
+   */
+  originalPlan: TrainingPlan | null;
 }
 
 /** Immutable race intent retained after it stops being the active plan. */
@@ -173,7 +203,7 @@ export interface BlockPlacement {
 }
 
 export interface AppState {
-  schemaVersion: 10;
+  schemaVersion: 11;
   settings: AppSettings;
   /** The runner's one active race plan, or null while running between races. */
   plan: TrainingPlan | null;

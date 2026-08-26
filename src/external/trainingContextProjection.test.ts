@@ -58,11 +58,25 @@ describe("projectExternalTrainingContext", () => {
       name: state.plan.race.name,
       date: state.plan.race.date,
       distanceMiles: state.plan.race.distanceMiles,
+      goal: state.plan.race.goal,
     });
     // Every upcoming workout within the window is a real scheduled run, not a rest day.
     for (const workout of context.plan!.upcomingWorkouts) {
       expect(workout.type).not.toBe("rest");
     }
+  });
+
+  it("projects a stated structured race goal, still read-only", () => {
+    const state = createSeededAppState();
+    const withGoal = {
+      ...state,
+      plan: {
+        ...state.plan,
+        race: { ...state.plan.race, goal: { type: "time" as const, targetFinishSeconds: 6300 } },
+      },
+    };
+    const context = projectExternalTrainingContext(withGoal, "2026-08-10");
+    expect(context.raceGoal?.goal).toEqual({ type: "time", targetFinishSeconds: 6300 });
   });
 
   it("never leaks a run's notes or external provider identity, but keeps training-relevant facts", () => {

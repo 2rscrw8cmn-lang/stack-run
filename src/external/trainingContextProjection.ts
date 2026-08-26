@@ -8,6 +8,7 @@ import { scheduledRuns, selectBuildViewModel } from "../domain/build";
 import type {
   AppState,
   Effort,
+  RaceGoal,
   RunActivityType,
   RunSource,
   TrainingPlan,
@@ -71,6 +72,12 @@ export interface ExternalRaceGoal {
   name: string;
   date: string;
   distanceMiles: number;
+  /**
+   * Structured since #179; still read-only through this endpoint (#180 owns
+   * any future write path, and there is none yet). `{type: "none"}` when the
+   * runner has not stated one — see `docs/PLAN_TRUTH_MODEL.md`.
+   */
+  goal: RaceGoal;
 }
 
 export interface ExternalRun {
@@ -168,6 +175,7 @@ function projectRaceGoal(plan: TrainingPlan | null): ExternalRaceGoal | null {
     name: plan.race.name,
     date: plan.race.date,
     distanceMiles: plan.race.distanceMiles,
+    goal: plan.race.goal,
   };
 }
 

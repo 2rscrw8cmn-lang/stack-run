@@ -11,10 +11,13 @@ const plan: TrainingPlan = {
     name: "Test Half Marathon",
     date: "2026-08-08",
     distanceMiles: 13.1,
+    goal: { type: "none" },
   },
   startDate: "2026-08-03",
   endDate: "2026-08-09",
   notes: [],
+  revision: 1,
+  originalPlan: null,
   weeks: [
     {
       weekNumber: 1,

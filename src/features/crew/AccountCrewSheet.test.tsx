@@ -298,6 +298,7 @@ describe("Account & Crew settings", () => {
       name: "Another Half",
       date: "2026-12-12",
       distanceMiles: 13.1,
+      goal: { type: "none" as const },
     };
     const user = userEvent.setup();
     render(
@@ -318,6 +319,7 @@ describe("Account & Crew settings", () => {
       name: "Another Half",
       date: "2026-12-12",
       distanceMiles: 13.1,
+      goal: { type: "none" },
     });
   });
 
@@ -390,7 +392,7 @@ describe("Account & Crew settings", () => {
 
   it("prefills and saves valid Crew edits without changing the personal race", async () => {
     const updateCrew = vi.fn(async () => true);
-    const localRace = { name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 };
+    const localRace = { name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2, goal: { type: "none" as const } };
     const user = userEvent.setup();
     render(
       <AccountCrewSheet
@@ -424,7 +426,7 @@ describe("Account & Crew settings", () => {
       // Untouched here, so the crew keeps the emblem it already had.
       emblem: ownerCrew.emblem,
     });
-    expect(localRace).toEqual({ name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2 });
+    expect(localRace).toEqual({ name: "Personal Race", date: "2027-01-10", distanceMiles: 26.2, goal: { type: "none" } });
   });
 
   it("defaults a new Crew Build start to today", async () => {
@@ -433,7 +435,7 @@ describe("Account & Crew settings", () => {
       <AccountCrewSheet
         isOpen
         onClose={vi.fn()}
-        localRace={{ name: "OUC Half", date: "2026-12-05", distanceMiles: 13.1 }}
+        localRace={{ name: "OUC Half", date: "2026-12-05", distanceMiles: 13.1, goal: { type: "none" } }}
         crew={controller({
           status: "signed-in",
           account: {

@@ -5,6 +5,7 @@ import { FormField } from "../../components/ui/FormField";
 import { Sheet } from "../../components/ui/Sheet";
 import { applyCrossTrainingDays } from "../../domain/crossTrainingDays";
 import { formatDateLabel } from "../../domain/dates";
+import { formatDurationSeconds, parseDurationInput } from "../../domain/duration";
 import {
   countQualitySessions,
   DISTANCE_PROFILES,
@@ -25,7 +26,15 @@ import {
   type RunnerLevel,
 } from "../../domain/racePlan";
 import type { Weekday } from "../../domain/runDays";
-import type { RunLog, TrainingPlan } from "../../domain/types";
+import type { RaceGoal, RunLog, TrainingPlan } from "../../domain/types";
+
+const GOAL_TYPE_ORDER: readonly RaceGoal["type"][] = ["none", "finish", "time", "pace"];
+const GOAL_TYPE_LABEL: Record<RaceGoal["type"], string> = {
+  none: "No specific goal",
+  finish: "Just finish",
+  time: "Target finish time",
+  pace: "Target pace",
+};
 
 interface RaceSetupSheetProps {
   /** The current plan, for what regenerating would cost. */
@@ -80,6 +89,29 @@ export function RaceSetupSheet({
   const [chosenStart, setChosenStart] = useState<string | null>(
     setup?.startDate ?? null,
   );
+
+  // Read from the working setup first, then the plan already on screen, same
+  // priority every other field above uses.
+  const initialGoal = setup?.goal ?? plan?.race.goal ?? { type: "none" };
+  const [goalType, setGoalType] = useState<RaceGoal["type"]>(initialGoal.type);
+  const [targetTimeInput, setTargetTimeInput] = useState(
+    initialGoal.type === "time" ? formatDurationSeconds(initialGoal.targetFinishSeconds) : "",
+  );
+  const [targetPaceInput, setTargetPaceInput] = useState(
+    initialGoal.type === "pace" ? formatDurationSeconds(initialGoal.targetPaceSecondsPerMile) : "",
+  );
+  const parsedTargetFinishSeconds = parseDurationInput(targetTimeInput);
+  const parsedTargetPaceSecondsPerMile = parseDurationInput(targetPaceInput);
+  // A goal never blocks building the plan: an unparsed time/pace just leaves
+  // the goal at "none" rather than refusing to generate over it.
+  const goal: RaceGoal =
+    goalType === "time" && parsedTargetFinishSeconds !== null
+      ? { type: "time", targetFinishSeconds: parsedTargetFinishSeconds }
+      : goalType === "pace" && parsedTargetPaceSecondsPerMile !== null
+        ? { type: "pace", targetPaceSecondsPerMile: parsedTargetPaceSecondsPerMile }
+        : goalType === "finish"
+          ? { type: "finish" }
+          : { type: "none" };
 
   const profile = DISTANCE_PROFILES[distance];
   const validDate = ISO_DATE.test(date);
@@ -148,6 +180,7 @@ export function RaceSetupSheet({
       date,
       distance,
       level,
+      goal,
       ...(chosenStart ? { startDate: mondayOf(chosenStart) } : {}),
     };
     const generated = generateTrainingPlan(chosen, {
@@ -258,6 +291,63 @@ export function RaceSetupSheet({
               </li>
             ))}
           </ul>
+        </fieldset>
+
+        <fieldset className="race-setup__group">
+          <legend className="race-setup__legend">Goal</legend>
+          <div className="race-setup__options">
+            {GOAL_TYPE_ORDER.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="race-setup__option"
+                aria-pressed={goalType === option}
+                onClick={() => setGoalType(option)}
+              >
+                {GOAL_TYPE_LABEL[option]}
+              </button>
+            ))}
+          </div>
+          {goalType === "time" && (
+            <FormField
+              label="Target finish time"
+              hint="H:MM:SS or MM:SS"
+              error={
+                targetTimeInput.trim() && parsedTargetFinishSeconds === null
+                  ? "Not a time STACK can use — try H:MM:SS."
+                  : undefined
+              }
+            >
+              <input
+                className="run-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="1:45:00"
+                value={targetTimeInput}
+                onChange={(event) => setTargetTimeInput(event.target.value)}
+              />
+            </FormField>
+          )}
+          {goalType === "pace" && (
+            <FormField
+              label="Target pace (per mile)"
+              hint="MM:SS"
+              error={
+                targetPaceInput.trim() && parsedTargetPaceSecondsPerMile === null
+                  ? "Not a pace STACK can use — try MM:SS."
+                  : undefined
+              }
+            >
+              <input
+                className="run-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="8:00"
+                value={targetPaceInput}
+                onChange={(event) => setTargetPaceInput(event.target.value)}
+              />
+            </FormField>
+          )}
         </fieldset>
 
         {validDate && !isPast && startDate && (
