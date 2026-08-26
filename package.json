@@ -16,7 +16,8 @@
     "db:reset": "supabase db reset --local --no-seed",
     "db:verify:migrations": "node scripts/verify-supabase-migrations.mjs",
     "db:verify:sql": "node scripts/run-supabase-sql-tests.mjs",
-    "db:verify": "npm run db:verify:migrations && npm run db:reset && npm run db:verify:sql"
+    "db:verify": "npm run db:verify:migrations && npm run db:reset && npm run db:verify:sql",
+    "verify:external-integration": "node scripts/verify-external-integration.mjs"
   },
   "dependencies": {
     "@fontsource/space-mono": "^5.3.0",

@@ -55,6 +55,10 @@ describe("projectExternalTrainingContext", () => {
     expect(context.plan!.name).toBe(state.plan.name);
     expect(context.plan!.currentWeekNumber).toBe(state.plan.weeks[0]!.weekNumber);
     expect(context.plan!.totalWeeks).toBe(state.plan.weeks.length);
+    // #183: without this, a real external client has no value to send back as
+    // `expectedPlanRevision` on POST /api/plan-adjustments — every write would
+    // be a guess. Found missing during the end-to-end QA pass.
+    expect(context.plan!.revision).toBe(state.plan.revision);
     expect(context.raceGoal).toEqual({
       name: state.plan.race.name,
       date: state.plan.race.date,
@@ -64,6 +68,13 @@ describe("projectExternalTrainingContext", () => {
     // Every upcoming workout within the window is a real scheduled run, not a rest day.
     for (const workout of context.plan!.upcomingWorkouts) {
       expect(workout.type).not.toBe("rest");
+    }
+    // #183: without `id`, nothing tells an external client which workoutId a
+    // PlanAdjustmentOperation should name — found missing during the
+    // end-to-end QA pass.
+    expect(context.plan!.upcomingWorkouts.every((w) => typeof w.id === "string" && w.id.length > 0)).toBe(true);
+    if (context.plan!.nextScheduledWorkout) {
+      expect(context.plan!.nextScheduledWorkout.id.length).toBeGreaterThan(0);
     }
   });
 

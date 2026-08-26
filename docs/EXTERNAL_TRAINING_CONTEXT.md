@@ -26,7 +26,7 @@ mistaken for the finished integration:
 | #180 | Atomic plan adjustments + audit ledger + undo (see `docs/PLAN_ADJUSTMENTS.md`) | Done |
 | #181 | Formal auth scopes + provider-neutral transport (see `docs/EXTERNAL_INTEGRATION.md`) | Done |
 | #182 | The AI-sparkle provenance UI | Not started |
-| #183 | Real external-assistant end-to-end QA | Not started |
+| #183 | Real external-assistant end-to-end QA (see `docs/EXTERNAL_ASSISTANT_QA.md`) | Automated QA done; manual client walkthrough + deployment still pending |
 
 ## Auth: a personal, revocable token — not a Supabase session
 
@@ -69,7 +69,9 @@ cross-user boundary to enforce here — this is a runner's own data going to a
 service *they* chose — so the withholding is narrower than Crew's:
 
 - **Included**: distance, duration, pace, heart rate, cadence, elevation,
-  training load, effort, activity type, source, plan structure, Build
+  training load, effort, activity type, source, plan structure — including
+  `plan.revision` (#179's plan-scoped concurrency counter), required as
+  `expectedPlanRevision` on `POST /api/plan-adjustments` (#180) — Build
   placement, Training Signals, and the viewer's own Crew membership summary
   (never another member's row, never the shared communal tower).
 - **Withheld**: free-text `notes` (the one conservative default this codebase

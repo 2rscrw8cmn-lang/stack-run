@@ -48,6 +48,14 @@ export interface ExternalTrainingContext {
 }
 
 export interface ExternalUpcomingWorkout {
+  /**
+   * The `workoutId` a `PlanAdjustmentOperation` (#180) targets. Found
+   * missing during #183's end-to-end pass: without it, nothing reachable
+   * from this endpoint told an external client which workout a `move` /
+   * `editRun` / `addRun` / `skip` operation should name — the write side
+   * was unusable from read data alone.
+   */
+  id: string;
   date: string;
   type: RunActivityType;
   title: string;
@@ -66,6 +74,14 @@ export interface ExternalPlanContext {
   nextScheduledWorkout: ExternalUpcomingWorkout | null;
   /** Every remaining scheduled run through the end of the plan. */
   upcomingWorkouts: ExternalUpcomingWorkout[];
+  /**
+   * The plan-scoped optimistic-concurrency counter (#179,
+   * docs/PLAN_TRUTH_MODEL.md) — required as `expectedPlanRevision` on
+   * `POST /api/plan-adjustments` (#180). Found missing here during #183's
+   * end-to-end pass: without it, a real external client had no way to
+   * construct a valid write request at all.
+   */
+  revision: number;
 }
 
 export interface ExternalRaceGoal {
@@ -131,6 +147,7 @@ const UPCOMING_WORKOUT_WINDOW_DAYS = 21;
 
 function projectUpcomingWorkout(workout: Workout): ExternalUpcomingWorkout {
   return {
+    id: workout.id,
     date: workout.date,
     type: workout.type as RunActivityType,
     title: workout.title,
@@ -166,6 +183,7 @@ export function projectPlan(
     completedRunsThisWeek: week.completedRuns,
     nextScheduledWorkout: next ? projectUpcomingWorkout(next) : null,
     upcomingWorkouts: upcoming,
+    revision: plan.revision,
   };
 }
 
