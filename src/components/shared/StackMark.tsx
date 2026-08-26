@@ -4,27 +4,26 @@ interface StackMarkProps {
 }
 
 /**
- * The STACK mark: three courses of a tower, narrowing as they climb.
+ * The STACK runner mark.
  *
- * The same geometry the app icons are drawn from (`scripts/generate-icons.mjs`
- * renders these rectangles), so the thing in the header and the thing on the
- * home screen are one mark rather than two that resemble each other. Per the
- * design system it is bars only — no runner, no crane, no hard hat — and it
- * stays legible down to 20px because it is three shapes and two gaps.
+ * Keep this component as the single in-app brand-mark entry point so existing
+ * placements — shell, onboarding, invite/recovery states and help — all use the
+ * same artwork without each surface owning its own copy.
+ *
+ * The runner is much more detailed and visually narrower than the old three-
+ * bar mark, so it needs a larger optical size inside the same layout footprint.
  */
 export function StackMark({ size = 24, className }: StackMarkProps) {
   return (
-    <svg
+    <img
       className={className}
+      src="/stack-runner-mark.svg"
       width={size}
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
+      alt=""
       aria-hidden="true"
-      focusable="false"
-    >
-      <g dangerouslySetInnerHTML={{ __html: stackMarkSvgMarkup() }} />
-    </svg>
+      draggable={false}
+      style={{ objectFit: "contain", transform: "scale(1.45)" }}
+    />
   );
 }
-import { stackMarkSvgMarkup } from "./stackMarkSvg";
