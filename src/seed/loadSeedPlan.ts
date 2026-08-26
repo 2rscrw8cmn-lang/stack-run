@@ -1,4 +1,4 @@
-import rawSeedPlan from "../../seed/stack-training-plan-2026.json";
+import rawSeedPlan from "../../seed/stack-training-plan-2026.json" with { type: "json" };
 import { backfillPlan } from "../domain/racePlan.js";
 import type { TrainingPlan } from "../domain/types.js";
 
