@@ -194,6 +194,12 @@ function mapRpcFailure(message: string | null): { status: number; body: object }
     case "plan_patch_invalid":
     case "plan_patch_empty":
       return { status: 409, body: { error: "plan_changed", message: "The plan changed underneath this request, or this adjustment could not be applied as requested." } };
+    case "token_scope_insufficient":
+      // Unlike the token-validity cases above, naming the problem here is not
+      // an enumeration signal: the caller already knows their own token's
+      // scope by construction (#181, docs/EXTERNAL_INTEGRATION.md) — they
+      // chose it at creation.
+      return { status: 403, body: { error: "insufficient_scope", message: "This token is read-only and cannot make plan changes." } };
     default:
       return { status: 502, body: { error: "upstream_unavailable", message: "STACK's own database could not complete this change." } };
   }

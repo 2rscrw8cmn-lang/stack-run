@@ -72,7 +72,7 @@ begin
   set local request.jwt.claim.sub = '99700000-0000-0000-0000-000000000001';
 
   select token_id, token into v_token_id, v_token
-  from public.create_external_api_token('ChatGPT');
+  from public.create_external_api_token('ChatGPT', 'read');
   if v_token is null or char_length(v_token) < 32 then
     raise exception 'create_external_api_token did not return a usable token';
   end if;
@@ -175,7 +175,7 @@ begin
   set local role authenticated;
   set local request.jwt.claim.role = 'authenticated';
   set local request.jwt.claim.sub = '99700000-0000-0000-0000-000000000003';
-  select token into v_token from public.create_external_api_token('never synced');
+  select token into v_token from public.create_external_api_token('never synced', 'read');
   reset role;
   reset request.jwt.claim.role;
   reset request.jwt.claim.sub;
