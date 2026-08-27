@@ -9,6 +9,12 @@
     "api/training-context.ts": {
       "maxDuration": 30
     },
+    "api/openapi.ts": {
+      "maxDuration": 10
+    },
+    "api/mcp.ts": {
+      "maxDuration": 30
+    },
     "api/crew-invite.ts": {
       "maxDuration": 10
     },
@@ -24,6 +30,10 @@
     {
       "source": "/getting-started",
       "destination": "/"
+    },
+    {
+      "source": "/api/openapi.json",
+      "destination": "/api/openapi"
     }
   ],
   "headers": [

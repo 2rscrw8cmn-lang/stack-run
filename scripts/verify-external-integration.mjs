@@ -68,8 +68,92 @@ async function call(method, path, body) {
   return { status: response.status, json };
 }
 
+async function checkOpenApiSpec() {
+  const response = await fetch(`${baseUrl}/api/openapi.json`);
+  const contentType = response.headers.get("content-type") ?? "";
+  step("GET /api/openapi.json is reachable", response.status === 200, `status ${response.status}`);
+  step("GET /api/openapi.json serves JSON", contentType.includes("application/json"), contentType);
+  if (response.status !== 200 || !contentType.includes("application/json")) return;
+  let spec = null;
+  try {
+    spec = await response.json();
+  } catch {
+    // A non-JSON body is itself a fact the next check reports.
+  }
+  step(
+    "the spec declares both endpoints",
+    typeof spec?.openapi === "string" &&
+      Boolean(spec?.paths?.["/api/training-context"]) &&
+      Boolean(spec?.paths?.["/api/plan-adjustments"]),
+    spec ? `openapi ${spec.openapi}` : "unreadable body",
+  );
+}
+
+let mcpId = 0;
+
+async function mcpCall(method, params) {
+  const response = await fetch(`${baseUrl}/api/mcp`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: ++mcpId, method, params }),
+  });
+  let json = null;
+  try {
+    json = await response.json();
+  } catch {
+    // A non-JSON body is itself a fact the caller may need to report.
+  }
+  return { status: response.status, json };
+}
+
+async function checkMcpServer() {
+  const init = await mcpCall("initialize", { protocolVersion: "2025-11-25" });
+  step("MCP initialize succeeds", init.status === 200 && typeof init.json?.result?.protocolVersion === "string", `status ${init.status}`);
+
+  const notifyResponse = await fetch(`${baseUrl}/api/mcp`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+  });
+  step("MCP notifications/initialized is accepted (202)", notifyResponse.status === 202, `status ${notifyResponse.status}`);
+
+  const list = await mcpCall("tools/list");
+  const toolNames = (list.json?.result?.tools ?? []).map((t) => t.name).sort();
+  step(
+    "MCP tools/list declares all 3 tools",
+    JSON.stringify(toolNames) === JSON.stringify(["apply_plan_adjustment", "get_training_context", "undo_plan_adjustment"]),
+    toolNames.join(", "),
+  );
+
+  const call = await mcpCall("tools/call", { name: "get_training_context", arguments: {} });
+  const content = call.json?.result?.content?.[0]?.text;
+  let parsedContent = null;
+  try {
+    parsedContent = content ? JSON.parse(content) : null;
+  } catch {
+    // Unreadable content is itself a fact the next check reports.
+  }
+  step(
+    "MCP tools/call get_training_context returns readable training context, no isError",
+    call.status === 200 && call.json?.result?.isError !== true && parsedContent !== null,
+    call.json?.result?.isError ? `isError: ${content}` : `status ${call.status}`,
+  );
+
+  // apply_plan_adjustment/undo_plan_adjustment share the exact same
+  // handlePlanAdjustments code path the REST --allow-write checks below
+  // already exercise live — a second live mutation through MCP would be
+  // redundant risk for no additional coverage (see api/mcp.test.ts for the
+  // in-process proof that the MCP tools reach that same code path).
+}
+
 async function main() {
   console.log(`Verifying external-assistant integration against ${baseUrl}\n`);
+
+  // 0. The spec ChatGPT's "Import from URL" needs, reachable at the real deployed URL.
+  await checkOpenApiSpec();
+
+  // 0b. The remote MCP server Claude connects to, reachable at the real deployed URL.
+  await checkMcpServer();
 
   // 1. Authorize + read training context.
   const read = await call("GET", "/api/training-context");

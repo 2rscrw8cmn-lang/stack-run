@@ -48,6 +48,66 @@ in `supabase/migrations/20260825140000_external_api_token_scopes.sql`), not
 only by this route, so it holds even against a direct call to the
 underlying RPC.
 
+## Connecting a ChatGPT Custom GPT
+
+ChatGPT's Custom GPT "Actions" feature needs an OpenAPI 3.0.3 schema before
+it can call anything — `GET /api/openapi.json` serves exactly that (a plain,
+unauthenticated, cacheable route; the document is not account-specific).
+
+1. In the GPT Builder, under **Actions**, choose **Import from URL** and give
+   it `https://stack-run.vercel.app/api/openapi.json`.
+2. Set **Authentication** to **API Key**, **Auth Type: Bearer**, and paste in
+   the token from **Connecting** above.
+3. The three operations (`getTrainingContext`, `applyPlanAdjustment`,
+   `undoPlanAdjustment`) should appear with no schema errors.
+
+The schema is hand-written from the real route shapes and guarded by a test
+(`api/_openapiSpec.test.ts`) that fails if it drifts from them — see that
+file's header for how.
+
+## Connecting Claude (remote MCP)
+
+Claude doesn't consume OpenAPI/Actions — its equivalent is a remote
+[MCP](https://modelcontextprotocol.io) server. `POST /api/mcp` is exactly
+that: a JSON-RPC 2.0 / Streamable HTTP endpoint exposing three tools
+(`get_training_context`, `apply_plan_adjustment`, `undo_plan_adjustment`)
+that call the exact same routes described above — same behavior, same
+tokens, same error taxonomy, because it's the same code underneath.
+
+Auth is the same personal bearer token from **Connecting** above, sent as a
+request header — never OAuth. Where you paste it depends on which Claude
+surface you're using:
+
+**Claude Desktop or Claude Code** (works today, no beta flag needed) — add
+a remote MCP server with a custom header, e.g. in Claude Desktop's config:
+
+```json
+{
+  "mcpServers": {
+    "stack": {
+      "url": "https://stack-run.vercel.app/api/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}
+```
+
+(Claude Code: `claude mcp add --transport http stack https://stack-run.vercel.app/api/mcp --header "Authorization: Bearer <token>"`.)
+
+**claude.ai (web)** — Customize → Connectors → **Add custom connector**,
+enter `https://stack-run.vercel.app/api/mcp` as the URL, then open **Request
+headers** and add `Authorization` with the value `Bearer <token>` (include
+the word `Bearer` — Claude sends the header value exactly as entered, with
+no scheme prepended). As of this writing, request-header auth on custom
+connectors is an Anthropic beta rolling out gradually — if the **Request
+headers** section isn't in your dialog yet, use Claude Desktop or Claude
+Code instead, or check again later.
+
+The tool schemas are composed directly from the same OpenAPI schema objects
+above (`api/_mcpTools.ts`) and guarded by their own drift test
+(`api/_mcpTools.test.ts`), so they can't quietly diverge from either the
+REST contract or the real route shapes.
+
 ## Endpoints
 
 ### `GET /api/training-context`

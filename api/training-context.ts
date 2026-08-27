@@ -1,6 +1,7 @@
 /**
  * Evolution 2.10A (#178): the one read-only endpoint an authorized external
- * assistant (ChatGPT is the named first client) uses to see a runner's own
+ * assistant (ChatGPT via `api/openapi.ts`, Claude via `api/mcp.ts`, or
+ * anything else that can send a bearer token) uses to see a runner's own
  * training context. STACK stays the source of truth — this route makes zero
  * calls to any AI/model provider, and nothing it returns can be written back
  * through it. See docs/EXTERNAL_TRAINING_CONTEXT.md.

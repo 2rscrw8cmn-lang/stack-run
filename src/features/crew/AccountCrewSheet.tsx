@@ -1014,7 +1014,7 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
       <BackButton onClick={onBack} label="Back to Edit Profile" />
       <section className="crew-settings__section">
         <p className="crew-settings__copy">
-          Connect an external assistant — ChatGPT, for example — so it can read your plan, recent runs and Build progress and help you adjust what's ahead. STACK never sends your data anywhere on its own: a token only works once you hand it to something you chose.
+          Connect an external assistant — ChatGPT or Claude, for example — so it can read your plan, recent runs and Build progress and help you adjust what's ahead. STACK never sends your data anywhere on its own: a token only works once you hand it to something you chose.
         </p>
 
         {revealedToken && (
