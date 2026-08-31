@@ -244,15 +244,7 @@ export function CrewBuild({
               hint={placementHint(placement.canRotate)}
             />
           )}
-          <div
-            className="crew-build__viewport tower-field"
-            style={
-              {
-                "--grid-columns": GRID_COLUMNS,
-                "--grid-courses": drawnCourses,
-              } as CSSProperties
-            }
-          >
+          <div className="crew-build__viewport">
             <div className="crew-build__sky" aria-hidden="true" />
             <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
             <ul

@@ -15,27 +15,21 @@
  * graphic that pans is a graphic that did not fit.
  */
 .build-crop {
-  /* The width the crop's square cell is measured against (issue #204). */
-  container-type: inline-size;
   min-width: 0;
   overflow: visible;
 }
 
-/*
- * A crop's cells are square like the tower's, so the two agree about what a
- * block is — a crop that squashed the courses would show a turned block lying
- * flat. Each scale therefore sets only how much height the crop may spend;
- * the cell itself comes from the width, as it does on the real tower.
- */
 .build-crop[data-scale="hero"] {
-  --tower-field: 190px;
-  --tower-cell-min: 12px;
+  --course-height: 26px;
+  --iso-run: 14px;
+  --iso-rise: 7px;
 }
 
 /* Small enough to sit beside two lines of Today copy without taking the row. */
 .build-crop[data-scale="teaser"] {
-  --tower-field: 74px;
-  --tower-cell-min: 7px;
+  --course-height: 13px;
+  --iso-run: 7px;
+  --iso-rise: 4px;
 }
 
 .build-crop__tower {

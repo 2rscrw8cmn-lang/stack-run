@@ -707,7 +707,9 @@
    reserves the depth clearance, so nothing here ever needs to scroll or clip. */
 
 .build-crop.crew-recap__opening-crop {
-  --tower-field: 150px;
+  --course-height: 29px;
+  --iso-run: 15px;
+  --iso-rise: 8px;
 }
 
 /*
@@ -716,7 +718,9 @@
  * `buildCrop.css`'s own `[data-scale]` rule, hence the doubled class.
  */
 .build-crop.crew-recap__build-crop {
-  --tower-field: 220px;
+  --course-height: 36px;
+  --iso-run: 19px;
+  --iso-rise: 10px;
 }
 
 /* Awards

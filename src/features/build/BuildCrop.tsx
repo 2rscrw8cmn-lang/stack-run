@@ -88,7 +88,7 @@ export function BuildCrop({
       aria-hidden={label ? undefined : true}
     >
       <ul
-        className="built-tower build-crop__tower tower-field"
+        className="built-tower build-crop__tower"
         style={
           {
             "--grid-columns": columns,
