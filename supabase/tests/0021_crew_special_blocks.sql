@@ -200,9 +200,12 @@ begin
     if sqlerrm not like '%crew_build_placement_conflict%' then raise; end if;
   end;
 
+  -- The run is an 8-mile long run: four columns, which is eight placement
+  -- units (issue #206), so it stands on units 1 through 8. Unit 9 is the
+  -- first anchor where the award no longer holds any of it up.
   begin
     perform public.place_crew_award_block(
-      (select owner_award_id from award_test_ids), 0, 5
+      (select owner_award_id from award_test_ids), 0, 9
     );
     raise exception 'support failure: supporting award was moved away';
   exception when others then

@@ -1,4 +1,8 @@
-import { footprintFor, isOrientationOf } from "../domain/footprint.js";
+import {
+  footprintFor,
+  handFootprint,
+  isOrientationOf,
+} from "../domain/footprint.js";
 import {
   assertPlacementFits,
   canMove,
@@ -354,8 +358,12 @@ export function placeBlock(
   // paid for.
   const footprint = footprintFor(runLog);
   if (!isOrientationOf(input, footprint)) {
+    // Said in placement units on both sides, since that is what a stored
+    // footprint measures in (issue #206) — naming the earned size in columns
+    // here would report "1x1, not 1x1" for a mismatch of vocabulary.
+    const earned = handFootprint(footprint, false);
     throw new InvalidPlacementError(
-      `${input.runLogId} earns a ${footprint.width}x${footprint.height} block, not ${input.width}x${input.height}.`,
+      `${input.runLogId} earns a ${earned.width}x${earned.height} block, not ${input.width}x${input.height}.`,
     );
   }
 

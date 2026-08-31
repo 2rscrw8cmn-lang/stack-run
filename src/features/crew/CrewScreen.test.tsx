@@ -10,6 +10,7 @@ import type {
   CrewSharedRun,
   RaceCrew,
 } from "../../crew/types.js";
+import { GRID_UNITS } from "../../domain/placement.js";
 import { CrewScreen } from "./CrewScreen.js";
 
 const TODAY = "2026-08-10";
@@ -116,7 +117,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       distanceMiles: 6.1,
       durationSeconds: 3522,
     }),
-    sharedRun("old", "travis", "2026-08-08", { crewBuildColumnStart: 4 }),
+    sharedRun("old", "travis", "2026-08-08", { crewBuildColumnStart: 7 }),
   ];
   return {
     members,
@@ -628,7 +629,7 @@ describe("Crew comparisons and runs", () => {
     });
     const placedB = sharedRun("b-placed", "drew", "2026-08-09", {
       distanceMiles: 8,
-      crewBuildColumnStart: 4,
+      crewBuildColumnStart: 7,
       crewBuildRotated: false,
     });
     const user = await openCrew(controller({
@@ -915,7 +916,7 @@ describe("Shared Crew Build", () => {
       distanceMiles: 8,
       createdAt: "2026-08-06T12:00:00Z",
       crewBuildRow: 0,
-      crewBuildColumnStart: 3,
+      crewBuildColumnStart: 5,
       crewBuildRotated: false,
     }),
     sharedRun("third", "travis", "2026-08-07", {
@@ -1061,7 +1062,7 @@ describe("Shared Crew Build", () => {
       distanceMiles: 8,
       source: "intervals",
       crewBuildRow: 0,
-      crewBuildColumnStart: 3,
+      crewBuildColumnStart: 5,
       crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [manual, synced] }) }));
@@ -1200,14 +1201,19 @@ describe("Shared Crew Build", () => {
     const tower = screen.getByRole("list", { name: "Crew Build blocks" });
 
     expect(tower.parentElement).toHaveClass("crew-build__viewport");
-    // The viewport is also the tower field, which is what sizes the square
-    // cell (issue #204). Both it and the grid are told the same two numbers:
-    // the field measures the cell from them, the grid lays out with them.
-    expect(tower.parentElement).toHaveClass("tower-field");
-    expect(Number(tower.style.getPropertyValue("--grid-courses"))).toBeGreaterThan(0);
+    // The field that sizes the square placement unit wraps the viewport and
+    // the ground together: the tower scrolls inside the viewport, the ground
+    // stands below it, and both measure their depth in the same unit. It
+    // generates no box of its own — see `.tower-field--tokens`.
+    const field = tower.closest(".tower-field")!;
+    expect(field).toHaveClass("tower-field--tokens");
+    expect(field.contains(document.querySelector(".crew-build__ground"))).toBe(true);
+    expect(Number(field.getAttribute("style")?.match(/--grid-units:\s*(\d+)/)?.[1])).toBe(
+      GRID_UNITS,
+    );
     expect(
-      Number(tower.parentElement?.style.getPropertyValue("--grid-courses")),
-    ).toBe(Number(tower.style.getPropertyValue("--grid-courses")));
+      Number(field.getAttribute("style")?.match(/--grid-courses:\s*(\d+)/)?.[1]),
+    ).toBeGreaterThan(0);
   });
 
   it("shows the current runner's oldest READY contribution beside the Crew Build", () => {
@@ -1347,15 +1353,17 @@ describe("Shared Crew Build", () => {
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     const tower = screen.getByRole("list", { name: "Choose a Crew Build position" });
-    // One landing per column, none of them a choice of course.
+    // One landing per anchor on the placement grid, none of them a choice of
+    // course. A 4-mile block is four units wide, so thirteen anchors.
     const slots = within(tower).getAllByRole("button", { name: /^Place Easy/ });
-    expect(slots).toHaveLength(7);
+    expect(slots).toHaveLength(13);
     expect(slots[0]).toHaveAccessibleName("Place Easy block in columns 1 through 2");
 
     const moveRight = screen.getByRole("button", { name: "Move block right" });
     moveRight.focus();
     await user.keyboard("{Enter}");
-    expect(chosenLandingName()).toBe("Place Easy block in columns 2 through 3");
+    // One step is one unit, which is half a visible column.
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 3");
     expect(screen.queryByText("Column 2")).not.toBeInTheDocument();
     const drop = screen.getByRole("button", { name: "Drop" });
     drop.focus();
@@ -1391,7 +1399,9 @@ describe("Shared Crew Build", () => {
       fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 180 });
     });
 
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 5, false);
+    // 320px over sixteen units is 20px each; a four-unit block centred on
+    // x = 180 anchors at unit 8.
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 8, false);
   });
 
   it("keeps a block READY, shows the specific server collision message, and recomputes a fresh landing to retry", async () => {
@@ -1492,13 +1502,15 @@ describe("Shared Crew Build", () => {
   });
 
   it("offers no Crew rotation for a block with one orientation", async () => {
-    // Cross Training is a fixed 1-wide block; a 30 minute session earns 1x1.
+    // Cross Training is a fixed 1-column block, and a session past the half
+    // hour earns two courses: 1x2, which is 2x2 placement units. Square on
+    // the grid that decides it, so turning it changes nothing.
     const square = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
       crewBuildRotated: false,
       activityType: "cross",
-      durationSeconds: 600,
+      durationSeconds: 2400,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [square] }) }));
 
@@ -1516,7 +1528,7 @@ describe("Shared Crew Build", () => {
     });
     const teammate = sharedRun("theirs", "drew", "2026-08-09", {
       crewBuildRow: 0,
-      crewBuildColumnStart: 3,
+      crewBuildColumnStart: 5,
       crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [own, teammate] }) }));
@@ -1580,7 +1592,16 @@ describe("Shared Crew Build", () => {
     // that is what supplies the shared course height and the depth padding
     // the 3D faces overhang into.
     expect(tower).toHaveClass("built-tower");
-    expect(Number(tower.style.getPropertyValue("--grid-columns"))).toBe(8);
+    // Sixteen logical placement units under the eight columns the tower reads
+    // as, set on the field the grid sits in (issue #206).
+    expect(
+      Number(
+        tower
+          .closest(".tower-field")!
+          .getAttribute("style")
+          ?.match(/--grid-units:\s*(\d+)/)?.[1],
+      ),
+    ).toBe(GRID_UNITS);
 
     // The tower draws real 3D faces rather than flat cards.
     expect(

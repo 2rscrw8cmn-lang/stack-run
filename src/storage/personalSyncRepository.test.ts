@@ -44,7 +44,7 @@ describe("account-scoped personal cache", () => {
     expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({
       userId: "user-a",
       reason: "before adoption",
-      state: { schemaVersion: 11 },
+      state: { schemaVersion: 12 },
     });
   });
 });

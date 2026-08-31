@@ -18,7 +18,7 @@ import {
   voidsOf,
   type GridVoid,
 } from "../domain/placement.js";
-import { crewBuildFootprint, CREW_BUILD_COLUMNS } from "./crewBuild.js";
+import { crewBuildFootprint, CREW_BUILD_UNITS } from "./crewBuild.js";
 import type { CrewMemberAccent } from "./memberAccent.js";
 import type { RunnerIcon } from "./runnerIcon.js";
 import type { CrewMember, CrewSharedRun, CrewWeekRecapRun } from "./types.js";
@@ -227,7 +227,7 @@ function isPlacedInTower(run: CrewWeekRecapRun): boolean {
     run.crewBuildColumnStart +
       recapFootprint(run).width -
       1 <=
-      CREW_BUILD_COLUMNS
+      CREW_BUILD_UNITS
   );
 }
 

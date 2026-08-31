@@ -48,7 +48,7 @@ describe("Crew Special Blocks in the shared tower", () => {
   it("occupies real tower cells while adding zero miles", () => {
     const model = deriveCrewBuildWithAwards(
       [run("run", { distanceMiles: 5, crewBuildRow: 0, crewBuildColumnStart: 1 })],
-      [award("award", { crewBuildRow: 0, crewBuildColumnStart: 4 })],
+      [award("award", { crewBuildRow: 0, crewBuildColumnStart: 7 })],
       "runner-b",
     );
 
@@ -60,7 +60,7 @@ describe("Crew Special Blocks in the shared tower", () => {
 
   it("lets an award support a later run", () => {
     const model = deriveCrewBuildWithAwards(
-      [run("upper", { crewBuildRow: 1, crewBuildColumnStart: 2 })],
+      [run("upper", { crewBuildRow: 1, crewBuildColumnStart: 3 })],
       [award("base", { crewBuildRow: 0, crewBuildColumnStart: 1 })],
     );
 
@@ -90,14 +90,16 @@ describe("Crew Special Blocks in the shared tower", () => {
   it("computes the lowest valid award options against both award and run rectangles", () => {
     const model = deriveCrewBuildWithAwards(
       [run("base", { crewBuildRow: 0, crewBuildColumnStart: 1 })],
-      [award("other", { crewBuildRow: 0, crewBuildColumnStart: 3 })],
+      [award("other", { crewBuildRow: 0, crewBuildColumnStart: 5 })],
     );
     const moving = award("moving", { awardType: "miles" });
     const options = crewAwardLandingOptions(moving, model.blocks);
 
-    expect(options).toHaveLength(7);
+    // Anchors are placement units, so a 2-column award has thirteen of them
+    // across the sixteen-unit grid rather than seven across eight columns.
+    expect(options).toHaveLength(13);
     expect(options.find((option) => option.columnStart === 1)?.row).toBe(1);
-    expect(options.find((option) => option.columnStart === 7)?.row).toBe(0);
+    expect(options.find((option) => option.columnStart === 13)?.row).toBe(0);
   });
 
   it("lets a Special Block fill the lowest valid cavity beneath a wider Special Block", () => {
@@ -113,7 +115,7 @@ describe("Crew Special Blocks in the shared tower", () => {
         run("cavity-support", {
           distanceMiles: 3,
           crewBuildRow: 0,
-          crewBuildColumnStart: 2,
+          crewBuildColumnStart: 3,
           crewBuildRotated: false,
         }),
       ],
@@ -126,9 +128,9 @@ describe("Crew Special Blocks in the shared tower", () => {
     );
     const moving = award("moving", { awardType: "miles" });
     const option = crewAwardLandingOptions(moving, model.blocks)
-      .find((candidate) => candidate.columnStart === 2);
+      .find((candidate) => candidate.columnStart === 3);
 
-    expect(option).toMatchObject({ row: 1, columnStart: 2, columnEnd: 3 });
+    expect(option).toMatchObject({ row: 1, columnStart: 3, columnEnd: 6 });
     expect(canPlaceCrewAwardBlock(moving, option!, model.blocks)).toBe(true);
   });
 });

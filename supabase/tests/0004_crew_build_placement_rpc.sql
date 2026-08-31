@@ -73,11 +73,14 @@ begin
     if sqlerrm not like '%crew_build_placement_invalid%' then raise; end if;
   end;
 
+  -- Issue #206: the grid is sixteen placement units, two to a column. A
+  -- 3-mile run is two columns, which is four units, so unit 14 hangs off the
+  -- right edge and unit 13 is the last anchor that fits.
   begin
     perform public.place_crew_build_block(
-      (select owner_second_run_id from crew_build_test_ids), 0, 8
+      (select owner_second_run_id from crew_build_test_ids), 0, 14
     );
-    raise exception 'validation failure: block outside eight columns accepted';
+    raise exception 'validation failure: block outside the placement grid accepted';
   exception when others then
     if sqlerrm not like '%crew_build_placement_invalid%' then raise; end if;
   end;
@@ -111,8 +114,11 @@ with inserted as (
 )
 update crew_build_test_ids set member_run_id = (select id from inserted);
 
+-- Beside the owner's block, not overlapping it. The owner's 8-mile run is
+-- four columns, which is eight placement units (issue #206), so the next free
+-- anchor is unit 9 — the first unit of column 5.
 select public.place_crew_build_block(
-  (select member_run_id from crew_build_test_ids), 0, 5
+  (select member_run_id from crew_build_test_ids), 0, 9
 );
 
 do $$
@@ -141,9 +147,10 @@ begin
     if sqlerrm not like '%crew_build_placement_forbidden%' then raise; end if;
   end;
 
+  -- Unit 9 is where the member's block stands.
   begin
     perform public.place_crew_build_block(
-      (select owner_second_run_id from crew_build_test_ids), 0, 5
+      (select owner_second_run_id from crew_build_test_ids), 0, 9
     );
     raise exception 'collision failure: occupied placement accepted';
   exception when others then
@@ -167,7 +174,7 @@ begin
 
   begin
     perform public.place_crew_build_block(
-      (select owner_run_id from crew_build_test_ids), 0, 5
+      (select owner_run_id from crew_build_test_ids), 0, 9
     );
     raise exception 'move collision failure: occupied placement accepted';
   exception when others then

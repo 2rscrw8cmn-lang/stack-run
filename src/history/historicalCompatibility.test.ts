@@ -15,7 +15,7 @@ import {
 } from "../storage/intervalsPendingRepository.js";
 import { createInitialAppState, createSeededAppState } from "../storage/migrations.js";
 import { APP_STATE_STORAGE_KEY, INTERVALS_PENDING_STORAGE_KEY } from "../storage/storageKeys.js";
-import { footprintFor } from "../domain/footprint.js";
+import { footprintFor, handFootprint } from "../domain/footprint.js";
 import type { AppState } from "../domain/types.js";
 import { fixtureActivities } from "./historicalFixtures.js";
 import { historicalAcceptanceCounts, runLogForHistoricalActivity, unacceptedHistoricalActivities } from "./historicalLinks.js";
@@ -79,11 +79,13 @@ function establishedDevice(): { state: AppState; acceptedActivityId: string } {
   state = acceptIntervalsRun(state, candidate, null, "easy", "great", "Imported, extra.");
 
   state.runLogs.forEach((runLog, index) => {
-    const footprint = footprintFor(runLog);
+    // Placement coordinates are logical grid units (issue #206), so the
+    // earned footprint is converted before it is stored.
+    const footprint = handFootprint(footprintFor(runLog), false);
     state = placeBlock(state, {
       runLogId: runLog.id,
       row: 0,
-      columnStart: index === 0 ? 1 : 5,
+      columnStart: index === 0 ? 1 : 9,
       width: footprint.width,
       height: footprint.height,
     });

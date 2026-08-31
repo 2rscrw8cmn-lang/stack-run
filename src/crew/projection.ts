@@ -12,6 +12,8 @@ import type {
   RunLog,
   RunSource,
 } from "../domain/types.js";
+import { MAX_PLACED_UNITS } from "../domain/footprint.js";
+import { GRID_UNITS } from "../domain/towerGeometry.js";
 import { crewAwardMetricsByRunId, type CrewRunAwardMetrics } from "./awardMetrics.js";
 
 export interface CrewSharedRunProjection {
@@ -102,15 +104,21 @@ function safeSharedPlacement(
   buildHeight: BlockPlacement["height"];
 } | null {
   if (!placement || placement.runLogId !== run.id) return null;
+  // Logical placement units, not tower columns (issue #206): sixteen across,
+  // and a footprint spans 1..8 of them on either axis — a race is 8 units
+  // wide, or 8 units tall stood on end.
   if (
     !Number.isInteger(placement.row) ||
     placement.row < 0 ||
     !Number.isInteger(placement.columnStart) ||
     placement.columnStart < 1 ||
-    placement.columnStart + placement.width - 1 > 8 ||
-    ![1, 2, 3, 4].includes(placement.width) ||
-    // 4 is reachable only by rotation: a block stood on end (#204).
-    ![1, 2, 3, 4].includes(placement.height)
+    placement.columnStart + placement.width - 1 > GRID_UNITS ||
+    !Number.isInteger(placement.width) ||
+    placement.width < 1 ||
+    placement.width > MAX_PLACED_UNITS ||
+    !Number.isInteger(placement.height) ||
+    placement.height < 1 ||
+    placement.height > MAX_PLACED_UNITS
   ) {
     return null;
   }

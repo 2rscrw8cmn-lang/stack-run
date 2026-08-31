@@ -8,7 +8,7 @@ import {
 } from "../domain/footprint.js";
 import {
   faceVisibilityOf,
-  GRID_COLUMNS,
+  GRID_UNITS,
   occupiedCellsOf,
   topOf,
   voidsOf,
@@ -32,7 +32,12 @@ import type { CrewBuildRun } from "./types.js";
 
 /** Safety ceiling for the private ten-person Crew run read. */
 export const CREW_BUILD_BLOCK_LIMIT = 1280;
-export const CREW_BUILD_COLUMNS = GRID_COLUMNS;
+/**
+ * The shared tower's width, in logical placement units — the same grid
+ * Personal Build places on, so the two towers cannot drift about what fits
+ * where or what turning a block does. See `domain/towerGeometry.ts`.
+ */
+export const CREW_BUILD_UNITS = GRID_UNITS;
 export const CREW_BUILD_MIN_VISIBLE_COURSES = 10;
 
 export interface CrewBuildPlacement {
@@ -200,14 +205,15 @@ export function crewBuildFootprint(
 
 export function isCrewBuildPlacementWithinGrid(
   placement: CrewBuildPlacement,
-  width: BlockWidth,
+  /** Units across, as placed — a turned block is measured turned. */
+  width: number,
 ): boolean {
   return (
     Number.isInteger(placement.row) &&
     placement.row >= 0 &&
     Number.isInteger(placement.columnStart) &&
     placement.columnStart >= 1 &&
-    placement.columnStart + width - 1 <= CREW_BUILD_COLUMNS
+    placement.columnStart + width - 1 <= CREW_BUILD_UNITS
   );
 }
 
@@ -365,7 +371,7 @@ function landingOption(
     const leftColumn = candidate.columnStart - 1;
     const rightColumn = candidate.columnStart + candidate.width;
     if (leftColumn < 1 || filled.has(`${leftColumn}:${row}`)) flush += 1;
-    if (rightColumn > CREW_BUILD_COLUMNS || filled.has(`${rightColumn}:${row}`)) flush += 1;
+    if (rightColumn > CREW_BUILD_UNITS || filled.has(`${rightColumn}:${row}`)) flush += 1;
   }
 
   return {
@@ -400,7 +406,7 @@ function lowestCrewBuildLandingOptions(
 
   for (
     let columnStart = 1;
-    columnStart + identity.width - 1 <= CREW_BUILD_COLUMNS;
+    columnStart + identity.width - 1 <= CREW_BUILD_UNITS;
     columnStart += 1
   ) {
     for (let row = 0; row <= highestOccupiedRow; row += 1) {
@@ -450,7 +456,7 @@ export function crewBuildPlacementOptions(
 ): CrewBuildPlacement[] {
   const options: CrewBuildPlacement[] = [];
   for (let row = 0; row < rows; row += 1) {
-    for (let columnStart = 1; columnStart <= CREW_BUILD_COLUMNS; columnStart += 1) {
+    for (let columnStart = 1; columnStart <= CREW_BUILD_UNITS; columnStart += 1) {
       const placement = { row, columnStart };
       if (canPlaceCrewBuildBlock(run, placement, blocks)) options.push(placement);
     }

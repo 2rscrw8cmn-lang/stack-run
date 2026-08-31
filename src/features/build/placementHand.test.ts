@@ -12,7 +12,7 @@ import { handCanRotate, handFootprint, resolveHand } from "./placementHand.js";
  * many words, and it is exactly what falling back to Auto Place would do.
  */
 
-/** An empty eight-column tower. */
+/** An empty tower — sixteen logical placement units across (issue #206). */
 const EMPTY: never[] = [];
 
 describe("the block in hand", () => {
@@ -31,19 +31,19 @@ describe("the block in hand", () => {
     const footprint = handFootprint({ width: 1, height: 1 }, false);
     const options = placementOptions(footprint.width, footprint.height, EMPTY);
 
-    expect(resolveHand(options, "5", footprint).candidate?.columnStart).toBe(5);
+    expect(resolveHand(options, "9", footprint).candidate?.columnStart).toBe(9);
   });
 
   it("refuses rather than relocating when a turn runs past the grid", () => {
-    // A 1x3 standing at column 7. Turned, it wants columns 7, 8 and 9 — and
-    // there is no column 9.
+    // A 1x3 block is 2x3 units; turned it is 3 units wide and 2 tall. Stood
+    // at unit 15 it wants units 15, 16 and 17 — and there is no unit 17.
     const turned = handFootprint({ width: 1, height: 3 }, true);
-    expect(turned).toEqual({ width: 3, height: 1 });
+    expect(turned).toEqual({ width: 3, height: 2 });
 
     const options = placementOptions(turned.width, turned.height, EMPTY);
-    const hand = resolveHand(options, "7", turned);
+    const hand = resolveHand(options, "15", turned);
 
-    // The block does not quietly reappear at column 6. It cannot be dropped,
+    // The block does not quietly reappear at unit 14. It cannot be dropped,
     // and the reason names the way out.
     expect(hand.candidate).toBeNull();
     expect(hand.blockedReason).toContain("runs past column 8");
@@ -71,18 +71,19 @@ describe("the block in hand", () => {
     const footprint = handFootprint({ width: 4, height: 1 }, false);
     const options = placementOptions(footprint.width, footprint.height, EMPTY);
 
-    // A 4-wide block on eight columns anchors at 1 through 5.
-    expect(options).toHaveLength(5);
+    // A race-width block is 8 units, so it anchors at units 1 through 9 —
+    // the half-column anchors included.
+    expect(options).toHaveLength(9);
     expect(resolveHand(options, "1", footprint).canStepBack).toBe(false);
     expect(resolveHand(options, "1", footprint).canStepForward).toBe(true);
-    expect(resolveHand(options, "5", footprint).canStepBack).toBe(true);
-    expect(resolveHand(options, "5", footprint).canStepForward).toBe(false);
+    expect(resolveHand(options, "9", footprint).canStepBack).toBe(true);
+    expect(resolveHand(options, "9", footprint).canStepForward).toBe(false);
   });
 
   it("offers no stepping at all from a position it cannot place", () => {
     const turned = handFootprint({ width: 1, height: 3 }, true);
     const options = placementOptions(turned.width, turned.height, EMPTY);
-    const hand = resolveHand(options, "7", turned);
+    const hand = resolveHand(options, "15", turned);
 
     // Nothing is chosen, so there is nothing to step from — the way out is
     // Rotate or Auto Place, both of which stay live.
@@ -93,6 +94,9 @@ describe("the block in hand", () => {
 
   it("offers rotation only where there is a second orientation", () => {
     expect(handCanRotate({ width: 3, height: 1 })).toBe(true);
-    expect(handCanRotate({ width: 2, height: 2 })).toBe(false);
+    // 1 column by 2 courses is 2x2 units: square, so turning it changes
+    // nothing. A 1x1 brick is 2x1 units and does turn.
+    expect(handCanRotate({ width: 1, height: 2 })).toBe(false);
+    expect(handCanRotate({ width: 1, height: 1 })).toBe(true);
   });
 });

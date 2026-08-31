@@ -3,6 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { BlockPlacement, RunLog } from "../../domain/types.js";
+import {
+  unitColumnStart,
+  unitsAcross,
+  unitsUp,
+} from "../../domain/towerGeometry.js";
 import { loadSeedPlan } from "../../seed/loadSeedPlan.js";
 import { BuildScreen, type PlacementRequest } from "./BuildScreen.js";
 
@@ -35,15 +40,27 @@ function extraRun(id: string, overrides: Partial<RunLog> = {}): RunLog {
   return { ...runLogFor("workout-002"), id, workoutId: null, ...overrides };
 }
 
+/**
+ * A placement written the way a reader thinks about the tower — a visible
+ * column and a number of columns — converted to the logical placement units a
+ * placement actually stores (issue #206).
+ */
 function placementFor(
   runLogId: string,
-  columnStart: number,
-  width: 1 | 2 | 3 | 4,
+  column: number,
+  columns: 1 | 2 | 3 | 4,
   row = 0,
-  height: 1 | 2 | 3 = 1,
+  courses: 1 | 2 | 3 = 1,
   placedAt = "2026-08-04T13:00:00.000Z",
 ): BlockPlacement {
-  return { runLogId, row, columnStart, width, height, placedAt };
+  return {
+    runLogId,
+    row,
+    columnStart: unitColumnStart(column),
+    width: unitsAcross(columns),
+    height: unitsUp(courses),
+    placedAt,
+  };
 }
 
 function renderBuild(
@@ -295,14 +312,14 @@ describe("BuildScreen", () => {
     // No sheet covers the tower: the landing slots are on the structure.
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const slots = within(tower()).getAllByRole("button", { name: /^Place Easy/ });
-    // One slot per column, and each says where gravity would put the block:
-    // columns 3 and 4 are built on, so a block dropped there lands higher.
-    expect(slots).toHaveLength(8);
-    expect(slots[0]).toHaveAccessibleName(
-      "Place Easy block in column 1",
-    );
-    expect(slots[2]).toHaveAccessibleName(
-      "Place Easy block in column 3",
+    // One slot per anchor on the placement grid — fifteen for a two-unit
+    // block across sixteen units — and each is named by the columns it
+    // covers, which is what the tower actually shows.
+    expect(slots).toHaveLength(15);
+    expect(slots[0]).toHaveAccessibleName("Place Easy block in column 1");
+    // Unit 4 spans the second half of column 2 and the first of column 3.
+    expect(slots[3]).toHaveAccessibleName(
+      "Place Easy block in columns 2 through 3",
     );
 
     await user.click(
@@ -317,8 +334,9 @@ describe("BuildScreen", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
-      columnStart: 5,
-      width: 1,
+      // Column 5 is units 9 and 10.
+      columnStart: 9,
+      width: 2,
       height: 1,
     });
   });
@@ -335,19 +353,27 @@ describe("BuildScreen", () => {
     // ground, because flushness breaks the tie between equal landings.
     expect(chosenColumnName()).toBe("Place Easy block in column 1");
 
+    // A step is one placement unit, which is half a visible column — the
+    // resolution a turned block needs, and the same one every block gets.
+    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    expect(chosenColumnName()).toBe(
+      "Place Easy block in columns 1 through 2",
+    );
+
     await user.click(screen.getByRole("button", { name: "Move block right" }));
     expect(chosenColumnName()).toBe("Place Easy block in column 2");
 
-    await user.click(screen.getByRole("button", { name: "Move block right" }));
     await user.click(screen.getByRole("button", { name: "Move block left" }));
-    expect(chosenColumnName()).toBe("Place Easy block in column 2");
+    expect(chosenColumnName()).toBe(
+      "Place Easy block in columns 1 through 2",
+    );
 
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
       columnStart: 2,
-      width: 1,
+      width: 2,
       height: 1,
     });
   });
@@ -368,7 +394,8 @@ describe("BuildScreen", () => {
 
     await user.click(screen.getByRole("button", { name: "Rotate block" }));
 
-    // The footprint changed, not the artwork: one column wide now.
+    // The footprint changed, not the artwork: eight units wide becomes one
+    // unit wide and eight units tall — the same rectangle stood on its end.
     expect(chosenColumnName()).toBe("Place Long Run block in column 1");
 
     await user.click(screen.getByRole("button", { name: "Drop" }));
@@ -377,7 +404,7 @@ describe("BuildScreen", () => {
       row: 0,
       columnStart: 1,
       width: 1,
-      height: 4,
+      height: 8,
     });
   });
 
@@ -389,25 +416,28 @@ describe("BuildScreen", () => {
       today: "2026-08-10",
     });
 
-    // Walk it away from the position the tower picked for it.
-    await user.click(screen.getByRole("button", { name: "Move block right" }));
-    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    // Walk it away from the position the tower picked for it: four steps of
+    // one unit each is two whole columns.
+    for (let step = 0; step < 4; step += 1) {
+      await user.click(screen.getByRole("button", { name: "Move block right" }));
+    }
     expect(chosenColumnName()).toBe(
       "Place Long Run block in columns 3 through 6",
     );
 
     await user.click(screen.getByRole("button", { name: "Rotate block" }));
 
-    // Still column 3. A turn that moved the block back to Auto Place's own
-    // answer would read as STACK repositioning it, which #204 rules out.
+    // Still standing on the same unit. A turn that moved the block back to
+    // Auto Place's own answer would read as STACK repositioning it, which
+    // #204 rules out.
     expect(chosenColumnName()).toBe("Place Long Run block in column 3");
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-007",
       row: 0,
-      columnStart: 3,
+      columnStart: 5,
       width: 1,
-      height: 4,
+      height: 8,
     });
   });
 
@@ -421,13 +451,14 @@ describe("BuildScreen", () => {
       today: "2026-08-10",
     });
 
-    // A 3-wide block anchors as far right as column 6. Turned it is 1x3 and
-    // fits anywhere; turned back from column 7 it would want 7, 8 and 9.
+    // Six units wide, so it anchors as far right as unit 11. Turned it is one
+    // unit wide and fits anywhere, including unit 15 — and turned back from
+    // there it would want units 15 through 20.
     await user.click(screen.getByRole("button", { name: "Rotate block" }));
-    for (let step = 0; step < 6; step += 1) {
+    for (let step = 0; step < 14; step += 1) {
       await user.click(screen.getByRole("button", { name: "Move block right" }));
     }
-    expect(chosenColumnName()).toBe("Place Long Run block in column 7");
+    expect(chosenColumnName()).toBe("Place Long Run block in column 8");
 
     await user.click(screen.getByRole("button", { name: "Rotate block" }));
 
@@ -440,15 +471,17 @@ describe("BuildScreen", () => {
 
     // Turning it back is the way out, and it works from the blocked state.
     await user.click(screen.getByRole("button", { name: "Rotate block" }));
-    expect(chosenColumnName()).toBe("Place Long Run block in column 7");
+    expect(chosenColumnName()).toBe("Place Long Run block in column 8");
     expect(screen.getByRole("button", { name: "Drop" })).toBeEnabled();
     expect(onPlaceBlock).not.toHaveBeenCalled();
   });
 
   it("offers no rotation for a block that is already square", () => {
     renderBuild({
-      // 2 miles, easy: a 1x1 block, which turns to itself.
-      runLogs: [runLogFor("workout-002")],
+      // 2 miles of intervals: one column wide and two courses tall, which is
+      // 2x2 on the placement grid. It turns to itself, so a Rotate control
+      // would promise a change that never arrives.
+      runLogs: [runLogFor("workout-002", { activityType: "intervals" })],
       placingRunLogId: "run-workout-002",
       today: "2026-08-10",
     });
@@ -456,6 +489,20 @@ describe("BuildScreen", () => {
     expect(
       screen.queryByRole("button", { name: "Rotate block" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers rotation for a wide brick that only looks square", () => {
+    renderBuild({
+      // 2 miles, easy: one column by one course, which is 2x1 units. It is a
+      // wide brick, and standing it on end is a real change (issue #206).
+      runLogs: [runLogFor("workout-002")],
+      placingRunLogId: "run-workout-002",
+      today: "2026-08-10",
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Rotate block" }),
+    ).toBeInTheDocument();
   });
 
   it("drops from the keyboard", async () => {
@@ -479,8 +526,9 @@ describe("BuildScreen", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
-      columnStart: 2,
-      width: 1,
+      // Column 2 is units 3 and 4.
+      columnStart: 3,
+      width: 2,
       height: 1,
     });
   });
@@ -492,9 +540,11 @@ describe("BuildScreen", () => {
       today: "2026-08-10",
     });
 
+    // The size is said in placement units, which is the vocabulary the two
+    // axes share — the position is still said in columns.
     expect(
       screen.getByText(
-        "Long Run block, 4 by 1, over columns 1 to 4.",
+        "Long Run block, 8 by 1, over columns 1 to 4.",
       ),
     ).toBeInTheDocument();
   });
@@ -516,7 +566,7 @@ describe("BuildScreen", () => {
       runLogId: "run-workout-007",
       row: 0,
       columnStart: 1,
-      width: 4,
+      width: 8,
       height: 1,
     });
   });
@@ -530,7 +580,9 @@ describe("BuildScreen", () => {
     });
 
     // jsdom has no layout, so give the tower a width the drag can measure:
-    // 8 columns of 40px starting at x = 0.
+    // 16 placement units of 20px starting at x = 0. jsdom also resolves no
+    // grid tracks, so the hook falls back to the padded box, which is the
+    // whole 320px here.
     vi.spyOn(tower(), "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 0,
@@ -547,7 +599,7 @@ describe("BuildScreen", () => {
       name: "Place Easy block in column 1",
     });
     fireEvent.pointerDown(chosen, { pointerId: 1, buttons: 1 });
-    // Drag right into the middle of column 5.
+    // Drag right into the middle of column 5 — units 9 and 10, so x = 180.
     fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 1, clientX: 180 });
 
     expect(chosenColumnName()).toBe("Place Easy block in column 5");
@@ -558,8 +610,8 @@ describe("BuildScreen", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
-      columnStart: 5,
-      width: 1,
+      columnStart: 9,
+      width: 2,
       height: 1,
     });
   });
@@ -612,8 +664,9 @@ describe("BuildScreen", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
-      columnStart: 7,
-      width: 1,
+      // Column 7 is units 13 and 14.
+      columnStart: 13,
+      width: 2,
       height: 1,
     });
   });
@@ -873,7 +926,8 @@ describe("mileage on the blocks", () => {
       runLogId: "run-workout-004",
       row: 0,
       columnStart: 1,
-      width: 2,
+      // Two columns, which is four placement units.
+      width: 4,
       height: 1,
     });
   });
@@ -938,13 +992,14 @@ describe("the race capstone", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Drop" }));
 
-    // Width 4 from the distance band, height 3 from the activity type — the
-    // capstone is styling, not a new footprint.
+    // Four columns from the distance band and three courses from the activity
+    // type — eight units by three — and the capstone is styling, not a new
+    // footprint.
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-race",
       row: 0,
       columnStart: 1,
-      width: 4,
+      width: 8,
       height: 3,
     });
   });
@@ -967,11 +1022,12 @@ describe("placing by pointer", () => {
     fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 180 });
 
     // No separate Drop press: letting go after a real drag is the placement.
+    // 320px over sixteen units is 20px each, so x=180 is column 5, unit 9.
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
-      columnStart: 5,
-      width: 1,
+      columnStart: 9,
+      width: 2,
       height: 1,
     });
   });
@@ -997,8 +1053,8 @@ describe("placing by pointer", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-002",
       row: 0,
-      columnStart: 8,
-      width: 1,
+      columnStart: 15,
+      width: 2,
       height: 1,
     });
   });
@@ -1011,9 +1067,9 @@ describe("placing by pointer", () => {
     });
     measureTower();
 
-    // A 3-wide block has six landings and they overlap, so the slot under a
-    // finger is usually not the one the block is sitting in. Pressing it has
-    // to pick the block up all the same.
+    // A six-unit block has eleven landings and they overlap, so the slot
+    // under a finger is usually not the one the block is sitting in. Pressing
+    // it has to pick the block up all the same.
     const elsewhere = screen.getByRole("button", {
       name: "Place Long Run block in columns 4 through 6",
     });
@@ -1028,8 +1084,8 @@ describe("placing by pointer", () => {
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-007",
       row: 0,
-      columnStart: 6,
-      width: 3,
+      columnStart: 11,
+      width: 6,
       height: 1,
     });
   });
@@ -1069,16 +1125,16 @@ describe("placing by pointer", () => {
       name: "Place Long Run block in columns 1 through 4",
     });
     fireEvent.pointerDown(chosen, { pointerId: 1, buttons: 1, clientX: 20 });
-    // Drag hard past the right wall. A 4-wide block cannot start past column
-    // 5, and the snap has nowhere invalid to go.
+    // Drag hard past the right wall. An eight-unit block cannot start past
+    // unit 9, and the snap has nowhere invalid to go.
     fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 1, clientX: 900 });
     fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 900 });
 
     expect(onPlaceBlock).toHaveBeenCalledWith({
       runLogId: "run-workout-007",
       row: 0,
-      columnStart: 5,
-      width: 4,
+      columnStart: 9,
+      width: 8,
       height: 1,
     });
   });

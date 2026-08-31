@@ -137,8 +137,9 @@ export interface CrewSharedRun {
   updatedAt: string;
   buildRow: number | null;
   buildColumnStart: number | null;
-  buildWidth?: 1 | 2 | 3 | 4 | null;
-  buildHeight?: 1 | 2 | 3 | null;
+  /** Logical placement units, as placed — see `domain/towerGeometry.ts`. */
+  buildWidth?: number | null;
+  buildHeight?: number | null;
   /** Independent shared Crew Build placement; never personal placement. */
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
@@ -181,8 +182,9 @@ export interface CrewMiniBuildRun {
   source?: RunSource | null;
   buildRow: number | null;
   buildColumnStart: number | null;
-  buildWidth?: 1 | 2 | 3 | 4 | null;
-  buildHeight?: 1 | 2 | 3 | null;
+  /** Logical placement units, as placed — see `domain/towerGeometry.ts`. */
+  buildWidth?: number | null;
+  buildHeight?: number | null;
 }
 
 /**

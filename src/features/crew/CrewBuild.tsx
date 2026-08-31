@@ -6,7 +6,7 @@ import { formatMiles, formatMilesBuilt } from "../../domain/distance.js";
 import { formatTotalHoursMinutes } from "../../domain/duration.js";
 import { isManualRun } from "../../domain/runSource.js";
 import type { PlacedFootprint } from "../../domain/footprint.js";
-import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement.js";
+import { GRID_UNITS, type PlacementOption } from "../../domain/placement.js";
 import {
   CREW_AWARD_LABEL,
   formatCrewAwardResult,
@@ -154,7 +154,7 @@ export function CrewBuild({
 
   const { grab, trackDrag, release, cancelDrag } = useColumnDragPlacement({
     containerRef: towerRef,
-    gridColumns: GRID_COLUMNS,
+    gridUnits: GRID_UNITS,
     width: placementFootprint?.width ?? 1,
     options: placement?.options ?? [],
     chosenColumnStart: candidate?.columnStart,
@@ -223,8 +223,11 @@ export function CrewBuild({
         <p className="crew-build__unavailable">Crew Build unavailable.</p>
       ) : contributionCount === 0 && !placement ? (
         <div className="crew-build__stage crew-build__stage--empty" style={stageStyle}>
-          <div className="crew-build__field" aria-hidden="true" />
-          <div className="crew-build__ground" aria-hidden="true" />
+          {/* No tower, but the same ground plane, so the same field tokens. */}
+          <div className="tower-field tower-field--tokens">
+            <div className="crew-build__field" aria-hidden="true" />
+            <div className="crew-build__ground" aria-hidden="true" />
+          </div>
           <p className="crew-build__empty">The first shared run earns the first Crew block.</p>
         </div>
       ) : (
@@ -244,15 +247,25 @@ export function CrewBuild({
               hint={placementHint(placement.canRotate)}
             />
           )}
+          {/*
+            * The tower field: what sizes the square placement unit, which the
+            * sky, the skyline, the fall and the ground all measure in. It
+            * wraps the viewport *and* the ground because the ground is the
+            * tower's sibling here — it sits below a viewport that scrolls —
+            * and it draws its own depth from the same tokens. The wrapper
+            * generates no box (`display: contents`), so the stage lays out
+            * exactly as it did. See `.tower-field`.
+            */}
           <div
-            className="crew-build__viewport tower-field"
+            className="tower-field tower-field--tokens"
             style={
               {
-                "--grid-columns": GRID_COLUMNS,
+                "--grid-units": GRID_UNITS,
                 "--grid-courses": drawnCourses,
               } as CSSProperties
             }
           >
+          <div className="crew-build__viewport">
             <div className="crew-build__sky" aria-hidden="true" />
             <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
             <ul
@@ -260,12 +273,6 @@ export function CrewBuild({
               className="built-tower crew-build__tower"
               aria-label={placement ? "Choose a Crew Build position" : "Crew Build blocks"}
               data-placement-grid={placement ? "true" : undefined}
-              style={
-                {
-                  "--grid-columns": GRID_COLUMNS,
-                  "--grid-courses": drawnCourses,
-                } as CSSProperties
-              }
               onPointerMove={placement ? trackDrag : undefined}
               onPointerUp={placement ? release : undefined}
               onPointerCancel={placement ? cancelDrag : undefined}
@@ -349,13 +356,14 @@ export function CrewBuild({
                 />
               ))}
             </ul>
+            </div>
+            <div
+              key={justPlaced ? `ground-${justPlaced.kind}-${justPlaced.id}` : "ground"}
+              className="crew-build__ground"
+              aria-hidden="true"
+              data-impact={justPlaced ? placementImpact(justPlaced) : undefined}
+            />
           </div>
-          <div
-            key={justPlaced ? `ground-${justPlaced.kind}-${justPlaced.id}` : "ground"}
-            className="crew-build__ground"
-            aria-hidden="true"
-            data-impact={justPlaced ? placementImpact(justPlaced) : undefined}
-          />
           {placement && (
             <PlacementBar
               pieceColor={placementPieceColor}

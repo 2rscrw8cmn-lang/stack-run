@@ -1,5 +1,5 @@
 import { addDaysToLocalDate, daysBetweenLocalDates } from "../domain/dates.js";
-import { footprintFor } from "../domain/footprint.js";
+import { footprintFor, handFootprint } from "../domain/footprint.js";
 import { autoPlaceOption, placementOptions } from "../domain/placement.js";
 import type {
   AppState,
@@ -468,7 +468,9 @@ function placementsFor(runLogs: readonly RunLog[]): BlockPlacement[] {
 
   // Keep the newest earned block pending so the Build review always has an action.
   for (const run of ordered.slice(0, -1)) {
-    const footprint = footprintFor(run);
+    // Placement measures in logical grid units, so the earned footprint is
+    // converted before it reaches the packer (issue #206).
+    const footprint = handFootprint(footprintFor(run), false);
     const option = autoPlaceOption(
       placementOptions(footprint.width, footprint.height, placements),
     );

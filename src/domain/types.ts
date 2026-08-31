@@ -190,26 +190,32 @@ export interface BlockPlacement {
   runLogId: string;
   /** 0-based course counted up from the ground, across the whole tower. */
   row: number;
-  /** 1-based, inclusive. The block occupies `width` columns from here. */
-  columnStart: number;
-  width: 1 | 2 | 3 | 4;
   /**
-   * Courses tall. Stored rather than derived because it is frozen when the
-   * block is earned: it decides how the block packs, and blocks come to rest
-   * on it, so recomputing it later would re-pack the tower.
+   * 1-based, inclusive, in **logical placement units** rather than visible
+   * columns — the block occupies `width` units from here, and the tower is
+   * `GRID_UNITS` of them across. See `towerGeometry.ts`: a unit is square, and
+   * a visible column is `UNITS_PER_COLUMN` of them, which is what lets a
+   * turned block keep its physical rectangle (issues #204, #206).
+   */
+  columnStart: number;
+  /** Units across. A 1-column brick is 2; a race is 8, or 3 stood on end. */
+  width: number;
+  /**
+   * Units up, which is courses — a unit is one course tall. Stored rather
+   * than derived because it is frozen when the block is earned: it decides
+   * how the block packs, and blocks come to rest on it, so recomputing it
+   * later would re-pack the tower.
    *
    * Together with `width` this is also the block's *orientation*: a block
    * placed on end stores its axes swapped, which is why rotation needs no
-   * field of its own and why a tower stored before rotation existed reads
-   * back exactly as it was drawn. Admits 4 for the race stood on end, which
-   * is taller than any block is earned (see `PlacedHeight`).
+   * field of its own.
    */
-  height: 1 | 2 | 3 | 4;
+  height: number;
   placedAt: string;
 }
 
 export interface AppState {
-  schemaVersion: 11;
+  schemaVersion: 12;
   settings: AppSettings;
   /** The runner's one active race plan, or null while running between races. */
   plan: TrainingPlan | null;

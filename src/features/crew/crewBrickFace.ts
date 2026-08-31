@@ -1,6 +1,7 @@
 import { Dumbbell } from "lucide-react";
 import { formatCompactMiles } from "../../domain/distance.js";
 import { isManualRun } from "../../domain/runSource.js";
+import { unitsAcross } from "../../domain/towerGeometry.js";
 import type { RunActivityType, RunSource } from "../../domain/types.js";
 import { crewMemberAccent, type CrewMemberAccent } from "../../crew/memberAccent.js";
 import type { BrickFaceLabel } from "../build/Brick.js";
@@ -31,7 +32,8 @@ export function crewFaceLabel(block: CrewBrickFacts): BrickFaceLabel {
   if (block.activityType === "cross") return { icon: Dumbbell };
   return {
     text: formatCompactMiles(block.distanceMiles),
-    unit: block.width >= 3,
+    // Three columns, measured on the placement grid (issue #206).
+    unit: block.width >= unitsAcross(3),
     manual: isManualRun(block),
   };
 }

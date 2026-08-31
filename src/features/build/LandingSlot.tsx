@@ -1,5 +1,6 @@
 import type { CSSProperties, PointerEvent } from "react";
 import type { PlacementOption } from "../../domain/placement.js";
+import { columnPhrase } from "../../domain/towerGeometry.js";
 
 interface LandingSlotProps {
   option: PlacementOption;
@@ -17,10 +18,16 @@ interface LandingSlotProps {
   onGrab?: (event: PointerEvent<HTMLElement>, option: PlacementOption) => void;
 }
 
-function columnPhrase(option: PlacementOption): string {
-  return option.columnStart === option.columnEnd
-    ? `column ${option.columnStart}`
-    : `columns ${option.columnStart} through ${option.columnEnd}`;
+/**
+ * Where the landing is, said in the columns the tower shows rather than the
+ * units it places on. A turned block standing on half a column names the
+ * column it stands in — see `columnSpanOf`.
+ */
+function landingPhrase(option: PlacementOption): string {
+  return columnPhrase(
+    option.columnStart,
+    option.columnEnd - option.columnStart + 1,
+  );
 }
 
 /**
@@ -71,7 +78,7 @@ export function LandingSlot({
         onPointerDown={onGrab ? (event) => onGrab(event, option) : undefined}
       >
         <span className="visually-hidden">
-          {`Place ${blockDescription} in ${columnPhrase(option)}`}
+          {`Place ${blockDescription} in ${landingPhrase(option)}`}
         </span>
       </button>
     </li>

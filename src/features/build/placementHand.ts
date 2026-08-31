@@ -5,11 +5,13 @@ import type { RunActivityType } from "../../domain/types.js";
 import {
   canRotateFootprint,
   handFootprint,
+  type Footprint,
   type PlacedFootprint,
 } from "../../domain/footprint.js";
 import {
   autoPlaceOption,
   GRID_COLUMNS,
+  GRID_UNITS,
   type PlacementOption,
 } from "../../domain/placement.js";
 
@@ -40,8 +42,12 @@ export interface PlacementHand {
 
 export { handFootprint };
 
-/** Whether this block has a second orientation worth offering. */
-export function handCanRotate(earned: PlacedFootprint): boolean {
+/**
+ * Whether this block has a second orientation worth offering. Takes what the
+ * run *earned*, in columns and courses; squareness is decided on the placement
+ * grid, where a 1x1 brick is 2x1 units and does have a second orientation.
+ */
+export function handCanRotate(earned: Footprint): boolean {
   return canRotateFootprint(earned);
 }
 
@@ -101,8 +107,11 @@ function blockedReason(
   if (
     column !== null &&
     Number.isFinite(column) &&
-    column + footprint.width - 1 > GRID_COLUMNS
+    column + footprint.width - 1 > GRID_UNITS
   ) {
+    // Said in columns, which is what the tower shows. The bound it actually
+    // hit is the last unit of the last column, and "past unit 16" would name
+    // a grid the runner has never been shown.
     return `Turned this way it runs past column ${GRID_COLUMNS}. Rotate it back, or move it left.`;
   }
   return "This block cannot go here.";

@@ -307,7 +307,7 @@ describe("deleteRunLog", () => {
       runLogId: runId,
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -324,21 +324,21 @@ describe("deleteRunLog", () => {
       runLogId: runIdForWorkout(state, "workout-002"),
       row: 0,
       columnStart: 1,
-      width: 1,
+      width: 2,
       height: 1,
     });
     state = placeBlock(state, {
       runLogId: runIdForWorkout(state, "workout-004"),
       row: 1,
       columnStart: 1,
-      width: 1,
+      width: 2,
       height: 1,
     });
     state = placeBlock(state, {
       runLogId: runIdForWorkout(state, "workout-006"),
       row: 2,
       columnStart: 1,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -386,7 +386,7 @@ describe("linkRunLogToWorkout", () => {
       runLogId: extraId,
       row: 0,
       columnStart: 1,
-      width: 1,
+      width: 2,
       height: 1,
     });
     state = linkRunLogToWorkout(state, extraId, "workout-002");
@@ -448,7 +448,7 @@ describe("savePlan", () => {
       runLogId: runId,
       row: 0,
       columnStart: 1,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -519,7 +519,7 @@ describe("finishActivePlan", () => {
       runLogId: runId,
       row: 0,
       columnStart: 1,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -583,7 +583,7 @@ describe("placeBlock", () => {
       runLogId: runId,
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -592,7 +592,7 @@ describe("placeBlock", () => {
       runLogId: runId,
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
     expect(loadAppState().blockPlacements[0].placedAt).toEqual(
@@ -607,14 +607,14 @@ describe("placeBlock", () => {
       runLogId: runId,
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
     state = placeBlock(state, {
       runLogId: runId,
       row: 0,
       columnStart: 5,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -624,23 +624,25 @@ describe("placeBlock", () => {
 
   it("rejects a footprint the run did not earn", () => {
     const logged = stateWithLoggedRun();
-    // A 2 mile run earns a 1-wide block; the caller cannot ask for a bigger one.
+    // A 2 mile run earns a 1-column block, which is 2 placement units; the
+    // caller cannot ask for a bigger one.
     expect(() =>
       placeBlock(logged, {
         runLogId: runIdForWorkout(logged, "workout-002"),
         row: 0,
         columnStart: 1,
-        width: 3,
+        width: 6,
         height: 1,
       }),
     ).toThrow(InvalidPlacementError);
   });
 
   it("stores a block turned on its end (issue #204)", () => {
-    // A 9 mile run earns a 4x1 block. Turned, it stands 1 wide and 4 courses
-    // tall — and the placement's own width and height *are* the orientation,
-    // so persisting the rotation is persisting the placement. Nothing else is
-    // written, and nothing needed migrating.
+    // A 9 mile run earns a 4x1 block, which is 8x1 placement units. Turned,
+    // it stands 1 unit wide and 8 units tall — the same rectangle on its side,
+    // which is the whole point of the square sub-grid (#206). The placement's
+    // own width and height *are* the orientation, so persisting the rotation
+    // is persisting the placement.
     const logged = saveRunLog(loadAppState(), {
       ...scheduledRun,
       workoutId: null,
@@ -651,19 +653,20 @@ describe("placeBlock", () => {
     const state = placeBlock(logged, {
       runLogId: runId,
       row: 0,
+      // An odd unit: half a column, which only a turned block can stand on.
       columnStart: 2,
       width: 1,
-      height: 4,
+      height: 8,
     });
 
-    expect(state.blockPlacements[0]).toMatchObject({ width: 1, height: 4 });
+    expect(state.blockPlacements[0]).toMatchObject({ width: 1, height: 8 });
     // And it survives the round trip through storage, which is the whole of
     // "orientation survives refresh/reload".
     expect(loadAppState().blockPlacements[0]).toMatchObject({
       runLogId: runId,
       columnStart: 2,
       width: 1,
-      height: 4,
+      height: 8,
     });
   });
 
@@ -675,7 +678,7 @@ describe("placeBlock", () => {
     });
     const runId = logged.runLogs[logged.runLogs.length - 1].id;
 
-    // 4x1 earned, so 4x1 and 1x4 are the only two sizes this run can occupy.
+    // 8x1 units earned, so 8x1 and 1x8 are the only two sizes it can occupy.
     // Rotation swaps axes and resizes nothing — it is not a licence to claim
     // space no activity paid for.
     expect(() =>
@@ -696,7 +699,7 @@ describe("placeBlock", () => {
         runLogId: runIdForWorkout(logged, "workout-002"),
         row: 4,
         columnStart: 1,
-        width: 1,
+        width: 2,
         height: 1,
       }),
     ).toThrow(InvalidPlacementError);
@@ -709,7 +712,7 @@ describe("placeBlock", () => {
       runLogId: runIdForWorkout(state, "workout-002"),
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -719,7 +722,7 @@ describe("placeBlock", () => {
         runLogId: runIdForWorkout(state, "workout-004"),
         row: 0,
         columnStart: 3,
-        width: 1,
+        width: 2,
         height: 1,
       }),
     ).toThrow(InvalidPlacementError);
@@ -729,28 +732,40 @@ describe("placeBlock", () => {
         runLogId: runIdForWorkout(state, "workout-004"),
         row: 1,
         columnStart: 3,
-        width: 1,
+        width: 2,
         height: 1,
       }),
     ).not.toThrow();
   });
 
-  it("rejects a block that would run past the last column", () => {
+  it("rejects a block that would run past the last unit", () => {
     const state = saveRunLog(loadAppState(), {
       ...easyRun,
       workoutId: "workout-007",
       distanceMiles: 9,
     });
 
+    // 8 units wide, so unit 9 is the last start that fits and unit 10 is one
+    // half-column too far.
     expect(() =>
       placeBlock(state, {
         runLogId: runIdForWorkout(state, "workout-007"),
         row: 0,
-        columnStart: 7,
-        width: 4,
+        columnStart: 10,
+        width: 8,
         height: 1,
       }),
     ).toThrow(InvalidPlacementError);
+
+    expect(() =>
+      placeBlock(state, {
+        runLogId: runIdForWorkout(state, "workout-007"),
+        row: 0,
+        columnStart: 9,
+        width: 8,
+        height: 1,
+      }),
+    ).not.toThrow();
   });
 
   it("refuses to place a block for a run that was never logged", () => {
@@ -759,7 +774,7 @@ describe("placeBlock", () => {
         runLogId: "run-workout-002",
         row: 0,
         columnStart: 1,
-        width: 1,
+        width: 2,
         height: 1,
       }),
     ).toThrow(InvalidPlacementError);
@@ -772,14 +787,14 @@ describe("placeBlock", () => {
       runLogId: runIdForWorkout(state, "workout-002"),
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
     state = placeBlock(state, {
       runLogId: runIdForWorkout(state, "workout-004"),
       row: 0,
       columnStart: 5,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -789,7 +804,7 @@ describe("placeBlock", () => {
         runLogId: runIdForWorkout(state, "workout-002"),
         row: 0,
         columnStart: 1,
-        width: 1,
+        width: 2,
         height: 1,
       }),
     ).toThrow(InvalidPlacementError);
@@ -802,7 +817,7 @@ describe("placeBlock", () => {
       runLogId: id,
       row: 0,
       columnStart: 2,
-      width: 1,
+      width: 2,
       height: 1,
     });
 
@@ -815,7 +830,7 @@ describe("placeBlock", () => {
       runLogId: runIdForWorkout(before, "workout-002"),
       row: 0,
       columnStart: 3,
-      width: 1,
+      width: 2,
       height: 1,
     });
 

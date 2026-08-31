@@ -68,11 +68,15 @@ select public.place_crew_build_block((select top_id from crew_support_test_ids),
 -- Moving the bridge sideways keeps both its own support and the top block's.
 select public.place_crew_build_block((select bridge_id from crew_support_test_ids), 1, 2);
 
+-- Anchors are logical placement units, two to a tower column (issue #206):
+-- the 8-mile bridge is four columns, so eight units, and the 3-mile blocks
+-- are one column, so two. Unit 9 is where the bridge stops holding up the
+-- block resting on it, and where it runs into the obstacle on the ground.
 do $$
 begin
   begin
     perform public.place_crew_build_block(
-      (select bridge_id from crew_support_test_ids), 1, 5
+      (select bridge_id from crew_support_test_ids), 1, 9
     );
     raise exception 'support failure: supporting block moved away';
   exception when others then
@@ -81,7 +85,7 @@ begin
 
   begin
     perform public.place_crew_build_block(
-      (select bridge_id from crew_support_test_ids), 0, 5
+      (select bridge_id from crew_support_test_ids), 0, 9
     );
     raise exception 'collision failure: occupied placement accepted';
   exception when others then

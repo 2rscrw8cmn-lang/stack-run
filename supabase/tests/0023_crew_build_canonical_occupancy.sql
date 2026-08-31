@@ -95,10 +95,11 @@ with inserted as (
 )
 update canonical_ids set out_of_window_id = (select id from inserted);
 
--- Column 7 plus a four-column footprint runs off the grid, so the client drops
--- it even though the stored anchor satisfies the table's 1..8 CHECK.
+-- Unit 13 plus an eight-unit footprint (four columns, issue #206) runs off the
+-- grid, so the client drops it even though the stored anchor satisfies the
+-- table's 1..16 CHECK.
 update public.shared_runs
-set crew_build_row = 0, crew_build_column_start = 7, crew_build_placed_at = now()
+set crew_build_row = 0, crew_build_column_start = 13, crew_build_placed_at = now()
 where id = (select overhanging_id from canonical_ids);
 
 -- Two runs claiming the same cell. The earlier one is the one the client draws.

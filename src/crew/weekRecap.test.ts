@@ -167,7 +167,7 @@ describe("crew week recap", () => {
 
   it("is deterministic: the same week produces the same recap for both members", () => {
     const runs = [
-      run("a", "zack", "2026-08-10", { crewBuildRow: 2, crewBuildColumnStart: 3 }),
+      run("a", "zack", "2026-08-10", { crewBuildRow: 2, crewBuildColumnStart: 5 }),
       run("b", "drew", "2026-08-11", { distanceMiles: 8, crewBuildRow: 3, crewBuildColumnStart: 1 }),
       run("c", "drew", "2026-08-13", { distanceMiles: 2 }),
     ];
@@ -370,7 +370,7 @@ describe("crew week recap", () => {
   it("counts a week's block by the run's own date, and rebases the slice on its lowest course", () => {
     const recap = recapOf([
       run("a", "zack", "2026-08-10", { crewBuildRow: 40, crewBuildColumnStart: 1 }),
-      run("b", "drew", "2026-08-11", { crewBuildRow: 41, crewBuildColumnStart: 3 }),
+      run("b", "drew", "2026-08-11", { crewBuildRow: 41, crewBuildColumnStart: 5 }),
       // Placed in the tower, but run before this week: not this week's growth.
       run("old", "drew", "2026-08-03", { crewBuildRow: 39, crewBuildColumnStart: 1 }),
     ]);
@@ -381,7 +381,7 @@ describe("crew week recap", () => {
       build.slice.map((block) => [block.id, block.row, block.columnStart, block.height]),
     ).toEqual([
       ["a", 0, 1, 1],
-      ["b", 1, 3, 1],
+      ["b", 1, 5, 1],
     ]);
   });
 
@@ -396,7 +396,9 @@ describe("crew week recap", () => {
       }),
     ]);
     const build = beat(recap!.beats, "build")!;
-    expect(build.slice[0]).toMatchObject({ width: 3, height: 2 });
+    // 6 miles is three columns, which is six placement units; intervals is
+    // two courses, which is two units.
+    expect(build.slice[0]).toMatchObject({ width: 6, height: 2 });
     expect(build.courses).toBe(2);
   });
 
@@ -461,11 +463,11 @@ describe("crewWeekRecapRunsFrom", () => {
       createdAt: "2026-08-12T12:00:00Z",
       updatedAt: "2026-08-12T12:00:00Z",
       buildRow: 2,
-      buildColumnStart: 4,
+      buildColumnStart: 7,
       buildWidth: 2,
       buildHeight: 1,
       crewBuildRow: 5,
-      crewBuildColumnStart: 2,
+      crewBuildColumnStart: 3,
       crewBuildRotated: false,
       crewBuildPlacedAt: "2026-08-13T09:00:00Z",
       averageHeartRate: 148,
@@ -492,7 +494,7 @@ describe("crewWeekRecapRunsFrom", () => {
         // other new-looking field on a shared run still has to be dropped.
         best5kSeconds: 1290,
         crewBuildRow: 5,
-        crewBuildColumnStart: 2,
+        crewBuildColumnStart: 3,
         crewBuildRotated: false,
       },
     ]);

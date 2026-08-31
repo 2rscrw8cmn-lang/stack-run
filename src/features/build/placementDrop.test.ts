@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { dropMarks, placementImpact, PLACEMENT_DROP_MS } from "./placementDrop.js";
-import { heightForActivityType, widthForMiles } from "../../domain/footprint.js";
+import {
+  handFootprint,
+  heightForActivityType,
+  widthForMiles,
+} from "../../domain/footprint.js";
 
-/** The block a run of this shape earns, straight from the footprint domain. */
+/**
+ * The block a run of this shape earns, straight from the footprint domain and
+ * in the placement units a landing is actually measured in (issue #206).
+ */
 function footprintFor(miles: number, type: Parameters<typeof heightForActivityType>[0]) {
-  return {
-    width: widthForMiles(miles),
-    height: heightForActivityType(type),
-  };
+  return handFootprint(
+    { width: widthForMiles(miles), height: heightForActivityType(type) },
+    false,
+  );
 }
 
 describe("placement landing weight (issue #76)", () => {
@@ -27,10 +34,12 @@ describe("placement landing weight (issue #76)", () => {
   });
 
   it("bands by cells covered, so width and height count the same", () => {
-    expect(placementImpact({ width: 4, height: 1 })).toBe("normal");
-    expect(placementImpact({ width: 1, height: 3 })).toBe("normal");
-    expect(placementImpact({ width: 3, height: 2 })).toBe("heavy");
-    expect(placementImpact({ width: 2, height: 3 })).toBe("heavy");
+    // Cells are placement units, so the bands sit at twice the column-cell
+    // counts they always did and a landing weighs exactly what it used to.
+    expect(placementImpact({ width: 8, height: 1 })).toBe("normal");
+    expect(placementImpact({ width: 2, height: 3 })).toBe("normal");
+    expect(placementImpact({ width: 6, height: 2 })).toBe("heavy");
+    expect(placementImpact({ width: 4, height: 3 })).toBe("heavy");
   });
 
   it("marks only the block that is actually landing", () => {

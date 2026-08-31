@@ -30,11 +30,90 @@ function ruleBody(selector: string): string {
   return css.slice(open + 1, close);
 }
 
+function customProperty(body: string, name: string): number {
+  const match = new RegExp(`${name}:\\s*(\\d+)px`).exec(body);
+  expect(match, `${name} not set`).not.toBeNull();
+  return Number(match![1]);
+}
+
 function viewportCap(body: string): number {
   const match = /min\((\d+)dvh/.exec(body);
   expect(match, "no dvh cap on the viewport").not.toBeNull();
   return Number(match![1]);
 }
+
+/*
+ * The geometry the whole tower rests on (issues #204, #205, #206, #207).
+ *
+ * A brick is a *wide* object and a rotation is an honest one, and those two
+ * wants collided. Making a column square got rotation right and turned the
+ * tower into a wall of tiles; declaring a course height against `1fr` columns
+ * got the proportions back and made a horizontal step a different length from
+ * a vertical one, so a turned block stopped being the same rectangle.
+ *
+ * The stylesheet's half of the answer: place on a finer grid whose cell is
+ * square, and build the visible brick out of two of them.
+ */
+describe("the square placement unit (issue #206)", () => {
+  it("draws both grid axes with the same square unit", () => {
+    const grid = ruleBody(".built-tower {");
+
+    // The same length on both axes. This is the whole of what makes a turned
+    // block keep its physical rectangle.
+    expect(grid).toMatch(
+      /grid-template-columns:\s*repeat\(var\(--grid-units\), var\(--tower-unit\)\)/,
+    );
+    expect(grid).toMatch(
+      /grid-template-rows:\s*repeat\(var\(--grid-courses\), var\(--tower-unit\)\)/,
+    );
+    // And no context may quietly re-declare a course height in pixels, which
+    // is what would un-square the unit again.
+    expect(css.match(/--course-height:\s*\d+px/g) ?? []).toEqual([]);
+  });
+
+  it("builds a visible column out of two units, so the brick stays 2:1", () => {
+    const field = ruleBody(".tower-field {");
+
+    expect(field).toMatch(/--units-per-column:\s*2/);
+    expect(field).toMatch(/--course-height:\s*var\(--tower-unit\)/);
+    expect(field).toMatch(
+      /--tower-column:\s*calc\(var\(--tower-unit\) \* var\(--units-per-column\)\)/,
+    );
+    // The oblique stays 2:1 by construction rather than by two numbers that
+    // have to be kept in step, and it is a share of a unit so it holds at
+    // every size the field resolves to.
+    expect(field).toMatch(/--iso-run:\s*calc\(var\(--tower-unit\) \* var\(--iso-run-ratio/);
+    expect(field).toMatch(/--iso-rise:\s*calc\(var\(--iso-run\) \/ 2\)/);
+  });
+
+  it("keeps the tower compact by capping the unit against the width it is given", () => {
+    const field = ruleBody(".tower-field {");
+
+    // A context asks for a course height; the field pays the smaller of that
+    // and what sixteen units plus the oblique's own share actually fit in.
+    // That is what keeps a phone's tower compact instead of panning sideways,
+    // and it is why the unit is derived rather than declared.
+    expect(field).toMatch(/--tower-unit:\s*min\(/);
+    expect(field).toMatch(/var\(--course-nominal/);
+    expect(field).toMatch(/100cqw \/ \(var\(--grid-units[^)]*\) \+ var\(--iso-run-ratio/);
+    // ...measured against a real container on every surface that draws one.
+    for (const selector of [
+      "\n.build-site__stage {",
+      "\n.crew-build__stage {",
+    ]) {
+      expect(ruleBody(selector)).toMatch(/container-type:\s*inline-size/);
+    }
+  });
+
+  it("keeps the Personal Build brick the compact 2:1 STACK brick", () => {
+    const site = ruleBody(".build-site {");
+
+    // 26px a course, 52px a column: the proportions the tower had before
+    // rotation, not the square tile #206 was written about.
+    expect(customProperty(site, "--course-nominal")).toBe(26);
+    expect(site).toMatch(/--iso-run-ratio:\s*0\.6/);
+  });
+});
 
 describe("Crew Build primacy styling (issue #137)", () => {
   const page = ruleBody(".crew-build--page {");
@@ -167,66 +246,13 @@ describe("Crew Build primacy styling (issue #137)", () => {
   });
 
   it("scales the tower itself rather than pouring in more empty sky", () => {
-    // A bigger field grows the bricks and the grid together. Headroom alone
-    // would make the section bigger and the build no bigger at all.
-    //
-    // The knob moved with issue #204. A course used to be a declared px
-    // height, so "bigger" meant a bigger `--course-height`; now the cell is
-    // square and derived from the field's width, and what a context sets is
-    // how much height the tower may spend before it scales down instead.
-    const budget = (body: string) => {
-      const match = /--tower-field:\s*(\d+)dvh/.exec(body);
-      expect(match, "no tower field budget").not.toBeNull();
-      return Number(match![1]);
-    };
-    expect(budget(page)).toBeGreaterThan(budget(shared));
-  });
-
-  /*
-   * The invariant the whole geometry now rests on: one cell is one column wide
-   * and one course tall, and those are the same length. A block can be turned
-   * 90 degrees, and a rotation is only honest if the turned block keeps its
-   * geometry — on the old grid a cell ran up to 2.8x wider than tall, so a
-   * 3-wide block turned into something with the same three cells and no other
-   * resemblance.
-   */
-  it("builds the tower out of square cells", () => {
-    const field = ruleBody(".tower-field {");
-
-    // One derived length, used for both axes of the grid.
-    expect(field).toMatch(/--course-height:\s*var\(--tower-cell\)/);
-    const grid = ruleBody(".built-tower {");
-    expect(grid).toMatch(
-      /grid-template-columns:\s*repeat\(var\(--grid-columns\), var\(--tower-cell[,)]/,
+    // A taller course grows the bricks and the grid together. Headroom alone
+    // would make the section bigger and the build no bigger at all. The unit
+    // stays square whatever it resolves to, so this changes the tower's size
+    // and never its proportions.
+    expect(customProperty(page, "--course-nominal")).toBeGreaterThan(
+      customProperty(shared, "--course-nominal"),
     );
-    expect(grid).toMatch(
-      /grid-template-rows:\s*repeat\(var\(--grid-courses\), var\(--tower-cell[,)]/,
-    );
-
-    // No context may reintroduce a declared course height, which is what
-    // would silently un-square the cell again.
-    const declared = css.match(/--course-height:\s*\d+px/g) ?? [];
-    expect(declared, "a course height was declared in px again").toEqual([]);
-
-    // The oblique stays 2:1 by construction rather than by two numbers that
-    // have to be kept in step.
-    expect(field).toMatch(/--iso-rise:\s*calc\(var\(--iso-run\) \/ 2\)/);
-  });
-
-  /*
-   * Square cells make a tall tower taller, so the field scales it down rather
-   * than letting it grow without limit — but only to a floor, past which it
-   * scrolls instead. Without the floor a long season would shrink its own
-   * blocks into an unreadable smear.
-   */
-  it("scales a tall tower down to a floor, then scrolls", () => {
-    const field = ruleBody(".tower-field {");
-
-    expect(field).toMatch(/min\(/);
-    expect(field).toMatch(/calc\(var\(--tower-field[^)]*\) \/ var\(--grid-courses\)\)/);
-    expect(field).toMatch(/max\(\s*var\(--tower-cell-min/);
-    // And the field that holds it still scrolls rather than clipping.
-    expect(ruleBody(".crew-build__viewport {")).toMatch(/overflow-y:\s*auto/);
   });
 
   it("gives the field roughly a quarter more height than the old treatment", () => {

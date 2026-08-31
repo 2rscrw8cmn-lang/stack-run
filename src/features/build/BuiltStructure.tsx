@@ -10,7 +10,7 @@ import {
   type TowerVoid,
 } from "../../domain/build.js";
 import type { PlacedFootprint } from "../../domain/footprint.js";
-import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement.js";
+import { GRID_UNITS, type PlacementOption } from "../../domain/placement.js";
 import { PlacedBlock } from "./PlacedBlock.js";
 import { LandingSlot } from "./LandingSlot.js";
 import { placementImpact } from "./placementDrop.js";
@@ -107,7 +107,7 @@ export function BuiltStructure({
   // them. `useColumnDragPlacement` is the same hook Crew Build's tower uses.
   const { grab, trackDrag, release, cancelDrag } = useColumnDragPlacement({
     containerRef: towerRef,
-    gridColumns: GRID_COLUMNS,
+    gridUnits: GRID_UNITS,
     width: placing?.footprint.width ?? 1,
     options: placing?.options ?? [],
     chosenColumnStart: placing?.candidate?.columnStart,
@@ -143,11 +143,17 @@ export function BuiltStructure({
     >
       <div className="build-site__stage">
         {context}
+        {/*
+          * The field is what sizes the square placement unit, and it has to be
+          * the tower's parent rather than the grid itself: the sky, the fall
+          * and the ground all measure in courses too, and they are the grid's
+          * siblings. See `.tower-field`.
+          */}
         <div
           className="build-site__tower tower-field"
           style={
             {
-              "--grid-columns": GRID_COLUMNS,
+              "--grid-units": GRID_UNITS,
               "--grid-courses": drawnCourses,
             } as CSSProperties
           }
@@ -163,12 +169,6 @@ export function BuiltStructure({
             onPointerMove={placing ? trackDrag : undefined}
             onPointerUp={placing ? release : undefined}
             onPointerCancel={placing ? cancelDrag : undefined}
-            style={
-              {
-                "--grid-columns": GRID_COLUMNS,
-                "--grid-courses": drawnCourses,
-              } as CSSProperties
-            }
           >
             {voids.map((cell) => (
               <li

@@ -10,32 +10,31 @@
 
 /*
  * The tower reserves its own depth clearance (`.built-tower` pads by
- * `--iso-rise` / `--iso-run`) and its eight columns are fluid, so a crop
- * always fits the width it is given. Nothing here scrolls sideways: a hero
+ * `--iso-rise` / `--iso-run`) and its placement unit is capped by the width it
+ * is given, so a crop always fits. Nothing here scrolls sideways: a hero
  * graphic that pans is a graphic that did not fit.
  */
 .build-crop {
-  /* The width the crop's square cell is measured against (issue #204). */
+  /* The width the crop's square placement unit is measured against (#206). */
   container-type: inline-size;
   min-width: 0;
   overflow: visible;
 }
 
 /*
- * A crop's cells are square like the tower's, so the two agree about what a
+ * A crop's units are square like the tower's, so the two agree about what a
  * block is — a crop that squashed the courses would show a turned block lying
- * flat. Each scale therefore sets only how much height the crop may spend;
- * the cell itself comes from the width, as it does on the real tower.
+ * flat. Each scale therefore only asks for a course height; the unit itself is
+ * capped by the width, as it is on the real tower.
  */
+
 .build-crop[data-scale="hero"] {
-  --tower-field: 190px;
-  --tower-cell-min: 12px;
+  --course-nominal: 26px;
 }
 
 /* Small enough to sit beside two lines of Today copy without taking the row. */
 .build-crop[data-scale="teaser"] {
-  --tower-field: 74px;
-  --tower-cell-min: 7px;
+  --course-nominal: 13px;
 }
 
 .build-crop__tower {

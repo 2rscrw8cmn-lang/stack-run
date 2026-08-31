@@ -2,7 +2,6 @@ import {
   CROSS_TRAINING_WIDTH,
   heightForActivityType,
   widthForMiles,
-  type BlockHeight,
   type BlockWidth,
 } from "../domain/footprint.js";
 import {
@@ -12,21 +11,30 @@ import {
   voidsOf,
   type GridVoid,
 } from "../domain/placement.js";
+import { GRID_UNITS, unitsAcross, unitsUp } from "../domain/towerGeometry.js";
 import type { RunActivityType, RunSource } from "../domain/types.js";
 import type { CrewMiniBuildRun } from "./types.js";
 
 export const MEMBER_BUILD_BLOCK_LIMIT = 128;
 
-/** Legacy rows with no persisted `buildWidth`. Cross Training never sizes from distance. */
-function fallbackWidth(run: Pick<CrewMiniBuildRun, "activityType" | "distanceMiles">): BlockWidth {
-  return run.activityType === "cross" ? CROSS_TRAINING_WIDTH : widthForMiles(run.distanceMiles);
+/**
+ * Legacy rows with no persisted `buildWidth`. Cross Training never sizes from
+ * distance. Answered in logical placement units, like everything else the
+ * tower measures with (issue #206), since the earned width is only ever a
+ * stand-in for a coordinate here.
+ */
+function fallbackWidth(run: Pick<CrewMiniBuildRun, "activityType" | "distanceMiles">): number {
+  const columns: BlockWidth =
+    run.activityType === "cross" ? CROSS_TRAINING_WIDTH : widthForMiles(run.distanceMiles);
+  return unitsAcross(columns);
 }
 
 export interface CrewMiniBuildBlock {
   id: string;
   activityType: RunActivityType;
-  width: BlockWidth;
-  height: BlockHeight;
+  /** Logical placement units, as placed — see `domain/towerGeometry.ts`. */
+  width: number;
+  height: number;
   columnStart: number;
   row: number;
   distanceMiles: number;
@@ -66,7 +74,7 @@ export function deriveCrewMiniBuild(
         Number.isInteger(run.buildColumnStart) &&
         run.buildColumnStart !== null &&
         run.buildColumnStart >= 1 &&
-        run.buildColumnStart + (run.buildWidth ?? fallbackWidth(run)) - 1 <= 8,
+        run.buildColumnStart + (run.buildWidth ?? fallbackWidth(run)) - 1 <= GRID_UNITS,
     )
     .sort(
       (left, right) =>
@@ -78,7 +86,7 @@ export function deriveCrewMiniBuild(
 
   const blocks: CrewMiniBuildBlock[] = bounded.map((run) => {
     const width = run.buildWidth ?? fallbackWidth(run);
-    const height = run.buildHeight ?? heightForActivityType(run.activityType);
+    const height = run.buildHeight ?? unitsUp(heightForActivityType(run.activityType));
     return {
       id: run.id,
       activityType: run.activityType,

@@ -172,7 +172,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       source: "intervals",
       best5kSeconds: 1255,
       crewBuildRow: 6,
-      crewBuildColumnStart: 3,
+      crewBuildColumnStart: 5,
       crewBuildRotated: false,
     }),
     run("w3", 3, "2026-09-09", {
@@ -181,7 +181,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       durationSeconds: 2700,
       source: "intervals",
       crewBuildRow: 6,
-      crewBuildColumnStart: 6,
+      crewBuildColumnStart: 11,
       crewBuildRotated: false,
     }),
     // The one hand-logged run of the week, so its brick carries issue #129's
@@ -192,7 +192,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       durationSeconds: 1980,
       source: "manual",
       crewBuildRow: 6,
-      crewBuildColumnStart: 7,
+      crewBuildColumnStart: 13,
       crewBuildRotated: false,
     }),
     // Wednesday is the crew's busiest day: three runs on it.
@@ -314,7 +314,7 @@ export function crewRecapDemoData(
             resultValue: 19.2,
             sourceSharedRunId: null,
             crewBuildRow: 9,
-            crewBuildColumnStart: 6,
+            crewBuildColumnStart: 11,
             crewBuildRotated: false,
             crewBuildPlacedAt: "2026-09-14T18:00:00Z",
             createdAt: "2026-09-14T00:00:00Z",

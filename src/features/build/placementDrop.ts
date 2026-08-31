@@ -14,6 +14,8 @@
  * landing is still a correct one.
  */
 
+import { unitsAcross } from "../../domain/towerGeometry.js";
+
 /**
  * How hard a landing reads. Footprint and nothing else: a long run is already
  * a wide block, so weight comes out of geometry the runner can see rather than
@@ -35,6 +37,15 @@ function cellsOf(footprint: { width: number; height: number }): number {
 }
 
 /**
+ * The bands, in the placement units a footprint is measured in (issue #206).
+ * They are written as column-cells doubled so the weight a landing reads with
+ * is the same physical size it always was: the sub-grid made every block twice
+ * as many cells without making any block bigger.
+ */
+const LIGHT_MAX_CELLS = unitsAcross(2);
+const HEAVY_MIN_CELLS = unitsAcross(6);
+
+/**
  * Light for a short easy run (one or two cells), heavy for the genuinely large
  * objects — a race, a wide interval or simulation block — and normal for
  * everything between. Three bands, because the difference between them is
@@ -45,10 +56,10 @@ export function placementImpact(footprint: {
   height: number;
 }): PlacementImpact {
   const cells = cellsOf(footprint);
-  if (cells <= 2) {
+  if (cells <= LIGHT_MAX_CELLS) {
     return "light";
   }
-  if (cells >= 6) {
+  if (cells >= HEAVY_MIN_CELLS) {
     return "heavy";
   }
   return "normal";

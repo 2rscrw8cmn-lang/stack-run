@@ -4,6 +4,7 @@ import { WORKOUT_TYPE_LABEL, type PlacedBlock as PlacedBlockData } from "../../d
 import { formatDateLabel } from "../../domain/dates.js";
 import { formatCompactMiles, formatMiles } from "../../domain/distance.js";
 import { isManualRun } from "../../domain/runSource.js";
+import { columnPhrase, unitsAcross } from "../../domain/towerGeometry.js";
 import { Brick, type BrickFaceLabel } from "./Brick.js";
 import { dropMarks } from "./placementDrop.js";
 
@@ -19,10 +20,8 @@ interface PlacedBlockProps {
 /** e.g. "Tuesday, August 4, Intervals, 5.4 miles, course 12, columns 3 through 5". */
 function blockLabel(block: PlacedBlockData): string {
   const { runLog, workout, placement } = block;
-  const columns =
-    placement.width === 1
-      ? `column ${placement.columnStart}`
-      : `columns ${placement.columnStart} through ${placement.columnStart + placement.width - 1}`;
+  // Named in the columns the tower shows, not the units it places on (#206).
+  const columns = columnPhrase(placement.columnStart, placement.width);
 
   return [
     formatDateLabel(runLog.completedDate, {
@@ -75,7 +74,8 @@ function faceLabel(block: PlacedBlockData): BrickFaceLabel | null {
   }
   return {
     text: formatCompactMiles(runLog.distanceMiles),
-    unit: placement.width >= 3,
+    // Three columns, measured on the placement grid the width is stored in.
+    unit: placement.width >= unitsAcross(3),
     manual: isManualRun(runLog),
   };
 }
