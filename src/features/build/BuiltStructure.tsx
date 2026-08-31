@@ -143,7 +143,15 @@ export function BuiltStructure({
     >
       <div className="build-site__stage">
         {context}
-        <div className="build-site__tower">
+        <div
+          className="build-site__tower tower-field"
+          style={
+            {
+              "--grid-columns": GRID_COLUMNS,
+              "--grid-courses": drawnCourses,
+            } as CSSProperties
+          }
+        >
           <div className="build-site__sky" aria-hidden="true" />
 
           <div ref={skylineRef} className="build-site__skyline" aria-hidden="true" />

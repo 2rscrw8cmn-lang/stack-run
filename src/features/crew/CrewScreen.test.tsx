@@ -1200,9 +1200,14 @@ describe("Shared Crew Build", () => {
     const tower = screen.getByRole("list", { name: "Crew Build blocks" });
 
     expect(tower.parentElement).toHaveClass("crew-build__viewport");
-    // The field is told how many courses to draw, so a tall tower keeps its
-    // block size and scrolls instead of being squeezed into a fixed box.
+    // The viewport is also the tower field, which is what sizes the square
+    // cell (issue #204). Both it and the grid are told the same two numbers:
+    // the field measures the cell from them, the grid lays out with them.
+    expect(tower.parentElement).toHaveClass("tower-field");
     expect(Number(tower.style.getPropertyValue("--grid-courses"))).toBeGreaterThan(0);
+    expect(
+      Number(tower.parentElement?.style.getPropertyValue("--grid-courses")),
+    ).toBe(Number(tower.style.getPropertyValue("--grid-courses")));
   });
 
   it("shows the current runner's oldest READY contribution beside the Crew Build", () => {
