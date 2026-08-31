@@ -190,6 +190,18 @@
      content can never end up sitting only under the sticky bar's blur with
      no room to clear it — the two must move together, not by coincidence. */
   --bottom-nav-height: 52px;
+  /*
+   * What the nav actually occupies, which is not `--bottom-nav-height`.
+   *
+   * That one is a `min-height` floor on `.bottom-nav__item`; the item is
+   * taller than its floor, because its own box is 12px padding + a 22px icon +
+   * a 4px gap + a ~15px label + 12px padding. Anything clearing the nav has to
+   * clear the box, not the floor — 12px short is enough for a placement
+   * control or the last course of a tower to sit under the bar.
+   *
+   * Keep in step with `.bottom-nav__item` if its padding, icon or label moves.
+   */
+  --bottom-nav-clearance: 64px;
 
   --space-1: 4px;
   --space-2: 8px;

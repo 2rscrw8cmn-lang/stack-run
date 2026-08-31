@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, WandSparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCw, WandSparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "../../components/ui/Button.js";
 import { IconButton } from "../../components/ui/IconButton.js";
@@ -6,21 +6,30 @@ import { IconButton } from "../../components/ui/IconButton.js";
 interface PlacementBarProps {
   /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */
   pieceColor: string;
-  width: number;
-  height: number;
-  /** e.g. "Place Easy" or "Move Easy". */
+  /** e.g. "Place Easy" or "Move Easy" — the control group's accessible name. */
   title: string;
-  /** e.g. "Column 3", or null when nothing fits. */
-  positionLabel: string | null;
   /**
-   * Whether the readout names the column. Personal Build does; Crew Build
-   * keeps the coordinate for its controls and the landing slots' accessible
-   * names, but a numbered grid column is not something a runner picks.
+   * Whether the block can be put down where it stands. The column itself is
+   * deliberately not shown: a numbered grid column is not something a runner
+   * picks, and the chosen landing on the tower already says where the block
+   * is going.
    */
-  showPositionLabel?: boolean;
+  canDrop: boolean;
+  /**
+   * Why the block cannot be put down, when it cannot. Distinguishes a tower
+   * with no room left from a rotation that has taken the block off the grid —
+   * the second is undone by turning it back, and saying "no room left" for it
+   * sends the runner looking for space that was never the problem.
+   */
+  blockedReason?: string | null;
   canStepBack: boolean;
   canStepForward: boolean;
   onStep: (direction: -1 | 1) => void;
+  /**
+   * Turns the block 90°. Absent for a square block, which has no second
+   * orientation to offer.
+   */
+  onRotate?: () => void;
   onAutoPlace: () => void;
   onDrop: () => void;
   onCancel: () => void;
@@ -28,139 +37,86 @@ interface PlacementBarProps {
   pending?: boolean;
   /** A server-rejected placement, shown under the controls. */
   error?: string | null;
-  /** Crew keeps the controls inside the construction field instead of opening a bottom sheet. */
-  layout?: "sheet" | "field";
 }
 
 /**
  * The controls for a block that is hovering over a tower.
  *
- * A deliberate drag on the tower commits on release, so these are the tap
- * and keyboard path: step the block along with the arrows, see it in
- * position, and commit with `Drop`. Both paths are complete on their own.
+ * A deliberate drag on the tower commits on release, so these are the tap and
+ * keyboard path: step the block along with the arrows, turn it with Rotate,
+ * see it in position, and commit with `Drop`. Every path is complete on its
+ * own — nothing here is reachable only by gesture.
  *
- * Where the readout names the column it stops there. The course it will land
- * on is gravity's answer rather than a choice, and saying it turned this into
- * a packing readout. The "no room left" state is always shown: that one is
- * about the tower, not about the grid.
+ * One compact row, worn by both towers. It used to be two layouts: a bottom
+ * sheet for Personal Build that covered the tower it was placing onto, and
+ * Crew's in-field row. The sheet is gone rather than kept as an option,
+ * because "the two Builds work differently" was the complaint, and a variant
+ * nobody selects is just the old screen waiting to come back.
  *
- * Generic over which tower it belongs to, so Personal and Crew Build share
- * one placement control rather than a bar apiece — Crew layers a pending
- * state and a server error message on top for its round-trip to the RPC.
+ * What the block *is* lives above the tower in `PlacementContext`, not here.
+ * These are the verbs.
  */
 export function PlacementBar({
   pieceColor,
-  width,
-  height,
   title,
-  positionLabel,
-  showPositionLabel = true,
+  canDrop,
+  blockedReason = null,
   canStepBack,
   canStepForward,
   onStep,
+  onRotate,
   onAutoPlace,
   onDrop,
   onCancel,
   pending = false,
   error = null,
-  layout = "sheet",
 }: PlacementBarProps) {
   const style = {
     "--piece-color": pieceColor,
   } as CSSProperties;
 
-  if (layout === "field") {
-    return (
-      <div
-        className="placement-bar placement-bar--field"
-        role="group"
-        aria-label={`${title} controls`}
-        style={style}
-      >
-        <div className="placement-bar__controls">
-          <IconButton
-            className="placement-bar__cancel"
-            label="Cancel placing"
-            title="Cancel placing"
-            icon={<X size={20} strokeWidth={1.8} />}
-            onClick={onCancel}
-            disabled={pending}
-          />
-          <IconButton
-            label="Move block left"
-            icon={<ChevronLeft size={22} strokeWidth={2} />}
-            disabled={!canStepBack || pending}
-            onClick={() => onStep(-1)}
-          />
-          <Button
-            className="placement-bar__drop"
-            onClick={onDrop}
-            disabled={positionLabel === null || pending}
-          >
-            {pending ? "Placing…" : "Drop"}
-          </Button>
-          <IconButton
-            label="Move block right"
-            icon={<ChevronRight size={22} strokeWidth={2} />}
-            disabled={!canStepForward || pending}
-            onClick={() => onStep(1)}
-          />
-          <IconButton
-            className="placement-bar__auto-icon"
-            label="Auto Place"
-            title="Auto Place"
-            icon={<WandSparkles size={19} strokeWidth={1.8} />}
-            onClick={onAutoPlace}
-            disabled={positionLabel === null || pending}
-          />
-        </div>
-
-        {error && (
-          <p className="placement-bar__error" role="status">
-            {error}
-          </p>
-        )}
-      </div>
-    );
-  }
+  const blocked = !canDrop;
 
   return (
-    <div className="placement-bar" role="group" aria-label="Place your block" style={style}>
-      <div className="placement-bar__block">
-        <span
-          className="placement-bar__chip"
-          style={
-            {
-              "--piece-span": width,
-              "--piece-height": height,
-            } as CSSProperties
-          }
-          aria-hidden="true"
-        />
-        <div className="placement-bar__detail">
-          <p className="placement-bar__title">{title}</p>
-          {(showPositionLabel || positionLabel === null) && (
-            <p className="placement-bar__position">
-              {positionLabel ?? "No room left in the tower"}
-            </p>
-          )}
-        </div>
+    <div
+      className="placement-bar"
+      role="group"
+      aria-label={`${title} controls`}
+      style={style}
+    >
+      <div className="placement-bar__controls">
         <IconButton
+          className="placement-bar__cancel"
           label="Cancel placing"
+          title="Cancel placing"
           icon={<X size={20} strokeWidth={1.8} />}
           onClick={onCancel}
           disabled={pending}
         />
-      </div>
-
-      <div className="placement-bar__controls">
         <IconButton
           label="Move block left"
           icon={<ChevronLeft size={22} strokeWidth={2} />}
           disabled={!canStepBack || pending}
           onClick={() => onStep(-1)}
         />
-        <Button onClick={onDrop} disabled={positionLabel === null || pending}>
+        {onRotate && (
+          <IconButton
+            className="placement-bar__rotate"
+            label="Rotate block"
+            title="Rotate"
+            icon={<RotateCw size={20} strokeWidth={1.9} />}
+            onClick={onRotate}
+            // Never disabled by a blocked position: turning the block back is
+            // the way out of a rotation that took it off the grid, so this is
+            // the one control that has to keep working while Drop cannot.
+            disabled={pending}
+          />
+        )}
+        <Button
+          className="placement-bar__drop"
+          onClick={onDrop}
+          disabled={blocked || pending}
+        >
           {pending ? "Placing…" : "Drop"}
         </Button>
         <IconButton
@@ -169,16 +125,23 @@ export function PlacementBar({
           disabled={!canStepForward || pending}
           onClick={() => onStep(1)}
         />
+        <IconButton
+          className="placement-bar__auto-icon"
+          label="Auto Place"
+          title="Auto Place"
+          icon={<WandSparkles size={19} strokeWidth={1.8} />}
+          onClick={onAutoPlace}
+          // Auto Place still has somewhere to go when the *chosen* column is
+          // off the grid: it is the one-tap way back to a position that works.
+          disabled={pending}
+        />
       </div>
 
-      <button
-        type="button"
-        className="placement-bar__auto"
-        onClick={onAutoPlace}
-        disabled={positionLabel === null || pending}
-      >
-        Auto Place
-      </button>
+      {blocked && blockedReason && (
+        <p className="placement-bar__blocked" role="status">
+          {blockedReason}
+        </p>
+      )}
 
       {error && (
         <p className="placement-bar__error" role="status">

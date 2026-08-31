@@ -18,6 +18,11 @@ import {
 } from "../domain/placement.js";
 import type { RunActivityType, RunSource } from "../domain/types.js";
 import {
+  handFootprint,
+  type PlacedHeight,
+  type PlacedWidth,
+} from "../domain/footprint.js";
+import {
   crewAwardFootprint,
   type CrewAwardBlockRecord,
   type CrewAwardType,
@@ -38,8 +43,19 @@ export interface CrewBuildPlacement {
 interface CrewBuildBlockBase extends CrewBuildPlacement {
   id: string;
   userId: string;
-  width: BlockWidth;
-  height: BlockHeight;
+  /**
+   * The footprint *as placed*. A turned block stores its axes swapped, so
+   * height reaches 4 for a 4-wide block stood on end — see `PlacedHeight`.
+   */
+  width: PlacedWidth;
+  height: PlacedHeight;
+  /**
+   * Whether this block stands turned 90° from the footprint it was earned
+   * with (issue #204). Kept beside the swapped width/height rather than
+   * replacing them: the renderer and the collision math want the effective
+   * footprint, and only the placement round-trip wants the flag.
+   */
+  rotated: boolean;
   crewBuildPlacedAt: string | null;
   recentlyPlaced: boolean;
   topFace: boolean[];
@@ -196,8 +212,8 @@ export function isCrewBuildPlacementWithinGrid(
 }
 
 export function crewBuildBlocksOverlap(
-  left: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
-  right: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
+  left: CrewBuildPlacement & { width: PlacedWidth; height: PlacedHeight },
+  right: CrewBuildPlacement & { width: PlacedWidth; height: PlacedHeight },
 ): boolean {
   return (
     left.columnStart < right.columnStart + right.width &&
@@ -208,8 +224,8 @@ export function crewBuildBlocksOverlap(
 }
 
 function crewBuildBlocksShareSupport(
-  block: CrewBuildPlacement & { width: BlockWidth },
-  support: CrewBuildPlacement & { width: BlockWidth; height: BlockHeight },
+  block: CrewBuildPlacement & { width: PlacedWidth },
+  support: CrewBuildPlacement & { width: PlacedWidth; height: PlacedHeight },
 ): boolean {
   return (
     support.row + support.height === block.row &&
@@ -248,8 +264,9 @@ export function isCrewBuildStructurallyValid(
 function runCandidate(
   run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   placement: CrewBuildPlacement,
+  rotated = false,
 ): CrewBuildRunBlock {
-  const footprint = crewBuildFootprint(run);
+  const footprint = handFootprint(crewBuildFootprint(run), rotated);
   return {
     kind: "run",
     id: run.id,
@@ -265,6 +282,7 @@ function runCandidate(
     topFace: [],
     rightFace: [],
     depth: 0,
+    rotated,
     ...placement,
     ...footprint,
   };
@@ -273,8 +291,9 @@ function runCandidate(
 function awardCandidate(
   award: Pick<CrewAwardBlockRecord, "id" | "winnerUserId" | "awardType" | "weekStart" | "resultValue" | "sourceSharedRunId">,
   placement: CrewBuildPlacement,
+  rotated = false,
 ): CrewBuildAwardBlock {
-  const footprint = crewAwardFootprint(award.awardType);
+  const footprint = handFootprint(crewAwardFootprint(award.awardType), rotated);
   return {
     kind: "award",
     id: award.id,
@@ -285,6 +304,7 @@ function awardCandidate(
     sourceSharedRunId: award.sourceSharedRunId,
     crewBuildPlacedAt: null,
     recentlyPlaced: false,
+    rotated,
     topFace: [],
     rightFace: [],
     depth: 0,
@@ -397,9 +417,10 @@ function lowestCrewBuildLandingOptions(
 export function crewBuildLandingOptions(
   run: Pick<CrewBuildRun, "id" | "activityType" | "distanceMiles" | "durationSeconds">,
   blocks: readonly CrewBuildBlock[],
+  rotated = false,
 ): PlacementOption[] {
   return lowestCrewBuildLandingOptions(
-    (placement) => runCandidate(run, placement),
+    (placement) => runCandidate(run, placement, rotated),
     blocks,
   );
 }
@@ -410,9 +431,10 @@ export function crewAwardLandingOptions(
     "id" | "winnerUserId" | "awardType" | "weekStart" | "resultValue" | "sourceSharedRunId"
   >,
   blocks: readonly CrewBuildBlock[],
+  rotated = false,
 ): PlacementOption[] {
   return lowestCrewBuildLandingOptions(
-    (placement) => awardCandidate(award, placement),
+    (placement) => awardCandidate(award, placement, rotated),
     blocks,
   );
 }
@@ -484,7 +506,12 @@ function deriveMixedCrewBuild(
   const readyAwards: CrewBuildReadyAward[] = [];
 
   for (const run of contributingRuns) {
-    const { width, height } = crewBuildFootprint(run);
+    // The footprint as the runner left it standing (issue #204). Everything
+    // below — the grid bound, the overlap test, the depth — measures the
+    // turned block, because rotation changes the footprint rather than the
+    // artwork.
+    const rotated = run.crewBuildRotated ?? false;
+    const { width, height } = handFootprint(crewBuildFootprint(run), rotated);
     const placement = run.crewBuildRow === null || run.crewBuildColumnStart === null
       ? null
       : { row: run.crewBuildRow, columnStart: run.crewBuildColumnStart };
@@ -507,6 +534,7 @@ function deriveMixedCrewBuild(
         distanceMiles: run.distanceMiles,
         localDate: run.localDate,
         source: run.source ?? null,
+        rotated,
         crewBuildPlacedAt: run.crewBuildPlacedAt,
         recentlyPlaced: isRecentCrewBuildPlacement(run.crewBuildPlacedAt, now),
         topFace: [],
@@ -523,7 +551,8 @@ function deriveMixedCrewBuild(
     left.createdAt.localeCompare(right.createdAt) ||
     left.id.localeCompare(right.id));
   for (const award of orderedAwards) {
-    const { width, height } = crewAwardFootprint(award.awardType);
+    const rotated = award.crewBuildRotated ?? false;
+    const { width, height } = handFootprint(crewAwardFootprint(award.awardType), rotated);
     const placement = award.crewBuildRow === null || award.crewBuildColumnStart === null
       ? null
       : { row: award.crewBuildRow, columnStart: award.crewBuildColumnStart };
@@ -540,6 +569,7 @@ function deriveMixedCrewBuild(
         weekStart: award.weekStart,
         resultValue: award.resultValue,
         sourceSharedRunId: award.sourceSharedRunId,
+        rotated,
         width,
         height,
         row: placement.row,

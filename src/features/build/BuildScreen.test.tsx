@@ -129,6 +129,21 @@ function BuildHarness({
   );
 }
 
+/**
+ * Which column the block in hand is standing over.
+ *
+ * The controls no longer print `Column 3`: Personal Build wears Crew Build's
+ * bar now, and Crew deliberately keeps the coordinate out of the readout — a
+ * numbered grid column is not a thing a runner picks. The chosen landing slot
+ * is what says it on screen, so it is what these assert.
+ */
+function chosenColumnName(): string {
+  const chosen = document.querySelector(
+    '.built-tower__slot[data-chosen="true"]',
+  );
+  return chosen?.textContent?.trim() ?? "nothing chosen";
+}
+
 describe("BuildScreen", () => {
   it("leads with the miles built and nothing else", () => {
     renderBuild({
@@ -318,14 +333,14 @@ describe("BuildScreen", () => {
 
     // Auto Place puts a 1-wide block flush against the left edge of empty
     // ground, because flushness breaks the tie between equal landings.
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe("Place Easy block in column 1");
 
     await user.click(screen.getByRole("button", { name: "Move block right" }));
-    expect(screen.getByText("Column 2")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe("Place Easy block in column 2");
 
     await user.click(screen.getByRole("button", { name: "Move block right" }));
     await user.click(screen.getByRole("button", { name: "Move block left" }));
-    expect(screen.getByText("Column 2")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe("Place Easy block in column 2");
 
     await user.click(screen.getByRole("button", { name: "Drop" }));
     expect(onPlaceBlock).toHaveBeenCalledWith({
@@ -335,6 +350,112 @@ describe("BuildScreen", () => {
       width: 1,
       height: 1,
     });
+  });
+
+  it("turns the block in hand and drops it on its end (issue #204)", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      // 9 miles earns a 4x1 block: the widest thing in the tower, and the
+      // most worth being able to stand up.
+      runLogs: [runLogFor("workout-007", { distanceMiles: 9 })],
+      placingRunLogId: "run-workout-007",
+      today: "2026-08-10",
+    });
+
+    expect(chosenColumnName()).toBe(
+      "Place Long Run block in columns 1 through 4",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+
+    // The footprint changed, not the artwork: one column wide now.
+    expect(chosenColumnName()).toBe("Place Long Run block in column 1");
+
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      runLogId: "run-workout-007",
+      row: 0,
+      columnStart: 1,
+      width: 1,
+      height: 4,
+    });
+  });
+
+  it("turns the block where it stands, without relocating it", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      runLogs: [runLogFor("workout-007", { distanceMiles: 9 })],
+      placingRunLogId: "run-workout-007",
+      today: "2026-08-10",
+    });
+
+    // Walk it away from the position the tower picked for it.
+    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    await user.click(screen.getByRole("button", { name: "Move block right" }));
+    expect(chosenColumnName()).toBe(
+      "Place Long Run block in columns 3 through 6",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+
+    // Still column 3. A turn that moved the block back to Auto Place's own
+    // answer would read as STACK repositioning it, which #204 rules out.
+    expect(chosenColumnName()).toBe("Place Long Run block in column 3");
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+    expect(onPlaceBlock).toHaveBeenCalledWith({
+      runLogId: "run-workout-007",
+      row: 0,
+      columnStart: 3,
+      width: 1,
+      height: 4,
+    });
+  });
+
+  it("blocks a turn that runs past the grid instead of moving the block", async () => {
+    const user = userEvent.setup();
+    const { onPlaceBlock } = renderBuild({
+      // 4 miles earns a 2x1 block, so at column 8 a turn is fine but at the
+      // far right a wider one would not be. Use the 3-wide block for that.
+      runLogs: [runLogFor("workout-007", { distanceMiles: 6 })],
+      placingRunLogId: "run-workout-007",
+      today: "2026-08-10",
+    });
+
+    // A 3-wide block anchors as far right as column 6. Turned it is 1x3 and
+    // fits anywhere; turned back from column 7 it would want 7, 8 and 9.
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+    for (let step = 0; step < 6; step += 1) {
+      await user.click(screen.getByRole("button", { name: "Move block right" }));
+    }
+    expect(chosenColumnName()).toBe("Place Long Run block in column 7");
+
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+
+    // Nothing moved, nothing can be dropped, and the reason names the way out.
+    expect(chosenColumnName()).toBe("nothing chosen");
+    expect(screen.getByRole("button", { name: "Drop" })).toBeDisabled();
+    expect(
+      screen.getByText(/runs past column 8/),
+    ).toBeInTheDocument();
+
+    // Turning it back is the way out, and it works from the blocked state.
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+    expect(chosenColumnName()).toBe("Place Long Run block in column 7");
+    expect(screen.getByRole("button", { name: "Drop" })).toBeEnabled();
+    expect(onPlaceBlock).not.toHaveBeenCalled();
+  });
+
+  it("offers no rotation for a block that is already square", () => {
+    renderBuild({
+      // 2 miles, easy: a 1x1 block, which turns to itself.
+      runLogs: [runLogFor("workout-002")],
+      placingRunLogId: "run-workout-002",
+      today: "2026-08-10",
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Rotate block" }),
+    ).not.toBeInTheDocument();
   });
 
   it("drops from the keyboard", async () => {
@@ -373,7 +494,7 @@ describe("BuildScreen", () => {
 
     expect(
       screen.getByText(
-        "Long Run block over columns 1 to 4.",
+        "Long Run block, 4 by 1, over columns 1 to 4.",
       ),
     ).toBeInTheDocument();
   });
@@ -429,7 +550,7 @@ describe("BuildScreen", () => {
     // Drag right into the middle of column 5.
     fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 1, clientX: 180 });
 
-    expect(screen.getByText("Column 5")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe("Place Easy block in column 5");
 
     // Drop commits what the drag chose, and nothing was placed until then.
     expect(onPlaceBlock).not.toHaveBeenCalled();
@@ -468,7 +589,7 @@ describe("BuildScreen", () => {
     // No button down: a hovering mouse must not move the block.
     fireEvent.pointerMove(chosen, { pointerId: 1, buttons: 0, clientX: 180 });
 
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe("Place Easy block in column 1");
   });
 
   it("keeps tap and keyboard placement working alongside the drag layer", async () => {
@@ -897,7 +1018,9 @@ describe("placing by pointer", () => {
       name: "Place Long Run block in columns 4 through 6",
     });
     fireEvent.pointerDown(elsewhere, { pointerId: 1, buttons: 1, clientX: 190 });
-    expect(screen.getByText("Column 4")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe(
+      "Place Long Run block in columns 4 through 6",
+    );
 
     fireEvent.pointerMove(elsewhere, { pointerId: 1, buttons: 1, clientX: 250 });
     fireEvent.pointerUp(elsewhere, { pointerId: 1, clientX: 250 });
@@ -930,7 +1053,7 @@ describe("placing by pointer", () => {
 
     expect(onPlaceBlock).not.toHaveBeenCalled();
     // Still in hand, still on the column that was tapped.
-    expect(screen.getByText("Column 1")).toBeInTheDocument();
+    expect(chosenColumnName()).toBe("Place Easy block in column 1");
     expect(screen.getByRole("button", { name: "Drop" })).toBeInTheDocument();
   });
 

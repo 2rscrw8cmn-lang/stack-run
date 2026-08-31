@@ -198,20 +198,63 @@ describe("Crew Build primacy styling (issue #137)", () => {
   });
 });
 
-describe("Crew Build placement hierarchy (issue #154)", () => {
-  it("keeps the controls in the field instead of covering the tower with a sheet", () => {
-    const field = ruleBody(".placement-bar--field {");
+describe("Crew Build placement hierarchy (issues #154, #204)", () => {
+  /*
+   * Issue #154 put the Crew controls in the construction field so a bottom
+   * sheet could not cover the tower being built on. Issue #204 found the cost:
+   * in the flow of the field the row landed wherever the tower happened to
+   * end, which on a tall tower is underneath the sticky nav — and with
+   * `z-index: 2` against the nav's `1`, it painted straight through it.
+   *
+   * So the rule changed from "never fixed" to what #154 was actually
+   * protecting: the controls stay one compact row that does not cover the
+   * tower, and they are always reachable. Pinning above the nav delivers both;
+   * sitting in the flow delivered neither once the tower grew.
+   */
+  it("keeps the controls clear of the bottom nav rather than painting over it", () => {
+    const bar = ruleBody("\n.placement-bar {");
 
-    expect(field).toMatch(/position:\s*relative/);
-    expect(field).toMatch(/background:\s*transparent/);
-    expect(field).toMatch(/box-shadow:\s*none/);
-    expect(field).not.toMatch(/position:\s*fixed/);
+    expect(bar).toMatch(/position:\s*fixed/);
+    // Clearance is the nav's *rendered* height plus its safe-area inset.
+    // `--bottom-nav-height` is only the item's min-height floor, and the nav
+    // draws about 12px taller than it — clearing the floor is what left the
+    // controls sitting on the tab bar in the first place.
+    expect(bar).toMatch(/bottom:\s*calc\(var\(--bottom-nav-clearance\)/);
+    expect(bar).toMatch(/env\(safe-area-inset-bottom\)/);
+    expect(bar).not.toMatch(/bottom:\s*calc\(var\(--bottom-nav-height\)/);
+
+    // Above the nav's stacking level, so a translucent nav cannot show
+    // through the controls sitting on top of it.
+    const barZ = Number(/z-index:\s*(\d+)/.exec(bar)![1]);
+    const navZ = Number(
+      /z-index:\s*(\d+)/.exec(
+        readFileSync(
+          join(dirname(fileURLToPath(import.meta.url)), "layout.css"),
+          "utf8",
+        ).split(".app-shell__nav {")[1],
+      )![1],
+    );
+    expect(barZ).toBeGreaterThan(navZ);
+  });
+
+  it("stays one compact row rather than a sheet over the tower", () => {
+    // What #154 was really guarding. The old Personal sheet carried a colour
+    // chip, a title, a position readout and a separate Auto Place link — four
+    // rows of furniture across the tower it was placing onto. None of it
+    // exists any more: the block in hand names itself in the field instead.
+    for (const gone of [
+      ".placement-bar__chip",
+      ".placement-bar__detail",
+      ".placement-bar__title",
+      ".placement-bar__position",
+      ".placement-bar--field",
+    ]) {
+      expect(css.includes(gone), `sheet furniture came back: ${gone}`).toBe(false);
+    }
   });
 
   it("keeps every compact utility target at the 44px interaction floor", () => {
-    const controls = ruleBody(
-      ".placement-bar--field .placement-bar__controls .icon-button {",
-    );
+    const controls = ruleBody(".placement-bar__controls .icon-button {");
 
     expect(controls).toMatch(/min-width:\s*44px/);
     expect(controls).toMatch(/min-height:\s*44px/);
@@ -233,7 +276,8 @@ describe("Crew Build placement hierarchy (issue #154)", () => {
   });
 
   it("uses a quiet identity strip rather than another instruction panel", () => {
-    const context = ruleBody(".crew-build__placement-context {");
+    // Shared by both towers now, so the class is no longer Crew's own.
+    const context = ruleBody(".placement-context {");
 
     expect(context).toMatch(/border-bottom:\s*1px solid var\(--border-strong\)/);
     expect(context).not.toMatch(/background:/);

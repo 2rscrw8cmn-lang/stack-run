@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  canRotateFootprint,
   crossTrainingHeightForDuration,
   footprintFor,
+  handFootprint,
   heightForActivityType,
+  isOrientationOf,
+  isRotated,
+  rotateFootprint,
   widthForMiles,
 } from "./footprint.js";
 import type { Effort, RunActivityType, RunLog } from "./types.js";
@@ -126,5 +131,60 @@ describe("footprintFor", () => {
 
     expect(footprintFor(shortRide).width).toBe(1);
     expect(footprintFor(longRide)).toEqual({ width: 1, height: 2 });
+  });
+});
+
+describe("rotation (issue #204)", () => {
+  it("turns a rectangle by swapping its axes", () => {
+    // The issue's own table, which is the whole of the rotation rule.
+    expect(rotateFootprint({ width: 1, height: 3 })).toEqual({ width: 3, height: 1 });
+    expect(rotateFootprint({ width: 2, height: 4 })).toEqual({ width: 4, height: 2 });
+    expect(rotateFootprint({ width: 3, height: 1 })).toEqual({ width: 1, height: 3 });
+    expect(rotateFootprint({ width: 4, height: 2 })).toEqual({ width: 2, height: 4 });
+  });
+
+  it("stands the widest block on end, taller than anything is earned", () => {
+    // The race is 4x3 and no block is *earned* taller than 3, so this is the
+    // one case that needs the placed height axis to reach 4.
+    expect(rotateFootprint({ width: 4, height: 3 })).toEqual({ width: 3, height: 4 });
+  });
+
+  it("turns twice back to where it started", () => {
+    const earned = { width: 4, height: 1 } as const;
+    expect(rotateFootprint(rotateFootprint(earned))).toEqual(earned);
+  });
+
+  it("offers no rotation for a square block", () => {
+    // A square turns to itself, so a Rotate control on one would promise a
+    // change that never arrives.
+    expect(canRotateFootprint({ width: 2, height: 2 })).toBe(false);
+    expect(canRotateFootprint({ width: 1, height: 1 })).toBe(false);
+    expect(canRotateFootprint({ width: 4, height: 1 })).toBe(true);
+    expect(canRotateFootprint({ width: 1, height: 3 })).toBe(true);
+  });
+
+  it("holds a block at its earned size unless it is asked to turn", () => {
+    const earned = { width: 3, height: 1 } as const;
+    expect(handFootprint(earned, false)).toEqual({ width: 3, height: 1 });
+    expect(handFootprint(earned, true)).toEqual({ width: 1, height: 3 });
+  });
+
+  it("accepts only the earned footprint and its rotation", () => {
+    const earned = { width: 4, height: 1 } as const;
+
+    expect(isOrientationOf({ width: 4, height: 1 }, earned)).toBe(true);
+    expect(isOrientationOf({ width: 1, height: 4 }, earned)).toBe(true);
+    // Rotation swaps axes and resizes nothing, so nothing else is a valid
+    // size for this block — this is what stops a placement claiming space no
+    // activity paid for.
+    expect(isOrientationOf({ width: 2, height: 2 }, earned)).toBe(false);
+    expect(isOrientationOf({ width: 4, height: 2 }, earned)).toBe(false);
+  });
+
+  it("reads a square block as un-rotated whichever way it was turned", () => {
+    // The honest answer: nothing about it changed.
+    expect(isRotated({ width: 2, height: 2 }, { width: 2, height: 2 })).toBe(false);
+    expect(isRotated({ width: 1, height: 4 }, { width: 4, height: 1 })).toBe(true);
+    expect(isRotated({ width: 4, height: 1 }, { width: 4, height: 1 })).toBe(false);
   });
 });

@@ -1253,7 +1253,7 @@ describe("Shared Crew Build", () => {
     expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
     expect(screen.queryByText("Column 1")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 1, false);
     expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
   });
 
@@ -1277,7 +1277,7 @@ describe("Shared Crew Build", () => {
     // No Place Block tap: placement is already open on that exact run.
     expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 1, false);
     // The request is retired, so returning to Crew later does not reopen it.
     expect(onCrewPlacementHandled).toHaveBeenCalled();
   });
@@ -1334,7 +1334,7 @@ describe("Shared Crew Build", () => {
     const drop = screen.getByRole("button", { name: "Drop" });
     drop.focus();
     await user.keyboard("{Enter}");
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 2);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 2, false);
   });
 
   it("keeps sideways drag-and-release as a complete placement path", async () => {
@@ -1364,7 +1364,7 @@ describe("Shared Crew Build", () => {
       fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 180 });
     });
 
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 5);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 5, false);
   });
 
   it("keeps a block READY, shows the specific server collision message, and recomputes a fresh landing to retry", async () => {
@@ -1428,13 +1428,53 @@ describe("Shared Crew Build", () => {
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(
-      screen.getByText("Tap or drag to position"),
+      screen.getByText(/Tap or drag to position/),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Drag sideways or tap a spot. Your block will land where it fits."),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/^Column \d+$/)).not.toBeInTheDocument();
     expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
+  });
+
+  it("sends the orientation with a turned Crew block (issue #204)", async () => {
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+    });
+    const placeCrewBuildBlock = vi.fn().mockResolvedValue(true);
+    const user = openCrew(
+      controller({ crewData: dashboard({ runs: [ready] }), placeCrewBuildBlock }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    // A 4 mile Easy run earns a 2x1 block, so it has a second orientation.
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
+
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+    expect(chosenLandingName()).toBe("Place Easy block in column 1");
+
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+
+    // Crew derives width and height from the run server-side, so the flag is
+    // the only way the tower learns which way this block is standing.
+    expect(placeCrewBuildBlock).toHaveBeenCalledWith("ready-own", 0, 1, true);
+  });
+
+  it("offers no Crew rotation for a block with one orientation", async () => {
+    // Cross Training is a fixed 1-wide block; a 30 minute session earns 1x1.
+    const square = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+      activityType: "cross",
+      durationSeconds: 600,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [square] }) }));
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    expect(
+      screen.queryByRole("button", { name: "Rotate block" }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers Move Block only for the current runner's placed Crew block", async () => {

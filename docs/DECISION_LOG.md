@@ -446,13 +446,35 @@ Honesty rules:
 
 **Does not revise D-021.** Nothing here reads a logged run or adapts to one. It is still arithmetic over a template; the arithmetic is now bounded by the rule that keeps the template from hurting somebody.
 
+## D-044 — A block can be turned, and the footprint is the orientation
+
+**Decision:** During placement a rectangular block can be rotated 90°. Rotation swaps the block's grid footprint — not its artwork — and the swapped `width`/`height` **are** the stored orientation. Personal and Crew Build share one set of placement controls, pinned above the bottom nav.
+
+**Reason:** Placement was "find the open spot that fits whatever orientation was generated". Rotation makes the tower something you build rather than pack, and it is the one placement action with real consequences for how a tower can be filled.
+
+Rotation rules:
+
+- A rectangle switches between its two orientations; a square block offers no control, because it turns to itself.
+- Turning happens **where the block already is**. The current column is pinned before the swap, so a block still sitting on Auto Place's own choice is not re-placed by the act of turning it.
+- STACK never rotates or relocates a block to make it fit. A turn that runs past column 8 leaves the block where it is, disables `Drop`, and says which way out to take. `Rotate` and `Auto Place` stay live in that state; they are the two ways back.
+- Placed height admits 4 — the race is earned 4×3 and stands 3×4 — which is one course taller than any block is *earned*.
+
+Storage:
+
+- Personal Build needed no migration. `BlockPlacement` already stores `width` and `height`, so a turned block is a placement with its axes swapped, and a tower written before rotation reads back exactly as it was drawn. `placeBlock` accepts the earned footprint or its rotation, and nothing else: rotation swaps axes and resizes nothing, so it is not a licence to claim space no activity paid for.
+- Crew Build re-derives the footprint from the run server-side, so it has nowhere to put an orientation and gains `crew_build_rotated`. The flag is relative to the *earned* footprint rather than absolute, so it keeps its meaning if the width bands or height table move, and every existing row is `false` — which is the orientation it is already drawn in.
+
+**Revises the placement half of issue #154.** That issue put Crew's controls in the construction field so a bottom sheet could not cover the tower, and forbade `position: fixed`. In the flow of the field the row landed wherever the tower happened to end — under the sticky nav on a tall tower, and painting through it, since it carried a higher `z-index` than the nav. The controls now pin above the nav. What #154 was protecting is kept: one compact row rather than a sheet, and the block in hand names itself in the field instead of in the controls. Personal Build's three-row sheet — colour chip, title, column readout, separate Auto Place link — is gone rather than kept as a variant.
+
+**Does not revise D-018.** Width still comes from distance and height from activity type. Rotation changes how an earned block is *placed*, never what it is worth.
+
 ## Active implementation order
 
 Implemented:
 
 - UI-0 through UI-7
 - D-018 through D-032
-- D-041, D-042 and D-043
+- D-041, D-042, D-043 and D-044
 
 Next approved program:
 

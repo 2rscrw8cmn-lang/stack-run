@@ -212,6 +212,16 @@ export interface CrewBuildRun {
   createdAt: string;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  /**
+   * Whether the block stands turned 90° from the footprint the run earns
+   * (issue #204). Relative to the earned footprint rather than absolute, so
+   * it keeps its meaning if the width bands or height table ever move.
+   *
+   * Optional because absent means un-rotated: a payload written before the
+   * column existed describes a block that is standing exactly as it was
+   * earned, which is what `false` says.
+   */
+  crewBuildRotated?: boolean;
   crewBuildPlacedAt: string | null;
 }
 

@@ -30,7 +30,7 @@ import {
  * degrading to `null` belongs in `OPTIONAL_SHARED_RUN_COLUMNS`.
  */
 const SHARED_RUN_COLUMNS =
-  "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate";
+  "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_rotated,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate";
 /** Issue #186: the recap's Fastest 5K, and the first column read this way. */
 const OPTIONAL_SHARED_RUN_COLUMNS = ["best_5k_seconds"] as const;
 
@@ -272,6 +272,9 @@ export async function loadCrewDashboard(
       buildHeight: nullableInteger(item, "build_height") as 1 | 2 | 3 | null,
       crewBuildRow: nullableInteger(item, "crew_build_row"),
       crewBuildColumnStart: nullableInteger(item, "crew_build_column_start"),
+      // Absent (an older payload, or a row from before the column existed)
+      // means the block stands exactly as it was earned.
+      crewBuildRotated: item.crew_build_rotated === true,
       crewBuildPlacedAt:
         typeof item.crew_build_placed_at === "string"
           ? item.crew_build_placed_at

@@ -1,5 +1,5 @@
 import { Blocks } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { EmptyState } from "../../components/ui/EmptyState.js";
 import { Section } from "../../components/ui/Section.js";
@@ -9,6 +9,7 @@ import {
   type PlacedBlock as PlacedBlockData,
   type TowerVoid,
 } from "../../domain/build.js";
+import type { PlacedFootprint } from "../../domain/footprint.js";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement.js";
 import { PlacedBlock } from "./PlacedBlock.js";
 import { LandingSlot } from "./LandingSlot.js";
@@ -17,6 +18,13 @@ import { useColumnDragPlacement } from "./useColumnDragPlacement.js";
 
 export interface StructurePlacing {
   block: EarnedBlock;
+  /**
+   * The block's footprint *as currently turned*, which is not always the one
+   * it was earned with. Rotation changes the grid footprint rather than the
+   * artwork, so the landings, the drag width and the headroom all have to be
+   * measured from this rather than from `block.footprint`.
+   */
+  footprint: PlacedFootprint;
   options: PlacementOption[];
   candidate: PlacementOption | null;
   onChoose: (option: PlacementOption) => void;
@@ -34,6 +42,11 @@ interface BuiltStructureProps {
   onSelectBlock: (runLogId: string) => void;
   /** Set while a block is hovering over the tower, waiting to be dropped. */
   placing?: StructurePlacing;
+  /**
+   * The identity strip for the block in hand, drawn inside the field above the
+   * tower — the same position Crew Build puts it in, so the two read alike.
+   */
+  context?: ReactNode;
 }
 
 /**
@@ -56,6 +69,7 @@ export function BuiltStructure({
   justPlacedRunLogId = null,
   onSelectBlock,
   placing,
+  context,
 }: BuiltStructureProps) {
   const skylineRef = useRef<HTMLDivElement>(null);
   const towerRef = useRef<HTMLUListElement>(null);
@@ -74,7 +88,7 @@ export function BuiltStructure({
   const drawnCourses = Math.max(
     1,
     courses,
-    candidate ? candidate.row + placing!.block.footprint.height : 0,
+    candidate ? candidate.row + placing!.footprint.height : 0,
   );
 
   // Open framed on the top of what has been built, not the foundation, and
@@ -94,7 +108,7 @@ export function BuiltStructure({
   const { grab, trackDrag, release, cancelDrag } = useColumnDragPlacement({
     containerRef: towerRef,
     gridColumns: GRID_COLUMNS,
-    width: placing?.block.footprint.width ?? 1,
+    width: placing?.footprint.width ?? 1,
     options: placing?.options ?? [],
     chosenColumnStart: placing?.candidate?.columnStart,
     onChoose: (option) => placing?.onChoose(option),
@@ -128,6 +142,7 @@ export function BuiltStructure({
       meta={`${blocks.length} ${blocks.length === 1 ? "block" : "blocks"}`}
     >
       <div className="build-site__stage">
+        {context}
         <div className="build-site__tower">
           <div className="build-site__sky" aria-hidden="true" />
 
@@ -175,8 +190,8 @@ export function BuiltStructure({
               <LandingSlot
                 key={option.columnStart}
                 option={option}
-                width={placing.block.footprint.width}
-                height={placing.block.footprint.height}
+                width={placing.footprint.width}
+                height={placing.footprint.height}
                 pieceColor={`var(--${placing.block.runLog.activityType})`}
                 courses={drawnCourses}
                 isChosen={option.columnStart === candidate?.columnStart}
@@ -198,11 +213,6 @@ export function BuiltStructure({
         </div>
       </div>
 
-      {placing && (
-        <p className="build-site__caption">
-          Drag and let go, or tap a spot then Drop.
-        </p>
-      )}
     </Section>
   );
 }

@@ -164,7 +164,7 @@ describe("Crew placement read barrier", () => {
 
     let placement: Promise<boolean> = Promise.resolve(false);
     act(() => {
-      placement = result.current.placeCrewBuildBlock("shared-run-1", 0, 1);
+      placement = result.current.placeCrewBuildBlock("shared-run-1", 0, 1, false);
     });
     // The in-flight read has not been joined; it queried before the write.
     expect(mocks.loadCrewDashboard).toHaveBeenCalledTimes(1);
@@ -196,7 +196,7 @@ describe("Crew placement read barrier", () => {
 
     let placed = true;
     await act(async () => {
-      placed = await result.current.placeCrewBuildBlock("shared-run-1", 0, 1);
+      placed = await result.current.placeCrewBuildBlock("shared-run-1", 0, 1, false);
     });
 
     expect(placed).toBe(false);
@@ -212,7 +212,7 @@ describe("Crew placement read barrier", () => {
 
     let placed = false;
     await act(async () => {
-      placed = await result.current.placeCrewBuildBlock("shared-run-1", 0, 1);
+      placed = await result.current.placeCrewBuildBlock("shared-run-1", 0, 1, false);
     });
 
     // The server accepted the write. A read that never arrived is reported as

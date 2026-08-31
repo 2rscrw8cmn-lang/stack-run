@@ -5,17 +5,16 @@ import { formatDateLabel } from "../../domain/dates.js";
 import { formatMiles, formatMilesBuilt } from "../../domain/distance.js";
 import { formatTotalHoursMinutes } from "../../domain/duration.js";
 import { isManualRun } from "../../domain/runSource.js";
+import type { PlacedFootprint } from "../../domain/footprint.js";
 import { GRID_COLUMNS, type PlacementOption } from "../../domain/placement.js";
 import {
   CREW_AWARD_LABEL,
-  crewAwardFootprint,
   formatCrewAwardResult,
   type CrewAwardBlockRecord,
 } from "../../crew/awards.js";
 import { crewMemberAccent } from "../../crew/memberAccent.js";
 import {
   CREW_BUILD_MIN_VISIBLE_COURSES,
-  crewBuildFootprint,
   type CrewBuildBlock,
   type CrewBuildModel,
   type CrewBuildRunBlock,
@@ -27,6 +26,8 @@ import { Brick } from "../build/Brick.js";
 import { crewFaceLabel, memberPieceColor } from "./crewBrickFace.js";
 import { LandingSlot } from "../build/LandingSlot.js";
 import { PlacementBar } from "../build/PlacementBar.js";
+import { PlacementContext } from "../build/PlacementContext.js";
+import { blockIdentity, placementHint } from "../build/placementHand.js";
 import { dropMarks, placementImpact } from "../build/placementDrop.js";
 import { useColumnDragPlacement } from "../build/useColumnDragPlacement.js";
 import { AwardBrick } from "./AwardBrick.js";
@@ -38,10 +39,22 @@ interface PlacementBase {
   /** One lowest structurally valid landing for each horizontal anchor. */
   options: PlacementOption[];
   candidate: PlacementOption | null;
+  /**
+   * The footprint as currently turned. Rotation changes the grid footprint
+   * rather than the artwork, so the landings, the ghost and the headroom are
+   * all measured from this rather than from what the run earned.
+   */
+  footprint: PlacedFootprint;
+  rotated: boolean;
+  /** Why the block cannot be dropped where it stands, when it cannot. */
+  blockedReason: string | null;
+  /** False for a square block, which has no second orientation to offer. */
+  canRotate: boolean;
   pending: boolean;
   error: string | null;
   onChoose: (option: PlacementOption) => void;
   onStep: (direction: -1 | 1) => void;
+  onRotate: () => void;
   onAutoPlace: () => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -92,10 +105,6 @@ function awardBlockLabel(block: Extract<CrewBuildBlock, { kind: "award" }>, memb
 
 
 
-function runIdentity(run: Pick<CrewBuildRun, "activityType" | "distanceMiles" | "localDate">) {
-  return `${WORKOUT_TYPE_LABEL[run.activityType]} · ${formatMiles(run.distanceMiles)} MI · ${formatDateLabel(run.localDate, { month: "short", day: "numeric" })}`;
-}
-
 function awardIdentity(award: CrewAwardBlockRecord) {
   return `${CREW_AWARD_LABEL[award.awardType]} · ${formatCrewAwardResult(award.awardType, award.resultValue)}`;
 }
@@ -116,11 +125,9 @@ export function CrewBuild({
   const towerRef = useRef<HTMLUListElement>(null);
   const skylineRef = useRef<HTMLDivElement>(null);
 
-  const placementFootprint = placement
-    ? placement.kind === "run"
-      ? crewBuildFootprint(placement.run)
-      : crewAwardFootprint(placement.award.awardType)
-    : null;
+  // Supplied by the screen rather than re-derived here, because only the
+  // screen knows which way the runner has turned the block.
+  const placementFootprint = placement?.footprint ?? null;
   const candidate = placement?.candidate ?? null;
   const drawnCourses = Math.max(
     1,
@@ -223,17 +230,19 @@ export function CrewBuild({
       ) : (
         <div className="crew-build__stage" style={stageStyle}>
           {placement && (
-            <div className="crew-build__placement-context">
-              <div>
-                <p className="machine-label">
-                  {placement.kind === "award" ? "Special Block in hand" : "Block in hand"}
-                </p>
-                <p className="data-value">
-                  {placement.kind === "run" ? runIdentity(placement.run) : awardIdentity(placement.award)}
-                </p>
-              </div>
-              <p>Tap or drag to position</p>
-            </div>
+            <PlacementContext
+              label={placement.kind === "award" ? "Special Block in hand" : "Block in hand"}
+              identity={
+                placement.kind === "run"
+                  ? blockIdentity({
+                      activityType: placement.run.activityType,
+                      distanceMiles: placement.run.distanceMiles,
+                      date: placement.run.localDate,
+                    })
+                  : awardIdentity(placement.award)
+              }
+              hint={placementHint(placement.canRotate)}
+            />
           )}
           <div className="crew-build__viewport">
             <div className="crew-build__sky" aria-hidden="true" />
@@ -341,13 +350,10 @@ export function CrewBuild({
           />
           {placement && (
             <PlacementBar
-              layout="field"
               pieceColor={placementPieceColor}
-              width={placementFootprint?.width ?? 1}
-              height={placementFootprint?.height ?? 1}
               title={placementTitle}
-              positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
-              showPositionLabel={false}
+              canDrop={candidate !== null}
+              blockedReason={placement.blockedReason}
               canStepBack={
                 !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) > 0
               }
@@ -355,6 +361,7 @@ export function CrewBuild({
                 !!candidate && placement.options.findIndex((option) => option.columnStart === candidate.columnStart) < placement.options.length - 1
               }
               onStep={placement.onStep}
+              onRotate={placement.canRotate ? placement.onRotate : undefined}
               onAutoPlace={placement.onAutoPlace}
               onDrop={placement.onConfirm}
               onCancel={placement.onCancel}

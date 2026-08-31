@@ -197,8 +197,14 @@ export interface BlockPlacement {
    * Courses tall. Stored rather than derived because it is frozen when the
    * block is earned: it decides how the block packs, and blocks come to rest
    * on it, so recomputing it later would re-pack the tower.
+   *
+   * Together with `width` this is also the block's *orientation*: a block
+   * placed on end stores its axes swapped, which is why rotation needs no
+   * field of its own and why a tower stored before rotation existed reads
+   * back exactly as it was drawn. Admits 4 for the race stood on end, which
+   * is taller than any block is earned (see `PlacedHeight`).
    */
-  height: 1 | 2 | 3;
+  height: 1 | 2 | 3 | 4;
   placedAt: string;
 }
 
