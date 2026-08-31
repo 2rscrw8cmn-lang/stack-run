@@ -30,12 +30,6 @@ function ruleBody(selector: string): string {
   return css.slice(open + 1, close);
 }
 
-function customProperty(body: string, name: string): number {
-  const match = new RegExp(`${name}:\\s*(\\d+)px`).exec(body);
-  expect(match, `${name} not set`).not.toBeNull();
-  return Number(match![1]);
-}
-
 function viewportCap(body: string): number {
   const match = /min\((\d+)dvh/.exec(body);
   expect(match, "no dvh cap on the viewport").not.toBeNull();
@@ -173,15 +167,66 @@ describe("Crew Build primacy styling (issue #137)", () => {
   });
 
   it("scales the tower itself rather than pouring in more empty sky", () => {
-    // A taller course grows the bricks and the grid together. Headroom alone
+    // A bigger field grows the bricks and the grid together. Headroom alone
     // would make the section bigger and the build no bigger at all.
-    expect(customProperty(page, "--course-height")).toBeGreaterThan(
-      customProperty(shared, "--course-height"),
+    //
+    // The knob moved with issue #204. A course used to be a declared px
+    // height, so "bigger" meant a bigger `--course-height`; now the cell is
+    // square and derived from the field's width, and what a context sets is
+    // how much height the tower may spend before it scales down instead.
+    const budget = (body: string) => {
+      const match = /--tower-field:\s*(\d+)dvh/.exec(body);
+      expect(match, "no tower field budget").not.toBeNull();
+      return Number(match![1]);
+    };
+    expect(budget(page)).toBeGreaterThan(budget(shared));
+  });
+
+  /*
+   * The invariant the whole geometry now rests on: one cell is one column wide
+   * and one course tall, and those are the same length. A block can be turned
+   * 90 degrees, and a rotation is only honest if the turned block keeps its
+   * geometry — on the old grid a cell ran up to 2.8x wider than tall, so a
+   * 3-wide block turned into something with the same three cells and no other
+   * resemblance.
+   */
+  it("builds the tower out of square cells", () => {
+    const field = ruleBody(".tower-field {");
+
+    // One derived length, used for both axes of the grid.
+    expect(field).toMatch(/--course-height:\s*var\(--tower-cell\)/);
+    const grid = ruleBody(".built-tower {");
+    expect(grid).toMatch(
+      /grid-template-columns:\s*repeat\(var\(--grid-columns\), var\(--tower-cell[,)]/,
     );
-    // The oblique stays 2:1 with the course, so the bricks keep their shape.
-    expect(customProperty(page, "--iso-run")).toBe(
-      customProperty(page, "--iso-rise") * 2,
+    expect(grid).toMatch(
+      /grid-template-rows:\s*repeat\(var\(--grid-courses\), var\(--tower-cell[,)]/,
     );
+
+    // No context may reintroduce a declared course height, which is what
+    // would silently un-square the cell again.
+    const declared = css.match(/--course-height:\s*\d+px/g) ?? [];
+    expect(declared, "a course height was declared in px again").toEqual([]);
+
+    // The oblique stays 2:1 by construction rather than by two numbers that
+    // have to be kept in step.
+    expect(field).toMatch(/--iso-rise:\s*calc\(var\(--iso-run\) \/ 2\)/);
+  });
+
+  /*
+   * Square cells make a tall tower taller, so the field scales it down rather
+   * than letting it grow without limit — but only to a floor, past which it
+   * scrolls instead. Without the floor a long season would shrink its own
+   * blocks into an unreadable smear.
+   */
+  it("scales a tall tower down to a floor, then scrolls", () => {
+    const field = ruleBody(".tower-field {");
+
+    expect(field).toMatch(/min\(/);
+    expect(field).toMatch(/calc\(var\(--tower-field[^)]*\) \/ var\(--grid-courses\)\)/);
+    expect(field).toMatch(/max\(\s*var\(--tower-cell-min/);
+    // And the field that holds it still scrolls rather than clipping.
+    expect(ruleBody(".crew-build__viewport {")).toMatch(/overflow-y:\s*auto/);
   });
 
   it("gives the field roughly a quarter more height than the old treatment", () => {
@@ -198,20 +243,63 @@ describe("Crew Build primacy styling (issue #137)", () => {
   });
 });
 
-describe("Crew Build placement hierarchy (issue #154)", () => {
-  it("keeps the controls in the field instead of covering the tower with a sheet", () => {
-    const field = ruleBody(".placement-bar--field {");
+describe("Crew Build placement hierarchy (issues #154, #204)", () => {
+  /*
+   * Issue #154 put the Crew controls in the construction field so a bottom
+   * sheet could not cover the tower being built on. Issue #204 found the cost:
+   * in the flow of the field the row landed wherever the tower happened to
+   * end, which on a tall tower is underneath the sticky nav — and with
+   * `z-index: 2` against the nav's `1`, it painted straight through it.
+   *
+   * So the rule changed from "never fixed" to what #154 was actually
+   * protecting: the controls stay one compact row that does not cover the
+   * tower, and they are always reachable. Pinning above the nav delivers both;
+   * sitting in the flow delivered neither once the tower grew.
+   */
+  it("keeps the controls clear of the bottom nav rather than painting over it", () => {
+    const bar = ruleBody("\n.placement-bar {");
 
-    expect(field).toMatch(/position:\s*relative/);
-    expect(field).toMatch(/background:\s*transparent/);
-    expect(field).toMatch(/box-shadow:\s*none/);
-    expect(field).not.toMatch(/position:\s*fixed/);
+    expect(bar).toMatch(/position:\s*fixed/);
+    // Clearance is the nav's *rendered* height plus its safe-area inset.
+    // `--bottom-nav-height` is only the item's min-height floor, and the nav
+    // draws about 12px taller than it — clearing the floor is what left the
+    // controls sitting on the tab bar in the first place.
+    expect(bar).toMatch(/bottom:\s*calc\(var\(--bottom-nav-clearance\)/);
+    expect(bar).toMatch(/env\(safe-area-inset-bottom\)/);
+    expect(bar).not.toMatch(/bottom:\s*calc\(var\(--bottom-nav-height\)/);
+
+    // Above the nav's stacking level, so a translucent nav cannot show
+    // through the controls sitting on top of it.
+    const barZ = Number(/z-index:\s*(\d+)/.exec(bar)![1]);
+    const navZ = Number(
+      /z-index:\s*(\d+)/.exec(
+        readFileSync(
+          join(dirname(fileURLToPath(import.meta.url)), "layout.css"),
+          "utf8",
+        ).split(".app-shell__nav {")[1],
+      )![1],
+    );
+    expect(barZ).toBeGreaterThan(navZ);
+  });
+
+  it("stays one compact row rather than a sheet over the tower", () => {
+    // What #154 was really guarding. The old Personal sheet carried a colour
+    // chip, a title, a position readout and a separate Auto Place link — four
+    // rows of furniture across the tower it was placing onto. None of it
+    // exists any more: the block in hand names itself in the field instead.
+    for (const gone of [
+      ".placement-bar__chip",
+      ".placement-bar__detail",
+      ".placement-bar__title",
+      ".placement-bar__position",
+      ".placement-bar--field",
+    ]) {
+      expect(css.includes(gone), `sheet furniture came back: ${gone}`).toBe(false);
+    }
   });
 
   it("keeps every compact utility target at the 44px interaction floor", () => {
-    const controls = ruleBody(
-      ".placement-bar--field .placement-bar__controls .icon-button {",
-    );
+    const controls = ruleBody(".placement-bar__controls .icon-button {");
 
     expect(controls).toMatch(/min-width:\s*44px/);
     expect(controls).toMatch(/min-height:\s*44px/);
@@ -233,7 +321,8 @@ describe("Crew Build placement hierarchy (issue #154)", () => {
   });
 
   it("uses a quiet identity strip rather than another instruction panel", () => {
-    const context = ruleBody(".crew-build__placement-context {");
+    // Shared by both towers now, so the class is no longer Crew's own.
+    const context = ruleBody(".placement-context {");
 
     expect(context).toMatch(/border-bottom:\s*1px solid var\(--border-strong\)/);
     expect(context).not.toMatch(/background:/);

@@ -109,7 +109,8 @@ function safeSharedPlacement(
     placement.columnStart < 1 ||
     placement.columnStart + placement.width - 1 > 8 ||
     ![1, 2, 3, 4].includes(placement.width) ||
-    ![1, 2, 3].includes(placement.height)
+    // 4 is reachable only by rotation: a block stood on end (#204).
+    ![1, 2, 3, 4].includes(placement.height)
   ) {
     return null;
   }

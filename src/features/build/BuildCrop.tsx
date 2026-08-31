@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { BlockHeight, BlockWidth } from "../../domain/footprint.js";
+import type { PlacedHeight, PlacedWidth } from "../../domain/footprint.js";
 import type { GridVoid } from "../../domain/placement.js";
 import { GRID_COLUMNS } from "../../domain/placement.js";
 import type { CrewAwardType } from "../../crew/awards.js";
@@ -29,8 +29,9 @@ export interface BuildCropBlock {
   columnStart: number;
   /** 0-based course, counted up from the lowest course in the crop. */
   row: number;
-  width: BlockWidth;
-  height: BlockHeight;
+  /** The footprint as placed, so a turned block keeps its orientation here. */
+  width: PlacedWidth;
+  height: PlacedHeight;
   /** CSS custom property reference, e.g. `"var(--member-sky)"`. */
   pieceColor: string;
   /** Present for a run block; award blocks carry their glyph instead. */
@@ -87,7 +88,7 @@ export function BuildCrop({
       aria-hidden={label ? undefined : true}
     >
       <ul
-        className="built-tower build-crop__tower"
+        className="built-tower build-crop__tower tower-field"
         style={
           {
             "--grid-columns": columns,

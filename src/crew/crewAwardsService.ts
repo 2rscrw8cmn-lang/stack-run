@@ -79,7 +79,7 @@ export async function loadCrewAwards(
 
     const awardResult = await client
       .from("crew_award_blocks")
-      .select("id,crew_id,week_start,award_type,winner_user_id,result_value,source_shared_run_id,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at")
+      .select("id,crew_id,week_start,award_type,winner_user_id,result_value,source_shared_run_id,crew_build_row,crew_build_column_start,crew_build_rotated,crew_build_placed_at,created_at")
       .eq("crew_id", input.crewId)
       .order("week_start", { ascending: true })
       .order("created_at", { ascending: true });
@@ -95,6 +95,7 @@ export async function loadCrewAwards(
       sourceSharedRunId: nullableString(row, "source_shared_run_id"),
       crewBuildRow: nullableNumber(row, "crew_build_row"),
       crewBuildColumnStart: nullableNumber(row, "crew_build_column_start"),
+      crewBuildRotated: row.crew_build_rotated === true,
       crewBuildPlacedAt: nullableString(row, "crew_build_placed_at"),
       createdAt: stringValue(row, "created_at"),
     }));
@@ -109,12 +110,19 @@ export async function loadCrewAwards(
 
 export async function placeCrewAwardBlock(
   client: SupabaseClient,
-  input: { awardBlockId: string; row: number; columnStart: number },
+  input: {
+    awardBlockId: string;
+    row: number;
+    columnStart: number;
+    /** Whether the block stands turned from its award type's footprint (#204). */
+    rotated: boolean;
+  },
 ): Promise<void> {
   const result = await client.rpc("place_crew_award_block", {
     p_award_block_id: input.awardBlockId,
     p_row: input.row,
     p_column_start: input.columnStart,
+    p_rotated: input.rotated,
   });
   if (!result.error) return;
   if (result.error.message.includes(CREW_BUILD_PLACEMENT_CONFLICT)) {

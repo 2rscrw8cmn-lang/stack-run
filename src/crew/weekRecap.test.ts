@@ -43,6 +43,7 @@ function run(
     durationSeconds: 1800,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     ...overrides,
   };
 }
@@ -58,6 +59,7 @@ function award(overrides: Partial<CrewAwardBlockRecord> = {}): CrewAwardBlockRec
     sourceSharedRunId: null,
     crewBuildRow: 3,
     crewBuildColumnStart: 1,
+    crewBuildRotated: false,
     crewBuildPlacedAt: "2026-08-18T10:00:00Z",
     createdAt: "2026-08-17T00:00:00Z",
     ...overrides,
@@ -120,6 +122,7 @@ describe("crew week recap", () => {
         activityType: "long",
         crewBuildRow: 4,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("c", "zack", "2026-08-15", { distanceMiles: 4, durationSeconds: 2100 }),
       // Last week, for the change beat.
@@ -389,6 +392,7 @@ describe("crew week recap", () => {
         distanceMiles: 6,
         crewBuildRow: 0,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
     ]);
     const build = beat(recap!.beats, "build")!;
@@ -462,6 +466,7 @@ describe("crewWeekRecapRunsFrom", () => {
       buildHeight: 1,
       crewBuildRow: 5,
       crewBuildColumnStart: 2,
+      crewBuildRotated: false,
       crewBuildPlacedAt: "2026-08-13T09:00:00Z",
       averageHeartRate: 148,
       maxHeartRate: 176,
@@ -488,6 +493,7 @@ describe("crewWeekRecapRunsFrom", () => {
         best5kSeconds: 1290,
         crewBuildRow: 5,
         crewBuildColumnStart: 2,
+        crewBuildRotated: false,
       },
     ]);
   });
@@ -510,6 +516,7 @@ describe("crewWeekRecapRunsFrom", () => {
       buildColumnStart: null,
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
       crewBuildPlacedAt: null,
       propsCount: 0,
       viewerHasPropped: false,

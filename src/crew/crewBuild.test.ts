@@ -30,6 +30,7 @@ function run(
     createdAt: "2026-08-09T12:00:00Z",
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     ...values,
   };
@@ -98,6 +99,7 @@ describe("collaborative Crew Build", () => {
         distanceMiles: 8,
         crewBuildRow: 0,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("ready", "drew", { distanceMiles: 5.5 }),
     ]);
@@ -114,12 +116,14 @@ describe("collaborative Crew Build", () => {
         distanceMiles: 3,
         crewBuildRow: 0,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("ready-five", "zack", { distanceMiles: 5 }),
       run("placed-two", "drew", {
         distanceMiles: 2,
         crewBuildRow: 0,
         crewBuildColumnStart: 3,
+        crewBuildRotated: false,
       }),
     ]);
 
@@ -142,6 +146,7 @@ describe("collaborative Crew Build", () => {
         activityType: "intervals",
         crewBuildRow: 0,
         crewBuildColumnStart: 2,
+        crewBuildRotated: false,
       }),
     ]).blocks;
     const moving = run("moving", "zack", { distanceMiles: 3, activityType: "long" });
@@ -169,6 +174,7 @@ describe("collaborative Crew Build", () => {
       distanceMiles: 3,
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const base = deriveCrewBuild([baseRun]).blocks;
     const bridge = run("bridge", "zack", { distanceMiles: 8 });
@@ -184,16 +190,19 @@ describe("collaborative Crew Build", () => {
         distanceMiles: 3,
         crewBuildRow: 0,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("bridge", "zack", {
         distanceMiles: 8,
         crewBuildRow: 1,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("top", "drew", {
         distanceMiles: 3,
         crewBuildRow: 2,
         crewBuildColumnStart: 2,
+        crewBuildRotated: false,
       }),
     ];
     const blocks = deriveCrewBuild(runs).blocks;
@@ -218,11 +227,13 @@ describe("collaborative Crew Build", () => {
         createdAt: "2026-08-08T12:00:00Z",
         crewBuildRow: 0,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("conflict", "drew", {
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 0,
         crewBuildColumnStart: 2,
+        crewBuildRotated: false,
       }),
     ]);
     expect(model.blocks.map((block) => block.id)).toEqual(["first"]);
@@ -234,6 +245,7 @@ describe("collaborative Crew Build", () => {
       run("floating", "zack", {
         crewBuildRow: 2,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
     ]);
     expect(model.blocks).toEqual([]);
@@ -320,16 +332,19 @@ describe("shared geometry reuse (issue #65)", () => {
         activityType: "intervals",
         crewBuildRow: 0,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
       run("cavity-support", "zack", {
         distanceMiles: 2.9,
         crewBuildRow: 0,
         crewBuildColumnStart: 2,
+        crewBuildRotated: false,
       }),
       run("bridge", "drew", {
         distanceMiles: 3.1,
         crewBuildRow: 2,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       }),
     ]);
     const filler = run("filler", "travis", { distanceMiles: 2.9 });

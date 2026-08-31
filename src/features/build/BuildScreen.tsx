@@ -12,6 +12,11 @@ import {
   placementOptions,
   type PlacementOption,
 } from "../../domain/placement.js";
+import {
+  isRotated,
+  type PlacedHeight,
+  type PlacedWidth,
+} from "../../domain/footprint.js";
 import type {
   ArchivedTrainingPlan,
   BlockPlacement,
@@ -26,7 +31,16 @@ import { BuildHeading } from "./BuildHeading.js";
 import { BuiltStructure } from "./BuiltStructure.js";
 import { PendingBlocksTray } from "./PendingBlocksTray.js";
 import { describeCandidate } from "./describeCandidate.js";
+import { rotationTick } from "./haptics.js";
 import { PlacementBar } from "./PlacementBar.js";
+import { PlacementContext } from "./PlacementContext.js";
+import {
+  blockIdentity,
+  handCanRotate,
+  handFootprint,
+  placementHint,
+  resolveHand,
+} from "./placementHand.js";
 
 /**
  * How long the placement confirmation stays on screen before the tower is
@@ -47,8 +61,12 @@ export interface PlacementRequest {
   runLogId: string;
   row: number;
   columnStart: number;
-  width: 1 | 2 | 3 | 4;
-  height: 1 | 2 | 3;
+  /**
+   * The footprint as placed, which is the earned one or the earned one turned
+   * (issue #204). Height reaches 4 only for a 4-wide block stood on end.
+   */
+  width: PlacedWidth;
+  height: PlacedHeight;
 }
 
 interface BuildScreenProps {
@@ -89,6 +107,13 @@ export function BuildScreen({
   syncToken,
 }: BuildScreenProps) {
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
+  /**
+   * Whether the block in hand stands turned from the way it was earned. Held
+   * here rather than derived, because it is a choice the runner is part-way
+   * through making — it becomes storage only when the block is dropped, and
+   * cancelling placement must leave nothing behind.
+   */
+  const [rotated, setRotated] = useState(false);
   const [detailRunLogId, setDetailRunLogId] = useState<string | null>(null);
   const [isDetailOpen, setDetailOpen] = useState(false);
   const [editRunLogId, setEditRunLogId] = useState<string | null>(null);
@@ -125,27 +150,25 @@ export function BuildScreen({
         (placement) => placement.runLogId !== placingBlock.runLog.id,
       )
     : blockPlacements;
-  const options = placingBlock
-    ? placementOptions(
-        placingBlock.footprint.width,
-        placingBlock.footprint.height,
-        others,
-      )
-    : [];
+  // The footprint as currently turned, which is what the tower is asked for
+  // landings of — rotation changes the grid footprint, not just the artwork.
+  const inHand = placingBlock
+    ? handFootprint(placingBlock.footprint, rotated)
+    : null;
+  const options =
+    placingBlock && inHand
+      ? placementOptions(inHand.width, inHand.height, others)
+      : [];
 
   // The chosen position is held as a key, so it survives the list of options
-  // being recomputed on every render.
-  const candidate =
-    options.find(
-      (option) => String(option.columnStart) === candidateColumn,
-    ) ??
-    autoPlaceOption(options) ??
-    null;
-  const candidateIndex = candidate
-    ? options.findIndex(
-        (option) => option.columnStart === candidate.columnStart,
-      )
-    : -1;
+  // being recomputed on every render — and, after a rotation, so that a column
+  // the turned block no longer fits reads as blocked rather than being
+  // silently swapped for one that works.
+  const hand = inHand
+    ? resolveHand(options, candidateColumn, inHand)
+    : null;
+  const candidate = hand?.candidate ?? null;
+  const candidateIndex = hand?.index ?? -1;
 
   const detailBlock =
     viewModel.blocks.find((block) => block.runLog.id === detailRunLogId) ?? null;
@@ -173,10 +196,13 @@ export function BuildScreen({
     if (!placingBlock || !candidate) {
       return;
     }
-    const { runLog, footprint } = placingBlock;
+    const { runLog } = placingBlock;
+    const footprint = inHand ?? placingBlock.footprint;
     const isMove =
       findPlacementForRunLog(blockPlacements, runLog.id) !== undefined;
 
+    // The footprint as turned, not as earned: width and height *are* the
+    // stored orientation, so this is the whole of persisting a rotation.
     onPlaceBlock({
       runLogId: runLog.id,
       row: candidate.row,
@@ -199,8 +225,37 @@ export function BuildScreen({
     stopPlacing();
   }
 
+  /**
+   * Turns the block 90°, in place.
+   *
+   * The current column is pinned first. Without that, a block sitting where
+   * the tower auto-placed it has no chosen column of its own, and turning it
+   * would re-run Auto Place and land it somewhere else — which reads exactly
+   * like STACK moving the block for you, the thing issue #204 rules out.
+   */
+  function rotate() {
+    if (!placingBlock) {
+      return;
+    }
+    if (candidate) {
+      setCandidateColumn(String(candidate.columnStart));
+    }
+    setRotated((current) => !current);
+    rotationTick();
+  }
+
   function startPlacing(runLogId: string) {
-    setCandidateColumn(null);
+    // A block already in the tower comes back up turned the way it was left.
+    const existing = findPlacementForRunLog(blockPlacements, runLogId);
+    const earned = allEarned.find((block) => block.runLog.id === runLogId);
+    setRotated(
+      existing !== undefined &&
+        earned !== undefined &&
+        isRotated(existing, earned.footprint),
+    );
+    setCandidateColumn(
+      existing === undefined ? null : String(existing.columnStart),
+    );
     setDetailOpen(false);
     setDetailRunLogId(null);
     onPlacingChange(runLogId);
@@ -208,6 +263,7 @@ export function BuildScreen({
 
   function stopPlacing() {
     setCandidateColumn(null);
+    setRotated(false);
     onPlacingChange(null);
   }
 
@@ -237,10 +293,24 @@ export function BuildScreen({
           setDetailRunLogId(runLogId);
           setDetailOpen(true);
         }}
+        context={
+          placingBlock && inHand ? (
+            <PlacementContext
+              label="Block in hand"
+              identity={blockIdentity({
+                activityType: placingBlock.runLog.activityType,
+                distanceMiles: placingBlock.runLog.distanceMiles,
+                date: placingBlock.runLog.completedDate,
+              })}
+              hint={placementHint(handCanRotate(placingBlock.footprint))}
+            />
+          ) : undefined
+        }
         placing={
-          placingBlock
+          placingBlock && inHand
             ? {
                 block: placingBlock,
+                footprint: inHand,
                 options,
                 candidate,
                 onChoose: choose,
@@ -259,7 +329,9 @@ export function BuildScreen({
       )}
 
       <p className="visually-hidden" aria-live="polite">
-        {placingBlock ? describeCandidate(placingBlock, candidate) : announcement}
+        {placingBlock && inHand
+          ? describeCandidate(placingBlock, candidate, inHand)
+          : announcement}
       </p>
 
       {!placingBlock && (
@@ -270,23 +342,23 @@ export function BuildScreen({
         />
       )}
 
-      {placingBlock && (
+      {placingBlock && inHand && (
         <PlacementBar
           pieceColor={`var(--${placingBlock.runLog.activityType})`}
-          width={placingBlock.footprint.width}
-          height={placingBlock.footprint.height}
           title={`${
             findPlacementForRunLog(blockPlacements, placingBlock.runLog.id) !==
             undefined
               ? "Move"
               : "Place"
           } ${WORKOUT_TYPE_LABEL[placingBlock.runLog.activityType]}`}
-          positionLabel={candidate ? `Column ${candidate.columnStart}` : null}
-          canStepBack={candidateIndex > 0}
-          canStepForward={
-            candidateIndex >= 0 && candidateIndex < options.length - 1
-          }
+          canDrop={candidate !== null}
+          blockedReason={hand?.blockedReason ?? null}
+          canStepBack={hand?.canStepBack ?? false}
+          canStepForward={hand?.canStepForward ?? false}
           onStep={step}
+          onRotate={
+            handCanRotate(placingBlock.footprint) ? rotate : undefined
+          }
           onAutoPlace={() => {
             const automatic = autoPlaceOption(options);
             if (automatic) {

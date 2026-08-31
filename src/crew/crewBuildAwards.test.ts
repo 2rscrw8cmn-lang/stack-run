@@ -20,6 +20,7 @@ function run(id: string, values: Partial<CrewBuildRun> = {}): CrewBuildRun {
     createdAt: "2026-08-10T12:00:00Z",
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     ...values,
   };
@@ -36,6 +37,7 @@ function award(id: string, values: Partial<CrewAwardBlockRecord> = {}): CrewAwar
     sourceSharedRunId: null,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     createdAt: "2026-08-10T01:00:00Z",
     ...values,
@@ -106,17 +108,20 @@ describe("Crew Special Blocks in the shared tower", () => {
           activityType: "intervals",
           crewBuildRow: 0,
           crewBuildColumnStart: 1,
+          crewBuildRotated: false,
         }),
         run("cavity-support", {
           distanceMiles: 3,
           crewBuildRow: 0,
           crewBuildColumnStart: 2,
+          crewBuildRotated: false,
         }),
       ],
       [award("bridge", {
         awardType: "longHaul",
         crewBuildRow: 2,
         crewBuildColumnStart: 1,
+        crewBuildRotated: false,
       })],
     );
     const moving = award("moving", { awardType: "miles" });

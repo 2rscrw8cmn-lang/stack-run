@@ -14,7 +14,7 @@ export interface CrewAwardsController {
   placementPending: boolean;
   placementError: string | null;
   refresh: () => Promise<void>;
-  placeAward: (awardId: string, row: number, columnStart: number) => Promise<boolean>;
+  placeAward: (awardId: string, row: number, columnStart: number, rotated: boolean) => Promise<boolean>;
   clearPlacementError: () => void;
 }
 
@@ -69,13 +69,14 @@ export function useCrewAwards(input: {
     awardId: string,
     row: number,
     columnStart: number,
+    rotated: boolean,
   ): Promise<boolean> => {
     const availability = getSupabaseAvailability();
     if (!availability.configured || placementPending) return false;
     setPlacementPending(true);
     setPlacementError(null);
     try {
-      await placeCrewAwardBlock(availability.client, { awardBlockId: awardId, row, columnStart });
+      await placeCrewAwardBlock(availability.client, { awardBlockId: awardId, row, columnStart, rotated });
       await refresh();
       return true;
     } catch (reason) {

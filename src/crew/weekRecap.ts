@@ -4,7 +4,11 @@ import {
   daysBetweenLocalDates,
   mondayOfLocalDate,
 } from "../domain/dates.js";
-import type { BlockHeight, BlockWidth } from "../domain/footprint.js";
+import {
+  handFootprint,
+  type PlacedHeight,
+  type PlacedWidth,
+} from "../domain/footprint.js";
 import type { RunActivityType, RunSource } from "../domain/types.js";
 import type { CrewAwardBlockRecord, CrewAwardType } from "./awards.js";
 import {
@@ -41,8 +45,9 @@ export interface CrewWeekRecapSliceBlock {
   activityType: RunActivityType;
   distanceMiles: number;
   source: RunSource | null;
-  width: BlockWidth;
-  height: BlockHeight;
+  /** The footprint as it stands in the tower, so a turned block stays turned. */
+  width: PlacedWidth;
+  height: PlacedHeight;
   columnStart: number;
   row: number;
 }
@@ -148,6 +153,7 @@ export function crewWeekRecapRunsFrom(
     best5kSeconds: run.best5kSeconds ?? null,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,
+    crewBuildRotated: run.crewBuildRotated,
   }));
 }
 
@@ -202,6 +208,14 @@ function roundMiles(value: number): number {
   return Number(value.toFixed(2));
 }
 
+/**
+ * The block as it actually stands in the shared tower, turned or not. The
+ * recap crops the real thing, so it measures the real footprint (#204).
+ */
+function recapFootprint(run: CrewWeekRecapRun) {
+  return handFootprint(crewBuildFootprint(run), run.crewBuildRotated);
+}
+
 function isPlacedInTower(run: CrewWeekRecapRun): boolean {
   return (
     run.crewBuildRow !== null &&
@@ -210,7 +224,10 @@ function isPlacedInTower(run: CrewWeekRecapRun): boolean {
     run.crewBuildColumnStart !== null &&
     Number.isInteger(run.crewBuildColumnStart) &&
     run.crewBuildColumnStart >= 1 &&
-    run.crewBuildColumnStart + crewBuildFootprint(run).width - 1 <= CREW_BUILD_COLUMNS
+    run.crewBuildColumnStart +
+      recapFootprint(run).width -
+      1 <=
+      CREW_BUILD_COLUMNS
   );
 }
 
@@ -497,7 +514,7 @@ function buildBeat(
   );
   const slice: CrewWeekRecapSliceBlock[] = placed
     .map((run) => {
-      const { width, height } = crewBuildFootprint(run);
+      const { width, height } = recapFootprint(run);
       return {
         id: run.id,
         userId: run.userId,

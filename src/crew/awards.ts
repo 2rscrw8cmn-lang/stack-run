@@ -62,6 +62,8 @@ export interface CrewAwardBlockRecord {
   sourceSharedRunId: string | null;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  /** Whether the block stands turned 90° from its award type's footprint (#204). */
+  crewBuildRotated: boolean;
   crewBuildPlacedAt: string | null;
   createdAt: string;
 }

@@ -142,6 +142,8 @@ export interface CrewSharedRun {
   /** Independent shared Crew Build placement; never personal placement. */
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  /** Whether the block stands turned 90° from what the run earns (#204). */
+  crewBuildRotated: boolean;
   /** Dedicated construction time; projection updates never change it. */
   crewBuildPlacedAt: string | null;
   /** Source-verified, from `RunLog.importedMetrics`. Never present without a sync. */
@@ -212,6 +214,18 @@ export interface CrewBuildRun {
   createdAt: string;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  /**
+   * Whether the block stands turned 90° from the footprint the run earns
+   * (issue #204). Relative to the earned footprint rather than absolute, so
+   * it keeps its meaning if the width bands or height table ever move.
+   *
+   * Required, though the database column has a default. `crewBuildRuns` is a
+   * hand-written whitelist of the fields allowed across the Crew boundary, so
+   * an optional coordinate is one that gets dropped there and silently reads
+   * back as `false` — which is how the tower came to draw every rotated block
+   * flat and call its own successful writes unconfirmed.
+   */
+  crewBuildRotated: boolean;
   crewBuildPlacedAt: string | null;
 }
 
@@ -257,6 +271,14 @@ export interface CrewWeekRecapRun {
   /** Independent shared Crew Build placement; never personal placement. */
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
+  /**
+   * Whether the block stands turned from what the run earns (#204).
+   *
+   * On this narrow contract for the same reason the coordinates are: the recap
+   * draws the week's real bricks, and a block the shared tower shows on its end
+   * cannot come back lying flat in a crop of that same tower.
+   */
+  crewBuildRotated: boolean;
 }
 
 /** One teammate's Props on one of the viewer's own shared runs. */

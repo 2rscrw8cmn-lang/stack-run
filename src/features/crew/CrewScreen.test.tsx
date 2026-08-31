@@ -101,6 +101,7 @@ function sharedRun(
     buildColumnStart: 1,
     crewBuildRow: 0,
     crewBuildColumnStart: 1,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,
@@ -153,7 +154,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, source, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, source, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildRotated, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
@@ -166,6 +167,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       createdAt,
       crewBuildRow,
       crewBuildColumnStart,
+      crewBuildRotated,
       crewBuildPlacedAt,
     })),
     sharedRunsAvailable: true,
@@ -464,6 +466,7 @@ describe("Crew comparisons and runs", () => {
               createdAt: soloRun.createdAt,
               crewBuildRow: soloRun.crewBuildRow,
               crewBuildColumnStart: soloRun.crewBuildColumnStart,
+              crewBuildRotated: false,
               crewBuildPlacedAt: soloRun.crewBuildPlacedAt,
             },
           ],
@@ -615,15 +618,18 @@ describe("Crew comparisons and runs", () => {
     const placedA = sharedRun("a-placed", "zack", "2026-08-09", {
       distanceMiles: 6,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const readyA = sharedRun("a-ready", "zack", "2026-08-10", {
       distanceMiles: 4,
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const placedB = sharedRun("b-placed", "drew", "2026-08-09", {
       distanceMiles: 8,
       crewBuildColumnStart: 4,
+      crewBuildRotated: false,
     });
     const user = await openCrew(controller({
       crewData: dashboard({
@@ -733,6 +739,7 @@ describe("Crew comparisons and runs", () => {
       // communal tower — only on Drew's own sanitized Personal Build.
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const afterCrewStart = sharedRun("after-crew-start", "drew", "2026-08-09", {
       activityType: "long",
@@ -741,6 +748,7 @@ describe("Crew comparisons and runs", () => {
       buildColumnStart: 1,
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const user = await openCrew(
       controller({
@@ -900,6 +908,7 @@ describe("Shared Crew Build", () => {
       createdAt: "2026-08-05T12:00:00Z",
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
     sharedRun("second", "drew", "2026-08-06", {
       activityType: "long",
@@ -907,6 +916,7 @@ describe("Shared Crew Build", () => {
       createdAt: "2026-08-06T12:00:00Z",
       crewBuildRow: 0,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     }),
     sharedRun("third", "travis", "2026-08-07", {
       activityType: "intervals",
@@ -914,6 +924,7 @@ describe("Shared Crew Build", () => {
       createdAt: "2026-08-07T12:00:00Z",
       crewBuildRow: 1,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
   ];
 
@@ -1043,6 +1054,7 @@ describe("Shared Crew Build", () => {
       source: "manual",
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const synced = sharedRun("synced", "drew", "2026-08-06", {
       activityType: "long",
@@ -1050,6 +1062,7 @@ describe("Shared Crew Build", () => {
       source: "intervals",
       crewBuildRow: 0,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [manual, synced] }) }));
 
@@ -1187,9 +1200,14 @@ describe("Shared Crew Build", () => {
     const tower = screen.getByRole("list", { name: "Crew Build blocks" });
 
     expect(tower.parentElement).toHaveClass("crew-build__viewport");
-    // The field is told how many courses to draw, so a tall tower keeps its
-    // block size and scrolls instead of being squeezed into a fixed box.
+    // The viewport is also the tower field, which is what sizes the square
+    // cell (issue #204). Both it and the grid are told the same two numbers:
+    // the field measures the cell from them, the grid lays out with them.
+    expect(tower.parentElement).toHaveClass("tower-field");
     expect(Number(tower.style.getPropertyValue("--grid-courses"))).toBeGreaterThan(0);
+    expect(
+      Number(tower.parentElement?.style.getPropertyValue("--grid-courses")),
+    ).toBe(Number(tower.style.getPropertyValue("--grid-courses")));
   });
 
   it("shows the current runner's oldest READY contribution beside the Crew Build", () => {
@@ -1198,14 +1216,17 @@ describe("Shared Crew Build", () => {
       distanceMiles: 8,
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const ownNewer = sharedRun("own-newer", "zack", "2026-08-09", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const teammate = sharedRun("teammate", "drew", "2026-08-07", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     openCrew(controller({ crewData: dashboard({ runs: [ownNewer, teammate, ownOlder] }) }));
 
@@ -1224,6 +1245,7 @@ describe("Shared Crew Build", () => {
     const teammate = sharedRun("teammate", "drew", "2026-08-07", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     openCrew(controller({ crewData: dashboard({ runs: [teammate] }) }));
     expect(screen.queryByText("0 built · 1 ready")).not.toBeInTheDocument();
@@ -1235,6 +1257,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1253,7 +1276,7 @@ describe("Shared Crew Build", () => {
     expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
     expect(screen.queryByText("Column 1")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 1, false);
     expect(screen.queryByRole("list", { name: "Choose a Crew Build position" })).not.toBeInTheDocument();
   });
 
@@ -1267,6 +1290,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const onCrewPlacementHandled = vi.fn();
     const user = openCrew(
@@ -1277,7 +1301,7 @@ describe("Shared Crew Build", () => {
     // No Place Block tap: placement is already open on that exact run.
     expect(screen.getByRole("list", { name: "Choose a Crew Build position" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Drop" }));
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 1);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 1, false);
     // The request is retired, so returning to Crew later does not reopen it.
     expect(onCrewPlacementHandled).toHaveBeenCalled();
   });
@@ -1286,6 +1310,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const onCrewPlacementHandled = vi.fn();
     const user = openCrew(
@@ -1313,6 +1338,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1334,7 +1360,7 @@ describe("Shared Crew Build", () => {
     const drop = screen.getByRole("button", { name: "Drop" });
     drop.focus();
     await user.keyboard("{Enter}");
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 2);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 2, false);
   });
 
   it("keeps sideways drag-and-release as a complete placement path", async () => {
@@ -1342,6 +1368,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1364,7 +1391,7 @@ describe("Shared Crew Build", () => {
       fireEvent.pointerUp(chosen, { pointerId: 1, clientX: 180 });
     });
 
-    expect(place).toHaveBeenCalledWith("ready-own", 0, 5);
+    expect(place).toHaveBeenCalledWith("ready-own", 0, 5, false);
   });
 
   it("keeps a block READY, shows the specific server collision message, and recomputes a fresh landing to retry", async () => {
@@ -1372,6 +1399,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1423,12 +1451,13 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [ready] }) }));
 
     await user.click(screen.getByRole("button", { name: "Place Block" }));
     expect(
-      screen.getByText("Tap or drag to position"),
+      screen.getByText(/Tap or drag to position/),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Drag sideways or tap a spot. Your block will land where it fits."),
@@ -1437,14 +1466,58 @@ describe("Shared Crew Build", () => {
     expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
   });
 
+  it("sends the orientation with a turned Crew block (issue #204)", async () => {
+    const ready = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+      crewBuildRotated: false,
+    });
+    const placeCrewBuildBlock = vi.fn().mockResolvedValue(true);
+    const user = openCrew(
+      controller({ crewData: dashboard({ runs: [ready] }), placeCrewBuildBlock }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    // A 4 mile Easy run earns a 2x1 block, so it has a second orientation.
+    expect(chosenLandingName()).toBe("Place Easy block in columns 1 through 2");
+
+    await user.click(screen.getByRole("button", { name: "Rotate block" }));
+    expect(chosenLandingName()).toBe("Place Easy block in column 1");
+
+    await user.click(screen.getByRole("button", { name: "Drop" }));
+
+    // Crew derives width and height from the run server-side, so the flag is
+    // the only way the tower learns which way this block is standing.
+    expect(placeCrewBuildBlock).toHaveBeenCalledWith("ready-own", 0, 1, true);
+  });
+
+  it("offers no Crew rotation for a block with one orientation", async () => {
+    // Cross Training is a fixed 1-wide block; a 30 minute session earns 1x1.
+    const square = sharedRun("ready-own", "zack", "2026-08-08", {
+      crewBuildRow: null,
+      crewBuildColumnStart: null,
+      crewBuildRotated: false,
+      activityType: "cross",
+      durationSeconds: 600,
+    });
+    const user = openCrew(controller({ crewData: dashboard({ runs: [square] }) }));
+
+    await user.click(screen.getByRole("button", { name: "Place Block" }));
+    expect(
+      screen.queryByRole("button", { name: "Rotate block" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("offers Move Block only for the current runner's placed Crew block", async () => {
     const own = sharedRun("own", "zack", "2026-08-08", {
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const teammate = sharedRun("theirs", "drew", "2026-08-09", {
       crewBuildRow: 0,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [own, teammate] }) }));
 
@@ -1463,6 +1536,7 @@ describe("Shared Crew Build", () => {
     const own = sharedRun("own", "zack", "2026-08-08", {
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [own] }) }));
 

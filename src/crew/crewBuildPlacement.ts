@@ -20,12 +20,19 @@ export class CrewBuildPlacementError extends Error {
 /** Narrow client for the collision-safe, owner-only placement transaction. */
 export async function placeCrewBuildBlock(
   client: SupabaseClient,
-  input: { sharedRunId: string; row: number; columnStart: number },
+  input: {
+    sharedRunId: string;
+    row: number;
+    columnStart: number;
+    /** Whether the block stands turned from the footprint the run earns (#204). */
+    rotated: boolean;
+  },
 ): Promise<void> {
   const result = await client.rpc("place_crew_build_block", {
     p_shared_run_id: input.sharedRunId,
     p_row: input.row,
     p_column_start: input.columnStart,
+    p_rotated: input.rotated,
   });
   if (!result.error) return;
   if (result.error.message.includes(CREW_BUILD_PLACEMENT_CONFLICT)) {

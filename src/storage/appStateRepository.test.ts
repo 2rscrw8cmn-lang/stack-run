@@ -636,6 +636,59 @@ describe("placeBlock", () => {
     ).toThrow(InvalidPlacementError);
   });
 
+  it("stores a block turned on its end (issue #204)", () => {
+    // A 9 mile run earns a 4x1 block. Turned, it stands 1 wide and 4 courses
+    // tall — and the placement's own width and height *are* the orientation,
+    // so persisting the rotation is persisting the placement. Nothing else is
+    // written, and nothing needed migrating.
+    const logged = saveRunLog(loadAppState(), {
+      ...scheduledRun,
+      workoutId: null,
+      distanceMiles: 9,
+    });
+    const runId = logged.runLogs[logged.runLogs.length - 1].id;
+
+    const state = placeBlock(logged, {
+      runLogId: runId,
+      row: 0,
+      columnStart: 2,
+      width: 1,
+      height: 4,
+    });
+
+    expect(state.blockPlacements[0]).toMatchObject({ width: 1, height: 4 });
+    // And it survives the round trip through storage, which is the whole of
+    // "orientation survives refresh/reload".
+    expect(loadAppState().blockPlacements[0]).toMatchObject({
+      runLogId: runId,
+      columnStart: 2,
+      width: 1,
+      height: 4,
+    });
+  });
+
+  it("still rejects a size that is neither the earned block nor its rotation", () => {
+    const logged = saveRunLog(loadAppState(), {
+      ...scheduledRun,
+      workoutId: null,
+      distanceMiles: 9,
+    });
+    const runId = logged.runLogs[logged.runLogs.length - 1].id;
+
+    // 4x1 earned, so 4x1 and 1x4 are the only two sizes this run can occupy.
+    // Rotation swaps axes and resizes nothing — it is not a licence to claim
+    // space no activity paid for.
+    expect(() =>
+      placeBlock(logged, {
+        runLogId: runId,
+        row: 0,
+        columnStart: 1,
+        width: 2,
+        height: 2,
+      }),
+    ).toThrow(InvalidPlacementError);
+  });
+
   it("rejects a row that is not where the block would fall", () => {
     const logged = stateWithLoggedRun();
     expect(() =>

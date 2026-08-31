@@ -39,10 +39,13 @@ import {
 import { avgPaceSecondsByUserId, AVG_PACE_WINDOW } from "../../crew/avgPace.js";
 import {
   crewAwardLandingOptions,
+  crewBuildFootprint,
   crewBuildLandingOptions,
   deriveCrewBuildWithAwards,
   EMPTY_CREW_BUILD,
 } from "../../crew/crewBuild.js";
+import { crewAwardFootprint } from "../../crew/awards.js";
+import { handFootprint } from "../../domain/footprint.js";
 import { crewSyncStatus } from "../../crew/freshness.js";
 import { crewMemberAccent } from "../../crew/memberAccent.js";
 import { deriveCrewMiniBuild } from "../../crew/miniBuild.js";
@@ -54,6 +57,8 @@ import type { RaceCrewController } from "../../crew/useRaceCrew.js";
 import { useCrewAwards } from "../../crew/useCrewAwards.js";
 import { todayLocalDate } from "../../domain/dates.js";
 import { autoPlaceOption } from "../../domain/placement.js";
+import { rotationTick } from "../build/haptics.js";
+import { handCanRotate, resolveHand } from "../build/placementHand.js";
 import { useJustPlaced } from "../build/useJustPlaced.js";
 import { CrewAwardDetailSheet } from "./CrewAwardDetailSheet.js";
 import { CrewAwardsPanel } from "./CrewAwardsPanel.js";
@@ -156,6 +161,8 @@ export function CrewScreen({
   const [placingRunId, setPlacingRunId] = useState<string | null>(null);
   const [placingAwardId, setPlacingAwardId] = useState<string | null>(null);
   const [candidateColumn, setCandidateColumn] = useState<string | null>(null);
+  /** Whether the block in hand stands turned from the way it was earned (#204). */
+  const [placementRotated, setPlacementRotated] = useState(false);
   const [placementLocalError, setPlacementLocalError] = useState<string | null>(null);
   const { justPlacedId, markJustPlaced } = useJustPlaced();
   const metricRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -403,23 +410,35 @@ export function CrewScreen({
     : dashboardData.crewBuildRuns.find((run) => run.id === placingRunId)
       ?? requestedPlacementRun;
 
+  // The footprint in hand, turned or not. Crew has to send the orientation to
+  // the RPC as well as draw it, because the server derives width and height
+  // from the run rather than storing them (see the #204 migration).
+  const placementEarned = placingRun
+    ? crewBuildFootprint(placingRun)
+    : placingAward
+      ? crewAwardFootprint(placingAward.awardType)
+      : null;
+  const placementFootprint = placementEarned
+    ? handFootprint(placementEarned, placementRotated)
+    : null;
+
   const placementBlocks = build.blocks.filter((block) => {
     if (placingRun) return !(block.kind === "run" && block.id === placingRun.id);
     if (placingAward) return !(block.kind === "award" && block.id === placingAward.id);
     return true;
   });
   const placementOptions = placingRun
-    ? crewBuildLandingOptions(placingRun, placementBlocks)
+    ? crewBuildLandingOptions(placingRun, placementBlocks, placementRotated)
     : placingAward
-      ? crewAwardLandingOptions(placingAward, placementBlocks)
+      ? crewAwardLandingOptions(placingAward, placementBlocks, placementRotated)
       : [];
-  const placementCandidate =
-    placementOptions.find((option) => String(option.columnStart) === candidateColumn) ??
-    autoPlaceOption(placementOptions) ??
-    null;
-  const placementCandidateIndex = placementCandidate
-    ? placementOptions.findIndex((option) => option.columnStart === placementCandidate.columnStart)
-    : -1;
+  // Shared with Personal Build, so that "a rotation never relocates the block"
+  // is one rule in one place rather than two that can drift.
+  const placementHand = placementFootprint
+    ? resolveHand(placementOptions, candidateColumn, placementFootprint)
+    : null;
+  const placementCandidate = placementHand?.candidate ?? null;
+  const placementCandidateIndex = placementHand?.index ?? -1;
 
   function startPlacement(run: CrewBuildRun) {
     onCrewPlacementHandled?.();
@@ -428,6 +447,7 @@ export function CrewScreen({
     setPlacementLocalError(null);
     setPlacingAwardId(null);
     setPlacingRunId(run.id);
+    setPlacementRotated(run.crewBuildRotated ?? false);
     setCandidateColumn(
       run.crewBuildColumnStart === null ? null : String(run.crewBuildColumnStart),
     );
@@ -442,6 +462,7 @@ export function CrewScreen({
     setPlacementLocalError(null);
     setPlacingRunId(null);
     setPlacingAwardId(award.id);
+    setPlacementRotated(award.crewBuildRotated ?? false);
     setCandidateColumn(
       award.crewBuildColumnStart === null ? null : String(award.crewBuildColumnStart),
     );
@@ -453,6 +474,7 @@ export function CrewScreen({
     crewAwards.clearPlacementError();
     setPlacementLocalError(null);
     setCandidateColumn(null);
+    setPlacementRotated(false);
     setPlacingRunId(null);
     setPlacingAwardId(null);
   }
@@ -469,6 +491,20 @@ export function CrewScreen({
     if (next) choosePlacement(next);
   }
 
+  /**
+   * Turns the block in hand, pinning the column it currently occupies first so
+   * the turn happens where the block is. Without the pin, a block still
+   * sitting on Auto Place's own choice would be re-placed by the rotation —
+   * indistinguishable, from the runner's side, from STACK moving it.
+   */
+  function rotatePlacement() {
+    if (placementCandidate) {
+      setCandidateColumn(String(placementCandidate.columnStart));
+    }
+    setPlacementRotated((current) => !current);
+    rotationTick();
+  }
+
   function autoPlacePlacement() {
     const automatic = autoPlaceOption(placementOptions);
     if (automatic) choosePlacement(automatic);
@@ -481,6 +517,7 @@ export function CrewScreen({
         placingRun.id,
         placementCandidate.row,
         placementCandidate.columnStart,
+        placementRotated,
       );
       if (placed) {
         markJustPlaced(placingRun.id);
@@ -493,6 +530,7 @@ export function CrewScreen({
         placingAward.id,
         placementCandidate.row,
         placementCandidate.columnStart,
+        placementRotated,
       );
       if (placed) {
         markJustPlaced(placingAward.id);
@@ -507,6 +545,11 @@ export function CrewScreen({
       run: placingRun,
       options: placementOptions,
       candidate: placementCandidate,
+      footprint: placementFootprint ?? { width: 1, height: 1 },
+      rotated: placementRotated,
+      blockedReason: placementHand?.blockedReason ?? null,
+      canRotate: placementEarned ? handCanRotate(placementEarned) : false,
+      onRotate: rotatePlacement,
       pending: activeCrew.crewBuildPlacementPending,
       error: activeCrew.crewBuildPlacementError ?? placementLocalError,
       onChoose: choosePlacement,
@@ -522,6 +565,11 @@ export function CrewScreen({
         member: placingAwardMember,
         options: placementOptions,
         candidate: placementCandidate,
+        footprint: placementFootprint ?? { width: 1, height: 1 },
+        rotated: placementRotated,
+        blockedReason: placementHand?.blockedReason ?? null,
+        canRotate: placementEarned ? handCanRotate(placementEarned) : false,
+        onRotate: rotatePlacement,
         pending: crewAwards.placementPending,
         error: crewAwards.placementError ?? placementLocalError,
         onChoose: choosePlacement,

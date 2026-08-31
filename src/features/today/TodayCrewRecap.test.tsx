@@ -50,6 +50,7 @@ function run(
     buildColumnStart: null,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,
@@ -96,6 +97,7 @@ const WEEK_RUNS = [
     activityType: "long",
     crewBuildRow: 4,
     crewBuildColumnStart: 1,
+    crewBuildRotated: false,
   }),
   run("c", "zack", "2026-08-15", { distanceMiles: 4, durationSeconds: 2100 }),
 ];

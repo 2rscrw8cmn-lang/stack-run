@@ -372,7 +372,8 @@ function parsePlacement(value: unknown): BlockPlacement | null {
     row !== null && Number.isInteger(row) && row >= 0 &&
     columnStart !== null && Number.isInteger(columnStart) && columnStart >= 1 && columnStart <= 8 &&
     width !== null && [1, 2, 3, 4].includes(width) &&
-    height !== null && [1, 2, 3].includes(height) &&
+    // 4 is reachable only by rotation: the race block stood on end (#204).
+    height !== null && [1, 2, 3, 4].includes(height) &&
     placedAt && Number.isFinite(Date.parse(placedAt))
     ? {
         runLogId,

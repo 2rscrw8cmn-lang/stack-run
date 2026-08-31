@@ -54,6 +54,7 @@ function run(
     buildColumnStart: null,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,

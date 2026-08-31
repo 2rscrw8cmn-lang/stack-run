@@ -20,6 +20,7 @@ function run(id: string, userId: string, localDate: string): CrewSharedRun {
     buildColumnStart: null,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,

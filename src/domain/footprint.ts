@@ -111,3 +111,81 @@ export function footprintFor(runLog: RunLog): Footprint {
         height: heightForActivityType(runLog.activityType),
       };
 }
+
+/**
+ * A *placed* block's dimensions, which are not quite an earned block's.
+ *
+ * Rotation swaps the axes rather than resizing anything, so the height axis
+ * has to admit 4: the race is earned 4 wide and 3 tall, and stood on end it
+ * is 4 courses tall — one taller than any block is ever *earned*. Width needs
+ * no widening, since nothing is earned taller than 3.
+ *
+ * Earned geometry stays `Footprint`. This is what a placement stores, and the
+ * two differ only once a block has been turned.
+ */
+export type PlacedWidth = 1 | 2 | 3 | 4;
+export type PlacedHeight = 1 | 2 | 3 | 4;
+
+export interface PlacedFootprint {
+  width: PlacedWidth;
+  height: PlacedHeight;
+}
+
+/**
+ * Turns a footprint 90°, which for a rectangle on a grid is simply swapping
+ * its axes: there is no second rotation to distinguish, because 180° is the
+ * same footprint again. A square is its own rotation.
+ *
+ * This is the whole of the rotation model. No angle is stored anywhere,
+ * because the grid footprint *is* the orientation — see `BlockPlacement`.
+ */
+export function rotateFootprint(footprint: PlacedFootprint): PlacedFootprint {
+  return { width: footprint.height, height: footprint.width };
+}
+
+/**
+ * The footprint as currently turned. The one-liner is worth a name because
+ * both towers and the crew placement RPC all need to agree on what "turned"
+ * means, and `rotated ? rotate(f) : f` written in four places is four chances
+ * to disagree.
+ */
+export function handFootprint(
+  earned: PlacedFootprint,
+  rotated: boolean,
+): PlacedFootprint {
+  return rotated ? rotateFootprint(earned) : earned;
+}
+
+/**
+ * Whether turning this block would change anything. A square block rotates to
+ * itself, so offering the control for one would promise a change that never
+ * comes.
+ */
+export function canRotateFootprint(footprint: PlacedFootprint): boolean {
+  return footprint.width !== footprint.height;
+}
+
+/**
+ * Whether a placed footprint is one the earned block could actually stand in:
+ * the earned one, or the earned one turned. Everything else is a placement
+ * claiming a size no activity paid for.
+ */
+export function isOrientationOf(
+  placed: PlacedFootprint,
+  earned: Footprint,
+): boolean {
+  return (
+    (placed.width === earned.width && placed.height === earned.height) ||
+    (placed.width === earned.height && placed.height === earned.width)
+  );
+}
+
+/**
+ * Whether this placement stands turned from the block it was earned as.
+ *
+ * Derived rather than stored: a square block reads as un-rotated whichever
+ * way it was turned, which is the honest answer — nothing about it changed.
+ */
+export function isRotated(placed: PlacedFootprint, earned: Footprint): boolean {
+  return placed.width !== earned.width || placed.height !== earned.height;
+}

@@ -24,6 +24,7 @@ function award(overrides: Partial<CrewAwardBlockRecord> = {}): CrewAwardBlockRec
     sourceSharedRunId: null,
     crewBuildRow: 0,
     crewBuildColumnStart: 1,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     createdAt: "2026-08-10T00:00:00Z",
     ...overrides,

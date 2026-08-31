@@ -142,7 +142,7 @@ describe("Crew dashboard query", () => {
       (call) => call.table === "shared_runs" && call.operation === "select",
     );
     expect(runSelect?.value).toBe(
-      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate,best_5k_seconds",
+      "id,local_run_id,user_id,local_date,activity_type,distance_miles,duration_seconds,source,build_row,build_column_start,build_width,build_height,crew_build_row,crew_build_column_start,crew_build_rotated,crew_build_placed_at,created_at,updated_at,average_heart_rate,max_heart_rate,manual_heart_rate,best_5k_seconds",
     );
     // Heart rate is the one deliberate exception, per D-079; `source` is the
     // two-word origin issue #129 needs to mark a manual block; and
@@ -185,6 +185,7 @@ describe("Crew dashboard query", () => {
       buildColumnStart: 2,
       buildWidth: null,
       buildHeight: null,
+      crewBuildRotated: false,
       crewBuildRow: 7,
       crewBuildColumnStart: 3,
       crewBuildPlacedAt: "2026-08-09T13:00:00Z",
@@ -225,6 +226,10 @@ describe("Crew dashboard query", () => {
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
+        // Part of the coordinate. This assertion is the guard on the Crew
+        // boundary's whitelist, and it is where a dropped placement field is
+        // meant to be caught.
+        crewBuildRotated: false,
         crewBuildPlacedAt: "2026-08-09T13:00:00Z",
       },
     ]);

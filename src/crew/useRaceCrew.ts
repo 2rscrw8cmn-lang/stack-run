@@ -164,7 +164,12 @@ export interface RaceCrewController {
   toggleProps: (runId: string) => Promise<void>;
   markPropsSeen: () => Promise<void>;
   dismissPropNotification: (notificationId: string) => void;
-  placeCrewBuildBlock: (runId: string, row: number, columnStart: number) => Promise<boolean>;
+  placeCrewBuildBlock: (
+    runId: string,
+    row: number,
+    columnStart: number,
+    rotated: boolean,
+  ) => Promise<boolean>;
   clearCrewBuildPlacementError: () => void;
   clearMessage: () => void;
   refreshExternalApiTokens: () => Promise<void>;
@@ -809,6 +814,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
     runId: string,
     row: number,
     columnStart: number,
+    rotated: boolean,
   ): Promise<boolean> {
     if (!availability.configured || !user || !account?.crew || crewBuildPlacementPending) {
       return false;
@@ -820,6 +826,7 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
         sharedRunId: runId,
         row,
         columnStart,
+        rotated,
       });
       lastDashboard.current.loadedAt = 0;
       await refreshCrewData(true);
@@ -830,10 +837,14 @@ export function useRaceCrew(appState: AppState | null): RaceCrewController {
       const snapshot = lastLoad.current;
       if (snapshot && snapshot.crewId === account.crew.id) {
         const placed = snapshot.data.crewBuildRuns.find((run) => run.id === runId);
+        // The orientation is part of the placement, so a read that comes back
+        // with the block standing the other way is as unconfirmed as one that
+        // comes back in the wrong column.
         if (
           !placed ||
           placed.crewBuildRow !== row ||
-          placed.crewBuildColumnStart !== columnStart
+          placed.crewBuildColumnStart !== columnStart ||
+          (placed.crewBuildRotated ?? false) !== rotated
         ) {
           setCrewBuildPlacementError(
             "That placement could not be confirmed. Refresh and try again.",

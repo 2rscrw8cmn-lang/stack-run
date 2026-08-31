@@ -1,4 +1,4 @@
-import { footprintFor } from "../domain/footprint.js";
+import { footprintFor, isOrientationOf } from "../domain/footprint.js";
 import {
   assertPlacementFits,
   canMove,
@@ -347,8 +347,13 @@ export function placeBlock(
     throw new InvalidPlacementError(`Unknown run log: ${input.runLogId}`);
   }
 
+  // The earned footprint, or the earned footprint turned on its end. A block
+  // can be rotated during placement (issue #204), and rotation swaps the axes
+  // rather than resizing anything — so these are the only two sizes a run can
+  // ever occupy, and anything else is a placement claiming space no activity
+  // paid for.
   const footprint = footprintFor(runLog);
-  if (footprint.width !== input.width || footprint.height !== input.height) {
+  if (!isOrientationOf(input, footprint)) {
     throw new InvalidPlacementError(
       `${input.runLogId} earns a ${footprint.width}x${footprint.height} block, not ${input.width}x${input.height}.`,
     );
