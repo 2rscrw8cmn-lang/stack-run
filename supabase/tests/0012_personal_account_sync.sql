@@ -282,7 +282,7 @@ insert into public.shared_runs (
   crew_build_placed_at
 ) values
   ('95000000-0000-0000-0000-000000000020', '95000000-0000-0000-0000-000000000010', '95000000-0000-0000-0000-000000000001', 'canonical-run', '2026-08-10', 'long', 8, 4200, null, null, null, null, null, null, null),
-  ('95000000-0000-0000-0000-000000000021', '95000000-0000-0000-0000-000000000010', '95000000-0000-0000-0000-000000000001', 'legacy-device-run', '2026-08-10', 'long', 8, 4200, 0, 1, 4, 1, 0, 1, '2026-08-10T13:00:00Z');
+  ('95000000-0000-0000-0000-000000000021', '95000000-0000-0000-0000-000000000010', '95000000-0000-0000-0000-000000000001', 'legacy-device-run', '2026-08-10', 'long', 8, 4200, 0, 1, 8, 1, 0, 1, '2026-08-10T13:00:00Z');
 insert into public.crew_reactions (crew_id, shared_run_id, user_id)
 values ('95000000-0000-0000-0000-000000000010', '95000000-0000-0000-0000-000000000021', '95000000-0000-0000-0000-000000000002');
 
@@ -324,7 +324,7 @@ begin
   ) then raise exception 'changed Crew footprint was not demoted to READY'; end if;
   if not exists (
     select 1 from public.shared_runs
-    where local_run_id = 'canonical-run' and build_row = 0 and build_width = 4
+    where local_run_id = 'canonical-run' and build_row = 0 and build_width = 8
   ) then raise exception 'Member Build frozen placement was not preserved'; end if;
 end;
 $$;

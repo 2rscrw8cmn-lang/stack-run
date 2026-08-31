@@ -444,3 +444,89 @@ $$;
 
 revoke all on function public.place_crew_award_block(uuid, integer, integer, boolean) from public, anon;
 grant execute on function public.place_crew_award_block(uuid, integer, integer, boolean) to authenticated;
+
+-- 7. Personal Build's server-side validator, on the same grid.
+--
+-- Easy to miss and expensive to miss: every personal Build save goes through
+-- here (`save_personal_build_state`, `delete_personal_runs`,
+-- `initialize_personal_stack`), and it had the old whole-column bounds baked
+-- into it. Left alone it would refuse every tower a client on the sub-grid
+-- writes, with `personal_build_invalid`, which no local test would have
+-- caught: the local checks are the same rules written in TypeScript.
+--
+-- Bounds only. The overlap and support rules below are unchanged and were
+-- always dimensionless, which is exactly why they did not need touching: they
+-- compare coordinates against coordinates, so they move onto the finer grid
+-- with the coordinates. Width and height both reach eight now — the race is
+-- earned four columns by three courses, which is eight units by three, and
+-- stood on end it is three by eight.
+create or replace function public.is_valid_personal_build(
+  p_user_id uuid,
+  p_placements jsonb
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  with parsed as (
+    select
+      ordinal,
+      value ->> 'runLogId' as run_id,
+      case when jsonb_typeof(value -> 'row') = 'number'
+             and (value ->> 'row') ~ '^\d+$'
+        then (value ->> 'row')::integer end as row_start,
+      case when jsonb_typeof(value -> 'columnStart') = 'number'
+             and (value ->> 'columnStart') ~ '^\d+$'
+        then (value ->> 'columnStart')::integer end as column_start,
+      case when jsonb_typeof(value -> 'width') = 'number'
+             and (value ->> 'width') ~ '^\d+$'
+        then (value ->> 'width')::integer end as width,
+      case when jsonb_typeof(value -> 'height') = 'number'
+             and (value ->> 'height') ~ '^\d+$'
+        then (value ->> 'height')::integer end as height,
+      value ->> 'placedAt' as placed_at
+    from jsonb_array_elements(
+      case when jsonb_typeof(p_placements) = 'array' then p_placements else '[]'::jsonb end
+    ) with ordinality item(value, ordinal)
+  ), valid as (
+    select * from parsed
+    where nullif(run_id, '') is not null
+      and row_start is not null and row_start >= 0
+      and column_start between 1 and public.tower_grid_units()
+      and width between 1 and public.tower_units_per_column() * 4
+      and height between 1 and public.tower_units_per_column() * 4
+      and column_start + width - 1 <= public.tower_grid_units()
+      and nullif(placed_at, '') is not null
+  )
+  select jsonb_typeof(p_placements) = 'array'
+    and (select count(*) from parsed) = (select count(*) from valid)
+    and (select count(*) from valid) = (select count(distinct run_id) from valid)
+    and not exists (
+      select 1 from valid item
+      where not exists (
+        select 1 from public.personal_runs run
+        where run.user_id = p_user_id and run.run_id = item.run_id
+          and run.deleted_at is null
+      )
+    )
+    and not exists (
+      select 1 from valid left_item join valid right_item
+        on left_item.ordinal < right_item.ordinal
+       and left_item.column_start < right_item.column_start + right_item.width
+       and right_item.column_start < left_item.column_start + left_item.width
+       and left_item.row_start < right_item.row_start + right_item.height
+       and right_item.row_start < left_item.row_start + left_item.height
+    )
+    and not exists (
+      select 1 from valid item
+      where item.row_start > 0 and not exists (
+        select 1 from valid support
+        where support.ordinal <> item.ordinal
+          and support.row_start + support.height = item.row_start
+          and item.column_start < support.column_start + support.width
+          and support.column_start < item.column_start + item.width
+      )
+    );
+$$;

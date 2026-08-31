@@ -63,19 +63,21 @@ select public.initialize_personal_stack(
 -- Seed the stored Crew projection as it exists after the migration: legacy
 -- rows a pre-DATA-1 device wrote, plus the canonically projected rows.
 reset role;
+-- Coordinates and widths are logical placement units, two to a tower column
+-- (issue #206): an 8-mile run is four columns, so eight units.
 insert into public.shared_runs (
   id, crew_id, user_id, local_run_id, local_date, activity_type,
   distance_miles, duration_seconds, build_row, build_column_start,
   build_width, build_height, crew_build_row, crew_build_column_start,
   crew_build_placed_at, created_at
 ) values
-  ('96000000-0000-0000-0000-000000000020', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'legacy-alias-a', '2026-08-10', 'long', 8, 4200, 0, 1, 4, 1, 0, 1, '2026-08-10T13:00:00Z', '2026-08-10T13:00:00Z'),
+  ('96000000-0000-0000-0000-000000000020', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'legacy-alias-a', '2026-08-10', 'long', 8, 4200, 0, 1, 8, 1, 0, 1, '2026-08-10T13:00:00Z', '2026-08-10T13:00:00Z'),
   ('96000000-0000-0000-0000-000000000021', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'run-canonical-a', '2026-08-10', 'long', 8, 4200, null, null, null, null, null, null, null, '2026-08-13T13:00:00Z'),
-  ('96000000-0000-0000-0000-000000000022', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'device-b-run', '2026-08-11', 'easy', 4.03, 2334, 1, 1, 2, 1, 0, 5, '2026-08-11T13:00:00Z', '2026-08-11T13:00:00Z'),
-  ('96000000-0000-0000-0000-000000000023', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'run-canonical-b', '2026-08-11', 'easy', 4.03, 2334, null, null, null, null, 1, 5, '2026-08-13T13:00:00Z', '2026-08-13T13:00:00Z'),
+  ('96000000-0000-0000-0000-000000000022', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'device-b-run', '2026-08-11', 'easy', 4.03, 2334, 1, 1, 4, 1, 0, 9, '2026-08-11T13:00:00Z', '2026-08-11T13:00:00Z'),
+  ('96000000-0000-0000-0000-000000000023', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'run-canonical-b', '2026-08-11', 'easy', 4.03, 2334, null, null, null, null, 1, 9, '2026-08-13T13:00:00Z', '2026-08-13T13:00:00Z'),
   ('96000000-0000-0000-0000-000000000024', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'device-twin', '2026-08-12', 'easy', 3, 1800, null, null, null, null, null, null, null, '2026-08-12T13:00:00Z'),
-  ('96000000-0000-0000-0000-000000000025', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'run-distinct', '2026-08-13', 'easy', 5, 2400, null, null, null, null, 2, 5, '2026-08-13T14:00:00Z', '2026-08-13T14:00:00Z'),
-  ('96000000-0000-0000-0000-000000000026', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'device-only-run', '2026-08-14', 'easy', 6, 3000, 2, 1, 3, 1, null, null, null, '2026-08-14T13:00:00Z');
+  ('96000000-0000-0000-0000-000000000025', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'run-distinct', '2026-08-13', 'easy', 5, 2400, null, null, null, null, 2, 9, '2026-08-13T14:00:00Z', '2026-08-13T14:00:00Z'),
+  ('96000000-0000-0000-0000-000000000026', '96000000-0000-0000-0000-000000000010', '96000000-0000-0000-0000-000000000001', 'device-only-run', '2026-08-14', 'easy', 6, 3000, 2, 1, 6, 1, null, null, null, '2026-08-14T13:00:00Z');
 
 -- The duplicate holds the Prop; the runner it belongs to must not lose it.
 insert into public.crew_reactions (crew_id, shared_run_id, user_id) values
@@ -136,7 +138,7 @@ begin
     where id = '96000000-0000-0000-0000-000000000026'
       and local_run_id = 'run-alone'
       and build_row = 2 and build_column_start = 1
-      and build_width = 3 and build_height = 1
+      and build_width = 6 and build_height = 1
   ) then raise exception 'a lone legacy contribution was not rekeyed in place'; end if;
 
   -- The established row is reconciled in place rather than recreated.
@@ -145,7 +147,7 @@ begin
     where id = '96000000-0000-0000-0000-000000000020'
       and local_run_id = 'run-canonical-a'
       and build_row = 0 and build_column_start = 1
-      and build_width = 4 and build_height = 1
+      and build_width = 8 and build_height = 1
       and crew_build_row = 0 and crew_build_column_start = 1
       and crew_build_placed_at = '2026-08-10T13:00:00Z'
   ) then raise exception 'Member Build or Crew Build placement was not preserved'; end if;
@@ -153,7 +155,7 @@ begin
     select 1 from public.shared_runs
     where id = '96000000-0000-0000-0000-000000000022'
       and local_run_id = 'run-canonical-b'
-      and build_row = 1 and crew_build_row = 0 and crew_build_column_start = 5
+      and build_row = 1 and crew_build_row = 0 and crew_build_column_start = 9
   ) then raise exception 'the surviving legacy contribution lost its placement'; end if;
 
   -- Props follow the run, including from the removed duplicate.
