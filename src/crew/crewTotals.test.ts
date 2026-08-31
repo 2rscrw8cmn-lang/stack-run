@@ -17,6 +17,7 @@ function run(overrides: Partial<CrewBuildRun> = {}): CrewBuildRun {
     createdAt: "2026-08-20T12:00:00Z",
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     ...overrides,
   };

@@ -101,6 +101,7 @@ function sharedRun(
     buildColumnStart: 1,
     crewBuildRow: 0,
     crewBuildColumnStart: 1,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,
@@ -153,7 +154,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       buildRow,
       buildColumnStart,
     })),
-    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, source, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildPlacedAt }) => ({
+    crewBuildRuns: runs.map(({ id, userId, displayName, accentColor, localDate, activityType, distanceMiles, durationSeconds, source, createdAt, crewBuildRow, crewBuildColumnStart, crewBuildRotated, crewBuildPlacedAt }) => ({
       id,
       userId,
       displayName,
@@ -166,6 +167,7 @@ function dashboard(overrides: Partial<CrewDashboardData> = {}): CrewDashboardDat
       createdAt,
       crewBuildRow,
       crewBuildColumnStart,
+      crewBuildRotated,
       crewBuildPlacedAt,
     })),
     sharedRunsAvailable: true,
@@ -464,6 +466,7 @@ describe("Crew comparisons and runs", () => {
               createdAt: soloRun.createdAt,
               crewBuildRow: soloRun.crewBuildRow,
               crewBuildColumnStart: soloRun.crewBuildColumnStart,
+              crewBuildRotated: false,
               crewBuildPlacedAt: soloRun.crewBuildPlacedAt,
             },
           ],
@@ -615,15 +618,18 @@ describe("Crew comparisons and runs", () => {
     const placedA = sharedRun("a-placed", "zack", "2026-08-09", {
       distanceMiles: 6,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const readyA = sharedRun("a-ready", "zack", "2026-08-10", {
       distanceMiles: 4,
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const placedB = sharedRun("b-placed", "drew", "2026-08-09", {
       distanceMiles: 8,
       crewBuildColumnStart: 4,
+      crewBuildRotated: false,
     });
     const user = await openCrew(controller({
       crewData: dashboard({
@@ -733,6 +739,7 @@ describe("Crew comparisons and runs", () => {
       // communal tower — only on Drew's own sanitized Personal Build.
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const afterCrewStart = sharedRun("after-crew-start", "drew", "2026-08-09", {
       activityType: "long",
@@ -741,6 +748,7 @@ describe("Crew comparisons and runs", () => {
       buildColumnStart: 1,
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const user = await openCrew(
       controller({
@@ -900,6 +908,7 @@ describe("Shared Crew Build", () => {
       createdAt: "2026-08-05T12:00:00Z",
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
     sharedRun("second", "drew", "2026-08-06", {
       activityType: "long",
@@ -907,6 +916,7 @@ describe("Shared Crew Build", () => {
       createdAt: "2026-08-06T12:00:00Z",
       crewBuildRow: 0,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     }),
     sharedRun("third", "travis", "2026-08-07", {
       activityType: "intervals",
@@ -914,6 +924,7 @@ describe("Shared Crew Build", () => {
       createdAt: "2026-08-07T12:00:00Z",
       crewBuildRow: 1,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
   ];
 
@@ -1043,6 +1054,7 @@ describe("Shared Crew Build", () => {
       source: "manual",
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const synced = sharedRun("synced", "drew", "2026-08-06", {
       activityType: "long",
@@ -1050,6 +1062,7 @@ describe("Shared Crew Build", () => {
       source: "intervals",
       crewBuildRow: 0,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [manual, synced] }) }));
 
@@ -1198,14 +1211,17 @@ describe("Shared Crew Build", () => {
       distanceMiles: 8,
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const ownNewer = sharedRun("own-newer", "zack", "2026-08-09", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const teammate = sharedRun("teammate", "drew", "2026-08-07", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     openCrew(controller({ crewData: dashboard({ runs: [ownNewer, teammate, ownOlder] }) }));
 
@@ -1224,6 +1240,7 @@ describe("Shared Crew Build", () => {
     const teammate = sharedRun("teammate", "drew", "2026-08-07", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     openCrew(controller({ crewData: dashboard({ runs: [teammate] }) }));
     expect(screen.queryByText("0 built · 1 ready")).not.toBeInTheDocument();
@@ -1235,6 +1252,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1267,6 +1285,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const onCrewPlacementHandled = vi.fn();
     const user = openCrew(
@@ -1286,6 +1305,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const onCrewPlacementHandled = vi.fn();
     const user = openCrew(
@@ -1313,6 +1333,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1342,6 +1363,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1372,6 +1394,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({
       crewData: dashboard({ runs: [ready] }),
@@ -1423,6 +1446,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [ready] }) }));
 
@@ -1441,6 +1465,7 @@ describe("Shared Crew Build", () => {
     const ready = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
     });
     const placeCrewBuildBlock = vi.fn().mockResolvedValue(true);
     const user = openCrew(
@@ -1466,6 +1491,7 @@ describe("Shared Crew Build", () => {
     const square = sharedRun("ready-own", "zack", "2026-08-08", {
       crewBuildRow: null,
       crewBuildColumnStart: null,
+      crewBuildRotated: false,
       activityType: "cross",
       durationSeconds: 600,
     });
@@ -1481,10 +1507,12 @@ describe("Shared Crew Build", () => {
     const own = sharedRun("own", "zack", "2026-08-08", {
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const teammate = sharedRun("theirs", "drew", "2026-08-09", {
       crewBuildRow: 0,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [own, teammate] }) }));
 
@@ -1503,6 +1531,7 @@ describe("Shared Crew Build", () => {
     const own = sharedRun("own", "zack", "2026-08-08", {
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     const user = openCrew(controller({ crewData: dashboard({ runs: [own] }) }));
 

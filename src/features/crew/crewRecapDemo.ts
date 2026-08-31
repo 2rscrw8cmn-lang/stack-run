@@ -104,7 +104,11 @@ function run(
     Partial<
       Pick<
         CrewWeekRecapRun,
-        "crewBuildRow" | "crewBuildColumnStart" | "source" | "best5kSeconds"
+        | "crewBuildRow"
+        | "crewBuildColumnStart"
+        | "crewBuildRotated"
+        | "source"
+        | "best5kSeconds"
       >
     >,
 ): CrewWeekRecapRun {
@@ -118,6 +122,7 @@ function run(
     localDate,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     best5kSeconds: null,
     ...fields,
   };
@@ -155,6 +160,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       source: "intervals",
       crewBuildRow: 6,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
     // A representative source-verified 5K: 20:55 inside an interval session.
     // Faster than the week's best average pace, which is the point — a 5K
@@ -167,6 +173,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       best5kSeconds: 1255,
       crewBuildRow: 6,
       crewBuildColumnStart: 3,
+      crewBuildRotated: false,
     }),
     run("w3", 3, "2026-09-09", {
       activityType: "cross",
@@ -175,6 +182,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       source: "intervals",
       crewBuildRow: 6,
       crewBuildColumnStart: 6,
+      crewBuildRotated: false,
     }),
     // The one hand-logged run of the week, so its brick carries issue #129's
     // asterisk and the rest do not.
@@ -185,6 +193,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       source: "manual",
       crewBuildRow: 6,
       crewBuildColumnStart: 7,
+      crewBuildRotated: false,
     }),
     // Wednesday is the crew's busiest day: three runs on it.
     run("w5", 4, "2026-09-09", {
@@ -200,6 +209,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       source: "intervals",
       crewBuildRow: 7,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
     // The fastest qualifying pace of the week: 7:47 /mi over 3.2 miles.
     run("w7", 5, "2026-09-11", {
@@ -218,6 +228,7 @@ function demoRuns(variant: CrewRecapDemoVariant): CrewWeekRecapRun[] {
       best5kSeconds: 1418,
       crewBuildRow: 8,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     }),
     // Earned, not yet placed: it counts in the week's totals and not in the
     // tower, which is exactly the distinction the Build page draws.
@@ -304,6 +315,7 @@ export function crewRecapDemoData(
             sourceSharedRunId: null,
             crewBuildRow: 9,
             crewBuildColumnStart: 6,
+            crewBuildRotated: false,
             crewBuildPlacedAt: "2026-09-14T18:00:00Z",
             createdAt: "2026-09-14T00:00:00Z",
           },
@@ -317,6 +329,7 @@ export function crewRecapDemoData(
             sourceSharedRunId: null,
             crewBuildRow: 9,
             crewBuildColumnStart: 1,
+            crewBuildRotated: false,
             crewBuildPlacedAt: "2026-09-14T18:05:00Z",
             createdAt: "2026-09-14T00:00:00Z",
           },
@@ -331,6 +344,7 @@ export function crewRecapDemoData(
             sourceSharedRunId: null,
             crewBuildRow: null,
             crewBuildColumnStart: null,
+            crewBuildRotated: false,
             crewBuildPlacedAt: null,
             createdAt: "2026-09-14T00:00:00Z",
           },

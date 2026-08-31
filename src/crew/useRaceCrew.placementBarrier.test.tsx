@@ -108,10 +108,15 @@ const readyRun = {
   createdAt: "2026-08-09T12:00:00Z",
   crewBuildRow: null as number | null,
   crewBuildColumnStart: null as number | null,
+  crewBuildRotated: false,
   crewBuildPlacedAt: null as string | null,
 };
 
-function dashboardWith(row: number | null, columnStart: number | null): CrewDashboardData {
+function dashboardWith(
+  row: number | null,
+  columnStart: number | null,
+  rotated = false,
+): CrewDashboardData {
   return {
     members: account.members,
     summaries: [],
@@ -122,6 +127,7 @@ function dashboardWith(row: number | null, columnStart: number | null): CrewDash
         ...readyRun,
         crewBuildRow: row,
         crewBuildColumnStart: columnStart,
+        crewBuildRotated: rotated,
         crewBuildPlacedAt: row === null ? null : "2026-08-20T01:00:00Z",
       },
     ],
@@ -185,8 +191,44 @@ describe("Crew placement read barrier", () => {
       id: "shared-run-1",
       crewBuildRow: 0,
       crewBuildColumnStart: 1,
+      crewBuildRotated: false,
     });
     expect(result.current.crewBuildPlacementError).toBeNull();
+  });
+
+  it("confirms a turned placement that reads back turned (issue #204)", async () => {
+    // The regression this exists for: `crewBuildRuns` is a hand-written
+    // whitelist of the fields allowed across the Crew boundary, and it once
+    // dropped the orientation. The write succeeded, the read came back with
+    // `crewBuildRotated` absent, and a runner who turned a block was told
+    // their own successful placement could not be confirmed.
+    mocks.loadCrewDashboard.mockResolvedValue(dashboardWith(0, 1, true));
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.crew?.id).toBe("crew-1"));
+
+    let placed = false;
+    await act(async () => {
+      placed = await result.current.placeCrewBuildBlock("shared-run-1", 0, 1, true);
+    });
+
+    expect(placed).toBe(true);
+    expect(result.current.crewBuildPlacementError).toBeNull();
+  });
+
+  it("says so when a turned placement reads back lying flat", async () => {
+    // The orientation is part of the coordinate, so a block that comes back
+    // the other way up is as unconfirmed as one in the wrong column.
+    mocks.loadCrewDashboard.mockResolvedValue(dashboardWith(0, 1, false));
+    const { result } = renderHook(() => useRaceCrew(null));
+    await waitFor(() => expect(result.current.account?.crew?.id).toBe("crew-1"));
+
+    let placed = true;
+    await act(async () => {
+      placed = await result.current.placeCrewBuildBlock("shared-run-1", 0, 1, true);
+    });
+
+    expect(placed).toBe(false);
+    expect(result.current.crewBuildPlacementError).toMatch(/could not be confirmed/);
   });
 
   it("says so when a fresh read does not show the accepted coordinates", async () => {

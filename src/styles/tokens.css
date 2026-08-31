@@ -202,6 +202,12 @@
    * Keep in step with `.bottom-nav__item` if its padding, icon or label moves.
    */
   --bottom-nav-clearance: 64px;
+  /*
+   * What a screen has to hold clear while the placement controls are up: the
+   * bar's own row (48px) plus its vertical padding, over and above the nav
+   * clearance the shell already reserves.
+   */
+  --placement-bar-reserve: 92px;
 
   --space-1: 4px;
   --space-2: 8px;

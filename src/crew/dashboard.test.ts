@@ -226,6 +226,10 @@ describe("Crew dashboard query", () => {
         createdAt: "2026-08-09T12:00:00Z",
         crewBuildRow: 7,
         crewBuildColumnStart: 3,
+        // Part of the coordinate. This assertion is the guard on the Crew
+        // boundary's whitelist, and it is where a dropped placement field is
+        // meant to be caught.
+        crewBuildRotated: false,
         crewBuildPlacedAt: "2026-08-09T13:00:00Z",
       },
     ]);

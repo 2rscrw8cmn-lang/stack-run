@@ -26,6 +26,7 @@ function sharedRun(overrides: Partial<CrewSharedRun> = {}): CrewSharedRun {
     buildColumnStart: 1,
     crewBuildRow: null,
     crewBuildColumnStart: null,
+    crewBuildRotated: false,
     crewBuildPlacedAt: null,
     propsCount: 0,
     viewerHasPropped: false,

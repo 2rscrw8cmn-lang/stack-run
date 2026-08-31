@@ -369,6 +369,10 @@ export async function loadCrewDashboard(
     createdAt: run.createdAt,
     crewBuildRow: run.crewBuildRow,
     crewBuildColumnStart: run.crewBuildColumnStart,
+    // Part of the coordinate, not a decoration: without it the tower draws
+    // every placed block in its earned orientation whatever the runner chose,
+    // and a rotated placement reads back as unconfirmed.
+    crewBuildRotated: run.crewBuildRotated,
     crewBuildPlacedAt: run.crewBuildPlacedAt,
   }));
 

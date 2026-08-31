@@ -1107,8 +1107,18 @@ textarea.run-input {
  * the bottom 230-odd pixels, which is exactly where the ground line of a new
  * tower sits.
  */
-.build-screen[data-placing="true"] {
-  padding-bottom: calc(230px + env(safe-area-inset-bottom));
+/*
+ * Room under the page for the placement controls, which are fixed above the
+ * nav and would otherwise cover the end of the page.
+ *
+ * `--placement-bar-reserve` is the bar's own height (one 48px row plus its
+ * padding) on top of the nav clearance the shell already reserves. Personal
+ * Build used to hard-code 230px for the three-row sheet; Crew reserved nothing
+ * at all, which is why its controls sat on top of the Weekly Miles row.
+ */
+.build-screen[data-placing="true"],
+.crew-build--page[data-placing="true"] {
+  padding-bottom: var(--placement-bar-reserve);
 }
 
 /*
@@ -1214,6 +1224,14 @@ textarea.run-input {
  */
 .build-site__stage {
   display: flex;
+  /*
+   * A column, so the block-in-hand strip stacks above the tower the way Crew's
+   * does. It was a row, which put the strip *beside* the tower: the strip took
+   * half the width, the tower was squeezed into what was left, and the block
+   * being placed was clipped off the right edge by the `overflow: hidden`
+   * below.
+   */
+  flex-direction: column;
   align-items: stretch;
   gap: var(--space-2);
   /*
