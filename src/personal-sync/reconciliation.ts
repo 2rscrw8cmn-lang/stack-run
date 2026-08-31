@@ -7,7 +7,10 @@ import type {
   RunLog,
 } from "../domain/types.js";
 import { createRunLogId } from "../storage/appStateRepository.js";
-import { migrateAppState } from "../storage/migrations.js";
+import {
+  CURRENT_SCHEMA_VERSION,
+  migrateAppState,
+} from "../storage/migrations.js";
 import type {
   PersonalCloudRun,
   PersonalCloudSnapshot,
@@ -280,7 +283,13 @@ export function appStateFromCloud(snapshot: PersonalCloudSnapshot): AppState {
     .map((item) => item.run);
   const activeIds = new Set(activeRuns.map((run) => run.id));
   return migrateAppState({
-    schemaVersion: 10,
+    // The current schema, not an older one: the cloud placements have already
+    // been read into logical grid units by `parsePlacement`, and naming an
+    // older version here would send them through schema 12's rescale a second
+    // time and double every block's width (issue #206). What the older version
+    // was buying — `backfillPlan` on a plan written before #179 — the current
+    // branch does too.
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     settings: snapshot.training.settings,
     plan: snapshot.training.plan,
     planHistory: snapshot.training.planHistory,

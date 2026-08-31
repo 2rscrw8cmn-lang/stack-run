@@ -1,4 +1,8 @@
-import { footprintFor } from "../domain/footprint.js";
+import {
+  footprintFor,
+  handFootprint,
+  unitsFromLegacyPlacement,
+} from "../domain/footprint.js";
 import { repackPlacements } from "../domain/placement.js";
 import type {
   AppSettings,
@@ -13,7 +17,7 @@ import type {
 import { backfillPlan } from "../domain/racePlan.js";
 import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 function backfillPlanHistory(
   planHistory: readonly ArchivedTrainingPlan[],
@@ -295,7 +299,9 @@ function upgradePlacements(
     if (!runLog) {
       return [];
     }
-    const { width, height } = footprintFor(runLog);
+    // Repacked from scratch below, so the footprint only has to be the right
+    // *size*: units, like every placement written since schema 12.
+    const { width, height } = handFootprint(footprintFor(runLog), false);
     return [
       {
         runLogId: runLog.id,
@@ -309,6 +315,24 @@ function upgradePlacements(
   });
 
   return repackPlacements(carried);
+}
+
+/**
+ * Schema 12: placements measure in logical grid units rather than whole tower
+ * columns (issue #206). The tower looks the same afterwards — a unit is half a
+ * column, so doubling a width and moving a start to its column's first unit
+ * describes exactly the block that was already there — but the finer grid is
+ * what lets a turned block keep its physical rectangle.
+ *
+ * Every pre-12 payload comes through here, whichever version it arrived as, so
+ * there is one answer to what an old tower meant rather than one per branch.
+ */
+function upgradePlacementsToUnits(
+  placements: readonly BlockPlacement[] | undefined,
+): BlockPlacement[] {
+  return (placements ?? []).map((placement) =>
+    unitsFromLegacyPlacement(placement),
+  );
 }
 
 /**
@@ -368,7 +392,7 @@ export function migrateAppState(input: unknown): AppState {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       plan: legacyPlan ? backfillPlan(legacyPlan) : null,
-      blockPlacements: candidate.blockPlacements ?? [],
+      blockPlacements: upgradePlacementsToUnits(candidate.blockPlacements),
       planHistory: [],
       availability: null,
       runDays: null,
@@ -389,7 +413,7 @@ export function migrateAppState(input: unknown): AppState {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       plan: legacyPlan ? backfillPlan(legacyPlan) : null,
-      blockPlacements: candidate.blockPlacements ?? [],
+      blockPlacements: upgradePlacementsToUnits(candidate.blockPlacements),
       planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: null,
@@ -410,7 +434,7 @@ export function migrateAppState(input: unknown): AppState {
       ...(candidate as unknown as AppState),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       plan: legacyPlan ? backfillPlan(legacyPlan) : null,
-      blockPlacements: candidate.blockPlacements ?? [],
+      blockPlacements: upgradePlacementsToUnits(candidate.blockPlacements),
       planHistory: [],
       availability: (candidate as unknown as AppState).availability ?? null,
       runDays: (candidate as unknown as AppState).runDays ?? null,
@@ -428,6 +452,7 @@ export function migrateAppState(input: unknown): AppState {
       plan: legacy.plan ? backfillPlan(legacy.plan) : null,
       planHistory: [],
       runLogs: legacy.runLogs.map((runLog) => ({ ...runLog, source: "manual", externalSource: null, importedMetrics: null })),
+      blockPlacements: upgradePlacementsToUnits(legacy.blockPlacements),
       // Schema 8 predates the Cross Training day preference.
       crossTrainingDays: (legacy as unknown as AppState).crossTrainingDays ?? null,
       intervalsSync: { lastSuccessfulActivitySyncAt: null, ignoredActivityIds: [] },
@@ -441,6 +466,7 @@ export function migrateAppState(input: unknown): AppState {
       ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       plan: legacy.plan ? backfillPlan(legacy.plan) : null,
+      blockPlacements: upgradePlacementsToUnits(legacy.blockPlacements),
       planHistory: [],
     });
   }
@@ -456,6 +482,24 @@ export function migrateAppState(input: unknown): AppState {
       ...legacy,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       plan: legacy.plan ? backfillPlan(legacy.plan) : null,
+      blockPlacements: upgradePlacementsToUnits(legacy.blockPlacements),
+      planHistory: backfillPlanHistory(legacy.planHistory ?? []),
+    });
+  }
+
+  /**
+   * Schema 11 placed blocks on whole tower columns. Schema 12 places them on
+   * the finer square-unit grid underneath (issue #206), so the coordinates are
+   * rescaled and nothing else changes: the tower comes back looking exactly as
+   * it was left, block for block, in the same orientations.
+   */
+  if (candidate.schemaVersion === 11) {
+    const legacy = candidate as unknown as AppState;
+    return validateCurrentAppState({
+      ...legacy,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      plan: legacy.plan ? backfillPlan(legacy.plan) : null,
+      blockPlacements: upgradePlacementsToUnits(legacy.blockPlacements),
       planHistory: backfillPlanHistory(legacy.planHistory ?? []),
     });
   }

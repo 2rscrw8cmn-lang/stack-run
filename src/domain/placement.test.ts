@@ -5,7 +5,7 @@ import {
   canMove,
   faceVisibilityOf,
   fitsInGrid,
-  GRID_COLUMNS,
+  GRID_UNITS,
   InvalidPlacementError,
   landingRow,
   lastColumnOf,
@@ -19,12 +19,16 @@ import {
 } from "./placement.js";
 import type { BlockPlacement } from "./types.js";
 
+/**
+ * Coordinates here are logical placement units, not visible columns: the tower
+ * is `GRID_UNITS` across and a 1-column brick is 2 units wide (issue #206).
+ */
 function placement(
   runLogId: string,
   row: number,
   columnStart: number,
-  width: 1 | 2 | 3 | 4,
-  height: 1 | 2 | 3 = 1,
+  width: number,
+  height = 1,
   placedAt = "2026-08-04T12:00:00.000Z",
 ): BlockPlacement {
   return { runLogId, row, columnStart, width, height, placedAt };
@@ -35,12 +39,13 @@ const columns = (options: ReturnType<typeof placementOptions>) =>
 
 describe("skylineOf", () => {
   it("is flat ground when nothing is placed", () => {
-    expect(skylineOf([])).toEqual(new Array(GRID_COLUMNS).fill(0));
+    expect(skylineOf([])).toEqual(new Array(GRID_UNITS).fill(0));
   });
 
-  it("takes the top of each block across the columns it spans", () => {
+  it("takes the top of each block across the units it spans", () => {
     const skyline = skylineOf([placement("a", 0, 2, 3, 2)]);
-    expect(skyline).toEqual([0, 2, 2, 2, 0, 0, 0, 0]);
+    expect(skyline.slice(0, 5)).toEqual([0, 2, 2, 2, 0]);
+    expect(skyline).toHaveLength(GRID_UNITS);
   });
 
   it("takes the highest block when two share a column", () => {
@@ -99,17 +104,27 @@ describe("occupiedCellsOf / faceVisibilityOf / voidsOf", () => {
 });
 
 describe("fitsInGrid", () => {
-  it("keeps every block inside the eight columns", () => {
-    expect(GRID_COLUMNS).toBe(8);
-    expect(fitsInGrid(1, 4)).toBe(true);
-    expect(fitsInGrid(5, 4)).toBe(true);
-    expect(fitsInGrid(6, 4)).toBe(false);
+  it("keeps every block inside the sixteen placement units", () => {
+    // Eight columns of two units. A race is 8 units wide, so it fits flush
+    // left and flush right and nowhere past that.
+    expect(GRID_UNITS).toBe(16);
+    expect(fitsInGrid(1, 8)).toBe(true);
+    expect(fitsInGrid(9, 8)).toBe(true);
+    expect(fitsInGrid(10, 8)).toBe(false);
     expect(fitsInGrid(0, 1)).toBe(false);
+  });
+
+  it("lets a turned block stand on the half of a column it needs", () => {
+    // A 1-unit-wide block — a 1x1 brick stood on end — can start at any unit,
+    // including the odd ones a whole-column grid could not express (#206).
+    expect(fitsInGrid(2, 1)).toBe(true);
+    expect(fitsInGrid(16, 1)).toBe(true);
+    expect(fitsInGrid(17, 1)).toBe(false);
   });
 });
 
 describe("landingRow", () => {
-  it("rests on the highest column the block spans", () => {
+  it("rests on the highest unit the block spans", () => {
     const skyline = [0, 3, 1, 0, 0, 0, 0, 0, 0, 0];
     expect(landingRow(skyline, 1, 3)).toBe(3);
     expect(landingRow(skyline, 3, 2)).toBe(1);
@@ -120,15 +135,9 @@ describe("landingRow", () => {
 describe("placementOptions", () => {
   it("offers one landing per column, never a floating row", () => {
     const options = placementOptions(2, 1, []);
-    expect(columns(options)).toEqual([
-      "1@0",
-      "2@0",
-      "3@0",
-      "4@0",
-      "5@0",
-      "6@0",
-      "7@0",
-    ]);
+    expect(columns(options)).toEqual(
+      Array.from({ length: GRID_UNITS - 1 }, (_, index) => `${index + 1}@0`),
+    );
   });
 
   it("drops the block onto whatever is already built", () => {
@@ -221,7 +230,7 @@ describe("assertPlacementFits", () => {
 
   it("rejects a block that runs off the right edge", () => {
     expect(() =>
-      assertPlacementFits({ ...candidate, columnStart: 8, width: 2 }, []),
+      assertPlacementFits({ ...candidate, columnStart: 16, width: 2 }, []),
     ).toThrow(InvalidPlacementError);
   });
 
@@ -251,14 +260,15 @@ describe("assertPlacementFits", () => {
 describe("repackPlacements", () => {
   it("keeps every block and stacks them all from the ground up", () => {
     const repacked = repackPlacements([
-      placement("a", 9, 1, 4, 1, "2026-08-04T10:00:00.000Z"),
-      placement("b", 4, 1, 4, 1, "2026-08-04T11:00:00.000Z"),
-      placement("c", 7, 1, 4, 1, "2026-08-04T12:00:00.000Z"),
+      placement("a", 9, 1, 8, 1, "2026-08-04T10:00:00.000Z"),
+      placement("b", 4, 1, 8, 1, "2026-08-04T11:00:00.000Z"),
+      placement("c", 7, 1, 8, 1, "2026-08-04T12:00:00.000Z"),
     ]);
 
     expect(repacked.map((item) => item.runLogId)).toEqual(["a", "b", "c"]);
     expect(repacked.every((item) => item.row >= 0)).toBe(true);
-    // Three 4-wide blocks fit two to a course in an eight-column grid.
+    // Three race-width blocks — 8 units, four columns — fit two to a course
+    // in a sixteen-unit grid.
     expect(Math.max(...repacked.map(topOf))).toBe(2);
   });
 
@@ -269,8 +279,8 @@ describe("repackPlacements", () => {
           `w${index}`,
           0,
           1,
-          ((index % 4) + 1) as 1 | 2 | 3 | 4,
-          ((index % 2) + 1) as 1 | 2,
+          ((index % 4) + 1) * 2,
+          (index % 2) + 1,
           `2026-08-${String(4 + index).padStart(2, "0")}T10:00:00.000Z`,
         ),
       ),

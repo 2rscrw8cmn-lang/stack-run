@@ -268,8 +268,8 @@ export async function loadCrewDashboard(
       updatedAt: requiredString(item, "updated_at"),
       buildRow: nullableInteger(item, "build_row"),
       buildColumnStart: nullableInteger(item, "build_column_start"),
-      buildWidth: nullableInteger(item, "build_width") as 1 | 2 | 3 | 4 | null,
-      buildHeight: nullableInteger(item, "build_height") as 1 | 2 | 3 | null,
+      buildWidth: nullableInteger(item, "build_width"),
+      buildHeight: nullableInteger(item, "build_height"),
       crewBuildRow: nullableInteger(item, "crew_build_row"),
       crewBuildColumnStart: nullableInteger(item, "crew_build_column_start"),
       // Absent (an older payload, or a row from before the column existed)

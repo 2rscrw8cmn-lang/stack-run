@@ -27,14 +27,16 @@ function run(
 }
 
 describe("Crew Mini Build derivation", () => {
+  // Widths are in placement units, two per tower column (issue #206), which
+  // is what a legacy row with no stored `buildWidth` is rescaled into.
   it.each([
-    [2.99, 1],
-    [3, 2],
-    [4.99, 2],
-    [5, 3],
-    [7.99, 3],
-    [8, 4],
-  ])("maps %s miles to width %s", (miles, width) => {
+    [2.99, 2],
+    [3, 4],
+    [4.99, 4],
+    [5, 6],
+    [7.99, 6],
+    [8, 8],
+  ])("maps %s miles to width %s units", (miles, width) => {
     expect(deriveCrewMiniBuild([run("r", "2026-08-01", miles, "easy")], "runner-1").blocks[0].width)
       .toBe(width);
   });
@@ -54,7 +56,7 @@ describe("Crew Mini Build derivation", () => {
     // No buildWidth stored, so this exercises the widthForMiles fallback -
     // a synced ride's real distance must still not widen the block.
     expect(deriveCrewMiniBuild([run("r", "2026-08-01", 20, "cross")], "runner-1").blocks[0].width)
-      .toBe(1);
+      .toBe(2);
   });
 
   /*
@@ -84,9 +86,9 @@ describe("Crew Mini Build derivation", () => {
 
   it("uses supplied coordinates regardless of query order and keeps activity semantics", () => {
     const runs = [
-      run("c", "2026-08-03", 8, "long", "runner-1", 3, 5),
+      run("c", "2026-08-03", 8, "long", "runner-1", 3, 9),
       run("a", "2026-08-01", 2, "easy", "runner-1", 0, 1),
-      run("b", "2026-08-02", 5, "intervals", "runner-1", 1, 2),
+      run("b", "2026-08-02", 5, "intervals", "runner-1", 1, 3),
     ];
     const first = deriveCrewMiniBuild(runs, "runner-1");
     const second = deriveCrewMiniBuild([...runs].reverse(), "runner-1");
@@ -99,8 +101,8 @@ describe("Crew Mini Build derivation", () => {
     ]);
     expect(first.blocks.map(({ row, columnStart }) => ({ row, columnStart }))).toEqual([
       { row: 0, columnStart: 1 },
-      { row: 1, columnStart: 2 },
-      { row: 3, columnStart: 5 },
+      { row: 1, columnStart: 3 },
+      { row: 3, columnStart: 9 },
     ]);
   });
 
@@ -113,7 +115,7 @@ describe("Crew Mini Build derivation", () => {
         "easy",
         "runner-1",
         Math.floor(index / 4),
-        (index % 4) * 2 + 1,
+        (index % 4) * 4 + 1,
       ),
     );
     const model = deriveCrewMiniBuild(runs, "runner-1");
@@ -129,11 +131,11 @@ describe("Crew Mini Build derivation", () => {
       "runner-1",
     );
     const moved = deriveCrewMiniBuild(
-      [run("r", "2026-08-01", 4, "easy", "runner-1", 7, 6)],
+      [run("r", "2026-08-01", 4, "easy", "runner-1", 7, 11)],
       "runner-1",
     );
     expect(first.blocks[0]).toMatchObject({ row: 0, columnStart: 1 });
-    expect(moved.blocks[0]).toMatchObject({ row: 7, columnStart: 6 });
+    expect(moved.blocks[0]).toMatchObject({ row: 7, columnStart: 11 });
   });
 
   it("does not invent a position for a legacy unplaced shared run", () => {
@@ -179,7 +181,7 @@ describe("Crew Mini Build derivation", () => {
     const model = deriveCrewMiniBuild(
       [
         run("left", "2026-08-01", 2, "easy", "runner-1", 0, 1),
-        run("right", "2026-08-01", 2, "easy", "runner-1", 0, 2),
+        run("right", "2026-08-01", 2, "easy", "runner-1", 0, 3),
         run("stacked", "2026-08-01", 2, "easy", "runner-1", 1, 1),
       ],
       "runner-1",
@@ -189,15 +191,16 @@ describe("Crew Mini Build derivation", () => {
     const right = tower.blocks.find((block) => block.id === "right")!;
     const stacked = tower.blocks.find((block) => block.id === "stacked")!;
 
+    // One flag per grid unit the block spans, and a 1-column brick spans two.
     // The left block's top is covered by "stacked" and its right edge abuts
     // "right", so neither face should draw.
-    expect(left.topFace).toEqual([false]);
+    expect(left.topFace).toEqual([false, false]);
     expect(left.rightFace).toEqual([false]);
-    // "right" has open sky above and open air to its right (column 3 empty).
-    expect(right.topFace).toEqual([true]);
+    // "right" has open sky above and open air to its right (unit 5 empty).
+    expect(right.topFace).toEqual([true, true]);
     expect(right.rightFace).toEqual([true]);
     // "stacked" sits on top with nothing above or beside it.
-    expect(stacked.topFace).toEqual([true]);
+    expect(stacked.topFace).toEqual([true, true]);
     expect(stacked.rightFace).toEqual([true]);
     expect(tower.courses).toBe(model.courses);
     expect(tower.voids).toEqual([]);
@@ -222,7 +225,7 @@ describe("Crew Mini Build derivation", () => {
       trainingLoad: 72,
       notes: "private",
       effort: "great",
-      blockPlacements: [{ columnStart: 8, row: 99 }],
+      blockPlacements: [{ columnStart: 15, row: 99 }],
     };
     const serialized = JSON.stringify(deriveCrewMiniBuild([unsafeInput], "runner-1"));
 

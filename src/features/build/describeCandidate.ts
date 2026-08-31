@@ -1,6 +1,7 @@
 import { WORKOUT_TYPE_LABEL, type EarnedBlock } from "../../domain/build.js";
 import type { PlacedFootprint } from "../../domain/footprint.js";
 import type { PlacementOption } from "../../domain/placement.js";
+import { columnPhrase } from "../../domain/towerGeometry.js";
 
 /**
  * Where the hovering block would go, for the live region. Screen reader users
@@ -29,9 +30,10 @@ export function describeCandidate(
   if (!candidate) {
     return "";
   }
-  const columns =
-    candidate.columnStart === candidate.columnEnd
-      ? `column ${candidate.columnStart}`
-      : `columns ${candidate.columnStart} to ${candidate.columnEnd}`;
+  const columns = columnPhrase(
+    candidate.columnStart,
+    candidate.columnEnd - candidate.columnStart + 1,
+    "to",
+  );
   return `${WORKOUT_TYPE_LABEL[block.runLog.activityType]} block, ${footprint.width} by ${footprint.height}, over ${columns}.`;
 }

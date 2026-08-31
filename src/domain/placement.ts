@@ -1,18 +1,19 @@
-import type { BlockWidth } from "./footprint.js";
 import type { BlockPlacement } from "./types.js";
+import { GRID_COLUMNS, GRID_UNITS } from "./towerGeometry.js";
 
 /**
- * The tower is one continuous grid this many columns wide. Blocks stack
- * wherever they fit, regardless of which training week earned them — a week
- * does not reserve space.
+ * The tower is one continuous grid. Blocks stack wherever they fit, regardless
+ * of which training week earned them — a week does not reserve space.
  *
- * Eight per D-018: chunky targets beat packing efficiency. At 320px a
- * width-1 block measures about 33px against ten columns' 19px, which clears
- * the 24px target-size floor the old grid missed. The tower simply grows
- * taller, and height is progress. The count is stored in every placement's
+ * Everything here measures in **logical placement units**, not visible
+ * columns. The tower still reads as `GRID_COLUMNS` columns (eight per D-018:
+ * chunky targets beat packing efficiency), but a column is `UNITS_PER_COLUMN`
+ * units wide and a course is one unit tall, so the step is square and turning
+ * a block gives back the same physical rectangle — see `towerGeometry.ts`.
+ * Sixteen units across, and the count is stored in every placement's
  * `columnStart`, so it can never be made responsive.
  */
-export const GRID_COLUMNS = 8;
+export { GRID_COLUMNS, GRID_UNITS };
 
 /**
  * Where a block would come to rest. The user chooses a column and the block
@@ -70,12 +71,12 @@ export function topOf(placement: { row: number; height: number }): number {
   return placement.row + placement.height;
 }
 
-/** The height of each column, ground first. Index 0 is column 1. */
+/** The height of each grid unit column, ground first. Index 0 is unit 1. */
 export function skylineOf(
   placements: readonly GridFootprint[],
-  columns = GRID_COLUMNS,
+  units = GRID_UNITS,
 ): number[] {
-  const skyline = new Array<number>(columns).fill(0);
+  const skyline = new Array<number>(units).fill(0);
   for (const placement of placements) {
     for (
       let column = placement.columnStart;
@@ -83,7 +84,7 @@ export function skylineOf(
       column += 1
     ) {
       const index = column - 1;
-      if (index >= 0 && index < columns) {
+      if (index >= 0 && index < units) {
         skyline[index] = Math.max(skyline[index], topOf(placement));
       }
     }
@@ -91,7 +92,7 @@ export function skylineOf(
   return skyline;
 }
 
-/** Every cell any placement fills, as `"column:row"` keys. Shared by face
+/** Every cell any placement fills, as `"unit:row"` keys. Shared by face
  * culling (a face draws only where nothing abuts it) and void detection (a
  * cell the skyline covers that nothing actually fills). */
 export function occupiedCellsOf(placements: readonly GridFootprint[]): Set<string> {
@@ -127,7 +128,7 @@ export interface FaceVisibility {
 export function faceVisibilityOf(
   placement: GridFootprint,
   filled: ReadonlySet<string>,
-  columns = GRID_COLUMNS,
+  units = GRID_UNITS,
 ): FaceVisibility {
   const topFace: boolean[] = [];
   for (
@@ -141,7 +142,7 @@ export function faceVisibilityOf(
   const rightColumn = lastColumnOf(placement) + 1;
   const rightFace: boolean[] = [];
   for (let row = placement.row; row < topOf(placement); row += 1) {
-    rightFace.push(rightColumn > columns || !filled.has(`${rightColumn}:${row}`));
+    rightFace.push(rightColumn > units || !filled.has(`${rightColumn}:${row}`));
   }
 
   return { topFace, rightFace };
@@ -160,11 +161,11 @@ export interface GridVoid {
 export function voidsOf(
   placements: readonly GridFootprint[],
   filled: ReadonlySet<string>,
-  columns = GRID_COLUMNS,
+  units = GRID_UNITS,
 ): GridVoid[] {
-  const skyline = skylineOf(placements, columns);
+  const skyline = skylineOf(placements, units);
   const voids: GridVoid[] = [];
-  for (let column = 1; column <= columns; column += 1) {
+  for (let column = 1; column <= units; column += 1) {
     for (let row = 0; row < skyline[column - 1]; row += 1) {
       if (!filled.has(`${column}:${row}`)) {
         voids.push({ row, column });
@@ -175,10 +176,10 @@ export function voidsOf(
 }
 
 export function fitsInGrid(columnStart: number, width: number): boolean {
-  return columnStart >= 1 && columnStart + width - 1 <= GRID_COLUMNS;
+  return columnStart >= 1 && columnStart + width - 1 <= GRID_UNITS;
 }
 
-/** How high a block of this width comes to rest if dropped down this column. */
+/** How high a block this many units wide comes to rest down this anchor. */
 export function landingRow(
   skyline: number[],
   columnStart: number,
@@ -192,20 +193,23 @@ export function landingRow(
 }
 
 /**
- * Every column a block of this size could be dropped down, left to right. The
- * row is gravity's answer, so this is at most one option per column and the
- * arrow keys walk exactly the real choices.
+ * Every unit column a block of this size could be dropped down, left to right.
+ * The row is gravity's answer, so this is at most one option per anchor and
+ * the arrow keys walk exactly the real choices.
+ *
+ * Anchors are units, not visible columns, so a turned block can stand on the
+ * half of a column its rotation actually needs (issue #206).
  */
 export function placementOptions(
-  width: BlockWidth,
+  width: number,
   height: number,
   placements: readonly GridFootprint[],
-  columns = GRID_COLUMNS,
+  units = GRID_UNITS,
 ): PlacementOption[] {
-  const skyline = skylineOf(placements, columns);
+  const skyline = skylineOf(placements, units);
   const options: PlacementOption[] = [];
 
-  for (let columnStart = 1; columnStart + width - 1 <= columns; columnStart += 1) {
+  for (let columnStart = 1; columnStart + width - 1 <= units; columnStart += 1) {
     const row = landingRow(skyline, columnStart, width);
     const top = row + height;
 
@@ -218,7 +222,7 @@ export function placementOptions(
     const rightIndex = columnStart + width - 1;
     const leftFlush = columnStart === 1 || (skyline[leftIndex] ?? 0) >= top;
     const rightFlush =
-      columnStart + width - 1 === columns || (skyline[rightIndex] ?? 0) >= top;
+      columnStart + width - 1 === units || (skyline[rightIndex] ?? 0) >= top;
 
     options.push({
       row,
@@ -234,7 +238,7 @@ export function placementOptions(
 
 function distanceFromCentre(option: PlacementOption): number {
   return Math.abs(
-    (GRID_COLUMNS + 1) / 2 - (option.columnStart + option.columnEnd) / 2,
+    (GRID_UNITS + 1) / 2 - (option.columnStart + option.columnEnd) / 2,
   );
 }
 
@@ -309,7 +313,7 @@ export function assertPlacementFits(
 ): void {
   if (!fitsInGrid(candidate.columnStart, candidate.width)) {
     throw new InvalidPlacementError(
-      `A ${candidate.width}-wide block cannot start at column ${candidate.columnStart} of ${GRID_COLUMNS}.`,
+      `A ${candidate.width}-unit block cannot start at unit ${candidate.columnStart} of ${GRID_UNITS}.`,
     );
   }
 
@@ -345,7 +349,7 @@ export function repackPlacements(
 
   const repacked: BlockPlacement[] = [];
   for (const placement of ordered) {
-    const width = Math.min(placement.width, GRID_COLUMNS) as BlockWidth;
+    const width = Math.min(placement.width, GRID_UNITS);
     const option = autoPlaceOption(
       placementOptions(width, placement.height, repacked),
     );

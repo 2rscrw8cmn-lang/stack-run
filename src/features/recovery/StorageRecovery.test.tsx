@@ -55,7 +55,7 @@ describe("unreadable stored state", () => {
       "page",
     );
     const stored = JSON.parse(localStorage.getItem(APP_STATE_STORAGE_KEY) ?? "{}");
-    expect(stored.schemaVersion).toBe(11);
+    expect(stored.schemaVersion).toBe(12);
     expect(stored.runLogs).toEqual([]);
     // The damaged copy outlives the reset, so it is still recoverable.
     expect(backupKeys()).toHaveLength(1);

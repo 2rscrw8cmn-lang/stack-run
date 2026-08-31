@@ -1,4 +1,9 @@
 import { addDaysToLocalDate } from "../../domain/dates.js";
+import {
+  unitColumnStart,
+  unitsAcross,
+  unitsUp,
+} from "../../domain/towerGeometry.js";
 import type {
   BlockPlacement,
   RunActivityType,
@@ -109,14 +114,16 @@ export function todayDemoData(): TodayDemoData {
     };
   });
 
+  // Coordinates are logical placement units, two to a tower column, so the
+  // demo tower stands where a real one would (issue #206).
   const blockPlacements: BlockPlacement[] = runLogs
     .slice(0, 5)
     .map((run, index): BlockPlacement => ({
       runLogId: run.id,
       row: index < 4 ? 0 : 1,
-      columnStart: (index < 4 ? index + 1 : 1) as 1 | 2 | 3 | 4,
-      width: 1,
-      height: 1,
+      columnStart: unitColumnStart(index < 4 ? index + 1 : 1),
+      width: unitsAcross(1),
+      height: unitsUp(1),
       placedAt: `${run.completedDate}T12:00:00.000Z`,
     }));
 

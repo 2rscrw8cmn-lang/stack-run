@@ -11,7 +11,9 @@ import {
   savePersonalBuildDocument,
   savePersonalRun,
   savePersonalTrainingDocument,
+  serializePlacements,
 } from "./personalCloudRepository.js";
+import { GRID_UNITS } from "../domain/towerGeometry.js";
 
 function rows(overrides: Partial<Record<string, unknown>> = {}) {
   const seed = createSeededAppState();
@@ -233,6 +235,84 @@ describe("personal cloud hydration", () => {
         personal_training_state: personalTrainingState,
       })))).rejects.toThrow("malformed");
     }
+  });
+});
+
+describe("cloud placements on the logical sub-grid (issue #206)", () => {
+  /*
+   * The cloud stores placements as an opaque JSONB array with no schema
+   * version of its own, so a payload written before the sub-grid existed has
+   * to be told apart from one written after it. The writer stamps the grid it
+   * measured on; a payload without the stamp is the old whole-column one and
+   * is rescaled on the way in, by the same conversion local storage uses.
+   */
+  const legacy = {
+    runLogId: "run-a",
+    row: 0,
+    columnStart: 3,
+    width: 2,
+    height: 1,
+    placedAt: "2026-08-10T12:00:00.000Z",
+  };
+
+  it("rescales a payload written before the sub-grid, without moving the block", async () => {
+    const snapshot = await loadPersonalCloudSnapshot(
+      readClient(rows({ personal_build_state: { placements: [legacy], revision: 4 } })),
+    );
+
+    // Columns 3 and 4 are units 5 through 8: the same tower, counted finer.
+    expect(snapshot?.placements).toEqual([
+      { ...legacy, columnStart: 5, width: 4 },
+    ]);
+  });
+
+  it("takes a stamped payload at face value", async () => {
+    const stored = { ...legacy, columnStart: 5, width: 4, gridUnits: GRID_UNITS };
+    const snapshot = await loadPersonalCloudSnapshot(
+      readClient(rows({ personal_build_state: { placements: [stored], revision: 4 } })),
+    );
+
+    // Rescaling this again would double it, which is the one failure that
+    // would be silent: a legal-looking tower with every block twice as wide.
+    expect(snapshot?.placements).toEqual([
+      { ...legacy, columnStart: 5, width: 4 },
+    ]);
+  });
+
+  it("stamps what it writes, so the next reader does not rescale it", () => {
+    expect(serializePlacements([{ ...legacy, columnStart: 5, width: 4 }])).toEqual([
+      { ...legacy, columnStart: 5, width: 4, gridUnits: GRID_UNITS },
+    ]);
+  });
+
+  it("still refuses a footprint no run could have earned", async () => {
+    const oversized = {
+      ...legacy,
+      columnStart: 1,
+      width: 12,
+      gridUnits: GRID_UNITS,
+    };
+
+    await expect(
+      loadPersonalCloudSnapshot(
+        readClient(rows({ personal_build_state: { placements: [oversized], revision: 4 } })),
+      ),
+    ).rejects.toThrow(/malformed/i);
+  });
+
+  it("still refuses a block that runs off the right edge", async () => {
+    const overhanging = {
+      ...legacy,
+      columnStart: GRID_UNITS,
+      width: 4,
+      gridUnits: GRID_UNITS,
+    };
+
+    await expect(
+      loadPersonalCloudSnapshot(
+        readClient(rows({ personal_build_state: { placements: [overhanging], revision: 4 } })),
+      ),
+    ).rejects.toThrow(/malformed/i);
   });
 });
 

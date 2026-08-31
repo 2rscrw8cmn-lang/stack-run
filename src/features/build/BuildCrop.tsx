@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { PlacedHeight, PlacedWidth } from "../../domain/footprint.js";
 import type { GridVoid } from "../../domain/placement.js";
-import { GRID_COLUMNS } from "../../domain/placement.js";
+import { GRID_UNITS } from "../../domain/placement.js";
 import type { CrewAwardType } from "../../crew/awards.js";
 import { AwardBrick } from "../crew/AwardBrick.js";
 import { Brick, type BrickFaceLabel } from "./Brick.js";
@@ -55,7 +55,8 @@ interface BuildCropProps {
    * brick stops reading as built, which is the whole point of showing it.
    */
   scale?: "hero" | "teaser";
-  columns?: number;
+  /** Placement units across, not visible columns — see `towerGeometry.ts`. */
+  units?: number;
   /**
    * What the crop is, for a screen reader. The blocks themselves are decoration
    * of facts the frame states in text, so the default is to hide the whole crop
@@ -72,7 +73,7 @@ export function BuildCrop({
   voids = [],
   courses,
   scale = "hero",
-  columns = GRID_COLUMNS,
+  units = GRID_UNITS,
   label,
   className,
   animateSettle = false,
@@ -88,10 +89,10 @@ export function BuildCrop({
       aria-hidden={label ? undefined : true}
     >
       <ul
-        className="built-tower build-crop__tower"
+        className="built-tower build-crop__tower tower-field"
         style={
           {
-            "--grid-columns": columns,
+            "--grid-units": units,
             "--grid-courses": drawnCourses,
           } as CSSProperties
         }

@@ -73,11 +73,14 @@ begin
     if sqlerrm not like '%crew_build_placement_invalid%' then raise; end if;
   end;
 
+  -- Issue #206: the grid is sixteen placement units, two to a column. A
+  -- 3-mile run is two columns, which is four units, so unit 14 hangs off the
+  -- right edge and unit 13 is the last anchor that fits.
   begin
     perform public.place_crew_build_block(
-      (select owner_second_run_id from crew_build_test_ids), 0, 8
+      (select owner_second_run_id from crew_build_test_ids), 0, 14
     );
-    raise exception 'validation failure: block outside eight columns accepted';
+    raise exception 'validation failure: block outside the placement grid accepted';
   exception when others then
     if sqlerrm not like '%crew_build_placement_invalid%' then raise; end if;
   end;

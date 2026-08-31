@@ -7,7 +7,8 @@ import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
 import { formatDateLabel } from "../../domain/dates.js";
 import { formatCompactMiles, formatMiles, formatMilesBuilt } from "../../domain/distance.js";
 import { isManualRun } from "../../domain/runSource.js";
-import { GRID_COLUMNS } from "../../domain/placement.js";
+import { GRID_UNITS } from "../../domain/placement.js";
+import { unitsAcross } from "../../domain/towerGeometry.js";
 import {
   AVG_PACE_WINDOW_LABEL,
   formatComparisonReading,
@@ -76,7 +77,8 @@ function faceLabel(block: Pick<CrewMiniBuildFacedBlock, "activityType" | "distan
   if (block.activityType === "cross") return { icon: Dumbbell };
   return {
     text: formatCompactMiles(block.distanceMiles),
-    unit: block.width >= 3,
+    // Three columns, measured on the placement grid (issue #206).
+    unit: block.width >= unitsAcross(3),
     manual: isManualRun(block),
   };
 }
@@ -235,17 +237,22 @@ export function CrewMemberProfileSheet({
             <p className="crew-build__empty">No shared blocks yet.</p>
           ) : (
             <div className="crew-build__stage" style={stageStyle}>
-              <div className="crew-build__viewport">
+              {/* The tower field wraps the viewport and the ground, as it
+                  does on Crew Build — see `.tower-field--tokens`. */}
+              <div
+                className="tower-field tower-field--tokens"
+                style={
+                  {
+                    "--grid-units": GRID_UNITS,
+                    "--grid-courses": courses,
+                  } as CSSProperties
+                }
+              >
+                <div className="crew-build__viewport">
                 <div className="crew-build__sky" aria-hidden="true" />
                 <ul
                   className="built-tower crew-build__tower"
                   aria-label={`${member.displayName}'s shared Build blocks`}
-                  style={
-                    {
-                      "--grid-columns": GRID_COLUMNS,
-                      "--grid-courses": courses,
-                    } as CSSProperties
-                  }
                 >
                   {tower.voids.map((cell) => (
                     <li
@@ -293,7 +300,8 @@ export function CrewMemberProfileSheet({
                   ))}
                 </ul>
               </div>
-              <div className="crew-build__ground" aria-hidden="true" />
+                <div className="crew-build__ground" aria-hidden="true" />
+              </div>
             </div>
           )}
         </section>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GRID_COLUMNS, lastColumnOf, topOf } from "../domain/placement.js";
+import { GRID_UNITS, lastColumnOf, topOf } from "../domain/placement.js";
+import { columnSpanOf } from "../domain/towerGeometry.js";
 import { loadSeedPlan } from "../seed/loadSeedPlan.js";
 import {
   createInitialAppState,
@@ -171,6 +172,78 @@ describe("migrateAppState from version 10", () => {
   });
 });
 
+describe("migrateAppState from version 11 (issue #206)", () => {
+  /*
+   * Schema 12 moves placement onto the square sub-grid underneath the tower's
+   * columns. A tower written before it must come back looking exactly as it
+   * was left — same blocks, same positions, same orientations — because the
+   * conversion re-describes the geometry rather than changing it: a column is
+   * two units, so a width doubles and a start moves to its column's first
+   * unit, and the block covers precisely the tower it covered before.
+   */
+  function version11(placements: unknown[]): Record<string, unknown> {
+    const seeded = createSeededAppState();
+    return { ...seeded, schemaVersion: 11, blockPlacements: placements };
+  }
+
+  it("rescales a stored tower without moving a single block", () => {
+    const migrated = migrateAppState(
+      version11([
+        // Columns 1-2 on the ground, and columns 3-6 resting across them.
+        { runLogId: "a", row: 0, columnStart: 1, width: 2, height: 1, placedAt: "t1" },
+        { runLogId: "b", row: 0, columnStart: 3, width: 4, height: 1, placedAt: "t2" },
+        // The far-right column, which is where an off-by-one would show.
+        { runLogId: "c", row: 1, columnStart: 8, width: 1, height: 3, placedAt: "t3" },
+      ]),
+    );
+
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.blockPlacements).toEqual([
+      { runLogId: "a", row: 0, columnStart: 1, width: 4, height: 1, placedAt: "t1" },
+      { runLogId: "b", row: 0, columnStart: 5, width: 8, height: 1, placedAt: "t2" },
+      { runLogId: "c", row: 1, columnStart: 15, width: 2, height: 3, placedAt: "t3" },
+    ]);
+
+    // Said as the thing that actually matters: every block still covers the
+    // same columns of tower, and the last one still ends flush at column 8.
+    expect(
+      migrated.blockPlacements.map((placement) =>
+        columnSpanOf(placement.columnStart, placement.width),
+      ),
+    ).toEqual([
+      { first: 1, last: 2 },
+      { first: 3, last: 6 },
+      { first: 8, last: 8 },
+    ]);
+    expect(
+      Math.max(...migrated.blockPlacements.map(lastColumnOf)),
+    ).toBe(GRID_UNITS);
+  });
+
+  it("carries a block that was left standing on its end", () => {
+    // Rotation is stored as the swapped axes and nothing else, so a turned
+    // block has to survive the rescale as a turned block.
+    const migrated = migrateAppState(
+      version11([
+        { runLogId: "turned", row: 0, columnStart: 2, width: 1, height: 4, placedAt: "t1" },
+      ]),
+    );
+
+    expect(migrated.blockPlacements[0]).toEqual({
+      runLogId: "turned",
+      row: 0,
+      columnStart: 3,
+      width: 2,
+      height: 4,
+      placedAt: "t1",
+    });
+  });
+
+  it("leaves an empty tower empty", () => {
+    expect(migrateAppState(version11([])).blockPlacements).toEqual([]);
+  });
+});
+
 describe("migrateAppState from version 4", () => {
   it("keeps every run's values, timestamps, and scheduled link", () => {
     const migrated = migrateAppState(legacyState(4, { blockPlacements: [] }));
@@ -267,7 +340,7 @@ describe("migrateAppState from version 4", () => {
 
     for (const placement of migrated.blockPlacements) {
       expect(placement.columnStart).toBeGreaterThanOrEqual(1);
-      expect(lastColumnOf(placement)).toBeLessThanOrEqual(GRID_COLUMNS);
+      expect(lastColumnOf(placement)).toBeLessThanOrEqual(GRID_UNITS);
     }
     expect(migrated.blockPlacements.map((p) => p.placedAt)).toEqual(["t1", "t2"]);
   });
@@ -289,8 +362,9 @@ describe("migrateAppState from version 4", () => {
       }),
     );
 
-    // 5.4 miles is three wide; intervals is two tall. Nothing else can size it.
-    expect(migrated.blockPlacements[0]).toMatchObject({ width: 3, height: 2 });
+    // 5.4 miles is three columns wide, which is six placement units; intervals
+    // is two courses tall, which is two units. Nothing else can size it.
+    expect(migrated.blockPlacements[0]).toMatchObject({ width: 6, height: 2 });
   });
 
   it("drops a placement whose run log is gone rather than orphaning a block", () => {
@@ -395,8 +469,9 @@ describe("migrateAppState from versions 1 to 3", () => {
       "run-workout-002",
       "run-workout-060",
     ]);
-    // 2.1 miles is one wide; 5.4 miles is three wide and intervals is two tall.
-    expect(occupiedCells(migrated.blockPlacements)).toBe(1 + 6);
+    // 2.1 miles is one column (2 units) wide; 5.4 miles is three columns
+    // (6 units) wide and intervals is two courses tall.
+    expect(occupiedCells(migrated.blockPlacements)).toBe(2 + 12);
     expect(Math.max(...migrated.blockPlacements.map(topOf))).toBe(2);
   });
 

@@ -51,7 +51,8 @@ function cloud(item: RunLog, overrides: Partial<PersonalCloudRun> = {}): Persona
 }
 
 function placement(runLogId: string, columnStart = 1): BlockPlacement {
-  return { runLogId, row: 0, columnStart, width: 1, height: 1, placedAt: createdAt };
+  // Two units wide: a one-column brick on the placement grid (issue #206).
+  return { runLogId, row: 0, columnStart, width: 2, height: 1, placedAt: createdAt };
 }
 
 beforeEach(() => localStorage.clear());
@@ -147,7 +148,9 @@ describe("Personal Build adoption", () => {
   it("keeps canonical construction fixed while adding a fitting missing block", () => {
     const merged = mergeMissingRunPlacements(
       [placement("canonical", 1)],
-      [placement("new-run", 2)],
+      // Unit 3, the next free anchor: a one-column brick is two units wide,
+      // so unit 2 would now overlap the canonical block (issue #206).
+      [placement("new-run", 3)],
       { "new-run": "new-run" },
       new Set(["new-run"]),
     );

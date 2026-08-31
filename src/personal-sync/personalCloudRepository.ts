@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IntervalsCandidate } from "../connected/intervals.js";
 import { backfillPlan } from "../domain/racePlan.js";
+import {
+  MAX_PLACED_UNITS,
+  unitsFromLegacyPlacement,
+} from "../domain/footprint.js";
+import { GRID_UNITS } from "../domain/towerGeometry.js";
 import type {
   AppSettings,
   ArchivedTrainingPlan,
@@ -359,6 +364,16 @@ export function parseTrainingRow(value: unknown, legacy = false): {
   };
 }
 
+/**
+ * One stored placement, read in logical grid units (issue #206).
+ *
+ * The cloud row is an opaque JSONB array with no schema version of its own, so
+ * a payload written before the sub-grid existed is told apart by the field
+ * that only the new writer sets: `gridUnits`. Without it the numbers are the
+ * old whole-column coordinates and are rescaled on the way in, which is the
+ * same conversion `migrations.ts` does for local storage — both go through
+ * `unitsFromLegacyPlacement` so the two cannot disagree.
+ */
 function parsePlacement(value: unknown): BlockPlacement | null {
   const item = record(value);
   if (!item) return null;
@@ -368,22 +383,51 @@ function parsePlacement(value: unknown): BlockPlacement | null {
   const width = finite(item.width);
   const height = finite(item.height);
   const placedAt = string(item.placedAt);
-  return runLogId &&
-    row !== null && Number.isInteger(row) && row >= 0 &&
-    columnStart !== null && Number.isInteger(columnStart) && columnStart >= 1 && columnStart <= 8 &&
-    width !== null && [1, 2, 3, 4].includes(width) &&
-    // 4 is reachable only by rotation: the race block stood on end (#204).
-    height !== null && [1, 2, 3, 4].includes(height) &&
-    placedAt && Number.isFinite(Date.parse(placedAt))
+  if (
+    !runLogId ||
+    row === null || !Number.isInteger(row) || row < 0 ||
+    columnStart === null || !Number.isInteger(columnStart) || columnStart < 1 ||
+    width === null || !Number.isInteger(width) || width < 1 ||
+    height === null || !Number.isInteger(height) || height < 1 ||
+    !placedAt || !Number.isFinite(Date.parse(placedAt))
+  ) {
+    return null;
+  }
+
+  const stored = item.gridUnits === GRID_UNITS
+    ? { columnStart, width }
+    : unitsFromLegacyPlacement({ columnStart, width });
+
+  return stored.columnStart + stored.width - 1 <= GRID_UNITS &&
+    stored.width <= MAX_PLACED_UNITS &&
+    height <= MAX_PLACED_UNITS
     ? {
         runLogId,
         row,
-        columnStart,
-        width: width as BlockPlacement["width"],
-        height: height as BlockPlacement["height"],
+        columnStart: stored.columnStart,
+        width: stored.width,
+        height,
         placedAt,
       }
     : null;
+}
+
+/**
+ * A placement on its way to the cloud, stamped with the grid it is measured
+ * on. Readers use the stamp to tell a unit payload from a pre-#206 one; the
+ * value is the grid width rather than a bare `true` so a later subdivision has
+ * somewhere to say so.
+ */
+export function serializePlacement(
+  placement: BlockPlacement,
+): BlockPlacement & { gridUnits: number } {
+  return { ...placement, gridUnits: GRID_UNITS };
+}
+
+export function serializePlacements(
+  placements: readonly BlockPlacement[],
+): (BlockPlacement & { gridUnits: number })[] {
+  return placements.map(serializePlacement);
 }
 
 export function parseBuildRow(value: unknown): { placements: BlockPlacement[]; revision: number } {
@@ -519,7 +563,7 @@ export async function initializePersonalCloud(
   let result = await client.rpc("initialize_personal_stack_v2", {
     p_training: input.training,
     p_runs: input.runs,
-    p_build_placements: input.placements,
+    p_build_placements: serializePlacements(input.placements),
     p_intervals: input.intervals,
   });
   if (result.error && missingOptionalPlanRpc(result.error, "initialize_personal_stack_v2")) {
@@ -527,7 +571,7 @@ export async function initializePersonalCloud(
     result = await client.rpc("initialize_personal_stack", {
       p_training: input.training,
       p_runs: input.runs,
-      p_build_placements: input.placements,
+      p_build_placements: serializePlacements(input.placements),
       p_intervals: input.intervals,
     });
   }
@@ -568,7 +612,7 @@ export async function savePersonalBuildDocument(
   const result = await client.rpc("save_personal_build_state", {
     p_expected_generation: accountGeneration,
     p_expected_revision: expectedRevision,
-    p_placements: placements,
+    p_placements: serializePlacements(placements),
   });
   if (result.error) throwCloudError(result.error);
   const next = revision(result.data);
@@ -621,7 +665,7 @@ export async function deletePersonalRuns(
     p_expected_generation: accountGeneration,
     p_expected_build_revision: expectedBuildRevision,
     p_run_ids: runIds,
-    p_placements: placements,
+    p_placements: serializePlacements(placements),
   });
   if (result.error) throwCloudError(result.error);
   const data = record(result.data);

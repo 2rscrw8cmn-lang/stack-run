@@ -8,8 +8,10 @@ import {
   isOrientationOf,
   isRotated,
   rotateFootprint,
+  unitsFromLegacyPlacement,
   widthForMiles,
 } from "./footprint.js";
+import { blockRect } from "./towerGeometry.js";
 import type { Effort, RunActivityType, RunLog } from "./types.js";
 
 function log(
@@ -154,37 +156,74 @@ describe("rotation (issue #204)", () => {
     expect(rotateFootprint(rotateFootprint(earned))).toEqual(earned);
   });
 
-  it("offers no rotation for a square block", () => {
-    // A square turns to itself, so a Rotate control on one would promise a
-    // change that never arrives.
-    expect(canRotateFootprint({ width: 2, height: 2 })).toBe(false);
-    expect(canRotateFootprint({ width: 1, height: 1 })).toBe(false);
+  it("offers no rotation for a block that is square in placement units", () => {
+    // Squareness is a question about the placement grid, not about columns
+    // and courses: a 1-column, 2-course block is 2x2 units and turns to
+    // itself, so a Rotate control on it would promise a change that never
+    // arrives. A 1x1 brick looks square in earned terms and is not — it is
+    // 2x1 units, and turning it stands it on end.
+    expect(canRotateFootprint({ width: 1, height: 2 })).toBe(false);
+    expect(canRotateFootprint({ width: 1, height: 1 })).toBe(true);
     expect(canRotateFootprint({ width: 4, height: 1 })).toBe(true);
     expect(canRotateFootprint({ width: 1, height: 3 })).toBe(true);
   });
 
-  it("holds a block at its earned size unless it is asked to turn", () => {
+  it("puts a block on the grid in units, turned or not", () => {
+    // The issue #206 conversion: a column is two units, a course is one. The
+    // *area* is unchanged in both vocabularies; what changes is that the two
+    // axes are now measured in the same length, so turning it is a swap.
     const earned = { width: 3, height: 1 } as const;
-    expect(handFootprint(earned, false)).toEqual({ width: 3, height: 1 });
-    expect(handFootprint(earned, true)).toEqual({ width: 1, height: 3 });
+    expect(handFootprint(earned, false)).toEqual({ width: 6, height: 1 });
+    expect(handFootprint(earned, true)).toEqual({ width: 1, height: 6 });
+  });
+
+  it("keeps a turned block the same physical rectangle", () => {
+    // The whole point. One unit is one length on both axes, so a block's
+    // drawn size is its unit footprint times that length — and a rotation
+    // gives back exactly the same rectangle on its side.
+    const earned = { width: 4, height: 1 } as const;
+    const flat = blockRect(handFootprint(earned, false), 22);
+    const onEnd = blockRect(handFootprint(earned, true), 22);
+
+    expect(flat).toEqual({ width: 176, height: 22 });
+    expect(onEnd).toEqual({ width: 22, height: 176 });
+    expect(onEnd.height).toBe(flat.width);
+    expect(onEnd.width).toBe(flat.height);
   });
 
   it("accepts only the earned footprint and its rotation", () => {
     const earned = { width: 4, height: 1 } as const;
 
-    expect(isOrientationOf({ width: 4, height: 1 }, earned)).toBe(true);
-    expect(isOrientationOf({ width: 1, height: 4 }, earned)).toBe(true);
+    // 4 columns by 1 course is 8 units by 1, and on end 1 by 8.
+    expect(isOrientationOf({ width: 8, height: 1 }, earned)).toBe(true);
+    expect(isOrientationOf({ width: 1, height: 8 }, earned)).toBe(true);
     // Rotation swaps axes and resizes nothing, so nothing else is a valid
     // size for this block — this is what stops a placement claiming space no
-    // activity paid for.
+    // activity paid for. The old whole-column numbers are among the things it
+    // now refuses, which is what the schema 12 migration is for.
+    expect(isOrientationOf({ width: 4, height: 1 }, earned)).toBe(false);
     expect(isOrientationOf({ width: 2, height: 2 }, earned)).toBe(false);
-    expect(isOrientationOf({ width: 4, height: 2 }, earned)).toBe(false);
+    expect(isOrientationOf({ width: 8, height: 2 }, earned)).toBe(false);
   });
 
   it("reads a square block as un-rotated whichever way it was turned", () => {
-    // The honest answer: nothing about it changed.
-    expect(isRotated({ width: 2, height: 2 }, { width: 2, height: 2 })).toBe(false);
-    expect(isRotated({ width: 1, height: 4 }, { width: 4, height: 1 })).toBe(true);
-    expect(isRotated({ width: 4, height: 1 }, { width: 4, height: 1 })).toBe(false);
+    // The honest answer: nothing about it changed. 1 column by 2 courses is
+    // 2x2 units, which is the same block either way round.
+    expect(isRotated({ width: 2, height: 2 }, { width: 1, height: 2 })).toBe(false);
+    expect(isRotated({ width: 1, height: 8 }, { width: 4, height: 1 })).toBe(true);
+    expect(isRotated({ width: 8, height: 1 }, { width: 4, height: 1 })).toBe(false);
+  });
+
+  it("rescales a placement written before the sub-grid existed", () => {
+    // Schema 12 / issue #206. The tower must come back looking exactly as it
+    // was left: a 2-column block starting at column 3 covered columns 3 and 4,
+    // which is units 5 through 8.
+    expect(
+      unitsFromLegacyPlacement({ columnStart: 3, width: 2, row: 4, height: 1 }),
+    ).toEqual({ columnStart: 5, width: 4, row: 4, height: 1 });
+    expect(unitsFromLegacyPlacement({ columnStart: 1, width: 1 })).toEqual({
+      columnStart: 1,
+      width: 2,
+    });
   });
 });

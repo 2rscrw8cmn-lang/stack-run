@@ -12,6 +12,7 @@ import {
   placementOptions,
   type PlacementOption,
 } from "../../domain/placement.js";
+import { columnPhrase } from "../../domain/towerGeometry.js";
 import {
   isRotated,
   type PlacedHeight,
@@ -220,7 +221,11 @@ export function BuildScreen({
 
     setPayoff({ runLogId: runLog.id, message });
     setAnnouncement(
-      message || `Block moved to column ${candidate.columnStart}.`,
+      message ||
+        `Block moved to ${columnPhrase(
+          candidate.columnStart,
+          footprint.width,
+        )}.`,
     );
     stopPlacing();
   }

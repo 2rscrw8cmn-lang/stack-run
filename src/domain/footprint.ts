@@ -1,4 +1,10 @@
 import type { RunActivityType, RunLog } from "./types.js";
+import {
+  toPlacementUnits,
+  unitsAcross,
+  UNITS_PER_COLUMN,
+  type UnitFootprint,
+} from "./towerGeometry.js";
 
 /**
  * How an actual run becomes a block, per D-018.
@@ -113,70 +119,89 @@ export function footprintFor(runLog: RunLog): Footprint {
 }
 
 /**
- * A *placed* block's dimensions, which are not quite an earned block's.
+ * A *placed* block's dimensions, which are not an earned block's.
  *
- * Rotation swaps the axes rather than resizing anything, so the height axis
- * has to admit 4: the race is earned 4 wide and 3 tall, and stood on end it
- * is 4 courses tall — one taller than any block is ever *earned*. Width needs
- * no widening, since nothing is earned taller than 3.
+ * Earned geometry is columns and courses. Placement geometry is logical units
+ * — see `towerGeometry.ts` — because that is the only grid on which turning a
+ * block 90 degrees gives back the same physical rectangle. The two differ by
+ * `toPlacementUnits` even before anything is rotated: a 1x1 earned brick is
+ * 2x1 units, which is the same wide brick said in the finer vocabulary.
  *
- * Earned geometry stays `Footprint`. This is what a placement stores, and the
- * two differ only once a block has been turned.
+ * Both axes are plain numbers rather than unions. A race is earned 4x3, which
+ * is 8x3 units and 3x8 stood on end, so between them the two axes span 1..8
+ * and a union would be eight members of pure noise.
  */
-export type PlacedWidth = 1 | 2 | 3 | 4;
-export type PlacedHeight = 1 | 2 | 3 | 4;
-
-export interface PlacedFootprint {
-  width: PlacedWidth;
-  height: PlacedHeight;
-}
+export type PlacedWidth = number;
+export type PlacedHeight = number;
 
 /**
- * Turns a footprint 90°, which for a rectangle on a grid is simply swapping
- * its axes: there is no second rotation to distinguish, because 180° is the
- * same footprint again. A square is its own rotation.
+ * The longest side a placed block can have, in units: the race is earned four
+ * columns wide, which is eight units, and stood on end it is eight units tall.
+ * Anything larger is a placement claiming space no activity pays for.
+ */
+export const MAX_PLACED_UNITS = unitsAcross(MAX_BLOCK_WIDTH);
+
+export type PlacedFootprint = UnitFootprint;
+
+/**
+ * Turns a footprint 90 degrees, which for a rectangle on a square-unit grid is
+ * simply swapping its sides: there is no second rotation to distinguish,
+ * because 180 degrees is the same footprint again. A square is its own
+ * rotation.
  *
  * This is the whole of the rotation model. No angle is stored anywhere,
  * because the grid footprint *is* the orientation — see `BlockPlacement`.
+ * It only tells the truth about physical size because a unit is square; on
+ * the old course-tall/column-wide grid this swapped cell counts and changed
+ * the rectangle (issues #204, #206).
  */
 export function rotateFootprint(footprint: PlacedFootprint): PlacedFootprint {
   return { width: footprint.height, height: footprint.width };
 }
 
 /**
- * The footprint as currently turned. The one-liner is worth a name because
- * both towers and the crew placement RPC all need to agree on what "turned"
- * means, and `rotated ? rotate(f) : f` written in four places is four chances
- * to disagree.
+ * The footprint a block stands in, from what it earned and how it is turned.
+ *
+ * Two conversions in one function on purpose: everything that puts a block on
+ * the grid needs both, and `rotated ? rotate(units(f)) : units(f)` written in
+ * five places is five chances to forget one of them. Personal Build, Crew
+ * Build, the placement RPC mirror and the recap crops all come through here.
  */
 export function handFootprint(
-  earned: PlacedFootprint,
+  earned: Footprint,
   rotated: boolean,
 ): PlacedFootprint {
-  return rotated ? rotateFootprint(earned) : earned;
+  const units = toPlacementUnits(earned);
+  return rotated ? rotateFootprint(units) : units;
 }
 
 /**
  * Whether turning this block would change anything. A square block rotates to
  * itself, so offering the control for one would promise a change that never
  * comes.
+ *
+ * Squareness is judged in units, which is the only place it is a real
+ * question: a 1x1 earned brick looks square in columns and courses and is
+ * not — it is 2x1 units, and turning it gives a brick standing on end.
  */
-export function canRotateFootprint(footprint: PlacedFootprint): boolean {
-  return footprint.width !== footprint.height;
+export function canRotateFootprint(earned: Footprint): boolean {
+  const units = toPlacementUnits(earned);
+  return units.width !== units.height;
 }
 
 /**
  * Whether a placed footprint is one the earned block could actually stand in:
- * the earned one, or the earned one turned. Everything else is a placement
+ * the earned one in units, or that turned. Everything else is a placement
  * claiming a size no activity paid for.
  */
 export function isOrientationOf(
   placed: PlacedFootprint,
   earned: Footprint,
 ): boolean {
+  const units = toPlacementUnits(earned);
   return (
-    (placed.width === earned.width && placed.height === earned.height) ||
-    (placed.width === earned.height && placed.height === earned.width)
+    (placed.width === units.width && placed.height === units.height) ||
+    (placed.width === units.height && placed.height === units.width)
   );
 }
 
@@ -187,5 +212,26 @@ export function isOrientationOf(
  * way it was turned, which is the honest answer — nothing about it changed.
  */
 export function isRotated(placed: PlacedFootprint, earned: Footprint): boolean {
-  return placed.width !== earned.width || placed.height !== earned.height;
+  const units = toPlacementUnits(earned);
+  return placed.width !== units.width || placed.height !== units.height;
+}
+
+/**
+ * A stored placement written before the logical sub-grid existed, read in
+ * units. Legacy placements measured width in whole columns, so the width
+ * doubles and the start moves to the first unit of its column; the row and
+ * the height were always courses, and a course is still one unit.
+ *
+ * Shared by the local schema migration and the cloud payload upgrade so the
+ * two cannot disagree about what an old tower meant.
+ */
+export function unitsFromLegacyPlacement<T extends {
+  columnStart: number;
+  width: number;
+}>(placement: T): T & { columnStart: number; width: number } {
+  return {
+    ...placement,
+    columnStart: (placement.columnStart - 1) * UNITS_PER_COLUMN + 1,
+    width: placement.width * UNITS_PER_COLUMN,
+  };
 }

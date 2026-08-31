@@ -7,6 +7,11 @@
 -- is touched and nothing is deleted.
 --
 -- An empty result means the migration's backfill is a no-op on this database.
+--
+-- Coordinates here are the whole-column grid this predates. Issue #206 moved
+-- placement onto a sixteen-unit sub-grid; read against a database that has
+-- taken 20260901120000_tower_placement_units.sql, every `8` below is `16` and
+-- both widths are doubled.
 
 with placed as (
   select

@@ -326,13 +326,27 @@ Primary implementation:
 - `src/features/build/`
 - placement/domain helpers under `src/domain/` and Build utilities.
 
-Personal Build is an eight-column deterministic tower.
+Personal Build is an eight-column deterministic tower, placed on a finer
+square sub-grid underneath those columns (`src/domain/towerGeometry.ts`).
+
+A brick is twice as wide as it is tall, and a block can be turned 90 degrees.
+Those two facts only coexist if a horizontal step and a vertical step are the
+same length, so placement measures in **units**: one course is one unit tall,
+one visible column is two units wide, and the eight-column tower is a
+sixteen-unit placement grid. Rotation is then simply swapping a rectangle's
+sides, and a turned block keeps its physical size.
+
+Earned geometry is unchanged and still speaks in columns and courses — width
+from distance, height from activity type (D-018) — and `handFootprint` is the
+one conversion into placement units. Stored coordinates (`BlockPlacement`,
+`shared_runs.crew_build_column_start`) are units; positions shown or announced
+to a person are named in columns.
 
 Core rules:
 
 - one recorded/accepted run earns one block;
 - placement identity is the run-log id;
-- gravity/support/collision rules determine valid positions;
+- gravity/support/collision rules determine valid positions, on the unit grid;
 - the runner chooses among valid landings;
 - edits/deletes repair or re-evaluate structure through domain/repository rules;
 - historical-only mirror activities do not backfill blocks.

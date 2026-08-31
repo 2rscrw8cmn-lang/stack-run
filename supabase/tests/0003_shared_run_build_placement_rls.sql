@@ -56,8 +56,10 @@ begin
   exception when check_violation then null;
   end;
 
+  -- Issue #206: coordinates are placement units, sixteen across the tower's
+  -- eight columns, so unit 17 is the first one off the grid.
   begin
-    update public.shared_runs set build_row = 0, build_column_start = 9
+    update public.shared_runs set build_row = 0, build_column_start = 17
     where id = (select owner_run_id from build_placement_test_ids);
     raise exception 'constraint failure: invalid build column was accepted';
   exception when check_violation then null;

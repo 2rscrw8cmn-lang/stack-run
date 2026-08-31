@@ -1131,7 +1131,11 @@ textarea.run-input {
  * the fixed placement bar on a short screen.
  */
 .build-screen[data-placing="true"] .build-site__stage {
-  min-height: min(38dvh, calc(var(--course-height) * 11));
+  /* The stage is the field's *parent*, so it cannot read the resolved unit —
+     `--course-height` only exists inside `.tower-field`. It asks with the
+     nominal course instead, which is the larger of the two, so the floor is
+     never short of the room a landing needs. The dvh cap still bounds it. */
+  min-height: min(38dvh, calc(var(--course-nominal) * 11));
 }
 
 /* Build opens on the miles the tower is made of. */
@@ -1203,11 +1207,17 @@ textarea.run-input {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  /* Ten columns across whatever the tower is given, so a course is short. */
-  --course-height: 26px;
-  /* The depth axis: right --iso-run, up --iso-rise. A 2:1 oblique. */
-  --iso-run: 16px;
-  --iso-rise: 8px;
+  /*
+   * The course a brick wants to be, given the room. Eight columns of two
+   * units each means a 52x26 brick at full size — the compact 2:1 STACK brick,
+   * not a tile. `.tower-field` takes the smaller of this and what the width
+   * actually allows, so a phone gets a shorter course rather than a tower that
+   * pans sideways.
+   */
+  --course-nominal: 26px;
+  /* The depth axis, as a share of a unit, so the 2:1 oblique holds at any
+     size. 0.6 of a unit is 0.3 of a column — what the tower has always had. */
+  --iso-run-ratio: 0.6;
   /*
    * How far a block falls when it is placed, at most (issue #76). It is a
    * construction token rather than an animation detail because it is also the
@@ -1223,6 +1233,8 @@ textarea.run-input {
  * is somewhere rather than nowhere.
  */
 .build-site__stage {
+  /* The width the square placement unit is measured against. */
+  container-type: inline-size;
   display: flex;
   /*
    * A column, so the block-in-hand strip stacks above the tower the way Crew's
@@ -1295,14 +1307,73 @@ textarea.run-input {
 }
 
 /*
+ * The tower field: where one square placement unit gets its size.
+ *
+ * A brick is a wide object and a rotation is an honest one, and those two
+ * wants collided. Issue #205 made a *column* square, which got rotation right
+ * and turned the tower into a wall of large tiles (issue #206). Declaring a
+ * course height against `1fr` columns gets the proportions back and breaks
+ * rotation again: a horizontal step and a vertical step stop being the same
+ * length, so a 4x1 block turned is not the same rectangle on its side.
+ *
+ * So the unit of placement is no longer the unit of presentation. Blocks are
+ * placed on a finer grid whose cell is square — a course is one unit, a column
+ * is `--units-per-column` of them — and the visible brick is built out of
+ * those. The brick stays 2:1, the step stays square, and rotation is once
+ * again just swapping a rectangle's sides. See `domain/towerGeometry.ts`.
+ *
+ * The unit is derived rather than declared, because it has to answer to the
+ * width the field is actually given: `--course-nominal` is what a context asks
+ * for, and the width fit is what the field can pay, including the oblique's
+ * own share so the depth never pushes the tower past its container. It lives
+ * on the field rather than the grid because the sky, the fall and the ground
+ * all measure in courses too and they are the grid's siblings.
+ * `--course-height` stays as its alias, so the ~70 rules that already measure
+ * in courses did not have to learn any of this.
+ */
+.tower-field {
+  --units-per-column: 2;
+  --tower-unit: min(
+    var(--course-nominal, 26px),
+    calc(100cqw / (var(--grid-units, 16) + var(--iso-run-ratio, 0.6)))
+  );
+  --course-height: var(--tower-unit);
+  /* One visible tower column: two units, which is the 2:1 brick. */
+  --tower-column: calc(var(--tower-unit) * var(--units-per-column));
+  --iso-run: calc(var(--tower-unit) * var(--iso-run-ratio, 0.6));
+  --iso-rise: calc(var(--iso-run) / 2);
+}
+
+/*
+ * A field that carries the tokens without being a box.
+ *
+ * Crew Build's ground plane is the tower's sibling rather than its child — it
+ * has to sit below a viewport that scrolls — and it measures its own depth in
+ * `--iso-rise` / `--iso-run`. Those only exist inside the field, and the field
+ * has to be a *descendant* of the container it measures against, so it cannot
+ * simply be the stage. `display: contents` resolves the two: the element
+ * inherits and re-publishes the tokens to both the tower and the ground while
+ * generating no box of its own, so the stage lays out exactly as before.
+ */
+.tower-field--tokens {
+  display: contents;
+}
+
+/*
  * The tower is one grid, not a stack of course rows: blocks are two
  * dimensional now, and a two-course block belongs to no single row.
+ *
+ * Both axes are the same square unit, which is the whole of what makes a
+ * turned block keep its geometry. Columns are the finer placement grid
+ * (`--grid-units`, sixteen of them), not the eight the tower reads as.
  */
 .built-tower {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--grid-courses), var(--course-height));
+  grid-template-columns: repeat(var(--grid-units), var(--tower-unit));
+  grid-template-rows: repeat(var(--grid-courses), var(--tower-unit));
+  /* A capped unit no longer fills every field, so the tower centres in it. */
+  justify-content: center;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -6107,14 +6178,15 @@ textarea.run-input {
    * collapses to a flat rectangle — the tower stops reading as built.
    * Crew keeps a course a little taller than Personal's 26px because its
    * field is shorter, so the bricks have to carry more of the presence.
+   * `.tower-field` turns this into the square placement unit — see there.
    */
-  --course-height: 28px;
-  --iso-run: 16px;
-  --iso-rise: 8px;
+  --course-nominal: 28px;
+  --iso-run-ratio: 0.6;
   /* The headroom a landing block falls through — see `.build-site`. */
   --drop-fall-max: calc(var(--course-height) * 3.4);
-  /* Kept as the viewport/field sizing unit, in step with the course. */
-  --crew-build-course: var(--course-height);
+  /* The viewport/field sizing unit, in step with the course the field
+     actually resolved to rather than the one it asked for. */
+  --crew-build-course: var(--course-height, var(--course-nominal));
   min-width: 0;
   padding: 14px 12px 12px;
   border-color: var(--data-border);
@@ -6203,6 +6275,8 @@ textarea.run-input {
  * dedicated tab. It is shorter than Personal's 44vh, never a six-row table.
  */
 .crew-build__stage {
+  /* The width the square placement unit is measured against. */
+  container-type: inline-size;
   position: relative;
   margin-top: 13px;
   /* Bottom padding gives the ground plane somewhere to stand, so the site
@@ -7225,12 +7299,11 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 
 @media (max-width: 340px) {
   .crew-build {
-    /* A shorter course keeps a tall tower inside one viewport at 320px and
-       still clears the 24px target floor D-018 set for the personal Build.
-       The depth axis shrinks with it so the oblique stays 2:1. */
-    --course-height: 24px;
-    --iso-run: 12px;
-    --iso-rise: 6px;
+    /* A shorter course keeps a tall tower inside one viewport at 320px. The
+       width fit already caps it below this there; the ask stays smaller so a
+       320px field never spends its height on a course the width cannot pay
+       for. The depth axis is a ratio, so the oblique stays 2:1 either way. */
+    --course-nominal: 24px;
     padding-inline: 9px;
   }
   .crew-comparison { padding-inline: 9px; }
@@ -7247,9 +7320,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   .crew-comparison__selector { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   /* Desktop gets a bigger tower rather than a different app. */
   .crew-build {
-    --course-height: 34px;
-    --iso-run: 20px;
-    --iso-rise: 10px;
+    --course-nominal: 34px;
     padding: 20px 18px 16px;
   }
   .crew-build__viewport { max-height: min(54dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course))); }
@@ -7886,11 +7957,10 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   /*
    * A taller course is the honest way to make the build bigger: it scales the
    * bricks and the grid together, rather than pouring more empty sky above a
-   * tower the same size as before.
+   * tower the same size as before. The unit stays square whatever it is, so
+   * the bricks grow without changing shape.
    */
-  --course-height: 34px;
-  --iso-run: 20px;
-  --iso-rise: 10px;
+  --course-nominal: 34px;
   /* No card, so no card padding: the field runs to the screen's own gutter. */
   padding: 0;
   border: 0;
@@ -8008,9 +8078,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 
 @media (max-width: 340px) {
   .crew-build--page {
-    --course-height: 28px;
-    --iso-run: 14px;
-    --iso-rise: 7px;
+    --course-nominal: 28px;
   }
   .crew-build--page .crew-build__stage { padding-inline: 6px; }
   .crew-build__stats { gap: 3px; }
@@ -8021,9 +8089,7 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
 
 @media (min-width: 620px) {
   .crew-build--page {
-    --course-height: 40px;
-    --iso-run: 24px;
-    --iso-rise: 12px;
+    --course-nominal: 40px;
   }
   .crew-build--page .crew-build__viewport {
     max-height: min(66dvh, calc(var(--crew-build-visible-courses) * var(--crew-build-course)));
