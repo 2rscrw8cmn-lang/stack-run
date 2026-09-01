@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addDaysToLocalDate, mondayOfLocalDate, todayLocalDate } from "../domain/dates.js";
 import type { RunActivityType, RunSource } from "../domain/types.js";
 import { accentColorFrom, type CrewMemberAccent } from "./memberAccent.js";
 import { resolveRunnerIcon, runnerIconFromSeed, type RunnerIcon } from "./runnerIcon.js";
@@ -125,6 +126,28 @@ function activityTypeFrom(value: unknown): RunActivityType {
 }
 
 /**
+ * Weekly Miles is a current-window fact. Member summaries are useful for the
+ * runner-local metrics, but another member's device cannot be responsible for
+ * clearing last week's value after Monday. Shared runs are already the
+ * Crew-wide source of truth for this dashboard, so use their local dates here.
+ */
+function currentWeekMilesByUserId(
+  runs: readonly Pick<CrewSharedRun, "userId" | "localDate" | "distanceMiles">[],
+  today: string,
+): Map<string, number> {
+  const weekStart = mondayOfLocalDate(today);
+  const weekEnd = addDaysToLocalDate(weekStart, 6);
+  const miles = new Map<string, number>();
+  for (const run of runs) {
+    if (run.localDate < weekStart || run.localDate > weekEnd) continue;
+    miles.set(run.userId, (miles.get(run.userId) ?? 0) + run.distanceMiles);
+  }
+  return new Map(
+    [...miles].map(([userId, total]) => [userId, Number(total.toFixed(2))] as const),
+  );
+}
+
+/**
  * Loads only the safe Race Crew tables allowed by the privacy contract.
  * `profiles` is queried solely for display names, shared runs stay generously bounded,
  * and reactions contain only the run/member relationship used for Props.
@@ -134,6 +157,7 @@ export async function loadCrewDashboard(
   crewId: string,
   viewerUserId: string,
   buildStartDate: string,
+  today = todayLocalDate(),
 ): Promise<CrewDashboardData> {
   const membership = await client
     .from("crew_members")
@@ -229,7 +253,7 @@ export async function loadCrewDashboard(
       runnerIcon: runnerIconOf(userId),
     };
   });
-  const summaries: CrewMemberSummary[] = rows(summaryResult.data).map((item) => {
+  const reportedSummaries: CrewMemberSummary[] = rows(summaryResult.data).map((item) => {
     const userId = requiredString(item, "user_id");
     return {
       userId,
@@ -287,6 +311,20 @@ export async function loadCrewDashboard(
       viewerHasPropped: false,
     };
   });
+
+  const currentWeekStart = mondayOfLocalDate(today);
+  const sharedRunWeeklyMiles = currentWeekMilesByUserId(allRuns, today);
+  const summaries = reportedSummaries.map((summary) => ({
+    ...summary,
+    // A successful shared-run read is authoritative for the current week. If
+    // it is unavailable, retain only a summary that explicitly belongs to this
+    // Monday-Sunday window; a prior-week row must read as an empty current week.
+    weeklyMiles: sharedRunsAvailable
+      ? sharedRunWeeklyMiles.get(summary.userId) ?? 0
+      : summary.weekStart === currentWeekStart
+        ? summary.weeklyMiles
+        : 0,
+  }));
 
   // The Crew's own windowed view: the communal tower, its recent-activity
   // feed and Props all stay scoped to the Crew-owned Build start date.

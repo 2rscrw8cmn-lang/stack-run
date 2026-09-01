@@ -15,6 +15,7 @@ function fakeClient(
   sharedRunOverrides: Record<string, unknown> = {},
   /** Refuses any select naming this column, as a database missing it would. */
   missingColumn?: string,
+  summaryOverrides: Record<string, unknown> = {},
 ): SupabaseClient {
   const data: Record<string, unknown[]> = {
     crew_members: [
@@ -31,6 +32,7 @@ function fakeClient(
         consistency_due: 4,
         miles_built: 80,
         updated_at: "2026-08-10T00:00:00Z",
+        ...summaryOverrides,
       },
     ],
     shared_runs: [
@@ -314,6 +316,86 @@ describe("Crew dashboard query", () => {
     expect(loaded.sharedRunsTruncated).toBe(false);
     expect(loaded.propsAvailable).toBe(false);
     expect(loaded.propNotifications).toEqual([]);
+  });
+
+  describe("Weekly Miles rollover (issue #210)", () => {
+    const monday = "2026-08-31";
+
+    it("does not carry a Sunday summary into Monday when no shared run is current, even after refresh", async () => {
+      const loaded = await loadCrewDashboard(
+        fakeClient([], undefined, {}, undefined, { week_start: "2026-08-24", weekly_miles: 6.01 }),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+        monday,
+      );
+      const refreshed = await loadCrewDashboard(
+        fakeClient([], undefined, {}, undefined, { week_start: "2026-08-24", weekly_miles: 6.01 }),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+        monday,
+      );
+
+      expect(loaded.summaries[0].weeklyMiles).toBe(0);
+      expect(refreshed.summaries[0].weeklyMiles).toBe(0);
+    });
+
+    it("derives current-week miles from shared runs rather than a stale summary", async () => {
+      const loaded = await loadCrewDashboard(
+        fakeClient(
+          [],
+          undefined,
+          { local_date: monday, distance_miles: 8.02 },
+          undefined,
+          { week_start: "2026-08-24", weekly_miles: 6.01 },
+        ),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+        monday,
+      );
+
+      expect(loaded.summaries[0].weeklyMiles).toBe(8.02);
+    });
+
+    it("keeps a current-week summary consistent when shared runs report the same miles", async () => {
+      const loaded = await loadCrewDashboard(
+        fakeClient(
+          [],
+          undefined,
+          { local_date: monday, distance_miles: 8.02 },
+          undefined,
+          { week_start: monday, weekly_miles: 8.02 },
+        ),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+        monday,
+      );
+
+      expect(loaded.summaries[0].weeklyMiles).toBe(8.02);
+    });
+
+    it("uses a summary fallback only when the failed shared-run read is for the current week", async () => {
+      const stale = await loadCrewDashboard(
+        fakeClient([], "shared_runs", {}, undefined, { week_start: "2026-08-24", weekly_miles: 6.01 }),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+        monday,
+      );
+      const current = await loadCrewDashboard(
+        fakeClient([], "shared_runs", {}, undefined, { week_start: monday, weekly_miles: 8.02 }),
+        "crew-1",
+        "user-1",
+        "2026-08-01",
+        monday,
+      );
+
+      expect(stale.summaries[0].weeklyMiles).toBe(0);
+      expect(current.summaries[0].weeklyMiles).toBe(8.02);
+    });
   });
 
   it("defensively excludes server rows before the Crew Build start from the windowed Crew views only", async () => {
