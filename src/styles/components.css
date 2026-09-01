@@ -327,10 +327,17 @@
 /* Sheet */
 
 /*
+ * A sheet is the visible viewport with a panel against one edge of it.
+ *
  * The dialog fills the viewport and positions the panel inside itself, so the
  * panel's `max-height: 100%` resolves against a definite height. Sizing the
  * dialog to its own content instead leaves that percentage undefined, which is
  * what left the sheet collapsed to a sliver above the bottom of the screen.
+ *
+ * `100dvh` on a top-layer dialog is the whole of the normal case: the panel
+ * ends exactly where the screen does, with no gap under it and nothing of the
+ * app showing below it, and it stays that way through iOS Safari's toolbar
+ * expanding and collapsing without anything in JavaScript being told about it.
  */
 .sheet {
   position: fixed;
@@ -339,8 +346,12 @@
   justify-content: flex-end;
   width: 100%;
   max-width: none;
-  /* Sheet.tsx overrides these while open so the on-screen keyboard can't cover
-     the panel; the fallbacks cover browsers without a visual viewport. */
+  /*
+   * `--sheet-height` / `--sheet-top` are set by `Sheet.tsx` for one case only:
+   * while a field inside this sheet has focus, so the on-screen keyboard
+   * cannot cover the panel's primary action. They are removed the moment
+   * focus leaves it. `100vh` is the fallback for a browser without `dvh`.
+   */
   height: 100vh;
   height: var(--sheet-height, 100dvh);
   transform: translateY(var(--sheet-top, 0px));
@@ -1100,26 +1111,15 @@ textarea.run-input {
 }
 
 /*
- * The placement bar is fixed over the bottom of the screen, so while a block
- * is in hand the screen has to end well above it — far enough that the page
- * can scroll the landing out from under it, not merely far enough for the
- * caption to clear. On a 320 x 640 screen the bar and the nav below it cover
- * the bottom 230-odd pixels, which is exactly where the ground line of a new
- * tower sits.
- */
-/*
- * Room under the page for the placement controls, which are fixed above the
- * nav and would otherwise cover the end of the page.
+ * Nothing is reserved under the page while a block is in hand.
  *
- * `--placement-bar-reserve` is the bar's own height (one 48px row plus its
- * padding) on top of the nav clearance the shell already reserves. Personal
- * Build used to hard-code 230px for the three-row sheet; Crew reserved nothing
- * at all, which is why its controls sat on top of the Weekly Miles row.
+ * The placement controls are a shell row above the nav (`.app-shell__dock`),
+ * so they take the scrolling region's height rather than covering its end.
+ * Personal Build used to hard-code 230px for a three-row sheet and Crew
+ * reserved nothing at all — the padding either doubled the clearance or left
+ * the controls on top of the Weekly Miles row. Neither is a thing a screen
+ * has to know now.
  */
-.build-screen[data-placing="true"],
-.crew-build--page[data-placing="true"] {
-  padding-bottom: var(--placement-bar-reserve);
-}
 
 /*
  * The sky gives while placing, but it does not close up.
@@ -1369,6 +1369,13 @@ textarea.run-input {
  */
 .built-tower {
   position: relative;
+  /*
+   * One stacking context for the whole construction. Paint order inside the
+   * tower is a relation between its own blocks (`paintDepthsOf`), and it has
+   * no business competing with page chrome: the placement bar and the bottom
+   * nav both sit above the tower, whatever rank a block happens to carry.
+   */
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(var(--grid-units), var(--tower-unit));
   grid-template-rows: repeat(var(--grid-courses), var(--tower-unit));
@@ -1511,10 +1518,16 @@ textarea.run-input {
   top: calc(-1 * var(--iso-rise));
   bottom: auto;
   height: var(--iso-rise);
-  /* One column of the brick's top, so the face ends where a neighbour rests. */
+  /*
+   * One unbroken stretch of the brick's top, so the face ends where a
+   * neighbour actually rests and nowhere else. Culling is per grid cell;
+   * drawing is per run of exposed cells (`faceSegmentsOf`), because each
+   * segment carries the edge shading below and a per-cell face turns one
+   * continuous surface into a row of separately outlined slabs.
+   */
   left: calc(var(--face-offset) / var(--face-cells) * 100%);
   right: auto;
-  width: calc(100% / var(--face-cells));
+  width: calc(var(--face-span, 1) / var(--face-cells) * 100%);
   transform-origin: bottom left;
   transform: skewX(-63.435deg);
   background: color-mix(in srgb, var(--piece-color) 62%, white);
@@ -1530,10 +1543,11 @@ textarea.run-input {
   left: 100%;
   right: auto;
   width: var(--iso-run);
-  /* One course of the brick's side, counted from the bottom up. */
+  /* One unbroken stretch of the brick's side, counted from the bottom up —
+     see the top face above for why this is a run of courses, not one. */
   top: auto;
   bottom: calc(var(--face-offset) / var(--face-cells) * 100%);
-  height: calc(100% / var(--face-cells));
+  height: calc(var(--face-span, 1) / var(--face-cells) * 100%);
   transform-origin: 0 0;
   transform: skewY(-26.565deg);
   background: color-mix(in srgb, var(--piece-color) 58%, black);
@@ -1814,25 +1828,24 @@ textarea.run-input {
 
 /* The controls for the block in hand.
  *
- * One bar now, worn by both Builds. It pins itself just above the bottom nav
- * rather than sitting in the flow of the construction field: in the field it
- * landed wherever the tower happened to end, which on a tall tower was
- * underneath the nav — and, carrying a z-index above it, painted through it
- * (issue #204). Pinned, `Drop` is always reachable and never overlaps.
+ * One bar now, worn by both Builds, and a row of the app shell rather than a
+ * layer over the page. In the flow of the construction field it landed
+ * wherever the tower happened to end, which on a tall tower was underneath the
+ * nav — and, carrying a z-index above it, painted through it (issue #204).
+ * Pinned over the page with `position: fixed` it was reachable, but only by
+ * holding a copy of the nav's height and trusting the browser about where the
+ * bottom of the screen was that frame.
+ *
+ * `PlacementBar` renders into `.app-shell__dock` instead, directly above the
+ * nav and outside the app's scrolling region. So there is no offset to keep in
+ * step, no stacking order to win, and no safe-area inset here: the nav below
+ * pays that one. The page above simply ends at the top of these controls.
  *
  * It stays one compact row, which is what issue #154 was really protecting:
  * the tower is not covered by a three-row sheet the way Personal Build's used
- * to be. The clearance is the nav's own token plus its safe-area inset, so the
- * bar tracks the nav rather than a number copied from it.
+ * to be.
  */
 .placement-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--bottom-nav-clearance) + env(safe-area-inset-bottom));
-  /* Above the nav's own stacking level, so a translucent nav cannot show
-     through the controls that are sitting on top of it. */
-  z-index: 8;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);

@@ -10,7 +10,7 @@ import {
   faceVisibilityOf,
   GRID_UNITS,
   occupiedCellsOf,
-  topOf,
+  paintDepthsOf,
   voidsOf,
   type FaceVisibility,
   type GridVoid,
@@ -65,6 +65,7 @@ interface CrewBuildBlockBase extends CrewBuildPlacement {
   recentlyPlaced: boolean;
   topFace: boolean[];
   rightFace: boolean[];
+  /** Paint order — see `paintDepthsOf`, which derives it for the whole tower. */
   depth: number;
 }
 
@@ -545,7 +546,7 @@ function deriveMixedCrewBuild(
         recentlyPlaced: isRecentCrewBuildPlacement(run.crewBuildPlacedAt, now),
         topFace: [],
         rightFace: [],
-        depth: topOf({ row: placement.row, height }),
+        depth: 0,
       });
     } else {
       readyRuns.push(readyRun(run));
@@ -584,7 +585,7 @@ function deriveMixedCrewBuild(
         recentlyPlaced: isRecentCrewBuildPlacement(award.crewBuildPlacedAt, now),
         topFace: [],
         rightFace: [],
-        depth: topOf({ row: placement.row, height }),
+        depth: 0,
       });
     } else {
       readyAwards.push(readyAward(award));
@@ -620,9 +621,13 @@ function deriveMixedCrewBuild(
   readyAwards.sort(compareReadyAwards);
 
   const filled = occupiedCellsOf(structurallyValid);
-  const finalBlocks = structurallyValid.map((block): CrewBuildBlock => {
+  // Faces and paint order are both answered here rather than where a block is
+  // built, because both are relations to the rest of the tower: which cells a
+  // neighbour covers, and whose front face covers whose depth.
+  const depths = paintDepthsOf(structurallyValid, filled);
+  const finalBlocks = structurallyValid.map((block, index): CrewBuildBlock => {
     const { topFace, rightFace }: FaceVisibility = faceVisibilityOf(block, filled);
-    return { ...block, topFace, rightFace };
+    return { ...block, topFace, rightFace, depth: depths[index] };
   });
   const voids = voidsOf(structurallyValid, filled);
   const placedRuns = finalBlocks.filter((block): block is CrewBuildRunBlock => block.kind === "run");

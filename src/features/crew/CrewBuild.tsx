@@ -103,8 +103,6 @@ function awardBlockLabel(block: Extract<CrewBuildBlock, { kind: "award" }>, memb
   ].join(", ");
 }
 
-
-
 function awardIdentity(award: CrewAwardBlockRecord) {
   return `${CREW_AWARD_LABEL[award.awardType]} · ${formatCrewAwardResult(award.awardType, award.resultValue)}`;
 }
@@ -265,97 +263,104 @@ export function CrewBuild({
               } as CSSProperties
             }
           >
-          <div className="crew-build__viewport">
-            <div className="crew-build__sky" aria-hidden="true" />
-            <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
-            <ul
-              ref={towerRef}
-              className="built-tower crew-build__tower"
-              aria-label={placement ? "Choose a Crew Build position" : "Crew Build blocks"}
-              data-placement-grid={placement ? "true" : undefined}
-              onPointerMove={placement ? trackDrag : undefined}
-              onPointerUp={placement ? release : undefined}
-              onPointerCancel={placement ? cancelDrag : undefined}
-            >
-              {model.voids.map((cell) => (
-                <li
-                  key={`void-${cell.column}:${cell.row}`}
-                  className="built-tower__void"
-                  aria-hidden="true"
-                  style={{ gridColumn: cell.column, gridRow: drawnCourses - cell.row } as CSSProperties}
-                />
-              ))}
-
-              {model.blocks.map((block) => {
-                const member = members.find((item) => item.userId === block.userId) ?? null;
-                const accent = member
-                  ? crewMemberAccent(member.userId, member.accentColor)
-                  : crewMemberAccent(block.userId, block.kind === "run" ? block.accentColor : null);
-                const isJustPlaced = block.id === justPlacedId;
-                return (
+            <div className="crew-build__viewport">
+              <div className="crew-build__sky" aria-hidden="true" />
+              <div ref={skylineRef} className="crew-build__skyline" aria-hidden="true" />
+              <ul
+                ref={towerRef}
+                className="built-tower crew-build__tower"
+                aria-label={placement ? "Choose a Crew Build position" : "Crew Build blocks"}
+                data-placement-grid={placement ? "true" : undefined}
+                onPointerMove={placement ? trackDrag : undefined}
+                onPointerUp={placement ? release : undefined}
+                onPointerCancel={placement ? cancelDrag : undefined}
+              >
+                {model.voids.map((cell) => (
                   <li
-                    key={`${block.kind}-${block.id}`}
-                    className="placed-block"
-                    data-type={block.kind === "run" ? block.activityType : undefined}
-                    data-award={block.kind === "award" ? block.awardType : undefined}
-                    data-row={block.row}
-                    data-column-start={block.columnStart}
-                    data-member-color={accent}
-                    data-recent={block.recentlyPlaced || undefined}
-                    {...dropMarks(isJustPlaced, block)}
-                    style={
-                      {
-                        gridColumn: `${block.columnStart} / span ${block.width}`,
-                        gridRow: `${drawnCourses - block.row - block.height + 1} / span ${block.height}`,
-                        zIndex: block.depth,
-                      } as CSSProperties
-                    }
-                  >
-                    <button
-                      type="button"
-                      className="placed-block__button"
-                      onClick={() => block.kind === "run" ? onSelectRun(block.id) : onSelectAward(block.id)}
-                    >
-                      <span className="visually-hidden">
-                        {block.kind === "run" ? runBlockLabel(block) : awardBlockLabel(block, member)}
-                      </span>
-                      {block.kind === "run" ? (
-                        <Brick
-                          pieceColor={memberPieceColor(block.userId, block.accentColor)}
-                          label={crewFaceLabel(block)}
-                          topFace={block.topFace}
-                          rightFace={block.rightFace}
-                        />
-                      ) : (
-                        <AwardBrick
-                          awardType={block.awardType}
-                          pieceColor={memberPieceColor(block.userId, member?.accentColor ?? null)}
-                          topFace={block.topFace}
-                          rightFace={block.rightFace}
-                        />
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
+                    key={`void-${cell.column}:${cell.row}`}
+                    className="built-tower__void"
+                    aria-hidden="true"
+                    style={{ gridColumn: cell.column, gridRow: drawnCourses - cell.row } as CSSProperties}
+                  />
+                ))}
 
-              {placement && placementFootprint && placement.options.map((option) => (
-                <LandingSlot
-                  key={option.columnStart}
-                  option={option}
-                  width={placementFootprint.width}
-                  height={placementFootprint.height}
-                  pieceColor={placementPieceColor}
-                  courses={drawnCourses}
-                  isChosen={option.columnStart === candidate?.columnStart}
-                  blockDescription={placement.kind === "run"
-                    ? `${WORKOUT_TYPE_LABEL[placement.run.activityType]} block`
-                    : `${CREW_AWARD_LABEL[placement.award.awardType]} award block`}
-                  onChoose={placement.onChoose}
-                  onGrab={grab}
-                />
-              ))}
-            </ul>
+                {model.blocks.map((block) => {
+                  const member = members.find((item) => item.userId === block.userId) ?? null;
+                  const accent = member
+                    ? crewMemberAccent(member.userId, member.accentColor)
+                    : crewMemberAccent(block.userId, block.kind === "run" ? block.accentColor : null);
+                  const isJustPlaced = block.id === justPlacedId;
+                  return (
+                    <li
+                      key={`${block.kind}-${block.id}`}
+                      className="placed-block"
+                      data-type={block.kind === "run" ? block.activityType : undefined}
+                      data-award={block.kind === "award" ? block.awardType : undefined}
+                      data-row={block.row}
+                      data-column-start={block.columnStart}
+                      data-member-color={accent}
+                      data-recent={block.recentlyPlaced || undefined}
+                      {...dropMarks(isJustPlaced, block)}
+                      style={
+                        {
+                          gridColumn: `${block.columnStart} / span ${block.width}`,
+                          gridRow: `${drawnCourses - block.row - block.height + 1} / span ${block.height}`,
+                          // The tower's own paint order, the same one Personal
+                          // Build uses: derived from the projection for every
+                          // block at once (`paintDepthsOf`) rather than guessed
+                          // per block here. Crew's blocks arrive in placement
+                          // order rather than geometric order, so nothing may
+                          // be left to fall back on DOM order.
+                          zIndex: block.depth,
+                        } as CSSProperties
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="placed-block__button"
+                        onClick={() => block.kind === "run" ? onSelectRun(block.id) : onSelectAward(block.id)}
+                      >
+                        <span className="visually-hidden">
+                          {block.kind === "run" ? runBlockLabel(block) : awardBlockLabel(block, member)}
+                        </span>
+                        {block.kind === "run" ? (
+                          <Brick
+                            pieceColor={memberPieceColor(block.userId, block.accentColor)}
+                            label={crewFaceLabel(block)}
+                            topFace={block.topFace}
+                            rightFace={block.rightFace}
+                          />
+                        ) : (
+                          <AwardBrick
+                            awardType={block.awardType}
+                            pieceColor={memberPieceColor(block.userId, member?.accentColor ?? null)}
+                            topFace={block.topFace}
+                            rightFace={block.rightFace}
+                          />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+
+                {placement && placementFootprint && placement.options.map((option) => (
+                  <LandingSlot
+                    key={option.columnStart}
+                    option={option}
+                    width={placementFootprint.width}
+                    height={placementFootprint.height}
+                    pieceColor={placementPieceColor}
+                    courses={drawnCourses}
+                    isChosen={option.columnStart === candidate?.columnStart}
+                    blockCount={model.blocks.length}
+                    blockDescription={placement.kind === "run"
+                      ? `${WORKOUT_TYPE_LABEL[placement.run.activityType]} block`
+                      : `${CREW_AWARD_LABEL[placement.award.awardType]} award block`}
+                    onChoose={placement.onChoose}
+                    onGrab={grab}
+                  />
+                ))}
+              </ul>
             </div>
             <div
               key={justPlaced ? `ground-${justPlaced.kind}-${justPlaced.id}` : "ground"}

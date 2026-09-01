@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
+import { faceSegmentsOf } from "../../domain/placement.js";
+import "./Brick.css";
 
 export type BrickFaceLabel =
   | {
@@ -19,9 +21,9 @@ interface BrickProps {
   /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */
   pieceColor: string;
   label: BrickFaceLabel | null;
-  /** One flag per column the block spans: true where nothing rests above it. */
+  /** One flag per placement unit the block spans horizontally. */
   topFace: readonly boolean[];
-  /** One flag per course the block stands: true where nothing abuts it. */
+  /** One flag per placement unit the block stands vertically. */
   rightFace: readonly boolean[];
 }
 
@@ -36,8 +38,17 @@ interface BrickProps {
  * (button vs. static span,
  * data-capstone, data-just-placed, grid position) stays with each caller,
  * since that is where Personal and Crew genuinely differ.
+ *
+ * The face arrays already carry the placed footprint. When a text-bearing run
+ * block is exactly one square unit wide and taller than one unit, #208 turns
+ * the entire existing label 90° as one object instead of shrinking or stacking
+ * its characters. The string itself never changes — `3.2` remains `3.2`.
  */
 export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
+  const verticalTextLabel = Boolean(
+    label && "text" in label && topFace.length === 1 && rightFace.length > 1,
+  );
+
   return (
     <span
       className="placed-block__brick"
@@ -46,7 +57,13 @@ export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
     >
       <span className="placed-block__face placed-block__face--front">
         {label && (
-          <span className="placed-block__label">
+          <span
+            className={
+              verticalTextLabel
+                ? "placed-block__label placed-block__label--vertical"
+                : "placed-block__label"
+            }
+          >
             {"icon" in label ? (
               <label.icon className="placed-block__icon" size={14} strokeWidth={2.5} />
             ) : (
@@ -59,40 +76,58 @@ export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
           </span>
         )}
       </span>
-      {/*
-        One segment per grid cell along each edge, so a face stops exactly
-        where a neighbour begins instead of sliding out from under it.
-      */}
-      {topFace.map(
-        (visible, column) =>
-          visible && (
-            <span
-              key={`top-${column}`}
-              className="placed-block__face placed-block__face--top"
-              style={
-                {
-                  "--face-offset": column,
-                  "--face-cells": topFace.length,
-                } as CSSProperties
-              }
-            />
-          ),
-      )}
-      {rightFace.map(
-        (visible, row) =>
-          visible && (
-            <span
-              key={`right-${row}`}
-              className="placed-block__face placed-block__face--right"
-              style={
-                {
-                  "--face-offset": row,
-                  "--face-cells": rightFace.length,
-                } as CSSProperties
-              }
-            />
-          ),
-      )}
+      <BrickDepthFaces topFace={topFace} rightFace={rightFace} />
     </span>
+  );
+}
+
+interface BrickDepthFacesProps {
+  /** One flag per placement unit the block spans horizontally. */
+  topFace: readonly boolean[];
+  /** One flag per placement unit the block stands vertically. */
+  rightFace: readonly boolean[];
+}
+
+/**
+ * The two receding faces, shared by every brick in both towers.
+ *
+ * Culling is per grid cell, because that is where a neighbour actually stops
+ * a face. Drawing is per *unbroken run* of exposed cells: a face segment
+ * carries the brick's own edge shading, so a five-course side drawn as five
+ * segments reads as five stacked slabs with seams between them rather than
+ * one side of one block — which is exactly what a tall turned block on the
+ * sixteen-unit grid looked like. One surface where the tower exposes one
+ * surface; a real break only where a neighbour genuinely covers a cell.
+ */
+export function BrickDepthFaces({ topFace, rightFace }: BrickDepthFacesProps) {
+  return (
+    <>
+      {faceSegmentsOf(topFace).map((segment) => (
+        <span
+          key={`top-${segment.offset}`}
+          className="placed-block__face placed-block__face--top"
+          style={
+            {
+              "--face-offset": segment.offset,
+              "--face-span": segment.span,
+              "--face-cells": topFace.length,
+            } as CSSProperties
+          }
+        />
+      ))}
+      {faceSegmentsOf(rightFace).map((segment) => (
+        <span
+          key={`right-${segment.offset}`}
+          className="placed-block__face placed-block__face--right"
+          style={
+            {
+              "--face-offset": segment.offset,
+              "--face-span": segment.span,
+              "--face-cells": rightFace.length,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </>
   );
 }

@@ -185,29 +185,15 @@
   --radius-md: 10px;
   --radius-lg: 22px;
 
-  /* The bottom nav's own content height, excluding its safe-area padding.
-     Shared with `.app-shell__main`'s bottom clearance so scrolled-to-the-end
-     content can never end up sitting only under the sticky bar's blur with
-     no room to clear it — the two must move together, not by coincidence. */
+  /*
+   * The floor under a nav item's own box — not a clearance any other rule has
+   * to match. The nav is a row of the app shell now (see `layout.css`) and
+   * nothing scrolls behind it, so what it happens to measure is its own
+   * business: there is no `--bottom-nav-clearance` beside this any more, and
+   * no `--placement-bar-reserve` either, because both existed only to hold
+   * open room under a page for chrome that was floating over it.
+   */
   --bottom-nav-height: 52px;
-  /*
-   * What the nav actually occupies, which is not `--bottom-nav-height`.
-   *
-   * That one is a `min-height` floor on `.bottom-nav__item`; the item is
-   * taller than its floor, because its own box is 12px padding + a 22px icon +
-   * a 4px gap + a ~15px label + 12px padding. Anything clearing the nav has to
-   * clear the box, not the floor — 12px short is enough for a placement
-   * control or the last course of a tower to sit under the bar.
-   *
-   * Keep in step with `.bottom-nav__item` if its padding, icon or label moves.
-   */
-  --bottom-nav-clearance: 64px;
-  /*
-   * What a screen has to hold clear while the placement controls are up: the
-   * bar's own row (48px) plus its vertical padding, over and above the nav
-   * clearance the shell already reserves.
-   */
-  --placement-bar-reserve: 92px;
 
   --space-1: 4px;
   --space-2: 8px;

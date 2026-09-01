@@ -1,0 +1,14 @@
+/*
+ * Issue #208 only changes awards where they are actual tower pieces. Detail,
+ * recap and profile artwork keeps its existing presentation size. A one-unit
+ * tower square is compact, so retain the approved glyph artwork unchanged and
+ * simply give it enough air inside the existing hollow frame.
+ */
+.placed-block .award-brick {
+  --award-frame: 3px;
+}
+
+.placed-block .award-brick__glyph {
+  width: 13px;
+  height: 13px;
+}

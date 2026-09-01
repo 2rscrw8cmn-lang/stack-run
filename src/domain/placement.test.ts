@@ -3,6 +3,7 @@ import {
   assertPlacementFits,
   autoPlaceOption,
   canMove,
+  faceSegmentsOf,
   faceVisibilityOf,
   fitsInGrid,
   GRID_UNITS,
@@ -11,6 +12,7 @@ import {
   lastColumnOf,
   newestPlacement,
   occupiedCellsOf,
+  paintDepthsOf,
   placementOptions,
   repackPlacements,
   skylineOf,
@@ -100,6 +102,149 @@ describe("occupiedCellsOf / faceVisibilityOf / voidsOf", () => {
     expect(voids).toContainEqual({ row: 0, column: 2 });
     expect(voids).toContainEqual({ row: 0, column: 3 });
     expect(voids).not.toContainEqual({ row: 0, column: 1 });
+  });
+});
+
+/**
+ * The rendered tower, as geometry.
+ *
+ * Both of these answer questions the browser used to answer by accident —
+ * how many rectangles a face is drawn as, and which brick paints over which —
+ * and both got it wrong on the sixteen-unit grid once #207 made tall turned
+ * blocks ordinary. The fixtures below are the shapes that broke: a tall
+ * one-unit block partly abutted by a neighbour, a run of exposed cells that
+ * should read as one surface, and an exposed face that leans into a bridged
+ * void.
+ */
+describe("faceSegmentsOf", () => {
+  const footprint = (row: number, columnStart: number, width: number, height = 1) => ({
+    row,
+    columnStart,
+    width,
+    height,
+  });
+
+  it("is nothing at all when every cell is covered", () => {
+    expect(faceSegmentsOf([false, false, false])).toEqual([]);
+  });
+
+  it("draws one surface for a whole run of exposed cells", () => {
+    expect(faceSegmentsOf([true, true, true, true])).toEqual([
+      { offset: 0, span: 4 },
+    ]);
+  });
+
+  it("breaks only where a neighbour genuinely covers a cell", () => {
+    expect(faceSegmentsOf([true, true, false, true, true, true])).toEqual([
+      { offset: 0, span: 2 },
+      { offset: 3, span: 3 },
+    ]);
+  });
+
+  it("keeps a single exposed cell at each end", () => {
+    expect(faceSegmentsOf([true, false, true])).toEqual([
+      { offset: 0, span: 1 },
+      { offset: 2, span: 1 },
+    ]);
+  });
+
+  /**
+   * A five-course turned block standing beside a two-course neighbour: the
+   * abutted courses are culled and the three above them are one side, not
+   * three stacked slabs with a seam between each.
+   */
+  it("gives a tall turned block one side above its neighbour", () => {
+    const tall = footprint(0, 3, 1, 5);
+    const neighbour = footprint(0, 4, 2, 2);
+    const filled = occupiedCellsOf([tall, neighbour]);
+    const { rightFace } = faceVisibilityOf(tall, filled);
+
+    expect(rightFace).toEqual([false, false, true, true, true]);
+    expect(faceSegmentsOf(rightFace)).toEqual([{ offset: 2, span: 3 }]);
+  });
+
+  /**
+   * The same for the top of a wide block with something resting on part of
+   * it: two open stretches, not four separate lids.
+   */
+  it("gives a wide block one lid per open stretch of its top", () => {
+    const wide = footprint(0, 1, 6, 1);
+    const resting = footprint(1, 3, 2, 1);
+    const filled = occupiedCellsOf([wide, resting]);
+    const { topFace } = faceVisibilityOf(wide, filled);
+
+    expect(topFace).toEqual([true, true, false, false, true, true]);
+    expect(faceSegmentsOf(topFace)).toEqual([
+      { offset: 0, span: 2 },
+      { offset: 4, span: 2 },
+    ]);
+  });
+});
+
+describe("paintDepthsOf", () => {
+  const footprint = (row: number, columnStart: number, width: number, height = 1) => ({
+    row,
+    columnStart,
+    width,
+    height,
+  });
+
+  const depths = (blocks: ReturnType<typeof footprint>[]) =>
+    paintDepthsOf(blocks, occupiedCellsOf(blocks));
+
+  it("ranks every block from 1, so nothing shares the ground's rank", () => {
+    expect(depths([footprint(0, 1, 2), footprint(0, 5, 2)])).toEqual([1, 1]);
+  });
+
+  it("leaves blocks that cannot overlap free to share a rank", () => {
+    // Side by side with a gap: neither leans into the other.
+    expect(depths([footprint(0, 1, 2), footprint(0, 6, 2)])).toEqual([1, 1]);
+  });
+
+  it("does not order a block against the one directly under it", () => {
+    // The lower block's top face is entirely covered, so it draws nothing
+    // the upper block's front could be in front of.
+    expect(depths([footprint(0, 1, 2), footprint(1, 1, 2)])).toEqual([1, 1]);
+  });
+
+  it("paints a block over the exposed top face leaning into it", () => {
+    const low = footprint(0, 1, 2);
+    const right = footprint(0, 3, 2);
+    const over = footprint(1, 2, 2);
+    const [lowDepth, rightDepth, overDepth] = depths([low, right, over]);
+
+    expect(overDepth).toBeGreaterThan(lowDepth);
+    expect(rightDepth).toBe(lowDepth);
+  });
+
+  /**
+   * The shape that the old top-edge rule got wrong, and the one the iPhone
+   * screenshots showed: a tall block standing beside a bridged void. Its
+   * right face is exposed into the opening and leans up into the front of
+   * the block spanning it — which tops out four courses lower.
+   */
+  it("paints a bridging block over the taller block leaning into its void", () => {
+    const tall = footprint(0, 3, 1, 5);
+    const footing = footprint(0, 6, 2, 1);
+    const bridge = footprint(1, 4, 4, 1);
+    const [tallDepth, , bridgeDepth] = depths([tall, footing, bridge]);
+
+    expect(topOf(tall)).toBeGreaterThan(topOf(bridge));
+    expect(bridgeDepth).toBeGreaterThan(tallDepth);
+  });
+
+  it("never ranks a block above the number of blocks", () => {
+    const stair = Array.from({ length: 8 }, (_, index) =>
+      footprint(index, index + 1, 2),
+    );
+    const ranks = depths(stair);
+    expect(Math.min(...ranks)).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...ranks)).toBeLessThanOrEqual(stair.length);
+  });
+
+  it("ignores a right face at the grid edge, which leans into nothing", () => {
+    const edge = footprint(0, GRID_UNITS, 1, 3);
+    expect(depths([edge])).toEqual([1]);
   });
 });
 

@@ -9,8 +9,8 @@ import {
   faceVisibilityOf,
   newestPlacement,
   occupiedCellsOf,
+  paintDepthsOf,
   skylineOf,
-  topOf,
   voidsOf,
 } from "./placement.js";
 import type {
@@ -94,9 +94,11 @@ export interface PlacedBlock {
   topFace: boolean[];
   rightFace: boolean[];
   /**
-   * Paint order. The oblique projection has no depth buffer and a block's top
-   * and right faces project up and to the right, into the space above it, so
-   * every block must paint over the ones it rests on.
+   * Paint order, as a rank rather than a height: the oblique projection has no
+   * depth buffer, and a block's top and right faces lean back into the cells
+   * above and to the right of it, so a block has to paint over every block
+   * whose depth faces its own front face covers. `paintDepthsOf` derives that
+   * from the projection for the whole tower at once.
    */
   depth: number;
 }
@@ -327,6 +329,12 @@ export function selectBuildViewModel(
   // Cell occupancy for the whole tower, so face culling and paint order can
   // both be answered without scanning every other block.
   const filled = occupiedCellsOf(placements);
+  // Paint order is a relation between blocks, not a property of one, so it is
+  // answered for the whole tower at once — see `paintDepthsOf`.
+  const paintDepths = paintDepthsOf(placements, filled);
+  const paintDepthByRunLogId = new Map(
+    placements.map((placement, index) => [placement.runLogId, paintDepths[index]]),
+  );
 
   const blocks: PlacedBlock[] = [...placements]
     .sort((a, b) => a.row - b.row || a.columnStart - b.columnStart)
@@ -347,7 +355,7 @@ export function selectBuildViewModel(
           canMove: placement.runLogId === newestPlacedRunLogId,
           topFace,
           rightFace,
-          depth: topOf(placement),
+          depth: paintDepthByRunLogId.get(placement.runLogId) ?? 0,
         },
       ];
     });

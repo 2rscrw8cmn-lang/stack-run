@@ -7,7 +7,7 @@ import {
 import {
   faceVisibilityOf,
   occupiedCellsOf,
-  topOf,
+  paintDepthsOf,
   voidsOf,
   type GridVoid,
 } from "../domain/placement.js";
@@ -116,7 +116,7 @@ export interface CrewMiniBuildFacedBlock extends CrewMiniBuildBlock {
    */
   topFace: boolean[];
   rightFace: boolean[];
-  /** Paint order — see `PlacedBlock.depth` in Personal Build for why. */
+  /** Paint order — see `paintDepthsOf`, and `PlacedBlock.depth`, for why. */
   depth: number;
 }
 
@@ -138,9 +138,10 @@ export interface CrewMiniBuildTower {
  */
 export function faceCulledMiniBuildTower(model: CrewMiniBuildModel): CrewMiniBuildTower {
   const filled = occupiedCellsOf(model.blocks);
-  const blocks: CrewMiniBuildFacedBlock[] = model.blocks.map((block) => {
+  const depths = paintDepthsOf(model.blocks, filled);
+  const blocks: CrewMiniBuildFacedBlock[] = model.blocks.map((block, index) => {
     const { topFace, rightFace } = faceVisibilityOf(block, filled);
-    return { ...block, topFace, rightFace, depth: topOf(block) };
+    return { ...block, topFace, rightFace, depth: depths[index] };
   });
   return {
     blocks,

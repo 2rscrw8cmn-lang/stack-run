@@ -1,14 +1,57 @@
+/*
+ * The application owns the visible viewport.
+ *
+ * Bounded to the dynamic viewport and never scrolling itself, with exactly one
+ * scrolling region inside it (`.app-shell__scroll`) and the primary navigation
+ * as an ordinary row underneath that region. That is the whole architecture,
+ * and every one of the mobile bugs it replaces came from not having it: while
+ * the *document* scrolls, the bottom of the page and the bottom of the screen
+ * are different places, so a nav in the flow lands halfway up a long page and
+ * a nav pinned with `position: fixed` has to keep guessing where iOS Safari's
+ * collapsing toolbar has put the bottom of the screen this frame. With the
+ * document held still, there is nothing left to guess: the nav is simply the
+ * last row of a box that is exactly as tall as what the user can see.
+ *
+ * `viewport-fit=cover` gives the app the whole screen, status bar included, so
+ * the shell pays the top inset as padding. The scroll region's box therefore
+ * begins below the clock and the notch, and its own overflow clips there —
+ * which is what keeps content out of the status area once the header has
+ * scrolled away, without a scrim drawn over the top of the page.
+ */
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+}
+
+/*
+ * The one intended app scroll container.
+ *
+ * A column, so a short screen's `.app-shell__main` can still grow to fill it
+ * and a tall one simply scrolls. The header is inside deliberately: it may
+ * scroll away, exactly as it did when the document scrolled.
+ */
+.app-shell__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* The app is the scroller now, so a rubber-band at either end of a screen
+     must not become a pull on the page behind it. */
+  overscroll-behavior-y: contain;
 }
 
 /* Nothing but the brand stands here. The one control that used to share the
    row wrapped onto two lines on a phone, and it belonged in Settings. */
 .app-shell__header {
-  padding: max(var(--space-4), env(safe-area-inset-top)) var(--space-4)
-    var(--space-3);
+  /* The shell already pays `safe-area-inset-top`, so this is only the header's
+     own breathing room. */
+  padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
 /* The header, the content and the nav share one column on a wide screen. */
@@ -71,31 +114,43 @@
 }
 
 .app-shell__main {
-  flex: 1;
-  /* Enough clearance for the sticky nav's own height plus its safe-area
-     inset, so scrolling to the end of any tab's content clears the bar
-     instead of leaving real content (e.g. the last row of Crew Build)
-     sitting only under its blur.
-
-     `--bottom-nav-clearance`, not `--bottom-nav-height`: the latter is the
-     item's min-height floor and the nav renders about 12px taller, which is
-     exactly enough for the last row to end up under the blur this padding
-     exists to prevent. */
-  padding: 0 var(--space-4)
-    calc(var(--bottom-nav-clearance) + env(safe-area-inset-bottom) + var(--space-4));
+  /* Grows into a short screen, never shrinks under a tall one. The end of a
+     page is now the end of the scroll region, and the nav is below it rather
+     than over it, so there is no bar left to hold clearance for. */
+  flex: 1 0 auto;
+  padding: 0 var(--space-4) var(--space-4);
 }
 
+/*
+ * Where a screen's own bottom chrome docks — today, the placement controls.
+ *
+ * A shell row directly above the nav and outside the scroll region, so the
+ * controls sit on the navigation instead of being pinned at a distance copied
+ * from it, and the page ends above them rather than behind them. It costs a
+ * screen with no chrome nothing.
+ */
+.app-shell__dock {
+  flex: 0 0 auto;
+}
+
+.app-shell__dock:empty {
+  display: none;
+}
+
+/*
+ * Primary navigation: the last row of the shell.
+ *
+ * Not sticky, not fixed, and carrying no z-index — it is outside the scrolling
+ * region, so it is already at the bottom of the visible viewport and nothing
+ * in the page can pass under it. The inset is the iPhone home indicator's, and
+ * the nav is the only thing that pays it: the scroll region above ends at the
+ * nav's top edge, and the dock between them adds no inset of its own.
+ */
 .app-shell__nav {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
+  flex: 0 0 auto;
   border-top: 1px solid var(--border);
-  /* Slightly translucent over the page, so content scrolling under the bar
-     reads as going behind it rather than stopping at it. */
   background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
   backdrop-filter: blur(12px);
-  /* Clear of the iPhone home indicator without floating above it on anything
-     that has no inset to report. */
   padding-bottom: env(safe-area-inset-bottom);
 }
 

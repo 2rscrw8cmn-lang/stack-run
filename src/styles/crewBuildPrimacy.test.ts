@@ -274,38 +274,37 @@ describe("Crew Build placement hierarchy (issues #154, #204)", () => {
    * Issue #154 put the Crew controls in the construction field so a bottom
    * sheet could not cover the tower being built on. Issue #204 found the cost:
    * in the flow of the field the row landed wherever the tower happened to
-   * end, which on a tall tower is underneath the sticky nav — and with
-   * `z-index: 2` against the nav's `1`, it painted straight through it.
+   * end, which on a tall tower is underneath the nav — and with `z-index: 2`
+   * against the nav's `1`, it painted straight through it. Pinning it over the
+   * page with `position: fixed` fixed reachability by holding a copy of the
+   * nav's height and trusting iOS Safari about where the bottom of the screen
+   * was, which is a guess the shell no longer has to make.
    *
-   * So the rule changed from "never fixed" to what #154 was actually
-   * protecting: the controls stay one compact row that does not cover the
-   * tower, and they are always reachable. Pinning above the nav delivers both;
-   * sitting in the flow delivered neither once the tower grew.
+   * The controls are now a row of the shell itself, directly above the nav and
+   * outside the app's one scrolling region (`.app-shell__dock`). What #154 was
+   * protecting still holds — one compact row that does not cover the tower —
+   * and it holds structurally rather than by arithmetic: the page ends where
+   * the controls begin.
    */
   it("keeps the controls clear of the bottom nav rather than painting over it", () => {
     const bar = ruleBody("\n.placement-bar {");
 
-    expect(bar).toMatch(/position:\s*fixed/);
-    // Clearance is the nav's *rendered* height plus its safe-area inset.
-    // `--bottom-nav-height` is only the item's min-height floor, and the nav
-    // draws about 12px taller than it — clearing the floor is what left the
-    // controls sitting on the tab bar in the first place.
-    expect(bar).toMatch(/bottom:\s*calc\(var\(--bottom-nav-clearance\)/);
-    expect(bar).toMatch(/env\(safe-area-inset-bottom\)/);
-    expect(bar).not.toMatch(/bottom:\s*calc\(var\(--bottom-nav-height\)/);
+    // Nothing to pin, nothing to offset, nothing to out-stack, and no second
+    // safe-area inset — the nav underneath is the only thing that pays that.
+    expect(bar).not.toMatch(/position:\s*(fixed|sticky|absolute)/);
+    expect(bar).not.toMatch(/bottom:/);
+    expect(bar).not.toMatch(/z-index/);
+    expect(bar).not.toMatch(/env\(safe-area-inset-bottom\)/);
 
-    // Above the nav's stacking level, so a translucent nav cannot show
-    // through the controls sitting on top of it.
-    const barZ = Number(/z-index:\s*(\d+)/.exec(bar)![1]);
-    const navZ = Number(
-      /z-index:\s*(\d+)/.exec(
-        readFileSync(
-          join(dirname(fileURLToPath(import.meta.url)), "layout.css"),
-          "utf8",
-        ).split(".app-shell__nav {")[1],
-      )![1],
+    // It is one row in the shell's dock, above the nav.
+    const shell = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../app/AppShell.tsx"),
+      "utf8",
     );
-    expect(barZ).toBeGreaterThan(navZ);
+    expect(shell.indexOf("app-shell__dock")).toBeGreaterThan(0);
+    expect(shell.indexOf("app-shell__dock")).toBeLessThan(
+      shell.indexOf("app-shell__nav"),
+    );
   });
 
   it("stays one compact row rather than a sheet over the tower", () => {

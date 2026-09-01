@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { CrewAwardType } from "../../crew/awards.js";
+import { BrickDepthFaces } from "../build/Brick.js";
 import "./awardBlock.css";
+import "./awardBlockCompact.css";
 
 /**
  * Monoline award icon set (OUC Half v1): 24x24 viewBox, stroke = currentColor
@@ -122,30 +124,7 @@ export function AwardBrick({
           <AwardGlyph type={awardType} />
         </span>
       </span>
-      {topFace.map((visible, column) =>
-        visible ? (
-          <span
-            key={`top-${column}`}
-            className="placed-block__face placed-block__face--top"
-            style={{
-              "--face-offset": column,
-              "--face-cells": topFace.length,
-            } as CSSProperties}
-          />
-        ) : null,
-      )}
-      {rightFace.map((visible, row) =>
-        visible ? (
-          <span
-            key={`right-${row}`}
-            className="placed-block__face placed-block__face--right"
-            style={{
-              "--face-offset": row,
-              "--face-cells": rightFace.length,
-            } as CSSProperties}
-          />
-        ) : null,
-      )}
+      <BrickDepthFaces topFace={topFace} rightFace={rightFace} />
     </span>
   );
 }

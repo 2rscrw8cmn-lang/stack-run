@@ -1,6 +1,5 @@
 import { formatMiles } from "../domain/distance.js";
 import { formatPaceSeconds } from "../domain/runs.js";
-import type { BlockWidth } from "../domain/footprint.js";
 
 export type CrewAwardType =
   | "miles"
@@ -62,7 +61,7 @@ export interface CrewAwardBlockRecord {
   sourceSharedRunId: string | null;
   crewBuildRow: number | null;
   crewBuildColumnStart: number | null;
-  /** Whether the block stands turned 90° from its award type's footprint (#204). */
+  /** Compatibility field from #204; fixed square awards never rotate. */
   crewBuildRotated: boolean;
   crewBuildPlacedAt: string | null;
   createdAt: string;
@@ -73,15 +72,23 @@ export function isFeatureCrewAward(type: CrewAwardType): boolean {
 }
 
 /**
- * Awards are accent pieces, not another source of large structural spans.
- * Standard awards stay compact at two columns; Long Haul alone gets one extra
- * column so it still reads as a span without consuming half the eight-column tower.
+ * Every Crew award is one literal square placement cell.
+ *
+ * This is deliberately expressed directly in the #207 placement grid rather
+ * than in visible columns/courses: one unit is half a visible column wide and
+ * one course tall, which is the compact true square approved in #208. The
+ * `placementUnits` marker tells the shared placement geometry not to double
+ * this width the way it does for an earned run footprint.
  */
-export function crewAwardFootprint(type: CrewAwardType): { width: BlockWidth; height: 1 } {
-  return {
-    width: type === "longHaul" ? 3 : 2,
-    height: 1,
-  };
+export function crewAwardFootprint(type: CrewAwardType): {
+  readonly width: 1;
+  readonly height: 1;
+  readonly placementUnits: true;
+} {
+  // The type still belongs in the API because callers derive one footprint per
+  // concrete award. #208 intentionally makes every type share the same mould.
+  void type;
+  return { width: 1, height: 1, placementUnits: true };
 }
 
 export function formatCrewAwardResult(type: CrewAwardType, value: number): string {

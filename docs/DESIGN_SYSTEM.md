@@ -272,7 +272,10 @@ Rules:
 - the signed-in runner's Runner Icon is the Account & Crew affordance in the header;
 - Settings remains a gear utility rather than a destination;
 - child experiences such as Runs History should preserve their parent destination and use a simple in-surface Back row;
-- restore useful parent scroll position when returning from a child screen where the feature contract requires it.
+- restore useful parent scroll position when returning from a child screen where the feature contract requires it;
+- the nav is a row of the app shell, at the bottom of the visible viewport, outside the app's one scrolling region — never a sticky or fixed bar over the page, and never something a screen holds bottom clearance for.
+
+The app shell owns the visible viewport (`100dvh`, no document scroll) with one scrolling region inside it. A screen's own bottom chrome docks between that region and the nav rather than floating above the page, so nothing has to be positioned against a mobile browser's collapsing toolbar. See `docs/CURRENT_APPLICATION_STRUCTURE.md` §1.
 
 Headers should carry identity/context, not become dashboards.
 
@@ -286,6 +289,8 @@ Sheet rules:
 - concise supporting context;
 - stable close/back affordance;
 - body content scrolls when needed;
+- on a phone a sheet is a bottom sheet: the backdrop is the whole visible viewport, the panel is against its bottom edge with rounded top corners, and nothing of the app shows below it;
+- that shape comes from CSS and stays correct while a mobile browser's toolbar expands and collapses; only a focused field inside the sheet may make it follow the visual viewport, and only until focus leaves;
 - actions remain reachable on phone;
 - no duplicate page title + eyebrow + subtitle when one line gives enough context;
 - detail sheets may use stronger data typography inside the content, while the sheet chrome stays quiet.

@@ -1,5 +1,6 @@
 import { BarChart3, ChevronRight, History, Plus } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { appScrollTop, scrollAppTo } from "../../app/appViewport.js";
 import { Button } from "../../components/ui/Button.js";
 import { EmptyState } from "../../components/ui/EmptyState.js";
 import { Section } from "../../components/ui/Section.js";
@@ -173,13 +174,15 @@ export function RunsScreen({
    * Runs the same frame the view swaps, so neither screen is ever painted at
    * the other one's scroll position. Only a navigation moves the page: arriving
    * on the Runs tab is left exactly as the app shell already had it.
+   *
+   * Through the shell rather than the window: the document does not scroll any
+   * more, the app's own region does (see `app/appViewport.ts`).
    */
   const paintedView = useRef(runsView);
   useLayoutEffect(() => {
     if (paintedView.current === runsView) return;
     paintedView.current = runsView;
-    if (typeof window.scrollTo !== "function") return;
-    window.scrollTo(0, runsView === "history" ? 0 : overviewScroll.current);
+    scrollAppTo(runsView === "history" ? 0 : overviewScroll.current);
   }, [runsView]);
 
   useEffect(() => {
@@ -192,7 +195,7 @@ export function RunsScreen({
 
   /** Remember where Overview was, then hand off to the History child screen. */
   function openHistory() {
-    overviewScroll.current = typeof window.scrollY === "number" ? window.scrollY : 0;
+    overviewScroll.current = appScrollTop();
     setRunsView("history");
   }
 

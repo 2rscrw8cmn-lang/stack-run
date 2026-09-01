@@ -1,0 +1,10 @@
+/*
+ * Issue #208: a one-unit-wide run block has no horizontal room for its normal
+ * mileage stamp. Keep the exact same label and type treatment, but turn the
+ * complete text object clockwise so its baseline follows the tall axis.
+ * Characters are never reordered, stacked, or individually rotated.
+ */
+.placed-block__label--vertical {
+  transform: rotate(90deg);
+  transform-origin: center;
+}

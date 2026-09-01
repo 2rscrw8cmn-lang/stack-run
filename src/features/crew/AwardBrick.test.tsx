@@ -11,13 +11,19 @@ const ALL_AWARDS: readonly CrewAwardType[] = [
   "miles", "zone2", "pace", "runs", "longHaul", "steady", "onTarget", "levelUp",
 ];
 
-function renderBrick(awardType: CrewAwardType, pieceColor = "var(--member-sky)") {
+/** A placed award is one square placement unit (#208), so one cell per edge. */
+function renderBrick(
+  awardType: CrewAwardType,
+  pieceColor = "var(--member-sky)",
+  topFace: boolean[] = [true],
+  rightFace: boolean[] = [true],
+) {
   return render(
     <AwardBrick
       awardType={awardType}
       pieceColor={pieceColor}
-      topFace={[true, true]}
-      rightFace={[true]}
+      topFace={topFace}
+      rightFace={rightFace}
     />,
   ).container;
 }
@@ -51,8 +57,26 @@ describe("Special Block treatment", () => {
 
   it("keeps the run block's 3D face-set so it stacks natively", () => {
     const container = renderBrick("longHaul");
-    expect(container.querySelectorAll(".placed-block__face--top")).toHaveLength(2);
+    expect(container.querySelectorAll(".placed-block__face--front")).toHaveLength(1);
+    expect(container.querySelectorAll(".placed-block__face--top")).toHaveLength(1);
     expect(container.querySelectorAll(".placed-block__face--right")).toHaveLength(1);
+  });
+
+  /**
+   * An award draws its depth through the same shared renderer a run block
+   * does, so a covered cell breaks a face and an exposed run does not. A
+   * placed award is one unit square, but the recap and profile crops hand it
+   * whatever footprint their frozen blocks carry.
+   */
+  it("draws one surface per unbroken run of exposed cells", () => {
+    const container = renderBrick(
+      "longHaul",
+      "var(--member-sky)",
+      [true, true, true],
+      [true, false, true],
+    );
+    expect(container.querySelectorAll(".placed-block__face--top")).toHaveLength(1);
+    expect(container.querySelectorAll(".placed-block__face--right")).toHaveLength(2);
   });
 
   it("gives Feature awards no treatment of their own", () => {
