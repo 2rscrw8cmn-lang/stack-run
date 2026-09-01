@@ -217,8 +217,9 @@ describe("Runs", () => {
     const sheet = within(screen.getByRole("dialog"));
     expect(sheet.getByText("151 bpm")).toBeInTheDocument();
     expect(
-      sheet.getByRole("list", { name: "Heart rate zone distribution" }),
-    ).toBeInTheDocument();
+      sheet.queryByRole("list", { name: "Heart rate zone distribution" }),
+    ).not.toBeInTheDocument();
+    expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
     // The run's own moving time leads; where the source came from and how long
     // the watch was running are behind the run options control (issue #214).
     expect(sheet.getByText("Moving")).toBeInTheDocument();

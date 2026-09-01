@@ -3,9 +3,10 @@
 **Status:** current contract. R3 implemented the shared source-detail
 architecture and the QA review states described here; **issue #214 (Run Detail
 3.0)** rebuilt the presentation on top of it — identity, one dominant result, a
-compact semantic metric strip, an interactive **Analysis** module, heart-rate
-zones inside heart rate, and administrative/provenance content behind the `…`
-run-options control. Owner visual acceptance of 3.0 is outstanding.  
+compact semantic metric strip, an interactive **Analysis** module as the only
+detailed metric surface, heart-rate zones inside heart rate, and
+administrative/provenance content behind the `…` run-options control. Owner
+visual acceptance of 3.0 is outstanding.
 **Companion:** `docs/RUNS_PRODUCT_MODEL.md` and `docs/RUNS_VISUALIZATION_SYSTEM.md`.
 
 ## Purpose
@@ -250,24 +251,22 @@ STACK does **not** draw heart-rate zone bands across the chart: the source
 states zone *durations*, not zone boundaries in bpm, and drawing bands would
 mean inventing the thresholds.
 
-### Supporting summaries, for the rest of the run
+### Analysis is the only detailed metric surface
 
-Analysis investigates one metric. Below it, compact modules summarise the
-others, so the whole run stays readable without changing tabs:
+There are no persistent Heart Rate, Elevation or Cadence summary cards beneath
+Analysis. The selected tab owns that metric's facts, chart and supporting
+detail; changing tabs is the deliberate disclosure for another metric. This
+keeps Run Detail from printing smaller, passive copies of the same readings and
+shapes below the interactive instrument.
 
-- **Heart Rate** — average and max, a small zone ring and the zone rows;
-- **Elevation** — the source's Gain with the series' Low and High, and a
-  terrain sparkline;
-- **Cadence** — the source's average, verbatim, and a cadence sparkline.
+The compact aggregate strip above Analysis remains the scan of secondary source
+facts. It is not a second analysis layer: average HR, Gain, Cadence and Load stay
+small, connected and subordinate. Max HR belongs in the Heart Rate tab when the
+profile supports one and remains discoverable in Run Options for an
+aggregate-only run.
 
-Elevation and Cadence sit side by side where the width allows. Each is a
-summary, not a second interactive chart: no axis, no cursor, no numbers the
-module has not already stated.
-
-The metric **currently under investigation has no summary**: the module above is
-showing the same facts and the same shape, larger and scrubbable. That is the
-one rule that keeps overview and investigation from printing the same reading
-twice on one screen.
+Heart-rate zones appear only while Heart Rate is selected. A source-only zone
+array without a usable heart-rate stream does not grow a fallback zone card.
 
 ### `…` owns everything administrative
 
@@ -287,9 +286,9 @@ When data exists, Run Detail should read in this order:
 
 1. **Identity / context**
 2. **Primary result**
-3. **Run Profile**
-4. **Secondary source facts** where they add context rather than repeat the chart
-5. **Heart-rate zones**
+3. **Compact secondary source facts**
+4. **Analysis** — one selected metric at a time
+5. **Heart-rate zones**, only inside selected Heart Rate analysis
 6. **Structured interval detail**
 7. **STACK actions** when the run is STACK-owned
 8. **Method/source explanation** behind disclosure when needed

@@ -102,6 +102,8 @@ interface ActivityChartProps {
     label: string;
     /** How one overlay value is labelled on its own axis. */
     formatAxis: (value: number) => string;
+    /** The overlay's unit, stated once beneath its axis. */
+    unitLabel?: string;
   } | null;
   /** The active metric's unit, stated once under its axis rather than on every tick. */
   unitLabel?: string;
@@ -365,11 +367,16 @@ export function ActivityChart({
 
           {overlayRuns.map((run, index) =>
             run.length > 1 ? (
-              <path
-                key={`overlay-${index}`}
-                className="activity-chart__overlay"
-                d={`${pathFrom(run, "line")} L${run[run.length - 1].x},${baselineY} L${run[0].x},${baselineY} Z`}
-              />
+              <g key={`overlay-${index}`}>
+                <path
+                  className="activity-chart__overlay-area"
+                  d={`${pathFrom(run, "line")} L${run[run.length - 1].x},${baselineY} L${run[0].x},${baselineY} Z`}
+                />
+                <path
+                  className="activity-chart__overlay-line"
+                  d={pathFrom(run, "line")}
+                />
+              </g>
             ) : null,
           )}
 
@@ -421,10 +428,7 @@ export function ActivityChart({
             </span>
           ))}
           {unitLabel && ticks.length > 0 && (
-            <span
-              className="activity-chart__unit"
-              style={{ top: percentY(plotY(invert ? domain.high : domain.low)) } as CSSProperties}
-            >
+            <span className="activity-chart__unit">
               {unitLabel}
             </span>
           )}
@@ -437,6 +441,7 @@ export function ActivityChart({
                 {overlay.formatAxis(tick)}
               </span>
             ))}
+            {overlay.unitLabel && <span className="activity-chart__unit">{overlay.unitLabel}</span>}
           </div>
         )}
 

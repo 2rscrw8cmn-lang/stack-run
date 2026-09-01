@@ -62,6 +62,7 @@ export function RunAnalysis({ facts, profile, selectedMetric, onSelectMetric }: 
         samples: samplesFor(elevation),
         label: elevation.label,
         formatAxis: elevation.formatAxis,
+        unitLabel: elevation.axisUnit,
       }
     : null;
 

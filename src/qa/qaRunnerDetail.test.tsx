@@ -123,10 +123,10 @@ describe("QA rich-profile run", () => {
     const intervals = await screen.findByRole("list", { name: "Structured workout intervals" });
     expect(within(intervals).getByText("Warm Up")).toBeInTheDocument();
     expect(within(intervals).getByText("Rep 1")).toBeInTheDocument();
-    // Zones are readable while Pace is the metric under investigation, in the
-    // heart-rate summary; selecting Heart Rate moves them onto its chart.
-    expect(screen.getByRole("list", { name: "Heart rate zone distribution" }).closest(".run-summary"))
-      .not.toBeNull();
+    // Zones belong only to the Heart Rate tab, not to a persistent module below
+    // whichever metric the runner is currently investigating.
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
     expect(screen.getByRole("list", { name: "Heart rate zone distribution" }).closest(".run-analysis"))
       .not.toBeNull();
@@ -139,7 +139,7 @@ describe("QA aggregate-only run", () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_AGGREGATE_ONLY_ACTIVITY_ID)} />);
 
     // Wait for the reads to settle before claiming nothing appeared.
-    expect(await screen.findByRole("region", { name: "Heart Rate" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByText("Loading run analysis")).not.toBeInTheDocument());
     expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
     expect(document.querySelector(".activity-chart")).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Run Profile metric" })).not.toBeInTheDocument();
@@ -150,19 +150,19 @@ describe("QA aggregate-only run", () => {
 
   it("still feels complete: the result, every stated aggregate, and cadence in the grid", async () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_AGGREGATE_ONLY_ACTIVITY_ID)} />);
-    await screen.findByRole("region", { name: "Heart Rate" });
+    await vi.waitFor(() => expect(screen.queryByText("Loading run analysis")).not.toBeInTheDocument());
 
     const hero = screen.getByLabelText("Primary activity results");
     expect(hero).toHaveTextContent("4.1 mi");
     expect(hero).toHaveTextContent("40:40");
     expect(hero).toHaveTextContent("9:55 /MI");
-    // The strip is the same four facts whatever the run has; max HR is a
-    // heart-rate fact and belongs to that module.
+    // The strip is the same four facts whatever the run has. Detailed metric
+    // cards do not appear as a fallback when this run has no profile.
     const grid = screen.getByLabelText("Imported run metrics");
     expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
       .toEqual(["Avg HR", "Gain", "Cadence", "Load"]);
-    expect(screen.getByRole("region", { name: "Heart Rate" })).toHaveTextContent("158");
     expect(within(grid).getByText("80")).toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
   });
 });
 
@@ -181,6 +181,7 @@ describe("QA historical-only runs", () => {
     const sheet = within(screen.getByRole("dialog"));
     expect(sheet.getByText("History")).toBeInTheDocument();
     expect(screen.getByLabelText("Primary activity results")).toHaveTextContent("7.4 mi");
+    await userEvent.click(sheet.getByRole("button", { name: "Heart Rate" }));
     expect(sheet.getByRole("list", { name: "Heart rate zone distribution" })).toBeInTheDocument();
 
     expect(sheet.queryByText(/Effort/)).not.toBeInTheDocument();

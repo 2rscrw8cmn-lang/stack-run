@@ -1,4 +1,4 @@
-import { Footprints, HeartPulse, MountainSnow, PersonStanding, Repeat, Zap } from "lucide-react";
+import { Footprints, HeartPulse, MountainSnow, Repeat, Zap } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { Button } from "../../components/ui/Button.js";
+import { StackMark } from "../../components/shared/StackMark.js";
 import type {
   IntervalsActivityDetail,
   IntervalsRunProfile,
@@ -22,8 +23,7 @@ import { formatMiles } from "../../domain/distance.js";
 import { formatDurationSeconds } from "../../domain/duration.js";
 import { formatPaceSeconds } from "../../domain/runs.js";
 import { RunAnalysis } from "./RunAnalysis.js";
-import { availableAnalysisMetrics, type RunMetricId } from "./runAnalysisMetrics.js";
-import { RunMetricSummaries } from "./RunMetricSummaries.js";
+import type { RunMetricId } from "./runAnalysisMetrics.js";
 import { runInsight } from "./runInsight.js";
 import type { RunIdentity } from "./runIdentity.js";
 import type { SourceRunFacts } from "./sourceRunFacts.js";
@@ -133,9 +133,8 @@ export function SourceRunDetail({
   const [profileSettled, setProfileSettled] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   /**
-   * Which metric Analysis is investigating. Held here rather than inside the
-   * module because the summaries below depend on it: the one metric being
-   * scrubbed above does not also get a summary card.
+   * Which metric Analysis is investigating. The choice lives with the run so
+   * reopening a different source profile cannot inherit an unrelated tab.
    */
   const [selectedMetric, setSelectedMetric] = useState<RunMetricId | null>(null);
   /** Guards a slow, superseded request from overwriting a newer one's state. */
@@ -199,16 +198,6 @@ export function SourceRunDetail({
     loadDetail(activityId, reader, requestId);
   }, [runKey, activityId, reader, loadAttempt, loadDetail]);
 
-  /**
-   * What Analysis is actually showing: the runner's choice when that metric has
-   * coverage, and otherwise whichever metric the module defaults to. Null when
-   * there is no analysis at all, which is when every summary applies.
-   */
-  const analysisMetrics = profile ? availableAnalysisMetrics(profile) : [];
-  const activeAnalysisMetric = analysisMetrics.includes(selectedMetric as RunMetricId)
-    ? selectedMetric
-    : analysisMetrics[0] ?? null;
-
   const structuredIntervals = detail?.intervals ?? [];
   /**
    * One headline fact. The zone rows further down state the whole distribution;
@@ -256,7 +245,7 @@ export function SourceRunDetail({
             `Footprints` already means cadence in this design system.
           */}
           <span className="run-identity__mark" aria-hidden="true">
-            <PersonStanding size={20} strokeWidth={1.9} />
+            <StackMark size={22} />
           </span>
           <div className="run-identity__lines">
             <h3 className="run-identity__title">{identity.title}</h3>
@@ -351,8 +340,6 @@ export function SourceRunDetail({
           onSelectMetric={setSelectedMetric}
         />
       )}
-
-      <RunMetricSummaries facts={facts} profile={profile} activeMetric={activeAnalysisMetric} />
 
       {detailState === "error" && (
         <div className="run-result-detail__request">

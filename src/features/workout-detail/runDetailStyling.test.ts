@@ -35,9 +35,11 @@ describe("Run Detail layout", () => {
       /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*border-bottom-color: var\(--metric-color, var\(--accent\)\)/s,
     );
     expect(componentsCss).toMatch(
-      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*opacity: 1/s,
+      /\.run-profile__selector > span\s*\{[^}]*color: var\(--text-subtle\)/s,
     );
-    expect(componentsCss).toMatch(/\.run-profile__selector > span\s*\{[^}]*opacity: 0\.6/s);
+    expect(componentsCss).toMatch(
+      /\.run-profile__selector > span svg\s*\{[^}]*color: var\(--metric-color/s,
+    );
   });
 
   it("gets the result's hierarchy from type rather than from a card", () => {
@@ -50,7 +52,9 @@ describe("Run Detail layout", () => {
   it("draws the supporting facts as one strip rather than four cards", () => {
     // One container, internal dividers. Four bordered cells is the pattern the
     // approved reference does not use.
-    expect(componentsCss).toMatch(/\.run-metrics\s*\{(?![^}]*border-radius)[^}]*border-bottom: 1px solid var\(--border\)/s);
+    expect(componentsCss).toMatch(
+      /\.run-metrics\s*\{[^}]*border: 1px solid var\(--border\)[^}]*border-radius: var\(--radius-sm\)/s,
+    );
     expect(componentsCss).toMatch(/\.run-metrics > div \+ div\s*\{\s*border-left: 1px solid var\(--border\)/s);
   });
 
@@ -59,6 +63,12 @@ describe("Run Detail layout", () => {
     expect(componentsCss).toMatch(/\.run-analysis\s*\{[^}]*border: 1px solid var\(--border\)/s);
     // … and none around the chart inside it.
     expect(componentsCss).toMatch(/\.activity-chart\s*\{(?![^}]*border:)[^}]*padding/s);
+  });
+
+  it("does not restore persistent metric cards beneath Analysis", () => {
+    expect(componentsCss).not.toMatch(/\.run-summaries\s*\{/);
+    expect(componentsCss).not.toMatch(/\.run-summary\s*\{/);
+    expect(componentsCss).not.toMatch(/\.sparkline\s*\{/);
   });
 
   it("fits the result to the facts the source actually stated", () => {
@@ -76,7 +86,7 @@ describe("Run Detail layout", () => {
       /\.run-hero > div\[data-metric="distance"\] dd\s*\{[^}]*color: var\(--accent\)/s,
     );
     expect(componentsCss).toMatch(
-      /\.run-hero > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: clamp\(16px/s,
+      /\.run-hero > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: clamp\(21px/s,
     );
   });
 

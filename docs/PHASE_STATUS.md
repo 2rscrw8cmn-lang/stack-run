@@ -1205,8 +1205,8 @@ Implemented scope:
   the plot, a legend and a drag hint below it, and the elevation silhouette
   carrying its own axis on the right;
 - heart-rate zones become compact ordered rows inside Heart Rate, beside a small
-  decorative ring; a run with
-  zone durations and no stream keeps the same rows in a section of its own; no
+  decorative ring; a run with zone durations and no usable heart-rate stream
+  does not grow a fallback zone card; no
   zone bands are drawn, because the source states durations and not thresholds;
 - Edit Run, plan linking, source/import provenance, elapsed time, effort and
   `How STACK calculates this` move behind the `…` run-options sheet, which owns
@@ -1226,8 +1226,9 @@ Second pass, against the owner's full-resolution reference (the committed
   the content; the dialog keeps its accessible name without a second heading;
 - the result loses its panel and the four supporting facts become one strip with
   internal dividers; Analysis becomes one bordered instrument;
-- persistent Heart Rate / Elevation / Cadence summary modules return below
-  Analysis, with sparklines, minus whichever metric is being investigated;
+- persistent Heart Rate / Elevation / Cadence summary modules are removed;
+  Analysis is the only detailed metric surface and zones appear only while
+  Heart Rate is selected;
 - chart callouts name their companion readings (`HR 148 bpm`, `Elev 52 ft`).
 
 Verification: `npm run check` passes (206 files, 2554 tests). New coverage for

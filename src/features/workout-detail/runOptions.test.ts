@@ -31,6 +31,7 @@ describe("run option facts", () => {
     })).toEqual([
       { label: "Source", value: "Intervals.icu" },
       { label: "Effort", value: "Great" },
+      { label: "Max HR", value: "174 bpm" },
       { label: "Elapsed", value: "34:00" },
       { label: "Moving", value: "30:18" },
       { label: "Imported", value: "Aug 13, 2026" },
@@ -49,7 +50,14 @@ describe("run option facts", () => {
   });
 
   it("says nothing at all about a run with nothing administrative to say", () => {
-    expect(sourceRunOptionFacts({ ...facts, elapsedTimeSeconds: null })).toEqual([]);
+    expect(sourceRunOptionFacts({ ...facts, elapsedTimeSeconds: null, maxHeartRate: null })).toEqual([]);
+  });
+
+  it("keeps Max HR discoverable when an aggregate-only run has no Heart Rate tab", () => {
+    expect(sourceRunOptionFacts({ ...facts, elapsedTimeSeconds: null })).toContainEqual({
+      label: "Max HR",
+      value: "174 bpm",
+    });
   });
 
   it("ignores a stored value that is not a timestamp rather than printing Invalid Date", () => {

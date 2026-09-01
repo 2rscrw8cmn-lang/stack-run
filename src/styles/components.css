@@ -4611,8 +4611,18 @@ textarea.run-input {
  */
 .sheet--run-detail .sheet__header--chrome {
   min-height: 0;
-  margin-bottom: var(--space-2);
+  margin-bottom: 4px;
   border-bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .sheet--run-detail .sheet__panel {
+    padding-top: 10px;
+  }
+
+  .sheet--run-detail .sheet__panel::before {
+    margin-bottom: 6px;
+  }
 }
 
 .sheet__header--chrome .sheet__header-actions {
@@ -5006,9 +5016,9 @@ textarea.run-input {
  */
 .run-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.95fr) minmax(0, 1.04fr);
   margin: 0;
-  padding: var(--space-4) 0;
+  padding: 14px 0;
   gap: var(--space-3);
   border-bottom: 1px solid var(--border);
 }
@@ -5031,7 +5041,7 @@ textarea.run-input {
 }
 
 .run-hero dd {
-  font-size: clamp(21px, 6.2vw, 27px);
+  font-size: clamp(23px, 7.2vw, 30px);
   font-weight: 700;
   line-height: 1.02;
   letter-spacing: -0.04em;
@@ -5046,7 +5056,7 @@ textarea.run-input {
 }
 
 .run-hero > div[data-metric="pace"] dd {
-  font-size: clamp(16px, 5.4vw, 25px);
+  font-size: clamp(21px, 6.4vw, 27px);
   letter-spacing: -0.05em;
 }
 
@@ -5105,8 +5115,10 @@ textarea.run-input {
      metrics gets three full-width cells rather than three and a hole. */
   grid-template-columns: repeat(var(--metric-columns, 4), minmax(0, 1fr));
   margin: 0;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 /* Five facts — every aggregate a source can state — go two across with the last
@@ -5180,18 +5192,18 @@ textarea.run-input {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-  padding: 9px var(--space-3);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-  border-radius: var(--radius-sm);
-  color: var(--text);
+  margin: 0;
+  padding: 4px 2px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
   font-size: var(--type-label);
 }
 
 .run-insight > svg {
   flex: 0 0 auto;
   color: var(--accent);
+  opacity: 0.7;
 }
 
 .run-detail__section-heading {
@@ -5260,7 +5272,7 @@ textarea.run-input {
   width: 100%;
   padding: 7px 2px;
   border-bottom: 2px solid transparent;
-  color: var(--metric-color, var(--text-subtle));
+  color: var(--text-subtle);
   /* The interface face rather than the data face: four metric names have to fit
      across a 390px phone, and mono is a third wider at the same size. */
   font-size: var(--type-label);
@@ -5268,13 +5280,23 @@ textarea.run-input {
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
-  opacity: 0.62;
+  opacity: 1;
+}
+
+.run-profile__selector > span svg {
+  color: var(--metric-color, var(--text-subtle));
+  opacity: 0.7;
 }
 
 /* The icon keeps the metric's own colour; the label goes quiet until selected,
    so the selected tab is brighter as well as underlined. */
 .run-profile__selector[aria-pressed="true"] > span {
   border-bottom-color: var(--metric-color, var(--accent));
+  color: var(--metric-color, var(--accent));
+  font-weight: 700;
+}
+
+.run-profile__selector[aria-pressed="true"] > span svg {
   opacity: 1;
 }
 
@@ -5333,8 +5355,16 @@ textarea.run-input {
 
 /* Cadence: a count over an interval, so its steps stay square. */
 .activity-chart[data-metric="cadence"] .activity-chart__line {
-  stroke-width: 1.5;
+  stroke-width: 1.25;
   stroke-linejoin: miter;
+}
+
+.activity-chart[data-metric="cadence"] .activity-chart__fill-stop--top {
+  stop-opacity: 0.16;
+}
+
+.activity-chart[data-metric="cadence"] .activity-chart__fill-stop--bottom {
+  stop-opacity: 0;
 }
 
 .activity-chart__area {
@@ -5353,10 +5383,18 @@ textarea.run-input {
 
 /* The terrain behind pace: present enough to read as the ground, quiet enough
    that the pace line is obviously the subject. */
-.activity-chart__overlay {
+.activity-chart__overlay-area {
   fill: var(--metric-elevation);
-  opacity: 0.17;
+  opacity: 0.12;
   stroke: none;
+}
+
+.activity-chart__overlay-line {
+  fill: none;
+  stroke: var(--metric-elevation);
+  stroke-width: 1;
+  opacity: 0.58;
+  vector-effect: non-scaling-stroke;
 }
 
 .activity-chart__reference {
@@ -5390,10 +5428,6 @@ textarea.run-input {
   opacity: 0.8;
 }
 
-.activity-chart__unit {
-  transform: translateY(50%);
-}
-
 .activity-chart__ticks span {
   position: absolute;
   right: 6px;
@@ -5403,6 +5437,22 @@ textarea.run-input {
   font-size: var(--type-label);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.activity-chart__ticks .activity-chart__unit {
+  top: auto;
+  bottom: 0;
+  transform: none;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.activity-chart__ticks--overlay .activity-chart__unit {
+  right: auto;
+  left: 6px;
+  color: var(--metric-elevation);
 }
 
 .activity-chart__crosshair {
@@ -5716,155 +5766,6 @@ textarea.run-input {
   white-space: nowrap;
 }
 
-/*
- * The supporting modules.
- *
- * Analysis is for investigating one metric; these are for reading the rest of
- * the run without leaving it. Each is one quiet panel — a title, its stated
- * figures, and a silhouette or a zone distribution — and elevation and cadence
- * sit side by side, because neither needs a full width to say what it says.
- */
-.run-summaries {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-1);
-}
-
-.run-summaries__pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-@media (max-width: 359px) {
-  .run-summaries__pair { grid-template-columns: minmax(0, 1fr); }
-}
-
-.run-summary {
-  display: grid;
-  align-content: start;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-3) var(--space-2);
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-}
-
-.run-summary__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px var(--space-3);
-}
-
-.run-summary__title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--metric-color, var(--text-muted));
-  font-size: var(--type-label);
-}
-
-.run-summary__facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px var(--space-3);
-  margin: 0;
-}
-
-.run-summary__facts > div {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.run-summary__facts dd {
-  margin: 0;
-  font-size: clamp(15px, 4.2vw, 17px);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.run-summary__facts dt {
-  color: var(--text-subtle);
-  font-size: var(--type-meta);
-  letter-spacing: 0.06em;
-}
-
-.run-summary__unit {
-  color: var(--text-muted);
-  font-size: var(--type-meta);
-  font-weight: 600;
-}
-
-/*
- * A half-width panel gives its figures their own line under the title, and
- * stacks each value over its label so three of them fit across 170px without
- * the type shrinking.
- */
-.run-summaries__pair .run-summary__head { display: grid; gap: var(--space-2); }
-
-.run-summaries__pair .run-summary { padding: var(--space-3) var(--space-2) var(--space-2); }
-
-.run-summaries__pair .run-summary__facts {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 6px;
-}
-
-.run-summaries__pair .run-summary__facts > div {
-  display: grid;
-  gap: 1px;
-}
-
-.run-summaries__pair .run-summary__facts dd {
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-/* The ring is a glance, the rows are the reading: side by side where there is
-   room for both, and the rows alone on the narrowest phone. */
-.run-summary__zones {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: 2px;
-}
-
-.run-summary__ring .donut { display: block; }
-.run-summary__ring .donut__legend { display: none; }
-.run-summary__ring .donut__figure { background: none; border: 0; }
-.run-summary__ring .donut__plot { max-width: 88px; }
-
-@media (max-width: 359px) {
-  .run-summary__zones { grid-template-columns: minmax(0, 1fr); }
-  .run-summary__ring { display: none; }
-}
-
-/* The shape of a metric over the whole run: no axis, no cursor, no numbers —
-   the module states those. */
-.sparkline {
-  display: block;
-  width: 100%;
-  height: 44px;
-}
-
-.sparkline__line {
-  fill: none;
-  stroke: var(--metric-color, var(--accent));
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.sparkline__area { stroke: none; }
-.sparkline__stop--top { stop-color: var(--metric-color, var(--accent)); stop-opacity: 0.3; }
-.sparkline__stop--bottom { stop-color: var(--metric-color, var(--accent)); stop-opacity: 0.02; }
-
 /* Structured intervals: a polished secondary section, not a raw table. */
 
 .run-intervals {
@@ -5978,7 +5879,7 @@ textarea.run-input {
 }
 
 .run-result-detail {
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 /* Tablet and desktop: the sheet is wider than a phone, so the result panel and

@@ -272,9 +272,10 @@ Issue #214 (Run Detail 3.0) rebuilt the composition around the order a runner
 reads in — **identity → result → investigation → supporting detail →
 actions/provenance** — without forking the shared path:
 
-- `runIdentity.ts` states who a run is: the source's own activity name where the
-  reconciled history row has one, the linked workout's title where it does not,
-  and STACK's own classification as the last resort. Nothing is invented.
+- `runIdentity.ts` states who a run is: a distinct linked-workout title where
+  one exists, otherwise STACK's classification. The source's own activity name
+  remains the identity only for historical-only activity and stays behind `…`
+  for an owned run. Nothing is invented.
 - `SourceRunDetail` renders the hero result, a compact icon/colour metric strip,
   one deterministic insight, the **Analysis** module and structured intervals.
 - `RunAnalysis` + `ActivityChart` own the analysis: per-metric treatments (pace
@@ -282,7 +283,9 @@ actions/provenance** — without forking the shared path:
   drawn across it, filled elevation terrain, stepped cadence), a real y-axis, and
   touch/keyboard scrubbing with a crosshair and a persistent callout.
 - Heart-rate zones are compact rows **inside** Heart Rate. A run with zone
-  durations but no stream keeps the same rows in a small section of their own.
+  durations but no usable heart-rate stream does not grow a fallback card.
+- Analysis is the only detailed Pace / Heart Rate / Elevation / Cadence surface;
+  there are no persistent metric summary cards beneath it.
 - `RunOptionsSheet` behind the `…` control owns Edit Run, plan linking, source
   and import provenance, elapsed time, effort and the methodology note.
 

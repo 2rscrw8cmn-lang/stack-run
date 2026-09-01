@@ -49,6 +49,12 @@ export function sourceRunOptionFacts(
   if (options.manualHeartRate != null) {
     rows.push({ label: "Avg HR (entered)", value: `${Math.round(options.manualHeartRate)} bpm` });
   }
+  // Max HR belongs in Heart Rate when a profile is available. Keeping the
+  // imported aggregate here as well means an aggregate-only run does not lose
+  // a real source fact merely because it cannot offer a Heart Rate tab.
+  if (facts.maxHeartRate !== null) {
+    rows.push({ label: "Max HR", value: `${Math.round(facts.maxHeartRate)} bpm` });
+  }
   if (
     facts.durationSeconds !== null &&
     facts.elapsedTimeSeconds !== null &&

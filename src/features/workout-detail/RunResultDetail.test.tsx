@@ -128,7 +128,7 @@ describe("connected run result", () => {
     expect(screen.queryByText(/Avg HR|Max HR|Gain|Load|Cadence/)).not.toBeInTheDocument();
   });
 
-  it("shows each approved optional summary with mobile-fit labels, and accessible HR-zone text without guessed zeroes", async () => {
+  it("shows the approved optional aggregates in one strip without inventing analysis for an aggregate-only run", () => {
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { averageHeartRate: 151, maxHeartRate: 177, elevationGainFeet: 432.4, trainingLoad: 68, hrZoneSeconds: [600, 1200, 600] } }} />);
     const strip = screen.getByLabelText("Imported run metrics");
     expect(within(strip).getByText("151 bpm")).toBeInTheDocument();
@@ -140,14 +140,11 @@ describe("connected run result", () => {
     expect(screen.queryByText("Elevation gain")).not.toBeInTheDocument();
     expect(screen.queryByText("Training Load")).not.toBeInTheDocument();
 
-    // Max heart rate is a heart-rate fact: it sits in that module rather than
-    // in the strip a runner scans.
-    const heartRate = screen.getByRole("region", { name: "Heart Rate" });
-    expect(heartRate).toHaveTextContent("177");
-    const zones = within(heartRate).getByRole("list", { name: "Heart rate zone distribution" });
-    expect(zones).toHaveTextContent("Zone 2");
-    expect(zones).toHaveTextContent("20:00 · 50%");
-    expect(zones).not.toHaveTextContent("Zone 4");
+    // Detailed metric analysis exists only inside a selectable Analysis tab.
+    // With no profile there is no tab, no zone module and no fallback card.
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
   });
 
   it("shows a hand-typed heart rate on a manual run that has no imported one", () => {
@@ -193,9 +190,10 @@ describe("connected run result", () => {
     const strip = screen.getByLabelText("Imported run metrics");
     expect(within(strip).getByText("116 ft")).toBeInTheDocument();
     expect(within(strip).getByText("Gain")).toBeInTheDocument();
-    // The elevation module states the same source total, and still never
-    // recomputes it from the series it draws.
-    expect(screen.getByRole("region", { name: "Elevation" })).toHaveTextContent("116 ft");
+    // Elevation states the same source total inside its Analysis tab, and still
+    // never recomputes it from the series it draws.
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("116 ft");
   });
 
   it("fetches richer detail automatically once shown, with no explicit tap and no button at all", async () => {
@@ -561,14 +559,13 @@ describe("heart-rate zones inside heart-rate analysis", () => {
     render(<RunResultDetail run={zoned} syncToken="token" />);
     await screen.findByText("Analysis");
 
-    // While Pace is under investigation the zones are in the heart-rate summary
-    // below, so the distribution is readable without changing tabs.
-    expect(screen.getByRole("list", { name: "Heart rate zone distribution" }).closest(".run-summary"))
-      .not.toBeNull();
+    // Heart-rate detail does not persist beneath a different selected metric.
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
 
-    // Now they belong to the chart, and the summary that duplicated them is gone.
+    // Now they belong to the selected chart.
     const zones = screen.getByRole("list", { name: "Heart rate zone distribution" });
     expect(within(zones).getAllByRole("listitem")).toHaveLength(5);
     expect(zones).toHaveTextContent("Zone 3");
@@ -618,61 +615,42 @@ describe("heart-rate zones inside heart-rate analysis", () => {
   });
 });
 
-/**
- * Issue #214's second pass: the run's other metrics stay readable while one of
- * them is being investigated. Analysis is for scrubbing one series; these are
- * for scanning the rest of the run without changing tabs.
- */
-describe("supporting metric summaries", () => {
-  it("summarises the metrics Analysis is not currently investigating", async () => {
+/** The tabbed Analysis instrument is the only detailed metric surface. */
+describe("analysis owns detailed metrics", () => {
+  it("keeps every metric's detail in its selected tab and renders no persistent summary cards", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={{ ...augustRun, importedMetrics: { ...augustRun.importedMetrics, hrZoneSeconds: [305, 412, 463, 430, 171] } }} syncToken="token" />);
     await screen.findByText("Analysis");
 
-    // Pace is the metric under investigation, so the other three summarise.
-    const heartRate = screen.getByRole("region", { name: "Heart Rate" });
-    expect(heartRate).toHaveTextContent("153");
-    expect(heartRate).toHaveTextContent("174");
-    expect(within(heartRate).getByRole("list", { name: "Heart rate zone distribution" })).toBeInTheDocument();
+    expect(document.querySelector(".run-summaries")).not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
+    expect(document.querySelector(".sparkline")).not.toBeInTheDocument();
 
-    const elevation = screen.getByRole("region", { name: "Elevation" });
-    // The source's climbing total beside the series' own low and high.
-    expect(elevation).toHaveTextContent("116 ft");
-    expect(elevation).toHaveTextContent("72 ft");
-    expect(elevation).toHaveTextContent("113 ft");
-
-    // Cadence exactly as the source stated it: no doubling, no invented unit.
-    const cadence = screen.getByRole("region", { name: "Cadence" });
-    expect(cadence).toHaveTextContent("79");
-    expect(cadence).not.toHaveTextContent("158");
-    expect(cadence).not.toHaveTextContent(/spm|rpm/i);
-
-    // Each draws the shape of its own series, gaps included.
-    expect(document.querySelectorAll(".sparkline")).toHaveLength(2);
-  });
-
-  it("drops the summary of whichever metric is under investigation", async () => {
-    respondWith(NO_INTERVALS, augustStreams);
-    render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Analysis");
-    expect(screen.getByRole("region", { name: "Elevation" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("153 bpm");
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("174 bpm");
+    expect(screen.getByRole("list", { name: "Heart rate zone distribution" }))
+      .toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
-    expect(screen.queryByRole("region", { name: "Elevation" })).not.toBeInTheDocument();
-    // And the others stay, so the rest of the run is still readable.
-    expect(screen.getByRole("region", { name: "Heart Rate" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Cadence" })).toBeInTheDocument();
+    const elevationFacts = document.querySelector(".run-analysis__facts");
+    expect(elevationFacts).toHaveTextContent("116 ft");
+    expect(elevationFacts).toHaveTextContent("72 ft");
+    expect(elevationFacts).toHaveTextContent("113 ft");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
+    const cadenceFacts = document.querySelector(".run-analysis__facts");
+    expect(cadenceFacts).toHaveTextContent("79");
+    expect(cadenceFacts).not.toHaveTextContent("158");
+    expect(cadenceFacts).not.toHaveTextContent(/spm|rpm/i);
   });
 
-  it("summarises what a run with no stream at all still has, without an empty sparkline", () => {
+  it("keeps aggregate-only runs compact instead of replacing missing tabs with cards", () => {
     render(<RunResultDetail run={augustRun} />);
 
-    expect(screen.getByRole("region", { name: "Heart Rate" })).toHaveTextContent("174");
-    // Gain is a source aggregate and survives; Low/High belong to a series
-    // this run does not have, so they are absent rather than guessed.
-    const elevation = screen.getByRole("region", { name: "Elevation" });
-    expect(elevation).toHaveTextContent("116 ft");
-    expect(elevation).not.toHaveTextContent("Low");
+    expect(screen.getByLabelText("Imported run metrics")).toHaveTextContent("116 ft");
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
     expect(document.querySelector(".sparkline")).not.toBeInTheDocument();
   });
 });
@@ -684,22 +662,21 @@ describe("supporting metric summaries", () => {
  * change what a logged run does.
  */
 describe("accepted run through the shared source-detail path", () => {
-  it("keeps a valid summary when only the optional profile fails", async () => {
+  it("keeps a valid aggregate result when only the optional profile fails", async () => {
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify(NO_INTERVALS)))
       .mockRejectedValueOnce(new Error("streams unavailable"));
 
     render(<RunResultDetail run={augustRun} syncToken="token" />);
 
-    // Everything the source already stated survives the failed enrichment: the
-    // result, the strip, and the summary modules that carry the rest.
+    // Everything the primary result and compact strip already stated survives
+    // the failed enrichment; missing profile detail does not grow fallback cards.
     await screen.findByText("153 bpm");
     expect(hero()).toHaveTextContent("2.76 mi");
     expect(hero()).toHaveTextContent("10:59 /MI");
     expect(screen.getByLabelText("Imported run metrics")).toHaveTextContent("116 ft");
-    expect(screen.getByRole("region", { name: "Heart Rate" })).toHaveTextContent("174");
-    expect(screen.getByRole("region", { name: "Cadence" })).toHaveTextContent("79");
     expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
     // A missing profile is not an error worth alarming anybody about.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
