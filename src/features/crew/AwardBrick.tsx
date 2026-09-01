@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { CrewAwardType } from "../../crew/awards.js";
 import "./awardBlock.css";
+import "./awardBlockCompact.css";
 
 /**
  * Monoline award icon set (OUC Half v1): 24x24 viewBox, stroke = currentColor
