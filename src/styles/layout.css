@@ -4,6 +4,25 @@
   min-height: 100dvh;
 }
 
+/*
+ * `viewport-fit=cover` lets the app use the whole screen, but iOS Safari keeps
+ * its status area transparent while the document scrolls underneath it. The
+ * header pays the inset when it is at the top; this fixed scrim keeps later
+ * Crew rows, runner icons, etc. from scrolling through the clock/notch after
+ * the header has left the viewport.
+ */
+.app-shell::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  z-index: 7;
+  pointer-events: none;
+  background: var(--bg);
+}
+
 /* Nothing but the brand stands here. The one control that used to share the
    row wrapped onto two lines on a phone, and it belonged in Settings. */
 .app-shell__header {
@@ -72,10 +91,9 @@
 
 .app-shell__main {
   flex: 1;
-  /* Enough clearance for the sticky nav's own height plus its safe-area
-     inset, so scrolling to the end of any tab's content clears the bar
-     instead of leaving real content (e.g. the last row of Crew Build)
-     sitting only under its blur.
+  /* Enough clearance for the fixed nav's own height plus its safe-area inset,
+     so scrolling to the end of any tab's content clears the bar instead of
+     leaving real content (e.g. the last row of Crew Build) under its blur.
 
      `--bottom-nav-clearance`, not `--bottom-nav-height`: the latter is the
      item's min-height floor and the nav renders about 12px taller, which is
@@ -86,9 +104,16 @@
 }
 
 .app-shell__nav {
-  position: sticky;
+  /*
+   * This is primary app chrome, not a footer in the document. `sticky` made it
+   * stop wherever its flex-flow slot happened to land on tall Crew pages,
+   * which is why it appeared to float halfway up the screen in iOS Safari.
+   */
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 1;
+  z-index: 6;
   border-top: 1px solid var(--border);
   /* Slightly translucent over the page, so content scrolling under the bar
      reads as going behind it rather than stopping at it. */
