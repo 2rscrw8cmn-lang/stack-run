@@ -80,11 +80,14 @@ export function isFeatureCrewAward(type: CrewAwardType): boolean {
  * `placementUnits` marker tells the shared placement geometry not to double
  * this width the way it does for an earned run footprint.
  */
-export function crewAwardFootprint(_type: CrewAwardType): {
+export function crewAwardFootprint(type: CrewAwardType): {
   readonly width: 1;
   readonly height: 1;
   readonly placementUnits: true;
 } {
+  // The type still belongs in the API because callers derive one footprint per
+  // concrete award. #208 intentionally makes every type share the same mould.
+  void type;
   return { width: 1, height: 1, placementUnits: true };
 }
 
