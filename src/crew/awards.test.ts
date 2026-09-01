@@ -5,15 +5,21 @@ import {
   formatCrewAwardResult,
   isFeatureCrewAward,
 } from "./awards.js";
+import { handFootprint } from "../domain/footprint.js";
+
+const ALL_AWARDS = [
+  "miles", "zone2", "pace", "runs", "longHaul", "steady", "onTarget", "levelUp",
+] as const;
 
 describe("crewAwardFootprint", () => {
-  // Must stay in step with public.crew_award_width() in
-  // 20260819031000_crew_award_footprint_tuning.sql — the server rejects a
-  // placement the client offered if these two ever disagree.
-  it("keeps every standard award compact and lets Long Haul alone read longer", () => {
-    expect(crewAwardFootprint("longHaul")).toEqual({ width: 3, height: 1 });
-    for (const type of ["miles", "zone2", "pace", "runs", "steady", "onTarget", "levelUp"] as const) {
-      expect(crewAwardFootprint(type)).toEqual({ width: 2, height: 1 });
+  it("makes every award exactly one square placement unit", () => {
+    for (const type of ALL_AWARDS) {
+      const source = crewAwardFootprint(type);
+      expect(source).toEqual({ width: 1, height: 1, placementUnits: true });
+      expect(handFootprint(source, false)).toEqual({ width: 1, height: 1 });
+      // A square has no alternate footprint even if an old caller supplies the
+      // compatibility rotation flag.
+      expect(handFootprint(source, true)).toEqual({ width: 1, height: 1 });
     }
   });
 });
