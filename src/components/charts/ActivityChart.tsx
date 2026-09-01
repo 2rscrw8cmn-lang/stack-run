@@ -65,6 +65,7 @@ export interface ActivityChartReference {
  */
 export interface ActivityChartCompanion {
   id: string;
+  /** Short enough to sit in front of a value in a narrow callout: `HR`, `Elev`. */
   label: string;
   samples: readonly ActivitySample[];
   format: (value: number) => string;
@@ -478,7 +479,7 @@ export function ActivityChart({
         {selectedTime !== null && (
           <div
             className="activity-chart__callout"
-            data-flip={cursorRatio > 0.55 ? "left" : "right"}
+            data-flip={cursorRatio > 0.6 ? "left" : "right"}
             style={{ "--cursor": percentX(plotX(selectedTime)) } as CSSProperties}
           >
             <p className="activity-chart__callout-time machine-label">
@@ -488,10 +489,11 @@ export function ActivityChart({
               {selectedValueText ?? "No data"}
             </p>
             {companionReadings.length > 0 && (
-              <ul className="activity-chart__callout-companions machine-label">
+              <ul className="activity-chart__callout-companions">
                 {companionReadings.map((reading) => (
-                  <li key={reading.label} data-companion={reading.label}>
-                    {reading.value}
+                  <li key={reading.label}>
+                    <span className="activity-chart__callout-name">{reading.label}</span>
+                    <span className="activity-chart__callout-reading">{reading.value}</span>
                   </li>
                 ))}
               </ul>

@@ -84,6 +84,7 @@ export function RunDetailSheet({
     sourceLabel: runSourceLabel(runLog),
     effortLabel: EFFORT_LABEL[runLog.effort],
     manualHeartRate: facts.averageHeartRate === null ? runLog.manualHeartRate ?? null : null,
+    sourceActivityName: identity.sourceName,
     importedAt: runLog.externalSource?.importedAt ?? null,
     sourceUpdatedAt: runLog.externalSource?.sourceUpdatedAt ?? null,
   });
@@ -99,6 +100,7 @@ export function RunDetailSheet({
       <Sheet
         className="sheet--run-detail"
         title={identity.title}
+        hideTitle
         isOpen={isOpen}
         onClose={onClose}
         headerActions={

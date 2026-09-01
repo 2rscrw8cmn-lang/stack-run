@@ -129,25 +129,36 @@ source history.
 The hierarchy below is unchanged in substance; what 3.0 changed is how much of
 the screen each level gets, and how much of it can be interrogated.
 
-### Identity leads
+### Identity leads, in the body
 
-The sheet is titled with the run, in this order of truthfulness:
+The run's identity — its mark, its name, the local date and time, its chips and
+its plan context — is the **first content of the sheet, not the sheet's chrome**.
+It scrolls away as the runner moves into Analysis, and the fixed chrome is the
+grabber, `…` and Close. The dialog keeps an accessible name (the same title,
+present but not drawn); it is deliberately not a heading, so the visible
+identity is the only one a screen reader meets.
 
-1. the **source's own activity name**, read from the reconciled history row —
-   `RunLog` has no field for it, and `runIdentity.ts` reads rather than copies so
-   nothing can go stale against the source;
-2. the **linked workout's title**, when there is a real link;
-3. **STACK's own classification** (`Easy Run`, `Long Run`, `Intervals`, …).
+For a run STACK owns, the title is what STACK holds, in this order:
 
-There is no fourth case: a run with none of the above is not given an invented
-name. `Run Detail` is no longer a heading anywhere. Date, local start time, type
-and Plan/Extra/History chips, and the linked workout's week sit under it as
-supporting context.
+1. the **linked workout's title**, when that title is a *name* rather than a
+   restatement of the type and distance — `Yasso 800s` identifies a run,
+   `Easy 3 mi` does not (`isDistinctWorkoutName`);
+2. **STACK's own classification** (`Easy Run`, `Long Run`, `Intervals`, …).
+
+The **source's own activity name is not promoted**. `Winter Park - W1 Run 1 —
+Easy 3mi` is how a watch files a run: it is source bookkeeping, it is kept, and
+it is kept behind `…` under source information. A **historical-only** run is the
+exception and leads with it, because nobody has classified that run and the
+source's name is the best identity there is.
+
+There is no further case: a run with none of the above is not given an invented
+name, and `Run Detail` is no longer a heading anywhere.
 
 ### Result, then supporting facts
 
-One panel: distance dominant and in STACK lime, duration and average pace beside
-it, units set smaller than the figures. Where the run is linked to a workout
+No panel: hairline rules above and below, thin dividers between, and the
+hierarchy carried by type — distance dominant and in STACK lime, duration and
+average pace beside it, units set smaller than the figures. Where the run is linked to a workout
 with an **exact** distance target, one quiet line under the distance states the
 comparison — `+0.12 mi vs plan`, or `On plan · 3 mi`. A range target (`3-4`)
 states a band rather than a number and yields no line at all; see
@@ -177,6 +188,10 @@ does not state a verdict on the run.
   interval rather than a point on a curve, with the imported average as a
   reference line.
 
+Analysis is **one module**: the tab bar, the metric's stated facts, the plot and
+its footer share a single container and a single border, so it reads as one
+instrument rather than a control panel with a chart card under it.
+
 The selector is a **tab bar**, not a row of pills: four metric names, each with
 its icon above it in the metric's own colour, the selected one brighter and
 underlined, and a 44px target per cell. Every metric with recognized stream
@@ -201,7 +216,9 @@ Every chart supports:
   labels;
 - `touch-action: pan-y`, so a vertical drag still scrolls the sheet;
 - a legend when a second series is drawn, and one quiet line saying the chart
-  can be dragged — nothing else on the page tells a runner that.
+  can be dragged — nothing else on the page tells a runner that;
+- companion readings stated as **named rows** (`HR 148 bpm`, `Elev 52 ft`)
+  rather than bare telemetry.
 
 Where pace is drawn over the elevation silhouette, the silhouette gets its own
 labelled axis on the right. A shape with no scale is decoration; it still
@@ -233,11 +250,31 @@ STACK does **not** draw heart-rate zone bands across the chart: the source
 states zone *durations*, not zone boundaries in bpm, and drawing bands would
 mean inventing the thresholds.
 
+### Supporting summaries, for the rest of the run
+
+Analysis investigates one metric. Below it, compact modules summarise the
+others, so the whole run stays readable without changing tabs:
+
+- **Heart Rate** — average and max, a small zone ring and the zone rows;
+- **Elevation** — the source's Gain with the series' Low and High, and a
+  terrain sparkline;
+- **Cadence** — the source's average, verbatim, and a cadence sparkline.
+
+Elevation and Cadence sit side by side where the width allows. Each is a
+summary, not a second interactive chart: no axis, no cursor, no numbers the
+module has not already stated.
+
+The metric **currently under investigation has no summary**: the module above is
+showing the same facts and the same shape, larger and scrubbable. That is the
+one rule that keeps overview and investigation from printing the same reading
+twice on one screen.
+
 ### `…` owns everything administrative
 
 `RunOptionsSheet` holds Edit Run, Connect to Plan, Unlink from Plan, the source
-label, imported/source-updated dates, elapsed vs moving time, the runner's
-effort, a hand-entered heart rate, and `How STACK calculates this`. It performs
+label, **the source's own activity name**, imported/source-updated dates,
+elapsed vs moving time, the runner's effort, a hand-entered heart rate, and
+`How STACK calculates this`. It performs
 no mutation of its own: the actions handed to it are the same buttons the run's
 sheet has always rendered, so edit/delete/link ownership is unchanged.
 

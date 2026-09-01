@@ -32,12 +32,19 @@ export function sourceRunOptionFacts(
     effortLabel?: string | null;
     /** A heart rate the runner typed, which is never a source-verified fact. */
     manualHeartRate?: number | null;
+    /**
+     * The source's own name for the activity. Demoted here rather than dropped:
+     * `Winter Park - W1 Run 1 — Easy 3mi` is how a watch files a run, which is
+     * source bookkeeping and not what the run was.
+     */
+    sourceActivityName?: string | null;
     importedAt?: string | null;
     sourceUpdatedAt?: string | null;
   } = {},
 ): RunOptionFact[] {
   const rows: RunOptionFact[] = [];
   if (options.sourceLabel) rows.push({ label: "Source", value: options.sourceLabel });
+  if (options.sourceActivityName) rows.push({ label: "Activity", value: options.sourceActivityName });
   if (options.effortLabel) rows.push({ label: "Effort", value: options.effortLabel });
   if (options.manualHeartRate != null) {
     rows.push({ label: "Avg HR (entered)", value: `${Math.round(options.manualHeartRate)} bpm` });

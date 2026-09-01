@@ -62,6 +62,7 @@ export function HistoricalRunSheet({ run, connection, isOpen, onClose }: Histori
       <Sheet
         className="sheet--run-detail"
         title={identity?.title ?? "Run"}
+        hideTitle
         isOpen={isOpen}
         onClose={onClose}
         headerActions={
@@ -100,6 +101,7 @@ export function HistoricalRunSheet({ run, connection, isOpen, onClose }: Histori
             // A history row exists because a connected source reported it; the
             // label is the same word every other STACK surface uses for it.
             sourceLabel: run.externalActivityId ? RUN_SOURCE_LABEL.intervals : null,
+            sourceActivityName: identity?.sourceName ?? null,
           })}
         />
       )}

@@ -137,13 +137,14 @@ describe("Runs", () => {
 
     await user.click(rows()[0]);
 
-    // The run leads: the workout it satisfied is the sheet's title, and the
-    // plan context underneath says which week that was rather than repeating it.
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("2 Miles");
+    // The run leads with what STACK holds it to have been — `2 Miles` is the
+    // workout's distance, which the plan line below already states.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy Run");
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText(/Tuesday, August 4, 2026/)).toBeInTheDocument();
+    expect(sheet.getByRole("heading", { name: "Easy Run" })).toBeInTheDocument();
+    expect(sheet.getByText(/Tue, Aug 4/)).toBeInTheDocument();
     expect(sheet.getByText("Plan")).toBeInTheDocument();
-    expect(sheet.getByText("Week 1")).toBeInTheDocument();
+    expect(sheet.getByText("Week 1 · 2 Miles")).toBeInTheDocument();
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
   });
 
@@ -155,6 +156,38 @@ describe("Runs", () => {
     await user.click(rows()[0]);
     const sheet = within(screen.getByRole("dialog"));
     expect(sheet.getByText("+1 mi vs plan")).toBeInTheDocument();
+  });
+
+  it("keeps the identity in the scrolling body rather than in the sheet's chrome", async () => {
+    const user = userEvent.setup();
+    renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })]);
+
+    await user.click(rows()[0]);
+
+    // The dialog is still named, for assistive technology and for focus, but
+    // the visible identity is content: it scrolls with the run rather than
+    // sitting over it.
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAccessibleName("Easy Run");
+    const heading = within(dialog).getByRole("heading", { name: "Easy Run" });
+    expect(heading.closest(".sheet__body")).not.toBeNull();
+    expect(heading.closest(".sheet__header")).toBeNull();
+    // And the chrome is the two controls, with no heading bar of its own.
+    expect(dialog.querySelector(".sheet__header--chrome")).not.toBeNull();
+  });
+
+  it("keeps the source's own activity name behind the run options control", async () => {
+    const user = userEvent.setup();
+    renderRuns([synced("imported", "2026-08-08")]);
+
+    await user.click(rows()[0]);
+    // Not in the sheet: a watch's filename for the run is not what the run was.
+    expect(within(screen.getByRole("dialog")).queryByText("Intervals.icu")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    expect(options.getByText("Intervals.icu")).toBeInTheDocument();
+    expect(options.getByText("Source")).toBeInTheDocument();
   });
 
   it("says nothing about the plan for a run the plan never asked for", async () => {
@@ -380,7 +413,7 @@ describe("Runs", () => {
     expect(screen.getByRole("heading", { name: "Edit Run" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
-    // Back to the run itself, which is titled with the workout it satisfied.
-    expect(screen.getByRole("heading", { name: "2 Miles" })).toBeInTheDocument();
+    // Back to the run itself, which is titled with what it was.
+    expect(screen.getByRole("heading", { name: "Easy Run" })).toBeInTheDocument();
   });
 });

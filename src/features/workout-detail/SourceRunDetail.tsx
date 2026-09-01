@@ -1,4 +1,4 @@
-import { Footprints, HeartPulse, MountainSnow, Repeat, Zap } from "lucide-react";
+import { Footprints, HeartPulse, MountainSnow, PersonStanding, Repeat, Zap } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -17,14 +17,13 @@ import {
   type SourceConnection,
   type SourceDetailReader,
 } from "../../connected/sourceDetail.js";
-import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
 import { formatDateLabel } from "../../domain/dates.js";
 import { formatMiles } from "../../domain/distance.js";
 import { formatDurationSeconds } from "../../domain/duration.js";
 import { formatPaceSeconds } from "../../domain/runs.js";
-import { ZoneDistribution } from "../../components/charts/ZoneDistribution.js";
-import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments.js";
 import { RunAnalysis } from "./RunAnalysis.js";
+import { availableAnalysisMetrics, type RunMetricId } from "./runAnalysisMetrics.js";
+import { RunMetricSummaries } from "./RunMetricSummaries.js";
 import { runInsight } from "./runInsight.js";
 import type { RunIdentity } from "./runIdentity.js";
 import type { SourceRunFacts } from "./sourceRunFacts.js";
@@ -133,6 +132,12 @@ export function SourceRunDetail({
   /** False until the stream read has resolved either way, so nothing flashes into place and out again. */
   const [profileSettled, setProfileSettled] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  /**
+   * Which metric Analysis is investigating. Held here rather than inside the
+   * module because the summaries below depend on it: the one metric being
+   * scrubbed above does not also get a summary card.
+   */
+  const [selectedMetric, setSelectedMetric] = useState<RunMetricId | null>(null);
   /** Guards a slow, superseded request from overwriting a newer one's state. */
   const requestIdRef = useRef(0);
 
@@ -194,40 +199,35 @@ export function SourceRunDetail({
     loadDetail(activityId, reader, requestId);
   }, [runKey, activityId, reader, loadAttempt, loadDetail]);
 
-  const hasHeartRateStream = Boolean(profile?.samples.some((sample) => sample.heartRate !== undefined));
   /**
-   * Max heart rate is a supporting fact of the heart-rate chart when there is
-   * one, and belongs in the strip only when there is not. Everything else the
-   * source stated stays in the strip either way: the chart's facts are context
-   * for the shape being read, not a replacement for the run's own summary.
+   * What Analysis is actually showing: the runner's choice when that metric has
+   * coverage, and otherwise whichever metric the module defaults to. Null when
+   * there is no analysis at all, which is when every summary applies.
    */
-  const summaryMaxHeartRate = hasHeartRateStream ? null : facts.maxHeartRate;
+  const analysisMetrics = profile ? availableAnalysisMetrics(profile) : [];
+  const activeAnalysisMetric = analysisMetrics.includes(selectedMetric as RunMetricId)
+    ? selectedMetric
+    : analysisMetrics[0] ?? null;
+
   const structuredIntervals = detail?.intervals ?? [];
   /**
-   * Zones live inside Heart Rate — that is issue #214's decision, and where a
-   * heart-rate chart exists `RunAnalysis` owns them. A run whose source stated
-   * zone durations but sent no stream has no chart to put them in, and dropping
-   * them would lose real source data, so they keep a compact section of their
-   * own. It is the same rows either way: never the standalone donut module the
-   * redesign removed.
-   */
-  const zoneSegments = facts.hrZoneSeconds ? zoneDonutSegments(facts.hrZoneSeconds) : [];
-  const showOwnZones = !hasHeartRateStream && zoneSegments.some((segment) => segment.value > 0);
-  /**
-   * The zone line is worth a headline when the distribution is a tab away; it
-   * is not when the very next thing on screen is that distribution in full.
+   * One headline fact. The zone rows further down state the whole distribution;
+   * this states the one line of it a runner would repeat afterwards.
    */
   const insight = runInsight({
-    hrZoneSeconds: showOwnZones ? null : facts.hrZoneSeconds,
+    hrZoneSeconds: facts.hrZoneSeconds,
     structuredIntervalCount: structuredIntervals.length,
   });
 
+  /**
+   * The four supporting facts, as one strip. Max heart rate is deliberately not
+   * among them: it is a heart-rate fact, and the heart-rate module states it
+   * beside the average — either as the chart's own facts, or in the summary
+   * below. The strip is what a runner scans, not everything STACK holds.
+   */
   const metrics = [
     ...(facts.averageHeartRate !== null
       ? [{ id: "heart-rate", icon: HeartPulse, label: "Avg HR", value: `${rounded(facts.averageHeartRate)} bpm` }]
-      : []),
-    ...(summaryMaxHeartRate !== null
-      ? [{ id: "heart-rate", icon: HeartPulse, label: "Max HR", value: `${rounded(summaryMaxHeartRate)} bpm` }]
       : []),
     // The source's own climbing total, not a sum of altitude changes.
     ...(facts.elevationGainFeet !== null
@@ -249,32 +249,36 @@ export function SourceRunDetail({
   return (
     <div className="run-result-detail">
       {identity && (
-        <div className="run-identity">
-          {identity.activityType && (
-            // Decoration: the type is stated in the chip beside it, and a
-            // historical run nobody has classified gets no mark at all.
-            <span className="run-identity__mark" data-type={identity.activityType}>
-              <ActivityIcon type={identity.activityType} size={18} />
-            </span>
-          )}
-          <p className="run-identity__when machine-label">
-            {formatDateLabel(identity.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-            {identity.startTimeLabel && (
-              <>
-                <span aria-hidden="true"> · </span>
-                {identity.startTimeLabel}
-              </>
-            )}
-          </p>
-          <div className="run-identity__chips">
-            {identity.chips.map((chip) => (
-              <span key={chip.id} className="run-identity__chip machine-label" data-tone={chip.tone}>
-                {chip.label}
-              </span>
-            ))}
+        <header className="run-identity">
+          {/*
+            The run's own mark. One symbol for every run rather than the
+            activity-type icon set: the type is stated in the chip below, and
+            `Footprints` already means cadence in this design system.
+          */}
+          <span className="run-identity__mark" aria-hidden="true">
+            <PersonStanding size={20} strokeWidth={1.9} />
+          </span>
+          <div className="run-identity__lines">
+            <h3 className="run-identity__title">{identity.title}</h3>
+            <p className="run-identity__when machine-label">
+              {formatDateLabel(identity.date, { weekday: "short", month: "short", day: "numeric" })}
+              {identity.startTimeLabel && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  {identity.startTimeLabel}
+                </>
+              )}
+            </p>
+            <div className="run-identity__chips">
+              {identity.chips.map((chip) => (
+                <span key={chip.id} className="run-identity__chip machine-label" data-tone={chip.tone}>
+                  {chip.label}
+                </span>
+              ))}
+            </div>
+            {identity.planLine && <p className="run-identity__plan">{identity.planLine}</p>}
           </div>
-          {identity.planLine && <p className="run-identity__plan">{identity.planLine}</p>}
-        </div>
+        </header>
       )}
 
       {meta}
@@ -338,14 +342,17 @@ export function SourceRunDetail({
 
       {notes}
 
-      {profile && <RunAnalysis key={runKey} facts={facts} profile={profile} />}
-
-      {showOwnZones && (
-        <section className="run-zones">
-          <h3 className="run-detail__section-heading machine-label">Heart rate zones</h3>
-          <ZoneDistribution segments={zoneSegments} label="Heart rate zone distribution" />
-        </section>
+      {profile && (
+        <RunAnalysis
+          key={runKey}
+          facts={facts}
+          profile={profile}
+          selectedMetric={selectedMetric}
+          onSelectMetric={setSelectedMetric}
+        />
       )}
+
+      <RunMetricSummaries facts={facts} profile={profile} activeMetric={activeAnalysisMetric} />
 
       {detailState === "error" && (
         <div className="run-result-detail__request">

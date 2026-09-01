@@ -118,7 +118,7 @@ describe("Runs history", () => {
     // The source's own name for the activity leads, with the day and the local
     // start it stated underneath.
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Morning Run");
-    expect(sheet.getByText(/Wednesday, August 12, 2026/)).toBeInTheDocument();
+    expect(sheet.getByText(/Wed, Aug 12/)).toBeInTheDocument();
     expect(sheet.getByText(/6:00 AM/)).toBeInTheDocument();
     expect(sheet.getByText("History")).toBeInTheDocument();
     expect(sheet.getByText("148 bpm")).toBeInTheDocument();
@@ -162,9 +162,9 @@ describe("Runs history", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    // The mirror stated no activity name, so the workout this run satisfied is
-    // the truthful identity left — never the words "Run Detail".
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("2 Miles");
+    // `2 Miles` restates the distance the plan line already states, so the
+    // heading is what STACK holds the run to have been — never "Run Detail".
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy Run");
     expect(sheet.getByText("Plan")).toBeInTheDocument();
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Run options" }));

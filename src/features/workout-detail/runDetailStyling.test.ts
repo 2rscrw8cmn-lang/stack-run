@@ -40,6 +40,27 @@ describe("Run Detail layout", () => {
     expect(componentsCss).toMatch(/\.run-profile__selector > span\s*\{[^}]*opacity: 0\.6/s);
   });
 
+  it("gets the result's hierarchy from type rather than from a card", () => {
+    // Hairline rules and thin dividers, no panel: the three most important
+    // numbers on the screen must not read as a widget on a dashboard.
+    expect(componentsCss).toMatch(/\.run-hero\s*\{(?![^}]*background)[^}]*border-bottom: 1px solid var\(--border\)/s);
+    expect(componentsCss).toMatch(/\.run-hero > div \+ div\s*\{[^}]*border-left: 1px solid var\(--border\)/s);
+  });
+
+  it("draws the supporting facts as one strip rather than four cards", () => {
+    // One container, internal dividers. Four bordered cells is the pattern the
+    // approved reference does not use.
+    expect(componentsCss).toMatch(/\.run-metrics\s*\{(?![^}]*border-radius)[^}]*border-bottom: 1px solid var\(--border\)/s);
+    expect(componentsCss).toMatch(/\.run-metrics > div \+ div\s*\{\s*border-left: 1px solid var\(--border\)/s);
+  });
+
+  it("locks the analysis tabs, facts, plot and footer into one module", () => {
+    // One border around the instrument …
+    expect(componentsCss).toMatch(/\.run-analysis\s*\{[^}]*border: 1px solid var\(--border\)/s);
+    // … and none around the chart inside it.
+    expect(componentsCss).toMatch(/\.activity-chart\s*\{(?![^}]*border:)[^}]*padding/s);
+  });
+
   it("fits the result to the facts the source actually stated", () => {
     // A historical run whose source gave no duration must not leave two empty
     // columns beside its distance.
@@ -57,6 +78,15 @@ describe("Run Detail layout", () => {
     expect(componentsCss).toMatch(
       /\.run-hero > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: clamp\(16px/s,
     );
+  });
+
+  it("keeps Run Detail's chrome to its controls, with the identity in the body", () => {
+    // No heading bar for the content to scroll under.
+    expect(componentsCss).toMatch(
+      /\.sheet--run-detail \.sheet__header--chrome\s*\{[^}]*border-bottom: 0/s,
+    );
+    // The identity that replaces it is the largest type after the result.
+    expect(componentsCss).toMatch(/\.run-identity__title\s*\{[^}]*font-size: clamp\(21px/s);
   });
 
   it("defines one colour per metric, in tokens, and reads it through a single custom property", () => {

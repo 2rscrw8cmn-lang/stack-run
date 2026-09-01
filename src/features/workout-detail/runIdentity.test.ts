@@ -43,20 +43,32 @@ const accepted = stackRun("run-1", "2026-08-04", {
  * makes a run sound named when it is not.
  */
 describe("run identity", () => {
-  it("leads with the source's own activity name when the history mirror has one", () => {
-    const identity = runIdentityFromRunLog(accepted, workout, mirrorFor(accepted, { name: "Sunrise 5k" }));
+  it("does not promote the source's own activity name over what STACK holds", () => {
+    // `Winter Park - W1 Run 1 — Easy 3mi` is how a watch files a run. It is
+    // kept, and it is kept out of the heading.
+    const identity = runIdentityFromRunLog(
+      accepted,
+      workout,
+      mirrorFor(accepted, { name: "Winter Park - W1 Run 1 — Easy 3mi" }),
+    );
 
-    expect(identity.title).toBe("Sunrise 5k");
-    expect(identity.titleSource).toBe("source-activity");
+    expect(identity.title).toBe("Easy Run");
+    expect(identity.titleSource).toBe("classification");
+    expect(identity.sourceName).toBe("Winter Park - W1 Run 1 — Easy 3mi");
     // The plan context stays, in full, because the heading did not say it.
     expect(identity.planLine).toBe("Week 3 · Easy 3 mi");
   });
 
-  it("falls back to the workout a run is linked to, and stops repeating it underneath", () => {
-    const identity = runIdentityFromRunLog(accepted, workout, mirrorFor(accepted));
+  it("leads with the linked workout only when its title is a name rather than a restatement", () => {
+    // `Easy 3 mi` says the type and the distance, both of which the chip, the
+    // classification and the plan line below already say.
+    expect(runIdentityFromRunLog(accepted, workout, null).title).toBe("Easy Run");
 
-    expect(identity.title).toBe("Easy 3 mi");
+    const named = { ...workout, title: "Yasso 800s" };
+    const identity = runIdentityFromRunLog(accepted, named, null);
+    expect(identity.title).toBe("Yasso 800s");
     expect(identity.titleSource).toBe("planned-workout");
+    // And the line underneath stops repeating what the heading just said.
     expect(identity.planLine).toBe("Week 3");
   });
 
@@ -67,14 +79,18 @@ describe("run identity", () => {
     expect(identity.title).toBe("Long Run");
     expect(identity.titleSource).toBe("classification");
     expect(identity.planLine).toBeNull();
-    // The heading already says "Long Run", so no chip repeats the word.
-    expect(identity.chips.map((chip) => chip.label)).toEqual(["Extra"]);
+    expect(identity.sourceName).toBeNull();
   });
 
-  it("keeps the activity type as a chip whenever the heading is not already it", () => {
+  it("states the kind of running and the plan relationship as chips, always", () => {
     const identity = runIdentityFromRunLog(accepted, workout, mirrorFor(accepted, { name: "Sunrise 5k" }));
     expect(identity.chips.map((chip) => chip.label)).toEqual(["Easy", "Plan"]);
     expect(identity.chips.map((chip) => chip.tone)).toEqual(["easy", "plan"]);
+
+    // The type chip is not a repetition of a classification heading: it is the
+    // colour that identifies the kind of running, in the same place every time.
+    const extra = runIdentityFromRunLog(stackRun("run-3", "2026-08-04"), null, null);
+    expect(extra.chips.map((chip) => chip.label)).toEqual(["Easy", "Extra"]);
   });
 
   it("marks a run with no scheduled workout as extra rather than as plan", () => {
@@ -94,7 +110,7 @@ describe("run identity", () => {
     expect(runIdentityFromRunLog(accepted, workout, null).startTimeLabel).toBeNull();
   });
 
-  it("gives a historical-only run its source's name, its date and nothing STACK-owned", () => {
+  it("still leads a historical-only run with its source's name, which is all it has", () => {
     const [row] = unifiedRunnerHistory({
       activities: [historicalRun("h-1", "2026-08-12", { name: "Evening Loop" })],
     });

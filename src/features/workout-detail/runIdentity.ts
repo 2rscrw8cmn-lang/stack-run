@@ -7,16 +7,24 @@ import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun.j
  * Where a run's title came from. Kept on the identity rather than inferred from
  * the string, because the three cases are genuinely different claims:
  *
- * - `source-activity` — the source's own name for the activity. The strongest
- *   identity STACK can state, and the only one that is the run's actual *name*.
  * - `planned-workout` — the title of the scheduled workout this run is linked
- *   to. A real STACK fact about intent, stated as identity because a runner who
- *   linked a run to `Easy 3 mi` thinks of it as that run.
- * - `classification` — what STACK holds this activity *was*: its activity type.
- *   Not a name, and never presented as one.
+ *   to, when that title is a name rather than a restatement of the type and
+ *   distance. `Yasso 800s` identifies a run; `Easy 3 mi` does not say anything
+ *   the classification and the plan line below it do not.
+ * - `classification` — what STACK holds this activity *was*: its activity type,
+ *   in the voice of a title. The normal case for a run STACK owns.
+ * - `source-activity` — the source's own name for the activity. Used only where
+ *   STACK owns no description of its own, which in practice means a historical
+ *   run nobody has ever classified.
  *
- * There is no fourth case. A run with no source name, no plan link and no
- * classification does not get an invented one.
+ * The order matters, and it is deliberately not "the longest string wins". A
+ * name like `Winter Park - W1 Run 1 — Easy 3mi` is how a *watch* files a run;
+ * making it the heading of a STACK run buries what the run was under how it was
+ * recorded. For an owned run that name belongs with the rest of the source's
+ * bookkeeping, behind the run-options control.
+ *
+ * There is no fourth case. A run with no plan link, no classification and no
+ * source name does not get an invented one.
  */
 export type RunIdentityTitleSource = "source-activity" | "planned-workout" | "classification";
 
@@ -30,6 +38,12 @@ export interface RunIdentityChip {
 export interface RunIdentity {
   title: string;
   titleSource: RunIdentityTitleSource;
+  /**
+   * The source's own name for the activity, whether or not it is the title.
+   * Run Detail states it under source information behind `…`, so it is never
+   * lost — only demoted.
+   */
+  sourceName: string | null;
   /**
    * The activity type to draw the run's mark from, or null for a run nobody has
    * classified. A historical-only row has no STACK classification, so it gets
@@ -68,6 +82,37 @@ function trimmed(value: string | null | undefined): string | null {
 }
 
 /**
+ * Whether a workout's title names the run, or merely restates its type and
+ * distance.
+ *
+ * `Easy 3 mi`, `2 Miles`, `Long 8` and `Intervals` all describe a workout in
+ * the same terms the classification and the plan line already use, so promoting
+ * them to the heading says nothing twice. `Yasso 800s`, `Boston Tune-Up` and
+ * `Hill Repeats — Summit Ave` are names, and a runner who linked a run to one
+ * of them thinks of the run as that.
+ *
+ * The test is subtraction: strip the activity-type words, the numbers, the
+ * distance units and the punctuation, and see whether anything is left.
+ */
+export function isDistinctWorkoutName(title: string, activityType: RunActivityType): boolean {
+  const typeWords = new Set([
+    ...WORKOUT_TYPE_LABEL[activityType].toLowerCase().split(/\s+/),
+    "run",
+    "runs",
+    "workout",
+    "session",
+  ]);
+  const remaining = title
+    .toLowerCase()
+    .replace(/[\d.]+/g, " ")
+    .replace(/\b(mi|mile|miles|k|km|kms|m|min|mins|minutes|x)\b/g, " ")
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 0 && !typeWords.has(word));
+  return remaining.length > 0;
+}
+
+/**
  * `7:12 AM` from a local `YYYY-MM-DDTHH:MM:SS` start.
  *
  * Formatted here rather than through `toLocaleTimeString` because the stored
@@ -85,12 +130,16 @@ export function formatStartTime(startTimeLocal: string | null): string | null {
   return `${twelve}:${minutes} ${suffix}`;
 }
 
-function typeChip(activityType: RunActivityType, titleSource: RunIdentityTitleSource): RunIdentityChip[] {
-  // A title that already *is* the classification should not be echoed by a chip
-  // saying the same word again.
-  return titleSource === "classification"
-    ? []
-    : [{ id: "type", label: WORKOUT_TYPE_LABEL[activityType], tone: activityType }];
+/**
+ * The activity-type chip.
+ *
+ * Always present on an owned run, even when the title is the classification
+ * itself. The chip is not a repetition of the heading: it is the colour that
+ * identifies the kind of running at a glance, in the same place on every run,
+ * and it sits beside the Plan/Extra chip that answers the other question.
+ */
+function typeChip(activityType: RunActivityType): RunIdentityChip[] {
+  return [{ id: "type", label: WORKOUT_TYPE_LABEL[activityType], tone: activityType }];
 }
 
 /**
@@ -110,23 +159,23 @@ export function runIdentityFromRunLog(
 ): RunIdentity {
   const sourceName = trimmed(mirror?.sourceName);
   const workoutTitle = trimmed(workout?.title);
-  const titleSource: RunIdentityTitleSource = sourceName
-    ? "source-activity"
-    : workoutTitle
-      ? "planned-workout"
-      : "classification";
-  const title = sourceName ?? workoutTitle ?? CLASSIFICATION_TITLE[runLog.activityType];
+  const namedWorkout = workoutTitle && isDistinctWorkoutName(workoutTitle, runLog.activityType)
+    ? workoutTitle
+    : null;
+  const titleSource: RunIdentityTitleSource = namedWorkout ? "planned-workout" : "classification";
+  const title = namedWorkout ?? CLASSIFICATION_TITLE[runLog.activityType];
 
   return {
     title,
     titleSource,
+    sourceName,
     activityType: runLog.activityType,
     date: runLog.completedDate,
     startTimeLabel: formatStartTime(mirror?.startTimeLocal ?? null),
     /**
      * The plan context, minus whatever the heading already said. A run titled
-     * with its workout does not need `Week 1 · 2 Miles` under a heading reading
-     * `2 Miles`; it needs to know which week that was.
+     * with its workout does not need `Week 3 · Yasso 800s` under a heading
+     * reading `Yasso 800s`; it needs to know which week that was.
      */
     planLine: workout
       ? titleSource === "planned-workout"
@@ -134,7 +183,7 @@ export function runIdentityFromRunLog(
         : `Week ${workout.weekNumber} · ${workout.title}`
       : null,
     chips: [
-      ...typeChip(runLog.activityType, titleSource),
+      ...typeChip(runLog.activityType),
       {
         id: "status",
         label: workout ? "Plan" : "Extra",
@@ -147,8 +196,10 @@ export function runIdentityFromRunLog(
 /**
  * The identity of a run STACK does not own.
  *
- * The rule that makes this safe is subtraction: a historical-only run gets its
- * source's name and start time and nothing else. No plan line, because it is
+ * This is where a source activity name legitimately leads: nobody has
+ * classified this run, so the source's own name for it is the best identity
+ * that exists. The rule that makes it safe is subtraction: a historical-only
+ * run gets its source's name and start time and nothing else. No plan line, because it is
  * linked to nothing; no activity-type chip, because nobody has classified it;
  * and where the source stated no name, the title falls back to what the source
  * type verifiably is — a run, or a cross-training session — rather than to a
@@ -160,6 +211,7 @@ export function runIdentityFromRunnerRun(run: RunnerRun): RunIdentity {
   return {
     title: sourceName ?? (kind === "cross-training" ? "Cross Training" : "Run"),
     titleSource: sourceName ? "source-activity" : "classification",
+    sourceName,
     activityType: null,
     date: run.date,
     startTimeLabel: formatStartTime(run.startTimeLocal),

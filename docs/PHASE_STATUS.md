@@ -1216,7 +1216,21 @@ Implemented scope:
   staleness in the issue — while leaving distance, duration, effort, notes, plan
   link, classification and Build placement untouched.
 
-Verification: `npm run check` passes (206 files, 2537 tests). New coverage for
+Second pass, against the owner's full-resolution reference (the committed
+`docs/design/run-detail-3-reference.jpg` is a truncated JPEG):
+- the source activity name stops being the heading of an owned run — the linked
+  workout's title when it is a name, otherwise STACK's classification — and
+  moves under source information behind `…`;
+- the visible identity moves out of the sheet's chrome into the scrolling body,
+  so it leaves the screen as the runner reaches Analysis and nothing sits over
+  the content; the dialog keeps its accessible name without a second heading;
+- the result loses its panel and the four supporting facts become one strip with
+  internal dividers; Analysis becomes one bordered instrument;
+- persistent Heart Rate / Elevation / Cadence summary modules return below
+  Analysis, with sparklines, minus whichever metric is being investigated;
+- chart callouts name their companion readings (`HR 148 bpm`, `Elev 52 ft`).
+
+Verification: `npm run check` passes (206 files, 2554 tests). New coverage for
 chart geometry, scrubbing and its accessible readout, run identity, the insight
 rule, run-option facts, the refresh planner, the repository write and the sync
 wiring. Reviewed at 320 / 390 / 430 / 1024 px in Chromium against the approved
