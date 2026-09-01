@@ -386,6 +386,8 @@ Current identity system includes:
 
 Runner Icon is a composable encoded visual identity stored on the profile. Runner color remains a separate ownership signal used consistently in Crew Build and comparison surfaces.
 
+STACK's own brand identity is separate from a runner's personal Runner Icon. The approved multicolor runner-man logo is defined once in `src/components/shared/stackRunnerMark.js`; `StackMark`, generated install assets, and the server-rendered Crew invite card all consume that source. Build towers and blocks remain product objects rather than alternate brand marks.
+
 ## 12. Crew safe projection
 
 Personal accepted runs are projected to Crew through an explicit field-by-field boundary in `src/crew/projection.ts`.

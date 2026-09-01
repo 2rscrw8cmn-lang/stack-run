@@ -635,18 +635,21 @@ Required across STACK:
 
 ## App mark and icon
 
-The app mark is three stacked rounded bars, narrowing as they climb — a tower in three courses, in piece colors, on the dark ground.
+The STACK brand mark is the approved multicolor runner-man artwork. It is a detailed, vertically oriented figure, so every placement gives it an intentional optical height and preserves its native proportions rather than forcing it into square legacy geometry.
 
-- no running figure;
-- no hard hat;
-- no literal crane;
-- no trademarked Tetris shapes;
-- must remain legible at small icon sizes.
+- The runner-man is the STACK logo; Build towers and blocks remain product/game objects and are not substitutes for it.
+- Do not redraw, simplify, distort, recolor, or approximate the runner locally.
+- Keep enough clear space and dark ground around install-icon variants for iOS, standard Android, and Android maskable safe zones.
+- Pair the runner and STACK wordmark as one aligned lockup where both appear.
+- At small sizes, size the runner optically so the whole silhouette and separated trailing foot remain recognizable.
 
-Canonical geometry lives in:
+Canonical artwork lives in `src/components/shared/stackRunnerMark.js`. These consumers are generated from or render that same source:
 
 - `src/components/shared/StackMark.tsx`;
-- `scripts/generate-icons.mjs`.
+- `scripts/generate-icons.mjs` and the committed assets under `public/`;
+- `api/_render/inviteCard.ts` for Crew share artwork.
+
+Regenerate install assets with `node scripts/generate-icons.mjs`; do not hand-edit generated PNGs or SVGs.
 
 Regenerate icon assets with the script; do not hand-edit generated PNGs.
 

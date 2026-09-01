@@ -85,7 +85,7 @@ export function GettingStartedPage() {
     <div className="getting-started">
       <header className="getting-started__topbar">
         <a className="getting-started__brand" href="/" aria-label="Open STACK">
-          <StackMark size={23} />
+          <StackMark size={29} />
           <span>STACK</span>
         </a>
         <a className="getting-started__open-app" href="/">Open app</a>
@@ -438,7 +438,7 @@ export function GettingStartedPage() {
         </section>
 
         <section className="getting-started__done" aria-labelledby="done-title">
-          <StackMark size={34} />
+          <StackMark size={52} />
           <p className="machine-label">Setup complete</p>
           <h2 id="done-title">Run. Sync. Review. Build.</h2>
           <p>Once your watch data is connected, that is the normal STACK loop.</p>

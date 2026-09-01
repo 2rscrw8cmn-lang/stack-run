@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 // Vite hands these over as text, so this test needs no Node types — the app
 // project deliberately does not have any.
 import html from "../../index.html?raw";
+import favicon from "../../public/favicon.svg?raw";
 import manifestSource from "../../public/manifest.webmanifest?raw";
+import runnerAsset from "../../public/stack-runner-mark.svg?raw";
+import { STACK_RUNNER_PATHS } from "../components/shared/stackRunnerMark.js";
 
 const manifest = JSON.parse(manifestSource);
 
@@ -66,6 +69,12 @@ describe("web app manifest", () => {
     expect(icons).toHaveProperty(["/apple-touch-icon.png"]);
     expect(icons).toHaveProperty(["/favicon.svg"]);
     expect(html).toContain('href="/favicon.svg"');
+  });
+
+  it("uses the runner-man artwork in both vector brand assets", () => {
+    expect(runnerAsset.match(/<path /g)).toHaveLength(STACK_RUNNER_PATHS.length);
+    expect(favicon.match(/<path /g)).toHaveLength(STACK_RUNNER_PATHS.length);
+    expect(favicon.match(/<rect /g)).toHaveLength(1);
   });
 });
 

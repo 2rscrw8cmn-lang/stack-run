@@ -5,7 +5,7 @@
  * the same card drawn as SVG loaded inconsistently on iOS, and a raster image
  * is what these clients are built to fetch. The whole card is drawn here from
  * geometry the app already owns — the crew's own emblem from `src/crew/emblem`
- * and the STACK mark from `src/components/shared/stackMarkSvg` — so the share
+ * and the STACK mark from `src/components/shared/stackRunnerMark` — so the share
  * image cannot drift away from what the invite page shows.
  *
  * The composition is an identity card: the crew's emblem large on the left,
@@ -20,9 +20,9 @@ import {
   type CrewEmblem,
 } from "../../src/crew/emblem.js";
 import {
-  STACK_MARK_BARS,
-  STACK_MARK_BOUNDS,
-} from "../../src/components/shared/stackMarkSvg.js";
+  STACK_RUNNER_PATHS,
+  STACK_RUNNER_VIEW_BOX,
+} from "../../src/components/shared/stackRunnerMark.js";
 import {
   createCanvas,
   fillPolygons,
@@ -34,7 +34,6 @@ import {
 import {
   flattenPath,
   rectPolygon,
-  roundedRectPolygon,
   strokePolygons,
   translated,
   type Placement,
@@ -129,23 +128,16 @@ function drawEmblem(canvas: Canvas, emblem: CrewEmblem, left: number, width: num
 }
 
 function drawStackMark(canvas: Canvas, left: number, top: number, height: number): number {
-  const scale = height / STACK_MARK_BOUNDS.height;
-  for (const bar of STACK_MARK_BARS) {
+  const scale = height / STACK_RUNNER_VIEW_BOX.height;
+  const placement: Placement = { scaleX: scale, scaleY: scale, x: left, y: top };
+  for (const path of STACK_RUNNER_PATHS) {
     fillPolygons(
       canvas,
-      [
-        roundedRectPolygon(
-          left + (bar.x - STACK_MARK_BOUNDS.x) * scale,
-          top + (bar.y - STACK_MARK_BOUNDS.y) * scale,
-          bar.width * scale,
-          bar.height * scale,
-          bar.radius * scale,
-        ),
-      ],
-      { color: bar.color },
+      flattenPath(path.d, placement).map((contour) => contour.points),
+      { color: path.fill },
     );
   }
-  return STACK_MARK_BOUNDS.width * scale;
+  return STACK_RUNNER_VIEW_BOX.width * scale;
 }
 
 interface Line {
@@ -223,10 +215,10 @@ function drawInvite(canvas: Canvas, card: InviteCard): void {
   const footer = 512;
   drawLines(canvas, lines, Math.max(120, (footer - heightOf(lines)) / 2));
 
-  const markWidth = drawStackMark(canvas, TEXT_LEFT, footer + 6, 40);
+  const markWidth = drawStackMark(canvas, TEXT_LEFT, footer + 2, 54);
   fillPolygons(
     canvas,
-    textPolygons("Join on STACK", TEXT_LEFT + markWidth + 22, footer + 38, {
+    textPolygons("Join on STACK", TEXT_LEFT + markWidth + 18, footer + 38, {
       size: 30,
       tracking: 1,
     }),
@@ -236,7 +228,7 @@ function drawInvite(canvas: Canvas, card: InviteCard): void {
 
 /** The card an invalid, expired or revoked invite gets: STACK and nothing else. */
 function drawFallback(canvas: Canvas): void {
-  const markHeight = 168;
+  const markHeight = 190;
   const markLeft = EMBLEM_LEFT + 60;
   const markWidth = drawStackMark(canvas, markLeft, (CARD_HEIGHT - markHeight) / 2, markHeight);
   const left = markLeft + markWidth + 72;
