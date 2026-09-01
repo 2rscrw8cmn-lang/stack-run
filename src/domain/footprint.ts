@@ -119,13 +119,35 @@ export function footprintFor(runLog: RunLog): Footprint {
 }
 
 /**
+ * A special piece whose footprint is already expressed in the square placement
+ * grid rather than in earned columns/courses. Awards use this because their
+ * product size is one literal placement cell — half a visible tower column —
+ * and there is no honest whole-column earned size that represents that.
+ *
+ * The marker is deliberately structural rather than award-specific so the
+ * geometry layer only has to understand its own units, not Crew product types.
+ */
+export interface PlacementUnitFootprintSource extends UnitFootprint {
+  readonly placementUnits: true;
+}
+
+/** Anything the shared placement hand can turn/place. */
+export type HandFootprintSource = Footprint | PlacementUnitFootprintSource;
+
+function placementUnitsFor(source: HandFootprintSource): UnitFootprint {
+  return "placementUnits" in source && source.placementUnits
+    ? { width: source.width, height: source.height }
+    : toPlacementUnits(source);
+}
+
+/**
  * A *placed* block's dimensions, which are not an earned block's.
  *
- * Earned geometry is columns and courses. Placement geometry is logical units
- * — see `towerGeometry.ts` — because that is the only grid on which turning a
- * block 90 degrees gives back the same physical rectangle. The two differ by
- * `toPlacementUnits` even before anything is rotated: a 1x1 earned brick is
- * 2x1 units, which is the same wide brick said in the finer vocabulary.
+ * Earned run geometry is columns and courses. Placement geometry is logical
+ * units — see `towerGeometry.ts` — because that is the only grid on which
+ * turning a block 90 degrees gives back the same physical rectangle. Most
+ * inputs therefore pass through `toPlacementUnits`; fixed special pieces may
+ * already speak placement units and carry the marker above.
  *
  * Both axes are plain numbers rather than unions. A race is earned 4x3, which
  * is 8x3 units and 3x8 stood on end, so between them the two axes span 1..8
@@ -135,9 +157,9 @@ export type PlacedWidth = number;
 export type PlacedHeight = number;
 
 /**
- * The longest side a placed block can have, in units: the race is earned four
- * columns wide, which is eight units, and stood on end it is eight units tall.
- * Anything larger is a placement claiming space no activity pays for.
+ * The longest side a placed run block can have, in units: the race is earned
+ * four columns wide, which is eight units, and stood on end it is eight units
+ * tall. Anything larger is a placement claiming space no activity pays for.
  */
 export const MAX_PLACED_UNITS = unitsAcross(MAX_BLOCK_WIDTH);
 
@@ -160,38 +182,34 @@ export function rotateFootprint(footprint: PlacedFootprint): PlacedFootprint {
 }
 
 /**
- * The footprint a block stands in, from what it earned and how it is turned.
+ * The footprint a block stands in, from its source geometry and orientation.
  *
- * Two conversions in one function on purpose: everything that puts a block on
- * the grid needs both, and `rotated ? rotate(units(f)) : units(f)` written in
- * five places is five chances to forget one of them. Personal Build, Crew
- * Build, the placement RPC mirror and the recap crops all come through here.
+ * Runs arrive in earned columns/courses and are converted once here. Fixed
+ * special pieces can arrive already in placement units. Rotation is still the
+ * same operation for either source: swap the two square-grid axes.
  */
 export function handFootprint(
-  earned: Footprint,
+  source: HandFootprintSource,
   rotated: boolean,
 ): PlacedFootprint {
-  const units = toPlacementUnits(earned);
+  const units = placementUnitsFor(source);
   return rotated ? rotateFootprint(units) : units;
 }
 
 /**
- * Whether turning this block would change anything. A square block rotates to
- * itself, so offering the control for one would promise a change that never
- * comes.
- *
- * Squareness is judged in units, which is the only place it is a real
- * question: a 1x1 earned brick looks square in columns and courses and is
- * not — it is 2x1 units, and turning it gives a brick standing on end.
+ * Whether turning this block would change anything. Squareness is judged in
+ * placement units, which is the only place it is a physical question: a 1x1
+ * earned run brick becomes 2x1 units and can turn; a fixed 1x1 award is already
+ * square and therefore has no second orientation to offer.
  */
-export function canRotateFootprint(earned: Footprint): boolean {
-  const units = toPlacementUnits(earned);
+export function canRotateFootprint(source: HandFootprintSource): boolean {
+  const units = placementUnitsFor(source);
   return units.width !== units.height;
 }
 
 /**
- * Whether a placed footprint is one the earned block could actually stand in:
- * the earned one in units, or that turned. Everything else is a placement
+ * Whether a placed footprint is one the earned run block could actually stand
+ * in: the earned one in units, or that turned. Everything else is a placement
  * claiming a size no activity paid for.
  */
 export function isOrientationOf(
