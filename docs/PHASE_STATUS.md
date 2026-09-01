@@ -1177,3 +1177,43 @@ Verification: focused matching, Today, Run Data review and connected-sync tests
 cover suggested match, Extra, already-accepted source identity, late sync,
 dismissal persistence and credential-free cross-device review. The four focused
 files pass individually with a single Vitest worker.
+
+## Run Detail 3.0 (issue #214)
+
+**Status:** Implemented. Presentation and source-freshness change; the shared
+source-detail path (`RunDetailSheet` / `HistoricalRunSheet` → `SourceRunDetail`)
+is preserved rather than forked, and no route, storage schema or plan rule
+changed.
+
+Implemented scope:
+- Run Detail opens on the activity: the source's own name where the reconciled
+  history row has one, the linked workout's title where it does not, STACK's
+  classification as the last resort, and no invented name (`runIdentity.ts`);
+- one dominant result — distance in lime, duration and average pace beside it,
+  units set smaller — over a compact icon-and-colour metric strip carrying the
+  source's other aggregates through one `--metric-color` property;
+- one deterministic insight (dominant zone, or a count of the source's named
+  groups), omitted when neither is useful and when the zone rows are on screen;
+- **Analysis** replaces Run Profile: `ActivityChart` + `activityChartGeometry.ts`
+  give each metric its own treatment (pace over an elevation silhouette, filled
+  heart rate with the imported average across it, filled elevation terrain,
+  stepped cadence), a real y-axis, touch/drag and keyboard scrubbing with a
+  crosshair, a selected point and a persistent callout;
+- heart-rate zones become compact ordered rows inside Heart Rate; a run with
+  zone durations and no stream keeps the same rows in a section of its own; no
+  zone bands are drawn, because the source states durations and not thresholds;
+- Edit Run, plan linking, source/import provenance, elapsed time, effort and
+  `How STACK calculates this` move behind the `…` run-options sheet, which owns
+  no mutation of its own;
+- `sourceRefresh.ts` + `refreshImportedRunSource` let an already-imported
+  Intervals activity receive newer **source-owned** metrics — the elevation-gain
+  staleness in the issue — while leaving distance, duration, effort, notes, plan
+  link, classification and Build placement untouched.
+
+Verification: `npm run check` passes (206 files, 2537 tests). New coverage for
+chart geometry, scrubbing and its accessible readout, run identity, the insight
+rule, run-option facts, the refresh planner, the repository write and the sync
+wiring. Reviewed at 320 / 390 / 430 / 1024 px in Chromium against the approved
+reference; screenshots in `docs/design/run-detail-3/`. Real-device iOS review
+and owner visual acceptance are outstanding.
+
