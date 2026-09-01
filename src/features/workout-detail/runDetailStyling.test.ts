@@ -28,14 +28,16 @@ describe("Run Detail layout", () => {
   });
 
   it("gives the selected analysis tab an accent state that is not colour alone", () => {
+    // An underline, and a step up in contrast from the quiet unselected tabs:
+    // the selected metric stays obvious in greyscale and to anyone who does not
+    // separate the four metric hues.
     expect(componentsCss).toMatch(
-      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*border-color: var\(--metric-color, var\(--accent\)\)/s,
+      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*border-bottom-color: var\(--metric-color, var\(--accent\)\)/s,
     );
-    // An underline/inset rule, so the selected tab is still obvious in
-    // greyscale and to anyone who does not separate the four metric hues.
     expect(componentsCss).toMatch(
-      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*box-shadow: inset 0 -2px 0/s,
+      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*opacity: 1/s,
     );
+    expect(componentsCss).toMatch(/\.run-profile__selector > span\s*\{[^}]*opacity: 0\.6/s);
   });
 
   it("fits the result to the facts the source actually stated", () => {
@@ -92,8 +94,10 @@ describe("Run Detail layout", () => {
     expect(componentsCss).toMatch(
       /@media \(max-width: 359px\)\s*\{\s*\.run-metrics\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
     );
+    // All four metrics stay visible at once, as one tab bar rather than a
+    // block of pills that cannot fit across a phone.
     expect(componentsCss).toMatch(
-      /\.run-analysis__tabs\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
+      /\.run-analysis__tabs\s*\{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/s,
     );
   });
 });

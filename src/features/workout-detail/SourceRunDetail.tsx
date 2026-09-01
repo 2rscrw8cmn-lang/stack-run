@@ -17,6 +17,7 @@ import {
   type SourceConnection,
   type SourceDetailReader,
 } from "../../connected/sourceDetail.js";
+import { ActivityIcon } from "../../components/shared/ActivityIcon.js";
 import { formatDateLabel } from "../../domain/dates.js";
 import { formatMiles } from "../../domain/distance.js";
 import { formatDurationSeconds } from "../../domain/duration.js";
@@ -73,6 +74,12 @@ interface SourceRunDetailProps {
   meta?: ReactNode;
   /** STACK-owned notes below the result. Only an owned run supplies them. */
   notes?: ReactNode;
+  /**
+   * One factual line under the distance — `+0.12 mi vs plan`. Supplied only
+   * where the comparison is real: a run linked to a workout with an exact
+   * target. See `planDistanceComparison`.
+   */
+  distanceNote?: string | null;
 }
 
 /**
@@ -112,6 +119,7 @@ export function SourceRunDetail({
   identity = null,
   meta,
   notes,
+  distanceNote = null,
 }: SourceRunDetailProps) {
   const reader = useSourceDetailReader(connection);
   const showElapsed = facts.durationSeconds !== null &&
@@ -242,6 +250,13 @@ export function SourceRunDetail({
     <div className="run-result-detail">
       {identity && (
         <div className="run-identity">
+          {identity.activityType && (
+            // Decoration: the type is stated in the chip beside it, and a
+            // historical run nobody has classified gets no mark at all.
+            <span className="run-identity__mark" data-type={identity.activityType}>
+              <ActivityIcon type={identity.activityType} size={18} />
+            </span>
+          )}
           <p className="run-identity__when machine-label">
             {formatDateLabel(identity.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             {identity.startTimeLabel && (
@@ -258,7 +273,7 @@ export function SourceRunDetail({
               </span>
             ))}
           </div>
-          {identity.planLine && <p className="run-identity__plan machine-label">{identity.planLine}</p>}
+          {identity.planLine && <p className="run-identity__plan">{identity.planLine}</p>}
         </div>
       )}
 
@@ -270,7 +285,10 @@ export function SourceRunDetail({
             <dd className="data-value">
               {formatMiles(facts.distanceMiles)} <span className="run-hero__unit">mi</span>
             </dd>
-            <dt className="machine-label">Distance</dt>
+            <dt className="machine-label">
+              Distance
+              {distanceNote && <span className="run-hero__note">{distanceNote}</span>}
+            </dt>
           </div>
         )}
         {facts.durationSeconds !== null && (

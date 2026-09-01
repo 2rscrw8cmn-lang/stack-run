@@ -29,10 +29,11 @@ const HEIGHT = 150;
  * is worse than no axis at all.
  */
 const PADDING_LEFT = 46;
+/** Room on the right for the overlay's own axis, when one is drawn. */
+const PADDING_RIGHT_WITH_OVERLAY = 34;
 const PADDING_RIGHT = 6;
 const PADDING_TOP = 12;
 const PADDING_BOTTOM = 14;
-const PLOT_WIDTH = WIDTH - PADDING_LEFT - PADDING_RIGHT;
 const PLOT_HEIGHT = HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 /** Shorter than this and a midpoint tick says nothing the ends do not. */
 const MIDPOINT_LABEL_MINIMUM_SECONDS = 120;
@@ -90,10 +91,19 @@ interface ActivityChartProps {
   references?: readonly ActivityChartReference[];
   /**
    * A quieter second series drawn behind this one — the run's elevation under
-   * its pace, as the approved reference shows. Shape only: it carries no axis,
-   * no numbers of its own, and never enters the domain of the metric above it.
+   * its pace, as the approved reference shows. It gets its own axis on the
+   * right and its own name in the legend, because a shape with no scale is
+   * decoration; what it never does is enter the domain of the metric above it
+   * or contribute a number to anything stated elsewhere.
    */
-  overlay?: { samples: readonly ActivitySample[]; label: string } | null;
+  overlay?: {
+    samples: readonly ActivitySample[];
+    label: string;
+    /** How one overlay value is labelled on its own axis. */
+    formatAxis: (value: number) => string;
+  } | null;
+  /** The active metric's unit, stated once under its axis rather than on every tick. */
+  unitLabel?: string;
   companions?: readonly ActivityChartCompanion[];
 }
 
@@ -143,6 +153,7 @@ export function ActivityChart({
   formatAxis,
   references = [],
   overlay = null,
+  unitLabel,
   companions = [],
 }: ActivityChartProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -207,7 +218,13 @@ export function ActivityChart({
   const domain = displayDomain(measured, robustDomain);
   const span = domainSpan(domain);
 
-  const plotX = (timeSeconds: number) => PADDING_LEFT + ratioAtTime(timeSeconds, lastTime) * PLOT_WIDTH;
+  const overlayMeasured = (overlay?.samples ?? [])
+    .flatMap((sample) => (sample.value === null ? [] : [sample.value]));
+  const overlayDomain = overlayMeasured.length > 1 ? displayDomain(overlayMeasured) : null;
+  const paddingRight = overlayDomain ? PADDING_RIGHT_WITH_OVERLAY : PADDING_RIGHT;
+  const plotWidth = WIDTH - PADDING_LEFT - paddingRight;
+
+  const plotX = (timeSeconds: number) => PADDING_LEFT + ratioAtTime(timeSeconds, lastTime) * plotWidth;
   const plotY = (value: number) => {
     // Clamped for drawing only: an outlier sits at the edge of the visible
     // window instead of dictating it. `samples` itself is never touched.
@@ -221,19 +238,15 @@ export function ActivityChart({
   const runs = contiguousRuns(samples).map((run) =>
     run.map((point) => ({ ...point, x: plotX(point.timeSeconds), y: plotY(point.value) })));
 
-  const overlayMeasured = (overlay?.samples ?? [])
-    .flatMap((sample) => (sample.value === null ? [] : [sample.value]));
-  const overlayDomain = overlayMeasured.length > 1 ? displayDomain(overlayMeasured) : null;
+  /** The overlay's own scale, which the axis on the right labels. */
+  const overlayY = (value: number) =>
+    baselineY -
+    ((value - overlayDomain!.low) / domainSpan(overlayDomain!)) * PLOT_HEIGHT * OVERLAY_HEIGHT_RATIO;
   const overlayRuns = overlayDomain
     ? contiguousRuns(overlay!.samples).map((run) =>
-        run.map((point) => ({
-          x: plotX(point.timeSeconds),
-          y:
-            baselineY -
-            ((point.value - overlayDomain.low) / domainSpan(overlayDomain)) *
-              PLOT_HEIGHT * OVERLAY_HEIGHT_RATIO,
-        })))
+        run.map((point) => ({ x: plotX(point.timeSeconds), y: overlayY(point.value) })))
     : [];
+  const overlayTicks = overlayDomain ? axisTicks(overlayDomain, 3) : [];
 
   const ticks = axisTicks(domain);
   const selected = selectedIndex === null ? null : samples[selectedIndex] ?? null;
@@ -312,7 +325,7 @@ export function ActivityChart({
       data-metric={metric}
       style={{
         "--plot-left": percentX(PADDING_LEFT),
-        "--plot-right": percentX(PADDING_RIGHT),
+        "--plot-right": percentX(paddingRight),
       } as CSSProperties}
     >
       <div className="activity-chart__plot">
@@ -343,7 +356,7 @@ export function ActivityChart({
               key={`grid-${tick}`}
               className="activity-chart__grid"
               x1={PADDING_LEFT}
-              x2={WIDTH - PADDING_RIGHT}
+              x2={WIDTH - paddingRight}
               y1={plotY(tick)}
               y2={plotY(tick)}
             />
@@ -364,7 +377,7 @@ export function ActivityChart({
               key={`reference-${reference.label}`}
               className="activity-chart__reference"
               x1={PADDING_LEFT}
-              x2={WIDTH - PADDING_RIGHT}
+              x2={WIDTH - paddingRight}
               y1={plotY(reference.value)}
               y2={plotY(reference.value)}
             />
@@ -406,7 +419,25 @@ export function ActivityChart({
               {axisText(tick)}
             </span>
           ))}
+          {unitLabel && ticks.length > 0 && (
+            <span
+              className="activity-chart__unit"
+              style={{ top: percentY(plotY(invert ? domain.high : domain.low)) } as CSSProperties}
+            >
+              {unitLabel}
+            </span>
+          )}
         </div>
+
+        {overlayDomain && overlay && (
+          <div className="activity-chart__ticks activity-chart__ticks--overlay" aria-hidden="true">
+            {overlayTicks.map((tick) => (
+              <span key={`overlay-tick-${tick}`} style={{ top: percentY(overlayY(tick)) } as CSSProperties}>
+                {overlay.formatAxis(tick)}
+              </span>
+            ))}
+          </div>
+        )}
 
         {selectedTime !== null && (
           <div
@@ -473,6 +504,23 @@ export function ActivityChart({
         <span>0:00</span>
         {showMidpoint && <span>{formatDurationSeconds(Math.round(lastTime / 2))}</span>}
         <span>{formatDurationSeconds(Math.round(lastTime))}</span>
+      </div>
+
+      <div className="activity-chart__foot" aria-hidden="true">
+        {overlay && overlayDomain && (
+          <p className="activity-chart__legend machine-label">
+            <span data-series="metric">{label}</span>
+            <span data-series="overlay">{overlay.label}</span>
+          </p>
+        )}
+        {/*
+          Said once, quietly, because a chart that can be interrogated has to
+          say so: nothing else on the page tells a runner their finger does
+          anything here.
+        */}
+        <p className="activity-chart__hint">
+          {selectedTime === null ? "Drag to explore" : "Tap away to clear"}
+        </p>
       </div>
 
       <p id={describedById} className="visually-hidden">

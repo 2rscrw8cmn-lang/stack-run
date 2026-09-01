@@ -147,10 +147,14 @@ supporting context.
 ### Result, then supporting facts
 
 One panel: distance dominant and in STACK lime, duration and average pace beside
-it, units set smaller than the figures. Underneath, a compact strip of the
-source's other aggregates — average HR, gain, cadence, load — each with its own
-icon and `--metric-color`. Max HR joins the strip only when there is no
-heart-rate chart to support. Fields that do not exist are absent, never zero.
+it, units set smaller than the figures. Where the run is linked to a workout
+with an **exact** distance target, one quiet line under the distance states the
+comparison — `+0.12 mi vs plan`, or `On plan · 3 mi`. A range target (`3-4`)
+states a band rather than a number and yields no line at all; see
+`planDistanceComparison`. Underneath, a compact strip of the source's other
+aggregates — average HR, gain, cadence, load — each with its own icon and
+`--metric-color`. Max HR joins the strip only when there is no heart-rate chart
+to support. Fields that do not exist are absent, never zero.
 
 One deterministic insight may follow: the dominant heart-rate zone with its
 share and duration, or a count of the structured groups the source named. It is
@@ -173,8 +177,14 @@ does not state a verdict on the run.
   interval rather than a point on a curve, with the imported average as a
   reference line.
 
-Tabs carry an icon, the metric's colour, an underlined selected state and a 44px
-target. Only metrics with recognized stream coverage appear.
+The selector is a **tab bar**, not a row of pills: four metric names, each with
+its icon above it in the metric's own colour, the selected one brighter and
+underlined, and a 44px target per cell. Every metric with recognized stream
+coverage stays visible at once; metrics without it do not appear.
+
+The metric's own stated facts — average pace; average and max HR; Gain, Low and
+High; average cadence — sit **above** the plot, so the numbers the shape is read
+against are met before the shape.
 
 ### Charts are interrogable
 
@@ -189,7 +199,13 @@ Every chart supports:
   `aria-valuetext` on a `role="slider"` scrub surface;
 - two to four round y-axis labels in the metric's own units, plus elapsed x-axis
   labels;
-- `touch-action: pan-y`, so a vertical drag still scrolls the sheet.
+- `touch-action: pan-y`, so a vertical drag still scrolls the sheet;
+- a legend when a second series is drawn, and one quiet line saying the chart
+  can be dragged — nothing else on the page tells a runner that.
+
+Where pace is drawn over the elevation silhouette, the silhouette gets its own
+labelled axis on the right. A shape with no scale is decoration; it still
+contributes no number to anything stated elsewhere.
 
 The callout states only what STACK holds for that moment. There is no
 distance-at-cursor: STACK does not request a distance stream, and total distance
@@ -203,10 +219,15 @@ serves a 320px phone and a desktop dialog without distortion.
 ### Zones belong to heart rate
 
 Compact ordered rows — zone identity, colour, a share bar, duration and
-percentage — inside the Heart Rate tab. A run whose source stated zone durations
-but sent no stream keeps the same rows in a small section of its own rather than
-losing them. The standalone donut is gone from Run Detail; `DonutChart` itself
-remains, and Training Signals still uses it.
+percentage — inside the Heart Rate tab, beside a small ring showing the same
+composition at a glance. The ring is `aria-hidden`: the rows state every zone in
+text, and two sets of five controls saying the same thing is worse than one. It
+is hidden altogether below 360px, where the rows need the width. A run whose
+source stated zone durations but sent no stream keeps the same rows in a small
+section of its own rather than losing them.
+
+What is gone from Run Detail is the *standalone* zone module, not the graphic;
+`DonutChart` is unchanged and Training Signals still uses it interactively.
 
 STACK does **not** draw heart-rate zone bands across the chart: the source
 states zone *durations*, not zone boundaries in bpm, and drawing bands would

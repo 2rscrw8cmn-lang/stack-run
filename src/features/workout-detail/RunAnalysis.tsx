@@ -7,6 +7,7 @@ import {
   type ActivityChartShape,
 } from "../../components/charts/ActivityChart.js";
 import type { ActivitySample } from "../../components/charts/activityChartGeometry.js";
+import { DonutChart } from "../../components/charts/DonutChart.js";
 import { ZoneDistribution } from "../../components/charts/ZoneDistribution.js";
 import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments.js";
 import type { IntervalsRunProfile, IntervalsRunProfileSample } from "../../connected/intervals.js";
@@ -38,8 +39,10 @@ interface AnalysisMetric {
   sample: (sample: IntervalsRunProfileSample) => number | undefined;
   /** The value as the callout states it, in full. */
   format: (value: number) => string;
-  /** The same value on a narrow y-axis, where the unit is already implied. */
+  /** The same value on a narrow y-axis, where the unit is stated once below. */
   formatAxis: (value: number) => string;
+  /** That unit, said once under the axis rather than on every tick. */
+  axisUnit?: string;
   /** Authoritative source aggregates worth drawing a line at. Never a stream average. */
   references: (facts: SourceRunFacts) => ActivityChartReference[];
   facts: (context: AnalysisContext) => AnalysisFact[];
@@ -94,6 +97,7 @@ const ANALYSIS_METRICS: AnalysisMetric[] = [
     sample: (sample) => sample.paceSecondsPerMile,
     format: formatPaceSeconds,
     formatAxis: paceAxisLabel,
+    axisUnit: "/mi",
     references: (facts) =>
       facts.paceSecondsPerMile === null
         ? []
@@ -111,6 +115,7 @@ const ANALYSIS_METRICS: AnalysisMetric[] = [
     sample: (sample) => sample.heartRate,
     format: (value) => `${rounded(value)} bpm`,
     formatAxis: rounded,
+    axisUnit: "bpm",
     references: (facts) =>
       facts.averageHeartRate === null
         ? []
@@ -132,6 +137,7 @@ const ANALYSIS_METRICS: AnalysisMetric[] = [
     sample: (sample) => sample.elevationFeet,
     format: (value) => `${rounded(value)} ft`,
     formatAxis: rounded,
+    axisUnit: "ft",
     references: () => [],
     facts: ({ facts, values }) => [
       // The source's own climbing total, never a sum of altitude deltas.
@@ -153,7 +159,8 @@ const ANALYSIS_METRICS: AnalysisMetric[] = [
     shape: "step",
     sample: (sample) => sample.cadence,
     // Stated exactly as the source reports it, with no unit STACK has not
-    // verified and no doubling into steps per minute.
+    // verified and no doubling into steps per minute — which is also why this
+    // is the one axis with no unit under it.
     format: rounded,
     formatAxis: rounded,
     references: (facts) =>
@@ -210,7 +217,11 @@ export function RunAnalysis({ facts, profile }: RunAnalysisProps) {
 
   const elevation = available.find((metric) => metric.id === "elevation");
   const overlay = active.withElevationSilhouette && elevation && elevation.id !== active.id
-    ? { samples: samplesFor(elevation), label: "Elevation" }
+    ? {
+        samples: samplesFor(elevation),
+        label: elevation.label,
+        formatAxis: elevation.formatAxis,
+      }
     : null;
 
   /**
@@ -231,6 +242,12 @@ export function RunAnalysis({ facts, profile }: RunAnalysisProps) {
 
   const zoneSegments = facts.hrZoneSeconds ? zoneDonutSegments(facts.hrZoneSeconds) : [];
   const showZones = active.id === "heartRate" && zoneSegments.some((segment) => segment.value > 0);
+  const zoneTotal = zoneSegments.reduce((sum, segment) => sum + segment.value, 0);
+  /** The zone the run mostly happened in, which is what the ring's centre states. */
+  const dominantZone = zoneSegments.reduce(
+    (best, segment) => (segment.value > best.value ? segment : best),
+    zoneSegments[0] ?? { label: "", value: 0, valueLabel: "", color: "" },
+  );
 
   return (
     <section className="run-analysis" aria-labelledby={headingId}>
@@ -260,20 +277,11 @@ export function RunAnalysis({ facts, profile }: RunAnalysisProps) {
         })}
       </div>
 
-      <ActivityChart
-        metric={active.id}
-        label={active.label}
-        samples={activeSamples}
-        shape={active.shape}
-        invert={active.invert}
-        robustDomain={active.robustDomain}
-        formatValue={active.format}
-        formatAxis={active.formatAxis}
-        references={active.references(facts)}
-        overlay={overlay}
-        companions={companions}
-      />
-
+      {/*
+        The source's own numbers sit above the plot, the way the approved
+        reference states them: they are what the shape is read against, so a
+        runner meets them before the line rather than after it.
+      */}
       {activeFacts.length > 0 && (
         <dl className="run-analysis__facts" data-count={activeFacts.length} data-metric={active.id}>
           {activeFacts.map((fact) => (
@@ -285,10 +293,47 @@ export function RunAnalysis({ facts, profile }: RunAnalysisProps) {
         </dl>
       )}
 
+      <ActivityChart
+        metric={active.id}
+        label={active.label}
+        samples={activeSamples}
+        shape={active.shape}
+        invert={active.invert}
+        robustDomain={active.robustDomain}
+        formatValue={active.format}
+        formatAxis={active.formatAxis}
+        unitLabel={active.axisUnit}
+        references={active.references(facts)}
+        overlay={overlay}
+        companions={companions}
+      />
+
       {showZones && (
         <div className="run-analysis__zones">
           <p className="run-analysis__zones-heading machine-label">Time in zone</p>
-          <ZoneDistribution segments={zoneSegments} label="Heart rate zone distribution" />
+          {/*
+            The ring is the composition at a glance and the rows are the
+            composition in full. Both are compact and both live inside heart
+            rate: what issue #214 removed was the standalone zone module, not
+            the graphic — and `DonutChart`'s own legend stays hidden here
+            because the rows beside it are the accessible authority.
+          */}
+          <div className="run-analysis__zone-figure">
+            {/*
+              Hidden from assistive technology on purpose: the rows beside it
+              state every zone's identity, duration and share as text, and two
+              sets of five controls saying the same thing is worse than one.
+            */}
+            <div className="run-analysis__zone-ring" aria-hidden="true">
+              <DonutChart
+                segments={zoneSegments}
+                label="Heart rate zone ring"
+                centerValue={`${Math.round((dominantZone.value / (zoneTotal || 1)) * 100)}%`}
+                centerLabel={dominantZone.label}
+              />
+            </div>
+            <ZoneDistribution segments={zoneSegments} label="Heart rate zone distribution" />
+          </div>
         </div>
       )}
     </section>

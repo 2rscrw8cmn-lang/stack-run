@@ -354,13 +354,17 @@ describe("Analysis facts come from the source's own aggregates", () => {
     await screen.findByText("Analysis");
     await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
 
-    const ticks = [...document.querySelectorAll(".activity-chart__ticks span")].map((tick) => tick.textContent);
+    const ticks = [...document.querySelectorAll(".activity-chart__ticks span")]
+      .filter((tick) => !tick.classList.contains("activity-chart__unit"))
+      .map((tick) => tick.textContent);
     expect(ticks.length).toBeGreaterThanOrEqual(2);
     // Round values inside the series' own 140–160 window.
     for (const tick of ticks) {
       expect(Number(tick)).toBeGreaterThanOrEqual(140);
       expect(Number(tick)).toBeLessThanOrEqual(160);
     }
+    // The unit is stated once under the axis rather than on every tick.
+    expect(document.querySelector(".activity-chart__unit")).toHaveTextContent("bpm");
   });
 });
 
@@ -577,6 +581,20 @@ describe("heart-rate zones inside heart-rate analysis", () => {
     expect(row).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(row);
     expect(row).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("keeps the zone ring decorative, so the rows are the only set of controls", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={zoned} syncToken="token" />);
+    await screen.findByText("Analysis");
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+
+    // The ring is drawn — it is the composition at a glance — but it is hidden
+    // from assistive technology, because five arc buttons saying exactly what
+    // the five rows beside them say is worse than one set.
+    expect(document.querySelector(".run-analysis__zone-ring")).toBeInTheDocument();
+    expect(document.querySelector(".run-analysis__zone-ring")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getAllByRole("button", { name: /^Zone \d, /})).toHaveLength(5);
   });
 
   it("shows no zone distribution at all when the source stated none", async () => {

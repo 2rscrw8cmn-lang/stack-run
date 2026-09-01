@@ -192,6 +192,45 @@ export function selectPlanWeekViewModel(
  * workout links to at most one run, whether the link was made at import or
  * here.
  */
+/**
+ * The distance a scheduled workout asked for, as a range.
+ *
+ * `targetDistanceMiles` is free text a person typed — `3`, `3.5`, `3-4`, or
+ * something else entirely — so this parses conservatively and answers `null`
+ * rather than guessing at anything it does not recognize. A range's low and
+ * high are equal when one number was given.
+ */
+export function plannedDistanceMiles(workout: Workout): { low: number; high: number } | null {
+  const value = workout.targetDistanceMiles?.trim();
+  if (!value) return null;
+  const match = /^(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?$/.exec(value);
+  if (!match) return null;
+  const low = Number(match[1]);
+  const high = Number(match[2] ?? match[1]);
+  return low > 0 && high >= low ? { low, high } : null;
+}
+
+/**
+ * How this run's distance compares with what the plan asked for, when that
+ * comparison is a fact rather than an interpretation.
+ *
+ * Only an exact target produces a difference. A range (`3-4`) states a band
+ * rather than a number, so a run inside it is not "over" or "under" anything
+ * and a run outside it is a different sentence from this one; both are left to
+ * the plan's own surfaces. A difference that rounds to zero is not worth a
+ * line, and neither is a run with no scheduled workout behind it.
+ */
+export function planDistanceComparison(
+  workout: Workout | null,
+  actualMiles: number,
+): string | null {
+  const target = workout ? plannedDistanceMiles(workout) : null;
+  if (!target || target.low !== target.high) return null;
+  const difference = Number((actualMiles - target.low).toFixed(2));
+  if (difference === 0) return `On plan · ${target.low} mi`;
+  return `${difference > 0 ? "+" : "−"}${Math.abs(difference)} mi vs plan`;
+}
+
 export function availableWorkoutsForRunLog(
   runLog: RunLog,
   plan: TrainingPlan,

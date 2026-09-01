@@ -147,6 +147,24 @@ describe("Runs", () => {
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
   });
 
+  it("states how the run compared with what the plan asked for, when that is a fact", async () => {
+    const user = userEvent.setup();
+    // workout-002 asks for 2 miles; this run came to 3.
+    renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })]);
+
+    await user.click(rows()[0]);
+    const sheet = within(screen.getByRole("dialog"));
+    expect(sheet.getByText("+1 mi vs plan")).toBeInTheDocument();
+  });
+
+  it("says nothing about the plan for a run the plan never asked for", async () => {
+    const user = userEvent.setup();
+    renderRuns([run("extra", "2026-08-04")]);
+
+    await user.click(rows()[0]);
+    expect(screen.queryByText(/vs plan/)).not.toBeInTheDocument();
+  });
+
   it("reuses the imported detail rather than rendering metrics a second way", async () => {
     const user = userEvent.setup();
     renderRuns([

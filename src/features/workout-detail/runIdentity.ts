@@ -30,6 +30,12 @@ export interface RunIdentityChip {
 export interface RunIdentity {
   title: string;
   titleSource: RunIdentityTitleSource;
+  /**
+   * The activity type to draw the run's mark from, or null for a run nobody has
+   * classified. A historical-only row has no STACK classification, so it gets
+   * no mark rather than a guessed one.
+   */
+  activityType: RunActivityType | null;
   /** Local calendar date, `YYYY-MM-DD`. */
   date: string;
   /** `7:12 AM` when the source stated a local start, else null. */
@@ -114,6 +120,7 @@ export function runIdentityFromRunLog(
   return {
     title,
     titleSource,
+    activityType: runLog.activityType,
     date: runLog.completedDate,
     startTimeLabel: formatStartTime(mirror?.startTimeLocal ?? null),
     /**
@@ -153,6 +160,7 @@ export function runIdentityFromRunnerRun(run: RunnerRun): RunIdentity {
   return {
     title: sourceName ?? (kind === "cross-training" ? "Cross Training" : "Run"),
     titleSource: sourceName ? "source-activity" : "classification",
+    activityType: null,
     date: run.date,
     startTimeLabel: formatStartTime(run.startTimeLocal),
     planLine: null,

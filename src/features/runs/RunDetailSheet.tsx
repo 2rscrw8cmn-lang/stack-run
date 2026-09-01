@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/Button.js";
 import { IconButton } from "../../components/ui/IconButton.js";
 import { Sheet } from "../../components/ui/Sheet.js";
 import { runSourceLabel } from "../../domain/runSource.js";
-import { availableWorkoutsForRunLog } from "../../domain/plan.js";
+import { availableWorkoutsForRunLog, planDistanceComparison } from "../../domain/plan.js";
 import type { RunHistoryEntry } from "../../domain/runs.js";
 import type { RunLog, TrainingPlan } from "../../domain/types.js";
 import { EFFORT_LABEL } from "../../domain/workout.js";
@@ -114,6 +114,7 @@ export function RunDetailSheet({
             run={runLog}
             syncToken={syncToken}
             identity={identity}
+            distanceNote={planDistanceComparison(workout ?? null, runLog.distanceMiles)}
             detailsBehindOptions
           />
         </div>

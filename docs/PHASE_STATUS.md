@@ -1190,8 +1190,9 @@ Implemented scope:
   history row has one, the linked workout's title where it does not, STACK's
   classification as the last resort, and no invented name (`runIdentity.ts`);
 - one dominant result — distance in lime, duration and average pace beside it,
-  units set smaller — over a compact icon-and-colour metric strip carrying the
-  source's other aggregates through one `--metric-color` property;
+  units set smaller — with the plan comparison under it when the linked workout
+  states an exact target, over a compact icon-and-colour metric strip carrying
+  the source's other aggregates through one `--metric-color` property;
 - one deterministic insight (dominant zone, or a count of the source's named
   groups), omitted when neither is useful and when the zone rows are on screen;
 - **Analysis** replaces Run Profile: `ActivityChart` + `activityChartGeometry.ts`
@@ -1199,7 +1200,12 @@ Implemented scope:
   heart rate with the imported average across it, filled elevation terrain,
   stepped cadence), a real y-axis, touch/drag and keyboard scrubbing with a
   crosshair, a selected point and a persistent callout;
-- heart-rate zones become compact ordered rows inside Heart Rate; a run with
+- the analysis selector is a tab bar — icon over label, metric colour,
+  underlined selected state, 44px cells — with the metric's stated facts above
+  the plot, a legend and a drag hint below it, and the elevation silhouette
+  carrying its own axis on the right;
+- heart-rate zones become compact ordered rows inside Heart Rate, beside a small
+  decorative ring; a run with
   zone durations and no stream keeps the same rows in a section of its own; no
   zone bands are drawn, because the source states durations and not thresholds;
 - Edit Run, plan linking, source/import provenance, elapsed time, effort and

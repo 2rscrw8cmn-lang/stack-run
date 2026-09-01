@@ -4896,6 +4896,25 @@ textarea.run-input {
   gap: 6px var(--space-3);
 }
 
+/* The activity's own mark, in its own colour, so a run is recognisable before
+   it is read. Decorative: the type chip beside it carries the meaning. */
+.run-identity__mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--text-muted);
+}
+
+.run-identity__mark[data-type="easy"] { color: var(--easy); }
+.run-identity__mark[data-type="intervals"] { color: var(--intervals); }
+.run-identity__mark[data-type="simulation"] { color: var(--simulation); }
+.run-identity__mark[data-type="long"] { color: var(--long); }
+.run-identity__mark[data-type="cross"] { color: var(--cross); }
+.run-identity__mark[data-type="race"] { color: var(--race); }
+
 .run-identity__when {
   margin: 0;
   color: var(--text-muted);
@@ -4932,6 +4951,8 @@ textarea.run-input {
   margin: 0;
   color: var(--text-subtle);
   font-size: var(--type-label);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /*
@@ -5018,6 +5039,20 @@ textarea.run-input {
   margin-top: 6px;
   color: var(--text-muted);
   font-size: var(--type-label);
+}
+
+/* What the plan asked for, under what the run came to. Lime because it belongs
+   to the distance above it, and only ever present when the comparison is a
+   fact rather than an interpretation. */
+.run-hero__note {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-size: var(--type-meta);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
 }
 
 /*
@@ -5129,31 +5164,26 @@ textarea.run-input {
 }
 
 /*
- * Four metric tabs do not fit across a phone at a readable size, and three
- * across with a fourth stranded underneath reads as an accident. So: an even
- * 2x2 on a phone, one row where there is genuinely room for it.
+ * The analysis selector is a tab bar, not a row of buttons.
+ *
+ * Four boxed pills do not fit across a phone at a readable size; four
+ * underlined labels do, which is what the approved reference uses and what lets
+ * every metric stay visible at once. Each label carries its own metric colour
+ * and icon, the selected one is brighter with a rule under it, and the 44px
+ * target is the whole cell rather than the drawn text.
  */
 .run-analysis__tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--border);
 }
 
-@media (min-width: 700px) {
-  .run-analysis__tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-  }
-}
-
-/* Same rule the R2 history controls follow: the visible chip stays small and
-   quiet, and the thing a thumb has to hit is 44px regardless. */
 .run-profile__selector {
   display: grid;
   place-items: center;
-  flex: 1 1 auto;
   min-height: 44px;
-  padding: 0 2px;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--text-subtle);
@@ -5162,29 +5192,41 @@ textarea.run-input {
 }
 
 .run-profile__selector > span {
+  /* Icon over label. Four metric names do not fit beside four icons on one line
+     at a readable size, and stacking them keeps every metric visible at once
+     rather than shrinking the type under the phone floor. */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 3px;
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-data);
+  padding: 7px 2px;
+  border-bottom: 2px solid transparent;
+  color: var(--metric-color, var(--text-subtle));
+  /* The interface face rather than the data face: four metric names have to fit
+     across a 390px phone, and mono is a third wider at the same size. */
   font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
   white-space: nowrap;
+  opacity: 0.62;
 }
 
-.run-profile__selector[aria-pressed="true"] {
-  color: var(--metric-color, var(--accent));
-}
-
+/* The icon keeps the metric's own colour; the label goes quiet until selected,
+   so the selected tab is brighter as well as underlined. */
 .run-profile__selector[aria-pressed="true"] > span {
-  border-color: var(--metric-color, var(--accent));
-  background: color-mix(in srgb, var(--metric-color, var(--accent)) 12%, transparent);
-  box-shadow: inset 0 -2px 0 var(--metric-color, var(--accent));
+  border-bottom-color: var(--metric-color, var(--accent));
+  opacity: 1;
+}
+
+/* 320px: the four labels stop fitting on one line, so the two longest lose
+   their text rather than the type losing its size — the icon and the colour
+   still identify them, and the accessible name is unchanged. */
+/* 320px: the two longest names still fit, with the tracking given back. */
+@media (max-width: 359px) {
+  .run-profile__selector > span { letter-spacing: 0; }
 }
 
 .activity-chart {
@@ -5278,6 +5320,22 @@ textarea.run-input {
   inset: 0 auto 0 0;
   width: var(--plot-left, 14%);
   pointer-events: none;
+}
+
+.activity-chart__ticks--overlay {
+  inset: 0 0 0 auto;
+  width: var(--plot-right, 10%);
+}
+
+.activity-chart__ticks--overlay span {
+  right: auto;
+  left: 6px;
+  color: var(--metric-elevation);
+  opacity: 0.8;
+}
+
+.activity-chart__unit {
+  transform: translateY(50%);
 }
 
 .activity-chart__ticks span {
@@ -5398,18 +5456,64 @@ textarea.run-input {
   color: var(--text-subtle);
 }
 
+.activity-chart__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--space-3);
+  padding: 4px 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.activity-chart__legend,
+.activity-chart__hint {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+}
+
+/* An instruction, not a reading: sentence case, and out of the way. */
+.activity-chart__hint {
+  margin-left: auto;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* A short rule in the series' own colour, so the legend says which line is
+   which without depending on the reader separating two hues. */
+.activity-chart__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.activity-chart__legend span::before {
+  content: "";
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--metric-color, var(--accent));
+}
+
+.activity-chart__legend span[data-series="overlay"]::before {
+  background: var(--metric-elevation);
+}
+
 /* One fact for pace or cadence, three for elevation: the row divides itself
    rather than reserving slots it may not fill. */
 .run-analysis__facts {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin: 0;
+  padding: 0 4px;
 }
 
-.run-analysis__facts > div {
-  text-align: center;
+.run-analysis__facts > div:last-child:not(:first-child) {
+  text-align: right;
 }
 
 .run-analysis__facts dd {
@@ -5427,6 +5531,38 @@ textarea.run-input {
 .run-analysis__zones {
   display: grid;
   gap: 6px;
+}
+
+/* The ring is a glance, the rows are the reading: side by side where there is
+   room for both, and the rows alone on the narrowest phone. */
+.run-analysis__zone-figure {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.run-analysis__zone-figure .donut {
+  display: block;
+}
+
+/* The ring's own legend would repeat the rows beside it. */
+.run-analysis__zone-figure .donut__legend {
+  display: none;
+}
+
+.run-analysis__zone-figure .donut__figure {
+  background: none;
+  border: 0;
+}
+
+.run-analysis__zone-figure .donut__plot {
+  max-width: 96px;
+}
+
+@media (max-width: 359px) {
+  .run-analysis__zone-figure { grid-template-columns: minmax(0, 1fr); }
+  .run-analysis__zone-ring { display: none; }
 }
 
 .run-analysis__zones-heading {
@@ -5447,7 +5583,7 @@ textarea.run-input {
 
 .zone-rows__button {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(24px, 1fr) auto;
   align-items: center;
   gap: var(--space-2);
   width: 100%;

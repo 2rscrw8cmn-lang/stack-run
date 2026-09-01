@@ -14,6 +14,8 @@ interface RunResultDetailProps {
   syncToken?: IntervalsConnection | string | null;
   /** Who this run is, when the surrounding sheet leads with the activity. */
   identity?: RunIdentity | null;
+  /** `+0.12 mi vs plan`, when this run is linked to a workout with an exact target. */
+  distanceNote?: string | null;
   /**
    * True when the sheet around this one owns a run-options control, and the
    * run's provenance therefore lives behind it.
@@ -43,6 +45,7 @@ export function RunResultDetail({
   run,
   syncToken,
   identity = null,
+  distanceNote = null,
   detailsBehindOptions = false,
 }: RunResultDetailProps) {
   const facts = sourceRunFactsFromRunLog(run);
@@ -76,6 +79,7 @@ export function RunResultDetail({
       runKey={run.id}
       connection={syncToken}
       identity={identity}
+      distanceNote={distanceNote}
       meta={
         detailsBehindOptions ? null : (
           <div className="run-result-detail__meta machine-label">

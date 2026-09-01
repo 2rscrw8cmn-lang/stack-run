@@ -1,5 +1,6 @@
 import type { ImportedRunMetrics, RunActivityType, RunLog, TrainingPlan, Workout } from "../domain/types.js";
 import { daysBetweenLocalDates } from "../domain/dates.js";
+import { plannedDistanceMiles as targetDistance } from "../domain/plan.js";
 
 const METERS_PER_MILE = 1609.344;
 const FEET_PER_METER = 3.28084;
@@ -487,16 +488,6 @@ export function normalizeIntervalsActivities(raw: unknown): IntervalsCandidate[]
 
 export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
   return unresolvedCandidates(normalizeIntervalsActivities(raw), runLogs, ignoredIds);
-}
-
-function targetDistance(workout: Workout): { low: number; high: number } | null {
-  const value = workout.targetDistanceMiles?.trim();
-  if (!value) return null;
-  const match = /^(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?$/.exec(value);
-  if (!match) return null;
-  const low = Number(match[1]);
-  const high = Number(match[2] ?? match[1]);
-  return low > 0 && high >= low ? { low, high } : null;
 }
 
 /** How far from the run a planned date can be before a match is a guess. */
