@@ -106,11 +106,24 @@ export function RunAnalysis({ facts, profile, selectedMetric, onSelectMetric }: 
               className="run-profile__selector run-analysis__tab"
               data-metric={metric.id}
               aria-pressed={isActive}
+              aria-label={metric.label}
               onClick={() => onSelectMetric(metric.id)}
             >
               <span>
                 <Icon size={15} strokeWidth={2} aria-hidden="true" />
-                {metric.label}
+                {/*
+                  Two written forms of one name. Four full metric names stop
+                  fitting across a 320px phone — `HEART RATE` and `ELEVATION`
+                  end up touching, which reads as one long word rather than as
+                  two tabs — so the narrowest widths show the short form the
+                  chart's own callout already uses. The button carries the full
+                  name as its accessible name at every width, so what a screen
+                  reader announces never changes.
+                */}
+                <span className="run-profile__selector-label">{metric.label}</span>
+                <span className="run-profile__selector-label run-profile__selector-label--short" aria-hidden="true">
+                  {metric.shortLabel}
+                </span>
               </span>
             </button>
           );

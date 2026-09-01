@@ -5096,10 +5096,14 @@ textarea.run-input {
 }
 
 /* The 320px phone: three figures and their units still fit on one line, with
-   the room coming out of the gutters rather than out of the type. */
+   the room coming out of the gutters first. Pace is the one that still does not
+   fit — `9:33 /MI` is the longest of the three — so it gives up two points of
+   size rather than clipping its unit or pushing the sheet into a sideways
+   scroll. It is already the smallest of the three figures by design. */
 @media (max-width: 359px) {
   .run-hero { gap: var(--space-2); }
   .run-hero > div + div { padding-left: var(--space-2); }
+  .run-hero > div[data-metric="pace"] dd { font-size: 19px; }
 }
 
 /*
@@ -5300,12 +5304,32 @@ textarea.run-input {
   opacity: 1;
 }
 
-/* 320px: the four labels stop fitting on one line, so the two longest lose
-   their text rather than the type losing its size — the icon and the colour
-   still identify them, and the accessible name is unchanged. */
-/* 320px: the two longest names still fit, with the tracking given back. */
+/* The name never spills into its neighbour: it shrinks to the meta floor on the
+   narrowest phones and, past that, truncates. `HEART RATE` beside `ELEVATION`
+   is the pair that runs out of room first, and two names touching reads as one
+   long word rather than as two tabs. */
+.run-profile__selector-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The short form is the narrow-phone spelling of the same name, so only one of
+   the pair is ever drawn. */
+.run-profile__selector-label--short { display: none; }
+
+/* 320px: four full names stop fitting, so the two longest would touch. The
+   labels swap to the short form the chart's callout already uses — `HR`,
+   `Elev`, `Cad` — rather than the type dropping under the phone floor, and the
+   buttons keep their full accessible names. */
 @media (max-width: 359px) {
-  .run-profile__selector > span { letter-spacing: 0; }
+  .run-profile__selector > span {
+    padding-inline: 1px;
+    letter-spacing: 0;
+  }
+
+  .run-profile__selector-label { display: none; }
+  .run-profile__selector-label--short { display: block; }
 }
 
 /* Inside Analysis the chart is the instrument's face, not a card on it: no

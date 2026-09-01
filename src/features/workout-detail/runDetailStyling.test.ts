@@ -128,6 +128,25 @@ describe("Run Detail layout", () => {
     expect(componentsCss).toMatch(/\.activity-chart__scrub\s*\{[^}]*left: var\(--plot-left/s);
   });
 
+  it("swaps the tab labels to their short form before two names can touch", () => {
+    // At 320px `HEART RATE` and `ELEVATION` fill their columns exactly and read
+    // as one long word. The narrow spelling is the chart callout's own — `HR`,
+    // `Elev`, `Cad` — and the type never drops below the phone floor to fit.
+    expect(componentsCss).toMatch(
+      /\.run-profile__selector-label--short \{ display: none; \}/,
+    );
+    expect(componentsCss).toMatch(
+      /@media \(max-width: 359px\)[^@]*\.run-profile__selector-label \{ display: none; \}/s,
+    );
+    expect(componentsCss).toMatch(
+      /@media \(max-width: 359px\)[^@]*\.run-profile__selector-label--short \{ display: block; \}/s,
+    );
+    // Whichever form is drawn, it stays inside its own column.
+    expect(componentsCss).toMatch(
+      /\.run-profile__selector-label \{[^}]*text-overflow: ellipsis/s,
+    );
+  });
+
   it("keeps the metric strip and the analysis tabs whole rather than stranding one cell", () => {
     // Four compact facts across a phone, dropping to an even 2x2 rather than
     // three-and-one when there is no longer room.

@@ -126,7 +126,9 @@ describe("historical-only run detail", () => {
     expect(
       within(screen.getByRole("group", { name: "Run Profile metric" }))
         .getAllByRole("button")
-        .map((button) => button.textContent),
+        // The accessible name, which is the full metric name at every width:
+        // the visible label swaps to a short form on the narrowest phones.
+        .map((button) => button.getAttribute("aria-label")),
     ).toEqual(["Pace", "Heart Rate", "Elevation", "Cadence"]);
 
     // On open, for this one run — never during history sync, and never for the

@@ -13,8 +13,14 @@ No real activity, route or account data appears here, and none may.
 | `run-detail-390-heart-rate.png` | Heart rate with the imported average across it, and `Time in zone` — ring and rows — inside the same module |
 | `run-detail-390-elevation.png` | Elevation with the source Gain, stream Low/High and the scrubbable terrain profile |
 | `run-detail-390-cadence.png` | Cadence with its source-stated average and calmer discrete step treatment |
-| `run-detail-390-scrub.png` | Scrubbing: crosshair, selected point, and a callout whose companion rows are named (`HR 148 bpm`, `Elev 52 ft`) |
+| `run-detail-390-scrub.png` | Scrubbing: crosshair, selected point, and a callout whose companion rows are named (`HR 146 bpm`, `Elev 53 ft`) |
 | `run-detail-390-aggregate-only.png` | A run with aggregates but no stream: one complete result and no empty chart or fallback metric cards |
 | `run-detail-390-run-options.png` | The `…` sheet: edit, plan linking, source (including the source's own activity name) and `How STACK calculates this` |
-| `run-detail-320.png` | 320px: the result still on one line, the strip folded to 2×2, no horizontal scroll |
+| `run-detail-320.png` | 320px: the result still on one line with its unit intact, the strip folded to 2×2, the tab labels in their short form, no horizontal scroll |
 | `run-detail-desktop.png` | Desktop/tablet sanity check at 1024px |
+
+The rich fixture run is an **extra** run — the QA fixture deliberately leaves it
+unlinked so it cannot change which plan days read as completed — so these show
+STACK's own classification as the identity and no plan line. A plan-linked run
+adds `Week N` and, for an exact plan target, the distance comparison beneath the
+result.
