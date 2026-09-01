@@ -33,18 +33,40 @@ export function Sheet({ title, isOpen, onClose, guardClose, children, className 
   }, [isOpen]);
 
   /**
-   * iOS Safari keeps fixed elements sized to the layout viewport when the
-   * on-screen keyboard opens, which hides the bottom of the sheet — including
-   * its primary action — behind the keyboard. Follow the visual viewport
-   * instead so the sheet always occupies the part of the screen the user
-   * can actually see.
+   * iOS Safari needs the visual viewport only while its keyboard is genuinely
+   * consuming a large part of the screen. Browser chrome also resizes and
+   * scrolls `visualViewport`; treating every one of those small changes like a
+   * keyboard is what made ordinary Crew sheets float halfway up the page.
+   *
+   * Keep normal sheets on CSS `100dvh` and only opt into the visual-viewport
+   * override when the visible height has shrunk enough to clearly be a
+   * keyboard. When it closes, remove the overrides immediately so the panel
+   * returns to the real bottom edge.
    */
   useEffect(() => {
     const dialog = dialogRef.current;
     const viewport = window.visualViewport;
     if (!isOpen || !dialog || !viewport) return;
 
+    const clearVisualViewportOverride = () => {
+      dialog.style.removeProperty("--sheet-height");
+      dialog.style.removeProperty("--sheet-top");
+    };
+
     const syncToVisualViewport = () => {
+      const layoutHeight = window.innerHeight;
+      const missingHeight = Math.max(
+        0,
+        layoutHeight - viewport.height - viewport.offsetTop,
+      );
+      const keyboardLikelyOpen =
+        missingHeight > 160 || viewport.height < layoutHeight * 0.75;
+
+      if (!keyboardLikelyOpen) {
+        clearVisualViewportOverride();
+        return;
+      }
+
       dialog.style.setProperty("--sheet-height", `${viewport.height}px`);
       dialog.style.setProperty("--sheet-top", `${viewport.offsetTop}px`);
     };
@@ -56,8 +78,7 @@ export function Sheet({ title, isOpen, onClose, guardClose, children, className 
     return () => {
       viewport.removeEventListener("resize", syncToVisualViewport);
       viewport.removeEventListener("scroll", syncToVisualViewport);
-      dialog.style.removeProperty("--sheet-height");
-      dialog.style.removeProperty("--sheet-top");
+      clearVisualViewportOverride();
     };
   }, [isOpen]);
 
