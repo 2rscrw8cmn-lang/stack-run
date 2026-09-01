@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const layout = readFileSync(join(here, "layout.css"), "utf8");
 const sheet = readFileSync(join(here, "../components/ui/Sheet.tsx"), "utf8");
-const crewBuild = readFileSync(join(here, "../features/crew/CrewBuild.tsx"), "utf8");
 
 function ruleBody(source: string, selector: string): string {
   const start = source.indexOf(selector);
@@ -44,11 +43,5 @@ describe("mobile shell regressions", () => {
     expect(sheet).toContain("clearVisualViewportOverride();");
     expect(sheet).toContain('dialog.style.setProperty("--sheet-height"');
     expect(sheet).toContain('dialog.style.setProperty("--sheet-top"');
-  });
-
-  it("breaks equal-height Crew block paint ties by horizontal position", () => {
-    expect(crewBuild).toContain(
-      "zIndex: block.depth * (GRID_UNITS + 1) + block.columnStart",
-    );
   });
 });

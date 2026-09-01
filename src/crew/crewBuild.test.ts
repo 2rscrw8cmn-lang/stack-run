@@ -309,13 +309,28 @@ describe("shared geometry reuse (issue #65)", () => {
     expect(model.voids).not.toContainEqual({ row: 0, column: 2 });
   });
 
-  it("paints later courses over earlier ones via depth, like Personal Build", () => {
+  /**
+   * Paint order is a relation, not a height (`paintDepthsOf`). What has to
+   * hold is that a block whose front face covers another block's exposed
+   * depth face paints after it — here `over` sits diagonally above `low`,
+   * so `low`'s exposed top face leans into `over`'s front.
+   *
+   * Crew's blocks arrive in placement order rather than in geometric order,
+   * so nothing may be left to fall back on DOM order.
+   */
+  it("paints a block over the neighbour whose depth faces lean into it", () => {
     const model = deriveCrewBuild([
-      run("ground", "zack", { crewBuildRow: 0, crewBuildColumnStart: 1 }),
-      run("upper", "drew", { crewBuildRow: 1, crewBuildColumnStart: 1 }),
+      // Listed newest-first on purpose: DOM order must not be the answer.
+      run("over", "drew", { distanceMiles: 2, crewBuildRow: 1, crewBuildColumnStart: 2 }),
+      run("low", "zack", { distanceMiles: 2, crewBuildRow: 0, crewBuildColumnStart: 1 }),
+      run("right", "drew", { distanceMiles: 2, crewBuildRow: 0, crewBuildColumnStart: 3 }),
     ]);
     const byId = new Map(model.blocks.map((block) => [block.id, block] as const));
-    expect(byId.get("upper")!.depth).toBeGreaterThan(byId.get("ground")!.depth);
+    expect(byId.size).toBe(3);
+    expect(byId.get("over")!.depth).toBeGreaterThan(byId.get("low")!.depth);
+    // Nothing of `right` leans into `over`, and nothing of `over` leans into
+    // `right`, so they are free to share a rank — the tower never asks.
+    expect(byId.get("right")!.depth).toBe(byId.get("low")!.depth);
   });
 
   it("offers the lowest valid landing for each column", () => {

@@ -11,6 +11,13 @@ interface LandingSlotProps {
   /** Courses drawn in the grid, needed to flip row into a grid line. */
   courses: number;
   isChosen: boolean;
+  /**
+   * How many blocks the tower holds. The landing choices are the interaction
+   * surface over the tower while a block is in hand, not construction in it,
+   * so they sit above every block's paint rank rather than interleaving with
+   * it — and `paintDepthsOf` never ranks a block above the block count.
+   */
+  blockCount: number;
   /** e.g. "Easy block" — composed with the column into the slot's name. */
   blockDescription: string;
   onChoose: (option: PlacementOption) => void;
@@ -54,6 +61,7 @@ export function LandingSlot({
   pieceColor,
   courses,
   isChosen,
+  blockCount,
   blockDescription,
   onChoose,
   onGrab,
@@ -66,7 +74,7 @@ export function LandingSlot({
         {
           gridColumn: `${option.columnStart} / span ${width}`,
           gridRow: `${courses - option.row - height + 1} / span ${height}`,
-          zIndex: option.row + height,
+          zIndex: blockCount + 1,
           "--piece-color": pieceColor,
         } as CSSProperties
       }

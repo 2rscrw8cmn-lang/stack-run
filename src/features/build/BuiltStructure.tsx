@@ -60,7 +60,8 @@ interface BuiltStructureProps {
  * The tower is one grid rather than a list of course rows, because blocks are
  * two-dimensional and a two-course block belongs to no single row. Blocks are
  * listed ground first, so reading order matches the order they were built in,
- * and paint order comes from each block's own top edge.
+ * and paint order comes from the projection (`paintDepthsOf`) rather than
+ * from that reading order.
  */
 export function BuiltStructure({
   blocks,
@@ -203,6 +204,7 @@ export function BuiltStructure({
                 pieceColor={`var(--${placing.block.runLog.activityType})`}
                 courses={drawnCourses}
                 isChosen={option.columnStart === candidate?.columnStart}
+                blockCount={blocks.length}
                 blockDescription={`${WORKOUT_TYPE_LABEL[placing.block.runLog.activityType]} block`}
                 onChoose={placing.onChoose}
                 onGrab={grab}

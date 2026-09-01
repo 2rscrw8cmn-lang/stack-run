@@ -148,6 +148,138 @@ export function faceVisibilityOf(
   return { topFace, rightFace };
 }
 
+/**
+ * A run of adjacent cells along one edge that are all exposed.
+ *
+ * `faceVisibilityOf` answers per grid cell, because that is the resolution
+ * occlusion happens at. Drawing at that resolution is a different question:
+ * every face segment carries the brick's own edge shading, so a five-course
+ * side drawn as five segments reads as five stacked slabs rather than one
+ * side of one block. Contiguous exposed cells are therefore one surface, and
+ * a covered cell is what genuinely breaks it into two.
+ */
+export interface FaceSegment {
+  /** 0-based index of the first cell, along the same axis as the flags. */
+  offset: number;
+  /** How many cells this unbroken surface spans. */
+  span: number;
+}
+
+/** The maximal runs of `true` in a face's per-cell visibility flags. */
+export function faceSegmentsOf(visible: readonly boolean[]): FaceSegment[] {
+  const segments: FaceSegment[] = [];
+  let index = 0;
+  while (index < visible.length) {
+    if (!visible[index]) {
+      index += 1;
+      continue;
+    }
+    const offset = index;
+    while (index < visible.length && visible[index]) {
+      index += 1;
+    }
+    segments.push({ offset, span: index - offset });
+  }
+  return segments;
+}
+
+/**
+ * Paint order for the oblique projection, derived from it rather than guessed.
+ *
+ * Every block's front face lies in the same plane — the one nearest the
+ * viewer — so no front face can ever be behind another. What recedes is the
+ * depth: the top and right faces lean back along the projection axis, by
+ * `--iso-run` across and `--iso-rise` up, both of which are less than one
+ * unit (see `.tower-field`). A depth face can therefore only ever be hidden
+ * by the front face of a block occupying the *one* cell it leans into:
+ *
+ *   - an exposed top face over column `c` leans into `(c + 1, top)`;
+ *   - an exposed right face on course `r` leans into `(lastColumn + 1, r + 1)`.
+ *
+ * Nothing else can overlap: two front faces are disjoint grid rectangles, and
+ * two depth faces of the same construction tile edge to edge rather than
+ * cross. So paint order is exactly a topological order of those relations,
+ * and this returns each block's rank in one — its depth, in the sense the
+ * renderer needs.
+ *
+ * The block's own top edge, which this replaces, is right for the common
+ * tower and wrong wherever a block stands beside a bridged void: its right
+ * face is exposed into the opening and leans up into the front of whatever
+ * spans it, which may be a much shorter block. A scalar keyed on height
+ * cannot express that; the relation can.
+ *
+ * Ranks start at 1 and never exceed the number of blocks, so 0 stays free for
+ * what is behind the whole tower (the void recesses) and the count is a safe
+ * ceiling for what is in front of it (the landing choices).
+ */
+export function paintDepthsOf(
+  placements: readonly GridFootprint[],
+  filled: ReadonlySet<string>,
+  units = GRID_UNITS,
+): number[] {
+  const ownerOf = new Map<string, number>();
+  placements.forEach((placement, index) => {
+    for (
+      let column = placement.columnStart;
+      column <= lastColumnOf(placement);
+      column += 1
+    ) {
+      for (let row = placement.row; row < topOf(placement); row += 1) {
+        ownerOf.set(`${column}:${row}`, index);
+      }
+    }
+  });
+
+  // `beneath[i]` is every block whose depth faces block `i`'s front face
+  // covers, so `i` has to paint after all of them.
+  const beneath = placements.map(() => new Set<number>());
+  const coveredBy = (cell: string, index: number) => {
+    const owner = ownerOf.get(cell);
+    if (owner !== undefined && owner !== index) {
+      beneath[owner].add(index);
+    }
+  };
+
+  placements.forEach((placement, index) => {
+    const top = topOf(placement);
+    for (
+      let column = placement.columnStart;
+      column <= lastColumnOf(placement);
+      column += 1
+    ) {
+      // A covered top face is not drawn, so it leans into nothing.
+      if (filled.has(`${column}:${top}`)) continue;
+      coveredBy(`${column + 1}:${top}`, index);
+    }
+
+    const rightColumn = lastColumnOf(placement) + 1;
+    if (rightColumn > units) return;
+    for (let row = placement.row; row < top; row += 1) {
+      if (filled.has(`${rightColumn}:${row}`)) continue;
+      coveredBy(`${rightColumn}:${row + 1}`, index);
+    }
+  });
+
+  const depths = new Array<number>(placements.length).fill(0);
+  const resolving = new Array<boolean>(placements.length).fill(false);
+  const resolve = (index: number): number => {
+    if (depths[index] > 0) return depths[index];
+    // The relation cannot cycle for a real tower — every edge steps one cell
+    // up or right — but a corrupt placement set must still render.
+    if (resolving[index]) return 1;
+    resolving[index] = true;
+    let depth = 1;
+    for (const under of beneath[index]) {
+      depth = Math.max(depth, resolve(under) + 1);
+    }
+    resolving[index] = false;
+    depths[index] = depth;
+    return depth;
+  };
+
+  return placements.map((_, index) => resolve(index));
+}
+
 export interface GridVoid {
   row: number;
   column: number;

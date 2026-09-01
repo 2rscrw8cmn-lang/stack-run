@@ -305,12 +305,13 @@ export function CrewBuild({
                         {
                           gridColumn: `${block.columnStart} / span ${block.width}`,
                           gridRow: `${drawnCourses - block.row - block.height + 1} / span ${block.height}`,
-                          // Keep the existing vertical paint depth, then break
-                          // same-height ties left-to-right. Without the tie-break,
-                          // rotated skinny blocks at one skyline level fell back
-                          // to DOM order and their 3D faces visibly clipped each
-                          // other on the square placement grid.
-                          zIndex: block.depth * (GRID_UNITS + 1) + block.columnStart,
+                          // The tower's own paint order, the same one Personal
+                          // Build uses: derived from the projection for every
+                          // block at once (`paintDepthsOf`) rather than guessed
+                          // per block here. Crew's blocks arrive in placement
+                          // order rather than geometric order, so nothing may
+                          // be left to fall back on DOM order.
+                          zIndex: block.depth,
                         } as CSSProperties
                       }
                     >
@@ -351,6 +352,7 @@ export function CrewBuild({
                     pieceColor={placementPieceColor}
                     courses={drawnCourses}
                     isChosen={option.columnStart === candidate?.columnStart}
+                    blockCount={model.blocks.length}
                     blockDescription={placement.kind === "run"
                       ? `${WORKOUT_TYPE_LABEL[placement.run.activityType]} block`
                       : `${CREW_AWARD_LABEL[placement.award.awardType]} award block`}

@@ -1369,6 +1369,13 @@ textarea.run-input {
  */
 .built-tower {
   position: relative;
+  /*
+   * One stacking context for the whole construction. Paint order inside the
+   * tower is a relation between its own blocks (`paintDepthsOf`), and it has
+   * no business competing with page chrome: the placement bar and the bottom
+   * nav both sit above the tower, whatever rank a block happens to carry.
+   */
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(var(--grid-units), var(--tower-unit));
   grid-template-rows: repeat(var(--grid-courses), var(--tower-unit));
@@ -1511,10 +1518,16 @@ textarea.run-input {
   top: calc(-1 * var(--iso-rise));
   bottom: auto;
   height: var(--iso-rise);
-  /* One column of the brick's top, so the face ends where a neighbour rests. */
+  /*
+   * One unbroken stretch of the brick's top, so the face ends where a
+   * neighbour actually rests and nowhere else. Culling is per grid cell;
+   * drawing is per run of exposed cells (`faceSegmentsOf`), because each
+   * segment carries the edge shading below and a per-cell face turns one
+   * continuous surface into a row of separately outlined slabs.
+   */
   left: calc(var(--face-offset) / var(--face-cells) * 100%);
   right: auto;
-  width: calc(100% / var(--face-cells));
+  width: calc(var(--face-span, 1) / var(--face-cells) * 100%);
   transform-origin: bottom left;
   transform: skewX(-63.435deg);
   background: color-mix(in srgb, var(--piece-color) 62%, white);
@@ -1530,10 +1543,11 @@ textarea.run-input {
   left: 100%;
   right: auto;
   width: var(--iso-run);
-  /* One course of the brick's side, counted from the bottom up. */
+  /* One unbroken stretch of the brick's side, counted from the bottom up —
+     see the top face above for why this is a run of courses, not one. */
   top: auto;
   bottom: calc(var(--face-offset) / var(--face-cells) * 100%);
-  height: calc(100% / var(--face-cells));
+  height: calc(var(--face-span, 1) / var(--face-cells) * 100%);
   transform-origin: 0 0;
   transform: skewY(-26.565deg);
   background: color-mix(in srgb, var(--piece-color) 58%, black);
