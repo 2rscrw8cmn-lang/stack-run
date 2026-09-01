@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
+import "./Brick.css";
 
 export type BrickFaceLabel =
   | {
@@ -19,9 +20,9 @@ interface BrickProps {
   /** CSS custom property reference, e.g. `"var(--easy)"` or `"var(--member-accent)"`. */
   pieceColor: string;
   label: BrickFaceLabel | null;
-  /** One flag per column the block spans: true where nothing rests above it. */
+  /** One flag per placement unit the block spans horizontally. */
   topFace: readonly boolean[];
-  /** One flag per course the block stands: true where nothing abuts it. */
+  /** One flag per placement unit the block stands vertically. */
   rightFace: readonly boolean[];
 }
 
@@ -36,8 +37,17 @@ interface BrickProps {
  * (button vs. static span,
  * data-capstone, data-just-placed, grid position) stays with each caller,
  * since that is where Personal and Crew genuinely differ.
+ *
+ * The face arrays already carry the placed footprint. When a text-bearing run
+ * block is exactly one square unit wide and taller than one unit, #208 turns
+ * the entire existing label 90° as one object instead of shrinking or stacking
+ * its characters. The string itself never changes — `3.2` remains `3.2`.
  */
 export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
+  const verticalTextLabel = Boolean(
+    label && "text" in label && topFace.length === 1 && rightFace.length > 1,
+  );
+
   return (
     <span
       className="placed-block__brick"
@@ -46,7 +56,13 @@ export function Brick({ pieceColor, label, topFace, rightFace }: BrickProps) {
     >
       <span className="placed-block__face placed-block__face--front">
         {label && (
-          <span className="placed-block__label">
+          <span
+            className={
+              verticalTextLabel
+                ? "placed-block__label placed-block__label--vertical"
+                : "placed-block__label"
+            }
+          >
             {"icon" in label ? (
               <label.icon className="placed-block__icon" size={14} strokeWidth={2.5} />
             ) : (
