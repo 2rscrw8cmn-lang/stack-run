@@ -5,14 +5,14 @@ import {
   formatCrewAwardResult,
   isFeatureCrewAward,
 } from "./awards.js";
-import { handFootprint } from "../domain/footprint.js";
+import { canRotateFootprint, handFootprint } from "../domain/footprint.js";
 
 const ALL_AWARDS = [
   "miles", "zone2", "pace", "runs", "longHaul", "steady", "onTarget", "levelUp",
 ] as const;
 
 describe("crewAwardFootprint", () => {
-  it("makes every award exactly one square placement unit", () => {
+  it("makes every award exactly one square placement unit with no rotation", () => {
     for (const type of ALL_AWARDS) {
       const source = crewAwardFootprint(type);
       expect(source).toEqual({ width: 1, height: 1, placementUnits: true });
@@ -20,6 +20,7 @@ describe("crewAwardFootprint", () => {
       // A square has no alternate footprint even if an old caller supplies the
       // compatibility rotation flag.
       expect(handFootprint(source, true)).toEqual({ width: 1, height: 1 });
+      expect(canRotateFootprint(source)).toBe(false);
     }
   });
 });
