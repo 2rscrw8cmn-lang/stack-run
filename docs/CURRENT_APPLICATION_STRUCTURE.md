@@ -39,6 +39,18 @@ The signed-in runner's Runner Icon appears in the header as the Account & Crew a
 
 There is no router framework. Primary navigation remains local application state.
 
+### Viewport ownership
+
+The application, not the document, owns the visible viewport.
+
+- `.app-shell` is bounded to `100dvh` and never scrolls.
+- It contains exactly one scrolling region, `.app-shell__scroll`, which holds the brand header and the current destination.
+- The bottom navigation is an ordinary shell row underneath that region, not a sticky or fixed overlay, and it is the only element that pays `env(safe-area-inset-bottom)`.
+- The shell pays `env(safe-area-inset-top)`, so the scroll region's own box begins below the status area and clips there.
+- `.app-shell__dock` sits between the scroll region and the nav. A screen's own bottom chrome — today only the Build/Crew placement controls — renders into it through `AppDockContext`, so it docks on the navigation instead of being pinned over the page.
+
+Screens that need to move the page use `appScrollTop` / `scrollAppTo` from `src/app/appViewport.ts` rather than `window.scrollY` / `window.scrollTo`; the window no longer scrolls.
+
 ## 2. Personal state model
 
 Core accepted/owned personal state is schema 10.

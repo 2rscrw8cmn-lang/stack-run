@@ -1,5 +1,7 @@
 import { ChevronLeft, ChevronRight, RotateCw, WandSparkles, X } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useContext, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { AppDockContext } from "../../app/appViewport.js";
 import { Button } from "../../components/ui/Button.js";
 import { IconButton } from "../../components/ui/IconButton.js";
 
@@ -55,6 +57,17 @@ interface PlacementBarProps {
  *
  * What the block *is* lives above the tower in `PlacementContext`, not here.
  * These are the verbs.
+ *
+ * The row renders into the shell's dock — a shell row directly above the
+ * primary nav, outside the app's scrolling region — rather than pinning
+ * itself over the page. In the flow of the construction field it landed
+ * wherever the tower happened to end, which on a tall tower was under the nav
+ * (issue #204); pinned with `position: fixed` it was reachable, but only by
+ * holding a copy of the nav's height and trusting the browser about where the
+ * bottom of the screen was. Docked, it simply sits on the navigation, and the
+ * page above ends where the controls begin instead of reserving room behind
+ * them. Rendered in place when there is no shell — a screen on its own in a
+ * test — so nothing depends on the dock existing.
  */
 export function PlacementBar({
   pieceColor,
@@ -77,7 +90,11 @@ export function PlacementBar({
 
   const blocked = !canDrop;
 
-  return (
+  // The shell's dock row, or nothing when there is no shell — a screen
+  // rendered on its own in a test keeps the controls in place.
+  const dock = useContext(AppDockContext);
+
+  const bar = (
     <div
       className="placement-bar"
       role="group"
@@ -150,4 +167,6 @@ export function PlacementBar({
       )}
     </div>
   );
+
+  return dock ? createPortal(bar, dock) : bar;
 }

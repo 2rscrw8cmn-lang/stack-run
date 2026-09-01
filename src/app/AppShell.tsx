@@ -15,6 +15,7 @@ import { RunsScreen } from "../features/runs/RunsScreen.js";
 import type { ValidRunEntry } from "../features/run-entry/runValidation.js";
 import { TodayScreen } from "../features/today/TodayScreen.js";
 import type { TabId } from "./App.js";
+import { AppDockContext, APP_SCROLL_ATTRIBUTE } from "./appViewport.js";
 import type { AppState, Effort, RunActivityType } from "../domain/types.js";
 import type { IntervalsCandidate, IntervalsConnection } from "../connected/intervals.js";
 import { RunDataSheet, type RunDataReview } from "../features/connected/RunDataSheet.js";
@@ -132,6 +133,9 @@ export function AppShell({
   // Account & Crew has the same problem now that the header opens it directly:
   // only a visit that came from Settings should land back in Settings.
   const [accountCrewFromSettings, setAccountCrewFromSettings] = useState(false);
+  // The dock element itself, captured as the shell commits it, so a screen's
+  // bottom chrome can render into it without going looking for it.
+  const [dock, setDock] = useState<HTMLElement | null>(null);
 
   function openAccountCrew(fromSettings: boolean) {
     setAccountCrewFromSettings(fromSettings);
@@ -162,152 +166,173 @@ export function AppShell({
 
   return (
     <div className="app-shell">
-      {/*
-        The brand is a small standing lockup rather than a headline. Each
-        screen leads with the thing it is actually about — the date, the miles,
-        the week — so nothing on any screen has to be titled with its own name.
-        Nothing else belongs up here: the one action that used to share the row
-        wrapped onto two lines on a phone, and it is a setting anyway.
-      */}
-      <header className="app-shell__header">
-        <div className="app-shell__header-row">
-          <div className="brand">
-            <StackMark size={22} />
-            <p className="wordmark">STACK</p>
-          </div>
+      <AppDockContext.Provider value={dock}>
+        {/*
+          The one scrolling region in the application.
+
+          The shell owns the visible viewport and does not scroll; this does.
+          The brand header travels with the page inside it, exactly as it did
+          when the document scrolled, and the nav below it is an ordinary shell
+          row rather than a bar pinned over the content. The region's own box
+          starts below the status-bar inset and clips to it, so nothing can be
+          drawn under the clock once the header has scrolled away.
+        */}
+        <div className="app-shell__scroll" {...{ [APP_SCROLL_ATTRIBUTE]: "" }}>
           {/*
-            Settings is configuration, not a place the app can be, so it is a
-            gear up here rather than a fifth thing in a bar of destinations. It
-            opens over whatever tab you are on and closes back to it — the tab
-            never changes, so there is nothing to restore.
+            The brand is a small standing lockup rather than a headline. Each
+            screen leads with the thing it is actually about — the date, the miles,
+            the week — so nothing on any screen has to be titled with its own name.
+            Nothing else belongs up here: the one action that used to share the row
+            wrapped onto two lines on a phone, and it is a setting anyway.
           */}
-          <div className="app-shell__header-actions">
-            {/*
-              The signed-in runner's own icon, standing next to the gear as
-              the account affordance. It is the same mark their crewmates see,
-              which is the point: this is who STACK currently is. It sits
-              inside the existing row at the gear's own height, so the header
-              gains an identity without gaining a pixel.
-            */}
-            {runnerProfile && (
-              <button
-                type="button"
-                className="app-shell__runner"
-                data-unread={raceCrew.unreadPropNotifications.length > 0 || undefined}
-                aria-haspopup="dialog"
-                aria-expanded={accountCrewOpen}
-                aria-label={
-                  raceCrew.unreadPropNotifications.length > 0
-                    ? `${runnerProfile.displayName}. Account & Crew. New Props received.`
-                    : `${runnerProfile.displayName}. Account & Crew.`
-                }
-                onClick={() => openAccountCrew(false)}
-              >
-                <RunnerIcon
-                  icon={runnerProfile.runnerIcon}
-                  accent={crewMemberAccent(runnerProfile.id, runnerProfile.accentColor)}
-                  size={24}
+          <header className="app-shell__header">
+            <div className="app-shell__header-row">
+              <div className="brand">
+                <StackMark size={22} />
+                <p className="wordmark">STACK</p>
+              </div>
+              {/*
+                Settings is configuration, not a place the app can be, so it is a
+                gear up here rather than a fifth thing in a bar of destinations. It
+                opens over whatever tab you are on and closes back to it — the tab
+                never changes, so there is nothing to restore.
+              */}
+              <div className="app-shell__header-actions">
+                {/*
+                  The signed-in runner's own icon, standing next to the gear as
+                  the account affordance. It is the same mark their crewmates see,
+                  which is the point: this is who STACK currently is. It sits
+                  inside the existing row at the gear's own height, so the header
+                  gains an identity without gaining a pixel.
+                */}
+                {runnerProfile && (
+                  <button
+                    type="button"
+                    className="app-shell__runner"
+                    data-unread={raceCrew.unreadPropNotifications.length > 0 || undefined}
+                    aria-haspopup="dialog"
+                    aria-expanded={accountCrewOpen}
+                    aria-label={
+                      raceCrew.unreadPropNotifications.length > 0
+                        ? `${runnerProfile.displayName}. Account & Crew. New Props received.`
+                        : `${runnerProfile.displayName}. Account & Crew.`
+                    }
+                    onClick={() => openAccountCrew(false)}
+                  >
+                    <RunnerIcon
+                      icon={runnerProfile.runnerIcon}
+                      accent={crewMemberAccent(runnerProfile.id, runnerProfile.accentColor)}
+                      size={24}
+                    />
+                  </button>
+                )}
+                <IconButton
+                  label="Settings"
+                  icon={<SettingsIcon size={20} strokeWidth={1.8} />}
+                  aria-haspopup="dialog"
+                  aria-expanded={settingsOpen}
+                  onClick={() => setSettingsOpen(true)}
                 />
-              </button>
+              </div>
+            </div>
+          </header>
+          {notice}
+          <main className="app-shell__main">
+            {activeTab === "today" && (
+              <TodayScreen
+                plan={plan}
+                runLogs={runLogs}
+                runnerRuns={runnerHistory?.runs}
+                blockPlacements={blockPlacements}
+                onViewPlan={() => onTabChange("plan")}
+                onViewRuns={() => onTabChange("runs")}
+                onViewBuild={() => onTabChange("build")}
+                onStartPlacing={(runLogId) => {
+                  onPlacingChange(runLogId);
+                  onTabChange("build");
+                }}
+                onStartCrewPlacing={(sharedRunId) => {
+                  setCrewPlacementRunId(sharedRunId);
+                  onTabChange("crew");
+                }}
+                onSaveRun={onSaveRun}
+                onEditPlan={onEditPlan}
+                availability={availability}
+                candidates={connectedSync.candidates}
+                onReviewCandidate={(candidate) => openRunData({ candidate })}
+                syncError={connectedSync.error}
+                onRetrySync={connectedSync.sync}
+                isSyncing={connectedSync.status === "syncing"}
+                raceCrew={raceCrew}
+                onViewCrew={() => onTabChange("crew")}
+              />
             )}
-            <IconButton
-              label="Settings"
-              icon={<SettingsIcon size={20} strokeWidth={1.8} />}
-              aria-haspopup="dialog"
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen(true)}
-            />
-          </div>
+            {activeTab === "build" && (
+              <BuildScreen
+                plan={plan}
+                planHistory={planHistory}
+                runLogs={runLogs}
+                blockPlacements={blockPlacements}
+                onSaveRun={onSaveRun}
+                onDeleteRun={onDeleteRun}
+                onPlaceBlock={onPlaceBlock}
+                placingRunLogId={placingRunLogId}
+                onPlacingChange={onPlacingChange}
+                syncToken={intervalsConnection}
+              />
+            )}
+            {activeTab === "runs" && (
+              <RunsScreen
+                plan={plan}
+                planHistory={planHistory}
+                runLogs={runLogs}
+                runnerRuns={runnerHistory?.runs}
+                historyPhase={runnerHistory?.phase}
+                historyCompleteAt={runnerHistory?.lastCompleteAt ?? null}
+                onSaveRun={onSaveRun}
+                onDeleteRun={onDeleteRun}
+                onLinkRun={onLinkRun}
+                onUnlinkRun={onUnlinkRun}
+                syncToken={intervalsConnection}
+              />
+            )}
+            {activeTab === "crew" && crewAvailable && (
+              <CrewScreen
+                crew={raceCrew}
+                onOpenAccountCrew={() => openAccountCrew(false)}
+                placeCrewRunId={crewPlacementRunId}
+                onCrewPlacementHandled={clearCrewPlacementRequest}
+              />
+            )}
+            {activeTab === "plan" && (
+              <PlanScreen
+                plan={plan}
+                planHistory={planHistory}
+                runLogs={runLogs}
+                runnerRuns={runnerHistory?.runs}
+                onSaveRun={onSaveRun}
+                onDeleteRun={onDeleteRun}
+                onEditPlan={onEditPlan}
+                availability={availability}
+                raceSetup={raceSetup}
+                runDays={runDays}
+                crossTrainingDays={crossTrainingDays}
+                onGeneratePlan={onGeneratePlan}
+                onFinishPlan={onFinishPlan}
+                syncToken={intervalsConnection}
+                planAdjustments={raceCrew.planAdjustments}
+              />
+            )}
+          </main>
         </div>
-      </header>
-      {notice}
-      <main className="app-shell__main">
-        {activeTab === "today" && (
-          <TodayScreen
-            plan={plan}
-            runLogs={runLogs}
-            runnerRuns={runnerHistory?.runs}
-            blockPlacements={blockPlacements}
-            onViewPlan={() => onTabChange("plan")}
-            onViewRuns={() => onTabChange("runs")}
-            onViewBuild={() => onTabChange("build")}
-            onStartPlacing={(runLogId) => {
-              onPlacingChange(runLogId);
-              onTabChange("build");
-            }}
-            onStartCrewPlacing={(sharedRunId) => {
-              setCrewPlacementRunId(sharedRunId);
-              onTabChange("crew");
-            }}
-            onSaveRun={onSaveRun}
-            onEditPlan={onEditPlan}
-            availability={availability}
-            candidates={connectedSync.candidates}
-            onReviewCandidate={(candidate) => openRunData({ candidate })}
-            syncError={connectedSync.error}
-            onRetrySync={connectedSync.sync}
-            isSyncing={connectedSync.status === "syncing"}
-            raceCrew={raceCrew}
-            onViewCrew={() => onTabChange("crew")}
-          />
-        )}
-        {activeTab === "build" && (
-          <BuildScreen
-            plan={plan}
-            planHistory={planHistory}
-            runLogs={runLogs}
-            blockPlacements={blockPlacements}
-            onSaveRun={onSaveRun}
-            onDeleteRun={onDeleteRun}
-            onPlaceBlock={onPlaceBlock}
-            placingRunLogId={placingRunLogId}
-            onPlacingChange={onPlacingChange}
-            syncToken={intervalsConnection}
-          />
-        )}
-        {activeTab === "runs" && (
-          <RunsScreen
-            plan={plan}
-            planHistory={planHistory}
-            runLogs={runLogs}
-            runnerRuns={runnerHistory?.runs}
-            historyPhase={runnerHistory?.phase}
-            historyCompleteAt={runnerHistory?.lastCompleteAt ?? null}
-            onSaveRun={onSaveRun}
-            onDeleteRun={onDeleteRun}
-            onLinkRun={onLinkRun}
-            onUnlinkRun={onUnlinkRun}
-            syncToken={intervalsConnection}
-          />
-        )}
-        {activeTab === "crew" && crewAvailable && (
-          <CrewScreen
-            crew={raceCrew}
-            onOpenAccountCrew={() => openAccountCrew(false)}
-            placeCrewRunId={crewPlacementRunId}
-            onCrewPlacementHandled={clearCrewPlacementRequest}
-          />
-        )}
-        {activeTab === "plan" && (
-          <PlanScreen
-            plan={plan}
-            planHistory={planHistory}
-            runLogs={runLogs}
-            runnerRuns={runnerHistory?.runs}
-            onSaveRun={onSaveRun}
-            onDeleteRun={onDeleteRun}
-            onEditPlan={onEditPlan}
-            availability={availability}
-            raceSetup={raceSetup}
-            runDays={runDays}
-            crossTrainingDays={crossTrainingDays}
-            onGeneratePlan={onGeneratePlan}
-            onFinishPlan={onFinishPlan}
-            syncToken={intervalsConnection}
-            planAdjustments={raceCrew.planAdjustments}
-          />
-        )}
-      </main>
+      </AppDockContext.Provider>
+      {/*
+        Where a screen's own bottom chrome docks: a shell row directly above
+        the nav and outside the scroll region, so the placement controls sit
+        on the navigation rather than at a distance copied from its height.
+        Empty and invisible until a screen puts something in it.
+      */}
+      <div ref={setDock} className="app-shell__dock" />
       <nav className="app-shell__nav" aria-label="Primary">
         <BottomNav
           activeTab={activeTab}
