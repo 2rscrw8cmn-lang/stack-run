@@ -281,7 +281,9 @@ describe("Training Signal detail", () => {
     await user.click(
       screen.getByRole("button", { name: /Open the longest run of the last 28 days/ }),
     );
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
+    // The run's own identity titles the sheet. This history row's source
+    // stated no activity name, so what is left is what it verifiably was.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run");
 
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Long runs");

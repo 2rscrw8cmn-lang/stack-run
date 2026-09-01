@@ -162,6 +162,14 @@ export function RunsScreen({
     signals.find((signal) => signal.id === selectedSignalId) ?? null;
   const selected =
     history.find((entry) => entry.runLog.id === detailRunLogId) ?? null;
+  /**
+   * The unified history row for the run whose detail is open, when there is
+   * one. It is where the source's own activity name and start time live, and
+   * Run Detail leads with them; a run with no reconciled row simply has neither.
+   */
+  const selectedSourceRun = selected
+    ? runs.find((run) => run.stack?.runLogId === selected.runLog.id) ?? null
+    : null;
   const historicalRun = runs.find((run) => run.id === historicalRunId) ?? null;
 
   /**
@@ -439,6 +447,7 @@ export function RunsScreen({
       {selected && (
         <RunDetailSheet
           entry={selected}
+          sourceRun={selectedSourceRun}
           plan={plan ?? undefined}
           runLogs={runLogs}
           syncToken={syncToken}

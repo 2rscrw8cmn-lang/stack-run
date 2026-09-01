@@ -454,6 +454,8 @@ describe("App", () => {
     await logTodaysRun(user);
     await user.click(screen.getByRole("button", { name: "Runs" }));
     await user.click(screen.getByRole("button", { name: /^Easy\. Tuesday/ }));
+    // Editing lives behind the run-options control (issue #214).
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.clear(screen.getByLabelText(/Distance/));
     await user.type(screen.getByLabelText(/Distance/), "2.6");
@@ -480,6 +482,8 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Runs" }));
     await user.click(screen.getByRole("button", { name: /^Easy\. Tuesday/ }));
+    // Editing lives behind the run-options control (issue #214).
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.click(screen.getByRole("button", { name: "Delete Run" }));
 

@@ -8,6 +8,15 @@ interface SheetProps {
   onClose: () => void;
   /** Return false to keep the sheet open (e.g. unsaved changes). */
   guardClose?: () => boolean;
+  /**
+   * Controls that belong to what the sheet is *about*, placed before Close.
+   *
+   * Added for Run Detail's `…` (issue #214), which owns editing, plan linking
+   * and provenance so the sheet body can be about the activity. Kept as a slot
+   * rather than a built-in overflow menu: what a sheet's own control does is
+   * the sheet's business, not this primitive's.
+   */
+  headerActions?: ReactNode;
   children: ReactNode;
   className?: string;
 }
@@ -22,7 +31,15 @@ interface SheetProps {
  * measures the browser's chrome to get there. The one exception is the
  * on-screen keyboard, below.
  */
-export function Sheet({ title, isOpen, onClose, guardClose, children, className }: SheetProps) {
+export function Sheet({
+  title,
+  isOpen,
+  onClose,
+  guardClose,
+  headerActions,
+  children,
+  className,
+}: SheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
@@ -139,11 +156,14 @@ export function Sheet({ title, isOpen, onClose, guardClose, children, className 
           <h2 ref={titleRef} id={titleId} className="sheet__title" tabIndex={-1}>
             {title}
           </h2>
-          <IconButton
-            label="Close"
-            icon={<X size={20} strokeWidth={1.8} />}
-            onClick={requestClose}
-          />
+          <div className="sheet__header-actions">
+            {headerActions}
+            <IconButton
+              label="Close"
+              icon={<X size={20} strokeWidth={1.8} />}
+              onClick={requestClose}
+            />
+          </div>
         </div>
         <div className="sheet__body">{children}</div>
       </div>

@@ -8,17 +8,17 @@
  */
 
 /*
- * R2 established a 12px phone floor for axis/date labels. Run Profile kept its
- * pre-R2 8px time axis even though it has only two or three labels, so there is
+ * R2 established a 12px phone floor for axis/date labels, and issue #214's
+ * activity chart inherits it: it has two or three elapsed labels, so there is
  * no density reason for microscopic type here.
  */
-.run-profile-chart__axis {
+.activity-chart__axis {
   font-size: 12px;
   line-height: 1.2;
 }
 
 /* Supporting labels may stay subordinate, but 8px is unnecessarily small. */
-.run-profile-chart__facts dt {
+.run-analysis__facts dt {
   font-size: var(--type-label);
 }
 

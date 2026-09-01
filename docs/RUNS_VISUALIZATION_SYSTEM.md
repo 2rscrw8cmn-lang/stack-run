@@ -335,6 +335,32 @@ Examples:
 
 The disclosure must remain easy to find and accessible, but it does not need to occupy permanent vertical space on every detail open.
 
+## Run Detail analysis charts (issue #214)
+
+Run Detail's own chart is `src/components/charts/ActivityChart.tsx`, with its
+maths in `activityChartGeometry.ts`. It is the one place in Runs where a chart is
+a *surface to interrogate* rather than a summary to read, and it follows the
+rules above with three additions:
+
+- **One treatment per metric, chosen for the data.** A line for pace over a
+  quiet elevation silhouette; a filled area with the imported average drawn
+  across it for heart rate; a filled terrain profile for elevation; a step for
+  cadence. Four recoloured copies of one line would say the four metrics are the
+  same kind of thing, and they are not.
+- **Scrubbing is the interaction.** Touch/drag or arrow keys move a crosshair to
+  the nearest recorded sample; a compact callout states elapsed time, the active
+  metric and up to two companion streams measured at that same position, and it
+  persists after the finger lifts. `touch-action: pan-y` keeps vertical
+  scrolling with the sheet. The reading is exposed as `aria-valuetext`, so it is
+  never carried by the drawn marks alone.
+- **A real y-axis.** Two to four round values in the metric's own units,
+  positioned as HTML over a stretched figure so the same component reads
+  correctly on a 320px phone and a desktop dialog.
+
+The truth rules are unchanged: gaps stay gaps, outliers are clamped for drawing
+only, and every stated number beside a chart is a source aggregate rather than
+anything derived from the samples.
+
 ## Chart styling
 
 Use the existing Performance Arcade system selectively:

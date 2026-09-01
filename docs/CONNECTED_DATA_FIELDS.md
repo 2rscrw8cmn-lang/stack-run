@@ -69,6 +69,40 @@ with nothing the runner can check, and would silently depend on a smoothing
 threshold STACK has never verified. `docs/CURRENT_APPLICATION_STRUCTURE.md`
 records the same rule for pace and heart rate.
 
+#### Source-owned metrics may be refreshed; STACK-owned state may not
+
+Issue #214 found the other half of the elevation question, and it is a
+freshness rule rather than a conversion one.
+
+An Intervals activity id becomes **settled** the moment STACK imports it, and
+`unresolvedCandidates` filters it out of every later read — correctly, because
+it is no longer anybody's decision to make. The side effect was that the
+aggregates imported with it froze permanently: if Intervals later corrected an
+activity's climbing total, STACK went on showing the first figure it ever saw
+and the runner had no way to reconcile it with the source.
+
+`src/connected/sourceRefresh.ts` closes that path under explicit rules:
+
+- a refresh happens only when the source states a **newer** `updated` stamp than
+  the one stored on the run (a run imported before STACK recorded stamps at all
+  counts as older);
+- only `importedMetrics` and that stamp are written — heart rate, elevation
+  gain, cadence, training load, zone durations, elapsed time. These are pure
+  source telemetry that STACK never lets a runner edit, so a newer answer cannot
+  overwrite a person's decision;
+- `best5kSeconds` is carried across, because it comes from the separate bounded
+  pace-curve probe rather than from the activity list;
+- **distance and duration are not refreshed.** They are the numbers Build, Crew,
+  the plan and every Training Signal count, and the runner can correct them in
+  the run-entry sheet. If a source revision genuinely changes how far a run was,
+  that is a decision, and decisions belong to the runner;
+- nothing STACK owns is touched at all: effort, notes, plan link, activity
+  classification, block placement and the run's date are left exactly as they
+  were.
+
+`refreshImportedRunSource` in `src/storage/appStateRepository.ts` applies it, and
+returns the state unchanged when a refresh would alter nothing.
+
 #### Cadence convention
 
 `average_cadence` came back as **79**, and Intervals' own interval rows for
@@ -106,7 +140,7 @@ Do not paste the full raw API response into this repository: it can contain pers
 | Distance | `distance` | Verified | Meters. 9,012 m read back as 5.6 mi. |
 | Moving time | `moving_time` | Verified | Preferred STACK duration when positive. |
 | Elapsed time | `elapsed_time` | Expected | Fallback duration / detail. |
-| Source updated time | `updated` or equivalent | Expected | Do not depend on until verified. |
+| Source updated time | `updated` or equivalent | Expected | Read as the freshness key for already-imported runs — see "Source-owned metrics may be refreshed". A value STACK cannot parse yields no refresh rather than a guess. |
 
 UI-8 may not ship import until the first six concepts above are understood well enough to create a valid run safely.
 

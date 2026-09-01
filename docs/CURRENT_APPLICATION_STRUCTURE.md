@@ -268,7 +268,25 @@ Run Detail separates:
 - STACK-owned metadata/actions (plan link, effort, notes, editing where allowed); from
 - source-owned factual telemetry/detail.
 
-On-demand Run Profile may expose Pace, Heart Rate, Elevation and Cadence streams when recognized.
+Issue #214 (Run Detail 3.0) rebuilt the composition around the order a runner
+reads in — **identity → result → investigation → supporting detail →
+actions/provenance** — without forking the shared path:
+
+- `runIdentity.ts` states who a run is: the source's own activity name where the
+  reconciled history row has one, the linked workout's title where it does not,
+  and STACK's own classification as the last resort. Nothing is invented.
+- `SourceRunDetail` renders the hero result, a compact icon/colour metric strip,
+  one deterministic insight, the **Analysis** module and structured intervals.
+- `RunAnalysis` + `ActivityChart` own the analysis: per-metric treatments (pace
+  line over an elevation silhouette, filled heart rate with the imported average
+  drawn across it, filled elevation terrain, stepped cadence), a real y-axis, and
+  touch/keyboard scrubbing with a crosshair and a persistent callout.
+- Heart-rate zones are compact rows **inside** Heart Rate. A run with zone
+  durations but no stream keeps the same rows in a small section of their own.
+- `RunOptionsSheet` behind the `…` control owns Edit Run, plan linking, source
+  and import provenance, elapsed time, effort and the methodology note.
+
+On-demand streams may expose Pace, Heart Rate, Elevation and Cadence when recognized.
 
 The governing rule is:
 

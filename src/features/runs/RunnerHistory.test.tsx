@@ -115,7 +115,11 @@ describe("Runs history", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Wednesday, August 12, 2026")).toBeInTheDocument();
+    // The source's own name for the activity leads, with the day and the local
+    // start it stated underneath.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Morning Run");
+    expect(sheet.getByText(/Wednesday, August 12, 2026/)).toBeInTheDocument();
+    expect(sheet.getByText(/6:00 AM/)).toBeInTheDocument();
     expect(sheet.getByText("History")).toBeInTheDocument();
     expect(sheet.getByText("148 bpm")).toBeInTheDocument();
     expect(sheet.getByText(/not logged in STACK/i)).toBeInTheDocument();
@@ -158,10 +162,13 @@ describe("Runs history", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
+    // The mirror stated no activity name, so the workout this run satisfied is
+    // the truthful identity left — never the words "Run Detail".
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("2 Miles");
     expect(sheet.getByText("Plan")).toBeInTheDocument();
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
-    expect(sheet.getByRole("button", { name: "Edit Run" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    expect(screen.getByRole("button", { name: "Edit Run" })).toBeInTheDocument();
   });
 });
 
@@ -297,7 +304,7 @@ describe("Runner profile detail", () => {
     await user.click(screen.getByRole("button", { name: /^Runner snapshot\./ }));
     await user.click(screen.getByRole("button", { name: /Open the longest run of the week of August 10/ }));
 
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy Run");
   });
 });
 
@@ -335,7 +342,7 @@ describe("Runs Overview and History Explorer boundary", () => {
         .getAllByRole("button")
         .find((button) => button.className.includes("run-row"))!,
     );
-    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Run" })).toBeInTheDocument();
   });
 
   it("names the History destination by where it goes and how much is behind it", () => {
@@ -356,7 +363,7 @@ describe("Runs Overview and History Explorer boundary", () => {
     expect(screen.queryByRole("heading", { name: "Recent Activity" })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: /Not logged in STACK/ })[0]);
-    expect(screen.getByRole("dialog", { name: "Run Detail" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Run" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByRole("heading", { name: "History", level: 1 })).toBeInTheDocument();
 

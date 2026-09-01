@@ -21,6 +21,7 @@ import {
   attachIntervalsRun,
   saveIntervalsSync,
   recordImportedBest5k,
+  refreshImportedRunSource,
   ignoreIntervalsActivity,
   clearIgnoredIntervalsActivities,
   unlinkRunLogFromWorkout,
@@ -35,6 +36,7 @@ import { AppShell } from "./AppShell.js";
 import { forgetIntervalsSyncToken, loadIntervalsSyncToken, saveIntervalsSyncToken } from "../storage/intervalsTokenRepository.js";
 import { crewRecapDemoVariant } from "../features/crew/crewRecapDemo.js";
 import { useConnectedSync } from "../features/connected/useConnectedSync.js";
+import type { SourceMetricRefresh } from "../connected/sourceRefresh.js";
 import { useBest5kEnrichment } from "../features/connected/useBest5kEnrichment.js";
 import { accomplishmentsForAddedRuns, type AccomplishmentMoment as Moment } from "../domain/accomplishments.js";
 import { AccomplishmentMoment } from "../components/ui/AccomplishmentMoment.js";
@@ -286,6 +288,18 @@ export function App() {
 
   // One sync for the whole app: Today offers what it found, Run Data reviews
   // the rest, and neither can be looking at a different answer than the other.
+  /**
+   * Corrections the source has made to runs STACK already imported.
+   *
+   * Only the source-owned aggregates move — see `connected/sourceRefresh.ts`
+   * for why distance, duration and everything the runner decided do not.
+   */
+  const refreshSourceMetrics = useCallback(
+    (refreshes: readonly SourceMetricRefresh[]) =>
+      setAppState((current) => refreshImportedRunSource(current, refreshes)),
+    [setAppState],
+  );
+
   const connectedSync = useConnectedSync({
     connection: intervalsConnection,
     state: appState,
@@ -293,6 +307,7 @@ export function App() {
     accountId: raceCrew.userId ?? null,
     pendingSeed: personalSync.pendingCandidates,
     onPendingChanged: personalSync.recordPendingCandidates,
+    onSourceRefresh: refreshSourceMetrics,
   });
 
   /**

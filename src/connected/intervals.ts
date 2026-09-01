@@ -470,9 +470,23 @@ export function mergeCandidates(existing: readonly IntervalsCandidate[], fetched
     b.completedDate.localeCompare(a.completedDate) || a.externalId.localeCompare(b.externalId));
 }
 
-export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
+/**
+ * Every activity in a read that STACK recognizes, settled or not.
+ *
+ * `normalizeActivityList` answers "what is still waiting for a decision", which
+ * is the review queue's question and drops everything already imported. This
+ * answers the different question the source-freshness pass asks: what did the
+ * source just say about *every* activity, including the ones STACK imported
+ * long ago and can no longer be told anything about otherwise. See
+ * `sourceRefresh.ts`.
+ */
+export function normalizeIntervalsActivities(raw: unknown): IntervalsCandidate[] {
   if (!Array.isArray(raw)) return [];
-  return unresolvedCandidates(raw.flatMap((item) => normalizeIntervalsActivity(item) ?? []), runLogs, ignoredIds);
+  return raw.flatMap((item) => normalizeIntervalsActivity(item) ?? []);
+}
+
+export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
+  return unresolvedCandidates(normalizeIntervalsActivities(raw), runLogs, ignoredIds);
 }
 
 function targetDistance(workout: Workout): { low: number; high: number } | null {

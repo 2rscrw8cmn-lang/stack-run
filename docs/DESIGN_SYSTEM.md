@@ -102,6 +102,7 @@ STACK runs several color systems at once on purpose. The rule that keeps them fr
 | Training Signal family | `--signal-*` | Which signal am I reading? | Whether the reading is good or bad |
 | Crew Special Block awards | `--award-*` | Which award is this? | Status, success, failure |
 | Crew Build figures | `--crew-stat-*` | Which of the four figures is this number? | A scale or a ranking |
+| Run metrics | `--metric-pace`, `--metric-heart-rate`, `--metric-elevation`, `--metric-cadence`, `--metric-load` | Which measurement is this number? | Whether the measurement is good or bad |
 | Danger | `--danger` | Is this destructive or an error? | Anything factual about running |
 
 Rules that follow from the table:
@@ -122,6 +123,15 @@ Workout identity remains:
 - Race — white/light neutral.
 
 Charts may add accessible semantic colors where the metric requires them, including ordered HR-zone colors. Color must never be the only carrier of meaning.
+
+Run-metric identity (issue #214) is read through one custom property. A surface
+sets `data-metric="heart-rate"` (or `elevation`, `cadence`, `load`, `pace`) and
+everything inside it — the icon, the value, the analysis tab, the chart line and
+its fill — resolves `--metric-color` from the matching token. `--metric-pace`
+deliberately points at `--accent`: pace is the run's own result rather than one
+metric among several, so it wears the same lime as the distance beside it. The
+identity is never the only channel: every metric states its name in text, and
+every analysis tab carries an icon and an underline in its selected state.
 
 `src/styles/colorSemantics.test.ts` enforces the mechanical half of this: every award identity has one definition, no surface assigns an award a color of its own, signal accents read through `--signal-*`, and no text color literal is repeated across files.
 
@@ -533,6 +543,18 @@ Current baseline:
 | Blocks ready | `Boxes` |
 | Streak | `Flame` |
 | Assistant-adjusted (#182) | `Sparkles` |
+| Pace (metric) | `Gauge` |
+| Heart rate (metric) | `HeartPulse` |
+| Elevation (metric) | `MountainSnow` |
+| Cadence (metric) | `Footprints` |
+| Training load (metric) | `Zap` |
+| Run options / overflow | `MoreHorizontal` |
+
+Run-metric icons are their own row of that table on purpose. `Mountain` already
+means "long run" and `MountainSnow` means "elevation"; `Footprints` and `Zap`
+are shared with Easy and Intervals, and may be, because Run Detail states a
+run's activity type as a text chip rather than as an icon — the two never appear
+together on one surface.
 
 Typical sizes:
 

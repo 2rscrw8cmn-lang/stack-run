@@ -11,12 +11,12 @@ const integrationCss = readFileSync(
 );
 
 describe("R4 Runs integration styling", () => {
-  it("brings Run Profile chart labels up to the accepted Runs readability floor", () => {
+  it("brings activity chart labels up to the accepted Runs readability floor", () => {
     expect(integrationCss).toMatch(
-      /\.run-profile-chart__axis\s*\{[^}]*font-size: 12px/s,
+      /\.activity-chart__axis\s*\{[^}]*font-size: 12px/s,
     );
     expect(integrationCss).toMatch(
-      /\.run-profile-chart__facts dt\s*\{[^}]*font-size: var\(--type-label\)/s,
+      /\.run-analysis__facts dt\s*\{[^}]*font-size: var\(--type-label\)/s,
     );
   });
 

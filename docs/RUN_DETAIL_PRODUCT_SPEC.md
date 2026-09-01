@@ -1,8 +1,11 @@
 # Run Detail — Product Specification
 
-**Status:** enrichment contract for STACK Next. R3 implemented the shared
-source-detail architecture and the QA review states described here; owner
-visual acceptance is outstanding.  
+**Status:** current contract. R3 implemented the shared source-detail
+architecture and the QA review states described here; **issue #214 (Run Detail
+3.0)** rebuilt the presentation on top of it — identity, one dominant result, a
+compact semantic metric strip, an interactive **Analysis** module, heart-rate
+zones inside heart rate, and administrative/provenance content behind the `…`
+run-options control. Owner visual acceptance of 3.0 is outstanding.  
 **Companion:** `docs/RUNS_PRODUCT_MODEL.md` and `docs/RUNS_VISUALIZATION_SYSTEM.md`.
 
 ## Purpose
@@ -120,6 +123,105 @@ connection.
 It intentionally has no edit, import, accept, plan or Build action, and gains
 no effort, notes, plan link or activity classification. It remains read-only
 source history.
+
+## Run Detail 3.0 (issue #214)
+
+The hierarchy below is unchanged in substance; what 3.0 changed is how much of
+the screen each level gets, and how much of it can be interrogated.
+
+### Identity leads
+
+The sheet is titled with the run, in this order of truthfulness:
+
+1. the **source's own activity name**, read from the reconciled history row —
+   `RunLog` has no field for it, and `runIdentity.ts` reads rather than copies so
+   nothing can go stale against the source;
+2. the **linked workout's title**, when there is a real link;
+3. **STACK's own classification** (`Easy Run`, `Long Run`, `Intervals`, …).
+
+There is no fourth case: a run with none of the above is not given an invented
+name. `Run Detail` is no longer a heading anywhere. Date, local start time, type
+and Plan/Extra/History chips, and the linked workout's week sit under it as
+supporting context.
+
+### Result, then supporting facts
+
+One panel: distance dominant and in STACK lime, duration and average pace beside
+it, units set smaller than the figures. Underneath, a compact strip of the
+source's other aggregates — average HR, gain, cadence, load — each with its own
+icon and `--metric-color`. Max HR joins the strip only when there is no
+heart-rate chart to support. Fields that do not exist are absent, never zero.
+
+One deterministic insight may follow: the dominant heart-rate zone with its
+share and duration, or a count of the structured groups the source named. It is
+omitted when neither is available, when the dominant zone holds less than 35% of
+the zone time, and when the zone rows themselves are already on screen. STACK
+does not state a verdict on the run.
+
+### Analysis is the centre
+
+`RunAnalysis` + `ActivityChart` replace the passive Run Profile:
+
+- **Pace** — a lime line, faster reading higher, over a subtle violet elevation
+  silhouette when the run has an altitude stream; the imported average pace is
+  drawn as a reference line.
+- **Heart rate** — a filled warm-red area with the imported average across it,
+  and the zone distribution immediately beneath.
+- **Elevation** — a filled violet terrain profile, stating the source's Gain
+  beside the series' own Low and High.
+- **Cadence** — a cyan step, because a per-sample cadence is a count over an
+  interval rather than a point on a curve, with the imported average as a
+  reference line.
+
+Tabs carry an icon, the metric's colour, an underlined selected state and a 44px
+target. Only metrics with recognized stream coverage appear.
+
+### Charts are interrogable
+
+Every chart supports:
+
+- touch/drag scrubbing that selects the nearest **recorded** sample by elapsed
+  time, with a vertical crosshair and a marker on the selected point;
+- a persistent compact callout — elapsed time, the active metric's value, and up
+  to two companion streams measured at that same time position — which stays
+  after the finger lifts and clears on a tap away or Escape;
+- arrow-key/Home/End cursor movement, with the reading exposed as
+  `aria-valuetext` on a `role="slider"` scrub surface;
+- two to four round y-axis labels in the metric's own units, plus elapsed x-axis
+  labels;
+- `touch-action: pan-y`, so a vertical drag still scrolls the sheet.
+
+The callout states only what STACK holds for that moment. There is no
+distance-at-cursor: STACK does not request a distance stream, and total distance
+× elapsed share would be a fabrication. A time position with no reading says so
+rather than showing a value.
+
+The chart stretches to its container with `vector-effect: non-scaling-stroke`,
+and its labels, crosshair and marker are HTML over the figure, so one component
+serves a 320px phone and a desktop dialog without distortion.
+
+### Zones belong to heart rate
+
+Compact ordered rows — zone identity, colour, a share bar, duration and
+percentage — inside the Heart Rate tab. A run whose source stated zone durations
+but sent no stream keeps the same rows in a small section of its own rather than
+losing them. The standalone donut is gone from Run Detail; `DonutChart` itself
+remains, and Training Signals still uses it.
+
+STACK does **not** draw heart-rate zone bands across the chart: the source
+states zone *durations*, not zone boundaries in bpm, and drawing bands would
+mean inventing the thresholds.
+
+### `…` owns everything administrative
+
+`RunOptionsSheet` holds Edit Run, Connect to Plan, Unlink from Plan, the source
+label, imported/source-updated dates, elapsed vs moving time, the runner's
+effort, a hand-entered heart rate, and `How STACK calculates this`. It performs
+no mutation of its own: the actions handed to it are the same buttons the run's
+sheet has always rendered, so edit/delete/link ownership is unchanged.
+
+A surface that embeds a run's result inside its own sheet — a Build block, a
+planned workout — has no such control, and keeps the compact meta line instead.
 
 ## Target content hierarchy
 

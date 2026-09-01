@@ -21,6 +21,7 @@ import type {
   TrainingPlan,
 } from "../domain/types.js";
 import type { IntervalsCandidate } from "../connected/intervals.js";
+import { refreshChangesRun, type SourceMetricRefresh } from "../connected/sourceRefresh.js";
 import { createInitialAppState, migrateAppState } from "./migrations.js";
 import {
   APP_STATE_STORAGE_KEY,
@@ -556,6 +557,51 @@ export function recordImportedBest5k(
           }
         : run,
     ),
+  };
+  saveAppState(next);
+  return next;
+}
+
+/**
+ * Records newer **source-owned** metrics against runs STACK already imported.
+ *
+ * The companion to `planSourceMetricRefresh`, which decides which runs qualify
+ * and why (see `src/connected/sourceRefresh.ts` — in short: an activity id is
+ * settled once imported, so without this the aggregates imported with it could
+ * never be corrected, and a stale elevation-gain figure had no way back).
+ *
+ * What it writes is exactly `importedMetrics` and the source stamp beside it.
+ * Everything a person decided about the run — its effort, notes, plan link,
+ * activity classification, date, distance, duration and the block it earned —
+ * is left alone, so a background sync can never quietly undo a correction the
+ * runner made. Returns the state unchanged when no refresh would alter
+ * anything, so a sync that learned nothing costs no write and no re-render.
+ */
+export function refreshImportedRunSource(
+  state: AppState,
+  refreshes: readonly SourceMetricRefresh[],
+): AppState {
+  const byRunLogId = new Map(refreshes.map((refresh) => [refresh.runLogId, refresh]));
+  const changed = state.runLogs.filter((run) => {
+    const refresh = byRunLogId.get(run.id);
+    return refresh !== undefined && refreshChangesRun(refresh, run);
+  });
+  if (changed.length === 0) return state;
+
+  const changedIds = new Set(changed.map((run) => run.id));
+  const now = new Date().toISOString();
+  const next: AppState = {
+    ...state,
+    runLogs: state.runLogs.map((run) => {
+      const refresh = byRunLogId.get(run.id);
+      if (!refresh || !changedIds.has(run.id) || !run.externalSource) return run;
+      return {
+        ...run,
+        importedMetrics: Object.keys(refresh.metrics).length > 0 ? refresh.metrics : null,
+        externalSource: { ...run.externalSource, sourceUpdatedAt: refresh.sourceUpdatedAt },
+        updatedAt: now,
+      };
+    }),
   };
   saveAppState(next);
   return next;

@@ -1,9 +1,15 @@
+import { MoreHorizontal } from "lucide-react";
+import { useState } from "react";
+import { IconButton } from "../../components/ui/IconButton.js";
 import { Sheet } from "../../components/ui/Sheet.js";
 import type { SourceConnection } from "../../connected/sourceDetail.js";
-import { formatDateLabel } from "../../domain/dates.js";
+import { RUN_SOURCE_LABEL } from "../../domain/runSource.js";
 import { SourceRunDetail } from "../workout-detail/SourceRunDetail.js";
+import { RunOptionsSheet } from "../workout-detail/RunOptionsSheet.js";
+import { runIdentityFromRunnerRun } from "../workout-detail/runIdentity.js";
+import { sourceRunOptionFacts } from "../workout-detail/runOptions.js";
 import { sourceRunFactsFromRunnerRun } from "../workout-detail/sourceRunFacts.js";
-import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun.js";
+import { type RunnerRun } from "../../history/runnerRun.js";
 
 interface HistoricalRunSheetProps {
   run: RunnerRun | null;
@@ -32,62 +38,71 @@ interface HistoricalRunSheetProps {
  * log it; they are not being asked to.
  *
  * R3 gave this sheet the same **source-owned** presentation an accepted run
- * uses — `SourceRunDetail`, not a copy of it — so a run that happens never to
- * have been accepted is no longer visually second-class for it. Nothing
- * STACK-owned is invented to make that work: the shared component is handed
- * the run's normalized facts and its source activity id, and everything a
- * `RunLog` would have added around them is simply absent.
+ * uses — `SourceRunDetail`, not a copy of it — and issue #214's redesign lands
+ * here for the same reason: the identity, the result, the metric strip and the
+ * scrubbable analysis are one component, so a historical run is never visually
+ * second-class and never gains a second renderer that could drift.
+ *
+ * Nothing STACK-owned is invented to make that work. The title is the source's
+ * own activity name, or what the source type verifiably is — never a workout
+ * title STACK would have had to make up — and the run options behind `…` carry
+ * provenance and methodology only: there is no edit, no plan link and no effort
+ * to put there.
  *
  * Every optional metric is omitted when the source did not supply it, rather
  * than shown as a zero or a dash. A row that is not there says "the source did
  * not measure this"; a row reading `0 bpm` would say something false.
  */
 export function HistoricalRunSheet({ run, connection, isOpen, onClose }: HistoricalRunSheetProps) {
+  const [isOptionsOpen, setOptionsOpen] = useState(false);
+  const identity = run ? runIdentityFromRunnerRun(run) : null;
+
   return (
-    <Sheet
-      className="sheet--run-detail"
-      title={run && runnerRunActivityKind(run) === "cross-training" ? "Cross Training Detail" : "Run Detail"}
-      isOpen={isOpen}
-      onClose={onClose}
-    >
-      {run && <HistoricalRunBody run={run} connection={connection} />}
-    </Sheet>
-  );
-}
+    <>
+      <Sheet
+        className="sheet--run-detail"
+        title={identity?.title ?? "Run"}
+        isOpen={isOpen}
+        onClose={onClose}
+        headerActions={
+          run && (
+            <IconButton
+              label="Run options"
+              icon={<MoreHorizontal size={20} strokeWidth={1.8} />}
+              onClick={() => setOptionsOpen(true)}
+            />
+          )
+        }
+      >
+        {run && identity && (
+          <div className="workout-detail historical-run">
+            <SourceRunDetail
+              facts={sourceRunFactsFromRunnerRun(run)}
+              activityId={run.externalActivityId}
+              runKey={run.id}
+              connection={connection}
+              identity={identity}
+            />
 
-function HistoricalRunBody({ run, connection }: { run: RunnerRun; connection: SourceConnection }) {
-  return (
-    <div className="workout-detail historical-run">
-      <div className="run-detail__context">
-        <div className="run-detail__context-primary">
-          <p className="machine-label">
-            {formatDateLabel(run.date, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
-          {run.sourceName && <p className="run-detail__plan-line machine-label">{run.sourceName}</p>}
-        </div>
-        <div className="run-detail__context-tags">
-          <span className="run-detail__status-tag machine-label" data-status="history">
-            History
-          </span>
-        </div>
-      </div>
+            <p className="historical-run__note">
+              This activity came from your connected history. It is not logged in STACK, so it
+              has no effort, notes, plan link or block.
+            </p>
+          </div>
+        )}
+      </Sheet>
 
-      <SourceRunDetail
-        facts={sourceRunFactsFromRunnerRun(run)}
-        activityId={run.externalActivityId}
-        runKey={run.id}
-        connection={connection}
-      />
-
-      <p className="historical-run__note">
-        This activity came from your connected history. It is not logged in STACK, so it
-        has no effort, notes, plan link or block.
-      </p>
-    </div>
+      {run && (
+        <RunOptionsSheet
+          isOpen={isOptionsOpen}
+          onClose={() => setOptionsOpen(false)}
+          facts={sourceRunOptionFacts(sourceRunFactsFromRunnerRun(run), {
+            // A history row exists because a connected source reported it; the
+            // label is the same word every other STACK surface uses for it.
+            sourceLabel: run.externalActivityId ? RUN_SOURCE_LABEL.intervals : null,
+          })}
+        />
+      )}
+    </>
   );
 }

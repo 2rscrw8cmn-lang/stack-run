@@ -47,6 +47,27 @@
   --cross: #5f6dff;
   --danger: #ff6b6b;
 
+  /*
+   * Issue #214 — one colour per run metric.
+   *
+   * A run's supporting facts and its analysis charts share these, so heart rate
+   * is the same warm red in the metric strip, on its tab and in its chart, and
+   * elevation is the same violet wherever it appears — including the silhouette
+   * drawn behind the pace line. They are their own tokens rather than borrowed
+   * from the activity or zone palettes on purpose: `--zone-6` means "heart-rate
+   * zone 6" and `--long` means "this run was a long run", and neither may
+   * quietly become "this number is a heart rate" or "this number is elevation".
+   *
+   * Pace is the exception and points at the brand accent, because pace is the
+   * run's own result rather than one metric among several — the same lime the
+   * distance and the selected state wear.
+   */
+  --metric-pace: var(--accent);
+  --metric-heart-rate: #ff5f4d;
+  --metric-elevation: #a878ff;
+  --metric-cadence: #2fd8e6;
+  --metric-load: #ffbf3a;
+
   /* UI-17's ordered seven-zone palette. Text labels remain authoritative. */
   --zone-1: #5b82ff;
   --zone-2: #2bc6d6;

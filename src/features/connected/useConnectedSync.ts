@@ -2,11 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchIntervals,
   mergeCandidates,
-  normalizeActivityList,
+  normalizeIntervalsActivities,
   unresolvedCandidates,
   type IntervalsCandidate,
   type IntervalsConnection,
 } from "../../connected/intervals.js";
+import {
+  planSourceMetricRefresh,
+  type SourceMetricRefresh,
+} from "../../connected/sourceRefresh.js";
 import {
   loadPendingIntervalsCandidates,
   savePendingIntervalsCandidates,
@@ -69,6 +73,14 @@ interface Options {
   /** Canonical pending candidates hydrated by personal account sync. */
   pendingSeed?: readonly IntervalsCandidate[];
   onPendingChanged?: (candidates: readonly IntervalsCandidate[]) => void;
+  /**
+   * Newer source aggregates for runs STACK already imported.
+   *
+   * An imported activity id is settled and never returns to the review queue,
+   * so without this the metrics imported with it could never be corrected. Only
+   * source-owned fields travel this way — see `connected/sourceRefresh.ts`.
+   */
+  onSourceRefresh?: (refreshes: readonly SourceMetricRefresh[]) => void;
   /** Overridable so tests do not depend on the network. */
   read?: typeof fetchIntervals;
 }
@@ -100,6 +112,7 @@ export function useConnectedSync({
   accountId = null,
   pendingSeed = EMPTY_PENDING,
   onPendingChanged = () => undefined,
+  onSourceRefresh = () => undefined,
   read = fetchIntervals,
 }: Options): ConnectedSync {
   const activeConnection = connection ?? (token
@@ -113,9 +126,9 @@ export function useConnectedSync({
 
   // Read through refs: the sync closure must see the newest run logs and
   // ignored ids without the effect below re-subscribing on every state change.
-  const latest = useRef({ state, onSynced, onPendingChanged, read, connection: activeConnection });
+  const latest = useRef({ state, onSynced, onPendingChanged, onSourceRefresh, read, connection: activeConnection });
   useEffect(() => {
-    latest.current = { state, onSynced, onPendingChanged, read, connection: activeConnection };
+    latest.current = { state, onSynced, onPendingChanged, onSourceRefresh, read, connection: activeConnection };
   });
   const inFlight = useRef(false);
   const lastAttemptAt = useRef(0);
@@ -145,6 +158,7 @@ export function useConnectedSync({
       state: current,
       onSynced: synced,
       onPendingChanged: pendingChanged,
+      onSourceRefresh: sourceRefreshed,
       read: fetcher,
       connection: credential,
     } = latest.current;
@@ -169,9 +183,17 @@ export function useConnectedSync({
       const oldest = addDaysToLocalDate(newest, -lookback);
       const raw = await fetcher("activities", credential, { oldest, newest });
       const ignored = current.intervalsSync.ignoredActivityIds;
+      const fetched = normalizeIntervalsActivities(raw);
+      /**
+       * Before the queue is filtered: an already-imported activity is dropped
+       * from every candidate list by design, and this is the only point at
+       * which STACK can still see that the source has restated its numbers.
+       */
+      const refreshes = planSourceMetricRefresh(fetched, current.runLogs);
+      if (refreshes.length > 0) sourceRefreshed(refreshes);
       const before = new Set(queue.current.map((candidate) => candidate.externalId));
       const merged = unresolvedCandidates(
-        mergeCandidates(queue.current, normalizeActivityList(raw, current.runLogs, ignored)),
+        mergeCandidates(queue.current, unresolvedCandidates(fetched, current.runLogs, ignored)),
         current.runLogs,
         ignored,
       );

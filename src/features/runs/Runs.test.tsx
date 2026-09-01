@@ -137,10 +137,13 @@ describe("Runs", () => {
 
     await user.click(rows()[0]);
 
+    // The run leads: the workout it satisfied is the sheet's title, and the
+    // plan context underneath says which week that was rather than repeating it.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("2 Miles");
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Tuesday, August 4, 2026")).toBeInTheDocument();
+    expect(sheet.getByText(/Tuesday, August 4, 2026/)).toBeInTheDocument();
     expect(sheet.getByText("Plan")).toBeInTheDocument();
-    expect(sheet.getByText(/Week 1 · 2 Miles/)).toBeInTheDocument();
+    expect(sheet.getByText("Week 1")).toBeInTheDocument();
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
   });
 
@@ -161,18 +164,23 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Intervals.icu")).toBeInTheDocument();
     expect(sheet.getByText("151 bpm")).toBeInTheDocument();
     expect(
       sheet.getByRole("list", { name: "Heart rate zone distribution" }),
     ).toBeInTheDocument();
-    // Moving and elapsed are both real, and both said, once each.
+    // The run's own moving time leads; where the source came from and how long
+    // the watch was running are behind the run options control (issue #214).
     expect(sheet.getByText("Moving")).toBeInTheDocument();
     expect(sheet.getByText("50:00")).toBeInTheDocument();
-    expect(sheet.getByText("Elapsed")).toBeInTheDocument();
-    expect(sheet.getByText("54:00")).toBeInTheDocument();
     expect(sheet.queryByText("Duration")).not.toBeInTheDocument();
     expect(sheet.getByText("Extra")).toBeInTheDocument();
+    expect(sheet.queryByText("Intervals.icu")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    expect(options.getByText("Intervals.icu")).toBeInTheDocument();
+    expect(options.getByText("Elapsed")).toBeInTheDocument();
+    expect(options.getByText("54:00")).toBeInTheDocument();
   });
 
   it("keeps one duration when elapsed time says nothing new", async () => {
@@ -200,6 +208,7 @@ describe("Runs", () => {
     );
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.clear(screen.getByLabelText(/Distance/));
     await user.type(screen.getByLabelText(/Distance/), "2.6");
@@ -219,8 +228,9 @@ describe("Runs", () => {
     renderRuns([run("extra", "2026-08-04")], { onLinkRun });
 
     await user.click(rows()[0]);
-    const detail = within(screen.getByRole("dialog"));
-    const connectButton = detail.getByRole("button", { name: "Connect to Plan" });
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    const connectButton = options.getByRole("button", { name: "Connect to Plan" });
     expect(connectButton).toBeInTheDocument();
 
     await user.click(connectButton);
@@ -232,8 +242,9 @@ describe("Runs", () => {
 
     expect(onLinkRun).toHaveBeenCalledWith("extra", "workout-002");
     expect(screen.getByText("Run connected to the plan.")).toBeInTheDocument();
-    // Comes back to the run's own detail rather than leaving the picker open.
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
+    // Comes back to the run's own detail rather than leaving the picker open —
+    // and the run, not the word "Run Detail", is what that sheet is called.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy Run");
   });
 
   it("does not offer linking without a handler for it", async () => {
@@ -241,6 +252,7 @@ describe("Runs", () => {
     renderRuns([run("extra", "2026-08-04")]);
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     expect(screen.queryByRole("button", { name: "Connect to Plan" })).not.toBeInTheDocument();
   });
 
@@ -255,6 +267,7 @@ describe("Runs", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /August 1/ }));
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Connect to Plan" }));
     const select = screen.getByLabelText("Scheduled workout") as HTMLSelectElement;
     const values = [...select.options].map((option) => option.value);
@@ -270,6 +283,7 @@ describe("Runs", () => {
     });
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Unlink from Plan" }));
 
     expect(onUnlinkRun).toHaveBeenCalledWith("scheduled");
@@ -294,6 +308,7 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     expect(screen.getByText("Plan")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     expect(
       screen.queryByRole("button", { name: "Unlink from Plan" }),
     ).not.toBeInTheDocument();
@@ -307,6 +322,7 @@ describe("Runs", () => {
     const { rerender } = renderRuns([run("only", "2026-08-04")], { onDeleteRun });
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.click(screen.getByRole("button", { name: "Delete Run" }));
 
@@ -341,10 +357,12 @@ describe("Runs", () => {
     renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })]);
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     expect(screen.getByRole("heading", { name: "Edit Run" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("heading", { name: "Run Detail" })).toBeInTheDocument();
+    // Back to the run itself, which is titled with the workout it satisfied.
+    expect(screen.getByRole("heading", { name: "2 Miles" })).toBeInTheDocument();
   });
 });

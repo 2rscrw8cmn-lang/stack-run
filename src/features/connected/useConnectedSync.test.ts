@@ -260,3 +260,51 @@ describe("the unresolved Run Data queue", () => {
     expect(result.current.error).toMatch(/could not save the list of runs/);
   });
 });
+
+/**
+ * Issue #214, part 10. An imported activity is filtered out of the review queue
+ * for good, so the sync that reads it is the only place STACK can notice that
+ * the source has since restated its numbers.
+ */
+describe("source-metric freshness", () => {
+  const updatedActivity = (id: string, updated: string, elevationMeters: number) => ({
+    ...activity(id, "2026-08-09"),
+    updated,
+    total_elevation_gain: elevationMeters,
+  });
+
+  it("reports a newer source answer for a run that is already imported", async () => {
+    const read = vi.fn(reader(() => [updatedActivity("a", "2026-08-14T09:00:00Z", 70.8)]));
+    const onSourceRefresh = vi.fn();
+    const { result } = renderHook(() => useConnectedSync({
+      token: "t",
+      state: stateWith(SYNCED_BEFORE, [importedRun("a")]),
+      onSynced: vi.fn(),
+      onSourceRefresh,
+      read,
+    }));
+
+    await waitFor(() => expect(onSourceRefresh).toHaveBeenCalledTimes(1));
+    const [refreshes] = onSourceRefresh.mock.calls[0];
+    expect(refreshes).toHaveLength(1);
+    expect(refreshes[0]).toMatchObject({ runLogId: "run-a", activityId: "a", sourceUpdatedAt: "2026-08-14T09:00:00Z" });
+    expect(refreshes[0].metrics.elevationGainFeet).toBeCloseTo(232.3, 1);
+    // The run stays settled: this is a correction, not a decision to re-make.
+    expect(ids(result)).toEqual([]);
+  });
+
+  it("says nothing when the read carries no newer answer", async () => {
+    const read = vi.fn(reader(() => [activity("a", "2026-08-09")]));
+    const onSourceRefresh = vi.fn();
+    renderHook(() => useConnectedSync({
+      token: "t",
+      state: stateWith(SYNCED_BEFORE, [importedRun("a")]),
+      onSynced: vi.fn(),
+      onSourceRefresh,
+      read,
+    }));
+
+    await waitFor(() => expect(read).toHaveBeenCalled());
+    expect(onSourceRefresh).not.toHaveBeenCalled();
+  });
+});

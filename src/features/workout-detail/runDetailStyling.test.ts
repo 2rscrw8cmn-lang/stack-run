@@ -5,42 +5,95 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const directory = dirname(fileURLToPath(import.meta.url));
-const componentsCss = readFileSync(
-  join(directory, "..", "..", "styles", "components.css"),
-  "utf8",
-);
+const styles = join(directory, "..", "..", "styles");
+const componentsCss = readFileSync(join(styles, "components.css"), "utf8");
+const tokensCss = readFileSync(join(styles, "tokens.css"), "utf8");
 
 /**
- * The two structural rules R3's shared source-detail surface depends on.
+ * The structural rules Run Detail's presentation depends on.
  *
- * Both exist because the surface now serves a run the source described richly
- * and a run it barely described at all, on the same phone.
+ * There is no visual-regression harness in this repository, so the stylesheet
+ * itself is what these read. Every rule below is one a redesign could plausibly
+ * lose by accident and which a runner would feel immediately: a touch target
+ * that stopped being a touch target, a metric that stopped having an identity,
+ * or a chart that stopped letting the page scroll past it.
  */
-describe("shared source-detail layout", () => {
-  it("keeps the Run Profile selectors at the 44px interaction floor", () => {
+describe("Run Detail layout", () => {
+  it("keeps the analysis tabs at the 44px interaction floor", () => {
     expect(componentsCss).toMatch(/\.run-profile__selector\s*\{[^}]*min-height: 44px/s);
-    // The visible chip stays small; the target around it does not. Issue #150
-    // put the chip's label on the product-wide label size — small, still not 44px.
+    // The visible chip stays small; the target around it does not.
     expect(componentsCss).toMatch(
       /\.run-profile__selector > span\s*\{[^}]*font-size: var\(--type-label\)/s,
     );
+  });
+
+  it("gives the selected analysis tab an accent state that is not colour alone", () => {
     expect(componentsCss).toMatch(
-      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*border-color: var\(--accent\)/s,
+      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*border-color: var\(--metric-color, var\(--accent\)\)/s,
+    );
+    // An underline/inset rule, so the selected tab is still obvious in
+    // greyscale and to anyone who does not separate the four metric hues.
+    expect(componentsCss).toMatch(
+      /\.run-profile__selector\[aria-pressed="true"\] > span\s*\{[^}]*box-shadow: inset 0 -2px 0/s,
     );
   });
 
-  it("fits the primary result to the facts the source actually stated", () => {
+  it("fits the result to the facts the source actually stated", () => {
     // A historical run whose source gave no duration must not leave two empty
     // columns beside its distance.
     expect(componentsCss).toMatch(
-      /\.run-result-detail__primary\[data-count="1"\]\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/s,
+      /\.run-hero\[data-count="1"\]\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/s,
     );
     expect(componentsCss).toMatch(
-      /\.run-result-detail__primary\[data-count="2"\]\s*\{[^}]*repeat\(2, minmax\(0, 1fr\)\)/s,
+      /\.run-hero\[data-count="2"\]\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
     );
-    // Pace shrinks because it is pace, not because it happens to be last.
+    // Distance is the dominant figure and the one thing wearing the brand
+    // accent; pace shrinks because it is pace, not because it is last.
     expect(componentsCss).toMatch(
-      /\.run-result-detail__primary > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: clamp\(17px/s,
+      /\.run-hero > div\[data-metric="distance"\] dd\s*\{[^}]*color: var\(--accent\)/s,
+    );
+    expect(componentsCss).toMatch(
+      /\.run-hero > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: clamp\(16px/s,
+    );
+  });
+
+  it("defines one colour per metric, in tokens, and reads it through a single custom property", () => {
+    for (const token of [
+      "--metric-pace",
+      "--metric-heart-rate",
+      "--metric-elevation",
+      "--metric-cadence",
+      "--metric-load",
+    ]) {
+      expect(tokensCss, `missing ${token}`).toMatch(new RegExp(`${token}:`));
+    }
+    for (const [attribute, token] of [
+      ["heart-rate", "--metric-heart-rate"],
+      ["elevation", "--metric-elevation"],
+      ["cadence", "--metric-cadence"],
+      ["load", "--metric-load"],
+    ]) {
+      expect(componentsCss).toMatch(
+        new RegExp(`\\[data-metric="${attribute}"\\][^{]*\\{[^}]*--metric-color: var\\(${token}\\)`, "s"),
+      );
+    }
+  });
+
+  it("lets a vertical drag scroll the sheet while a horizontal one scrubs the chart", () => {
+    expect(componentsCss).toMatch(/\.activity-chart__scrub\s*\{[^}]*touch-action: pan-y/s);
+    // Covering the plot itself, so every position across it is a position
+    // through the run and the whole plot is scrubbable rather than the line.
+    expect(componentsCss).toMatch(/\.activity-chart__scrub\s*\{[^}]*left: var\(--plot-left/s);
+  });
+
+  it("keeps the metric strip and the analysis tabs whole rather than stranding one cell", () => {
+    // Four compact facts across a phone, dropping to an even 2x2 rather than
+    // three-and-one when there is no longer room.
+    expect(componentsCss).toMatch(
+      /@media \(max-width: 359px\)\s*\{\s*\.run-metrics\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
+    );
+    expect(componentsCss).toMatch(
+      /\.run-analysis__tabs\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
     );
   });
 });
