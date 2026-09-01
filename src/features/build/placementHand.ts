@@ -5,7 +5,7 @@ import type { RunActivityType } from "../../domain/types.js";
 import {
   canRotateFootprint,
   handFootprint,
-  type Footprint,
+  type HandFootprintSource,
   type PlacedFootprint,
 } from "../../domain/footprint.js";
 import {
@@ -43,12 +43,12 @@ export interface PlacementHand {
 export { handFootprint };
 
 /**
- * Whether this block has a second orientation worth offering. Takes what the
- * run *earned*, in columns and courses; squareness is decided on the placement
- * grid, where a 1x1 brick is 2x1 units and does have a second orientation.
+ * Whether this block has a second orientation worth offering. Runs arrive in
+ * earned columns/courses; fixed special pieces may already be expressed in the
+ * square placement grid. Either way, squareness is decided in placement units.
  */
-export function handCanRotate(earned: Footprint): boolean {
-  return canRotateFootprint(earned);
+export function handCanRotate(source: HandFootprintSource): boolean {
+  return canRotateFootprint(source);
 }
 
 /**
