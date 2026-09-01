@@ -42,7 +42,7 @@ export class AppErrorBoundary extends Component<
       <div className="recovery">
         <div className="recovery__panel">
           <div className="recovery__brand">
-            <StackMark size={22} />
+            <StackMark size={28} />
             <p className="wordmark wordmark--small">STACK</p>
           </div>
 

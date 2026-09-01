@@ -13,7 +13,7 @@ export function WelcomeSheet({ isOpen, onGetStarted, onDismiss }: WelcomeSheetPr
   return (
     <Sheet title="STACK" isOpen={isOpen} onClose={onDismiss} className="welcome-sheet">
       <div className="welcome-intro">
-        <StackMark size={40} />
+        <StackMark size={64} />
         <h2>Build your running.</h2>
         <p>
           Every run becomes part of your history and earns a block. Add a race

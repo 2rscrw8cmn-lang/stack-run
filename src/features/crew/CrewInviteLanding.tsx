@@ -40,7 +40,7 @@ export function CrewInviteLanding({ crew, localRace, onOpenCrew }: Props) {
   return (
     <main className="crew-invite-landing">
       <section className="crew-invite-landing__card">
-        <div className="crew-invite-landing__brand"><StackMark size={24} /><span>STACK</span></div>
+        <div className="crew-invite-landing__brand"><StackMark size={30} /><span>STACK</span></div>
         <p className="machine-label">Private {isClub ? "Run Club" : "Race Crew"} invite</p>
         <div className="crew-invite-landing__identity">
           <CrewEmblem emblem={preview.emblem} size={116} label={`${preview.crewName} emblem`} />

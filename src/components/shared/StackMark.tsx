@@ -1,30 +1,32 @@
 interface StackMarkProps {
+  /** Optical height in CSS pixels. Width follows the artwork's native ratio. */
   size?: number;
   className?: string;
 }
 
 /**
- * The STACK mark: three courses of a tower, narrowing as they climb.
+ * The canonical STACK runner-man mark.
  *
- * The same geometry the app icons are drawn from (`scripts/generate-icons.mjs`
- * renders these rectangles), so the thing in the header and the thing on the
- * home screen are one mark rather than two that resemble each other. Per the
- * design system it is bars only — no runner, no crane, no hard hat — and it
- * stays legible down to 20px because it is three shapes and two gaps.
+ * The artwork is intentionally inline so it is crisp at every in-app size.
+ * Install icons and server-rendered share cards consume the same vector source.
  */
-export function StackMark({ size = 24, className }: StackMarkProps) {
+export function StackMark({ size = 28, className }: StackMarkProps) {
+  const width = (size * STACK_RUNNER_VIEW_BOX.width) / STACK_RUNNER_VIEW_BOX.height;
+
   return (
     <svg
       className={className}
-      width={size}
+      width={width}
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
+      viewBox={`0 0 ${STACK_RUNNER_VIEW_BOX.width} ${STACK_RUNNER_VIEW_BOX.height}`}
       aria-hidden="true"
       focusable="false"
     >
-      <g dangerouslySetInnerHTML={{ __html: stackMarkSvgMarkup() }} />
+      <g dangerouslySetInnerHTML={{ __html: stackRunnerSvgMarkup() }} />
     </svg>
   );
 }
-import { stackMarkSvgMarkup } from "./stackMarkSvg.js";
+import {
+  STACK_RUNNER_VIEW_BOX,
+  stackRunnerSvgMarkup,
+} from "./stackRunnerMark.js";

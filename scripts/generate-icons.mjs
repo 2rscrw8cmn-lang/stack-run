@@ -1,10 +1,10 @@
-// Draws the STACK app icons.
+// Draws STACK install assets from the canonical runner-man vector.
 //
-// There is no image tooling in this repository and no reason to add a
-// dependency for four flat shapes: the mark is three rounded bars on a solid
-// ground, which is a few hundred lines of arithmetic and Node's own zlib. The
-// PNGs are committed, so a normal build never runs this — it exists so the
-// icons can be regenerated from the same geometry `StackMark.tsx` draws.
+// There is no image-tooling dependency in this repository. The small path
+// flattener and scanline rasterizer below use the same arithmetic as the Crew
+// invite-card renderer, while the artwork itself remains owned by one shared
+// source. The generated PNG/SVG files are committed; normal builds do not run
+// this script.
 //
 //   node scripts/generate-icons.mjs
 //
@@ -12,21 +12,18 @@ import { deflateSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  STACK_RUNNER_PATHS,
+  STACK_RUNNER_VIEW_BOX,
+  stackRunnerSvgMarkup,
+} from "../src/components/shared/stackRunnerMark.js";
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
 
 /** Tokens from `src/styles/tokens.css`. */
 const GROUND = [12, 22, 32]; // --bg-elevated #0c1620
-const BARS = [
-  // x, y, width, height in the 24-unit box `StackMark.tsx` uses, and colour.
-  { x: 7, y: 2.5, w: 10, h: 5.5, r: 2, color: [155, 109, 255] }, // --simulation
-  { x: 4.5, y: 8.75, w: 15, h: 5.5, r: 2, color: [79, 155, 255] }, // --intervals
-  { x: 2, y: 15, w: 20, h: 5.5, r: 2, color: [184, 241, 59] }, // --easy
-];
-/** The mark's own bounds inside that box, so it can be centred exactly. */
-const MARK = { x: 2, y: 2.5, w: 20, h: 18 };
-
 const SAMPLES = 4;
+const SUBSAMPLES = 5;
 
 function insideRoundedRect(px, py, x, y, w, h, r) {
   if (px < x || px > x + w || py < y || py > y + h) return false;
@@ -41,65 +38,243 @@ function insideRoundedRect(px, py, x, y, w, h, r) {
  * @param scale   how much of the icon the mark occupies, edge to edge
  * @param corner  ground corner radius as a fraction of the size; 0 is square
  */
+function parseColor(color) {
+  const value = Number.parseInt(color.slice(1), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+function createCanvas(size) {
+  const data = new Float32Array(size * size * 3);
+  for (let index = 0; index < data.length; index += 3) {
+    data[index] = GROUND[0];
+    data[index + 1] = GROUND[1];
+    data[index + 2] = GROUND[2];
+  }
+  return { width: size, height: size, data };
+}
+
+function blend(canvas, x, y, color, alpha) {
+  if (alpha <= 0 || x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+  const index = (y * canvas.width + x) * 3;
+  const weight = Math.min(1, alpha);
+  canvas.data[index] += (color[0] - canvas.data[index]) * weight;
+  canvas.data[index + 1] += (color[1] - canvas.data[index + 1]) * weight;
+  canvas.data[index + 2] += (color[2] - canvas.data[index + 2]) * weight;
+}
+
+function edgesOf(polygons) {
+  const edges = [];
+  let top = Number.POSITIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const polygon of polygons) {
+    for (let index = 0; index < polygon.length; index += 1) {
+      const from = polygon[index];
+      const to = polygon[(index + 1) % polygon.length];
+      if (from.y === to.y) continue;
+      const upward = from.y < to.y;
+      const start = upward ? from : to;
+      const end = upward ? to : from;
+      edges.push({
+        topY: start.y,
+        bottomY: end.y,
+        x: start.x,
+        slope: (end.x - start.x) / (end.y - start.y),
+        winding: upward ? 1 : -1,
+      });
+      top = Math.min(top, start.y);
+      bottom = Math.max(bottom, end.y);
+    }
+  }
+  return { edges, top, bottom };
+}
+
+function fillPolygons(canvas, polygons, colorSource) {
+  const color = parseColor(colorSource);
+  const { edges, top, bottom } = edgesOf(polygons);
+  if (!edges.length) return;
+  const firstRow = Math.max(0, Math.floor(top));
+  const lastRow = Math.min(canvas.height - 1, Math.ceil(bottom));
+  const coverage = new Float32Array(canvas.width);
+  const crossings = [];
+
+  for (let row = firstRow; row <= lastRow; row += 1) {
+    coverage.fill(0);
+    let touched = false;
+    for (let sample = 0; sample < SUBSAMPLES; sample += 1) {
+      const y = row + (sample + 0.5) / SUBSAMPLES;
+      crossings.length = 0;
+      for (const edge of edges) {
+        if (y < edge.topY || y >= edge.bottomY) continue;
+        crossings.push({ x: edge.x + (y - edge.topY) * edge.slope, winding: edge.winding });
+      }
+      if (crossings.length < 2) continue;
+      crossings.sort((left, right) => left.x - right.x);
+
+      let winding = 0;
+      for (let index = 0; index < crossings.length - 1; index += 1) {
+        winding += crossings[index].winding;
+        if (winding === 0) continue;
+        const from = Math.max(0, crossings[index].x);
+        const to = Math.min(canvas.width, crossings[index + 1].x);
+        if (to <= from) continue;
+        touched = true;
+        const firstPixel = Math.floor(from);
+        const lastPixel = Math.min(canvas.width - 1, Math.ceil(to) - 1);
+        for (let pixel = firstPixel; pixel <= lastPixel; pixel += 1) {
+          const left = Math.max(from, pixel);
+          const right = Math.min(to, pixel + 1);
+          if (right > left) coverage[pixel] += (right - left) / SUBSAMPLES;
+        }
+      }
+    }
+    if (!touched) continue;
+    for (let x = 0; x < canvas.width; x += 1) {
+      if (coverage[x] > 0) blend(canvas, x, row, color, coverage[x]);
+    }
+  }
+}
+
+const COMMAND_PATTERN = /([MmLlHhVvQqCcZz])([^MmLlHhVvQqCcZz]*)/g;
+const NUMBER_PATTERN = /-?\d*\.?\d+(?:e[-+]?\d+)?/gi;
+
+function readCommands(d) {
+  return [...d.matchAll(COMMAND_PATTERN)].map((match) => ({
+    type: match[1],
+    values: (match[2].match(NUMBER_PATTERN) ?? []).map(Number),
+  }));
+}
+
+function place(placement, point) {
+  return {
+    x: placement.x + point.x * placement.scale,
+    y: placement.y + point.y * placement.scale,
+  };
+}
+
+function curveSteps(points) {
+  let length = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    length += Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y);
+  }
+  return Math.max(3, Math.min(64, Math.ceil(length / 2.5)));
+}
+
+function cubic(from, first, second, to, into) {
+  const steps = curveSteps([from, first, second, to]);
+  for (let step = 1; step <= steps; step += 1) {
+    const t = step / steps;
+    const inverse = 1 - t;
+    into.push({
+      x: inverse ** 3 * from.x + 3 * inverse ** 2 * t * first.x + 3 * inverse * t ** 2 * second.x + t ** 3 * to.x,
+      y: inverse ** 3 * from.y + 3 * inverse ** 2 * t * first.y + 3 * inverse * t ** 2 * second.y + t ** 3 * to.y,
+    });
+  }
+}
+
+function flattenPath(d, placement) {
+  const contours = [];
+  let current = [];
+  let cursor = { x: 0, y: 0 };
+  let startedAt = { x: 0, y: 0 };
+  const flush = () => {
+    if (current.length > 1) contours.push(current);
+    current = [];
+  };
+  const moveTo = (point) => {
+    flush();
+    cursor = point;
+    startedAt = point;
+    current = [place(placement, point)];
+  };
+  const lineTo = (point) => {
+    cursor = point;
+    current.push(place(placement, point));
+  };
+
+  for (const command of readCommands(d)) {
+    const { values } = command;
+    const relative = command.type === command.type.toLowerCase();
+    const base = () => (relative ? cursor : { x: 0, y: 0 });
+    switch (command.type.toUpperCase()) {
+      case "M":
+        for (let index = 0; index + 1 < values.length; index += 2) {
+          const from = base();
+          const point = { x: from.x + values[index], y: from.y + values[index + 1] };
+          if (index === 0) moveTo(point);
+          else lineTo(point);
+        }
+        break;
+      case "L":
+        for (let index = 0; index + 1 < values.length; index += 2) {
+          const from = base();
+          lineTo({ x: from.x + values[index], y: from.y + values[index + 1] });
+        }
+        break;
+      case "H":
+        for (const value of values) lineTo({ x: base().x + value, y: cursor.y });
+        break;
+      case "V":
+        for (const value of values) lineTo({ x: cursor.x, y: base().y + value });
+        break;
+      case "C":
+        for (let index = 0; index + 5 < values.length; index += 6) {
+          const from = base();
+          const first = { x: from.x + values[index], y: from.y + values[index + 1] };
+          const second = { x: from.x + values[index + 2], y: from.y + values[index + 3] };
+          const to = { x: from.x + values[index + 4], y: from.y + values[index + 5] };
+          const placed = [];
+          cubic(place(placement, cursor), place(placement, first), place(placement, second), place(placement, to), placed);
+          current.push(...placed);
+          cursor = to;
+        }
+        break;
+      case "Z":
+        flush();
+        cursor = startedAt;
+        current = [place(placement, cursor)];
+        break;
+      default:
+        throw new Error(`Unsupported runner path command: ${command.type}`);
+    }
+  }
+  flush();
+  return contours;
+}
+
 function render(size, { scale, corner }) {
+  const canvas = createCanvas(size);
+  const unit = (size * scale) / Math.max(STACK_RUNNER_VIEW_BOX.width, STACK_RUNNER_VIEW_BOX.height);
+  const placement = {
+    scale: unit,
+    x: (size - STACK_RUNNER_VIEW_BOX.width * unit) / 2,
+    y: (size - STACK_RUNNER_VIEW_BOX.height * unit) / 2,
+  };
+  for (const path of STACK_RUNNER_PATHS) {
+    fillPolygons(canvas, flattenPath(path.d, placement), path.fill);
+  }
+
   const pixels = Buffer.alloc(size * size * 4);
+  const radius = size * corner;
   const step = 1 / SAMPLES;
   const offset = step / 2;
-
-  // Fit the mark's bounds into `scale` of the icon and centre it.
-  const unit = (size * scale) / Math.max(MARK.w, MARK.h);
-  const originX = (size - MARK.w * unit) / 2 - MARK.x * unit;
-  const originY = (size - MARK.h * unit) / 2 - MARK.y * unit;
-  const place = (bar) => ({
-    x: originX + bar.x * unit,
-    y: originY + bar.y * unit,
-    w: bar.w * unit,
-    h: bar.h * unit,
-    r: bar.r * unit,
-    color: bar.color,
-  });
-  const placed = BARS.map(place);
-  const radius = size * corner;
-
   for (let py = 0; py < size; py += 1) {
     for (let px = 0; px < size; px += 1) {
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let a = 0;
-
+      let covered = 0;
       for (let sy = 0; sy < SAMPLES; sy += 1) {
         for (let sx = 0; sx < SAMPLES; sx += 1) {
           const x = px + sx * step + offset;
           const y = py + sy * step + offset;
-          if (!insideRoundedRect(x, y, 0, 0, size, size, radius)) continue;
-
-          let color = GROUND;
-          for (const bar of placed) {
-            if (insideRoundedRect(x, y, bar.x, bar.y, bar.w, bar.h, bar.r)) {
-              color = bar.color;
-              break;
-            }
-          }
-          r += color[0];
-          g += color[1];
-          b += color[2];
-          a += 255;
+          if (insideRoundedRect(x, y, 0, 0, size, size, radius)) covered += 1;
         }
       }
-
-      const total = SAMPLES * SAMPLES;
-      const covered = a / 255;
-      const index = (py * size + px) * 4;
-      // Straight (unpremultiplied) alpha: the colour is the average of the
-      // samples that landed on the icon, not of the whole cell.
-      pixels[index] = covered ? Math.round(r / covered) : 0;
-      pixels[index + 1] = covered ? Math.round(g / covered) : 0;
-      pixels[index + 2] = covered ? Math.round(b / covered) : 0;
-      pixels[index + 3] = Math.round(a / total);
+      const source = (py * size + px) * 3;
+      const target = (py * size + px) * 4;
+      pixels[target] = Math.round(canvas.data[source]);
+      pixels[target + 1] = Math.round(canvas.data[source + 1]);
+      pixels[target + 2] = Math.round(canvas.data[source + 2]);
+      pixels[target + 3] = Math.round((covered / (SAMPLES * SAMPLES)) * 255);
     }
   }
-
   return pixels;
 }
 
@@ -155,12 +330,12 @@ function encodePng(size, pixels) {
 
 const ICONS = [
   // Rounded, transparent outside: browser tabs, install prompts, shortcuts.
-  { file: "icon-192.png", size: 192, scale: 0.66, corner: 0.22 },
-  { file: "icon-512.png", size: 512, scale: 0.66, corner: 0.22 },
+  { file: "icon-192.png", size: 192, scale: 0.72, corner: 0.22 },
+  { file: "icon-512.png", size: 512, scale: 0.72, corner: 0.22 },
   // Square ground: iOS applies its own mask and dark corners would show.
-  { file: "apple-touch-icon.png", size: 180, scale: 0.62, corner: 0 },
-  // Android maskable: everything that matters inside the middle 80%.
-  { file: "icon-maskable-512.png", size: 512, scale: 0.5, corner: 0 },
+  { file: "apple-touch-icon.png", size: 180, scale: 0.66, corner: 0 },
+  // Android maskable: the full runner remains inside the central safe zone.
+  { file: "icon-maskable-512.png", size: 512, scale: 0.56, corner: 0 },
 ];
 
 mkdirSync(PUBLIC_DIR, { recursive: true });
@@ -171,13 +346,19 @@ for (const { file, size, scale, corner } of ICONS) {
   console.log(`${file} — ${size}×${size}, ${png.length} bytes`);
 }
 
-// The same mark as vector, for browsers that take an SVG favicon.
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <rect width="24" height="24" rx="5.5" fill="#0c1620"/>
-  <rect x="7" y="4.25" width="10" height="4.25" rx="1.6" fill="#9b6dff"/>
-  <rect x="4.75" y="9.9" width="14.5" height="4.25" rx="1.6" fill="#4f9bff"/>
-  <rect x="2.5" y="15.55" width="19" height="4.25" rx="1.6" fill="#b8f13b"/>
+const faviconSize = 64;
+const faviconScale = (faviconSize * 0.72) / STACK_RUNNER_VIEW_BOX.height;
+const faviconX = (faviconSize - STACK_RUNNER_VIEW_BOX.width * faviconScale) / 2;
+const faviconY = (faviconSize - STACK_RUNNER_VIEW_BOX.height * faviconScale) / 2;
+const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${faviconSize} ${faviconSize}" width="64" height="64" role="img" aria-label="STACK">
+  <rect width="64" height="64" rx="14" fill="#0c1620"/>
+  <g transform="translate(${faviconX} ${faviconY}) scale(${faviconScale})">${stackRunnerSvgMarkup()}</g>
 </svg>
 `;
-writeFileSync(join(PUBLIC_DIR, "favicon.svg"), svg);
+writeFileSync(join(PUBLIC_DIR, "favicon.svg"), favicon);
 console.log("favicon.svg");
+
+const runnerAsset = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${STACK_RUNNER_VIEW_BOX.width} ${STACK_RUNNER_VIEW_BOX.height}" role="img" aria-label="STACK">${stackRunnerSvgMarkup()}</svg>
+`;
+writeFileSync(join(PUBLIC_DIR, "stack-runner-mark.svg"), runnerAsset);
+console.log("stack-runner-mark.svg");

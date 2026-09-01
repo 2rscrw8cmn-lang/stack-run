@@ -188,7 +188,7 @@ export function AppShell({
           <header className="app-shell__header">
             <div className="app-shell__header-row">
               <div className="brand">
-                <StackMark size={22} />
+                <StackMark size={28} />
                 <p className="wordmark">STACK</p>
               </div>
               {/*
