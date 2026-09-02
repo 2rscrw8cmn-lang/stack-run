@@ -64,6 +64,17 @@ export interface RunIdentity {
    * run's mark instead.
    */
   status: RunIdentityStatus;
+  /**
+   * The kind of running, in words — but only when the title does not already
+   * say it.
+   *
+   * A run headed `Easy Run` needs no `EASY` beside it. A run headed with its
+   * workout's own name — `Yasso 800s`, `Boston Tune-Up` — states no type at
+   * all, and there the mark's colour is the only thing carrying it: too little
+   * for `Race`, whose colour is very nearly the plain text colour. So the type
+   * appears exactly where the title dropped it, and nowhere else.
+   */
+  typeLabel: string | null;
 }
 
 /**
@@ -180,6 +191,9 @@ export function runIdentityFromRunLog(
     status: workout
       ? { label: "Plan", tone: "plan" }
       : { label: "Extra", tone: "extra" },
+    typeLabel: titleSource === "planned-workout"
+      ? WORKOUT_TYPE_LABEL[runLog.activityType]
+      : null,
   };
 }
 
@@ -207,5 +221,7 @@ export function runIdentityFromRunnerRun(run: RunnerRun): RunIdentity {
     startTimeLabel: formatStartTime(run.startTimeLocal),
     planLine: null,
     status: { label: "History", tone: "history" },
+    // Nobody has classified this run, so there is no type to state.
+    typeLabel: null,
   };
 }

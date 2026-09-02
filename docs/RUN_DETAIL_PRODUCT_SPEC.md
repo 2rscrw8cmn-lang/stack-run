@@ -168,6 +168,12 @@ place on every run and at no cost in vertical space. What remains is the run's
 its weight and without a pill around it: it answers a different question from
 the title and is a footnote to it, not a peer.
 
+The one exception is a run headed with its **workout's own name**. `Yasso 800s`
+states no type at all, and there the mark's colour is the only thing carrying
+it — too little for `Race`, whose colour is very nearly the plain text colour.
+So `identity.typeLabel` states the type beside the title exactly where the title
+dropped it, in the mark's own colour, and is null everywhere else.
+
 ### The result, and nothing beside it
 
 No panel: hairline rules above and below, thin dividers between, and the
@@ -199,6 +205,16 @@ row, no clipping, no horizontal scroll, `/mi` intact.
 One deterministic insight may follow: a count of the structured groups the
 source named. It is omitted when there are none, and STACK does not state a
 verdict on the run.
+
+### The sheet does not resize when the metric changes
+
+Heart Rate carries the zone rows and is around 240px taller than the other three
+tabs. On a screen tall enough for the sheet to fit its content, that resized the
+whole panel on every tab change and moved the chart out from under the runner's
+finger. Run Detail's panel is therefore pinned — 90% on a phone, the same rule
+`.sheet--instrument` has always used, and `min(88vh, 860px)` on a centred dialog
+— **only when there is an Analysis module to switch between**. A run whose source
+sent no stream is genuinely short and keeps a sheet its own size.
 
 ### Analysis is the centre
 

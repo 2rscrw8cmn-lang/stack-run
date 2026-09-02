@@ -100,13 +100,18 @@ describe("Run Detail layout", () => {
     // No ring: a circle around the runner made a glyph into a badge, and at
     // heading size the badge outweighed the title beside it.
     expect(componentsCss).toMatch(
-      /\.run-identity__mark\s*\{(?![^}]*border-radius)[^}]*color: var\(--text-muted\)/s,
+      /\.run-identity__mark\s*\{(?![^}]*border-radius)[^}]*color: var\(--run-type-color\)/s,
     );
+    // One colour per kind of running, resolved once so the mark and the word
+    // for the type cannot drift apart.
     for (const type of ["easy", "intervals", "simulation", "long", "cross", "race"]) {
-      expect(componentsCss, `missing mark colour for ${type}`).toMatch(
-        new RegExp(`\\.run-identity__mark\\[data-type="${type}"\\] \\{ color: var\\(--${type}\\); \\}`),
+      expect(componentsCss, `missing type colour for ${type}`).toMatch(
+        new RegExp(`\\.run-identity\\[data-type="${type}"\\] \\{ --run-type-color: var\\(--${type}\\); \\}`),
       );
     }
+    expect(componentsCss).toMatch(
+      /\.run-identity__status\[data-tone="type"\] \{ color: var\(--run-type-color\); \}/,
+    );
   });
 
   it("puts the run's status beside its title instead of under it as a chip", () => {
@@ -154,6 +159,25 @@ describe("Run Detail layout", () => {
     );
     // The identity that replaces it is the largest type after the result.
     expect(componentsCss).toMatch(/\.run-identity__title\s*\{[^}]*font-size: clamp\(20px/s);
+  });
+
+  it("holds the sheet still while the runner changes metric", () => {
+    /*
+     * Heart Rate carries the zone rows and is around 240px taller than the
+     * other three tabs. On a screen tall enough for the sheet to fit its
+     * content that resized the whole panel on every tab change, moving the
+     * chart out from under the runner's finger.
+     *
+     * The height is pinned only where there is an Analysis module to switch
+     * between: a run whose source sent no stream is genuinely short, and a
+     * near-full-screen sheet for it would be a wall of empty surface.
+     */
+    expect(componentsCss).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*?\.sheet--run-detail:has\(\.run-analysis\) \.sheet__panel \{\s*height: 90%;/,
+    );
+    expect(componentsCss).toMatch(
+      /@media \(min-width: 768px\)[\s\S]*?\.sheet--run-detail:has\(\.run-analysis\) \.sheet__panel \{\s*height: min\(88vh, 860px\);/,
+    );
   });
 
   it("defines one colour per metric, in tokens, and reads it through a single custom property", () => {

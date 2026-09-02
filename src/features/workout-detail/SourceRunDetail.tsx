@@ -233,7 +233,7 @@ export function SourceRunDetail({
   return (
     <div className="run-result-detail">
       {identity && (
-        <header className="run-identity">
+        <header className="run-identity" data-type={identity.activityType ?? "unclassified"}>
           {/*
             The STACK runner, in one colour: the run's own type colour, or the
             plain text colour for history nobody has classified. The full-colour
@@ -241,11 +241,7 @@ export function SourceRunDetail({
             the size of a heading, and a ring around it made it a badge rather
             than a glyph — the type is what the colour says here.
           */}
-          <span
-            className="run-identity__mark"
-            data-type={identity.activityType ?? "unclassified"}
-            aria-hidden="true"
-          >
+          <span className="run-identity__mark" aria-hidden="true">
             <StackMark size={26} monochrome />
           </span>
           <div className="run-identity__lines">
@@ -256,6 +252,16 @@ export function SourceRunDetail({
             */}
             <div className="run-identity__heading">
               <h3 className="run-identity__title">{identity.title}</h3>
+              {/*
+                The kind of running, only where the title does not already say
+                it — a run headed with its workout's own name states no type,
+                and the mark's colour alone is too little to carry it.
+              */}
+              {identity.typeLabel && (
+                <span className="run-identity__status machine-label" data-tone="type">
+                  {identity.typeLabel}
+                </span>
+              )}
               <span className="run-identity__status machine-label" data-tone={identity.status.tone}>
                 {identity.status.label}
               </span>

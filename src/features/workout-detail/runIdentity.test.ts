@@ -96,6 +96,33 @@ describe("run identity", () => {
     expect(Object.keys(identity)).not.toContain("chips");
   });
 
+  it("states the kind of running only where the title does not", () => {
+    /*
+     * `Easy Run` over an `EASY` chip is what this pass removed. But a run headed
+     * with its workout's own name states no type at all, and there the mark's
+     * colour is the only thing carrying it — too little for `Race`, whose colour
+     * is very nearly the plain text colour. So the type appears exactly where
+     * the title dropped it.
+     */
+    expect(runIdentityFromRunLog(accepted, null, null).typeLabel).toBeNull();
+    expect(runIdentityFromRunLog(accepted, workout, null).typeLabel).toBeNull();
+
+    const named = runIdentityFromRunLog(
+      accepted,
+      { ...workout, title: "Yasso 800s" },
+      null,
+    );
+    expect(named.title).toBe("Yasso 800s");
+    expect(named.typeLabel).toBe("Easy");
+  });
+
+  it("does not restate the type when the title already is the type", () => {
+    // `Easy Run` over an `EASY` chip is what this pass removed.
+    const identity = runIdentityFromRunLog(accepted, null, null);
+    expect(identity.title).toBe("Easy Run");
+    expect(identity.typeLabel).toBeNull();
+  });
+
   it("marks a run with no scheduled workout as extra rather than as plan", () => {
     expect(runIdentityFromRunLog(accepted, null, null).status)
       .toEqual({ label: "Extra", tone: "extra" });

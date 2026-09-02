@@ -450,6 +450,22 @@
   .sheet--instrument .sheet__panel {
     height: 90%;
   }
+
+  /*
+   * Run Detail is the same argument. Its four tabs are four views of one run,
+   * and Heart Rate is about 240px taller than the others because it carries the
+   * zone rows — so on a screen tall enough for the sheet to fit its content,
+   * changing tabs resized the whole panel and moved the chart out from under
+   * the runner's finger.
+   *
+   * Pinned only when there is an Analysis module to switch between: a run whose
+   * source sent no stream is genuinely short, and giving it a near-full-screen
+   * sheet would be a wall of empty surface. A browser without `:has()` keeps
+   * the content-sized behaviour it has today rather than breaking.
+   */
+  .sheet--run-detail:has(.run-analysis) .sheet__panel {
+    height: 90%;
+  }
 }
 
 @media (min-width: 768px) {
@@ -464,6 +480,12 @@
     border-radius: var(--radius-lg);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
     animation: sheet-fade-in 200ms ease-out;
+  }
+
+  /* The same rule on a centred dialog, where a resize moves both edges at once
+     and is more distracting still. */
+  .sheet--run-detail:has(.run-analysis) .sheet__panel {
+    height: min(88vh, 860px);
   }
 }
 
@@ -4913,6 +4935,18 @@ textarea.run-input {
  *    is a heading a person reads; everything measured is set in the data face.
  */
 
+/*
+ * One colour per kind of running, resolved once on the identity itself, so the
+ * run's mark and the word for its type cannot drift apart.
+ */
+.run-identity { --run-type-color: var(--text-muted); }
+.run-identity[data-type="easy"] { --run-type-color: var(--easy); }
+.run-identity[data-type="intervals"] { --run-type-color: var(--intervals); }
+.run-identity[data-type="simulation"] { --run-type-color: var(--simulation); }
+.run-identity[data-type="long"] { --run-type-color: var(--long); }
+.run-identity[data-type="cross"] { --run-type-color: var(--cross); }
+.run-identity[data-type="race"] { --run-type-color: var(--race); }
+
 .run-identity {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -4933,15 +4967,8 @@ textarea.run-input {
   display: grid;
   place-items: center;
   padding-top: 2px;
-  color: var(--text-muted);
+  color: var(--run-type-color);
 }
-
-.run-identity__mark[data-type="easy"] { color: var(--easy); }
-.run-identity__mark[data-type="intervals"] { color: var(--intervals); }
-.run-identity__mark[data-type="simulation"] { color: var(--simulation); }
-.run-identity__mark[data-type="long"] { color: var(--long); }
-.run-identity__mark[data-type="cross"] { color: var(--cross); }
-.run-identity__mark[data-type="race"] { color: var(--race); }
 
 .run-identity__lines {
   display: grid;
@@ -4998,6 +5025,10 @@ textarea.run-input {
 /* A planned run is the one status worth a colour: it is the answer to "did this
    count towards the plan?", which is the question a runner is actually asking. */
 .run-identity__status[data-tone="plan"] { color: var(--accent); }
+
+/* The type, when the title did not state it, reads in the mark's own colour, so
+   the word and the glyph are visibly the same fact. */
+.run-identity__status[data-tone="type"] { color: var(--run-type-color); }
 
 /* The linked workout, on its own line: context for the run, not a tag. */
 .run-identity__plan {
