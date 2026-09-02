@@ -31,7 +31,11 @@ describe("run option facts", () => {
     })).toEqual([
       { label: "Source", value: "Intervals.icu" },
       { label: "Effort", value: "Great" },
+      { label: "Avg HR", value: "153 bpm" },
       { label: "Max HR", value: "174 bpm" },
+      { label: "Gain", value: "116 ft" },
+      { label: "Cadence", value: "79" },
+      { label: "Training load", value: "42" },
       { label: "Elapsed", value: "34:00" },
       { label: "Moving", value: "30:18" },
       { label: "Imported", value: "Aug 13, 2026" },
@@ -49,8 +53,33 @@ describe("run option facts", () => {
     expect(rows).toContainEqual({ label: "Avg HR (entered)", value: "142 bpm" });
   });
 
+  const noAggregates: SourceRunFacts = {
+    ...facts,
+    elapsedTimeSeconds: null,
+    averageHeartRate: null,
+    maxHeartRate: null,
+    elevationGainFeet: null,
+    averageCadence: null,
+    trainingLoad: null,
+  };
+
   it("says nothing at all about a run with nothing administrative to say", () => {
-    expect(sourceRunOptionFacts({ ...facts, elapsedTimeSeconds: null, maxHeartRate: null })).toEqual([]);
+    expect(sourceRunOptionFacts(noAggregates)).toEqual([]);
+  });
+
+  it("keeps every source aggregate reachable once the strip above Analysis is gone", () => {
+    /*
+     * Analysis is where these are read — each tab states its own figures with
+     * the run's shape behind them. These rows answer the other question, "what
+     * exactly did the source send?", and they answer it for a run with no
+     * stream at all, which has no tab to state them. Training load is here and
+     * nowhere else: no stream, so no tab can own it.
+     */
+    expect(sourceRunOptionFacts({ ...noAggregates, averageCadence: 79, trainingLoad: 42 }))
+      .toEqual([
+        { label: "Cadence", value: "79" },
+        { label: "Training load", value: "42" },
+      ]);
   });
 
   it("keeps Max HR discoverable when an aggregate-only run has no Heart Rate tab", () => {

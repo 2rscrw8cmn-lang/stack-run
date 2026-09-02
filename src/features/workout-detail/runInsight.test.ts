@@ -10,32 +10,33 @@ import { runInsight } from "./runInsight.js";
  * numbers the source gave it, and never a verdict on the run.
  */
 describe("run insight", () => {
-  it("states the zone a run mostly happened in, with its share and its duration", () => {
-    expect(runInsight({ hrZoneSeconds: [120, 1_875, 300, 180, 0], structuredIntervalCount: 0 }))
-      .toEqual({ kind: "zone", text: "76% of this run was in Zone 2 · 31:15" });
-  });
-
-  it("says nothing about zones when the run was in no particular zone", () => {
-    // Four zones at roughly a quarter each: true, and useless as a headline.
-    expect(runInsight({ hrZoneSeconds: [600, 640, 610, 620], structuredIntervalCount: 0 }))
-      .toBeNull();
-  });
-
-  it("counts the structured groups the source actually named when there are no zones", () => {
-    expect(runInsight({ hrZoneSeconds: null, structuredIntervalCount: 4 }))
+  it("counts the structured groups the source actually named", () => {
+    expect(runInsight({ structuredIntervalCount: 4 }))
       .toEqual({ kind: "intervals", text: "4 structured intervals recorded" });
-    expect(runInsight({ hrZoneSeconds: null, structuredIntervalCount: 1 }))
+    expect(runInsight({ structuredIntervalCount: 1 }))
       .toEqual({ kind: "intervals", text: "1 structured interval recorded" });
   });
 
-  it("has nothing to say about a run whose source supplied neither", () => {
-    expect(runInsight({ hrZoneSeconds: null, structuredIntervalCount: 0 })).toBeNull();
-    expect(runInsight({ hrZoneSeconds: [], structuredIntervalCount: 0 })).toBeNull();
-    expect(runInsight({ hrZoneSeconds: [0, 0, 0], structuredIntervalCount: 0 })).toBeNull();
+  it("has nothing to say about a run whose source named no groups", () => {
+    expect(runInsight({ structuredIntervalCount: 0 })).toBeNull();
   });
 
-  it("prefers the zone statement to the interval count when it has both", () => {
-    expect(runInsight({ hrZoneSeconds: [100, 900, 0], structuredIntervalCount: 6 })?.kind)
-      .toBe("zone");
+  it("cannot state a heart-rate fact at all", () => {
+    /*
+     * The follow-up pass removed the zone headline — `76% of this run was in
+     * Zone 2` — from above Analysis. It was true, and it was in the wrong
+     * place: a zone share is a heart-rate fact, Heart Rate states the whole
+     * distribution as rows, and promoting the largest row made a heart-rate
+     * reading the headline of every run that had zones at all.
+     *
+     * The rule is enforced by shape rather than by discipline: zone durations
+     * are not an input here any more, so no future pass can reintroduce the
+     * sentence by passing them in.
+     */
+    expect(Object.keys(runInsight({ structuredIntervalCount: 2 }) ?? {})).toEqual(["kind", "text"]);
+    expect(runInsight({ structuredIntervalCount: 0 })).toBeNull();
+    // `hrZoneSeconds` is not part of the input type; passing it changes nothing.
+    const withZones = { structuredIntervalCount: 0, hrZoneSeconds: [120, 1_875, 300] };
+    expect(runInsight(withZones)).toBeNull();
   });
 });

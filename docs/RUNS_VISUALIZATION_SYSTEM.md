@@ -361,6 +361,14 @@ The truth rules are unchanged: gaps stay gaps, outliers are clamped for drawing
 only, and every stated number beside a chart is a source aggregate rather than
 anything derived from the samples.
 
+**Analysis is also the only place Run Detail states a secondary metric.** There
+is no strip of aggregates above it and no summary card below it: heart rate,
+elevation and cadence are read in the tab that owns them, and training load —
+which has no stream, so no tab — is stated behind `…`. Heart-rate zones are
+full-width rows inside Heart Rate with no ring beside them; a donut states the
+same composition in a form that cannot carry a duration, and the width it took
+belongs to the bars.
+
 ## Chart styling
 
 Use the existing Performance Arcade system selectively:

@@ -552,9 +552,11 @@ Current baseline:
 
 Run-metric icons are their own row of that table on purpose. `Mountain` already
 means "long run" and `MountainSnow` means "elevation"; `Footprints` and `Zap`
-are shared with Easy and Intervals, and may be, because Run Detail states a
-run's activity type as a text chip rather than as an icon — the two never appear
-together on one surface.
+are shared with Easy and Intervals, and may be, because a run's activity type is
+never drawn as one of these icons. Where Run Detail needs to say what kind of
+running a run was, it uses the **STACK runner mark in that type's colour**
+(`StackMark`, `monochrome`) — one glyph, coloured, with no ring — so a metric
+icon and a type icon never appear together on one surface.
 
 Typical sizes:
 

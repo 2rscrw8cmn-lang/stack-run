@@ -2,11 +2,10 @@
 
 **Status:** current contract. R3 implemented the shared source-detail
 architecture and the QA review states described here; **issue #214 (Run Detail
-3.0)** rebuilt the presentation on top of it — identity, one dominant result, a
-compact semantic metric strip, an interactive **Analysis** module as the only
-detailed metric surface, heart-rate zones inside heart rate, and
-administrative/provenance content behind the `…` run-options control. Owner
-visual acceptance of 3.0 is outstanding.
+3.0)** rebuilt the presentation on top of it — identity, one dominant result, an
+interactive **Analysis** module as the only detailed metric surface, heart-rate
+zones inside heart rate, and administrative/provenance content behind the `…`
+run-options control. Owner visual acceptance of 3.0 is outstanding.
 **Companion:** `docs/RUNS_PRODUCT_MODEL.md` and `docs/RUNS_VISUALIZATION_SYSTEM.md`.
 
 ## Purpose
@@ -132,8 +131,9 @@ the screen each level gets, and how much of it can be interrogated.
 
 ### Identity leads, in the body
 
-The run's identity — its mark, its name, the local date and time, its chips and
-its plan context — is the **first content of the sheet, not the sheet's chrome**.
+The run's identity — its mark, its name, the plan/extra status, the local date
+and time and its plan context — is the **first content of the sheet, not the
+sheet's chrome**.
 It scrolls away as the runner moves into Analysis, and the fixed chrome is the
 grabber, `…` and Close. The dialog keeps an accessible name (the same title,
 present but not drawn); it is deliberately not a heading, so the visible
@@ -155,24 +155,50 @@ source's name is the best identity there is.
 There is no further case: a run with none of the above is not given an invented
 name, and `Run Detail` is no longer a heading anywhere.
 
-### Result, then supporting facts
+**The mark is the STACK runner in one colour — the run's own type colour** —
+drawn from the same artwork as every other appearance of it (`StackMark`, with
+`monochrome`). No ring around it: a circle made a glyph into a badge, and at
+heading size the badge outweighed the title beside it. A historical-only run has
+no classification, so its mark is the plain text colour rather than a guess.
+
+**The type has no chip.** A run headed `Easy Run` under an `EASY` chip said the
+same thing twice; the colour of the mark carries the type instead, in the same
+place on every run and at no cost in vertical space. What remains is the run's
+**status — `EXTRA`, `PLAN` or `HISTORY` — beside the title**, at a fraction of
+its weight and without a pill around it: it answers a different question from
+the title and is a footnote to it, not a peer.
+
+### The result, and nothing beside it
 
 No panel: hairline rules above and below, thin dividers between, and the
 hierarchy carried by type — distance dominant and in STACK lime, duration and
-average pace beside it, units set smaller than the figures. Where the run is linked to a workout
-with an **exact** distance target, one quiet line under the distance states the
-comparison — `+0.12 mi vs plan`, or `On plan · 3 mi`. A range target (`3-4`)
-states a band rather than a number and yields no line at all; see
-`planDistanceComparison`. Underneath, a compact strip of the source's other
-aggregates — average HR, gain, cadence, load — each with its own icon and
-`--metric-color`. Max HR joins the strip only when there is no heart-rate chart
-to support. Fields that do not exist are absent, never zero.
+average pace beside it, units set smaller than the figures. Where the run is
+linked to a workout with an **exact** distance target, one quiet line under the
+distance states the comparison — `+0.12 mi vs plan`, or `On plan · 3 mi`. A
+range target (`3-4`) states a band rather than a number and yields no line at
+all; see `planDistanceComparison`. Fields that do not exist are absent, never
+zero.
 
-One deterministic insight may follow: the dominant heart-rate zone with its
-share and duration, or a count of the structured groups the source named. It is
-omitted when neither is available, when the dominant zone holds less than 35% of
-the zone time, and when the zone rows themselves are already on screen. STACK
-does not state a verdict on the run.
+**Three columns, one row, at every phone width.** Distance, duration and pace
+answer "what was this run" together and a runner reads them as one line, so the
+row is never folded or stacked. Two rules keep it honest with real values:
+
+- the columns are **content-sized** (`max-content`, with the slack distributed
+  between them), because a proportional grid gets `6 mi` beside `1:05:00`
+  wrong — one column overruns while the other sits half empty;
+- the **type is set from the run's own figures**, not from the viewport alone.
+  A duration past an hour or a distance into double figures switches the row to
+  a compact setting (`data-density`). Sizing every run for the longest one a
+  runner will ever open would leave a 5k small for no reason, and sizing none of
+  them for it clips `2:08:45`.
+
+The acceptance cases are `3.12 mi / 41:20 / 13:15 /mi`, `6.00 mi / 1:05:00 /
+10:50 /mi` and `13.10 mi / 2:08:45 / 9:50 /mi`, at 320, 360, 390 and 430px: one
+row, no clipping, no horizontal scroll, `/mi` intact.
+
+One deterministic insight may follow: a count of the structured groups the
+source named. It is omitted when there are none, and STACK does not state a
+verdict on the run.
 
 ### Analysis is the centre
 
@@ -237,15 +263,17 @@ serves a 320px phone and a desktop dialog without distortion.
 ### Zones belong to heart rate
 
 Compact ordered rows — zone identity, colour, a share bar, duration and
-percentage — inside the Heart Rate tab, beside a small ring showing the same
-composition at a glance. The ring is `aria-hidden`: the rows state every zone in
-text, and two sets of five controls saying the same thing is worse than one. It
-is hidden altogether below 360px, where the rows need the width. A run whose
-source stated zone durations but sent no stream keeps the same rows in a small
-section of its own rather than losing them.
+percentage — inside the Heart Rate tab, at the full width of the module. There
+is no ring beside them: a donut states the same composition in a form that
+cannot carry a duration, and the width it took came out of the bars, which are
+what make one zone's share readable against another's.
 
-What is gone from Run Detail is the *standalone* zone module, not the graphic;
-`DonutChart` is unchanged and Training Signals still uses it interactively.
+Zones appear only while Heart Rate is selected, and only when the source stated
+them. A zone array with no usable heart-rate stream does not grow a fallback
+card of its own.
+
+`DonutChart` itself is unchanged and Training Signals still uses it
+interactively; what Run Detail dropped is the graphic, not the component.
 
 STACK does **not** draw heart-rate zone bands across the chart: the source
 states zone *durations*, not zone boundaries in bpm, and drawing bands would
@@ -259,14 +287,27 @@ detail; changing tabs is the deliberate disclosure for another metric. This
 keeps Run Detail from printing smaller, passive copies of the same readings and
 shapes below the interactive instrument.
 
-The compact aggregate strip above Analysis remains the scan of secondary source
-facts. It is not a second analysis layer: average HR, Gain, Cadence and Load stay
-small, connected and subordinate. Max HR belongs in the Heart Rate tab when the
-profile supports one and remains discoverable in Run Options for an
-aggregate-only run.
+**There is no secondary metric strip above Analysis either.** The
+`AVG HR | GAIN | CADENCE | LOAD` row was removed: it stated those figures
+because the source happened to send them, which made the top of a run read as a
+dashboard and printed every one of them a second time in the tab that owns it.
+Each aggregate now has exactly one home:
 
-Heart-rate zones appear only while Heart Rate is selected. A source-only zone
-array without a usable heart-rate stream does not grow a fallback zone card.
+| Aggregate | Where it is read |
+| --- | --- |
+| Avg HR, Max HR | Heart Rate tab |
+| Gain, Low, High | Elevation tab |
+| Avg cadence | Cadence tab |
+| Training load | `…` run options — no stream, so no tab can own it |
+
+`sourceRunOptionFacts` states every one of them behind `…` as well, which is
+what keeps an aggregate-only run — no stream, so no tabs at all — from losing a
+source fact it genuinely holds.
+
+**No heart-rate headline above Analysis.** `76% of this run was in Zone 2` was
+true and in the wrong place: a zone share is a heart-rate fact, and Heart Rate
+states the whole distribution as rows. `runInsight` cannot state one at all any
+more — zone durations are not an input to it.
 
 ### `…` owns everything administrative
 
@@ -284,14 +325,15 @@ planned workout — has no such control, and keeps the compact meta line instead
 
 When data exists, Run Detail should read in this order:
 
-1. **Identity / context**
-2. **Primary result**
-3. **Compact secondary source facts**
-4. **Analysis** — one selected metric at a time
-5. **Heart-rate zones**, only inside selected Heart Rate analysis
-6. **Structured interval detail**
-7. **STACK actions** when the run is STACK-owned
-8. **Method/source explanation** behind disclosure when needed
+1. **Identity / context** — the run's mark in its type's colour, its title, the
+   plan/extra status beside that title, the date and start time
+2. **Primary result** — distance, duration, pace: three columns, one row
+3. **Analysis** — one selected metric at a time, and the only place a secondary
+   metric is stated
+4. **Heart-rate zones**, only inside selected Heart Rate analysis
+5. **Structured interval detail**
+6. **STACK actions** when the run is STACK-owned
+7. **Method/source explanation** behind disclosure when needed
 
 The precise visual arrangement may evolve, but this hierarchy should prevent the page from becoming a wall of equal cards.
 

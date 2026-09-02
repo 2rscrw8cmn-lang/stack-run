@@ -85,14 +85,13 @@ describe("QA rich-profile run", () => {
     expect(screen.getAllByText("49:40")).toHaveLength(2);
     expect(screen.getAllByText("9:33 /MI").length).toBeGreaterThan(0);
 
-    // Max HR has a chart to support, so it leaves the strip for the heart-rate
-    // analysis; the rest of the source's aggregates stay as compact facts.
-    const grid = screen.getByLabelText("Imported run metrics");
-    expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
-      .toEqual(["Avg HR", "Gain", "Cadence", "Load"]);
-    // 214 ft is the source's own climbing total; the synthetic altitude series
-    // spans about 51–154 ft, so a recomputed gain could not produce it.
-    expect(within(grid).getByText("214 ft")).toBeInTheDocument();
+    // Nothing else is stated up here. Every other aggregate the fixture sends
+    // belongs to a tab, and Elevation is where the source's climbing total is
+    // read: 214 ft, against a synthetic altitude series spanning about
+    // 51–154 ft, which a recomputed gain could not produce.
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("214 ft");
   });
 
   it("breaks each line where the synthetic stream stopped recording", async () => {
@@ -150,7 +149,7 @@ describe("QA aggregate-only run", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("still feels complete: the result, every stated aggregate, and cadence in the grid", async () => {
+  it("is its result, complete, with nothing invented to fill the space below it", async () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_AGGREGATE_ONLY_ACTIVITY_ID)} />);
     await vi.waitFor(() => expect(screen.queryByText("Loading run analysis")).not.toBeInTheDocument());
 
@@ -158,13 +157,18 @@ describe("QA aggregate-only run", () => {
     expect(hero).toHaveTextContent("4.1 mi");
     expect(hero).toHaveTextContent("40:40");
     expect(hero).toHaveTextContent("9:55 /MI");
-    // The strip is the same four facts whatever the run has. Detailed metric
-    // cards do not appear as a fallback when this run has no profile.
-    const grid = screen.getByLabelText("Imported run metrics");
-    expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
-      .toEqual(["Avg HR", "Gain", "Cadence", "Load"]);
-    expect(within(grid).getByText("80")).toBeInTheDocument();
+    /*
+     * This run's source stated an average heart rate, zones, a climbing total,
+     * a cadence and a load, and sent no stream at all. None of them appears
+     * here: no strip, no fallback card, no zone module. They are reachable
+     * behind `…` — see `runOptions.test.ts` — which is where source bookkeeping
+     * lives for every run, whether or not it has a profile.
+     */
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
     expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 });
 

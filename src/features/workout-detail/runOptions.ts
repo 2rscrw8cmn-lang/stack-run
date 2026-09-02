@@ -49,11 +49,34 @@ export function sourceRunOptionFacts(
   if (options.manualHeartRate != null) {
     rows.push({ label: "Avg HR (entered)", value: `${Math.round(options.manualHeartRate)} bpm` });
   }
-  // Max HR belongs in Heart Rate when a profile is available. Keeping the
-  // imported aggregate here as well means an aggregate-only run does not lose
-  // a real source fact merely because it cannot offer a Heart Rate tab.
+  /*
+   * The source's own aggregates, in full.
+   *
+   * Analysis is where a runner *reads* heart rate, elevation and cadence: each
+   * tab states its own figures with the run's shape behind them. These rows are
+   * the other question — "what exactly did the source send?" — and they answer
+   * it for every run, including the ones with no stream at all, where there is
+   * no tab to state them. Training load is here and nowhere else: it has no
+   * stream behind it, so no tab can own it.
+   *
+   * Nothing is computed. Every value below is the source's own number.
+   */
+  if (facts.averageHeartRate !== null) {
+    rows.push({ label: "Avg HR", value: `${Math.round(facts.averageHeartRate)} bpm` });
+  }
   if (facts.maxHeartRate !== null) {
     rows.push({ label: "Max HR", value: `${Math.round(facts.maxHeartRate)} bpm` });
+  }
+  if (facts.elevationGainFeet !== null) {
+    rows.push({ label: "Gain", value: `${Math.round(facts.elevationGainFeet).toLocaleString()} ft` });
+  }
+  // Verbatim: the source's own number, with no doubling and no unit STACK has
+  // not verified. See `docs/CONNECTED_DATA_FIELDS.md`.
+  if (facts.averageCadence !== null) {
+    rows.push({ label: "Cadence", value: Math.round(facts.averageCadence).toLocaleString() });
+  }
+  if (facts.trainingLoad !== null) {
+    rows.push({ label: "Training load", value: Math.round(facts.trainingLoad).toLocaleString() });
   }
   if (
     facts.durationSeconds !== null &&

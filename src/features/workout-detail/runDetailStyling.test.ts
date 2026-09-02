@@ -19,6 +19,40 @@ const tokensCss = readFileSync(join(styles, "tokens.css"), "utf8");
  * or a chart that stopped letting the page scroll past it.
  */
 describe("Run Detail layout", () => {
+  it("holds the result to one row of three, sized by its own figures", () => {
+    /*
+     * Two rules keep `6 mi | 1:05:00 | 10:50 /mi` on one line without clipping
+     * and without setting every 5k as small as a half marathon:
+     *
+     * 1. the columns hug their content and the slack goes between them, because
+     *    a proportional grid overruns one column while the next sits half
+     *    empty;
+     * 2. a run whose own figures are long — a duration past an hour, a distance
+     *    into double figures — is set smaller, which `SourceRunDetail` marks
+     *    with `data-density` from the formatted values themselves.
+     */
+    expect(componentsCss).toMatch(
+      /\.run-hero\s*\{[^}]*grid-template-columns: max-content max-content max-content[^}]*justify-content: space-between/s,
+    );
+    expect(componentsCss).toMatch(
+      /\.run-hero\s*\{[^}]*--hero-distance: clamp\(29px[^}]*--hero-pace: clamp\(23px/s,
+    );
+    expect(componentsCss).toMatch(
+      /\.run-hero\[data-density="compact"\]\s*\{[^}]*--hero-distance: clamp\(23px[^}]*--hero-pace: clamp\(19px/s,
+    );
+    // Every figure reads its size through those properties, so the compact
+    // setting cannot be defeated by a rule that hard-codes one of them.
+    expect(componentsCss).toMatch(/\.run-hero dd\s*\{[^}]*font-size: var\(--hero-figure\)/s);
+    expect(componentsCss).toMatch(
+      /\.run-hero > div\[data-metric="distance"\] dd\s*\{[^}]*font-size: var\(--hero-distance\)/s,
+    );
+    expect(componentsCss).toMatch(
+      /\.run-hero > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: var\(--hero-pace\)/s,
+    );
+    // The unit shrinks with the figures rather than being dropped to make room.
+    expect(componentsCss).toMatch(/\.run-hero__unit\s*\{[^}]*font-size: var\(--hero-unit\)/s);
+  });
+
   it("keeps the analysis tabs at the 44px interaction floor", () => {
     expect(componentsCss).toMatch(/\.run-profile__selector\s*\{[^}]*min-height: 44px/s);
     // The visible chip stays small; the target around it does not.
@@ -46,16 +80,42 @@ describe("Run Detail layout", () => {
     // Hairline rules and thin dividers, no panel: the three most important
     // numbers on the screen must not read as a widget on a dashboard.
     expect(componentsCss).toMatch(/\.run-hero\s*\{(?![^}]*background)[^}]*border-bottom: 1px solid var\(--border\)/s);
-    expect(componentsCss).toMatch(/\.run-hero > div \+ div\s*\{[^}]*border-left: 1px solid var\(--border\)/s);
+    expect(componentsCss).toMatch(/\.run-hero > div \+ div\s*\{[^}]*border-left: 1px solid/s);
   });
 
-  it("draws the supporting facts as one strip rather than four cards", () => {
-    // One container, internal dividers. Four bordered cells is the pattern the
-    // approved reference does not use.
+  it("has no secondary metric strip to style at all", () => {
+    /*
+     * The always-visible `AVG HR | GAIN | CADENCE | LOAD` row is gone, not
+     * restyled. Heart rate, elevation and cadence each own an Analysis tab that
+     * states the same figures with the run's shape behind them, and training
+     * load — which has no stream and so no tab — moved into `…`. A strip above
+     * Analysis made the top of a run read as a dashboard and printed every one
+     * of those numbers twice.
+     */
+    expect(componentsCss).not.toMatch(/\.run-metrics\s*\{/);
+    expect(componentsCss).not.toMatch(/\.run-metrics__icon/);
+  });
+
+  it("draws the run's mark as a type-coloured glyph rather than a badge", () => {
+    // No ring: a circle around the runner made a glyph into a badge, and at
+    // heading size the badge outweighed the title beside it.
     expect(componentsCss).toMatch(
-      /\.run-metrics\s*\{[^}]*border: 1px solid var\(--border\)[^}]*border-radius: var\(--radius-sm\)/s,
+      /\.run-identity__mark\s*\{(?![^}]*border-radius)[^}]*color: var\(--text-muted\)/s,
     );
-    expect(componentsCss).toMatch(/\.run-metrics > div \+ div\s*\{\s*border-left: 1px solid var\(--border\)/s);
+    for (const type of ["easy", "intervals", "simulation", "long", "cross", "race"]) {
+      expect(componentsCss, `missing mark colour for ${type}`).toMatch(
+        new RegExp(`\\.run-identity__mark\\[data-type="${type}"\\] \\{ color: var\\(--${type}\\); \\}`),
+      );
+    }
+  });
+
+  it("puts the run's status beside its title instead of under it as a chip", () => {
+    expect(componentsCss).toMatch(/\.run-identity__heading\s*\{[^}]*align-items: baseline/s);
+    // Not a pill: no border of its own, and smaller than the title it follows.
+    expect(componentsCss).toMatch(
+      /\.run-identity__status\s*\{(?![^}]*border)[^}]*font-size: var\(--type-meta\)/s,
+    );
+    expect(componentsCss).not.toMatch(/\.run-identity__chip\b/);
   });
 
   it("locks the analysis tabs, facts, plot and footer into one module", () => {
@@ -81,12 +141,9 @@ describe("Run Detail layout", () => {
       /\.run-hero\[data-count="2"\]\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
     );
     // Distance is the dominant figure and the one thing wearing the brand
-    // accent; pace shrinks because it is pace, not because it is last.
+    // accent — by a step, not by a display size that dwarfs the two beside it.
     expect(componentsCss).toMatch(
       /\.run-hero > div\[data-metric="distance"\] dd\s*\{[^}]*color: var\(--accent\)/s,
-    );
-    expect(componentsCss).toMatch(
-      /\.run-hero > div\[data-metric="pace"\] dd\s*\{[^}]*font-size: clamp\(21px/s,
     );
   });
 
@@ -96,7 +153,7 @@ describe("Run Detail layout", () => {
       /\.sheet--run-detail \.sheet__header--chrome\s*\{[^}]*border-bottom: 0/s,
     );
     // The identity that replaces it is the largest type after the result.
-    expect(componentsCss).toMatch(/\.run-identity__title\s*\{[^}]*font-size: clamp\(21px/s);
+    expect(componentsCss).toMatch(/\.run-identity__title\s*\{[^}]*font-size: clamp\(20px/s);
   });
 
   it("defines one colour per metric, in tokens, and reads it through a single custom property", () => {
@@ -147,12 +204,7 @@ describe("Run Detail layout", () => {
     );
   });
 
-  it("keeps the metric strip and the analysis tabs whole rather than stranding one cell", () => {
-    // Four compact facts across a phone, dropping to an even 2x2 rather than
-    // three-and-one when there is no longer room.
-    expect(componentsCss).toMatch(
-      /@media \(max-width: 359px\)\s*\{\s*\.run-metrics\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s,
-    );
+  it("keeps the analysis tabs whole rather than stranding one cell", () => {
     // All four metrics stay visible at once, as one tab bar rather than a
     // block of pills that cannot fit across a phone.
     expect(componentsCss).toMatch(

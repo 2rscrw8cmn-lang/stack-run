@@ -1231,10 +1231,35 @@ Second pass, against the owner's full-resolution reference (the committed
   Heart Rate is selected;
 - chart callouts name their companion readings (`HR 148 bpm`, `Elev 52 ft`).
 
-Verification: `npm run check` passes (206 files, 2554 tests). New coverage for
-chart geometry, scrubbing and its accessible readout, run identity, the insight
-rule, run-option facts, the refresh planner, the repository write and the sync
-wiring. Reviewed at 320 / 390 / 430 / 1024 px in Chromium against the approved
-reference; screenshots in `docs/design/run-detail-3/`. Real-device iOS review
-and owner visual acceptance are outstanding.
+Third pass — density, and the result under real values:
+- the `AVG HR | GAIN | CADENCE | LOAD` strip is **removed**, not restyled. Each
+  aggregate now has one home: heart rate, elevation and cadence in the Analysis
+  tab that owns them, training load — which has no stream, so no tab — behind
+  `…`, where `sourceRunOptionFacts` states every source aggregate so an
+  aggregate-only run loses nothing;
+- the heart-rate headline above Analysis (`76% of this run was in Zone 2`) is
+  gone with it, and `runInsight` no longer takes zone durations at all: a zone
+  share is a heart-rate fact and Heart Rate states the whole distribution;
+- the result keeps its three columns and gets materially smaller and tighter.
+  The columns are content-sized rather than proportional, and the type is set
+  from the run's own figures — a duration past an hour or a distance into double
+  figures switches the row to a compact setting — so `3.12 mi / 41:20 / 13:15`,
+  `6.00 mi / 1:05:00 / 10:50` and `13.10 mi / 2:08:45 / 9:50` all hold one row
+  at 320 / 360 / 390 / 430px with no clipping and no sideways scroll;
+- the identity loses its duplicate type chip (`Easy Run` under `EASY`): the run
+  status — `EXTRA` / `PLAN` / `HISTORY` — sits inline beside the title, and the
+  activity type is carried by the colour of the run's mark;
+- the mark becomes the STACK runner as a one-colour silhouette in the run type's
+  colour, with no ring around it (`StackMark`, `monochrome`);
+- the heart-rate zone ring is removed; the rows take the full width of the
+  module and their bars grow into the space it held.
+
+Verification: `npm run check` passes (206 files, 2560 tests). New coverage for
+chart geometry, scrubbing and its accessible readout, run identity and its
+status, the insight rule (including that it cannot state a zone fact),
+run-option facts, the refresh planner, the repository write and the sync wiring.
+Reviewed at 320 / 360 / 390 / 430 / 1024 px in Chromium, with the long-value
+result cases measured rather than eyeballed; screenshots in
+`docs/design/run-detail-3/`. Real-device iOS review and owner visual acceptance
+are outstanding.
 

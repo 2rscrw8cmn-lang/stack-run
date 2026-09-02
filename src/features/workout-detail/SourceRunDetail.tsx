@@ -1,10 +1,9 @@
-import { Footprints, HeartPulse, MountainSnow, Repeat, Zap } from "lucide-react";
+import { Repeat } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import { Button } from "../../components/ui/Button.js";
@@ -98,11 +97,16 @@ interface SourceRunDetailProps {
  *
  * 1. the run's own identity, when the caller knows it;
  * 2. one dominant result: distance, with duration and pace beside it;
- * 3. a compact strip of the source's other aggregates, each with its own colour
- *    and icon so heart rate is never mistaken for elevation at a glance;
- * 4. one factual insight, when there is one worth a line;
- * 5. **Analysis**, the centre of the screen: the run's shape, scrubbable;
- * 6. structured intervals, when the source named real groups.
+ * 3. **Analysis**, the centre of the screen: the run's shape, scrubbable, one
+ *    metric at a time;
+ * 4. structured intervals, when the source named real groups.
+ *
+ * There is deliberately no strip of secondary aggregates above Analysis. Heart
+ * rate, elevation, cadence and load were shown there because the source happened
+ * to state them, which made the top of a run read as a dashboard and printed the
+ * same figures the tab below states in full. Each now has exactly one home: its
+ * own Analysis tab, or — for training load, which has no stream behind it and so
+ * no tab to own it — the `…` run options.
  *
  * The governing rule is unchanged: **streams provide shape, aggregates provide
  * the stated numbers.** Loading is still summary-first — everything above
@@ -200,55 +204,62 @@ export function SourceRunDetail({
 
   const structuredIntervals = detail?.intervals ?? [];
   /**
-   * One headline fact. The zone rows further down state the whole distribution;
-   * this states the one line of it a runner would repeat afterwards.
+   * One factual line about the run's own structure, when the source named real
+   * groups. Heart-rate zones are deliberately not eligible: they are a
+   * heart-rate fact, and Heart Rate states the whole distribution.
    */
-  const insight = runInsight({
-    hrZoneSeconds: facts.hrZoneSeconds,
-    structuredIntervalCount: structuredIntervals.length,
-  });
-
-  /**
-   * The four supporting facts, as one strip. Max heart rate is deliberately not
-   * among them: it is a heart-rate fact, and the heart-rate module states it
-   * beside the average — either as the chart's own facts, or in the summary
-   * below. The strip is what a runner scans, not everything STACK holds.
-   */
-  const metrics = [
-    ...(facts.averageHeartRate !== null
-      ? [{ id: "heart-rate", icon: HeartPulse, label: "Avg HR", value: `${rounded(facts.averageHeartRate)} bpm` }]
-      : []),
-    // The source's own climbing total, not a sum of altitude changes.
-    ...(facts.elevationGainFeet !== null
-      ? [{ id: "elevation", icon: MountainSnow, label: "Gain", value: `${rounded(facts.elevationGainFeet)} ft` }]
-      : []),
-    ...(facts.averageCadence !== null
-      ? [{ id: "cadence", icon: Footprints, label: "Cadence", value: rounded(facts.averageCadence) }]
-      : []),
-    ...(facts.trainingLoad !== null
-      ? [{ id: "load", icon: Zap, label: "Load", value: rounded(facts.trainingLoad) }]
-      : []),
-  ];
+  const insight = runInsight({ structuredIntervalCount: structuredIntervals.length });
 
   const primaryCount = (facts.distanceMiles > 0 ? 1 : 0) +
     (facts.durationSeconds !== null ? 1 : 0) +
     (facts.paceSecondsPerMile !== null ? 1 : 0);
   const pace = facts.paceSecondsPerMile === null ? null : splitPace(facts.paceSecondsPerMile);
+  const distanceLabel = formatMiles(facts.distanceMiles);
+  const durationLabel = facts.durationSeconds === null
+    ? ""
+    : formatDurationSeconds(facts.durationSeconds);
+  /**
+   * Whether this run's own figures are long enough to need a smaller setting.
+   *
+   * A `3.12 mi / 41:20 / 13:15` run and a `13.10 mi / 2:08:45 / 9:50` run are
+   * the same three columns, and the second one does not fit at the first one's
+   * type size on a phone. Rather than sizing every run for the longest possible
+   * one — which would leave a 5k reading small for no reason — the row steps
+   * down only for the runs that need it: a duration that has crossed an hour,
+   * or a distance into double figures.
+   */
+  const compact = durationLabel.length >= 7 || distanceLabel.length >= 5;
 
   return (
     <div className="run-result-detail">
       {identity && (
         <header className="run-identity">
           {/*
-            The run's own mark. One symbol for every run rather than the
-            activity-type icon set: the type is stated in the chip below, and
-            `Footprints` already means cadence in this design system.
+            The STACK runner, in one colour: the run's own type colour, or the
+            plain text colour for history nobody has classified. The full-colour
+            artwork is the product's mark and does not survive being shrunk to
+            the size of a heading, and a ring around it made it a badge rather
+            than a glyph — the type is what the colour says here.
           */}
-          <span className="run-identity__mark" aria-hidden="true">
-            <StackMark size={22} />
+          <span
+            className="run-identity__mark"
+            data-type={identity.activityType ?? "unclassified"}
+            aria-hidden="true"
+          >
+            <StackMark size={26} monochrome />
           </span>
           <div className="run-identity__lines">
-            <h3 className="run-identity__title">{identity.title}</h3>
+            {/*
+              Title and status share one line. `Extra` and `Plan` answer a
+              different question from the title and take a fraction of its
+              weight to do it, so neither needs a row of its own.
+            */}
+            <div className="run-identity__heading">
+              <h3 className="run-identity__title">{identity.title}</h3>
+              <span className="run-identity__status machine-label" data-tone={identity.status.tone}>
+                {identity.status.label}
+              </span>
+            </div>
             <p className="run-identity__when machine-label">
               {formatDateLabel(identity.date, { weekday: "short", month: "short", day: "numeric" })}
               {identity.startTimeLabel && (
@@ -258,13 +269,6 @@ export function SourceRunDetail({
                 </>
               )}
             </p>
-            <div className="run-identity__chips">
-              {identity.chips.map((chip) => (
-                <span key={chip.id} className="run-identity__chip machine-label" data-tone={chip.tone}>
-                  {chip.label}
-                </span>
-              ))}
-            </div>
             {identity.planLine && <p className="run-identity__plan">{identity.planLine}</p>}
           </div>
         </header>
@@ -272,11 +276,16 @@ export function SourceRunDetail({
 
       {meta}
 
-      <dl className="run-hero" data-count={primaryCount} aria-label="Primary activity results">
+      <dl
+        className="run-hero"
+        data-count={primaryCount}
+        data-density={compact ? "compact" : "roomy"}
+        aria-label="Primary activity results"
+      >
         {facts.distanceMiles > 0 && (
           <div data-metric="distance">
             <dd className="data-value">
-              {formatMiles(facts.distanceMiles)} <span className="run-hero__unit">mi</span>
+              {distanceLabel} <span className="run-hero__unit">mi</span>
             </dd>
             <dt className="machine-label">
               Distance
@@ -286,7 +295,7 @@ export function SourceRunDetail({
         )}
         {facts.durationSeconds !== null && (
           <div data-metric="duration">
-            <dd className="data-value">{formatDurationSeconds(facts.durationSeconds)}</dd>
+            <dd className="data-value">{durationLabel}</dd>
             <dt className="machine-label">{showElapsed ? "Moving" : "Duration"}</dt>
           </div>
         )}
@@ -300,31 +309,9 @@ export function SourceRunDetail({
         )}
       </dl>
 
-      {metrics.length > 0 && (
-        <dl
-          className="run-metrics"
-          aria-label="Imported run metrics"
-          data-count={metrics.length}
-          style={{ "--metric-columns": Math.min(metrics.length, 4) } as CSSProperties}
-        >
-          {metrics.map((metric) => {
-            const Icon = metric.icon;
-            return (
-              <div key={metric.label} data-metric={metric.id}>
-                <Icon className="run-metrics__icon" size={15} strokeWidth={2} aria-hidden="true" />
-                <dd className="data-value">{metric.value}</dd>
-                <dt className="machine-label">{metric.label}</dt>
-              </div>
-            );
-          })}
-        </dl>
-      )}
-
       {insight && (
         <p className="run-insight" data-kind={insight.kind}>
-          {insight.kind === "zone"
-            ? <HeartPulse size={14} strokeWidth={2} aria-hidden="true" />
-            : <Repeat size={14} strokeWidth={2} aria-hidden="true" />}
+          <Repeat size={14} strokeWidth={2} aria-hidden="true" />
           <span>{insight.text}</span>
         </p>
       )}

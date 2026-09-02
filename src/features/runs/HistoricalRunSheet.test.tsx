@@ -73,8 +73,10 @@ describe("historical-only run detail", () => {
     expect(hero()).toHaveTextContent("6.2 mi");
     expect(hero()).toHaveTextContent("1:02:00");
     expect(hero()).toHaveTextContent("10:00 /MI");
-    expect(sheet.getByText("148 bpm")).toBeInTheDocument();
     expect(sheet.getByText("History")).toBeInTheDocument();
+    // The source's aggregates are not printed above the result: with no stream
+    // read yet there is no Analysis, and nothing stands in for it.
+    expect(sheet.queryByText("148 bpm")).not.toBeInTheDocument();
     // The source's own name for the activity leads, rather than "Run Detail".
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Morning Run");
 
@@ -97,7 +99,7 @@ describe("historical-only run detail", () => {
     const sheet = within(screen.getByRole("dialog"));
     expect(hero()).toHaveTextContent("6.2 mi");
     expect(hero()).toHaveTextContent("10:00 /MI");
-    expect(sheet.getByText("71")).toBeInTheDocument();
+    expect(sheet.getByRole("heading", { name: "Morning Run" })).toBeInTheDocument();
     // And no chart frame standing empty while it waits.
     expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
   });
@@ -143,10 +145,9 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
 
     const sheet = within(screen.getByRole("dialog"));
-    await vi.waitFor(() => expect(sheet.getByText("148 bpm")).toBeInTheDocument());
+    await vi.waitFor(() => expect(hero()).toHaveTextContent("6.2 mi"));
     expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
     expect(sheet.queryByRole("alert")).not.toBeInTheDocument();
-    expect(hero()).toHaveTextContent("6.2 mi");
   });
 
   it("keeps the summary when the profile read fails outright", async () => {
@@ -157,8 +158,8 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
 
     const sheet = within(screen.getByRole("dialog"));
-    await vi.waitFor(() => expect(sheet.getByText("148 bpm")).toBeInTheDocument());
-    expect(hero()).toHaveTextContent("6.2 mi");
+    await vi.waitFor(() => expect(hero()).toHaveTextContent("6.2 mi"));
+    expect(hero()).toHaveTextContent("10:00 /MI");
     expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
     expect(sheet.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -218,6 +219,7 @@ describe("historical-only source truth", () => {
 
     // 61 m of source-stated climbing is 200 ft; the altitude series only spans
     // 30.0–36.0 m, so a recomputed gain would be a different number entirely.
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
     expect(sheet.getByText("200 ft")).toBeInTheDocument();
   });
 

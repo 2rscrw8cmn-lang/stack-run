@@ -121,7 +121,8 @@ describe("Runs history", () => {
     expect(sheet.getByText(/Wed, Aug 12/)).toBeInTheDocument();
     expect(sheet.getByText(/6:00 AM/)).toBeInTheDocument();
     expect(sheet.getByText("History")).toBeInTheDocument();
-    expect(sheet.getByText("148 bpm")).toBeInTheDocument();
+    // The source's aggregates are behind `…`, not printed above the result.
+    expect(sheet.queryByText("148 bpm")).not.toBeInTheDocument();
     expect(sheet.getByText(/not logged in STACK/i)).toBeInTheDocument();
     // No editing, no plan linking, no importing: nothing to decide here.
     expect(sheet.queryByRole("button", { name: "Edit Run" })).not.toBeInTheDocument();

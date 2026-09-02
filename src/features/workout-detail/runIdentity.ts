@@ -28,11 +28,11 @@ import { runnerRunActivityKind, type RunnerRun } from "../../history/runnerRun.j
  */
 export type RunIdentityTitleSource = "source-activity" | "planned-workout" | "classification";
 
-export interface RunIdentityChip {
-  id: string;
+export interface RunIdentityStatus {
+  /** `Plan`, `Extra` or `History`. */
   label: string;
-  /** Activity type for a type chip, or the run's status. Drives the chip colour. */
-  tone: string;
+  /** Drives the marker's colour. */
+  tone: "plan" | "extra" | "history";
 }
 
 export interface RunIdentity {
@@ -56,7 +56,14 @@ export interface RunIdentity {
   startTimeLabel: string | null;
   /** `Week 3 · Easy 3 mi`, only when this run really is linked to that workout. */
   planLine: string | null;
-  chips: RunIdentityChip[];
+  /**
+   * Whether this run belongs to the plan, sits outside it, or is history STACK
+   * does not own. It rides beside the title as one small marker rather than as
+   * a chip of its own: a run titled `Easy Run` under an `EASY` chip said the
+   * same thing twice, and the activity type is now carried by the colour of the
+   * run's mark instead.
+   */
+  status: RunIdentityStatus;
 }
 
 /**
@@ -131,18 +138,6 @@ export function formatStartTime(startTimeLocal: string | null): string | null {
 }
 
 /**
- * The activity-type chip.
- *
- * Always present on an owned run, even when the title is the classification
- * itself. The chip is not a repetition of the heading: it is the colour that
- * identifies the kind of running at a glance, in the same place on every run,
- * and it sits beside the Plan/Extra chip that answers the other question.
- */
-function typeChip(activityType: RunActivityType): RunIdentityChip[] {
-  return [{ id: "type", label: WORKOUT_TYPE_LABEL[activityType], tone: activityType }];
-}
-
-/**
  * The identity of a run STACK owns.
  *
  * `mirror` is the same physical run as seen in the connected history, when
@@ -182,14 +177,9 @@ export function runIdentityFromRunLog(
         ? `Week ${workout.weekNumber}`
         : `Week ${workout.weekNumber} · ${workout.title}`
       : null,
-    chips: [
-      ...typeChip(runLog.activityType),
-      {
-        id: "status",
-        label: workout ? "Plan" : "Extra",
-        tone: workout ? "plan" : "extra",
-      },
-    ],
+    status: workout
+      ? { label: "Plan", tone: "plan" }
+      : { label: "Extra", tone: "extra" },
   };
 }
 
@@ -200,7 +190,7 @@ export function runIdentityFromRunLog(
  * classified this run, so the source's own name for it is the best identity
  * that exists. The rule that makes it safe is subtraction: a historical-only
  * run gets its source's name and start time and nothing else. No plan line, because it is
- * linked to nothing; no activity-type chip, because nobody has classified it;
+ * linked to nothing; no activity type, because nobody has classified it;
  * and where the source stated no name, the title falls back to what the source
  * type verifiably is — a run, or a cross-training session — rather than to a
  * workout title STACK would have had to invent.
@@ -216,6 +206,6 @@ export function runIdentityFromRunnerRun(run: RunnerRun): RunIdentity {
     date: run.date,
     startTimeLabel: formatStartTime(run.startTimeLocal),
     planLine: null,
-    chips: [{ id: "status", label: "History", tone: "history" }],
+    status: { label: "History", tone: "history" },
   };
 }

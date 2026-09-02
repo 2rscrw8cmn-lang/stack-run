@@ -276,18 +276,23 @@ actions/provenance** — without forking the shared path:
   one exists, otherwise STACK's classification. The source's own activity name
   remains the identity only for historical-only activity and stays behind `…`
   for an owned run. Nothing is invented.
-- `SourceRunDetail` renders the hero result, a compact icon/colour metric strip,
-  one deterministic insight, the **Analysis** module and structured intervals.
+- `SourceRunDetail` renders the identity, the hero result, one deterministic
+  insight, the **Analysis** module and structured intervals. There is no
+  secondary metric strip: every source aggregate is read in the Analysis tab
+  that owns it, and training load — which has no stream, so no tab — is stated
+  behind `…` with the rest of them.
 - `RunAnalysis` + `ActivityChart` own the analysis: per-metric treatments (pace
   line over an elevation silhouette, filled heart rate with the imported average
   drawn across it, filled elevation terrain, stepped cadence), a real y-axis, and
   touch/keyboard scrubbing with a crosshair and a persistent callout.
-- Heart-rate zones are compact rows **inside** Heart Rate. A run with zone
-  durations but no usable heart-rate stream does not grow a fallback card.
+- Heart-rate zones are compact full-width rows **inside** Heart Rate, with no
+  ring beside them. A run with zone durations but no usable heart-rate stream
+  does not grow a fallback card.
 - Analysis is the only detailed Pace / Heart Rate / Elevation / Cadence surface;
   there are no persistent metric summary cards beneath it.
 - `RunOptionsSheet` behind the `…` control owns Edit Run, plan linking, source
-  and import provenance, elapsed time, effort and the methodology note.
+  and import provenance, every source aggregate (avg/max HR, gain, cadence,
+  training load), elapsed time, effort and the methodology note.
 
 On-demand streams may expose Pace, Heart Rate, Elevation and Cadence when recognized.
 

@@ -82,20 +82,23 @@ describe("run identity", () => {
     expect(identity.sourceName).toBeNull();
   });
 
-  it("states the kind of running and the plan relationship as chips, always", () => {
+  it("states the plan relationship and nothing that repeats the title", () => {
     const identity = runIdentityFromRunLog(accepted, workout, mirrorFor(accepted, { name: "Sunrise 5k" }));
-    expect(identity.chips.map((chip) => chip.label)).toEqual(["Easy", "Plan"]);
-    expect(identity.chips.map((chip) => chip.tone)).toEqual(["easy", "plan"]);
+    expect(identity.status).toEqual({ label: "Plan", tone: "plan" });
 
-    // The type chip is not a repetition of a classification heading: it is the
-    // colour that identifies the kind of running, in the same place every time.
-    const extra = runIdentityFromRunLog(stackRun("run-3", "2026-08-04"), null, null);
-    expect(extra.chips.map((chip) => chip.label)).toEqual(["Easy", "Extra"]);
+    /*
+     * There is no activity-type chip any more. A run headed `Easy Run` with an
+     * `EASY` chip immediately beneath it said the same thing twice; the kind of
+     * running is now carried by the colour of the run's own mark, which is in
+     * the same place on every run and costs no line of the screen.
+     */
+    expect(identity.activityType).toBe("easy");
+    expect(Object.keys(identity)).not.toContain("chips");
   });
 
   it("marks a run with no scheduled workout as extra rather than as plan", () => {
-    expect(runIdentityFromRunLog(accepted, null, null).chips.map((chip) => chip.label))
-      .toContain("Extra");
+    expect(runIdentityFromRunLog(accepted, null, null).status)
+      .toEqual({ label: "Extra", tone: "extra" });
   });
 
   it("reads the local start time off the mirror, which is the only record that has one", () => {
@@ -118,7 +121,9 @@ describe("run identity", () => {
 
     expect(identity.title).toBe("Evening Loop");
     expect(identity.planLine).toBeNull();
-    expect(identity.chips).toEqual([{ id: "status", label: "History", tone: "history" }]);
+    expect(identity.status).toEqual({ label: "History", tone: "history" });
+    // Nobody has classified it, so it has no type to colour its mark with.
+    expect(identity.activityType).toBeNull();
   });
 
   it("says only what a nameless historical activity verifiably is", () => {

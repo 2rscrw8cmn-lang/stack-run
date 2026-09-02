@@ -215,7 +215,9 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("151 bpm")).toBeInTheDocument();
+    // No stream, so no Analysis — and no strip of aggregates standing in for
+    // it. The heart rate this run's source stated is behind `…`.
+    expect(sheet.queryByText("151 bpm")).not.toBeInTheDocument();
     expect(
       sheet.queryByRole("list", { name: "Heart rate zone distribution" }),
     ).not.toBeInTheDocument();

@@ -1,7 +1,6 @@
 import { useId } from "react";
 import { ActivityChart, type ActivityChartCompanion } from "../../components/charts/ActivityChart.js";
 import type { ActivitySample } from "../../components/charts/activityChartGeometry.js";
-import { DonutChart } from "../../components/charts/DonutChart.js";
 import { ZoneDistribution } from "../../components/charts/ZoneDistribution.js";
 import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments.js";
 import type { IntervalsRunProfile } from "../../connected/intervals.js";
@@ -84,12 +83,6 @@ export function RunAnalysis({ facts, profile, selectedMetric, onSelectMetric }: 
 
   const zoneSegments = facts.hrZoneSeconds ? zoneDonutSegments(facts.hrZoneSeconds) : [];
   const showZones = active.id === "heartRate" && zoneSegments.some((segment) => segment.value > 0);
-  const zoneTotal = zoneSegments.reduce((sum, segment) => sum + segment.value, 0);
-  /** The zone the run mostly happened in, which is what the ring's centre states. */
-  const dominantZone = zoneSegments.reduce(
-    (best, segment) => (segment.value > best.value ? segment : best),
-    zoneSegments[0] ?? { label: "", value: 0, valueLabel: "", color: "" },
-  );
 
   return (
     <section className="run-analysis" aria-labelledby={headingId}>
@@ -165,28 +158,12 @@ export function RunAnalysis({ facts, profile, selectedMetric, onSelectMetric }: 
         <div className="run-analysis__zones">
           <p className="run-analysis__zones-heading machine-label">Time in zone</p>
           {/*
-            The ring is the composition at a glance and the rows are the
-            composition in full. Both are compact and both live inside heart
-            rate: what issue #214 removed was the standalone zone module, not
-            the graphic — and `DonutChart`'s own legend stays hidden here
-            because the rows beside it are the accessible authority.
+            Rows, at the full width of the module. A ring beside them showed the
+            same composition a second time in a form that cannot state a
+            duration, and the space it took came out of the bars — which are
+            what makes one zone's share readable against another's.
           */}
-          <div className="run-analysis__zone-figure">
-            {/*
-              Hidden from assistive technology on purpose: the rows beside it
-              state every zone's identity, duration and share as text, and two
-              sets of five controls saying the same thing is worse than one.
-            */}
-            <div className="run-analysis__zone-ring" aria-hidden="true">
-              <DonutChart
-                segments={zoneSegments}
-                label="Heart rate zone ring"
-                centerValue={`${Math.round((dominantZone.value / (zoneTotal || 1)) * 100)}%`}
-                centerLabel={dominantZone.label}
-              />
-            </div>
-            <ZoneDistribution segments={zoneSegments} label="Heart rate zone distribution" />
-          </div>
+          <ZoneDistribution segments={zoneSegments} label="Heart rate zone distribution" />
         </div>
       )}
     </section>

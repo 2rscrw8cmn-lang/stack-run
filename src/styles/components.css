@@ -4922,20 +4922,43 @@ textarea.run-input {
   border-bottom: 1px solid var(--border);
 }
 
-/* The run's own mark: one small lime ring, not a second colour system. */
+/*
+ * The run's own mark: the STACK runner as a silhouette, in the colour of the
+ * kind of running it was. No ring — a circle around it made a glyph into a
+ * badge, and the badge was the loudest thing on the screen at the size a
+ * heading needs. The colour is the type, which is why the type no longer needs
+ * a chip repeating the title underneath it.
+ */
 .run-identity__mark {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 50%;
-  color: var(--accent);
+  padding-top: 2px;
+  color: var(--text-muted);
 }
+
+.run-identity__mark[data-type="easy"] { color: var(--easy); }
+.run-identity__mark[data-type="intervals"] { color: var(--intervals); }
+.run-identity__mark[data-type="simulation"] { color: var(--simulation); }
+.run-identity__mark[data-type="long"] { color: var(--long); }
+.run-identity__mark[data-type="cross"] { color: var(--cross); }
+.run-identity__mark[data-type="race"] { color: var(--race); }
 
 .run-identity__lines {
   display: grid;
-  gap: 5px;
+  gap: 3px;
+  min-width: 0;
+}
+
+/*
+ * Title and status on one line, the status riding the title's baseline. It
+ * wraps to its own line only if the title genuinely fills the row, which keeps
+ * a long source-supplied name from pushing it off the screen.
+ */
+.run-identity__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -4946,7 +4969,7 @@ textarea.run-input {
  */
 .run-identity__title {
   margin: 0;
-  font-size: clamp(21px, 6vw, 27px);
+  font-size: clamp(20px, 5.6vw, 25px);
   font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -4959,43 +4982,22 @@ textarea.run-input {
   font-size: var(--type-label);
 }
 
-.run-identity__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.run-identity__chip {
-  padding: 3px 9px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
+/*
+ * `EXTRA` / `PLAN` / `HISTORY`, beside the title. Deliberately not a pill: at
+ * this size a bordered chip is a second object competing with the heading, and
+ * the fact it carries is a footnote to the title rather than a peer of it.
+ */
+.run-identity__status {
+  flex: none;
   color: var(--text-subtle);
   font-size: var(--type-meta);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
 }
 
-/*
- * The type chip carries the activity's colour as a tint; the status chip beside
- * it stays neutral. Two coloured pills would compete, and which kind of running
- * this was is the one a runner reads first.
- */
-.run-identity__chip[data-tone="easy"],
-.run-identity__chip[data-tone="intervals"],
-.run-identity__chip[data-tone="simulation"],
-.run-identity__chip[data-tone="long"],
-.run-identity__chip[data-tone="cross"],
-.run-identity__chip[data-tone="race"] {
-  border-color: color-mix(in srgb, currentColor 45%, transparent);
-  background: color-mix(in srgb, currentColor 13%, transparent);
-}
-
-.run-identity__chip[data-tone="easy"] { color: var(--easy); }
-.run-identity__chip[data-tone="intervals"] { color: var(--intervals); }
-.run-identity__chip[data-tone="simulation"] { color: var(--simulation); }
-.run-identity__chip[data-tone="long"] { color: var(--long); }
-.run-identity__chip[data-tone="cross"] { color: var(--cross); }
-.run-identity__chip[data-tone="race"] { color: var(--race); }
+/* A planned run is the one status worth a colour: it is the answer to "did this
+   count towards the plan?", which is the question a runner is actually asking. */
+.run-identity__status[data-tone="plan"] { color: var(--accent); }
 
 /* The linked workout, on its own line: context for the run, not a tag. */
 .run-identity__plan {
@@ -5014,13 +5016,46 @@ textarea.run-input {
  * below, and thin dividers between. The old dark panel made the most important
  * three numbers on the screen look like a widget on a dashboard.
  */
+/*
+ * Three columns, sized by what each one has to hold rather than evenly: a
+ * distance is `13.10 mi`, a duration can be `2:08:45`, and a pace is always a
+ * figure plus a unit. The widths below are the worst case of each, which is why
+ * the row survives a half marathon as well as it survives a 5k.
+ */
 .run-hero {
+  /*
+   * One setting for a run whose figures are short, and one for a run whose are
+   * long — a duration past an hour, or a distance into double figures. Both are
+   * three columns on one row; the long one is simply set smaller, because the
+   * alternative is either clipping `2:08:45` or setting every 5k as small as
+   * the longest run a runner will ever open. `SourceRunDetail` decides which,
+   * from the run's own formatted values.
+   */
+  --hero-distance: clamp(29px, 9.4vw, 38px);
+  --hero-figure: clamp(25px, 7.6vw, 31px);
+  --hero-pace: clamp(23px, 7vw, 29px);
+  --hero-unit: 12px;
+
+  /*
+   * Columns hug their own figures and the slack goes between them, rather than
+   * three fixed shares that a long duration overruns and a short one leaves
+   * half empty. `6 mi` and `1:05:00` in the same row is exactly the case a
+   * proportional grid gets wrong.
+   */
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.95fr) minmax(0, 1.04fr);
+  grid-template-columns: max-content max-content max-content;
+  justify-content: space-between;
   margin: 0;
-  padding: 14px 0;
-  gap: var(--space-3);
+  padding: 12px 0;
+  gap: var(--space-2);
   border-bottom: 1px solid var(--border);
+}
+
+.run-hero[data-density="compact"] {
+  --hero-distance: clamp(23px, 7.1vw, 31px);
+  --hero-figure: clamp(20px, 6.2vw, 27px);
+  --hero-pace: clamp(19px, 5.9vw, 25px);
+  --hero-unit: 11px;
 }
 
 .run-hero[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
@@ -5031,8 +5066,9 @@ textarea.run-input {
 }
 
 .run-hero > div + div {
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--border);
+  padding-left: var(--space-2);
+  /* A hairline, not a rule: it separates the figures without drawing a table. */
+  border-left: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .run-hero dd,
@@ -5041,22 +5077,29 @@ textarea.run-input {
 }
 
 .run-hero dd {
-  font-size: clamp(23px, 7.2vw, 30px);
+  font-size: var(--hero-figure);
   font-weight: 700;
   line-height: 1.02;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   white-space: nowrap;
 }
 
 /* Distance is the answer to "what was this run"; it gets the brand colour and
    the extra size, and nothing else on the screen competes with it. */
+/*
+ * Distance leads, but only just. It is the answer to "what was this run", so it
+ * keeps the brand colour and a step of size; three figures competing at display
+ * scale is what made the top of this screen feel like a scoreboard.
+ */
 .run-hero > div[data-metric="distance"] dd {
   color: var(--accent);
-  font-size: clamp(31px, 10.5vw, 44px);
+  font-size: var(--hero-distance);
 }
 
+/* Pace carries a unit inside its own column, so it starts a size below the
+   duration beside it and never has to shed the `/mi` to fit. */
 .run-hero > div[data-metric="pace"] dd {
-  font-size: clamp(21px, 6.4vw, 27px);
+  font-size: var(--hero-pace);
   letter-spacing: -0.05em;
 }
 
@@ -5064,7 +5107,7 @@ textarea.run-input {
    the one job `--type-meta` names outright: a unit suffix beside a figure that
    is already stated in full. */
 .run-hero__unit {
-  font-size: var(--type-meta);
+  font-size: var(--hero-unit);
   font-weight: 600;
   letter-spacing: 0;
   color: var(--text-muted);
@@ -5076,7 +5119,7 @@ textarea.run-input {
 }
 
 .run-hero dt {
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--text-muted);
   font-size: var(--type-label);
 }
@@ -5095,96 +5138,34 @@ textarea.run-input {
   white-space: nowrap;
 }
 
-/* The 320px phone: three figures and their units still fit on one line, with
-   the room coming out of the gutters first. Pace is the one that still does not
-   fit — `9:33 /MI` is the longest of the three — so it gives up two points of
-   size rather than clipping its unit or pushing the sheet into a sideways
-   scroll. It is already the smallest of the three figures by design. */
-@media (max-width: 359px) {
-  .run-hero { gap: var(--space-2); }
-  .run-hero > div + div { padding-left: var(--space-2); }
-  .run-hero > div[data-metric="pace"] dd { font-size: 19px; }
-}
-
 /*
- * Supporting facts, as one strip.
- *
- * One container, internal dividers, no gaps: four facts about the same run read
- * as one line of information rather than four cards that happen to be adjacent.
- * The icons and the metric colours do the separating that borders used to.
+ * The narrow phone. The row stays three columns — folding it would bury the
+ * pace — and the room comes out of the gutters and then, in order of how much
+ * each figure can spare, out of the type. The longest real values a runner will
+ * see here are `13.10 mi`, `2:08:45` and `10:50 /mi`, and all three fit.
  */
-.run-metrics {
-  display: grid;
-  /* As many columns as there are facts, up to four. A run with three stated
-     metrics gets three full-width cells rather than three and a hole. */
-  grid-template-columns: repeat(var(--metric-columns, 4), minmax(0, 1fr));
-  margin: 0;
-  padding: 10px 0;
-  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+@media (max-width: 379px) {
+  .run-hero {
+    gap: 9px;
+    padding: 11px 0;
+  }
+
+  .run-hero > div + div { padding-left: 9px; }
 }
 
-/* Five facts — every aggregate a source can state — go two across with the last
-   spanning the row, rather than four and a stranded fifth. */
-.run-metrics[data-count="5"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.run-metrics[data-count="5"] > div:nth-child(n+3) { margin-top: var(--space-3); }
-.run-metrics[data-count="5"] > div:last-child { grid-column: 1 / -1; }
-
-.run-metrics > div {
-  display: grid;
-  justify-items: center;
-  gap: 3px;
-  min-width: 0;
-  padding: 0 4px;
-  text-align: center;
+@media (max-width: 339px) {
+  .run-hero { gap: 7px; }
+  .run-hero > div + div { padding-left: 7px; }
 }
 
-.run-metrics > div + div {
-  border-left: 1px solid var(--border);
-}
-
-.run-metrics[data-count="5"] > div:nth-child(3) {
-  border-left: 0;
-}
-
-.run-metrics__icon {
-  color: var(--metric-color, var(--text-muted));
-}
-
-.run-metrics dd,
-.run-metrics dt {
-  margin: 0;
-}
-
-.run-metrics dd {
-  font-size: clamp(14px, 4vw, 17px);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.run-metrics dt {
-  color: var(--text-subtle);
-  font-size: var(--type-meta);
-  letter-spacing: 0.06em;
-}
-
-/* One semantic identity per metric, defined once and used by the strip, the
-   analysis tabs and the charts alike. */
+/* One semantic identity per metric, defined once and used by the analysis tabs,
+   the charts and the run's own mark alike. */
 [data-metric="pace"] { --metric-color: var(--metric-pace); }
 [data-metric="heart-rate"],
 [data-metric="heartRate"] { --metric-color: var(--metric-heart-rate); }
 [data-metric="elevation"] { --metric-color: var(--metric-elevation); }
 [data-metric="cadence"] { --metric-color: var(--metric-cadence); }
 [data-metric="load"] { --metric-color: var(--metric-load); }
-
-/* Below this four facts stop fitting on one line, so the strip folds to 2x2 —
-   still one block, still one border. */
-@media (max-width: 359px) {
-  .run-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .run-metrics > div:nth-child(2n+1) { border-left: 0; }
-  .run-metrics > div:nth-child(n+3) { margin-top: var(--space-3); }
-}
 
 /*
  * One factual line about the run.
@@ -5686,38 +5667,6 @@ textarea.run-input {
   border-top: 1px solid var(--border);
 }
 
-/* The ring is a glance, the rows are the reading: side by side where there is
-   room for both, and the rows alone on the narrowest phone. */
-.run-analysis__zone-figure {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.run-analysis__zone-figure .donut {
-  display: block;
-}
-
-/* The ring's own legend would repeat the rows beside it. */
-.run-analysis__zone-figure .donut__legend {
-  display: none;
-}
-
-.run-analysis__zone-figure .donut__figure {
-  background: none;
-  border: 0;
-}
-
-.run-analysis__zone-figure .donut__plot {
-  max-width: 96px;
-}
-
-@media (max-width: 359px) {
-  .run-analysis__zone-figure { grid-template-columns: minmax(0, 1fr); }
-  .run-analysis__zone-ring { display: none; }
-}
-
 .run-analysis__zones-heading {
   margin: 0;
   color: var(--text-subtle);
@@ -5728,7 +5677,7 @@ textarea.run-input {
 
 .zone-rows {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -5736,12 +5685,12 @@ textarea.run-input {
 
 .zone-rows__button {
   display: grid;
-  grid-template-columns: 48px minmax(24px, 1fr) auto;
+  grid-template-columns: 52px minmax(40px, 1fr) auto;
   align-items: center;
   gap: var(--space-2);
   width: 100%;
-  min-height: 34px;
-  padding: 4px 6px;
+  min-height: 36px;
+  padding: 5px 6px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: none;
@@ -5770,7 +5719,7 @@ textarea.run-input {
 
 .zone-rows__track {
   display: block;
-  height: 8px;
+  height: 10px;
   border-radius: 2px;
   background: var(--data-surface-strong);
   overflow: hidden;
@@ -5906,21 +5855,10 @@ textarea.run-input {
   gap: var(--space-3);
 }
 
-/* Tablet and desktop: the sheet is wider than a phone, so the result panel and
-   the metric strip stop being the full width of the screen. */
+/* Tablet and desktop: the sheet is wider than a phone, so the result gets room
+   around it rather than more size. */
 @media (min-width: 700px) {
-  .run-hero { padding: var(--space-5) var(--space-4); }
-  /* One row, however many facts the source stated: at this width they fit, and
-     a stranded fifth cell under four reads as a layout accident. */
-  .run-metrics,
-  .run-metrics[data-count="5"] {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-  }
-  .run-metrics[data-count="5"] > div:last-child { grid-column: auto; }
-  .run-metrics[data-count="5"] > div { margin-top: 0; border-left: 1px solid var(--border); }
-  .run-metrics[data-count="5"] > div:first-child { border-left: 0; }
+  .run-hero { padding: var(--space-4) var(--space-4); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -8441,11 +8379,6 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
    rather than flagged: it is a fact, not a chore waiting to be dealt with. */
 .run-row[data-origin="historical-activity"] .run-row__icon { color: var(--text-subtle); }
 .run-row[data-origin="historical-activity"] .run-row__type { color: var(--text-muted); }
-
-.run-identity__chip[data-tone="history"] {
-  color: var(--text-muted);
-  border-color: var(--border);
-}
 
 .historical-run__note {
   margin: 0;
