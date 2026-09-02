@@ -1,5 +1,6 @@
 import type { ImportedRunMetrics, RunActivityType, RunLog, TrainingPlan, Workout } from "../domain/types.js";
 import { daysBetweenLocalDates } from "../domain/dates.js";
+import { plannedDistanceMiles as targetDistance } from "../domain/plan.js";
 
 const METERS_PER_MILE = 1609.344;
 const FEET_PER_METER = 3.28084;
@@ -470,19 +471,23 @@ export function mergeCandidates(existing: readonly IntervalsCandidate[], fetched
     b.completedDate.localeCompare(a.completedDate) || a.externalId.localeCompare(b.externalId));
 }
 
-export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
+/**
+ * Every activity in a read that STACK recognizes, settled or not.
+ *
+ * `normalizeActivityList` answers "what is still waiting for a decision", which
+ * is the review queue's question and drops everything already imported. This
+ * answers the different question the source-freshness pass asks: what did the
+ * source just say about *every* activity, including the ones STACK imported
+ * long ago and can no longer be told anything about otherwise. See
+ * `sourceRefresh.ts`.
+ */
+export function normalizeIntervalsActivities(raw: unknown): IntervalsCandidate[] {
   if (!Array.isArray(raw)) return [];
-  return unresolvedCandidates(raw.flatMap((item) => normalizeIntervalsActivity(item) ?? []), runLogs, ignoredIds);
+  return raw.flatMap((item) => normalizeIntervalsActivity(item) ?? []);
 }
 
-function targetDistance(workout: Workout): { low: number; high: number } | null {
-  const value = workout.targetDistanceMiles?.trim();
-  if (!value) return null;
-  const match = /^(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?$/.exec(value);
-  if (!match) return null;
-  const low = Number(match[1]);
-  const high = Number(match[2] ?? match[1]);
-  return low > 0 && high >= low ? { low, high } : null;
+export function normalizeActivityList(raw: unknown, runLogs: readonly RunLog[], ignoredIds: readonly string[]): IntervalsCandidate[] {
+  return unresolvedCandidates(normalizeIntervalsActivities(raw), runLogs, ignoredIds);
 }
 
 /** How far from the run a planned date can be before a match is a guess. */

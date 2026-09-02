@@ -58,6 +58,11 @@ function readerFactory(
   return () => ({ readDetail: async () => ({ intervals: [] }), readProfile });
 }
 
+/** The result panel, whose figures and units are separate elements by design. */
+function hero() {
+  return screen.getByLabelText("Primary activity results");
+}
+
 afterEach(() => vi.restoreAllMocks());
 
 describe("historical-only run detail", () => {
@@ -65,11 +70,15 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run("a-1")} isOpen onClose={() => undefined} />);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("6.2 mi")).toBeInTheDocument();
-    expect(sheet.getByText("1:02:00")).toBeInTheDocument();
-    expect(sheet.getByText("10:00 /MI")).toBeInTheDocument();
-    expect(sheet.getByText("148 bpm")).toBeInTheDocument();
+    expect(hero()).toHaveTextContent("6.2 mi");
+    expect(hero()).toHaveTextContent("1:02:00");
+    expect(hero()).toHaveTextContent("10:00 /MI");
     expect(sheet.getByText("History")).toBeInTheDocument();
+    // The source's aggregates are not printed above the result: with no stream
+    // read yet there is no Analysis, and nothing stands in for it.
+    expect(sheet.queryByText("148 bpm")).not.toBeInTheDocument();
+    // The source's own name for the activity leads, rather than "Run Detail".
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Morning Run");
 
     // No effort, no notes, no plan link, no block, no import: nothing has been
     // decided about this run, so nothing here pretends otherwise.
@@ -88,11 +97,11 @@ describe("historical-only run detail", () => {
     );
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("6.2 mi")).toBeInTheDocument();
-    expect(sheet.getByText("10:00 /MI")).toBeInTheDocument();
-    expect(sheet.getByText("71")).toBeInTheDocument();
+    expect(hero()).toHaveTextContent("6.2 mi");
+    expect(hero()).toHaveTextContent("10:00 /MI");
+    expect(sheet.getByRole("heading", { name: "Morning Run" })).toBeInTheDocument();
     // And no chart frame standing empty while it waits.
-    expect(sheet.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
   });
 
   it("asks the source for nothing when the run has no stable source id", () => {
@@ -100,7 +109,7 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run(null)} connection="token" isOpen onClose={() => undefined} />);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 
   it("asks the source for nothing when this device has no connection", () => {
@@ -108,18 +117,20 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run("a-1")} isOpen onClose={() => undefined} />);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 
-  it("reveals the shared Run Profile when a source id and a connection resolve one", async () => {
+  it("reveals the shared Analysis module when a source id and a connection resolve one", async () => {
     const fetchMock = respondWith({ icu_intervals: [] }, STREAMS);
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
 
-    expect(await screen.findByText("Run Profile")).toBeInTheDocument();
+    expect(await screen.findByText("Analysis")).toBeInTheDocument();
     expect(
       within(screen.getByRole("group", { name: "Run Profile metric" }))
         .getAllByRole("button")
-        .map((button) => button.textContent),
+        // The accessible name, which is the full metric name at every width:
+        // the visible label swaps to a short form on the narrowest phones.
+        .map((button) => button.getAttribute("aria-label")),
     ).toEqual(["Pace", "Heart Rate", "Elevation", "Cadence"]);
 
     // On open, for this one run — never during history sync, and never for the
@@ -134,10 +145,9 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
 
     const sheet = within(screen.getByRole("dialog"));
-    await vi.waitFor(() => expect(sheet.getByText("148 bpm")).toBeInTheDocument());
-    expect(sheet.queryByText("Run Profile")).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(hero()).toHaveTextContent("6.2 mi"));
+    expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
     expect(sheet.queryByRole("alert")).not.toBeInTheDocument();
-    expect(sheet.getByText("6.2 mi")).toBeInTheDocument();
   });
 
   it("keeps the summary when the profile read fails outright", async () => {
@@ -148,9 +158,9 @@ describe("historical-only run detail", () => {
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
 
     const sheet = within(screen.getByRole("dialog"));
-    await vi.waitFor(() => expect(sheet.getByText("148 bpm")).toBeInTheDocument());
-    expect(sheet.getByText("6.2 mi")).toBeInTheDocument();
-    expect(sheet.queryByText("Run Profile")).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(hero()).toHaveTextContent("6.2 mi"));
+    expect(hero()).toHaveTextContent("10:00 /MI");
+    expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
     expect(sheet.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -181,7 +191,7 @@ describe("historical-only run detail", () => {
     });
     await Promise.resolve();
 
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 });
 
@@ -189,14 +199,15 @@ describe("historical-only source truth", () => {
   it("states the run's own pace and the source's own aggregates, never the stream's", async () => {
     respondWith({ icu_intervals: [] }, STREAMS);
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     const sheet = within(screen.getByRole("dialog"));
     // 6.2 mi in 1:02:00 is 10:00 /mi. The velocity samples are around 2.6 m/s,
     // which is 10:19 /mi, and must not be what the sheet states.
-    // Stated twice — as the result, and as the profile's own Avg pace fact —
+    // Stated twice — as the result, and as the pace chart's own Avg pace fact —
     // and it is the same trusted number both times.
-    expect(sheet.getAllByText("10:00 /MI")).toHaveLength(2);
+    expect(hero()).toHaveTextContent("10:00 /MI");
+    expect(sheet.getByText("10:00 /MI")).toBeInTheDocument();
     expect(sheet.queryByText("10:19 /MI")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
@@ -208,17 +219,22 @@ describe("historical-only source truth", () => {
 
     // 61 m of source-stated climbing is 200 ft; the altitude series only spans
     // 30.0–36.0 m, so a recomputed gain would be a different number entirely.
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
     expect(sheet.getByText("200 ft")).toBeInTheDocument();
   });
 
   it("shows cadence exactly as the source stated it, undoubled and unlabelled", async () => {
     respondWith({ icu_intervals: [] }, STREAMS);
     render(<HistoricalRunSheet run={run("a-1")} connection="token" isOpen onClose={() => undefined} />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
     await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("79")).toBeInTheDocument();
+    // The stated average is the source's own figure. The cadence axis happens
+    // to carry a 79 too, which is the same number for the same reason.
+    const facts = document.querySelector(".run-analysis__facts") as HTMLElement;
+    expect(within(facts).getByText("79")).toBeInTheDocument();
+    expect(within(facts).getByText("Avg cadence")).toBeInTheDocument();
     expect(sheet.queryByText("158")).not.toBeInTheDocument();
     expect(sheet.queryByText(/79 spm|79 rpm|79 steps/i)).not.toBeInTheDocument();
   });
@@ -235,9 +251,42 @@ describe("historical-only source truth", () => {
     render(<HistoricalRunSheet run={bare} isOpen onClose={() => undefined} />);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("6.2 mi")).toBeInTheDocument();
+    expect(hero()).toHaveTextContent("6.2 mi");
     expect(sheet.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
     expect(sheet.queryByText(/0 bpm|0 ft/)).not.toBeInTheDocument();
-    expect(sheet.queryByText("Heart rate zones")).not.toBeInTheDocument();
+    expect(sheet.queryByRole("list", { name: "Heart rate zone distribution" })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Issue #214: the run leads, and everything administrative is one tap away.
+ *
+ * A historical run has nothing STACK-owned to act on, so what lives behind its
+ * `…` is provenance and methodology only — no edit, no plan link, no effort.
+ */
+describe("historical-only identity and run options", () => {
+  it("falls back to what the source type verifiably is when it stated no name", () => {
+    render(
+      <HistoricalRunSheet run={run("a-1", { sourceName: null })} isOpen onClose={() => undefined} />,
+    );
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run");
+    // Nothing invented to fill the gap: no workout title, no "Morning Run".
+    expect(screen.queryByText("Morning Run")).not.toBeInTheDocument();
+  });
+
+  it("keeps source and methodology behind the run options control", async () => {
+    render(<HistoricalRunSheet run={run("a-1")} isOpen onClose={() => undefined} />);
+
+    const sheet = within(screen.getByRole("dialog"));
+    expect(sheet.queryByText("Intervals.icu")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    expect(options.getByText("Intervals.icu")).toBeInTheDocument();
+    expect(options.getByText("How STACK calculates this")).toBeInTheDocument();
+    // Still nothing to act on: a historical run remains read-only.
+    expect(options.queryByRole("button", { name: /edit|connect to plan|unlink/i }))
+      .not.toBeInTheDocument();
   });
 });

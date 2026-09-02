@@ -1177,3 +1177,89 @@ Verification: focused matching, Today, Run Data review and connected-sync tests
 cover suggested match, Extra, already-accepted source identity, late sync,
 dismissal persistence and credential-free cross-device review. The four focused
 files pass individually with a single Vitest worker.
+
+## Run Detail 3.0 (issue #214)
+
+**Status:** Implemented. Presentation and source-freshness change; the shared
+source-detail path (`RunDetailSheet` / `HistoricalRunSheet` → `SourceRunDetail`)
+is preserved rather than forked, and no route, storage schema or plan rule
+changed.
+
+Implemented scope:
+- Run Detail opens on the activity: the source's own name where the reconciled
+  history row has one, the linked workout's title where it does not, STACK's
+  classification as the last resort, and no invented name (`runIdentity.ts`);
+- one dominant result — distance in lime, duration and average pace beside it,
+  units set smaller — with the plan comparison under it when the linked workout
+  states an exact target, over a compact icon-and-colour metric strip carrying
+  the source's other aggregates through one `--metric-color` property;
+- one deterministic insight (dominant zone, or a count of the source's named
+  groups), omitted when neither is useful and when the zone rows are on screen;
+- **Analysis** replaces Run Profile: `ActivityChart` + `activityChartGeometry.ts`
+  give each metric its own treatment (pace over an elevation silhouette, filled
+  heart rate with the imported average across it, filled elevation terrain,
+  stepped cadence), a real y-axis, touch/drag and keyboard scrubbing with a
+  crosshair, a selected point and a persistent callout;
+- the analysis selector is a tab bar — icon over label, metric colour,
+  underlined selected state, 44px cells — with the metric's stated facts above
+  the plot, a legend and a drag hint below it, and the elevation silhouette
+  carrying its own axis on the right;
+- heart-rate zones become compact ordered rows inside Heart Rate, beside a small
+  decorative ring; a run with zone durations and no usable heart-rate stream
+  does not grow a fallback zone card; no
+  zone bands are drawn, because the source states durations and not thresholds;
+- Edit Run, plan linking, source/import provenance, elapsed time, effort and
+  `How STACK calculates this` move behind the `…` run-options sheet, which owns
+  no mutation of its own;
+- `sourceRefresh.ts` + `refreshImportedRunSource` let an already-imported
+  Intervals activity receive newer **source-owned** metrics — the elevation-gain
+  staleness in the issue — while leaving distance, duration, effort, notes, plan
+  link, classification and Build placement untouched.
+
+Second pass, against the owner's full-resolution reference (the committed
+`docs/design/run-detail-3-reference.jpg` is a truncated JPEG):
+- the source activity name stops being the heading of an owned run — the linked
+  workout's title when it is a name, otherwise STACK's classification — and
+  moves under source information behind `…`;
+- the visible identity moves out of the sheet's chrome into the scrolling body,
+  so it leaves the screen as the runner reaches Analysis and nothing sits over
+  the content; the dialog keeps its accessible name without a second heading;
+- the result loses its panel and the four supporting facts become one strip with
+  internal dividers; Analysis becomes one bordered instrument;
+- persistent Heart Rate / Elevation / Cadence summary modules are removed;
+  Analysis is the only detailed metric surface and zones appear only while
+  Heart Rate is selected;
+- chart callouts name their companion readings (`HR 148 bpm`, `Elev 52 ft`).
+
+Third pass — density, and the result under real values:
+- the `AVG HR | GAIN | CADENCE | LOAD` strip is **removed**, not restyled. Each
+  aggregate now has one home: heart rate, elevation and cadence in the Analysis
+  tab that owns them, training load — which has no stream, so no tab — behind
+  `…`, where `sourceRunOptionFacts` states every source aggregate so an
+  aggregate-only run loses nothing;
+- the heart-rate headline above Analysis (`76% of this run was in Zone 2`) is
+  gone with it, and `runInsight` no longer takes zone durations at all: a zone
+  share is a heart-rate fact and Heart Rate states the whole distribution;
+- the result keeps its three columns and gets materially smaller and tighter.
+  The columns are content-sized rather than proportional, and the type is set
+  from the run's own figures — a duration past an hour or a distance into double
+  figures switches the row to a compact setting — so `3.12 mi / 41:20 / 13:15`,
+  `6.00 mi / 1:05:00 / 10:50` and `13.10 mi / 2:08:45 / 9:50` all hold one row
+  at 320 / 360 / 390 / 430px with no clipping and no sideways scroll;
+- the identity loses its duplicate type chip (`Easy Run` under `EASY`): the run
+  status — `EXTRA` / `PLAN` / `HISTORY` — sits inline beside the title, and the
+  activity type is carried by the colour of the run's mark;
+- the mark becomes the STACK runner as a one-colour silhouette in the run type's
+  colour, with no ring around it (`StackMark`, `monochrome`);
+- the heart-rate zone ring is removed; the rows take the full width of the
+  module and their bars grow into the space it held.
+
+Verification: `npm run check` passes (206 files, 2560 tests). New coverage for
+chart geometry, scrubbing and its accessible readout, run identity and its
+status, the insight rule (including that it cannot state a zone fact),
+run-option facts, the refresh planner, the repository write and the sync wiring.
+Reviewed at 320 / 360 / 390 / 430 / 1024 px in Chromium, with the long-value
+result cases measured rather than eyeballed; screenshots in
+`docs/design/run-detail-3/`. Real-device iOS review and owner visual acceptance
+are outstanding.
+

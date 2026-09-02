@@ -61,56 +61,59 @@ describe("QA rich-profile run", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     renderInQa(<RunResultDetail run={qaRunLog(QA_RICH_PROFILE_ACTIVITY_ID)} />);
 
-    expect(await screen.findByText("Run Profile")).toBeInTheDocument();
+    expect(await screen.findByText("Analysis")).toBeInTheDocument();
     expect(
       within(screen.getByRole("group", { name: "Run Profile metric" }))
         .getAllByRole("button")
-        .map((button) => button.textContent),
+        // The accessible name, which is the full metric name at every width:
+        // the visible label swaps to a short form on the narrowest phones.
+        .map((button) => button.getAttribute("aria-label")),
     ).toEqual(["Pace", "Heart Rate", "Elevation", "Cadence"]);
-    expect(document.querySelector(".run-profile-chart")).toBeInTheDocument();
+    expect(document.querySelector(".activity-chart")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("keeps the result dominant and the source's own aggregates stated", async () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_RICH_PROFILE_ACTIVITY_ID)} />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     // 5.2 mi in 49:40 is 9:33 /mi. The synthetic velocity samples average
     // around that but are not what is stated.
-    expect(screen.getByText("5.2 mi")).toBeInTheDocument();
-    // Twice: the moving time, and the end of the profile's own elapsed axis.
+    const hero = screen.getByLabelText("Primary activity results");
+    expect(hero).toHaveTextContent("5.2 mi");
+    // Twice: the moving time, and the end of the chart's own elapsed axis.
     expect(screen.getAllByText("49:40")).toHaveLength(2);
     expect(screen.getAllByText("9:33 /MI").length).toBeGreaterThan(0);
 
-    // Cadence has a stream, so it belongs to the profile and leaves the grid.
-    const grid = screen.getByLabelText("Imported run metrics");
-    expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
-      .toEqual(["Avg HR", "Max HR", "Gain", "Load"]);
-    // 214 ft is the source's own climbing total; the synthetic altitude series
-    // spans about 51–154 ft, so a recomputed gain could not produce it.
-    expect(within(grid).getByText("214 ft")).toBeInTheDocument();
+    // Nothing else is stated up here. Every other aggregate the fixture sends
+    // belongs to a tab, and Elevation is where the source's climbing total is
+    // read: 214 ft, against a synthetic altitude series spanning about
+    // 51–154 ft, which a recomputed gain could not produce.
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("214 ft");
   });
 
   it("breaks each line where the synthetic stream stopped recording", async () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_RICH_PROFILE_ACTIVITY_ID)} />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     // Pace: the position dropout. Heart rate: the strap dropout. Both must be
     // gaps in the drawn line rather than a straight join across them.
-    expect(document.querySelectorAll(".run-profile-chart polyline.chart__line").length)
+    expect(document.querySelectorAll(".activity-chart path.activity-chart__line").length)
       .toBeGreaterThan(1);
 
     await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
-    expect(document.querySelectorAll(".run-profile-chart polyline.chart__line").length)
+    expect(document.querySelectorAll(".activity-chart path.activity-chart__line").length)
       .toBeGreaterThan(1);
   });
 
   it("states synthetic cadence verbatim, exactly as the verified convention requires", async () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_RICH_PROFILE_ACTIVITY_ID)} />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
     await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
 
-    const facts = document.querySelector(".run-profile-chart__facts")!;
+    const facts = document.querySelector(".run-analysis__facts")!;
     expect(facts).toHaveTextContent("79");
     expect(facts).not.toHaveTextContent("158");
   });
@@ -121,37 +124,51 @@ describe("QA rich-profile run", () => {
     const intervals = await screen.findByRole("list", { name: "Structured workout intervals" });
     expect(within(intervals).getByText("Warm Up")).toBeInTheDocument();
     expect(within(intervals).getByText("Rep 1")).toBeInTheDocument();
-    expect(screen.getByText("Heart rate zones")).toBeInTheDocument();
+    // Zones belong only to the Heart Rate tab, not to a persistent module below
+    // whichever metric the runner is currently investigating.
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+    expect(screen.getByRole("list", { name: "Heart rate zone distribution" }).closest(".run-analysis"))
+      .not.toBeNull();
   });
 });
 
 describe("QA aggregate-only run", () => {
-  it("omits the Run Profile entirely rather than showing an empty frame", async () => {
+  it("omits Analysis entirely rather than showing an empty frame", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     renderInQa(<RunResultDetail run={qaRunLog(QA_AGGREGATE_ONLY_ACTIVITY_ID)} />);
 
     // Wait for the reads to settle before claiming nothing appeared.
-    expect(await screen.findByText("Heart rate zones")).toBeInTheDocument();
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
-    expect(document.querySelector(".run-profile-chart")).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByText("Loading run analysis")).not.toBeInTheDocument());
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
+    expect(document.querySelector(".activity-chart")).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Run Profile metric" })).not.toBeInTheDocument();
     // A missing profile is not an error, and nothing was asked of the network.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("still feels complete: the result, every stated aggregate, and cadence in the grid", async () => {
+  it("is its result, complete, with nothing invented to fill the space below it", async () => {
     renderInQa(<RunResultDetail run={qaRunLog(QA_AGGREGATE_ONLY_ACTIVITY_ID)} />);
-    await screen.findByText("Heart rate zones");
+    await vi.waitFor(() => expect(screen.queryByText("Loading run analysis")).not.toBeInTheDocument());
 
-    expect(screen.getByText("4.1 mi")).toBeInTheDocument();
-    expect(screen.getByText("40:40")).toBeInTheDocument();
-    expect(screen.getByText("9:55 /MI")).toBeInTheDocument();
-    // No stream to carry it, so the verified cadence joins the summary grid.
-    const grid = screen.getByLabelText("Imported run metrics");
-    expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
-      .toEqual(["Avg HR", "Max HR", "Gain", "Load", "Cadence"]);
-    expect(within(grid).getByText("80")).toBeInTheDocument();
+    const hero = screen.getByLabelText("Primary activity results");
+    expect(hero).toHaveTextContent("4.1 mi");
+    expect(hero).toHaveTextContent("40:40");
+    expect(hero).toHaveTextContent("9:55 /MI");
+    /*
+     * This run's source stated an average heart rate, zones, a climbing total,
+     * a cadence and a load, and sent no stream at all. None of them appears
+     * here: no strip, no fallback card, no zone module. They are reachable
+     * behind `…` — see `runOptions.test.ts` — which is where source bookkeeping
+     * lives for every run, whether or not it has a profile.
+     */
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 });
 
@@ -166,11 +183,12 @@ describe("QA historical-only runs", () => {
       />,
     );
 
-    expect(await screen.findByText("Run Profile")).toBeInTheDocument();
+    expect(await screen.findByText("Analysis")).toBeInTheDocument();
     const sheet = within(screen.getByRole("dialog"));
     expect(sheet.getByText("History")).toBeInTheDocument();
-    expect(sheet.getByText("7.4 mi")).toBeInTheDocument();
-    expect(sheet.getByText("Heart rate zones")).toBeInTheDocument();
+    expect(screen.getByLabelText("Primary activity results")).toHaveTextContent("7.4 mi");
+    await userEvent.click(sheet.getByRole("button", { name: "Heart Rate" }));
+    expect(sheet.getByRole("list", { name: "Heart rate zone distribution" })).toBeInTheDocument();
 
     expect(sheet.queryByText(/Effort/)).not.toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: /edit|connect to plan|import|accept/i }))
@@ -191,14 +209,15 @@ describe("QA historical-only runs", () => {
     );
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("3.4 mi")).toBeInTheDocument();
-    expect(sheet.getByText("34:37")).toBeInTheDocument();
-    expect(sheet.getByText("10:11 /MI")).toBeInTheDocument();
+    const hero = screen.getByLabelText("Primary activity results");
+    expect(hero).toHaveTextContent("3.4 mi");
+    expect(hero).toHaveTextContent("34:37");
+    expect(hero).toHaveTextContent("10:11 /MI");
 
     await vi.waitFor(() =>
       expect(sheet.queryByLabelText("Imported run metrics")).not.toBeInTheDocument());
-    expect(sheet.queryByText("Run Profile")).not.toBeInTheDocument();
-    expect(sheet.queryByText("Heart rate zones")).not.toBeInTheDocument();
+    expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
+    expect(sheet.queryByRole("region", { name: "Heart Rate" })).not.toBeInTheDocument();
     expect(sheet.queryByText(/0 bpm|0 ft/)).not.toBeInTheDocument();
     expect(sheet.queryByRole("alert")).not.toBeInTheDocument();
   });

@@ -137,11 +137,65 @@ describe("Runs", () => {
 
     await user.click(rows()[0]);
 
+    // The run leads with what STACK holds it to have been — `2 Miles` is the
+    // workout's distance, which the plan line below already states.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy Run");
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Tuesday, August 4, 2026")).toBeInTheDocument();
+    expect(sheet.getByRole("heading", { name: "Easy Run" })).toBeInTheDocument();
+    expect(sheet.getByText(/Tue, Aug 4/)).toBeInTheDocument();
     expect(sheet.getByText("Plan")).toBeInTheDocument();
-    expect(sheet.getByText(/Week 1 · 2 Miles/)).toBeInTheDocument();
+    expect(sheet.getByText("Week 1 · 2 Miles")).toBeInTheDocument();
     expect(sheet.getByText("Legs good.")).toBeInTheDocument();
+  });
+
+  it("states how the run compared with what the plan asked for, when that is a fact", async () => {
+    const user = userEvent.setup();
+    // workout-002 asks for 2 miles; this run came to 3.
+    renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })]);
+
+    await user.click(rows()[0]);
+    const sheet = within(screen.getByRole("dialog"));
+    expect(sheet.getByText("+1 mi vs plan")).toBeInTheDocument();
+  });
+
+  it("keeps the identity in the scrolling body rather than in the sheet's chrome", async () => {
+    const user = userEvent.setup();
+    renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })]);
+
+    await user.click(rows()[0]);
+
+    // The dialog is still named, for assistive technology and for focus, but
+    // the visible identity is content: it scrolls with the run rather than
+    // sitting over it.
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAccessibleName("Easy Run");
+    const heading = within(dialog).getByRole("heading", { name: "Easy Run" });
+    expect(heading.closest(".sheet__body")).not.toBeNull();
+    expect(heading.closest(".sheet__header")).toBeNull();
+    // And the chrome is the two controls, with no heading bar of its own.
+    expect(dialog.querySelector(".sheet__header--chrome")).not.toBeNull();
+  });
+
+  it("keeps the source's own activity name behind the run options control", async () => {
+    const user = userEvent.setup();
+    renderRuns([synced("imported", "2026-08-08")]);
+
+    await user.click(rows()[0]);
+    // Not in the sheet: a watch's filename for the run is not what the run was.
+    expect(within(screen.getByRole("dialog")).queryByText("Intervals.icu")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    expect(options.getByText("Intervals.icu")).toBeInTheDocument();
+    expect(options.getByText("Source")).toBeInTheDocument();
+  });
+
+  it("says nothing about the plan for a run the plan never asked for", async () => {
+    const user = userEvent.setup();
+    renderRuns([run("extra", "2026-08-04")]);
+
+    await user.click(rows()[0]);
+    expect(screen.queryByText(/vs plan/)).not.toBeInTheDocument();
   });
 
   it("reuses the imported detail rather than rendering metrics a second way", async () => {
@@ -161,18 +215,26 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     const sheet = within(screen.getByRole("dialog"));
-    expect(sheet.getByText("Intervals.icu")).toBeInTheDocument();
-    expect(sheet.getByText("151 bpm")).toBeInTheDocument();
+    // No stream, so no Analysis — and no strip of aggregates standing in for
+    // it. The heart rate this run's source stated is behind `…`.
+    expect(sheet.queryByText("151 bpm")).not.toBeInTheDocument();
     expect(
-      sheet.getByRole("list", { name: "Heart rate zone distribution" }),
-    ).toBeInTheDocument();
-    // Moving and elapsed are both real, and both said, once each.
+      sheet.queryByRole("list", { name: "Heart rate zone distribution" }),
+    ).not.toBeInTheDocument();
+    expect(sheet.queryByText("Analysis")).not.toBeInTheDocument();
+    // The run's own moving time leads; where the source came from and how long
+    // the watch was running are behind the run options control (issue #214).
     expect(sheet.getByText("Moving")).toBeInTheDocument();
     expect(sheet.getByText("50:00")).toBeInTheDocument();
-    expect(sheet.getByText("Elapsed")).toBeInTheDocument();
-    expect(sheet.getByText("54:00")).toBeInTheDocument();
     expect(sheet.queryByText("Duration")).not.toBeInTheDocument();
     expect(sheet.getByText("Extra")).toBeInTheDocument();
+    expect(sheet.queryByText("Intervals.icu")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    expect(options.getByText("Intervals.icu")).toBeInTheDocument();
+    expect(options.getByText("Elapsed")).toBeInTheDocument();
+    expect(options.getByText("54:00")).toBeInTheDocument();
   });
 
   it("keeps one duration when elapsed time says nothing new", async () => {
@@ -200,6 +262,7 @@ describe("Runs", () => {
     );
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.clear(screen.getByLabelText(/Distance/));
     await user.type(screen.getByLabelText(/Distance/), "2.6");
@@ -219,8 +282,9 @@ describe("Runs", () => {
     renderRuns([run("extra", "2026-08-04")], { onLinkRun });
 
     await user.click(rows()[0]);
-    const detail = within(screen.getByRole("dialog"));
-    const connectButton = detail.getByRole("button", { name: "Connect to Plan" });
+    await user.click(screen.getByRole("button", { name: "Run options" }));
+    const options = within(screen.getByRole("dialog", { name: "Run Options" }));
+    const connectButton = options.getByRole("button", { name: "Connect to Plan" });
     expect(connectButton).toBeInTheDocument();
 
     await user.click(connectButton);
@@ -232,8 +296,9 @@ describe("Runs", () => {
 
     expect(onLinkRun).toHaveBeenCalledWith("extra", "workout-002");
     expect(screen.getByText("Run connected to the plan.")).toBeInTheDocument();
-    // Comes back to the run's own detail rather than leaving the picker open.
-    expect(screen.getByRole("dialog")).toHaveAccessibleName("Run Detail");
+    // Comes back to the run's own detail rather than leaving the picker open —
+    // and the run, not the word "Run Detail", is what that sheet is called.
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Easy Run");
   });
 
   it("does not offer linking without a handler for it", async () => {
@@ -241,6 +306,7 @@ describe("Runs", () => {
     renderRuns([run("extra", "2026-08-04")]);
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     expect(screen.queryByRole("button", { name: "Connect to Plan" })).not.toBeInTheDocument();
   });
 
@@ -255,6 +321,7 @@ describe("Runs", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /August 1/ }));
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Connect to Plan" }));
     const select = screen.getByLabelText("Scheduled workout") as HTMLSelectElement;
     const values = [...select.options].map((option) => option.value);
@@ -270,6 +337,7 @@ describe("Runs", () => {
     });
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Unlink from Plan" }));
 
     expect(onUnlinkRun).toHaveBeenCalledWith("scheduled");
@@ -294,6 +362,7 @@ describe("Runs", () => {
     await user.click(rows()[0]);
 
     expect(screen.getByText("Plan")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     expect(
       screen.queryByRole("button", { name: "Unlink from Plan" }),
     ).not.toBeInTheDocument();
@@ -307,6 +376,7 @@ describe("Runs", () => {
     const { rerender } = renderRuns([run("only", "2026-08-04")], { onDeleteRun });
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     await user.click(screen.getByRole("button", { name: "Delete Run" }));
 
@@ -341,10 +411,12 @@ describe("Runs", () => {
     renderRuns([run("scheduled", "2026-08-04", { workoutId: "workout-002" })]);
 
     await user.click(rows()[0]);
+    await user.click(screen.getByRole("button", { name: "Run options" }));
     await user.click(screen.getByRole("button", { name: "Edit Run" }));
     expect(screen.getByRole("heading", { name: "Edit Run" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("heading", { name: "Run Detail" })).toBeInTheDocument();
+    // Back to the run itself, which is titled with what it was.
+    expect(screen.getByRole("heading", { name: "Easy Run" })).toBeInTheDocument();
   });
 });

@@ -1,115 +1,49 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Repeat } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Button } from "../../components/ui/Button.js";
-import { DonutChart } from "../../components/charts/DonutChart.js";
-import { zoneDonutSegments } from "../../components/charts/zoneDonutSegments.js";
-import { RunProfileChart, type RunProfileFact } from "../../components/charts/RunProfileChart.js";
+import { StackMark } from "../../components/shared/StackMark.js";
 import type {
   IntervalsActivityDetail,
   IntervalsRunProfile,
-  IntervalsRunProfileSample,
 } from "../../connected/intervals.js";
 import {
   useSourceDetailReader,
   type SourceConnection,
   type SourceDetailReader,
 } from "../../connected/sourceDetail.js";
+import { formatDateLabel } from "../../domain/dates.js";
 import { formatMiles } from "../../domain/distance.js";
 import { formatDurationSeconds } from "../../domain/duration.js";
 import { formatPaceSeconds } from "../../domain/runs.js";
+import { RunAnalysis } from "./RunAnalysis.js";
+import type { RunMetricId } from "./runAnalysisMetrics.js";
+import { runInsight } from "./runInsight.js";
+import type { RunIdentity } from "./runIdentity.js";
 import type { SourceRunFacts } from "./sourceRunFacts.js";
 
 const ELAPSED_SIGNIFICANCE_SECONDS = 30;
-
-type RunProfileMetricId = "pace" | "heartRate" | "elevation" | "cadence";
-
-interface RunProfileFactContext {
-  facts: SourceRunFacts;
-  /** The metric's own measured samples, for the facts that genuinely belong to the series. */
-  values: number[];
-}
-
-interface RunProfileMetric {
-  id: RunProfileMetricId;
-  label: string;
-  invert?: boolean;
-  robustDomain?: boolean;
-  sample: (sample: IntervalsRunProfileSample) => number | undefined;
-  facts: (context: RunProfileFactContext) => RunProfileFact[];
-}
 
 function rounded(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
 /**
- * What each Run Profile metric plots, and what it states beneath the plot.
+ * A pace as two parts: the figure, and the unit that qualifies it.
  *
- * The facts are the important half. A stream says how the run *moved*; it is
- * a poor source for what the run *was*. Averaging instantaneous pace samples
- * answers a different question from distance over time and disagrees with
- * every other screen; the fastest and slowest samples are a GPS artefact and
- * a traffic light, not a best and worst pace. So wherever STACK already holds
- * the source's own aggregate — the run's pace, its average and max heart
- * rate, its cadence — that aggregate is what is shown, and the stream is left
- * to do the one job it is good at.
- *
- * Elevation is the exception that proves it: a low and a high point are
- * properties of the series itself, so they come from the samples. Total
- * elevation *gain* still does not — that stays the imported source aggregate
- * in the summary grid above, which is why STACK's Gain agrees with Intervals'
- * Climbing rather than with anything recomputed here.
+ * `formatPaceSeconds` stays the single authority for what a pace *says* — this
+ * only splits its answer so the hero can set the unit smaller than the number,
+ * which is the hierarchy the approved reference asks for.
  */
-const RUN_PROFILE_METRICS: RunProfileMetric[] = [
-  {
-    id: "pace",
-    label: "Pace",
-    invert: true,
-    // Near-stops and speed spikes are real, kept, and must not be allowed to
-    // squash the rest of the run into a flat line.
-    robustDomain: true,
-    sample: (sample) => sample.paceSecondsPerMile,
-    facts: ({ facts }) =>
-      facts.paceSecondsPerMile === null
-        ? []
-        : [{ label: "Avg pace", value: formatPaceSeconds(facts.paceSecondsPerMile) }],
-  },
-  {
-    id: "heartRate",
-    label: "Heart Rate",
-    sample: (sample) => sample.heartRate,
-    facts: ({ facts }) => [
-      ...(facts.averageHeartRate !== null
-        ? [{ label: "Avg", value: `${rounded(facts.averageHeartRate)} bpm` }]
-        : []),
-      ...(facts.maxHeartRate !== null
-        ? [{ label: "Max", value: `${rounded(facts.maxHeartRate)} bpm` }]
-        : []),
-    ],
-  },
-  {
-    id: "elevation",
-    label: "Elevation",
-    sample: (sample) => sample.elevationFeet,
-    facts: ({ values }) =>
-      values.length > 0
-        ? [
-            { label: "Low", value: `${rounded(Math.min(...values))} ft` },
-            { label: "High", value: `${rounded(Math.max(...values))} ft` },
-          ]
-        : [],
-  },
-  {
-    id: "cadence",
-    label: "Cadence",
-    sample: (sample) => sample.cadence,
-    // Stated exactly as the source reports it, with no unit STACK has not
-    // verified and no doubling into steps per minute.
-    facts: ({ facts }) =>
-      facts.averageCadence !== null
-        ? [{ label: "Avg cadence", value: rounded(facts.averageCadence) }]
-        : [],
-  },
-];
+function splitPace(secondsPerMile: number): { value: string; unit: string } {
+  const [value, unit = ""] = formatPaceSeconds(secondsPerMile).split(" ");
+  return { value, unit };
+}
 
 interface SourceRunDetailProps {
   /** The run's source-owned facts. Already normalized; never recomputed here. */
@@ -122,46 +56,78 @@ interface SourceRunDetailProps {
   /** Which run this is, so a reopened sheet never shows the previous run's detail. */
   runKey: string;
   connection: SourceConnection;
-  /** STACK-owned context above the result. Only an owned run supplies it. */
+  /**
+   * Who this run is. Supplied by the sheets that lead with the activity — Run
+   * Detail and the historical sheet — and absent on the surfaces that embed a
+   * run's result inside something else's heading, such as a Build block or a
+   * planned workout.
+   */
+  identity?: RunIdentity | null;
+  /**
+   * STACK-owned context above the result, for a surface with nowhere else to
+   * put it. Run Detail passes nothing here: issue #214 moved provenance behind
+   * its `…` control, and a permanent `SOURCE · INTERVALS.ICU` line above the
+   * result is exactly what that decision removed.
+   */
   meta?: ReactNode;
   /** STACK-owned notes below the result. Only an owned run supplies them. */
   notes?: ReactNode;
+  /**
+   * One factual line under the distance — `+0.12 mi vs plan`. Supplied only
+   * where the comparison is real: a run linked to a workout with an exact
+   * target. See `planDistanceComparison`.
+   */
+  distanceNote?: string | null;
 }
 
 /**
- * One run as its **source** recorded it: the result, its shape, and whatever
- * else the source supplied about it.
+ * One run as its **source** recorded it: what it was, what it came to, and what
+ * happened inside it.
  *
  * This is the single source-owned presentation in STACK. An accepted run
  * reaches it through `RunResultDetail`, which adds the STACK-owned effort,
  * notes and actions around it; a historical-only run reaches it through
  * `HistoricalRunSheet`, which adds nothing at all, because nobody has decided
  * anything about that run. Neither one is a copy of the other, and a run the
- * runner never accepted is not visually second-class for it — it is the same
- * telemetry, minus the facts that genuinely do not exist.
+ * runner never accepted is not visually second-class for it.
  *
- * The governing rule is unchanged and lives here now rather than in two
- * places: **streams provide shape, aggregates provide the stated numbers.**
+ * Issue #214 rebuilt the composition around the order a runner actually reads
+ * in — **identity, result, investigation, supporting detail** — rather than
+ * around what fields happened to exist:
  *
- * Loading is summary-first by construction. Everything above the Run Profile
- * comes from `facts`, which the caller already has, so nothing waits on a
- * network read. The profile and the structured groups appear if and when they
- * resolve, and a profile that never resolves leaves exactly what a run with no
- * profile leaves: nothing.
+ * 1. the run's own identity, when the caller knows it;
+ * 2. one dominant result: distance, with duration and pace beside it;
+ * 3. **Analysis**, the centre of the screen: the run's shape, scrubbable, one
+ *    metric at a time;
+ * 4. structured intervals, when the source named real groups.
+ *
+ * There is deliberately no strip of secondary aggregates above Analysis. Heart
+ * rate, elevation, cadence and load were shown there because the source happened
+ * to state them, which made the top of a run read as a dashboard and printed the
+ * same figures the tab below states in full. Each now has exactly one home: its
+ * own Analysis tab, or — for training load, which has no stream behind it and so
+ * no tab to own it — the `…` run options.
+ *
+ * The governing rule is unchanged: **streams provide shape, aggregates provide
+ * the stated numbers.** Loading is still summary-first — everything above
+ * Analysis comes from `facts`, which the caller already holds, so nothing waits
+ * on a network read — and a profile that never resolves leaves exactly what a
+ * run with no profile leaves: nothing.
  */
 export function SourceRunDetail({
   facts,
   activityId,
   runKey,
   connection,
+  identity = null,
   meta,
   notes,
+  distanceNote = null,
 }: SourceRunDetailProps) {
   const reader = useSourceDetailReader(connection);
   const showElapsed = facts.durationSeconds !== null &&
     facts.elapsedTimeSeconds !== null &&
     Math.abs(facts.elapsedTimeSeconds - facts.durationSeconds) >= ELAPSED_SIGNIFICANCE_SECONDS;
-  const zoneTotal = facts.hrZoneSeconds?.reduce((sum, seconds) => sum + seconds, 0) ?? 0;
 
   const [detail, setDetail] = useState<IntervalsActivityDetail | null>(null);
   const [detailState, setDetailState] = useState<"idle" | "loading" | "error">("idle");
@@ -169,8 +135,12 @@ export function SourceRunDetail({
   const [profile, setProfile] = useState<IntervalsRunProfile | null>(null);
   /** False until the stream read has resolved either way, so nothing flashes into place and out again. */
   const [profileSettled, setProfileSettled] = useState(false);
-  const [selectedProfileMetric, setSelectedProfileMetric] = useState<RunProfileMetricId | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  /**
+   * Which metric Analysis is investigating. The choice lives with the run so
+   * reopening a different source profile cannot inherit an unrelated tab.
+   */
+  const [selectedMetric, setSelectedMetric] = useState<RunMetricId | null>(null);
   /** Guards a slow, superseded request from overwriting a newer one's state. */
   const requestIdRef = useRef(0);
 
@@ -187,7 +157,6 @@ export function SourceRunDetail({
   ) => {
     setDetail(null);
     setProfile(null);
-    setSelectedProfileMetric(null);
     setError("");
     if (!id || !source) {
       setDetailState("idle");
@@ -207,9 +176,8 @@ export function SourceRunDetail({
         setError(reason instanceof Error ? reason.message : "Run detail could not be loaded.");
         setDetailState("error");
       });
-    // The Run Profile stream is kept independent: a failure here stays quiet
-    // and simply leaves the Run Profile section absent, same as a run that
-    // never had one.
+    // The stream read is kept independent: a failure here stays quiet and
+    // simply leaves Analysis absent, same as a run that never had a profile.
     source.readProfile(id)
       .then((result) => {
         if (requestIdRef.current !== requestId) return;
@@ -234,135 +202,136 @@ export function SourceRunDetail({
     loadDetail(activityId, reader, requestId);
   }, [runKey, activityId, reader, loadAttempt, loadDetail]);
 
+  const structuredIntervals = detail?.intervals ?? [];
   /**
-   * Every time position the stream covered, with `null` wherever this metric
-   * had no value. Dropping those rows instead would join the samples either
-   * side of a gap into one straight line across data that was never recorded.
+   * One factual line about the run's own structure, when the source named real
+   * groups. Heart-rate zones are deliberately not eligible: they are a
+   * heart-rate fact, and Heart Rate states the whole distribution.
    */
-  const pointsFor = (metric: RunProfileMetric) =>
-    (profile?.samples ?? []).map((sample) => ({
-      timeSeconds: sample.timeSeconds,
-      value: metric.sample(sample) ?? null,
-    }));
-
-  const availableProfileMetrics = RUN_PROFILE_METRICS.filter((metric) =>
-    profile?.samples.some((sample) => metric.sample(sample) !== undefined));
-  const activeMetric = availableProfileMetrics.find((metric) => metric.id === selectedProfileMetric) ??
-    availableProfileMetrics[0];
-  const activePoints = activeMetric ? pointsFor(activeMetric) : [];
-  const activeFacts = activeMetric
-    ? activeMetric.facts({
-        facts,
-        values: activePoints.flatMap((point) => (point.value === null ? [] : [point.value])),
-      })
-    : [];
-
-  /**
-   * Cadence belongs in the profile, where it has a shape worth showing. When
-   * the stream has none but the imported average does exist, the verified
-   * number still deserves to be on screen rather than dropped, so it joins
-   * the summary grid instead.
-   */
-  const summaryCadence = profileSettled &&
-    !availableProfileMetrics.some((metric) => metric.id === "cadence")
-    ? facts.averageCadence
-    : null;
-
-  const hasSecondaryMetrics = facts.averageHeartRate !== null ||
-    facts.maxHeartRate !== null ||
-    facts.elevationGainFeet !== null ||
-    facts.trainingLoad !== null ||
-    summaryCadence !== null;
+  const insight = runInsight({ structuredIntervalCount: structuredIntervals.length });
 
   const primaryCount = (facts.distanceMiles > 0 ? 1 : 0) +
     (facts.durationSeconds !== null ? 1 : 0) +
     (facts.paceSecondsPerMile !== null ? 1 : 0);
+  const pace = facts.paceSecondsPerMile === null ? null : splitPace(facts.paceSecondsPerMile);
+  const distanceLabel = formatMiles(facts.distanceMiles);
+  const durationLabel = facts.durationSeconds === null
+    ? ""
+    : formatDurationSeconds(facts.durationSeconds);
+  /**
+   * Whether this run's own figures are long enough to need a smaller setting.
+   *
+   * A `3.12 mi / 41:20 / 13:15` run and a `13.10 mi / 2:08:45 / 9:50` run are
+   * the same three columns, and the second one does not fit at the first one's
+   * type size on a phone. Rather than sizing every run for the longest possible
+   * one — which would leave a 5k reading small for no reason — the row steps
+   * down only for the runs that need it: a duration that has crossed an hour,
+   * or a distance into double figures.
+   */
+  const compact = durationLabel.length >= 7 || distanceLabel.length >= 5;
 
   return (
     <div className="run-result-detail">
+      {identity && (
+        <header className="run-identity" data-type={identity.activityType ?? "unclassified"}>
+          {/*
+            The STACK runner, in one colour: the run's own type colour, or the
+            plain text colour for history nobody has classified. The full-colour
+            artwork is the product's mark and does not survive being shrunk to
+            the size of a heading, and a ring around it made it a badge rather
+            than a glyph — the type is what the colour says here.
+          */}
+          <span className="run-identity__mark" aria-hidden="true">
+            <StackMark size={26} monochrome />
+          </span>
+          <div className="run-identity__lines">
+            {/*
+              Title and status share one line. `Extra` and `Plan` answer a
+              different question from the title and take a fraction of its
+              weight to do it, so neither needs a row of its own.
+            */}
+            <div className="run-identity__heading">
+              <h3 className="run-identity__title">{identity.title}</h3>
+              {/*
+                The kind of running, only where the title does not already say
+                it — a run headed with its workout's own name states no type,
+                and the mark's colour alone is too little to carry it.
+              */}
+              {identity.typeLabel && (
+                <span className="run-identity__status machine-label" data-tone="type">
+                  {identity.typeLabel}
+                </span>
+              )}
+              <span className="run-identity__status machine-label" data-tone={identity.status.tone}>
+                {identity.status.label}
+              </span>
+            </div>
+            <p className="run-identity__when machine-label">
+              {formatDateLabel(identity.date, { weekday: "short", month: "short", day: "numeric" })}
+              {identity.startTimeLabel && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  {identity.startTimeLabel}
+                </>
+              )}
+            </p>
+            {identity.planLine && <p className="run-identity__plan">{identity.planLine}</p>}
+          </div>
+        </header>
+      )}
+
       {meta}
 
-      <dl className="run-result-detail__primary" data-count={primaryCount} aria-label="Primary activity results">
+      <dl
+        className="run-hero"
+        data-count={primaryCount}
+        data-density={compact ? "compact" : "roomy"}
+        aria-label="Primary activity results"
+      >
         {facts.distanceMiles > 0 && (
-          <div>
-            <dd className="data-value">{formatMiles(facts.distanceMiles)} mi</dd>
-            <dt className="machine-label">Distance</dt>
+          <div data-metric="distance">
+            <dd className="data-value">
+              {distanceLabel} <span className="run-hero__unit">mi</span>
+            </dd>
+            <dt className="machine-label">
+              Distance
+              {distanceNote && <span className="run-hero__note">{distanceNote}</span>}
+            </dt>
           </div>
         )}
         {facts.durationSeconds !== null && (
-          <div>
-            <dd className="data-value">{formatDurationSeconds(facts.durationSeconds)}</dd>
+          <div data-metric="duration">
+            <dd className="data-value">{durationLabel}</dd>
             <dt className="machine-label">{showElapsed ? "Moving" : "Duration"}</dt>
           </div>
         )}
-        {facts.paceSecondsPerMile !== null && (
+        {pace && (
           <div data-metric="pace">
-            <dd className="data-value">{formatPaceSeconds(facts.paceSecondsPerMile)}</dd>
+            <dd className="data-value">
+              {pace.value} <span className="run-hero__unit">{pace.unit}</span>
+            </dd>
             <dt className="machine-label">Avg pace</dt>
           </div>
         )}
       </dl>
 
-      {hasSecondaryMetrics && (
-        <dl className="run-result-detail__secondary" aria-label="Imported run metrics">
-          {facts.averageHeartRate !== null && (
-            <div><dd className="data-value">{rounded(facts.averageHeartRate)} bpm</dd><dt className="machine-label">Avg HR</dt></div>
-          )}
-          {facts.maxHeartRate !== null && (
-            <div><dd className="data-value">{rounded(facts.maxHeartRate)} bpm</dd><dt className="machine-label">Max HR</dt></div>
-          )}
-          {/* The source's own climbing total, not a sum of altitude changes. */}
-          {facts.elevationGainFeet !== null && (
-            <div><dd className="data-value">{rounded(facts.elevationGainFeet)} ft</dd><dt className="machine-label">Gain</dt></div>
-          )}
-          {facts.trainingLoad !== null && (
-            <div><dd className="data-value">{rounded(facts.trainingLoad)}</dd><dt className="machine-label">Load</dt></div>
-          )}
-          {summaryCadence !== null && (
-            <div><dd className="data-value">{rounded(summaryCadence)}</dd><dt className="machine-label">Cadence</dt></div>
-          )}
-        </dl>
+      {insight && (
+        <p className="run-insight" data-kind={insight.kind}>
+          <Repeat size={14} strokeWidth={2} aria-hidden="true" />
+          <span>{insight.text}</span>
+        </p>
       )}
 
       {notes}
 
-      {availableProfileMetrics.length > 0 && activeMetric && (
-        <section className="run-result-detail__profile">
-          <h3 className="machine-label">Run Profile</h3>
-          {availableProfileMetrics.length > 1 && (
-            <div className="run-profile__selectors" role="group" aria-label="Run Profile metric">
-              {availableProfileMetrics.map((metric) => (
-                <button
-                  key={metric.id}
-                  type="button"
-                  className="run-profile__selector"
-                  aria-pressed={metric.id === activeMetric.id}
-                  onClick={() => setSelectedProfileMetric(metric.id)}
-                >
-                  <span>{metric.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <RunProfileChart
-            points={activePoints}
-            facts={activeFacts}
-            invert={activeMetric.invert}
-            robustDomain={activeMetric.robustDomain}
-          />
-        </section>
-      )}
-
-      {facts.hrZoneSeconds && zoneTotal > 0 && (
-        <section className="run-result-detail__zones">
-          <h3 className="machine-label">Heart rate zones</h3>
-          <DonutChart
-            size="large"
-            interactive
-            segments={zoneDonutSegments(facts.hrZoneSeconds)}
-            label="Heart rate zone distribution"
-          />
-        </section>
+      {profile && (
+        <RunAnalysis
+          key={runKey}
+          facts={facts}
+          profile={profile}
+          selectedMetric={selectedMetric}
+          onSelectMetric={setSelectedMetric}
+        />
       )}
 
       {detailState === "error" && (
@@ -374,24 +343,33 @@ export function SourceRunDetail({
         </div>
       )}
 
-      {detail && detail.intervals.length > 0 && (
-        <section className="run-result-detail__intervals">
-          <h3 className="machine-label">Intervals</h3>
-          <div className="run-result-detail__interval-head machine-label" aria-hidden="true">
-            <span>Rep</span><span>Time</span><span>Distance</span><span>Avg HR</span>
-          </div>
-          <ol aria-label="Structured workout intervals">
-            {detail.intervals.map((interval, index) => (
-              <li key={`${interval.label}-${index}`}>
-                <strong>{interval.label}</strong>
-                <span>{formatDurationSeconds(interval.durationSeconds)}</span>
-                <span>{interval.distanceMiles !== undefined ? `${interval.distanceMiles.toFixed(2)} mi` : "—"}</span>
-                <span>{interval.averageHeartRate !== undefined ? `${rounded(interval.averageHeartRate)} bpm` : "—"}</span>
+      {structuredIntervals.length > 0 && (
+        <section className="run-intervals">
+          <h3 className="run-detail__section-heading machine-label">Intervals</h3>
+          <ol className="run-intervals__list" aria-label="Structured workout intervals">
+            {structuredIntervals.map((interval, index) => (
+              <li key={`${interval.label}-${index}`} className="run-intervals__row">
+                <strong className="run-intervals__label">{interval.label}</strong>
+                <span className="run-intervals__time data-value">
+                  {formatDurationSeconds(interval.durationSeconds)}
+                </span>
+                <span className="run-intervals__facts machine-label">
+                  {[
+                    interval.distanceMiles !== undefined ? `${interval.distanceMiles.toFixed(2)} mi` : null,
+                    interval.averageHeartRate !== undefined ? `${rounded(interval.averageHeartRate)} bpm` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
               </li>
             ))}
           </ol>
         </section>
       )}
+
+      {/* Kept mounted so a run whose stream is still in flight does not shift
+          the sheet as it lands; it renders nothing at all either way. */}
+      {!profileSettled && <span className="visually-hidden" role="status">Loading run analysis</span>}
     </div>
   );
 }

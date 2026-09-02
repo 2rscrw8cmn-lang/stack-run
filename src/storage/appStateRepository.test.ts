@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvalidPlacementError, skylineOf, topOf } from "../domain/placement.js";
 import { moveWorkout } from "../domain/planEdit.js";
 import { likelyManualMatches, normalizeActivityList } from "../connected/intervals.js";
+import { planSourceMetricRefresh } from "../connected/sourceRefresh.js";
 import {
   acceptIntervalsRun,
   deleteRunLog,
@@ -10,6 +11,7 @@ import {
   onStorageWriteError,
   placeBlock,
   readBackup,
+  refreshImportedRunSource,
   resetAppState,
   saveAppState,
   saveGeneratedPlan,
@@ -958,5 +960,115 @@ describe("editing an actual run", () => {
     expect(firstId).toMatch(/^run-[0-9a-f-]{36}$/);
     expect(secondId).toMatch(/^run-[0-9a-f-]{36}$/);
     expect(secondId).not.toBe(firstId);
+  });
+});
+
+/**
+ * Issue #214, part 10: correcting an imported run's source metrics without
+ * touching anything a person decided about it.
+ *
+ * The elevation-gain complaint that prompted this was a freshness bug rather
+ * than a conversion bug — see `src/connected/sourceRefresh.ts`. What matters
+ * here is the other half of it: a background sync that can rewrite a run is a
+ * background sync that can destroy a run, so this is the boundary.
+ */
+describe("refreshImportedRunSource", () => {
+  const accepted = {
+    externalId: "i-88",
+    sourceType: "Run",
+    completedDate: "2026-08-04",
+    distanceMiles: 2.76,
+    durationSeconds: 1818,
+    sourceUpdatedAt: "2026-08-04T12:00:00Z",
+    metrics: { averageHeartRate: 153, elevationGainFeet: 115.6, trainingLoad: 42 },
+    inferredActivityType: "easy" as const,
+  };
+
+  /** An imported run the runner has since given an effort, a note and a block. */
+  function importedAndOwned() {
+    const imported = acceptIntervalsRun(
+      loadAppState(),
+      accepted,
+      "workout-002",
+      "easy",
+      "great",
+      "Legs felt good.",
+    );
+    return placeBlock(imported, {
+      runLogId: imported.runLogs[0].id,
+      row: 0,
+      columnStart: 3,
+      width: 2,
+      height: 1,
+    });
+  }
+
+  it("stores a newer source elevation gain and nothing else", () => {
+    const state = importedAndOwned();
+    const run = state.runLogs[0];
+    const refreshes = planSourceMetricRefresh(
+      [{ ...accepted, sourceUpdatedAt: "2026-08-06T09:00:00Z", metrics: { ...accepted.metrics, elevationGainFeet: 232.4 } }],
+      state.runLogs,
+    );
+
+    const refreshed = refreshImportedRunSource(state, refreshes);
+    const [updated] = refreshed.runLogs;
+
+    expect(updated.importedMetrics?.elevationGainFeet).toBeCloseTo(232.4);
+    expect(updated.externalSource?.sourceUpdatedAt).toBe("2026-08-06T09:00:00Z");
+    // Everything STACK owns survives untouched.
+    expect(updated.effort).toBe("great");
+    expect(updated.notes).toBe("Legs felt good.");
+    expect(updated.workoutId).toBe("workout-002");
+    expect(updated.activityType).toBe("easy");
+    expect(updated.completedDate).toBe(run.completedDate);
+    expect(updated.id).toBe(run.id);
+    expect(refreshed.blockPlacements).toHaveLength(1);
+    expect(refreshed.blockPlacements[0].runLogId).toBe(run.id);
+    // And the numbers the rest of the product counts are not re-imported: a
+    // distance the runner may have corrected is theirs, not the source's.
+    expect(updated.distanceMiles).toBe(run.distanceMiles);
+    expect(updated.durationSeconds).toBe(run.durationSeconds);
+    // It survives a reload, because it was actually written.
+    expect(loadAppState().runLogs[0].importedMetrics?.elevationGainFeet).toBeCloseTo(232.4);
+  });
+
+  it("leaves a corrected distance alone even when the source restates its own", () => {
+    const state = importedAndOwned();
+    const corrected = saveRunLog(state, { ...state.runLogs[0], distanceMiles: 3.1 });
+    const refreshes = planSourceMetricRefresh(
+      [{ ...accepted, sourceUpdatedAt: "2026-08-06T09:00:00Z", distanceMiles: 9.9 }],
+      corrected.runLogs,
+    );
+
+    expect(refreshImportedRunSource(corrected, refreshes).runLogs[0].distanceMiles).toBe(3.1);
+  });
+
+  it("costs no write when the refresh would change nothing", () => {
+    const state = importedAndOwned();
+    const refreshes = planSourceMetricRefresh(
+      [{ ...accepted, sourceUpdatedAt: "2026-08-06T09:00:00Z" }],
+      state.runLogs,
+    );
+    const refreshed = refreshImportedRunSource(state, refreshes);
+    // The stamp moved, so this one is a change.
+    expect(refreshed).not.toBe(state);
+
+    // Applying the same answer twice is not.
+    expect(refreshImportedRunSource(refreshed, refreshes)).toBe(refreshed);
+    expect(refreshImportedRunSource(refreshed, [])).toBe(refreshed);
+  });
+
+  it("never touches a run the refresh does not name", () => {
+    const state = importedAndOwned();
+    const withManual = saveRunLog(state, { ...extraRun, completedDate: "2026-08-05" });
+    const untouched = withManual.runLogs.find((run) => run.source !== "intervals")!;
+    const refreshes = planSourceMetricRefresh(
+      [{ ...accepted, sourceUpdatedAt: "2026-08-06T09:00:00Z", metrics: { ...accepted.metrics, elevationGainFeet: 232.4 } }],
+      withManual.runLogs,
+    );
+
+    const refreshed = refreshImportedRunSource(withManual, refreshes);
+    expect(refreshed.runLogs.find((run) => run.id === untouched.id)).toEqual(untouched);
   });
 });

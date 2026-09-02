@@ -5,10 +5,12 @@ import {
   clampWeekNumber,
   currentWeekNumber,
   formatWeekRange,
+  planDistanceComparison,
+  plannedDistanceMiles,
   planWeekBounds,
   selectPlanWeekViewModel,
 } from "./plan.js";
-import type { RunLog } from "./types.js";
+import type { RunLog, Workout } from "./types.js";
 
 const plan = loadSeedPlan();
 
@@ -244,3 +246,53 @@ describe("availableWorkoutsForRunLog", () => {
     expect(workouts.some((workout) => workout.id === "workout-002")).toBe(false);
   });
 });
+
+/**
+ * Issue #214: the one plan comparison Run Detail's result may state.
+ *
+ * `targetDistanceMiles` is free text a person typed, so the rule is narrow on
+ * purpose — an exact target yields a difference, and anything else yields
+ * nothing rather than a guess dressed as a fact.
+ */
+describe("planDistanceComparison", () => {
+  const workout = (targetDistanceMiles: string | null): Workout => ({
+    id: "w-1",
+    date: "2026-08-04",
+    weekNumber: 3,
+    phase: "Foundation",
+    type: "easy",
+    title: "Easy 3 mi",
+    targetDistanceMiles,
+    details: "",
+    build: { renders: true, weekRow: 0, orderInWeek: 0, span: 1, colorKey: "easy" },
+  });
+
+  it("states the difference from an exact target, in either direction", () => {
+    expect(planDistanceComparison(workout("3"), 3.12)).toBe("+0.12 mi vs plan");
+    expect(planDistanceComparison(workout("3"), 2.7)).toBe("−0.3 mi vs plan");
+  });
+
+  it("says a run landed on its target rather than showing a zero difference", () => {
+    expect(planDistanceComparison(workout("3"), 3)).toBe("On plan · 3 mi");
+    // Two decimals is the precision STACK stores; below it there is no difference.
+    expect(planDistanceComparison(workout("3"), 3.001)).toBe("On plan · 3 mi");
+  });
+
+  it("says nothing about a range, which states a band rather than a number", () => {
+    expect(planDistanceComparison(workout("3-4"), 3.5)).toBeNull();
+    expect(planDistanceComparison(workout("3-4"), 5)).toBeNull();
+  });
+
+  it("says nothing when there is no target, no workout, or unreadable text", () => {
+    expect(planDistanceComparison(workout(null), 3.12)).toBeNull();
+    expect(planDistanceComparison(workout("as far as it feels"), 3.12)).toBeNull();
+    expect(planDistanceComparison(null, 3.12)).toBeNull();
+  });
+
+  it("parses the target the same way the import matcher always has", () => {
+    expect(plannedDistanceMiles(workout("3.5"))).toEqual({ low: 3.5, high: 3.5 });
+    expect(plannedDistanceMiles(workout("3 - 4"))).toEqual({ low: 3, high: 4 });
+    expect(plannedDistanceMiles(workout("0"))).toBeNull();
+  });
+});
+

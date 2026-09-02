@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { IconButton } from "./IconButton.js";
 
 interface SheetProps {
@@ -8,6 +8,26 @@ interface SheetProps {
   onClose: () => void;
   /** Return false to keep the sheet open (e.g. unsaved changes). */
   guardClose?: () => boolean;
+  /**
+   * Controls that belong to what the sheet is *about*, placed before Close.
+   *
+   * Added for Run Detail's `…` (issue #214), which owns editing, plan linking
+   * and provenance so the sheet body can be about the activity. Kept as a slot
+   * rather than a built-in overflow menu: what a sheet's own control does is
+   * the sheet's business, not this primitive's.
+   */
+  headerActions?: ReactNode;
+  /**
+   * Keeps the sheet's chrome to its controls, with the title present for the
+   * dialog's accessible name but not drawn.
+   *
+   * Run Detail (issue #214) owns its own identity — an icon, the run's name,
+   * the date and its chips — and that identity belongs *in* the activity, so it
+   * scrolls away as the runner moves into the analysis. A fixed heading
+   * repeating it would both duplicate it and hold a bar of chrome over the
+   * content for the whole scroll.
+   */
+  hideTitle?: boolean;
   children: ReactNode;
   className?: string;
 }
@@ -22,9 +42,18 @@ interface SheetProps {
  * measures the browser's chrome to get there. The one exception is the
  * on-screen keyboard, below.
  */
-export function Sheet({ title, isOpen, onClose, guardClose, children, className }: SheetProps) {
+export function Sheet({
+  title,
+  isOpen,
+  onClose,
+  guardClose,
+  headerActions,
+  hideTitle = false,
+  children,
+  className,
+}: SheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLElement>(null);
   const titleId = useId();
 
   useEffect(() => {
@@ -135,15 +164,40 @@ export function Sheet({ title, isOpen, onClose, guardClose, children, className 
       }}
     >
       <div className="sheet__panel">
-        <div className="sheet__header">
-          <h2 ref={titleRef} id={titleId} className="sheet__title" tabIndex={-1}>
-            {title}
-          </h2>
-          <IconButton
-            label="Close"
-            icon={<X size={20} strokeWidth={1.8} />}
-            onClick={requestClose}
-          />
+        <div className={hideTitle ? "sheet__header sheet__header--chrome" : "sheet__header"}>
+          {/*
+            With the title hidden it stays the dialog's accessible name and the
+            place focus lands on open, but stops being a heading: the sheet's
+            own content supplies the visible one, and two headings reading the
+            same words is a worse answer for a screen reader than for anyone.
+          */}
+          {hideTitle ? (
+            <span
+              ref={titleRef as RefObject<HTMLSpanElement>}
+              id={titleId}
+              className="sheet__title visually-hidden"
+              tabIndex={-1}
+            >
+              {title}
+            </span>
+          ) : (
+            <h2
+              ref={titleRef as RefObject<HTMLHeadingElement>}
+              id={titleId}
+              className="sheet__title"
+              tabIndex={-1}
+            >
+              {title}
+            </h2>
+          )}
+          <div className="sheet__header-actions">
+            {headerActions}
+            <IconButton
+              label="Close"
+              icon={<X size={20} strokeWidth={1.8} />}
+              onClick={requestClose}
+            />
+          </div>
         </div>
         <div className="sheet__body">{children}</div>
       </div>

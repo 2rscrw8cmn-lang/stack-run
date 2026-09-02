@@ -1,15 +1,30 @@
+import { MoreHorizontal } from "lucide-react";
+import { useState } from "react";
 import { Button } from "../../components/ui/Button.js";
+import { IconButton } from "../../components/ui/IconButton.js";
 import { Sheet } from "../../components/ui/Sheet.js";
-import { WORKOUT_TYPE_LABEL } from "../../domain/build.js";
-import { formatDateLabel } from "../../domain/dates.js";
-import { availableWorkoutsForRunLog } from "../../domain/plan.js";
+import { runSourceLabel } from "../../domain/runSource.js";
+import { availableWorkoutsForRunLog, planDistanceComparison } from "../../domain/plan.js";
 import type { RunHistoryEntry } from "../../domain/runs.js";
 import type { RunLog, TrainingPlan } from "../../domain/types.js";
+import { EFFORT_LABEL } from "../../domain/workout.js";
+import type { RunnerRun } from "../../history/runnerRun.js";
 import type { IntervalsConnection } from "../../connected/intervals.js";
 import { RunResultDetail } from "../workout-detail/RunResultDetail.js";
+import { RunOptionsSheet } from "../workout-detail/RunOptionsSheet.js";
+import { runIdentityFromRunLog } from "../workout-detail/runIdentity.js";
+import { sourceRunOptionFacts } from "../workout-detail/runOptions.js";
+import { sourceRunFactsFromRunLog } from "../workout-detail/sourceRunFacts.js";
 
 interface RunDetailSheetProps {
   entry: RunHistoryEntry;
+  /**
+   * The same physical run as the connected history knows it, when STACK holds a
+   * reconciled row for it. It is the only truthful source of the activity's own
+   * name and start time — a `RunLog` has no field for either — and it is read
+   * rather than copied, so nothing here can go stale against the source.
+   */
+  sourceRun?: RunnerRun | null;
   /** Opens the existing run-entry sheet, which also owns deletion. */
   onEditRun: () => void;
   /**
@@ -30,18 +45,23 @@ interface RunDetailSheetProps {
 /**
  * One recorded run, in full.
  *
- * The header states the run's date, activity type, and plan status — `Plan`
- * or `Extra` — as small tags rather than a standalone content section: what a
- * run is is metadata, not something worth its own heading and paragraph.
+ * Issue #214 turned this from a record viewer into the run itself. The sheet is
+ * titled with the activity — the source's own name for it where there is one,
+ * the linked workout's title where there is not, and STACK's own classification
+ * as the last resort — and never with the word "Run Detail", which described
+ * the screen rather than the run.
  *
- * Everything below is `RunResultDetail` — the imported metrics, the Run
- * Profile, heart-rate zones and the on-demand structured Intervals section
- * are the ones UI-9/UI-23 built, not a second renderer that would drift from
- * them. Plan linking is a compact action that opens `ConnectToPlanSheet`
- * rather than an always-visible inline form.
+ * Everything administrative moved behind the `…` control beside the title:
+ * Edit Run, plan linking, where the run came from, the effort the runner chose,
+ * elapsed time and the methodology note. That is an explicit product decision,
+ * not a tidy-up — with them gone, the body below is the activity: its result,
+ * its supporting metrics, and the analysis of what happened inside it, all
+ * rendered by `RunResultDetail` rather than by a second renderer that would
+ * drift from the historical sheet's.
  */
 export function RunDetailSheet({
   entry,
+  sourceRun = null,
   onEditRun,
   plan,
   runLogs,
@@ -52,63 +72,78 @@ export function RunDetailSheet({
   onClose,
 }: RunDetailSheetProps) {
   const { runLog, workout } = entry;
+  const [isOptionsOpen, setOptionsOpen] = useState(false);
   const canLink = !workout && Boolean(plan) && Boolean(runLogs) && Boolean(onOpenConnectToPlan);
   const candidateCount = canLink
     ? availableWorkoutsForRunLog(runLog, plan!, runLogs!).length
     : 0;
 
+  const identity = runIdentityFromRunLog(runLog, workout ?? null, sourceRun);
+  const facts = sourceRunFactsFromRunLog(runLog);
+  const optionFacts = sourceRunOptionFacts(facts, {
+    sourceLabel: runSourceLabel(runLog),
+    effortLabel: EFFORT_LABEL[runLog.effort],
+    manualHeartRate: facts.averageHeartRate === null ? runLog.manualHeartRate ?? null : null,
+    sourceActivityName: identity.sourceName,
+    importedAt: runLog.externalSource?.importedAt ?? null,
+    sourceUpdatedAt: runLog.externalSource?.sourceUpdatedAt ?? null,
+  });
+
+  /** Every action closes this sheet first, so nothing opens behind a sheet. */
+  function act(action: () => void) {
+    setOptionsOpen(false);
+    action();
+  }
+
   return (
-    <Sheet
-      className="sheet--run-detail"
-      title="Run Detail"
-      isOpen={isOpen}
-      onClose={onClose}
-    >
-      <div className="workout-detail">
-        <div className="run-detail__context">
-          <div className="run-detail__context-primary">
-            <p className="machine-label">
-              {formatDateLabel(runLog.completedDate, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </p>
-            {workout && (
-              <p className="run-detail__plan-line machine-label">
-                Week {workout.weekNumber} · {workout.title}
-              </p>
+    <>
+      <Sheet
+        className="sheet--run-detail"
+        title={identity.title}
+        hideTitle
+        isOpen={isOpen}
+        onClose={onClose}
+        headerActions={
+          <IconButton
+            label="Run options"
+            icon={<MoreHorizontal size={20} strokeWidth={1.8} />}
+            onClick={() => setOptionsOpen(true)}
+          />
+        }
+      >
+        <div className="workout-detail">
+          <RunResultDetail
+            run={runLog}
+            syncToken={syncToken}
+            identity={identity}
+            distanceNote={planDistanceComparison(workout ?? null, runLog.distanceMiles)}
+            detailsBehindOptions
+          />
+        </div>
+      </Sheet>
+
+      <RunOptionsSheet
+        isOpen={isOptionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        facts={optionFacts}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => act(onEditRun)}>
+              Edit Run
+            </Button>
+            {canLink && candidateCount > 0 && (
+              <Button variant="secondary" onClick={() => act(onOpenConnectToPlan!)}>
+                Connect to Plan
+              </Button>
             )}
-          </div>
-          <div className="run-detail__context-tags">
-            <span className="run-detail__type machine-label" data-type={runLog.activityType}>
-              {WORKOUT_TYPE_LABEL[runLog.activityType]}
-            </span>
-            <span className="run-detail__status-tag machine-label" data-status={workout ? "plan" : "extra"}>
-              {workout ? "Plan" : "Extra"}
-            </span>
-          </div>
-        </div>
-
-        <RunResultDetail run={runLog} syncToken={syncToken} />
-
-        <div className="workout-detail__actions">
-          <Button variant="secondary" onClick={onEditRun}>
-            Edit Run
-          </Button>
-          {canLink && candidateCount > 0 && (
-            <Button variant="secondary" onClick={onOpenConnectToPlan}>
-              Connect to Plan
-            </Button>
-          )}
-          {entry.relationship === "active-plan" && onUnlinkRun && (
-            <Button variant="ghost" onClick={() => onUnlinkRun(runLog.id)}>
-              Unlink from Plan
-            </Button>
-          )}
-        </div>
-      </div>
-    </Sheet>
+            {entry.relationship === "active-plan" && onUnlinkRun && (
+              <Button variant="ghost" onClick={() => act(() => onUnlinkRun(runLog.id))}>
+                Unlink from Plan
+              </Button>
+            )}
+          </>
+        }
+      />
+    </>
   );
 }

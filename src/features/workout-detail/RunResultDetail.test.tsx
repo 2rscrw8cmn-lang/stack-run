@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IntervalsRunProfile } from "../../connected/intervals.js";
@@ -57,12 +57,31 @@ const augustStreams = {
   cadence: [79, 79, 80, 79, 78, 79, 0, 79, 80, 79, 79, 80],
 };
 
-function profileFacts() {
-  const facts = document.querySelector(".run-profile-chart__facts");
+function analysisFacts() {
+  const facts = document.querySelector(".run-analysis__facts");
   return [...(facts?.querySelectorAll("div") ?? [])].map((cell) => ({
     label: cell.querySelector("dt")?.textContent,
     value: cell.querySelector("dd")?.textContent,
   }));
+}
+
+function hero() {
+  return screen.getByLabelText("Primary activity results");
+}
+
+/** The drawn metric line(s). One per contiguous stretch of measured samples. */
+function chartLines() {
+  return document.querySelectorAll(".activity-chart path.activity-chart__line");
+}
+
+/** The scrub surface, sized as a real 320px-wide plot would be. */
+function scrubSurface() {
+  const surface = document.querySelector(".activity-chart__scrub") as HTMLElement;
+  vi.spyOn(surface, "getBoundingClientRect").mockReturnValue({
+    x: 0, y: 0, top: 0, left: 0, right: 320, bottom: 150, width: 320, height: 150,
+    toJSON: () => ({}),
+  });
+  return surface;
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -70,9 +89,9 @@ afterEach(() => vi.restoreAllMocks());
 describe("connected run result", () => {
   it("leaves a minimum-field manual run unchanged apart from derived pace", () => {
     render(<RunResultDetail run={base} />);
-    expect(screen.getByText("5 mi")).toBeInTheDocument();
-    expect(screen.getByText("40:00")).toBeInTheDocument();
-    expect(screen.getByText("8:00 /MI")).toBeInTheDocument();
+    expect(hero()).toHaveTextContent("5 mi");
+    expect(hero()).toHaveTextContent("40:00");
+    expect(hero()).toHaveTextContent("8:00 /MI");
     expect(screen.getByText("Solid")).toBeInTheDocument();
     expect(screen.getByText("Felt controlled.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /intervals/i })).not.toBeInTheDocument();
@@ -80,8 +99,9 @@ describe("connected run result", () => {
 
   /*
    * Issue #129: where a run came from is said the same way for every run, not
-   * only the synced ones, and it stays in the meta line — secondary to the
-   * result it qualifies.
+   * only the synced ones. Issue #214 moved that statement behind Run Detail's
+   * own `…` control; on a surface with no such control — a Build block, a
+   * planned workout — it stays in this compact line.
    */
   it("names the source of a hand-logged run and of a synced one", () => {
     const { unmount } = render(<RunResultDetail run={base} />);
@@ -94,28 +114,51 @@ describe("connected run result", () => {
     expect(screen.queryByText("Manual entry")).not.toBeInTheDocument();
   });
 
+  it("hands provenance to the surrounding sheet when that sheet owns a run-options control", () => {
+    render(<RunResultDetail run={{ ...syncedRun, importedMetrics: {} }} detailsBehindOptions />);
+    expect(screen.queryByText("Intervals.icu")).not.toBeInTheDocument();
+    expect(screen.queryByText("Solid")).not.toBeInTheDocument();
+    // The run itself is untouched by that decision.
+    expect(hero()).toHaveTextContent("5 mi");
+  });
+
   it("omits every absent optional metric", () => {
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: {} }} />);
     expect(screen.getByText("Intervals.icu")).toBeInTheDocument();
     expect(screen.queryByText(/Avg HR|Max HR|Gain|Load|Cadence/)).not.toBeInTheDocument();
   });
 
-  it("shows each approved optional summary with mobile-fit labels, and accessible HR-zone text without guessed zeroes", () => {
+  it("states no secondary aggregate above Analysis, however many the source sent", () => {
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { averageHeartRate: 151, maxHeartRate: 177, elevationGainFeet: 432.4, trainingLoad: 68, hrZoneSeconds: [600, 1200, 600] } }} />);
-    expect(screen.getByText("151 bpm")).toBeInTheDocument();
-    expect(screen.getByText("Avg HR")).toBeInTheDocument();
-    expect(screen.getByText("177 bpm")).toBeInTheDocument();
-    expect(screen.getByText("432 ft")).toBeInTheDocument();
-    expect(screen.getByText("Gain")).toBeInTheDocument();
-    expect(screen.getByText("68")).toBeInTheDocument();
-    expect(screen.getByText("Load")).toBeInTheDocument();
-    expect(screen.queryByText("Elevation gain")).not.toBeInTheDocument();
-    expect(screen.queryByText("Training Load")).not.toBeInTheDocument();
-    const zones = screen.getByRole("list", { name: "Heart rate zone distribution" });
-    expect(zones).toHaveTextContent("Zone 1");
-    expect(zones).toHaveTextContent("10:00 · 25%");
-    expect(zones).toHaveTextContent("20:00 · 50%");
-    expect(zones).not.toHaveTextContent("Zone 4");
+
+    /*
+     * Every one of these is a real source aggregate, and none of them is shown
+     * here. Heart rate, elevation and cadence each belong to an Analysis tab
+     * that states them with the run's shape behind them; training load, which
+     * has no stream and so no tab, belongs to `…`. Printing them above Analysis
+     * as well made the top of a run a dashboard of numbers the runner had not
+     * asked for, each stated twice.
+     */
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    expect(screen.queryByText("151 bpm")).not.toBeInTheDocument();
+    expect(screen.queryByText("432 ft")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gain")).not.toBeInTheDocument();
+    expect(screen.queryByText("Load")).not.toBeInTheDocument();
+
+    // And an aggregate-only run grows no fallback module in their place.
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
+  });
+
+  it("says nothing about heart-rate zones above Analysis", () => {
+    /*
+     * `76% of this run was in Zone 2` was true and in the wrong place: it made
+     * a heart-rate reading the headline of every run that had zones. The zone
+     * rows inside Heart Rate state the whole distribution instead.
+     */
+    render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { hrZoneSeconds: [120, 1_875, 300] } }} />);
+    expect(screen.queryByText(/of this run was in Zone/)).not.toBeInTheDocument();
   });
 
   it("shows a hand-typed heart rate on a manual run that has no imported one", () => {
@@ -130,34 +173,44 @@ describe("connected run result", () => {
         run={{ ...syncedRun, importedMetrics: { averageHeartRate: 151 }, manualHeartRate: 999 }}
       />,
     );
-    expect(screen.getByText("151 bpm")).toBeInTheDocument();
+    // The imported average is a heart-rate fact and lives in Heart Rate; the
+    // typed one is simply not shown once the source has stated its own.
     expect(screen.queryByText("999 bpm")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Avg HR")).toHaveLength(1);
+    expect(screen.queryByText("Avg HR")).not.toBeInTheDocument();
   });
 
-  it("keeps the phone summary metrics to one 2×2 grid, with cadence living in the profile", async () => {
+  it("gives every source aggregate exactly one home", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
-    // Exactly four cells, in source order, so the CSS 2×2 lands as designed
-    // rather than three across with a fifth stranded underneath.
-    const grid = screen.getByLabelText("Imported run metrics");
-    expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
-      .toEqual(["Avg HR", "Max HR", "Gain", "Load"]);
-    expect(screen.getByRole("button", { name: "Cadence" })).toBeInTheDocument();
+    // Nothing above Analysis but identity, result and the run's own notes.
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+
+    // Heart rate states its average and its maximum, and only there.
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+    const heartRateFacts = document.querySelector(".run-analysis__facts");
+    expect(heartRateFacts).toHaveTextContent("Avg");
+    expect(heartRateFacts).toHaveTextContent("Max");
+
+    // Cadence states the source's own average, verbatim and unitless.
+    await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("79");
   });
 
   it("keeps Gain as the source's own climbing total rather than anything recomputed from altitude", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     // Intervals reports 115 ft of climbing and STACK shows 116; the altitude
     // stream only ever spans 72–113 ft, so a recomputed gain would disagree
-    // with every other source the runner can check.
-    expect(screen.getByText("116 ft")).toBeInTheDocument();
-    expect(screen.getByText("Gain")).toBeInTheDocument();
+    // with every other source the runner can check. Elevation is now the only
+    // place that states it, and it still never recomputes it from the series it
+    // draws.
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("116 ft");
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("Gain");
   });
 
   it("fetches richer detail automatically once shown, with no explicit tap and no button at all", async () => {
@@ -185,7 +238,7 @@ describe("connected run result", () => {
     respondWith(NO_INTERVALS, { time: [0, 30], heartrate: [140, 150] });
 
     render(<RunResultDetail run={syncedRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     expect(screen.queryByRole("button", { name: "View intervals" })).not.toBeInTheDocument();
     expect(screen.queryByText(/understandable interval groups/i)).not.toBeInTheDocument();
@@ -212,13 +265,13 @@ describe("connected run result", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("shows no Run Profile section when the stream response carries no recognizable data", async () => {
+  it("shows no Analysis section when the stream response carries no recognizable data", async () => {
     respondWith({ icu_intervals: [{ name: "Rep 1", moving_time: 180, distance: 800 }] }, {});
 
     render(<RunResultDetail run={syncedRun} syncToken="token" />);
     await screen.findByRole("list", { name: "Structured workout intervals" });
 
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 
   it("plots only the metrics the stream data actually contains, with a working selector", async () => {
@@ -231,7 +284,7 @@ describe("connected run result", () => {
 
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { averageHeartRate: 150, maxHeartRate: 160 } }} syncToken="token" />);
 
-    expect(await screen.findByText("Run Profile")).toBeInTheDocument();
+    expect(await screen.findByText("Analysis")).toBeInTheDocument();
     const paceButton = screen.getByRole("button", { name: "Pace" });
     const hrButton = screen.getByRole("button", { name: "Heart Rate" });
     expect(paceButton).toHaveAttribute("aria-pressed", "true");
@@ -249,86 +302,110 @@ describe("connected run result", () => {
  * The corrections the August 13 real-device review asked for. Every number
  * below is one the runner can check against Intervals or HealthFit.
  */
-describe("Run Profile facts come from the source's own aggregates", () => {
+describe("Analysis facts come from the source's own aggregates", () => {
   it("states the run's own pace, never an average of instantaneous samples", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     // 2.76 mi in 30:18 is 10:59 /mi, which is what Intervals (10:58) and
     // HealthFit (11:00) agree on. The samples' arithmetic mean is not this.
-    expect(profileFacts()).toEqual([{ label: "Avg pace", value: "10:59 /MI" }]);
+    expect(analysisFacts()).toEqual([{ label: "Avg pace", value: "10:59 /MI" }]);
   });
 
   it("never turns a near-stop into a displayed worst pace, or a spike into a best one", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
-    const profile = document.querySelector(".run-result-detail__profile")!;
+    const analysis = document.querySelector(".run-analysis")!;
     // The 0.5 m/s sample is a 53:38 /mi instant. It stays in the series and
     // out of the facts: no Low, no High, no Best, no Worst for pace at all.
-    expect(within(profile as HTMLElement).queryByText(/53:/)).not.toBeInTheDocument();
-    expect(within(profile as HTMLElement).queryByText("Low")).not.toBeInTheDocument();
-    expect(within(profile as HTMLElement).queryByText("High")).not.toBeInTheDocument();
-    expect(within(profile as HTMLElement).queryByText(/Best|Worst|Fastest|Slowest/)).not.toBeInTheDocument();
+    expect(within(analysis as HTMLElement).queryByText(/53:/)).not.toBeInTheDocument();
+    expect(within(analysis as HTMLElement).queryByText("Low")).not.toBeInTheDocument();
+    expect(within(analysis as HTMLElement).queryByText("High")).not.toBeInTheDocument();
+    expect(within(analysis as HTMLElement).queryByText(/Best|Worst|Fastest|Slowest/)).not.toBeInTheDocument();
   });
 
   it("states imported average and max heart rate rather than sample extremes", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
     await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
 
     // 153/174 are the imported aggregates; the stream's own extremes are
     // 140 and 160 and must not be what is stated.
-    expect(profileFacts()).toEqual([
+    expect(analysisFacts()).toEqual([
       { label: "Avg", value: "153 bpm" },
       { label: "Max", value: "174 bpm" },
     ]);
   });
 
-  it("uses the stream for elevation low and high, which are properties of the series", async () => {
+  it("states the source's Gain beside the series' own low and high for elevation", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
     await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
 
     // 22.0 m and 34.4 m are 72 ft and 113 ft, the altitude span the review saw.
-    expect(profileFacts()).toEqual([
+    // Gain stays the source's climbing total, which is a different question and
+    // is never recomputed from those samples.
+    expect(analysisFacts()).toEqual([
+      { label: "Gain", value: "116 ft" },
       { label: "Low", value: "72 ft" },
       { label: "High", value: "113 ft" },
     ]);
   });
 
-  it("gives every profile an elapsed-time axis running from 0:00 to the run's duration", async () => {
+  it("gives every chart an elapsed-time axis running from 0:00 to the run's duration", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
-    const axis = document.querySelector(".run-profile-chart__axis")!;
+    const axis = document.querySelector(".activity-chart__axis")!;
     expect(axis).toHaveTextContent("0:00");
     expect(axis).toHaveTextContent("30:15");
   });
+
+  it("labels the y-axis in the metric's own units rather than leaving the shape unscaled", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={augustRun} syncToken="token" />);
+    await screen.findByText("Analysis");
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+
+    const ticks = [...document.querySelectorAll(".activity-chart__ticks span")]
+      .filter((tick) => !tick.classList.contains("activity-chart__unit"))
+      .map((tick) => tick.textContent);
+    expect(ticks.length).toBeGreaterThanOrEqual(2);
+    // Round values inside the series' own 140–160 window.
+    for (const tick of ticks) {
+      expect(Number(tick)).toBeGreaterThanOrEqual(140);
+      expect(Number(tick)).toBeLessThanOrEqual(160);
+    }
+    // The unit is stated once under the axis rather than on every tick.
+    expect(document.querySelector(".activity-chart__unit")).toHaveTextContent("bpm");
+  });
 });
 
-describe("Run Profile cadence", () => {
+describe("Analysis cadence", () => {
   it("offers cadence as the fourth metric and reports it exactly as Intervals does", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     expect(screen.getByRole("group", { name: "Run Profile metric" })).toBeInTheDocument();
     expect(
       within(screen.getByRole("group", { name: "Run Profile metric" }))
         .getAllByRole("button")
-        .map((button) => button.textContent),
+        // The accessible name, which is the full metric name at every width:
+        // the visible label swaps to a short form on the narrowest phones.
+        .map((button) => button.getAttribute("aria-label")),
     ).toEqual(["Pace", "Heart Rate", "Elevation", "Cadence"]);
 
     await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
     // 79 is what the source says, so 79 is what STACK shows: not 158, and not
     // dressed in a unit this repository has not verified.
-    expect(profileFacts()).toEqual([{ label: "Avg cadence", value: "79" }]);
+    expect(analysisFacts()).toEqual([{ label: "Avg cadence", value: "79" }]);
     expect(screen.queryByText("158")).not.toBeInTheDocument();
     expect(screen.queryByText(/79 spm|79 rpm|79 steps/i)).not.toBeInTheDocument();
   });
@@ -339,29 +416,34 @@ describe("Run Profile cadence", () => {
       heartrate: [140, 150, 160],
     });
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { averageHeartRate: 150 } }} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     expect(screen.queryByRole("button", { name: "Cadence" })).not.toBeInTheDocument();
     expect(screen.queryByText("Cadence")).not.toBeInTheDocument();
   });
 
-  it("falls back to the summary grid when the verified average exists but the stream carried none", async () => {
+  it("does not state a verified average with no tab to hold it, and does not lose it either", async () => {
     respondWith(NO_INTERVALS, {
       time: [0, 30, 60],
       heartrate: [140, 150, 160],
     });
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
+    /*
+     * The source stated an average cadence of 79 but sent no cadence stream, so
+     * there is no Cadence tab to read it in — and no strip above Analysis to
+     * park it in either. It is not invented into the layout: it stays a source
+     * aggregate, reachable with the rest of them behind `…`, which is what
+     * `sourceRunOptionFacts` states and `runOptions.test.ts` covers.
+     */
     expect(screen.queryByRole("button", { name: "Cadence" })).not.toBeInTheDocument();
-    const grid = screen.getByLabelText("Imported run metrics");
-    expect([...grid.querySelectorAll("dt")].map((label) => label.textContent))
-      .toEqual(["Avg HR", "Max HR", "Gain", "Load", "Cadence"]);
-    expect(within(grid).getByText("79")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    expect(screen.queryByText("79")).not.toBeInTheDocument();
   });
 });
 
-describe("Run Profile gaps", () => {
+describe("Analysis gaps", () => {
   it("breaks the line where the stream stopped rather than joining across it", async () => {
     respondWith(NO_INTERVALS, {
       time: [0, 30, 60, 90, 120, 150],
@@ -369,55 +451,236 @@ describe("Run Profile gaps", () => {
       heartrate: [140, 145, 0, 0, 150, 155],
     });
     render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { averageHeartRate: 148, maxHeartRate: 155 } }} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
-    const lines = document.querySelectorAll(".run-profile-chart polyline.chart__line");
-    expect(lines).toHaveLength(2);
     // Two measured stretches, never one line drawn straight over the hole.
-    expect(lines[0].getAttribute("points")!.split(" ")).toHaveLength(2);
-    expect(lines[1].getAttribute("points")!.split(" ")).toHaveLength(2);
+    expect(chartLines()).toHaveLength(2);
   });
 
   it("treats a standing-still cadence as a gap rather than a measured zero", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
     await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
 
-    // The single 0 in the cadence stream is a stop, so the line breaks there
+    // The single 0 in the cadence stream is a stop, so the step breaks there
     // instead of plunging to the floor and implying a measured zero.
-    expect(document.querySelectorAll(".run-profile-chart polyline.chart__line")).toHaveLength(2);
+    expect(chartLines()).toHaveLength(2);
   });
 });
 
-describe("Run Detail heart-rate zones", () => {
-  const zoned = {
-    ...syncedRun,
-    importedMetrics: { hrZoneSeconds: [305, 412, 463, 430, 171, 0, 0] },
-  };
+/**
+ * Issue #214's headline behaviour: a chart a runner can interrogate.
+ *
+ * The rules being protected are that the reading follows the finger, that it
+ * stays put when the finger lifts, that it is available to a keyboard and a
+ * screen reader in text, and that it never states a number STACK does not have
+ * for that moment.
+ */
+describe("chart scrubbing", () => {
+  async function renderAugust() {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={augustRun} syncToken="token" />);
+    await screen.findByText("Analysis");
+  }
 
-  it("drops the visible legend and lets the ring itself be selected", async () => {
-    render(<RunResultDetail run={zoned} />);
+  it("selects the nearest recorded sample under a dragging finger and states it", async () => {
+    await renderAugust();
+    const surface = scrubSurface();
 
-    const legend = screen.getByRole("list", { name: "Heart rate zone distribution" });
-    expect(legend).toHaveClass("visually-hidden");
+    // 320px wide for a 1815s run: two thirds across is about 20:00 elapsed,
+    // whose nearest recorded sample is the one at 19:15.
+    fireEvent.pointerDown(surface, { pointerId: 1, clientX: 214, clientY: 60 });
 
-    const centreName = () => document.querySelector(".donut__center-label")?.textContent;
-    const centreDetail = () => document.querySelector(".donut__center-detail")?.textContent;
-    expect(centreName()).toBe("Zone 3");
-    expect(centreDetail()).toBe("7:43");
+    const callout = document.querySelector(".activity-chart__callout")!;
+    expect(callout).toHaveTextContent("19:15");
+    expect(callout).toHaveTextContent("/MI");
+    // What else was measured at that moment, and only what was measured.
+    expect(callout).toHaveTextContent("154 bpm");
 
-    await userEvent.click(screen.getByRole("button", { name: "Zone 2, 6:52, 23%" }));
-    expect(centreName()).toBe("Zone 2");
-    expect(centreDetail()).toBe("6:52");
+    fireEvent.pointerMove(surface, { pointerId: 1, clientX: 320, clientY: 60 });
+    expect(document.querySelector(".activity-chart__callout")).toHaveTextContent("30:15");
+
+    // The reading survives the finger lifting, which is the only way a phone
+    // can offer a tooltip at all.
+    fireEvent.pointerUp(surface, { pointerId: 1, clientX: 320, clientY: 60 });
+    expect(document.querySelector(".activity-chart__callout")).toHaveTextContent("30:15");
   });
 
-  it("keeps the complete composition available to a screen reader without the legend being visible", () => {
-    render(<RunResultDetail run={zoned} />);
-    const legend = screen.getByRole("list", { name: "Heart rate zone distribution" });
-    expect(within(legend).getAllByRole("listitem")).toHaveLength(5);
-    expect(legend).toHaveTextContent("Zone 5");
-    expect(legend).toHaveTextContent("2:51 · 10%");
+  it("draws a crosshair and a marker for the selected point, and clears both on a tap away", async () => {
+    await renderAugust();
+    const surface = scrubSurface();
+    fireEvent.pointerDown(surface, { pointerId: 1, clientX: 160, clientY: 60 });
+
+    expect(document.querySelector(".activity-chart__crosshair")).toBeInTheDocument();
+    expect(document.querySelector(".activity-chart__marker")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body, { pointerId: 2, clientX: 10, clientY: 400 });
+    expect(document.querySelector(".activity-chart__crosshair")).not.toBeInTheDocument();
+    expect(document.querySelector(".activity-chart__callout")).not.toBeInTheDocument();
+  });
+
+  it("gives the cursor to the keyboard and states the reading as text", async () => {
+    await renderAugust();
+    const scrub = screen.getByRole("slider", { name: "Pace over elapsed time" });
+    expect(scrub).toHaveAttribute("aria-valuetext", expect.stringContaining("Whole run"));
+
+    fireEvent.keyDown(scrub, { key: "End" });
+    expect(scrub.getAttribute("aria-valuetext")).toContain("30:15 elapsed");
+    expect(scrub.getAttribute("aria-valuetext")).toContain("Pace");
+
+    fireEvent.keyDown(scrub, { key: "Home" });
+    expect(scrub.getAttribute("aria-valuetext")).toContain("0:00 elapsed");
+
+    // Escape gives the whole run back rather than leaving a locked reading.
+    fireEvent.keyDown(scrub, { key: "Escape" });
+    expect(scrub.getAttribute("aria-valuetext")).toContain("Whole run");
+  });
+
+  it("says a metric was not recorded at that moment rather than inventing a value", async () => {
+    respondWith(NO_INTERVALS, {
+      time: [0, 60, 120, 180],
+      heartrate: [140, 0, 0, 150],
+    });
+    render(<RunResultDetail run={{ ...syncedRun, importedMetrics: { averageHeartRate: 145 } }} syncToken="token" />);
+    await screen.findByText("Analysis");
+
+    const scrub = screen.getByRole("slider", { name: "Heart Rate over elapsed time" });
+    fireEvent.keyDown(scrub, { key: "Home" });
+    fireEvent.keyDown(scrub, { key: "ArrowRight" });
+
+    expect(scrub.getAttribute("aria-valuetext")).toContain("no heart rate recorded here");
+    expect(document.querySelector(".activity-chart__callout")).toHaveTextContent("No data");
+    // A time position with no reading gets no marker, because there is nothing
+    // there to mark.
+    expect(document.querySelector(".activity-chart__marker")).not.toBeInTheDocument();
+  });
+
+  it("keeps the selection with the metric it was made on", async () => {
+    await renderAugust();
+    const surface = scrubSurface();
+    fireEvent.pointerDown(surface, { pointerId: 1, clientX: 214, clientY: 60 });
+    expect(document.querySelector(".activity-chart__callout")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
+    expect(document.querySelector(".activity-chart__callout")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Issue #214 moved heart-rate zones inside heart rate. The composition is still
+ * fully available as ordered text — that is what makes it accessible — but it
+ * is no longer a standalone module competing with the analysis it belongs to.
+ */
+describe("heart-rate zones inside heart-rate analysis", () => {
+  const zoned = {
+    ...syncedRun,
+    importedMetrics: { averageHeartRate: 150, hrZoneSeconds: [305, 412, 463, 430, 171, 0, 0] },
+  };
+
+  it("moves the distribution into the heart-rate chart when that is the metric being investigated", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={zoned} syncToken="token" />);
+    await screen.findByText("Analysis");
+
+    // Heart-rate detail does not persist beneath a different selected metric.
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" }))
+      .not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+
+    // Now they belong to the selected chart.
+    const zones = screen.getByRole("list", { name: "Heart rate zone distribution" });
+    expect(within(zones).getAllByRole("listitem")).toHaveLength(5);
+    expect(zones).toHaveTextContent("Zone 3");
+    expect(zones).toHaveTextContent("7:43 · 26%");
+    // A zone with no time in it is absent rather than shown as a zero.
+    expect(zones).not.toHaveTextContent("Zone 6");
+    expect(zones.closest(".run-analysis")).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "Heart Rate" })).not.toBeInTheDocument();
+  });
+
+  it("gives every zone an ordered, selectable row with its duration and share", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={zoned} syncToken="token" />);
+    await screen.findByText("Analysis");
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+
+    const row = screen.getByRole("button", { name: "Zone 2, 6:52, 23%" });
+    expect(row).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(row);
+    expect(row).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(row);
+    expect(row).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("draws no ring beside the rows, which are the whole distribution", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={zoned} syncToken="token" />);
+    await screen.findByText("Analysis");
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+
+    /*
+     * A donut said the same thing the bars say, in a form that cannot state a
+     * duration, and the width it took came out of the bars — which are what
+     * makes one zone's share readable against another's. The rows carry
+     * identity, share, percentage and duration, so they are the reading.
+     */
+    expect(document.querySelector(".donut")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Zone \d, /})).toHaveLength(5);
+  });
+
+  it("shows no zone distribution at all when the source stated none", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={augustRun} syncToken="token" />);
+    await screen.findByText("Analysis");
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+
+    expect(screen.queryByRole("list", { name: "Heart rate zone distribution" })).not.toBeInTheDocument();
+  });
+});
+
+/** The tabbed Analysis instrument is the only detailed metric surface. */
+describe("analysis owns detailed metrics", () => {
+  it("keeps every metric's detail in its selected tab and renders no persistent summary cards", async () => {
+    respondWith(NO_INTERVALS, augustStreams);
+    render(<RunResultDetail run={{ ...augustRun, importedMetrics: { ...augustRun.importedMetrics, hrZoneSeconds: [305, 412, 463, 430, 171] } }} syncToken="token" />);
+    await screen.findByText("Analysis");
+
+    expect(document.querySelector(".run-summaries")).not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
+    expect(document.querySelector(".sparkline")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Heart Rate" }));
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("153 bpm");
+    expect(document.querySelector(".run-analysis__facts")).toHaveTextContent("174 bpm");
+    expect(screen.getByRole("list", { name: "Heart rate zone distribution" }))
+      .toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Elevation" }));
+    const elevationFacts = document.querySelector(".run-analysis__facts");
+    expect(elevationFacts).toHaveTextContent("116 ft");
+    expect(elevationFacts).toHaveTextContent("72 ft");
+    expect(elevationFacts).toHaveTextContent("113 ft");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cadence" }));
+    const cadenceFacts = document.querySelector(".run-analysis__facts");
+    expect(cadenceFacts).toHaveTextContent("79");
+    expect(cadenceFacts).not.toHaveTextContent("158");
+    expect(cadenceFacts).not.toHaveTextContent(/spm|rpm/i);
+  });
+
+  it("keeps aggregate-only runs to their result rather than filling the gap with cards", () => {
+    render(<RunResultDetail run={augustRun} />);
+
+    // No profile, so no Analysis — and nothing invented to stand in for it. The
+    // result is the run; its aggregates stay behind `…`.
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    expect(screen.queryByText("116 ft")).not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
+    expect(document.querySelector(".sparkline")).not.toBeInTheDocument();
+    expect(hero()).toHaveTextContent("2.76 mi");
   });
 });
 
@@ -428,21 +691,21 @@ describe("Run Detail heart-rate zones", () => {
  * change what a logged run does.
  */
 describe("accepted run through the shared source-detail path", () => {
-  it("keeps a valid summary when only the optional profile fails", async () => {
+  it("keeps a valid aggregate result when only the optional profile fails", async () => {
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify(NO_INTERVALS)))
       .mockRejectedValueOnce(new Error("streams unavailable"));
 
     render(<RunResultDetail run={augustRun} syncToken="token" />);
 
-    // Everything the source already stated survives the failed enrichment,
-    // including the cadence that would have lived in the profile.
-    await screen.findByText("79");
-    expect(screen.getByText("2.76 mi")).toBeInTheDocument();
-    expect(screen.getByText("10:59 /MI")).toBeInTheDocument();
-    expect(screen.getByText("153 bpm")).toBeInTheDocument();
-    expect(screen.getByText("116 ft")).toBeInTheDocument();
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    // Everything the primary result already stated survives the failed
+    // enrichment; missing profile detail does not grow fallback cards.
+    await screen.findByLabelText("Primary activity results");
+    expect(hero()).toHaveTextContent("2.76 mi");
+    expect(hero()).toHaveTextContent("10:59 /MI");
+    expect(screen.queryByLabelText("Imported run metrics")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
+    expect(document.querySelector(".run-summary")).not.toBeInTheDocument();
     // A missing profile is not an error worth alarming anybody about.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -479,7 +742,7 @@ describe("accepted run through the shared source-detail path", () => {
     });
     await Promise.resolve();
 
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 
   it("asks the source for nothing when the run was never synced", () => {
@@ -487,13 +750,13 @@ describe("accepted run through the shared source-detail path", () => {
     render(<RunResultDetail run={base} syncToken="token" />);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.queryByText("Run Profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analysis")).not.toBeInTheDocument();
   });
 
-  it("keeps every touch target for the profile selectors a real button", async () => {
+  it("keeps every touch target for the analysis tabs a real button", async () => {
     respondWith(NO_INTERVALS, augustStreams);
     render(<RunResultDetail run={augustRun} syncToken="token" />);
-    await screen.findByText("Run Profile");
+    await screen.findByText("Analysis");
 
     for (const selector of within(screen.getByRole("group", { name: "Run Profile metric" }))
       .getAllByRole("button")) {

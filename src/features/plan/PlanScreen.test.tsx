@@ -309,7 +309,7 @@ describe("PlanScreen workout detail", () => {
     );
     const sheet = screen.getByRole("dialog");
 
-    expect(within(sheet).getByText("2.4 mi")).toBeInTheDocument();
+    expect(within(sheet).getByLabelText("Primary activity results")).toHaveTextContent("2.4 mi");
     expect(within(sheet).getByText("25:30")).toBeInTheDocument();
     expect(within(sheet).getByText("Solid")).toBeInTheDocument();
     expect(within(sheet).getByText("Legs felt fresh")).toBeInTheDocument();

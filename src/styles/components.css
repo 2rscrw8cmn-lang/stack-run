@@ -450,6 +450,22 @@
   .sheet--instrument .sheet__panel {
     height: 90%;
   }
+
+  /*
+   * Run Detail is the same argument. Its four tabs are four views of one run,
+   * and Heart Rate is about 240px taller than the others because it carries the
+   * zone rows — so on a screen tall enough for the sheet to fit its content,
+   * changing tabs resized the whole panel and moved the chart out from under
+   * the runner's finger.
+   *
+   * Pinned only when there is an Analysis module to switch between: a run whose
+   * source sent no stream is genuinely short, and giving it a near-full-screen
+   * sheet would be a wall of empty surface. A browser without `:has()` keeps
+   * the content-sized behaviour it has today rather than breaking.
+   */
+  .sheet--run-detail:has(.run-analysis) .sheet__panel {
+    height: 90%;
+  }
 }
 
 @media (min-width: 768px) {
@@ -464,6 +480,12 @@
     border-radius: var(--radius-lg);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
     animation: sheet-fade-in 200ms ease-out;
+  }
+
+  /* The same rule on a centred dialog, where a resize moves both edges at once
+     and is more distracting still. */
+  .sheet--run-detail:has(.run-analysis) .sheet__panel {
+    height: min(88vh, 860px);
   }
 }
 
@@ -2298,17 +2320,9 @@ textarea.run-input {
 
 .run-result-detail__error { color: var(--long); }
 .run-result-detail__request .button { width: 100%; }
-.run-result-detail__profile,
-.run-result-detail__zones,
-.run-result-detail__intervals { display: grid; gap: var(--space-2); }
-.run-result-detail__intervals ol { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.run-result-detail__intervals li { display: flex; justify-content: space-between; gap: var(--space-3); font-size: 13px; }
-.run-result-detail__intervals li span { color: var(--text-muted); text-align: right; }
 
 @media (max-width: 360px) {
   .workout-detail__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .run-result-detail__intervals li { flex-direction: column; gap: 2px; }
-  .run-result-detail__intervals li span { text-align: left; }
 }
 
 /* Plan */
@@ -4583,8 +4597,7 @@ textarea.run-input {
   background: #070d12;
 }
 
-.sheet--instrument .sheet__title,
-.sheet--run-detail .sheet__title {
+.sheet--instrument .sheet__title {
   color: var(--accent);
   font-family: var(--font-data);
   font-size: clamp(18px, 5.5vw, 24px);
@@ -4593,9 +4606,49 @@ textarea.run-input {
   text-transform: uppercase;
 }
 
-.sheet--instrument .sheet__header,
-.sheet--run-detail .sheet__header {
+/*
+ * Run Detail's title is the run — the source's own name for the activity, the
+ * workout it satisfied, or what STACK holds it to have been. That is identity,
+ * not a machine label, so it is set in the interface voice: an uppercase lime
+ * instrument label would say "this is a readout" about the one line on the
+ * screen that is a name (issue #214).
+ */
+.sheet--run-detail .sheet__title {
+  color: var(--text);
+  font-size: clamp(19px, 5.4vw, 24px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.sheet--instrument .sheet__header {
   border-bottom: 1px solid var(--border-strong);
+}
+
+/*
+ * Run Detail's chrome is its two controls. The activity's identity lives in the
+ * scrolling body (issue #214), so there is no heading here to rule off — and no
+ * bar for the content to disappear under as it scrolls.
+ */
+.sheet--run-detail .sheet__header--chrome {
+  min-height: 0;
+  margin-bottom: 4px;
+  border-bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .sheet--run-detail .sheet__panel {
+    padding-top: 10px;
+  }
+
+  .sheet--run-detail .sheet__panel::before {
+    margin-bottom: 6px;
+  }
+}
+
+.sheet__header--chrome .sheet__header-actions {
+  margin-left: auto;
 }
 
 .sheet--instrument .icon-button,
@@ -4863,225 +4916,359 @@ textarea.run-input {
   font-size: var(--type-meta);
 }
 
-/* Run detail: the run is the hero; schedule context recedes. */
+/*
+ * Run Detail (issue #214).
+ *
+ * The screen reads in one order — identity, result, investigation, supporting
+ * detail — and the styling exists to make that order obvious without shouting.
+ * Three rules run through everything below:
+ *
+ * 1. **One accent at a time.** STACK lime carries the result and the selected
+ *    analysis tab. Every other metric has its own hue, held in a `--metric-*`
+ *    token and applied through `--metric-color`, so heart rate is never
+ *    mistaken for elevation at a glance and no surface invents a colour of its
+ *    own.
+ * 2. **The data is stronger than its frame.** Panels are a hairline border and
+ *    a slightly lifted surface, never the heavy technical grid that used to box
+ *    every region in.
+ * 3. **Machine type for numbers, interface type for identity.** The run's name
+ *    is a heading a person reads; everything measured is set in the data face.
+ */
 
-.run-detail__context {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 10px;
+/*
+ * One colour per kind of running, resolved once on the identity itself, so the
+ * run's mark and the word for its type cannot drift apart.
+ */
+.run-identity { --run-type-color: var(--text-muted); }
+.run-identity[data-type="easy"] { --run-type-color: var(--easy); }
+.run-identity[data-type="intervals"] { --run-type-color: var(--intervals); }
+.run-identity[data-type="simulation"] { --run-type-color: var(--simulation); }
+.run-identity[data-type="long"] { --run-type-color: var(--long); }
+.run-identity[data-type="cross"] { --run-type-color: var(--cross); }
+.run-identity[data-type="race"] { --run-type-color: var(--race); }
+
+.run-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border);
 }
 
-.run-detail__context-primary {
-  display: flex;
-  flex-direction: column;
+/*
+ * The run's own mark: the STACK runner as a silhouette, in the colour of the
+ * kind of running it was. No ring — a circle around it made a glyph into a
+ * badge, and the badge was the loudest thing on the screen at the size a
+ * heading needs. The colour is the type, which is why the type no longer needs
+ * a chip repeating the title underneath it.
+ */
+.run-identity__mark {
+  display: grid;
+  place-items: center;
+  padding-top: 2px;
+  color: var(--run-type-color);
+}
+
+.run-identity__lines {
+  display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.run-detail__context p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--type-meta);
-}
-
-.run-detail__plan-line {
-  color: var(--text-subtle);
-  font-size: var(--type-meta);
-}
-
-.run-detail__context-tags {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-}
-
-.run-detail__type {
-  padding: 3px 7px;
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  font-size: var(--type-label);
-}
-
-.run-detail__type[data-type="easy"] { color: var(--easy); }
-.run-detail__type[data-type="intervals"] { color: var(--intervals); }
-.run-detail__type[data-type="simulation"] { color: var(--simulation); }
-.run-detail__type[data-type="long"] { color: var(--long); }
-.run-detail__type[data-type="cross"] { color: var(--cross); }
-.run-detail__type[data-type="race"] { color: var(--race); }
-
-/* The extra-or-planned status is metadata, not a section: one small tag next
-   to the activity type replaces what used to be a standalone heading and
-   paragraph. */
-.run-detail__status-tag {
-  padding: 3px 7px;
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
-  color: var(--text-subtle);
-  font-size: var(--type-label);
-}
-
-.run-detail__status-tag[data-status="plan"] {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.run-result-detail {
-  gap: 16px;
-}
-
-.run-result-detail__meta {
+/*
+ * Title and status on one line, the status riding the title's baseline. It
+ * wraps to its own line only if the title genuinely fills the row, which keeps
+ * a long source-supplied name from pushing it off the screen.
+ */
+.run-identity__heading {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
-  color: var(--text-subtle);
-  font-size: var(--type-meta);
-}
-
-.run-result-detail__primary,
-.run-result-detail__secondary {
-  display: grid;
-  margin: 0;
-}
-
-/* A historical run whose source stated no duration has one primary fact, not
-   three columns with two empty. The result stays centred either way. */
-.run-result-detail__primary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: 13px 0 14px;
-  border-top: 1px solid var(--border-strong);
-  border-bottom: 1px solid var(--border-strong);
-}
-
-.run-result-detail__primary[data-count="1"] {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.run-result-detail__primary[data-count="2"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.run-result-detail__primary > div,
-.run-result-detail__secondary > div {
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
-.run-result-detail__primary > div + div,
-.run-result-detail__secondary > div + div {
-  border-left: 1px solid var(--border);
-}
-
-.run-result-detail__primary dd,
-.run-result-detail__primary dt,
-.run-result-detail__secondary dd,
-.run-result-detail__secondary dt {
-  margin: 0;
-  text-align: center;
-}
-
-.run-result-detail__primary dd {
-  font-size: clamp(20px, 6.4vw, 30px);
-  font-weight: 700;
-  line-height: 1.05;
-  white-space: nowrap;
-}
-
-/* Pace is the longest of the three values and the one that has to shrink for
-   320px. Keyed on the metric rather than on position, so a run with no pace
-   does not shrink whatever happens to be last instead. */
-.run-result-detail__primary > div[data-metric="pace"] dd {
-  font-size: clamp(17px, 4.9vw, 24px);
-  letter-spacing: -0.055em;
-}
-
 /*
- * The unit beside a figure. Sized absolutely rather than as a fraction of the
- * value it follows: at 0.46em it rode the value's own clamp down to about 7px
- * beside a secondary metric on a 320px phone.
+ * The activity's name, and the largest type on the screen after the result.
+ * It scrolls with the run rather than sitting in the sheet's chrome: it is part
+ * of the activity, not a label stuck over it.
  */
-.run-result-detail__primary small,
-.run-result-detail__secondary small {
-  font-size: var(--type-meta);
-  letter-spacing: 0;
+.run-identity__title {
+  margin: 0;
+  font-size: clamp(20px, 5.6vw, 25px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
-.run-result-detail__primary dt,
-.run-result-detail__secondary dt {
-  margin-top: 6px;
+.run-identity__when {
+  margin: 0;
   color: var(--text-muted);
   font-size: var(--type-label);
 }
 
-.run-result-detail__secondary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 0;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-strong);
+/*
+ * `EXTRA` / `PLAN` / `HISTORY`, beside the title. Deliberately not a pill: at
+ * this size a bordered chip is a second object competing with the heading, and
+ * the fact it carries is a footnote to the title rather than a peer of it.
+ */
+.run-identity__status {
+  flex: none;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.run-result-detail__secondary dd {
-  font-size: clamp(15px, 4.4vw, 20px);
+/* A planned run is the one status worth a colour: it is the answer to "did this
+   count towards the plan?", which is the question a runner is actually asking. */
+.run-identity__status[data-tone="plan"] { color: var(--accent); }
+
+/* The type, when the title did not state it, reads in the mark's own colour, so
+   the word and the glyph are visibly the same fact. */
+.run-identity__status[data-tone="type"] { color: var(--run-type-color); }
+
+/* The linked workout, on its own line: context for the run, not a tag. */
+.run-identity__plan {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/*
+ * The result.
+ *
+ * Its hierarchy comes from type and space rather than from a container: a
+ * dominant lime distance, duration and pace beside it, hairline rules above and
+ * below, and thin dividers between. The old dark panel made the most important
+ * three numbers on the screen look like a widget on a dashboard.
+ */
+/*
+ * Three columns, sized by what each one has to hold rather than evenly: a
+ * distance is `13.10 mi`, a duration can be `2:08:45`, and a pace is always a
+ * figure plus a unit. The widths below are the worst case of each, which is why
+ * the row survives a half marathon as well as it survives a 5k.
+ */
+.run-hero {
+  /*
+   * One setting for a run whose figures are short, and one for a run whose are
+   * long — a duration past an hour, or a distance into double figures. Both are
+   * three columns on one row; the long one is simply set smaller, because the
+   * alternative is either clipping `2:08:45` or setting every 5k as small as
+   * the longest run a runner will ever open. `SourceRunDetail` decides which,
+   * from the run's own formatted values.
+   */
+  --hero-distance: clamp(29px, 9.4vw, 38px);
+  --hero-figure: clamp(25px, 7.6vw, 31px);
+  --hero-pace: clamp(23px, 7vw, 29px);
+  --hero-unit: 12px;
+
+  /*
+   * Columns hug their own figures and the slack goes between them, rather than
+   * three fixed shares that a long duration overruns and a short one leaves
+   * half empty. `6 mi` and `1:05:00` in the same row is exactly the case a
+   * proportional grid gets wrong.
+   */
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  justify-content: space-between;
+  margin: 0;
+  padding: 12px 0;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.run-hero[data-density="compact"] {
+  --hero-distance: clamp(23px, 7.1vw, 31px);
+  --hero-figure: clamp(20px, 6.2vw, 27px);
+  --hero-pace: clamp(19px, 5.9vw, 25px);
+  --hero-unit: 11px;
+}
+
+.run-hero[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
+.run-hero[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.run-hero > div {
+  min-width: 0;
+}
+
+.run-hero > div + div {
+  padding-left: var(--space-2);
+  /* A hairline, not a rule: it separates the figures without drawing a table. */
+  border-left: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.run-hero dd,
+.run-hero dt {
+  margin: 0;
+}
+
+.run-hero dd {
+  font-size: var(--hero-figure);
   font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
   white-space: nowrap;
 }
 
-/* Phones stay 2×2. Three metrics across with a lone fourth stranded
-   underneath reads as a layout accident rather than a decision, and two
-   columns of short labels are comfortable all the way down to 320px. */
-@media (max-width: 699px) {
-  .run-result-detail__secondary > div:nth-child(2n+1) { border-left: 0; }
-  .run-result-detail__secondary > div:nth-child(n+3) {
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-  }
-  /* A fifth metric — cadence, on the runs whose stream carried none — spans
-     the row rather than sitting alone in the left column. */
-  .run-result-detail__secondary > div:nth-child(5):last-child { grid-column: 1 / -1; }
-}
-
-/* Genuine tablet/desktop width, where one row really does fit. */
-@media (min-width: 700px) {
-  .run-result-detail__secondary {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-}
-
-.run-result-detail__profile,
-.run-result-detail__zones,
-.run-result-detail__intervals {
-  gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-strong);
-}
-
-.run-result-detail__profile > h3,
-.run-result-detail__zones > h3,
-.run-result-detail__intervals > h3 {
-  margin: 0;
+/* Distance is the answer to "what was this run"; it gets the brand colour and
+   the extra size, and nothing else on the screen competes with it. */
+/*
+ * Distance leads, but only just. It is the answer to "what was this run", so it
+ * keeps the brand colour and a step of size; three figures competing at display
+ * scale is what made the top of this screen feel like a scoreboard.
+ */
+.run-hero > div[data-metric="distance"] dd {
   color: var(--accent);
+  font-size: var(--hero-distance);
+}
+
+/* Pace carries a unit inside its own column, so it starts a size below the
+   duration beside it and never has to shed the `/mi` to fit. */
+.run-hero > div[data-metric="pace"] dd {
+  font-size: var(--hero-pace);
+  letter-spacing: -0.05em;
+}
+
+/* Legible, and unmistakably the unit rather than part of the figure. This is
+   the one job `--type-meta` names outright: a unit suffix beside a figure that
+   is already stated in full. */
+.run-hero__unit {
+  font-size: var(--hero-unit);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.run-hero > div[data-metric="distance"] .run-hero__unit {
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+.run-hero dt {
+  margin-top: 5px;
+  color: var(--text-muted);
   font-size: var(--type-label);
 }
 
-.run-profile__selectors {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
+/* What the plan asked for, under what the run came to. Lime because it belongs
+   to the distance above it, and only ever present when the comparison is a
+   fact rather than an interpretation. */
+.run-hero__note {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-size: var(--type-meta);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
 }
 
-/* Same rule the R2 history controls follow: the visible chip stays small and
-   quiet, and the thing a thumb has to hit is 44px regardless. */
+/*
+ * The narrow phone. The row stays three columns — folding it would bury the
+ * pace — and the room comes out of the gutters and then, in order of how much
+ * each figure can spare, out of the type. The longest real values a runner will
+ * see here are `13.10 mi`, `2:08:45` and `10:50 /mi`, and all three fit.
+ */
+@media (max-width: 379px) {
+  .run-hero {
+    gap: 9px;
+    padding: 11px 0;
+  }
+
+  .run-hero > div + div { padding-left: 9px; }
+}
+
+@media (max-width: 339px) {
+  .run-hero { gap: 7px; }
+  .run-hero > div + div { padding-left: 7px; }
+}
+
+/* One semantic identity per metric, defined once and used by the analysis tabs,
+   the charts and the run's own mark alike. */
+[data-metric="pace"] { --metric-color: var(--metric-pace); }
+[data-metric="heart-rate"],
+[data-metric="heartRate"] { --metric-color: var(--metric-heart-rate); }
+[data-metric="elevation"] { --metric-color: var(--metric-elevation); }
+[data-metric="cadence"] { --metric-color: var(--metric-cadence); }
+[data-metric="load"] { --metric-color: var(--metric-load); }
+
+/*
+ * One factual line about the run.
+ *
+ * Quiet on purpose: it is a fact STACK can state, not a verdict, and the tint
+ * says "worth noticing" rather than "well done".
+ */
+.run-insight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 4px 2px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-size: var(--type-label);
+}
+
+.run-insight > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.run-detail__section-heading {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-label);
+}
+
+/* Analysis */
+
+/*
+ * Analysis, as one instrument.
+ *
+ * The tab bar, the metric's stated facts, the plot and its footer share one
+ * container and one border. They were four stacked blocks with their own frames
+ * and their own gaps, which read as a control panel with an unrelated chart
+ * below it rather than as one thing a runner operates.
+ */
+.run-analysis {
+  display: grid;
+  gap: 0;
+  margin-top: var(--space-1);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/*
+ * The analysis selector is a tab bar, not a row of buttons.
+ *
+ * Four boxed pills do not fit across a phone at a readable size; four
+ * underlined labels do, which is what the approved reference uses and what lets
+ * every metric stay visible at once. Each label carries its own metric colour
+ * and icon, the selected one is brighter with a rule under it, and the 44px
+ * target is the whole cell rather than the drawn text.
+ */
+.run-analysis__tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+
 .run-profile__selector {
   display: grid;
   place-items: center;
-  flex: 0 0 auto;
   min-height: 44px;
-  padding: 0 2px;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--text-subtle);
@@ -5090,69 +5277,624 @@ textarea.run-input {
 }
 
 .run-profile__selector > span {
-  padding: 5px 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  /* Icon over label. Four metric names do not fit beside four icons on one line
+     at a readable size, and stacking them keeps every metric visible at once
+     rather than shrinking the type under the phone floor. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  padding: 7px 2px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-subtle);
+  /* The interface face rather than the data face: four metric names have to fit
+     across a 390px phone, and mono is a third wider at the same size. */
+  font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 1;
+}
+
+.run-profile__selector > span svg {
+  color: var(--metric-color, var(--text-subtle));
+  opacity: 0.7;
+}
+
+/* The icon keeps the metric's own colour; the label goes quiet until selected,
+   so the selected tab is brighter as well as underlined. */
+.run-profile__selector[aria-pressed="true"] > span {
+  border-bottom-color: var(--metric-color, var(--accent));
+  color: var(--metric-color, var(--accent));
+  font-weight: 700;
+}
+
+.run-profile__selector[aria-pressed="true"] > span svg {
+  opacity: 1;
+}
+
+/* The name never spills into its neighbour: it shrinks to the meta floor on the
+   narrowest phones and, past that, truncates. `HEART RATE` beside `ELEVATION`
+   is the pair that runs out of room first, and two names touching reads as one
+   long word rather than as two tabs. */
+.run-profile__selector-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The short form is the narrow-phone spelling of the same name, so only one of
+   the pair is ever drawn. */
+.run-profile__selector-label--short { display: none; }
+
+/* 320px: four full names stop fitting, so the two longest would touch. The
+   labels swap to the short form the chart's callout already uses — `HR`,
+   `Elev`, `Cad` — rather than the type dropping under the phone floor, and the
+   buttons keep their full accessible names. */
+@media (max-width: 359px) {
+  .run-profile__selector > span {
+    padding-inline: 1px;
+    letter-spacing: 0;
+  }
+
+  .run-profile__selector-label { display: none; }
+  .run-profile__selector-label--short { display: block; }
+}
+
+/* Inside Analysis the chart is the instrument's face, not a card on it: no
+   frame of its own, and no second background. */
+.activity-chart {
+  display: grid;
+  gap: 4px;
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+.activity-chart__plot {
+  position: relative;
+  /* Tall enough to read a shape on a phone, and capped so a desktop dialog
+     does not turn one metric into half a screen. */
+  height: clamp(150px, 42vw, 210px);
+}
+
+.activity-chart__figure {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Every stroke keeps its drawn width whatever the figure is stretched to, which
+ * is what lets the plot fill a 320px phone and an 860px dialog from one
+ * viewBox without a 2px line becoming a 6px one.
+ */
+.activity-chart__grid,
+.activity-chart__line,
+.activity-chart__reference {
+  vector-effect: non-scaling-stroke;
+}
+
+.activity-chart__grid {
+  stroke: var(--technical-grid-line);
+  stroke-width: 1;
+}
+
+.activity-chart__line {
+  fill: none;
+  stroke: var(--metric-color, var(--accent));
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Cadence: a count over an interval, so its steps stay square. */
+.activity-chart[data-metric="cadence"] .activity-chart__line {
+  stroke-width: 1.25;
+  stroke-linejoin: miter;
+}
+
+.activity-chart[data-metric="cadence"] .activity-chart__fill-stop--top {
+  stop-opacity: 0.16;
+}
+
+.activity-chart[data-metric="cadence"] .activity-chart__fill-stop--bottom {
+  stop-opacity: 0;
+}
+
+.activity-chart__area {
+  stroke: none;
+}
+
+.activity-chart__fill-stop--top {
+  stop-color: var(--metric-color, var(--accent));
+  stop-opacity: 0.32;
+}
+
+.activity-chart__fill-stop--bottom {
+  stop-color: var(--metric-color, var(--accent));
+  stop-opacity: 0.02;
+}
+
+/* The terrain behind pace: present enough to read as the ground, quiet enough
+   that the pace line is obviously the subject. */
+.activity-chart__overlay-area {
+  fill: var(--metric-elevation);
+  opacity: 0.12;
+  stroke: none;
+}
+
+.activity-chart__overlay-line {
+  fill: none;
+  stroke: var(--metric-elevation);
+  stroke-width: 1;
+  opacity: 0.58;
+  vector-effect: non-scaling-stroke;
+}
+
+.activity-chart__reference {
+  stroke: var(--chart-reference);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+
+/*
+ * The y-axis, the crosshair and the selected point are HTML over the figure
+ * rather than SVG inside it: text in a stretched viewBox would stretch with it,
+ * and a circle would come out an ellipse.
+ */
+.activity-chart__ticks {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--plot-left, 14%);
+  pointer-events: none;
+}
+
+.activity-chart__ticks--overlay {
+  inset: 0 0 0 auto;
+  width: var(--plot-right, 10%);
+}
+
+.activity-chart__ticks--overlay span {
+  right: auto;
+  left: 6px;
+  color: var(--metric-elevation);
+  opacity: 0.8;
+}
+
+.activity-chart__ticks span {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
   font-family: var(--font-data);
   font-size: var(--type-label);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.run-profile__selector[aria-pressed="true"] {
-  color: var(--accent);
+.activity-chart__ticks .activity-chart__unit {
+  top: auto;
+  bottom: 0;
+  transform: none;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.run-profile__selector[aria-pressed="true"] > span {
-  border-color: var(--accent);
+.activity-chart__ticks--overlay .activity-chart__unit {
+  right: auto;
+  left: 6px;
+  color: var(--metric-elevation);
 }
 
-.run-profile-chart {
-  padding: var(--space-3);
+.activity-chart__crosshair {
+  position: absolute;
+  top: 4%;
+  bottom: 9%;
+  width: 1px;
+  background: var(--text);
+  opacity: 0.55;
+  pointer-events: none;
 }
 
-.run-profile-chart__figure {
-  display: block;
-  width: 100%;
+.activity-chart__marker {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 2px solid var(--surface-soft);
+  border-radius: 50%;
+  background: var(--metric-color, var(--accent));
+  pointer-events: none;
 }
 
-/* One fact for pace or cadence, two for heart rate or elevation: the row
-   divides itself rather than reserving three slots it may not fill. */
-.run-profile-chart__facts {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 4px;
-  margin: var(--space-2) 0 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+/*
+ * The scrub surface.
+ *
+ * It covers the plot rather than the whole figure, so a position across it is a
+ * position through the run. `pan-y` is the whole trick on a phone: a vertical
+ * drag still scrolls the sheet, and a horizontal one belongs to the chart, so
+ * inspecting a run never traps the page and scrolling never fights the
+ * crosshair.
+ */
+.activity-chart__scrub {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--plot-left, 14%);
+  right: var(--plot-right, 2%);
+  touch-action: pan-y;
+  cursor: crosshair;
 }
 
-.run-profile-chart__axis {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
+.activity-chart__scrub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/*
+ * The reading at the cursor. Persistent rather than hover-only — it stays put
+ * when the finger lifts, which is the only way a phone can offer a tooltip at
+ * all — and never covers the point it describes.
+ */
+.activity-chart__callout {
+  position: absolute;
+  top: 0;
+  left: var(--cursor, 50%);
+  z-index: 1;
+  min-width: 92px;
+  max-width: 60%;
+  padding: 6px 8px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
+.activity-chart__callout[data-flip="right"] { transform: translateX(8px); }
+.activity-chart__callout[data-flip="left"] { transform: translateX(calc(-100% - 8px)); }
+
+.activity-chart__callout p {
+  margin: 0;
+}
+
+.activity-chart__callout-time {
   color: var(--text-subtle);
   font-size: var(--type-label);
 }
 
-.run-profile-chart__facts > div {
-  text-align: center;
-}
-
-.run-profile-chart__facts dd {
-  margin: 0;
-  font-size: 13px;
+.activity-chart__callout-value {
+  color: var(--metric-color, var(--accent));
+  font-size: 15px;
   font-weight: 700;
 }
 
-.run-profile-chart__facts dt {
-  margin-top: 2px;
+/* One companion per line, each named. `108 FT` on its own is telemetry; `Elev
+   108 ft` is a reading. */
+.activity-chart__callout-companions {
+  display: grid;
+  gap: 2px;
+  margin: 5px 0 0;
+  padding: 5px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
   color: var(--text-muted);
   font-size: var(--type-label);
 }
 
+.activity-chart__callout-companions li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.activity-chart__callout-name {
+  color: var(--text-subtle);
+}
+
+/* The data face, but not the uppercase machine voice: `148 bpm` reads as a
+   reading, `148 BPM` reads as a column header. */
+.activity-chart__callout-reading {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.activity-chart__axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  color: var(--text-subtle);
+}
+
+.activity-chart__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--space-3);
+  margin-top: 2px;
+  padding: 6px 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.activity-chart__legend,
+.activity-chart__hint {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--type-meta);
+}
+
+/* An instruction, not a reading: sentence case, out of the way, and always in
+   the same place so it never looks like a status message. */
+.activity-chart__hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* A short rule in the series' own colour, so the legend says which line is
+   which without depending on the reader separating two hues. */
+.activity-chart__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.activity-chart__legend span::before {
+  content: "";
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--metric-color, var(--accent));
+}
+
+.activity-chart__legend span[data-series="overlay"]::before {
+  background: var(--metric-elevation);
+}
+
+/* One fact for pace or cadence, three for elevation: the row divides itself
+   rather than reserving slots it may not fill. */
+.run-analysis__facts {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+.run-analysis__facts > div:last-child:not(:first-child) {
+  text-align: right;
+}
+
+.run-analysis__facts dd {
+  margin: 0;
+  color: var(--metric-color, var(--text));
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.run-analysis__facts dt {
+  margin-top: 2px;
+  color: var(--text-subtle);
+}
+
+.run-analysis__zones {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.run-analysis__zones-heading {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+}
+
+/* Heart-rate zones, as part of heart rate rather than a product of their own. */
+
+.zone-rows {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zone-rows__button {
+  display: grid;
+  grid-template-columns: 52px minmax(40px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zone-rows__button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.zone-rows__row[data-selected] .zone-rows__button {
+  border-color: var(--zone-color);
+  background: color-mix(in srgb, var(--zone-color) 10%, transparent);
+  color: var(--text);
+}
+
+.zone-rows__name {
+  color: var(--zone-color);
+  font-size: var(--type-label);
+  white-space: nowrap;
+}
+
+.zone-rows__track {
+  display: block;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--data-surface-strong);
+  overflow: hidden;
+}
+
+.zone-rows__fill {
+  display: block;
+  width: var(--zone-share, 0%);
+  height: 100%;
+  background: var(--zone-color);
+  border-radius: 2px;
+}
+
+.zone-rows__value {
+  font-size: var(--type-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Structured intervals: a polished secondary section, not a raw table. */
+
+.run-intervals {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.run-intervals__list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.run-intervals__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px var(--space-3);
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.run-intervals__label {
+  min-width: 0;
+  font-size: var(--type-label);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.run-intervals__time {
+  font-size: var(--type-label);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.run-intervals__facts {
+  grid-column: 1 / -1;
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+}
+
+/* Run options: everything about a run that is not the run. */
+
+.run-options {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.run-options__actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.run-options__actions .button {
+  width: 100%;
+}
+
+.run-options__section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.run-options__facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.run-options__facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.run-options__facts dt {
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+}
+
+.run-options__facts dd {
+  margin: 0;
+  font-size: var(--type-label);
+  text-align: right;
+}
+
+.run-options__notes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--type-label);
+  line-height: 1.5;
+}
+
+.run-result-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--text-subtle);
+  font-size: var(--type-label);
+}
+
+.run-result-detail {
+  gap: var(--space-3);
+}
+
+/* Tablet and desktop: the sheet is wider than a phone, so the result gets room
+   around it rather than more size. */
+@media (min-width: 700px) {
+  .run-hero { padding: var(--space-4) var(--space-4); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .activity-chart__marker { transition: cx 90ms linear, cy 90ms linear; }
+}
 .connect-to-plan {
   display: flex;
   flex-direction: column;
@@ -5166,33 +5908,6 @@ textarea.run-input {
 
 .connect-to-plan .button {
   width: 100%;
-}
-
-.run-result-detail__interval-head,
-.run-result-detail__intervals li {
-  display: grid;
-  grid-template-columns: minmax(70px, 1.2fr) repeat(3, minmax(54px, 1fr));
-  align-items: center;
-  gap: 8px;
-}
-
-.run-result-detail__interval-head {
-  padding: 6px 0;
-  color: var(--text-muted);
-  font-size: var(--type-label);
-  border-bottom: 1px solid var(--border);
-}
-
-.run-result-detail__intervals li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-data);
-  font-size: var(--type-label);
-}
-
-.run-result-detail__intervals li span {
-  color: var(--text-muted);
-  text-align: left;
 }
 
 .workout-detail > .workout-detail__result {
@@ -7007,8 +7722,20 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   text-transform: uppercase;
 }
 
+/*
+ * The sheet's own controls, grouped so a sheet that owns an action of its own —
+ * Run Detail's `…` (issue #214) — sits beside Close rather than pushing the
+ * title around.
+ */
+.sheet__header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 /* UI-22: one quiet close control on every sheet, regardless of content type. */
-.sheet .sheet__header > .icon-button {
+.sheet .sheet__header .icon-button {
   flex: 0 0 44px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
@@ -7017,12 +7744,12 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
   box-shadow: none;
 }
 
-.sheet .sheet__header > .icon-button:hover {
+.sheet .sheet__header .icon-button:hover {
   border-color: var(--border-strong);
   color: var(--text);
 }
 
-.sheet .sheet__header > .icon-button:focus-visible {
+.sheet .sheet__header .icon-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-color: transparent;
@@ -7683,11 +8410,6 @@ button.crew-props__action:disabled { cursor: wait; opacity: 0.72; }
    rather than flagged: it is a fact, not a chore waiting to be dealt with. */
 .run-row[data-origin="historical-activity"] .run-row__icon { color: var(--text-subtle); }
 .run-row[data-origin="historical-activity"] .run-row__type { color: var(--text-muted); }
-
-.run-detail__status-tag[data-status="history"] {
-  color: var(--text-muted);
-  border-color: var(--border);
-}
 
 .historical-run__note {
   margin: 0;

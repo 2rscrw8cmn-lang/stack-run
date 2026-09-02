@@ -1,8 +1,11 @@
 # Run Detail — Product Specification
 
-**Status:** enrichment contract for STACK Next. R3 implemented the shared
-source-detail architecture and the QA review states described here; owner
-visual acceptance is outstanding.  
+**Status:** current contract. R3 implemented the shared source-detail
+architecture and the QA review states described here; **issue #214 (Run Detail
+3.0)** rebuilt the presentation on top of it — identity, one dominant result, an
+interactive **Analysis** module as the only detailed metric surface, heart-rate
+zones inside heart rate, and administrative/provenance content behind the `…`
+run-options control. Owner visual acceptance of 3.0 is outstanding.
 **Companion:** `docs/RUNS_PRODUCT_MODEL.md` and `docs/RUNS_VISUALIZATION_SYSTEM.md`.
 
 ## Purpose
@@ -121,18 +124,232 @@ It intentionally has no edit, import, accept, plan or Build action, and gains
 no effort, notes, plan link or activity classification. It remains read-only
 source history.
 
+## Run Detail 3.0 (issue #214)
+
+The hierarchy below is unchanged in substance; what 3.0 changed is how much of
+the screen each level gets, and how much of it can be interrogated.
+
+### Identity leads, in the body
+
+The run's identity — its mark, its name, the plan/extra status, the local date
+and time and its plan context — is the **first content of the sheet, not the
+sheet's chrome**.
+It scrolls away as the runner moves into Analysis, and the fixed chrome is the
+grabber, `…` and Close. The dialog keeps an accessible name (the same title,
+present but not drawn); it is deliberately not a heading, so the visible
+identity is the only one a screen reader meets.
+
+For a run STACK owns, the title is what STACK holds, in this order:
+
+1. the **linked workout's title**, when that title is a *name* rather than a
+   restatement of the type and distance — `Yasso 800s` identifies a run,
+   `Easy 3 mi` does not (`isDistinctWorkoutName`);
+2. **STACK's own classification** (`Easy Run`, `Long Run`, `Intervals`, …).
+
+The **source's own activity name is not promoted**. `Winter Park - W1 Run 1 —
+Easy 3mi` is how a watch files a run: it is source bookkeeping, it is kept, and
+it is kept behind `…` under source information. A **historical-only** run is the
+exception and leads with it, because nobody has classified that run and the
+source's name is the best identity there is.
+
+There is no further case: a run with none of the above is not given an invented
+name, and `Run Detail` is no longer a heading anywhere.
+
+**The mark is the STACK runner in one colour — the run's own type colour** —
+drawn from the same artwork as every other appearance of it (`StackMark`, with
+`monochrome`). No ring around it: a circle made a glyph into a badge, and at
+heading size the badge outweighed the title beside it. A historical-only run has
+no classification, so its mark is the plain text colour rather than a guess.
+
+**The type has no chip.** A run headed `Easy Run` under an `EASY` chip said the
+same thing twice; the colour of the mark carries the type instead, in the same
+place on every run and at no cost in vertical space. What remains is the run's
+**status — `EXTRA`, `PLAN` or `HISTORY` — beside the title**, at a fraction of
+its weight and without a pill around it: it answers a different question from
+the title and is a footnote to it, not a peer.
+
+The one exception is a run headed with its **workout's own name**. `Yasso 800s`
+states no type at all, and there the mark's colour is the only thing carrying
+it — too little for `Race`, whose colour is very nearly the plain text colour.
+So `identity.typeLabel` states the type beside the title exactly where the title
+dropped it, in the mark's own colour, and is null everywhere else.
+
+### The result, and nothing beside it
+
+No panel: hairline rules above and below, thin dividers between, and the
+hierarchy carried by type — distance dominant and in STACK lime, duration and
+average pace beside it, units set smaller than the figures. Where the run is
+linked to a workout with an **exact** distance target, one quiet line under the
+distance states the comparison — `+0.12 mi vs plan`, or `On plan · 3 mi`. A
+range target (`3-4`) states a band rather than a number and yields no line at
+all; see `planDistanceComparison`. Fields that do not exist are absent, never
+zero.
+
+**Three columns, one row, at every phone width.** Distance, duration and pace
+answer "what was this run" together and a runner reads them as one line, so the
+row is never folded or stacked. Two rules keep it honest with real values:
+
+- the columns are **content-sized** (`max-content`, with the slack distributed
+  between them), because a proportional grid gets `6 mi` beside `1:05:00`
+  wrong — one column overruns while the other sits half empty;
+- the **type is set from the run's own figures**, not from the viewport alone.
+  A duration past an hour or a distance into double figures switches the row to
+  a compact setting (`data-density`). Sizing every run for the longest one a
+  runner will ever open would leave a 5k small for no reason, and sizing none of
+  them for it clips `2:08:45`.
+
+The acceptance cases are `3.12 mi / 41:20 / 13:15 /mi`, `6.00 mi / 1:05:00 /
+10:50 /mi` and `13.10 mi / 2:08:45 / 9:50 /mi`, at 320, 360, 390 and 430px: one
+row, no clipping, no horizontal scroll, `/mi` intact.
+
+One deterministic insight may follow: a count of the structured groups the
+source named. It is omitted when there are none, and STACK does not state a
+verdict on the run.
+
+### The sheet does not resize when the metric changes
+
+Heart Rate carries the zone rows and is around 240px taller than the other three
+tabs. On a screen tall enough for the sheet to fit its content, that resized the
+whole panel on every tab change and moved the chart out from under the runner's
+finger. Run Detail's panel is therefore pinned — 90% on a phone, the same rule
+`.sheet--instrument` has always used, and `min(88vh, 860px)` on a centred dialog
+— **only when there is an Analysis module to switch between**. A run whose source
+sent no stream is genuinely short and keeps a sheet its own size.
+
+### Analysis is the centre
+
+`RunAnalysis` + `ActivityChart` replace the passive Run Profile:
+
+- **Pace** — a lime line, faster reading higher, over a subtle violet elevation
+  silhouette when the run has an altitude stream; the imported average pace is
+  drawn as a reference line.
+- **Heart rate** — a filled warm-red area with the imported average across it,
+  and the zone distribution immediately beneath.
+- **Elevation** — a filled violet terrain profile, stating the source's Gain
+  beside the series' own Low and High.
+- **Cadence** — a cyan step, because a per-sample cadence is a count over an
+  interval rather than a point on a curve, with the imported average as a
+  reference line.
+
+Analysis is **one module**: the tab bar, the metric's stated facts, the plot and
+its footer share a single container and a single border, so it reads as one
+instrument rather than a control panel with a chart card under it.
+
+The selector is a **tab bar**, not a row of pills: four metric names, each with
+its icon above it in the metric's own colour, the selected one brighter and
+underlined, and a 44px target per cell. Every metric with recognized stream
+coverage stays visible at once; metrics without it do not appear.
+
+The metric's own stated facts — average pace; average and max HR; Gain, Low and
+High; average cadence — sit **above** the plot, so the numbers the shape is read
+against are met before the shape.
+
+### Charts are interrogable
+
+Every chart supports:
+
+- touch/drag scrubbing that selects the nearest **recorded** sample by elapsed
+  time, with a vertical crosshair and a marker on the selected point;
+- a persistent compact callout — elapsed time, the active metric's value, and up
+  to two companion streams measured at that same time position — which stays
+  after the finger lifts and clears on a tap away or Escape;
+- arrow-key/Home/End cursor movement, with the reading exposed as
+  `aria-valuetext` on a `role="slider"` scrub surface;
+- two to four round y-axis labels in the metric's own units, plus elapsed x-axis
+  labels;
+- `touch-action: pan-y`, so a vertical drag still scrolls the sheet;
+- a legend when a second series is drawn, and one quiet line saying the chart
+  can be dragged — nothing else on the page tells a runner that;
+- companion readings stated as **named rows** (`HR 148 bpm`, `Elev 52 ft`)
+  rather than bare telemetry.
+
+Where pace is drawn over the elevation silhouette, the silhouette gets its own
+labelled axis on the right. A shape with no scale is decoration; it still
+contributes no number to anything stated elsewhere.
+
+The callout states only what STACK holds for that moment. There is no
+distance-at-cursor: STACK does not request a distance stream, and total distance
+× elapsed share would be a fabrication. A time position with no reading says so
+rather than showing a value.
+
+The chart stretches to its container with `vector-effect: non-scaling-stroke`,
+and its labels, crosshair and marker are HTML over the figure, so one component
+serves a 320px phone and a desktop dialog without distortion.
+
+### Zones belong to heart rate
+
+Compact ordered rows — zone identity, colour, a share bar, duration and
+percentage — inside the Heart Rate tab, at the full width of the module. There
+is no ring beside them: a donut states the same composition in a form that
+cannot carry a duration, and the width it took came out of the bars, which are
+what make one zone's share readable against another's.
+
+Zones appear only while Heart Rate is selected, and only when the source stated
+them. A zone array with no usable heart-rate stream does not grow a fallback
+card of its own.
+
+`DonutChart` itself is unchanged and Training Signals still uses it
+interactively; what Run Detail dropped is the graphic, not the component.
+
+STACK does **not** draw heart-rate zone bands across the chart: the source
+states zone *durations*, not zone boundaries in bpm, and drawing bands would
+mean inventing the thresholds.
+
+### Analysis is the only detailed metric surface
+
+There are no persistent Heart Rate, Elevation or Cadence summary cards beneath
+Analysis. The selected tab owns that metric's facts, chart and supporting
+detail; changing tabs is the deliberate disclosure for another metric. This
+keeps Run Detail from printing smaller, passive copies of the same readings and
+shapes below the interactive instrument.
+
+**There is no secondary metric strip above Analysis either.** The
+`AVG HR | GAIN | CADENCE | LOAD` row was removed: it stated those figures
+because the source happened to send them, which made the top of a run read as a
+dashboard and printed every one of them a second time in the tab that owns it.
+Each aggregate now has exactly one home:
+
+| Aggregate | Where it is read |
+| --- | --- |
+| Avg HR, Max HR | Heart Rate tab |
+| Gain, Low, High | Elevation tab |
+| Avg cadence | Cadence tab |
+| Training load | `…` run options — no stream, so no tab can own it |
+
+`sourceRunOptionFacts` states every one of them behind `…` as well, which is
+what keeps an aggregate-only run — no stream, so no tabs at all — from losing a
+source fact it genuinely holds.
+
+**No heart-rate headline above Analysis.** `76% of this run was in Zone 2` was
+true and in the wrong place: a zone share is a heart-rate fact, and Heart Rate
+states the whole distribution as rows. `runInsight` cannot state one at all any
+more — zone durations are not an input to it.
+
+### `…` owns everything administrative
+
+`RunOptionsSheet` holds Edit Run, Connect to Plan, Unlink from Plan, the source
+label, **the source's own activity name**, imported/source-updated dates,
+elapsed vs moving time, the runner's effort, a hand-entered heart rate, and
+`How STACK calculates this`. It performs
+no mutation of its own: the actions handed to it are the same buttons the run's
+sheet has always rendered, so edit/delete/link ownership is unchanged.
+
+A surface that embeds a run's result inside its own sheet — a Build block, a
+planned workout — has no such control, and keeps the compact meta line instead.
+
 ## Target content hierarchy
 
 When data exists, Run Detail should read in this order:
 
-1. **Identity / context**
-2. **Primary result**
-3. **Run Profile**
-4. **Secondary source facts** where they add context rather than repeat the chart
-5. **Heart-rate zones**
-6. **Structured interval detail**
-7. **STACK actions** when the run is STACK-owned
-8. **Method/source explanation** behind disclosure when needed
+1. **Identity / context** — the run's mark in its type's colour, its title, the
+   plan/extra status beside that title, the date and start time
+2. **Primary result** — distance, duration, pace: three columns, one row
+3. **Analysis** — one selected metric at a time, and the only place a secondary
+   metric is stated
+4. **Heart-rate zones**, only inside selected Heart Rate analysis
+5. **Structured interval detail**
+6. **STACK actions** when the run is STACK-owned
+7. **Method/source explanation** behind disclosure when needed
 
 The precise visual arrangement may evolve, but this hierarchy should prevent the page from becoming a wall of equal cards.
 

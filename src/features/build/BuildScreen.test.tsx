@@ -718,7 +718,9 @@ describe("BuildScreen", () => {
       within(sheet).getByRole("heading", { name: "Long Run" }),
     ).toBeInTheDocument();
     expect(within(sheet).getByText("Sunday, August 9")).toBeInTheDocument();
-    expect(within(sheet).getByText("4.2 mi")).toBeInTheDocument();
+    // The figure and its unit are separate elements: the hero sets the unit
+    // smaller than the number it qualifies.
+    expect(within(sheet).getByLabelText("Primary activity results")).toHaveTextContent("4.2 mi");
     expect(within(sheet).getByText("Steady")).toBeInTheDocument();
     // The schedule is context here, not the subject.
     expect(
