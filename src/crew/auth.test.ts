@@ -59,4 +59,16 @@ describe("STACK account auth", () => {
     });
     expect(signOut).toHaveBeenCalledOnce();
   });
+
+  it("points invalid credentials to the STACK PIN recovery page", async () => {
+    const signInWithPassword = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: "Invalid login credentials" },
+    });
+    const client = { auth: { signInWithPassword } } as unknown as SupabaseClient;
+
+    await expect(
+      signInToStack(client, { email: "runner@example.test", pin: "12345678" }),
+    ).rejects.toThrow("https://stack-run.vercel.app/forgot-pin");
+  });
 });

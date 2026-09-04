@@ -64,7 +64,10 @@ export function getSupabaseAvailability(
           auth: {
             persistSession: true,
             autoRefreshToken: true,
-            detectSessionInUrl: false,
+            // Password recovery returns through the browser URL. Supabase must
+            // exchange that recovery payload into the authenticated session
+            // required by updateUser({ password }).
+            detectSessionInUrl: true,
           },
         }),
       };
