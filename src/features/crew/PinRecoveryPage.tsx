@@ -30,6 +30,7 @@ export function PinRecoveryPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [updated, setUpdated] = useState(false);
   const [recoveryReady, setRecoveryReady] = useState(mode === "request");
   const [recoveryChecked, setRecoveryChecked] = useState(mode === "request");
 
@@ -94,7 +95,7 @@ export function PinRecoveryPage() {
       <section className="crew-invite-landing__card">
         <div className="crew-invite-landing__brand"><StackMark size={30} /><span>STACK</span></div>
         <p className="machine-label">STACK account</p>
-        <h1>{mode === "request" ? "Forgot your PIN?" : "Choose a new PIN"}</h1>
+        <h1>{mode === "request" ? "Forgot your PIN?" : updated ? "PIN updated" : "Choose a new PIN"}</h1>
 
         {mode === "request" ? (
           <>
@@ -115,7 +116,8 @@ export function PinRecoveryPage() {
                 setBusy(true);
                 setError(null);
                 setMessage(null);
-                void requestStackPinReset(availability.client, email)
+                const redirectTo = `${window.location.origin}${STACK_PIN_RESET_PATH}`;
+                void requestStackPinReset(availability.client, email, redirectTo)
                   .then(() => setMessage("Reset link sent. Check your email, then open the link to choose a new PIN."))
                   .catch((reason) => setError(messageOf(reason)))
                   .finally(() => setBusy(false));
@@ -124,6 +126,8 @@ export function PinRecoveryPage() {
               Send Reset Link
             </Button>
           </>
+        ) : updated ? (
+          <p>Your new STACK PIN is saved to this account.</p>
         ) : recoveryReady ? (
           <>
             <p>Your new STACK PIN must be exactly 8 numbers.</p>
@@ -167,6 +171,7 @@ export function PinRecoveryPage() {
                 void updateStackPin(availability.client, pin)
                   .then(() => {
                     window.history.replaceState(null, "", STACK_PIN_RESET_PATH);
+                    setUpdated(true);
                     setMessage("PIN updated. You can return to STACK now.");
                     setPin("");
                     setConfirmPin("");
