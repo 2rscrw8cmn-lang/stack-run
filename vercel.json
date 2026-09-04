@@ -24,6 +24,14 @@
     {
       "source": "/getting-started",
       "destination": "/"
+    },
+    {
+      "source": "/forgot-pin",
+      "destination": "/"
+    },
+    {
+      "source": "/reset-pin",
+      "destination": "/"
     }
   ],
   "headers": [
