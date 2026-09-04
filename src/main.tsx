@@ -2,8 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AppErrorBoundary } from "./app/AppErrorBoundary.js";
 import { GettingStartedPage } from "./features/help/GettingStartedPage.js";
+import { PinRecoveryPage } from "./features/crew/PinRecoveryPage.js";
 import { installHistoryDiagnostics } from "./history/historyDiagnostics.js";
 import { QaRunnerRoot } from "./qa/QaRunnerRoot.js";
+import { STACK_PIN_FORGOT_PATH, STACK_PIN_RESET_PATH } from "./crew/authRoutes.js";
 import "@fontsource/space-mono/400.css";
 import "@fontsource/space-mono/700.css";
 import "./styles/tokens.css";
@@ -25,7 +27,11 @@ if (!rootElement) {
 
 const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
 const content =
-  pathname === "/getting-started" ? <GettingStartedPage /> : <QaRunnerRoot />;
+  pathname === "/getting-started"
+    ? <GettingStartedPage />
+    : pathname === STACK_PIN_FORGOT_PATH || pathname === STACK_PIN_RESET_PATH
+      ? <PinRecoveryPage />
+      : <QaRunnerRoot />;
 
 createRoot(rootElement).render(
   <StrictMode>
