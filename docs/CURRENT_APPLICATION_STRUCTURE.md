@@ -595,7 +595,44 @@ The product generally uses:
 
 The design-system consolidation/cleanup is tracked separately in Stabilization 1.07/1.08; this architecture document does not redefine those visual contracts.
 
-## 20. Error and failure boundaries
+## 20. External assistant surface
+
+An authorized external assistant can read a runner's own training context and
+adjust their *future* plan intent. It is entirely optional infrastructure:
+nothing in the app calls it, and every part of STACK — including signed-out,
+local-only use — works identically when it is unavailable.
+
+Three layers, each with one job:
+
+1. **Domain/projection** — `src/external/trainingContextProjection.ts` builds
+   `ExternalTrainingContext` field by field from `AppState`, never a spread.
+   That explicit construction is the privacy boundary, the same rule
+   `src/crew/projection.ts` follows.
+2. **REST routes** — `api/training-context.ts` (read) and
+   `api/plan-adjustments.ts` (apply/undo). Auth is a personal, revocable
+   bearer token, hashed and resolved by a security-definer RPC; no route
+   accepts or ever sees a user id. Plan edits reuse the same pure editors
+   (`src/domain/planEdit.ts`) the in-app Plan screen uses, and the real
+   enforcement of what a token may touch is in SQL.
+3. **Connector** — `api/mcp.ts` plus `src/external/mcpServer.ts`: a remote
+   MCP server exposing three semantic tools (`get_training_context`,
+   `adjust_training_plan`, `undo_plan_adjustment`) over JSON-RPC. It is a
+   translation layer only. It calls the REST handlers in process with the
+   caller's own token and holds no plan logic, no auth logic and no database
+   access, so it cannot form a request those routes would have refused.
+
+A runner mints and revokes credentials in Settings → Account & Crew →
+External Assistant Access, which also shows the connector URL. The token is
+entered in the assistant's connector setup, never in a conversation.
+
+STACK makes no AI/model call anywhere in this path and holds no model
+provider key — a standing guard, `src/external/noModelDependency.test.ts`,
+keeps that true rather than merely documented.
+
+See `docs/EXTERNAL_INTEGRATION.md`, `docs/EXTERNAL_TRAINING_CONTEXT.md`,
+`docs/PLAN_ADJUSTMENTS.md` and `docs/EXTERNAL_ASSISTANT_QA.md`.
+
+## 21. Error and failure boundaries
 
 Personal STACK is designed to remain usable when optional systems fail.
 
@@ -607,7 +644,7 @@ Examples:
 - App-level render faults are caught by `AppErrorBoundary`;
 - account/cloud conflicts use backup/reconciliation behavior rather than silent overwrite where possible.
 
-## 21. What is intentionally not in the architecture
+## 22. What is intentionally not in the architecture
 
 Current STACK does not include:
 
@@ -624,7 +661,7 @@ Current STACK does not include:
 
 Add infrastructure only when a scoped issue demonstrates a real requirement.
 
-## 22. Current source-of-truth map
+## 23. Current source-of-truth map
 
 Use these references for deeper work:
 

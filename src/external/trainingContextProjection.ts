@@ -271,6 +271,17 @@ function projectBuild(
 
 /** A plan-adjustment audit row (#180), narrowed to what an external caller needs to see. */
 export interface ExternalPlanAdjustment {
+  /**
+   * What `DELETE /api/plan-adjustments` and the connector's
+   * `undo_plan_adjustment` tool name (#181). Added because undo was otherwise
+   * reachable only by a caller still holding the id from its own earlier
+   * apply — which a connected assistant, starting a new conversation with
+   * nothing but this context, never is. `null` on a deployment whose database
+   * predates `20260904120000_external_snapshot_adjustment_ids.sql`: an
+   * unidentifiable adjustment is still worth showing, it just cannot be
+   * undone through this surface.
+   */
+  adjustmentId: string | null;
   appliedAt: string;
   kind: "apply" | "undo";
   operations: unknown[];
@@ -280,6 +291,7 @@ export interface ExternalPlanAdjustment {
 
 /** Raw shape `external_training_snapshot` returns per adjustment row. */
 export interface ExternalPlanAdjustmentRow {
+  adjustmentId: string | null;
   appliedAt: string;
   kind: "apply" | "undo";
   operations: unknown[];
@@ -289,6 +301,7 @@ export interface ExternalPlanAdjustmentRow {
 
 function projectPlanAdjustment(row: ExternalPlanAdjustmentRow): ExternalPlanAdjustment {
   return {
+    adjustmentId: row.adjustmentId,
     appliedAt: row.appliedAt,
     kind: row.kind,
     operations: row.operations,

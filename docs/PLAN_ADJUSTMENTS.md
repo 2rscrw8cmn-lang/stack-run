@@ -22,6 +22,15 @@ in SQL via `_resolve_external_api_token`, independent of anything the
 calling route validated first — same reasoning as the immutability checks
 this document is mostly about.
 
+**Connector note (#181):** an assistant now reaches these RPCs through
+`api/mcp.ts`'s `adjust_training_plan` / `undo_plan_adjustment` tools rather
+than only through a hand-written HTTP call. That layer composes nothing: it
+calls `api/plan-adjustments.ts` in process with the caller's own token, so
+everything below still holds unchanged. `external_training_snapshot` also
+returns each adjustment's id now
+(`20260904120000_external_snapshot_adjustment_ids.sql`) — the id an undo
+names, previously reachable only from the apply response that produced it.
+
 ## The operation vocabulary
 
 `PlanAdjustmentOperation` (`src/domain/planAdjustment.ts`) has four

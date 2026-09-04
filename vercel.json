@@ -9,6 +9,12 @@
     "api/training-context.ts": {
       "maxDuration": 30
     },
+    "api/plan-adjustments.ts": {
+      "maxDuration": 30
+    },
+    "api/mcp.ts": {
+      "maxDuration": 30
+    },
     "api/crew-invite.ts": {
       "maxDuration": 10
     },
@@ -20,6 +26,10 @@
     {
       "source": "/join/:token",
       "destination": "/api/crew-invite?token=:token"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/api/mcp"
     },
     {
       "source": "/getting-started",

@@ -86,7 +86,11 @@ service *they* chose — so the withholding is narrower than Crew's:
   `loadPersonalCloudSnapshot`'s own null-when-uninitialized behavior.
   `planAdjustments` holds the account's most recent adjustment history (see
   `docs/PLAN_ADJUSTMENTS.md`, #180) — empty until an assistant has actually
-  applied one.
+  applied one. Each row carries its `adjustmentId` (#181), which is what an
+  undo names: without it, undo was reachable only by a caller still holding
+  the id from its own earlier apply, which a connected assistant opening a
+  new conversation never is. `null` on a deployment whose database predates
+  `20260904120000_external_snapshot_adjustment_ids.sql`.
 - **Race goal**: `name`/`date`/`distanceMiles` from `TrainingPlan.race`, plus
   the structured `goal` (#179) — one of `{type: "none" | "finish"}` or
   `{type: "time", targetFinishSeconds}` / `{type: "pace",

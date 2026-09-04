@@ -11,7 +11,13 @@
 // Token comes from --token or STACK_VERIFY_TOKEN — never pass it any other
 // way, and never expect this script to print it back.
 //
-// Default run is read-only (GET /api/training-context) — safe against any
+// #181 extends it to the connector: the same run also completes an MCP
+// handshake against POST /mcp, lists the tool surface, and calls
+// `get_training_context` the way a connected assistant does — so "a real
+// client could connect to this deployment" is checked, not assumed.
+//
+// Default run is read-only (GET /api/training-context, plus the connector's
+// handshake and read tool) — safe against any
 // real account at any time. Pass --allow-write to additionally apply and
 // undo one small, reversible change and exercise the write failure paths;
 // only do this against a token you're comfortable seeing one real
@@ -68,6 +74,100 @@ async function call(method, path, body) {
   return { status: response.status, json };
 }
 
+let rpcId = 0;
+
+/** One JSON-RPC call against the connector, exactly as an MCP client makes it. */
+async function rpc(method, params) {
+  rpcId += 1;
+  const response = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: rpcId, method, params }),
+  });
+  let json = null;
+  try {
+    json = await response.json();
+  } catch {
+    // Same reasoning as `call` — report the status, don't invent a body.
+  }
+  return { status: response.status, json };
+}
+
+/**
+ * #181: the connector is what a real assistant actually talks to, so the
+ * handshake and the read tool are exercised over real HTTP too. Read-only,
+ * and safe against any account: `tools/call` here only ever calls
+ * `get_training_context`. The write tools ride the same REST contracts the
+ * `--allow-write` section below already proves end to end.
+ */
+async function verifyConnector() {
+  console.log("\nConnector (remote MCP) — the path a connected assistant takes\n");
+
+  const unauthorized = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 0, method: "initialize", params: {} }),
+  });
+  step(
+    "a connector configured with no token is refused",
+    unauthorized.status === 401 && /^Bearer/.test(unauthorized.headers.get("www-authenticate") ?? ""),
+    `status ${unauthorized.status}`,
+  );
+
+  const initialized = await rpc("initialize", {
+    protocolVersion: "2025-06-18",
+    capabilities: {},
+    clientInfo: { name: "verify-external-integration", version: "1.0.0" },
+  });
+  step(
+    "initialize handshake succeeds",
+    initialized.status === 200 && Boolean(initialized.json?.result?.protocolVersion),
+    `status ${initialized.status}, protocol ${initialized.json?.result?.protocolVersion ?? "?"}`,
+  );
+  if (initialized.status !== 200) {
+    step("cannot continue without a handshake", false, JSON.stringify(initialized.json));
+    return;
+  }
+
+  const listed = await rpc("tools/list", {});
+  const names = (listed.json?.result?.tools ?? []).map((tool) => tool.name);
+  step(
+    "the three semantic tools are offered",
+    ["get_training_context", "adjust_training_plan", "undo_plan_adjustment"].every((name) => names.includes(name)),
+    names.join(", ") || "none",
+  );
+
+  const read = await rpc("tools/call", { name: "get_training_context", arguments: {} });
+  const result = read.json?.result;
+  const isError = result?.isError === true;
+  step("get_training_context returns this runner's context", read.status === 200 && !isError,
+    isError ? String(result?.content?.[0]?.text) : `status ${read.status}`);
+  if (read.status === 200 && !isError) {
+    let context = null;
+    try {
+      context = JSON.parse(result.content[0].text);
+    } catch {
+      // Reported by the next step rather than thrown.
+    }
+    step("the tool result parses as an ExternalTrainingContext", Boolean(context?.generatedAt),
+      context?.plan ? `plan "${context.plan.name}", revision ${context.plan.revision}` : "no active plan (honest empty state)");
+  }
+
+  const unknown = await rpc("tools/call", { name: "definitely_not_a_stack_tool", arguments: {} });
+  step(
+    "an unknown tool is reported in-band, not as a transport failure",
+    unknown.status === 200 && unknown.json?.result?.isError === true && unknown.json?.error === undefined,
+    `status ${unknown.status}`,
+  );
+
+  const streamed = await fetch(`${baseUrl}/mcp`, { headers: { Authorization: `Bearer ${token}` } });
+  step("no server-initiated stream is offered on GET", streamed.status === 405, `status ${streamed.status}`);
+}
+
 async function main() {
   console.log(`Verifying external-assistant integration against ${baseUrl}\n`);
 
@@ -88,6 +188,15 @@ async function main() {
   step("actual run history is readable", Array.isArray(context.recentRuns), `${context.recentRuns?.length ?? 0} recent runs`);
   step("Build status is readable", typeof context.build?.placedBlockCount === "number", `${context.build?.placedBlockCount ?? "?"} placed, ${context.build?.pendingBlockCount ?? "?"} pending`);
   step("plan-adjustment history is readable", Array.isArray(context.planAdjustments), `${context.planAdjustments?.length ?? 0} recent adjustments`);
+  if (context.planAdjustments?.length > 0) {
+    step(
+      "each prior adjustment carries the id an undo needs (#181)",
+      context.planAdjustments.every((adjustment) => typeof adjustment.adjustmentId === "string"),
+      "adjustmentId present on every row",
+    );
+  }
+
+  await verifyConnector();
 
   if (!args["allow-write"]) {
     console.log("\n(read-only run — pass --allow-write to also exercise apply/undo)");
@@ -148,7 +257,89 @@ async function main() {
   const bogusUndo = await call("DELETE", "/api/plan-adjustments?id=00000000-0000-0000-0000-000000000000");
   step("undoing an unknown adjustment id is rejected (404)", bogusUndo.status === 404, `status ${bogusUndo.status}`);
 
+  // 5. The same apply/undo cycle again, this time through the connector's own
+  // tools rather than REST — #181's acceptance asks for the write path to be
+  // proven where an assistant actually reaches it, not only underneath it.
+  await verifyConnectorWrites(target, unknownWorkout.json?.revision ?? undo.json?.revision ?? null);
+
   return finish();
+}
+
+/** Reads the current plan revision back through the connector's read tool. */
+async function connectorContext() {
+  const read = await rpc("tools/call", { name: "get_training_context", arguments: {} });
+  if (read.status !== 200 || read.json?.result?.isError) return null;
+  try {
+    return JSON.parse(read.json.result.content[0].text);
+  } catch {
+    return null;
+  }
+}
+
+async function verifyConnectorWrites(target, knownRevision) {
+  console.log("\nConnector writes — apply and undo as the assistant itself calls them\n");
+
+  const context = await connectorContext();
+  const revision = context?.plan?.revision ?? knownRevision;
+  if (typeof revision !== "number") {
+    step("connector write steps skipped", true, "could not read a current plan revision back");
+    return;
+  }
+
+  const marker = ` (connector-verified, ${new Date().toISOString()})`;
+  const apply = await rpc("tools/call", {
+    name: "adjust_training_plan",
+    arguments: {
+      operations: [{
+        op: "editRun",
+        workoutId: target.id,
+        values: { type: target.type, title: target.title, targetDistanceMiles: target.targetDistanceMiles, details: `${target.details}${marker}` },
+      }],
+      expectedPlanRevision: revision,
+      reason: "verify-external-integration.mjs (connector)",
+    },
+  });
+  const appliedError = apply.json?.result?.isError === true;
+  step("adjust_training_plan applies an eligible future change", apply.status === 200 && !appliedError,
+    appliedError ? String(apply.json.result.content?.[0]?.text) : `status ${apply.status}`);
+  if (apply.status !== 200 || appliedError) return;
+
+  let applied = null;
+  try {
+    applied = JSON.parse(apply.json.result.content[0].text);
+  } catch {
+    // Reported by the next step.
+  }
+  step("the connector's apply result carries an adjustment id", typeof applied?.adjustmentId === "string", applied?.adjustmentId ?? "none");
+  if (typeof applied?.adjustmentId !== "string") return;
+
+  // The id is also readable from a fresh context read — which is how a new
+  // conversation, holding nothing from this one, can still undo it.
+  const after = await connectorContext();
+  step(
+    "the applied adjustment is identifiable from a fresh get_training_context",
+    (after?.planAdjustments ?? []).some((adjustment) => adjustment.adjustmentId === applied.adjustmentId),
+    `${after?.planAdjustments?.length ?? 0} adjustments listed`,
+  );
+
+  const undo = await rpc("tools/call", {
+    name: "undo_plan_adjustment",
+    arguments: { adjustmentId: applied.adjustmentId },
+  });
+  const undoError = undo.json?.result?.isError === true;
+  step("undo_plan_adjustment undoes it", undo.status === 200 && !undoError,
+    undoError ? String(undo.json.result.content?.[0]?.text) : `status ${undo.status}`);
+
+  // A failure the model must be able to reason about, not a transport error.
+  const bogus = await rpc("tools/call", {
+    name: "undo_plan_adjustment",
+    arguments: { adjustmentId: "00000000-0000-0000-0000-000000000000" },
+  });
+  step(
+    "an unknown adjustment id comes back as a tool error, not a broken connection",
+    bogus.status === 200 && bogus.json?.result?.isError === true && bogus.json?.error === undefined,
+    `status ${bogus.status}`,
+  );
 }
 
 function finish() {

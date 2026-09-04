@@ -51,6 +51,9 @@ new journey test and script below.
 | `personal_runs` / `personal_build_state` immutability across a full write cycle | `0030` — snapshots both tables before the apply and after the undo and asserts byte-identical; previously only true structurally (different columns), never checked as data |
 | No STACK-funded model inference or model key | `src/external/noModelDependency.test.ts` — a standing guard (no AI/model SDK dependency, no model-provider API key referenced under `api/`), not a one-time claim |
 | Real HTTP, against an actual deployment | `scripts/verify-external-integration.mjs` — see below |
+| **Connector** (#181): MCP framing, protocol negotiation, tool surface, and every STACK failure reaching the model intact | `src/external/mcpServer.test.ts` |
+| **Connector**: the three tools over the *real* REST routes — scope, revocation, stale revision, past-workout refusal, undo | `api/mcp.test.ts` (only Supabase is stubbed; the connector, both REST routes and their RPC contracts all run) |
+| **Connector**: undo reachable from a new conversation | `supabase/tests/0031_external_connector_undo_handle.sql` |
 
 Run all of it: `npm run check`, `npm run db:verify` (or
 `node scripts/run-supabase-sql-tests.mjs` / `node scripts/verify-supabase-migrations.mjs`
@@ -66,25 +69,62 @@ of it makes a real network request to a *deployed* STACK. This script does:
 node scripts/verify-external-integration.mjs --base-url https://<deployment> --token <token>
 ```
 
-- Default run is **read-only**: `GET /api/training-context`, reporting what
-  it finds. Safe against any real account, any time.
+- Default run is **read-only**: `GET /api/training-context`, plus (since
+  #181) the connector's `initialize` handshake, `tools/list`, and a
+  `get_training_context` call — the exact path a connected assistant takes.
+  Safe against any real account, any time.
 - `--allow-write` additionally applies one small, reversible edit, confirms
   it landed with the right revision bump, undoes it, and exercises the real
   HTTP failure paths (stale revision → 409, unknown workout → 422, bogus
-  undo id → 404).
+  undo id → 404) — then repeats the apply/undo cycle *through the connector's
+  own tools*, including reading the new `adjustmentId` back from a fresh
+  `get_training_context` before undoing by it.
 - Token via `--token` or `STACK_VERIFY_TOKEN` — never logged, never printed.
 
-**Not run in this session** — there is no deployed URL or real token
-available here. Its logic is straightforward enough to review directly
-(plain `fetch` calls, no hidden state); its first real run happens once
-there's a live deployment and a token to point it at.
+**Not run against a deployment** — there is still no deployed URL or real
+token available. It has, however, been run end to end in the #181 session
+against the real handlers served over real loopback HTTP with only Supabase
+stubbed: all 24 checks passed, including every connector step. That exercises
+the script itself, the MCP framing over the wire, and the whole
+apply → read-back → undo cycle; what it cannot exercise is a real database, a
+real token, or a real deployment.
+
+## A real MCP client, in the #181 session
+
+The script is STACK's own client. To check that the endpoint is a *correct*
+MCP server and not merely self-consistent, the same locally-served handlers
+(Supabase stubbed, as above) were also driven by the official
+`@modelcontextprotocol/sdk` client over `StreamableHTTPClientTransport`,
+installed outside the repository so nothing about STACK's dependency
+boundaries changed. It connected without special-casing, and:
+
+- negotiated the handshake and read back `serverInfo` (`stack`, `1.0.0`),
+  capabilities (`tools` only) and the server instructions;
+- listed exactly `get_training_context`, `adjust_training_plan`,
+  `undo_plan_adjustment`;
+- read the training context, applied an adjustment, found its `adjustmentId`
+  in a *fresh* context read, and undid it by that id;
+- with a `read`-scoped token, read fine and was refused the write with the
+  `insufficient_scope` explanation — a tool error, not a broken connection;
+- got a tool error, not a transport error, for an unknown tool name.
+
+That is the strongest available evidence short of a live assistant: a real
+MCP client library, not STACK's own code, talking to the real route.
 
 ## Needs a human — not closeable from this session
 
-- **A real client, ChatGPT if the supported path is available, actually
-  connected.** This script is the closest automated proxy; it is not the
-  literal thing the issue asks for. Point it at a deployment first if you
-  want a fast sanity check before spending a real ChatGPT session on it.
+- **A real assistant, ChatGPT if the supported path is available, actually
+  connected.** The MCP-client run above proves the protocol; it does not
+  prove that ChatGPT's connector setup screen accepts this URL and token, or
+  that a live model uses the tools sensibly. Point the script at a deployment
+  first for a fast sanity check before spending a real ChatGPT session on it,
+  and follow the per-assistant steps in `docs/EXTERNAL_INTEGRATION.md`.
+- **claude.ai's own custom connectors** remain out of reach until STACK runs
+  an OAuth authorization server; Claude Code and Claude Desktop connect today
+  with a header. See the OAuth note in `docs/EXTERNAL_INTEGRATION.md`.
+- **`supabase/tests/0031`** has not been executed — no docker daemon was
+  available in the #181 session, so no SQL test in this repository ran there.
+  It needs `npm run db:verify` against local Supabase.
 - **320 / ~390 / 430 / desktop UI review** of the auth-gated screens: the
   External Assistant Access panel (#181) and the sparkle/provenance sheet
   (#182). Both sit behind `checkSupabaseBoundary`, which only accepts the

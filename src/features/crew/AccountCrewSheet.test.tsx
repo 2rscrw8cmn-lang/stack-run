@@ -1153,6 +1153,30 @@ describe("External Assistant Access (#181 scopes)", () => {
     expect(createExternalApiToken).toHaveBeenCalledWith("ChatGPT", "read_write");
   });
 
+  /**
+   * #181: the panel used to hand over a token with no way to use it, which
+   * read as "paste this into ChatGPT" and did nothing. The connector URL is
+   * the missing half, and it is shown before any token exists.
+   */
+  it("shows the connector URL a runner registers, without minting anything first", async () => {
+    await openExternalTokens();
+    expect(screen.getByLabelText("STACK connector URL")).toHaveValue(`${window.location.origin}/mcp`);
+    expect(screen.getByRole("button", { name: /Copy URL/ })).toBeInTheDocument();
+  });
+
+  it("says where the token goes, and that a chat message is not it", async () => {
+    await openExternalTokens();
+    expect(screen.getByText(/add a custom connector — an MCP server/)).toBeInTheDocument();
+    expect(screen.getByText(/Pasting it into a chat message does nothing/)).toBeInTheDocument();
+  });
+
+  it("labels a freshly minted token with the field it belongs in", async () => {
+    const user = await openExternalTokens({ createExternalApiToken: vi.fn(async () => "raw-token") });
+    await user.type(screen.getByPlaceholderText("e.g. ChatGPT"), "ChatGPT");
+    await user.click(screen.getByRole("button", { name: "Create Token" }));
+    expect(screen.getByLabelText(/paste it into the connector's token field/i)).toHaveValue("raw-token");
+  });
+
   it("shows each existing token's access level", async () => {
     await openExternalTokens({
       externalApiTokens: [
