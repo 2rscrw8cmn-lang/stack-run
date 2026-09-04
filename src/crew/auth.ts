@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { STACK_PIN_FORGOT_URL } from "./authRoutes.js";
 
 export const STACK_PIN_PATTERN = /^\d{8}$/;
 
@@ -44,7 +45,14 @@ export async function signInToStack(
     email,
     password: input.pin,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (/invalid login credentials/i.test(error.message)) {
+      throw new Error(
+        `Email or STACK PIN is incorrect. Forgot your PIN? Reset it at ${STACK_PIN_FORGOT_URL}`,
+      );
+    }
+    throw new Error(error.message);
+  }
   if (!data.user) throw new Error("STACK could not sign in.");
   return data.user;
 }
