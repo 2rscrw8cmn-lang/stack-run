@@ -26,6 +26,36 @@
 
 Current personal AppState: **schema 10**.
 
+## Evolution 2.10D — External assistant connector (issue #181)
+
+Status: **Implemented / real-assistant QA and SQL verification pending.**
+
+- `POST /mcp` (`api/mcp.ts`, `src/external/mcpServer.ts`) is a remote MCP
+  server exposing three semantic tools — `get_training_context`,
+  `adjust_training_plan`, `undo_plan_adjustment` — over the REST contracts
+  #178/#180 established. It is a translation layer: it calls those route
+  handlers in process with the caller's own token and owns no plan logic, no
+  auth logic and no database access, so scope, revocation, runner binding and
+  stale-plan conflicts keep being decided where they already were, in those
+  routes and in SQL.
+- External Assistant Access now shows the connector URL alongside the token,
+  and says plainly that the token goes in the assistant's connector setup —
+  replacing guidance that implied pasting it into a chat would connect
+  anything.
+- `external_training_snapshot` returns each plan adjustment's id
+  (`20260904120000_external_snapshot_adjustment_ids.sql`), so a new
+  conversation can undo an adjustment it did not itself apply. Tolerated as
+  absent by the read route, for a database a migration behind.
+- Verified in-process (`api/mcp.test.ts`, `src/external/mcpServer.test.ts`),
+  over real loopback HTTP by `scripts/verify-external-integration.mjs`, and
+  by the official MCP SDK client against the real handlers. Not yet verified
+  against a live deployment or a live assistant — see
+  `docs/EXTERNAL_ASSISTANT_QA.md`.
+- OAuth remains the preferred end state and is deliberately not half-built:
+  the first connector version puts a token in connector setup, never in a
+  conversation. `docs/EXTERNAL_INTEGRATION.md` records what OAuth would and
+  would not change.
+
 ## Evolution 2.08 — Cross Training actual history (issue #159)
 
 Status: **Implemented / PR review pending.**

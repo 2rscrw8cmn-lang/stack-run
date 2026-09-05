@@ -76,6 +76,10 @@ function parsePlanAdjustmentRow(value: unknown): ExternalPlanAdjustmentRow | nul
     (row.reason === null || typeof row.reason === "string") &&
     typeof row.reverted === "boolean"
     ? {
+        // Tolerated as absent, not required: a deployment whose database has
+        // not yet run `20260904120000_external_snapshot_adjustment_ids.sql`
+        // should still show its adjustment history, minus the undo handle.
+        adjustmentId: typeof row.adjustmentId === "string" ? row.adjustmentId : null,
         appliedAt: row.appliedAt,
         kind,
         operations: row.operations,

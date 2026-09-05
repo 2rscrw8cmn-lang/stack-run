@@ -164,6 +164,40 @@ describe("Training context endpoint", () => {
     expect(JSON.stringify(body)).not.toMatch(/private reflection|external-activity-id/i);
   });
 
+  /**
+   * #181: `adjustmentId` arrived with
+   * `20260904120000_external_snapshot_adjustment_ids.sql`. A deployment whose
+   * database is a migration behind must still show its adjustment history —
+   * losing the id costs the undo handle, not the whole row.
+   */
+  it("keeps an adjustment row whose id a pre-migration database did not send", async () => {
+    const row = {
+      appliedAt: "2026-08-14T12:00:00Z",
+      kind: "apply",
+      operations: [{ op: "skip", workoutId: "w-1" }],
+      reason: null,
+      reverted: false,
+    };
+    const fetcher = upstream(() => new Response(JSON.stringify({ ...validSnapshot, planAdjustments: [row] })));
+    const body = await (await readTrainingContext(request(), ENV, fetcher)).json();
+    expect(body.planAdjustments).toHaveLength(1);
+    expect(body.planAdjustments[0].adjustmentId).toBeNull();
+  });
+
+  it("carries an adjustment id through to the projected context when the database sends one", async () => {
+    const row = {
+      adjustmentId: "adj-1",
+      appliedAt: "2026-08-14T12:00:00Z",
+      kind: "apply",
+      operations: [],
+      reason: null,
+      reverted: false,
+    };
+    const fetcher = upstream(() => new Response(JSON.stringify({ ...validSnapshot, planAdjustments: [row] })));
+    const body = await (await readTrainingContext(request(), ENV, fetcher)).json();
+    expect(body.planAdjustments[0].adjustmentId).toBe("adj-1");
+  });
+
   it("never leaks which specific upstream error occurred on a malformed cloud document", async () => {
     const fetcher = upstream(() => new Response(JSON.stringify({ training: { settings: {} } })));
     const response = await readTrainingContext(request(), ENV, fetcher);

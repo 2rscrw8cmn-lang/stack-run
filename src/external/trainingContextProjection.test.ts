@@ -186,6 +186,7 @@ describe("projectExternalTrainingContext", () => {
   it("projects real plan-adjustment history (#180) rather than a permanent stub", () => {
     const rows: ExternalPlanAdjustmentRow[] = [
       {
+        adjustmentId: "adj-1",
         appliedAt: "2026-08-14T12:00:00Z",
         kind: "apply",
         operations: [{ op: "skip", workoutId: "workout-1" }],
@@ -193,6 +194,7 @@ describe("projectExternalTrainingContext", () => {
         reverted: false,
       },
       {
+        adjustmentId: "adj-2",
         appliedAt: "2026-08-13T12:00:00Z",
         kind: "undo",
         operations: [{ op: "move", workoutId: "workout-2", toDate: "2026-08-20" }],
@@ -207,5 +209,39 @@ describe("projectExternalTrainingContext", () => {
       rows,
     );
     expect(context.planAdjustments).toEqual(rows);
+  });
+
+  /**
+   * #181: without the id, `undo_plan_adjustment` was reachable only inside the
+   * one conversation that had made the change. A connected assistant starting
+   * fresh gets it from here or not at all.
+   */
+  it("carries each adjustment's id, so a later session can undo it", () => {
+    const context = projectExternalTrainingContext(createInitialAppState(), "2026-08-15", [], [
+      {
+        adjustmentId: "adj-1",
+        appliedAt: "2026-08-14T12:00:00Z",
+        kind: "apply",
+        operations: [],
+        reason: null,
+        reverted: false,
+      },
+    ]);
+    expect(context.planAdjustments[0]?.adjustmentId).toBe("adj-1");
+  });
+
+  it("still shows an adjustment whose id a pre-migration database withheld", () => {
+    const context = projectExternalTrainingContext(createInitialAppState(), "2026-08-15", [], [
+      {
+        adjustmentId: null,
+        appliedAt: "2026-08-14T12:00:00Z",
+        kind: "apply",
+        operations: [],
+        reason: null,
+        reverted: false,
+      },
+    ]);
+    expect(context.planAdjustments).toHaveLength(1);
+    expect(context.planAdjustments[0]?.adjustmentId).toBeNull();
   });
 });

@@ -6402,6 +6402,19 @@ textarea.run-input {
 .crew-settings__external-token-body { min-width: 0; display: grid; gap: 2px; }
 .crew-settings__external-token-body small { color: var(--text-muted); }
 
+/* The three connector-setup steps (#181). Numbered because the order matters
+   — the URL is registered before the token has anywhere to go — and kept at
+   the same muted weight as the notes around them so the panel stays quiet. */
+.crew-settings__connector-steps {
+  margin: 0;
+  padding-left: 1.35em;
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 @media (max-width: 420px) {
   .crew-settings__crew-option { grid-template-columns: auto minmax(0, 1fr); }
   .crew-settings__crew-option > .machine-label { grid-column: 2; }

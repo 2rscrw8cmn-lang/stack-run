@@ -983,6 +983,16 @@ const SCOPE_LABEL: Record<ExternalApiTokenScope, string> = {
   read_write: "Read & write",
 };
 
+/**
+ * The connector URL a runner registers in their assistant (#181). Read from
+ * the running origin rather than configured: a preview deployment must hand
+ * out its own URL, not production's, or a runner testing a preview would
+ * connect their assistant to the wrong STACK.
+ */
+function connectorServerUrl(): string {
+  return `${window.location.origin}/mcp`;
+}
+
 function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; onBack: () => void }) {
   const [label, setLabel] = useState("");
   // Least-privilege default: a runner opts into write access, rather than
@@ -990,7 +1000,9 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
   const [scope, setScope] = useState<ExternalApiTokenScope>("read");
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
   const tokens = crew.externalApiTokens;
+  const serverUrl = connectorServerUrl();
 
   useEffect(() => {
     void crew.refreshExternalApiTokens();
@@ -1014,12 +1026,36 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
       <BackButton onClick={onBack} label="Back to Edit Profile" />
       <section className="crew-settings__section">
         <p className="crew-settings__copy">
-          Connect an external assistant — ChatGPT, for example — so it can read your plan, recent runs and Build progress and help you adjust what's ahead. STACK never sends your data anywhere on its own: a token only works once you hand it to something you chose.
+          Connect an external assistant — ChatGPT, for example — so it can read your plan, recent runs and Build progress and help you adjust what's ahead. STACK never sends your data anywhere on its own: nothing leaves until you add STACK as a connector in an assistant you chose.
+        </p>
+
+        <div className="crew-settings__invite-link">
+          <label htmlFor="external-connector-url">STACK connector URL</label>
+          <input id="external-connector-url" className="run-input" readOnly value={serverUrl} />
+          <Button
+            variant="secondary"
+            icon={<Copy size={18} />}
+            onClick={() => {
+              void navigator.clipboard.writeText(serverUrl);
+              setUrlCopied(true);
+            }}
+          >
+            {urlCopied ? "Copied" : "Copy URL"}
+          </Button>
+        </div>
+
+        <ol className="crew-settings__connector-steps">
+          <li>In your assistant's settings, add a custom connector — an MCP server — and give it this URL.</li>
+          <li>When it asks how to authenticate, choose an access token or API key, and paste the token below into that field.</li>
+          <li>Ask your assistant about your training. It calls STACK itself from then on.</li>
+        </ol>
+        <p className="crew-settings__note">
+          The token belongs in your assistant's connector setup, not in a conversation. Pasting it into a chat message does nothing — an ordinary chat has no way to call STACK, and the token would just sit there in your history.
         </p>
 
         {revealedToken && (
           <div className="crew-settings__invite-link">
-            <label htmlFor="external-api-token-value">New token — copy it now</label>
+            <label htmlFor="external-api-token-value">New token — paste it into the connector's token field</label>
             <input id="external-api-token-value" className="run-input" readOnly value={revealedToken} />
             <Button
               variant="secondary"
@@ -1109,6 +1145,9 @@ function ExternalApiTokensPanel({ crew, onBack }: { crew: RaceCrewController; on
         {tokens && tokens.length === 0 && (
           <p className="crew-settings__copy">No external assistant is connected yet.</p>
         )}
+        <p className="crew-settings__note">
+          Revoking a connection stops it immediately. STACK itself keeps working either way — your plan, runs, Build and Crew never depend on a connector being reachable.
+        </p>
       </section>
     </>
   );
