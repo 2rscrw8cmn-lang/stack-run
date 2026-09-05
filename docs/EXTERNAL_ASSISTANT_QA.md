@@ -53,11 +53,29 @@ new journey test and script below.
 | Real HTTP, against an actual deployment | `scripts/verify-external-integration.mjs` — see below |
 | **Connector** (#181): MCP framing, protocol negotiation, tool surface, and every STACK failure reaching the model intact | `src/external/mcpServer.test.ts` |
 | **Connector**: the three tools over the *real* REST routes — scope, revocation, stale revision, past-workout refusal, undo | `api/mcp.test.ts` (only Supabase is stubbed; the connector, both REST routes and their RPC contracts all run) |
-| **Connector**: undo reachable from a new conversation | `supabase/tests/0031_external_connector_undo_handle.sql` |
+| **Connector**: undo reachable from a new conversation, and refused on a `read` token | `supabase/tests/0031_external_connector_undo_handle.sql` — run by `.github/workflows/supabase-migration-gate.yml` against a fresh local Supabase on every PR that touches `supabase/**` |
 
 Run all of it: `npm run check`, `npm run db:verify` (or
 `node scripts/run-supabase-sql-tests.mjs` / `node scripts/verify-supabase-migrations.mjs`
-directly against local Supabase).
+directly against local Supabase). The SQL half also runs in CI on every PR
+touching `supabase/**`, so it is not dependent on a contributor having docker.
+
+## Deployment note (#181)
+
+`api/mcp.ts` is one more Serverless Function, and the project was already at
+exactly the twelve a Hobby deployment allows — so the first push of #181 was
+refused outright with `exceeded_serverless_functions_per_deployment`, before
+anything about the route was exercised.
+
+Five of those twelve were vitest suites. Vercel treats every non-underscore
+`.ts` file under `api/` as a function entrypoint, and this repository puts
+each route's tests beside it, so `api/*.test.ts` were being deployed as
+functions that answered nothing (a test file exports no default handler).
+`.vercelignore` now excludes them; the real count is eight.
+
+Worth knowing before adding the next route: four slots remain on the current
+plan. Underscore-prefixed files and directories (`api/_render/`) are already
+invisible to that count.
 
 ## `scripts/verify-external-integration.mjs`
 
@@ -122,9 +140,9 @@ MCP client library, not STACK's own code, talking to the real route.
 - **claude.ai's own custom connectors** remain out of reach until STACK runs
   an OAuth authorization server; Claude Code and Claude Desktop connect today
   with a header. See the OAuth note in `docs/EXTERNAL_INTEGRATION.md`.
-- **`supabase/tests/0031`** has not been executed — no docker daemon was
-  available in the #181 session, so no SQL test in this repository ran there.
-  It needs `npm run db:verify` against local Supabase.
+- **Deployment itself**, still. The connector is only real once `/mcp` is
+  served by a deployment — see **Deployment note** below for one constraint
+  #181 hit on the way there.
 - **320 / ~390 / 430 / desktop UI review** of the auth-gated screens: the
   External Assistant Access panel (#181) and the sparkle/provenance sheet
   (#182). Both sit behind `checkSupabaseBoundary`, which only accepts the
